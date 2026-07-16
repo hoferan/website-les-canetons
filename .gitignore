@@ -1,6 +1,7 @@
 # secrets & local-only
 config.php
 .env
+.superpowers
 
 # real prod data — never commit (use the synthetic Docker seed instead)
 *.dump.sql
