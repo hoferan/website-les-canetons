@@ -5,62 +5,57 @@ require 'partials/head.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
 <section class="personne-section">
-  <div class="committee-member">
-    <h2>Le comité</h2>
+  <h2>Le comité</h2>
+  <div class="committee-photo">
     <img src="assets/img/comite.jpg" alt="Le comité" />
   </div>
-  <div class="committee-member">
+
+  <div class="contact-block">
     <h3>Contact des Canetons</h3>
     <p><a href="mailto:comite@lescanetons.org">comite@lescanetons.org</a></p>
   </div>
 
-  <div class="committee-member">
-    <h3>Présidente</h3>
-    <p>Delphine Maillard</p>
-    <p><a href="mailto:delphine@lescanetons.org">delphine@lescanetons.org</a></p>
-  </div>
+  <div class="committee-grid">
+    <article class="member-card">
+      <p class="member-role">Présidente</p>
+      <p class="member-name">Delphine Maillard</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Vice-présidente - secrétaire</h3>
-    <p>Amanda Portmann</p>
-    <p><a href="mailto:amanda@lescanetons.org">amanda@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Vice-présidente - secrétaire</p>
+      <p class="member-name">Amanda Portmann</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Responsable prestations</h3>
-    <p>Céline Cuennet</p>
-    <p><a href="tel:+41793221257">079 322 12 57</a></p>
-    <p><a href="mailto:celine@lescanetons.org">celine@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Responsable prestations</p>
+      <p class="member-name">Céline Cuennet</p>
+      <p class="member-phone"><a href="tel:+41793221257">079 322 12 57</a></p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Responsable caisse</h3>
-    <p>Marc Rossier</p>
-    <p><a href="mailto:marc@lescanetons.org">marc@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Responsable caisse</p>
+      <p class="member-name">Marc Rossier</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Responsable intendance</h3>
-    <p>Tiago Garces Cardoso</p>
-    <p><a href="mailto:tiago@lescanetons.org">tiago@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Responsable intendance</p>
+      <p class="member-name">Tiago Garces Cardoso</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Responsable costumes</h3>
-    <p>Martine Jutzet</p>
-    <p><a href="mailto:martine@lescanetons.org">martine@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Responsable costumes</p>
+      <p class="member-name">Martine Jutzet</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Responsable Team Direction</h3>
-    <p>Laura Mantel</p>
-    <p><a href="mailto:laura@lescanetons.org">laura@lescanetons.org</a></p>
-  </div>
+    <article class="member-card">
+      <p class="member-role">Responsable Team Direction</p>
+      <p class="member-name">Laura Mantel</p>
+    </article>
 
-  <div class="committee-member">
-    <h3>Membre</h3>
-    <p>Patrice Bersier</p>
-    <p><a href="mailto:patrice@lescanetons.org">patrice@lescanetons.org</a></p>
+    <article class="member-card">
+      <p class="member-role">Membre</p>
+      <p class="member-name">Patrice Bersier</p>
+    </article>
   </div>
 
   <h2>Direction musicale</h2>
