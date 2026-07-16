@@ -14,17 +14,20 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function tile(label, value, cls) {
-  var d = document.createElement("div");
-  d.className = "tile" + (cls ? " " + cls : "");
-  var k = document.createElement("div");
+  var col = document.createElement("div");
+  col.className = "column is-one-fifth-desktop is-half-tablet";
+  var box = document.createElement("div");
+  box.className = "box tile-box" + (cls ? " " + cls : "");
+  var k = document.createElement("p");
   k.className = "tile-k";
   k.textContent = label;
-  var v = document.createElement("div");
+  var v = document.createElement("p");
   v.className = "tile-v";
   v.textContent = value;
-  d.appendChild(k);
-  d.appendChild(v);
-  return d;
+  box.appendChild(k);
+  box.appendChild(v);
+  col.appendChild(box);
+  return col;
 }
 
 function numCell(value, isTotal) {
