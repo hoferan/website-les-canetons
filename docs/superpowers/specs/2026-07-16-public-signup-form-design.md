@@ -91,10 +91,13 @@ const OCCASIONS = [
 const ACTIVE_OCCASION = 'anniversary-supper';
 ```
 
-Menu value → French label mapping (used everywhere the menu is displayed):
+Menu value → French label mapping (used everywhere the menu is displayed). `meat` is the
+default/standard choice; the form shows it as "Viande (standard)", while compact contexts
+(admin counts, chips) use the short "Viande":
 
 ```php
 const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'Végétarien'];
+const MENU_DEFAULT = 'meat'; // pre-selected in the form, labelled "Viande (standard)"
 ```
 
 ## 4. Components
@@ -106,10 +109,12 @@ const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'V
   `phone`).
 - **Table**: `<input list="tables">` + `<datalist id="tables">` filled server-side via
   `SELECT DISTINCT table_name FROM signups WHERE occasion = ? ORDER BY table_name`.
-- **Guests**: dynamic "+ Ajouter une personne" rows, each row = one menu `<select>`
-  (options: value=`meat`/`child`/`vegetarian`, label Viande/Enfant/Végétarien).
-  Minimum 1 row. Row removal supported. Vanilla JS (buildless), a single
-  `assets/js/signup.js` file.
+  A hint below the field tells the user that existing tables are suggested as they type.
+- **Guests**: dynamic "+ Ajouter une personne" rows, each row = one menu `<select>`.
+  Options: value=`meat` label **"Viande (standard)"** (default-selected), value=`child`
+  label "Enfant", value=`vegetarian` label "Végétarien". Minimum 1 row. Row removal
+  supported. A live tally (persons + count per menu type) updates as rows change.
+  Vanilla JS (buildless), a single `assets/js/signup.js` file.
 - Submit via `fetch` POST → `api/signups.php`, then redirect to `signup_thanks.php`
   (same pattern as the `contact.php` handler).
 - Dedicated CSS: `assets/css/signup.css`.
@@ -147,7 +152,10 @@ const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'V
   - **Menu totals** per type (Viande / Enfant / Végétarien).
   - **Number of tables** and **persons per table**.
   - **Total persons** (= total menus) and **total tables**.
-  - Signup list **grouped by table** (contact + menu breakdown).
+  - Signup list **grouped by table**. Each table row and each signup row shows the
+    **count per menu type** (e.g. "Viande 2 · Enfant 1 · Végét. 1"), **not** one chip per
+    person — order of guests does not matter; admins only need which menus go to which
+    table. Each signup row also shows the contact (name, address, phone).
   - **CSV export** button (link to `api/signups.php?format=csv`).
 - Dedicated CSS: `assets/css/signups_admin.css`.
 
