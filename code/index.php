@@ -11,8 +11,13 @@ require 'partials/head.php'; ?>
 
 <section class="souper-cta">
   <h2>Souper — 25 ans des Canetons</h2>
-  <p>Amis et familles, fêtez nos 25 ans et la sortie du nouveau costume avec nous !</p>
-  <a class="btn-primary" href="signup.php">S'inscrire au souper</a>
+  <?php if (Auth::canViewSummary()) : ?>
+    <p>Consultez les inscriptions : totaux par menu et par table.</p>
+    <a class="btn-primary" href="signups_admin.php">Voir les inscriptions</a>
+  <?php else : ?>
+    <p>Amis et familles, fêtez nos 25 ans et la sortie du nouveau costume avec nous !</p>
+    <a class="btn-primary" href="signup.php">S'inscrire au souper</a>
+  <?php endif; ?>
 </section>
 
 <?php require 'partials/footer.php'; ?>

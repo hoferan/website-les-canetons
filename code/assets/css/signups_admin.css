@@ -24,17 +24,20 @@
   color: #b9760d;
 }
 
+/* -- SUMMARY TILES -- */
+
 .tiles {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 26px;
 }
 
 .tile {
   border: 1px solid #e7ded1;
+  border-left-width: 5px;
   border-radius: 10px;
-  padding: 16px;
+  padding: 14px 16px;
   background: #faf6ef;
 }
 
@@ -42,12 +45,15 @@
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #777;
+  color: #555;
+  font-weight: bold;
 }
 
 .tile-v {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: bold;
+  line-height: 1.1;
+  margin-top: 4px;
 }
 
 .tile.accent {
@@ -60,9 +66,17 @@
   background: #f6ddd0;
 }
 
+.tile.menu-meat .tile-k {
+  color: #7f3013;
+}
+
 .tile.menu-child {
   border-color: #23577f;
   background: #d8e6f4;
+}
+
+.tile.menu-child .tile-k {
+  color: #1c4664;
 }
 
 .tile.menu-veg {
@@ -70,32 +84,39 @@
   background: #d8ebd9;
 }
 
+.tile.menu-veg .tile-k {
+  color: #265630;
+}
+
+/* -- SIGNUPS TABLE -- */
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid #e7ded1;
   border-radius: 10px;
+  background: #fff; /* solid white behind the table, not the section's translucent bg */
 }
 
 #signups-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 620px;
+  min-width: 640px;
 }
 
 #signups-table th,
 #signups-table td {
-  padding: 11px 14px;
-  border-bottom: 1px solid #eee;
+  padding: 12px 16px;
   text-align: left;
 }
 
-#signups-table th {
-  background: #faf6ef;
+#signups-table thead th {
+  background: #f1ece2;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #777;
+  color: #555;
   white-space: nowrap;
+  border-bottom: 2px solid #e0d6c7;
 }
 
 #signups-table th.num,
@@ -104,34 +125,71 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* set the numeric block and the total column apart from the contact columns */
+#signups-table th.num:first-of-type,
+#signups-table td.num:first-of-type {
+  border-left: 1px solid #ece4d6;
+}
+
+#signups-table th.total,
 #signups-table td.total {
+  border-left: 1px solid #e0d6c7;
   font-weight: bold;
 }
 
 #signups-table td.zero {
-  color: #aaa;
+  color: #bbb;
 }
 
-.group-row td {
-  background: #fbeecb;
-  font-weight: bold;
+/* signup (detail) rows */
+.signup-row td {
+  border-top: 1px solid #efe9df;
 }
 
-#signups-table tfoot td {
-  border-top: 2px solid #ddd;
+.signup-row:hover td {
+  background: #fdf6e9;
+}
+
+.signup-row td:first-child {
+  padding-left: 24px; /* indent under the table's group header */
+}
+
+.signup-row strong {
+  color: #2a2a2d;
 }
 
 .contact-sub {
-  color: #777;
+  color: #888;
   font-size: 12px;
+  margin-top: 2px;
+}
+
+/* table group header rows */
+.group-row td {
+  background: #fbeecb;
+  font-weight: bold;
+  color: #5a4a1e;
+  border-top: 3px solid #fff;
+}
+
+.group-row td:first-child {
+  border-left: 5px solid #e7a11c;
+  font-size: 15px;
+}
+
+/* grand-total footer row */
+#signups-table tfoot .group-row td {
+  background: #f4e6c2;
+  border-top: 2px solid #e0d6c7;
 }
 
 .dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  margin-right: 5px;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .dot-meat {

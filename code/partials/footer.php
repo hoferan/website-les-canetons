@@ -2,6 +2,8 @@
   <p1>&copy; 2023 Guggenmusik les canetons de Fribourg Tous droits réservés.</p1>
 </footer>
 
+<?php // The signup popup targets guests; admins (Team Direction) never see it. ?>
+<?php if (!Auth::canViewSummary()) : ?>
 <div
   id="supper-popup"
   class="popup-overlay"
@@ -24,3 +26,4 @@
   </div>
 </div>
 <script src="assets/js/supper-popup.js"></script>
+<?php endif; ?>

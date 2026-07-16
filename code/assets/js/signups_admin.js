@@ -89,16 +89,16 @@ function render(data) {
     body.appendChild(group);
 
     t.signups.forEach(function (s) {
-      body.appendChild(
-        menuRow([
-          contactCell(s),
-          textCell(s.phone),
-          numCell(s.menuCounts.meat),
-          numCell(s.menuCounts.child),
-          numCell(s.menuCounts.vegetarian),
-          numCell(s.personCount, true),
-        ]),
-      );
+      var row = menuRow([
+        contactCell(s),
+        textCell(s.phone),
+        numCell(s.menuCounts.meat),
+        numCell(s.menuCounts.child),
+        numCell(s.menuCounts.vegetarian),
+        numCell(s.personCount, true),
+      ]);
+      row.className = "signup-row";
+      body.appendChild(row);
     });
   });
 
