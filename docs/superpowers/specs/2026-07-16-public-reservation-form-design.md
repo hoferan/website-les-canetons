@@ -2,12 +2,13 @@
 
 - **Date:** 2026-07-16
 - **Status:** Design approved (spec under review)
-- **Product language:** French (UI + DB columns), consistent with the rest of the site.
-  This design document is in English; only the shipped product strings are French.
+- **Language rule:** Everything (this spec, code, DB columns, enum values, identifiers,
+  slugs, file names) is in **English**. **French is used only for user-visible UI text**
+  (HTML labels, page copy, on-screen event title/description).
 
 ## 1. Context & goal
 
-The Guggenmusik is hosting a one-off **Souper**: unveiling of the new costume and the
+The Guggenmusik is hosting a one-off **supper**: unveiling of the new costume and the
 **25th anniversary of the Canetons**. It is a **thank-you event for friends and family**
 of the band — it is **not** an event for the members themselves, so it is fully separate
 from the members' attendance system (`events` / `responses`, `sinscrire.php`,
@@ -30,9 +31,9 @@ a discriminator column `event_key`.
 | Data model | **A single table** `reservations`. Guests/menus are stored as a **list of menus** in one column. |
 | Reusability | `event_key` discriminator column; per-key title/description in a PHP constant. No events table, no admin event CRUD. |
 | Per-person fields | The **guests' names do not matter** — only the **menu per person** counts. |
-| Contact | `nom` + `prenom` **kept** = contact details of the person who registers (needed for follow-up questions), plus `address` and `phone`. |
-| Table (Tisch) | Free-text field, **shared** at reservation level. Existing tables suggested via `<datalist>`. |
-| Menu | 3 fixed choices: `viande` (standard), `enfant`, `vegetarien`. |
+| Contact | `first_name` + `last_name` **kept** = contact details of the person who registers (needed for follow-up questions), plus `address` and `phone`. |
+| Table | Free-text field, **shared** at reservation level. Existing tables suggested via `<datalist>`. |
+| Menu | 3 fixed choices, stored as English values `meat` (standard), `child`, `vegetarian`; shown in French (Viande / Enfant / Végétarien). |
 | Confirmation | Store in DB + dedicated thank-you page. **No e-mail.** |
 | Navigation | **No** menu entry. A link from the home page (`index.php`). |
 | Popup | Modal shown **once per browser** (localStorage) on first load of any page, linking to the form. |
@@ -42,18 +43,19 @@ a discriminator column `event_key`.
 ## 3. Data model
 
 A single table, MariaDB 10.3 compatible, added to `docker/db/init/01-schema.sql` (dev)
-**and** provided as a prod migration.
+**and** provided as a prod migration. Column naming follows the existing
+`contact_messages` table (`first_name` / `last_name`).
 
 ```sql
 CREATE TABLE `reservations` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `event_key`  varchar(64)  NOT NULL DEFAULT 'souper-25ans', -- reusable discriminator
-  `nom`        varchar(255) NOT NULL,   -- contact: last name
-  `prenom`     varchar(255) NOT NULL,   -- contact: first name
+  `event_key`  varchar(64)  NOT NULL DEFAULT 'anniversary-supper', -- reusable discriminator
+  `first_name` varchar(255) NOT NULL,   -- contact: first name
+  `last_name`  varchar(255) NOT NULL,   -- contact: last name
   `address`    varchar(255) NOT NULL,   -- contact: address
   `phone`      varchar(64)  NOT NULL,   -- contact: phone (for follow-up questions)
   `table_name` varchar(255) NOT NULL,   -- table / family name (grouping)
-  `menus`      text NOT NULL,           -- JSON list, e.g. ["viande","viande","enfant"]
+  `menus`      text NOT NULL,           -- JSON list, e.g. ["meat","meat","child"]
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_reservations_event` (`event_key`),
@@ -63,55 +65,66 @@ CREATE TABLE `reservations` (
 
 Notes:
 - **Number of persons in a reservation** = length of the `menus` list.
-- `menus` contains only values from `{viande, enfant, vegetarien}` (validated
-  server-side before write). Stored as JSON text; aggregates are computed **in PHP**
-  (low volume), so no SQL JSON functions are needed — portable to MariaDB 10.3.
+- `menus` contains only values from `{meat, child, vegetarian}` (validated server-side
+  before write). Stored as JSON text; aggregates are computed **in PHP** (low volume), so
+  no SQL JSON functions are needed — portable to MariaDB 10.3.
 - Store raw data and escape **at output time** (same rule as `contact.php`).
+- English stored values follow the existing convention (`responses.answer` uses
+  `participate` / `notparticipate`).
 
 ### Events constant (PHP)
 
-A small associative array (in the repository or a light config file) mapping
-`event_key` → labels, to drive title/description without a dedicated table:
+A small associative array (in the repository or a light config file) mapping `event_key`
+→ labels. The **values here are the French UI strings** shown on screen; the **key is an
+English identifier**:
 
 ```php
 const RESERVATION_EVENTS = [
-    'souper-25ans' => [
-        'title'       => 'Souper – 25 ans des Canetons',
-        'subtitle'    => 'Sortie du nouveau costume',
+    'anniversary-supper' => [
+        'title'       => 'Souper – 25 ans des Canetons',   // UI text (French)
+        'subtitle'    => 'Sortie du nouveau costume',       // UI text (French)
         'description' => "Un grand merci à nos amis et à nos familles : ...",
     ],
 ];
+const ACTIVE_EVENT_KEY = 'anniversary-supper';
 ```
 
-The form and the admin page use one active `event_key` (constant
-`ACTIVE_EVENT_KEY = 'souper-25ans'`).
+Menu value → French label mapping (used everywhere the menu is displayed):
+
+```php
+const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'Végétarien'];
+```
 
 ## 4. Components
 
 ### 4.1 Public form — `code/reservation.php`
-- No login. Renders the active event's title/description.
-- **Contact block** (once): Nom, Prénom, Adresse, Téléphone.
+- No login. Renders the active event's title/description (French UI text).
+- **Contact block** (once): Nom, Prénom, Adresse, Téléphone (French labels;
+  `name` attributes and posted keys are English: `first_name`, `last_name`, `address`,
+  `phone`).
 - **Table**: `<input list="tables">` + `<datalist id="tables">` filled server-side via
   `SELECT DISTINCT table_name FROM reservations WHERE event_key = ? ORDER BY table_name`.
 - **Guests**: dynamic "+ Ajouter une personne" rows, each row = one menu `<select>`
-  (Viande / Enfant / Végétarien). Minimum 1 row. Row removal supported. Vanilla JS
-  (buildless), a single `assets/js/reservation.js` file.
+  (options: value=`meat`/`child`/`vegetarian`, label Viande/Enfant/Végétarien).
+  Minimum 1 row. Row removal supported. Vanilla JS (buildless), a single
+  `assets/js/reservation.js` file.
 - Submit via `fetch` POST → `api/reservations.php`, then redirect to
   `reservation_merci.php` (same pattern as the `contact.php` handler).
 - Dedicated CSS: `assets/css/reservation.css`.
 
 ### 4.2 Thank-you page — `code/reservation_merci.php`
-- Static "Merci pour votre réservation !" page **without** any e-mail promise
+- Static "Merci pour votre réservation !" page (French UI) **without** any e-mail promise
   (do not reuse `confirmation.php`, which announces an e-mail).
 
 ### 4.3 API — `code/api/reservations.php`
 - `POST` (public): reads fields, validates, writes **one** row.
-  - Validation: `nom`, `prenom`, `address`, `phone`, `table_name` non-empty;
-    `menus` = array of 1..N values ∈ `{viande, enfant, vegetarien}` (N bounded,
-    e.g. ≤ 30, to prevent abuse); `event_key` set server-side (not driven by the
-    client beyond an allowed value).
+  - Validation: `first_name`, `last_name`, `address`, `phone`, `table_name` non-empty;
+    `menus` = array of 1..N values ∈ `{meat, child, vegetarian}` (N bounded, e.g. ≤ 30,
+    to prevent abuse); `event_key` set server-side (not driven by the client beyond an
+    allowed value).
   - Prepared `mysqli` statement, `menus` JSON-encoded. JSON responses `{ok:true}` /
-    errors `400`/`405` like the existing endpoints.
+    errors `400`/`405` like the existing endpoints. Error messages returned to the client
+    are French (UI-facing).
 - `GET` (guard `Auth::requireCanViewSummary`): returns aggregated data + the admin list
   (JSON).
 - `GET ?format=csv` (guard `view_summary`): returns CSV (`Content-Type: text/csv`,
@@ -128,7 +141,7 @@ The form and the admin page use one active `event_key` (constant
 ### 4.5 Admin — `code/reservations_admin.php`
 - Page guard: `Auth::requireLoginPage(...)` + `Auth::canViewSummary()` (like
   `inscriptions_admin.php`).
-- Displays (via `assets/js/reservations_admin.js` consuming the `GET` API):
+- Displays (via `assets/js/reservations_admin.js` consuming the `GET` API; French UI):
   - **Menu totals** per type (Viande / Enfant / Végétarien).
   - **Number of tables** and **persons per table**.
   - **Total persons** (= total menus) and **total tables**.
@@ -137,18 +150,18 @@ The form and the admin page use one active `event_key` (constant
 - Dedicated CSS: `assets/css/reservations_admin.css`.
 
 ### 4.6 Home-page link — `code/index.php`
-- Add a banner/button "Souper 25 ans – Réservez votre place" pointing to
+- Add a banner/button "Souper 25 ans – Réservez votre place" (French UI) pointing to
   `reservation.php`. No entry in `partials/navigation.php`.
 
 ### 4.7 Site-wide popup (once per browser)
-- Shared HTML + JS snippet, included globally (via `partials/footer.php` so it appears
-  on every page).
-- On load: if `localStorage.getItem('canetons_souper_popup_v1')` is absent, show the
-  modal (event title + "Réserver" button → `reservation.php` + close). On close **or**
-  on click, set the flag → never shown again on this browser.
+- Shared HTML + JS snippet, included globally (via `partials/footer.php` so it appears on
+  every page).
+- On load: if `localStorage.getItem('canetons_supper_popup_v1')` is absent, show the
+  modal (event title + "Réserver" button → `reservation.php` + close). On close **or** on
+  click, set the flag → never shown again on this browser.
 - Accessible: closable via keyboard (Escape), basic focus trap, `aria-modal`.
-- Files: `assets/js/souper-popup.js` + styles (in `main.css` or a small
-  `souper-popup.css`).
+- Files: `assets/js/supper-popup.js` + styles (in `main.css` or a small
+  `supper-popup.css`).
 
 ## 5. Statistics computation (PHP)
 
@@ -176,11 +189,11 @@ reservations_admin.php --fetch GET--> api/reservations.php (guard view_summary)
 Export: link api/reservations.php?format=csv -> CSV downloaded
 ```
 
-**Popup**: global footer -> souper-popup.js -> localStorage (1×/browser).
+**Popup**: global footer -> supper-popup.js -> localStorage (1×/browser).
 
 ## 7. Error handling
 
-- Invalid API `POST` → `400` + `{error:...}`; wrong method → `405`.
+- Invalid API `POST` → `400` + `{error:...}` (French message); wrong method → `405`.
 - Front-end: on `fetch` failure, `alert(...)` + keep entered data (same behavior as
   `contact.php`).
 - Unauthorized admin → `403` (page) / `view_summary` guard (API).
@@ -190,8 +203,8 @@ Export: link api/reservations.php?format=csv -> CSV downloaded
 
 - `npm run check` (php -l, phpcs PSR-12, eslint, stylelint, prettier, secret-guard) green.
 - Manual (Docker):
-  1. Submit a reservation with 3 guests (mixed menus) → row created, `menus` JSON
-     correct, redirect to thank-you page.
+  1. Submit a reservation with 3 guests (mixed menus) → row created, `menus` JSON correct,
+     redirect to thank-you page.
   2. Second reservation with the same `table_name` → `<datalist>` suggests the table;
      admin groups the two.
   3. Admin: menu/table/person totals consistent with entered data; CSV opens in Excel.
@@ -208,7 +221,7 @@ Export: link api/reservations.php?format=csv -> CSV downloaded
 - `code/src/repositories/ReservationRepository.php`
 - `code/assets/js/reservation.js`
 - `code/assets/js/reservations_admin.js`
-- `code/assets/js/souper-popup.js`
+- `code/assets/js/supper-popup.js`
 - `code/assets/css/reservation.css`
 - `code/assets/css/reservations_admin.css`
 - prod SQL migration for the `reservations` table
