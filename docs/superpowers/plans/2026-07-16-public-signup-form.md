@@ -27,8 +27,13 @@ PHP_CodeSniffer — consistent with how this repo already does dev tooling. Veri
 - **`npm run test:php`** (added in Task 2) — runs **PHPUnit** inside `php:8.1-cli` (verified to include `mbstring`/`dom`/`xml`/`xmlwriter`/`tokenizer`) via the existing `tools/php-in-docker.mjs` wrapper. Unit tests cover the **pure** logic (menu validation + stats aggregation); this is where genuine TDD (red → green) applies.
 - **Manual functional checks** — for DB/HTTP/UI code: `curl` against `http://localhost:8090` with expected JSON, Adminer at `http://localhost:8091`, and the browser. These steps give exact commands and expected output.
 
+**Local vs CI:** locally the PHP checks run through the Docker wrappers (`npm run test:php`
+→ `php:8.1-cli`). CI runs PHP **natively** via `shivammathur/setup-php` — so the same
+PHPUnit run is added as a `vendor/bin/phpunit` step in the `php` job (Task 2). JS keeps its
+existing CI coverage (ESLint/Stylelint/Prettier in the `assets` job); no JS unit tests.
+
 Prereq: run `npm run php:install` once (installs `vendor/`, incl. PHPUnit). Docker must be
-running for all PHP checks. Local site: `docker compose up -d --build` → http://localhost:8090.
+running for the local PHP checks. Local site: `docker compose up -d --build` → http://localhost:8090.
 
 ## File Structure
 
@@ -54,6 +59,7 @@ running for all PHP checks. Local site: `docker compose up -d --build` → http:
 **Modified:**
 - `docker-compose.yml` — mount the migration into the DB init dir so fresh dev volumes get it.
 - `composer.json` — add `phpunit/phpunit` to `require-dev`.
+- `.github/workflows/ci.yml` — run PHPUnit natively in the `php` job.
 - `.gitignore` — ignore the PHPUnit cache.
 - `code/src/bootstrap.php` — `require` the new repository.
 - `code/index.php` + `code/assets/css/accueil.css` — home-page call-to-action.
@@ -177,7 +183,7 @@ git commit -m "feat(db): add signups table via numbered migration"
 - Modify: `composer.json` (add `phpunit/phpunit` to `require-dev`)
 - Create: `phpunit.xml.dist`, `tests/bootstrap.php`, `tests/SignupRepositoryTest.php`
 - Create: `tools/phpunit.mjs`
-- Modify: `.gitignore` (PHPUnit cache), `package.json` (add `test:php`, include in `check`)
+- Modify: `.github/workflows/ci.yml` (native PHPUnit step), `.gitignore` (PHPUnit cache), `package.json` (add `test:php`, include in `check`)
 
 **Interfaces:**
 - Consumes: `signups` table (Task 1); `mysqli` from `Database::get()`.
@@ -323,9 +329,9 @@ final class SignupRepositoryTest extends TestCase
 }
 ```
 
-- [ ] **Step 4: Add the runner and wire `test:php` into `check`**
+- [ ] **Step 4: Add the runner, wire `test:php` into `check`, and add the CI step**
 
-Create `tools/phpunit.mjs`:
+Create `tools/phpunit.mjs` (local runner — matches the other Dockerized PHP tools):
 
 ```javascript
 // Runs PHPUnit inside php:8.1-cli (Docker), matching prod PHP. Requires
@@ -346,6 +352,19 @@ In `package.json`, add a `test:php` script and insert it into `check` right afte
     "guard": "node tools/secret-guard.mjs",
     "check": "npm run lint:php && npm run test:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
 ```
+
+CI runs PHP tools **natively** (not via the Docker wrappers), so add a PHPUnit step to the
+`php` job in `.github/workflows/ci.yml`, right after the PHP_CodeSniffer step:
+
+```yaml
+      - name: PHP_CodeSniffer (PSR-12)
+        run: vendor/bin/phpcs
+      - name: PHPUnit
+        run: vendor/bin/phpunit
+```
+
+(`composer install` in the job already installs PHPUnit from `require-dev`; the
+`shivammathur/setup-php` action provides the needed extensions — mbstring/dom/xml.)
 
 - [ ] **Step 5: Run the test to verify it fails**
 
@@ -552,8 +571,8 @@ Run: `npm run lint:php`
 Expected: no errors.
 
 ```bash
-git add code/src/repositories/SignupRepository.php code/src/bootstrap.php composer.json composer.lock phpunit.xml.dist tests/ tools/phpunit.mjs .gitignore package.json
-git commit -m "feat(signups): add SignupRepository with PHPUnit tests"
+git add code/src/repositories/SignupRepository.php code/src/bootstrap.php composer.json composer.lock phpunit.xml.dist tests/ tools/phpunit.mjs .github/workflows/ci.yml .gitignore package.json
+git commit -m "feat(signups): add SignupRepository with PHPUnit tests (local + CI)"
 ```
 
 ---
