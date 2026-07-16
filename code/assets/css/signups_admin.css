@@ -1,0 +1,153 @@
+@import url("main.css");
+
+.admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.csv-btn {
+  text-decoration: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #333;
+  font-weight: bold;
+}
+
+.csv-btn:hover {
+  border-color: #e7a11c;
+  color: #b9760d;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.tile {
+  border: 1px solid #e7ded1;
+  border-radius: 10px;
+  padding: 16px;
+  background: #faf6ef;
+}
+
+.tile-k {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #777;
+}
+
+.tile-v {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.tile.accent {
+  border-color: #e7a11c;
+  background: #fbeecb;
+}
+
+.tile.menu-meat {
+  border-color: #9c3c17;
+  background: #f6ddd0;
+}
+
+.tile.menu-child {
+  border-color: #23577f;
+  background: #d8e6f4;
+}
+
+.tile.menu-veg {
+  border-color: #2f6b3c;
+  background: #d8ebd9;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e7ded1;
+  border-radius: 10px;
+}
+
+#signups-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+#signups-table th,
+#signups-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+#signups-table th {
+  background: #faf6ef;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #777;
+  white-space: nowrap;
+}
+
+#signups-table th.num,
+#signups-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#signups-table td.total {
+  font-weight: bold;
+}
+
+#signups-table td.zero {
+  color: #aaa;
+}
+
+.group-row td {
+  background: #fbeecb;
+  font-weight: bold;
+}
+
+#signups-table tfoot td {
+  border-top: 2px solid #ddd;
+}
+
+.contact-sub {
+  color: #777;
+  font-size: 12px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.dot-meat {
+  background: #9c3c17;
+}
+
+.dot-child {
+  background: #23577f;
+}
+
+.dot-veg {
+  background: #2f6b3c;
+}
+
+@media screen and (max-width: 760px) {
+  .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
