@@ -8,8 +8,12 @@ document.addEventListener("DOMContentLoaded", function () {
   var summaryContainer = document.getElementById("participation-summary");
 
   function renderSummary(rows) {
-    var participate = rows.filter(function (r) { return r.response === "participate"; }).length;
-    var notParticipate = rows.filter(function (r) { return r.response === "notparticipate"; }).length;
+    var participate = rows.filter(function (r) {
+      return r.response === "participate";
+    }).length;
+    var notParticipate = rows.filter(function (r) {
+      return r.response === "notparticipate";
+    }).length;
     var pending = rows.length - participate - notParticipate;
     var tiles = [
       { label: "Convoqués", value: rows.length, kind: "total" },
@@ -36,14 +40,26 @@ document.addEventListener("DOMContentLoaded", function () {
   fetch("api/responses.php?eventId=" + encodeURIComponent(eventId), { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
-      const instrumentNames = ["Trompette", "Trombone", "Sousaphone", "Cloches", "Batterie", "Lyre", "Grosses-Caisse", "Comite", "Maquillage"];
+      const instrumentNames = [
+        "Trompette",
+        "Trombone",
+        "Sousaphone",
+        "Cloches",
+        "Batterie",
+        "Lyre",
+        "Grosses-Caisse",
+        "Comite",
+        "Maquillage",
+      ];
       const instrumentCounts = {};
       instrumentNames.sort().forEach((instrument) => {
-        instrumentCounts[instrument] = data.filter((item) => item.response === "participate" && item.instrument === instrument).length;
+        instrumentCounts[instrument] = data.filter(
+          (item) => item.response === "participate" && item.instrument === instrument,
+        ).length;
       });
 
       for (const instrument in instrumentCounts) {
-        if (instrumentCounts.hasOwnProperty(instrument)) {
+        if (Object.prototype.hasOwnProperty.call(instrumentCounts, instrument)) {
           var row = document.createElement("tr");
           var instrumentCell = document.createElement("td");
           var countCell = document.createElement("td");

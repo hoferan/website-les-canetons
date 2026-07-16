@@ -1,3 +1,4 @@
+/* exported Session */
 // UI-only helper. NOT a source of truth for authentication — the server
 // enforces auth via the session cookie and injects the authenticated role as
 // window.__sessionRole on every page (see partials/head.php). The UI reads that
@@ -19,8 +20,14 @@ const Session = (function () {
   }
   return {
     uiRole: role,
-    canManageEvents: function () { return can("manage_events"); },
-    canViewSummary: function () { return can("view_summary"); },
-    canRespond: function () { return can("respond"); },
+    canManageEvents: function () {
+      return can("manage_events");
+    },
+    canViewSummary: function () {
+      return can("view_summary");
+    },
+    canRespond: function () {
+      return can("respond");
+    },
   };
 })();

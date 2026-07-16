@@ -52,8 +52,7 @@ function wireAuthControl(el) {
     el.textContent = "Connexion";
     el.addEventListener("click", function (e) {
       e.preventDefault();
-      window.location.href =
-        "authentification_inscription.php?returnTo=" + currentPage;
+      window.location.href = "authentification_inscription.php?returnTo=" + currentPage;
     });
   }
 }

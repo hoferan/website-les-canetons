@@ -1,8 +1,4 @@
-@import "main.css";
-
-h1 {
-  font-size: 40px;
-}
+@import url("main.css");
 
 p {
   font-size: 20px;
@@ -12,23 +8,23 @@ p {
 
 h1 {
   font-size: 24px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 2px 2px 4px rgb(0 0 0 / 50%);
 }
 
-.planning_repet-section h2 {
+.planning-repet-section h2 {
   position: relative;
   margin-bottom: 20px;
   font-size: 30px;
   color: #333030f1;
 }
 
-.planning_repet-section ul {
+.planning-repet-section ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.planning_repet-section ul li {
+.planning-repet-section ul li {
   margin-bottom: 20px;
   padding: 20px;
   border: 1px solid #a8a8a0;
@@ -36,7 +32,7 @@ h1 {
   position: relative;
 }
 
-.planning_repet-section ul li:nth-child(odd) {
+.planning-repet-section ul li:nth-child(odd) {
   background-color: #98d6d1;
 }
 
@@ -59,7 +55,7 @@ h1 {
 }
 
 .delete-icon:hover {
-  color: #ff0000;
+  color: #f00;
 }
 
 .edit-icon {
@@ -101,6 +97,6 @@ h1 {
 }
 
 p1 {
-  color: #ffffff;
+  color: #fff;
   font-size: 20px;
 }

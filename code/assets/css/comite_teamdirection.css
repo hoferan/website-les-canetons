@@ -1,4 +1,4 @@
-@import "main.css";
+@import url("main.css");
 
 h1 {
   position: relative;
@@ -60,9 +60,10 @@ h2 {
   align-items: center;
   gap: 20px;
 }
+
 .committee-member p a,
 .committee-member p {
-  color: #555555;
+  color: #555;
   text-decoration: none;
 }
 

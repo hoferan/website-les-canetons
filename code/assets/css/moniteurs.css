@@ -1,10 +1,10 @@
-@import "main.css";
+@import url("main.css");
 
 h1 {
   font-size: 24px;
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (width <= 480px) {
   h1 {
     font-size: 20px;
   }
@@ -74,7 +74,7 @@ h2 {
   color: #999;
 }
 
-.texte .absentes:before {
+.texte .absentes::before {
   content: "Absents sur la photo :";
   display: block;
   font-weight: bold;
@@ -88,6 +88,6 @@ p1 {
 }
 
 p2 {
-  color: #ffffff;
+  color: #fff;
   font-size: 20px;
 }

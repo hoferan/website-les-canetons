@@ -1,0 +1,34 @@
+{
+  "name": "les-canetons-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Dev tooling for the buildless Les Canetons de Fribourg website.",
+  "type": "module",
+  "scripts": {
+    "php:install": "node tools/composer.mjs install --no-interaction",
+    "lint:php": "node tools/php-lint.mjs",
+    "lint:js": "eslint code/assets/js",
+    "lint:css": "stylelint \"code/assets/css/**/*.css\"",
+    "format:check": "prettier --check \"code/assets/**/*.{js,css}\"",
+    "format:write": "prettier --write \"code/assets/**/*.{js,css}\"",
+    "guard": "node tools/secret-guard.mjs",
+    "check": "npm run lint:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
+    "fix": "node tools/php-fix.mjs && eslint code/assets/js --fix && stylelint \"code/assets/css/**/*.css\" --fix && npm run format:write",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.9.0",
+    "eslint": "^9.9.0",
+    "globals": "^15.9.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.3.0",
+    "stylelint": "^16.9.0",
+    "stylelint-config-standard": "^36.0.0"
+  },
+  "lint-staged": {
+    "code/**/*.php": "node tools/php-lint-file.mjs",
+    "code/assets/js/**/*.js": ["eslint --fix", "prettier --write"],
+    "code/assets/css/**/*.css": ["stylelint --fix", "prettier --write"]
+  }
+}

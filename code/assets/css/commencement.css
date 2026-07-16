@@ -1,4 +1,4 @@
-@import "main.css";
+@import url("main.css");
 
 h1 {
   font-size: 24px;
@@ -24,7 +24,7 @@ h2 {
 }
 
 .contact-info {
-  background-color: #ffff00;
+  background-color: #ff0;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -42,7 +42,7 @@ h2 {
 }
 
 .hours-info {
-  background-color: #00ff00;
+  background-color: #0f0;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -51,7 +51,7 @@ h2 {
 }
 
 .location-info {
-  background-color: #00ffff;
+  background-color: #0ff;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -69,8 +69,7 @@ h2 {
 }
 
 .contact-age {
-
-  background-color: #ffcc00;
+  background-color: #fc0;
   padding: 20px;
   border: 1px solid #ccc;
   border-radius: 5px;
@@ -82,10 +81,10 @@ h2 {
 .hours-info h2,
 .location-info h2,
 .instruments-info h2,
-.contact-age h2 { 
+.contact-age h2 {
   font-size: 20px;
   margin-bottom: 10px;
-  color: #333; 
+  color: #333;
 }
 
 .contact-info p,
@@ -94,8 +93,8 @@ h2 {
 .instruments-info p,
 .contact-age p {
   margin-bottom: 5px;
-  font-size: 18px; 
-  color: #444; 
+  font-size: 18px;
+  color: #444;
 }
 
 .texte {
@@ -120,7 +119,7 @@ h2 {
   align-items: center;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (width <= 768px) {
   .supervision-container {
     flex-direction: column;
     align-items: center;

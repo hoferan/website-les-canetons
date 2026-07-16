@@ -4,7 +4,7 @@ require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
-<section class="planning_repet-section">
+<section class="planning-repet-section">
   <h2>Planning des prestations et des répétitions</h2>
   <h3>sous réserve de modifications</h3>
   <h4>Saison 2023-2024</h4>

@@ -1,4 +1,4 @@
-@import "main.css";
+@import url("main.css");
 
 /* Réinitialisation des styles par défaut */
 * {
@@ -9,13 +9,13 @@
 
 h1 {
   font-size: 24px;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  text-shadow: 2px 2px 4px rgb(0 0 0 / 50%);
 }
 
 h2 {
   margin-bottom: 30px;
   font-size: 35px;
-  color: rgb(5, 50, 112);
+  color: rgb(5 50 112);
 }
 
 p {
@@ -29,7 +29,7 @@ p1 {
   font-size: 20px;
   line-height: 1.5;
   margin-bottom: 10px;
-  color: rgb(255, 255, 255);
+  color: rgb(255 255 255);
 }
 
 .sponsors-section p {
@@ -47,7 +47,7 @@ p1 {
   margin-bottom: 5px;
 }
 
-.sponsors-section ul li:before {
+.sponsors-section ul li::before {
   content: "\2022";
   color: #337ab7;
   display: inline-block;

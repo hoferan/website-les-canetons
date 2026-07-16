@@ -1,6 +1,6 @@
 /* inscriptions_admin links this single stylesheet; pull in admin.css (which
    itself @imports main.css) so the full cascade loads through one <link>. */
-@import "admin.css";
+@import url("admin.css");
 
 .participation-summary {
   display: flex;
@@ -33,10 +33,21 @@
   margin-top: 4px;
 }
 
-.summary-tile.total { border-left-color: #333; }
-.summary-tile.participate { border-left-color: lightgreen; }
-.summary-tile.not-participate { border-left-color: lightcoral; }
-.summary-tile.no-response { border-left-color: lightblue; }
+.summary-tile.total {
+  border-left-color: #333;
+}
+
+.summary-tile.participate {
+  border-left-color: lightgreen;
+}
+
+.summary-tile.not-participate {
+  border-left-color: lightcoral;
+}
+
+.summary-tile.no-response {
+  border-left-color: lightblue;
+}
 
 table {
   width: 100%;
@@ -80,7 +91,7 @@ table.instrument-summary {
   width: 50%;
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (width <= 768px) {
   table {
     display: block;
     overflow-x: auto;

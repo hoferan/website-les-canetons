@@ -32,7 +32,7 @@ function loadEvents() {
   })
     .then((response) => response.json())
     .then((data) => {
-      storedEvents = data;
+      var storedEvents = data;
 
       // Trier les événements par date
       storedEvents = sortEventsByDate(storedEvents);
@@ -62,19 +62,12 @@ function loadEvents() {
 
         // Vérifier si l'événement est un week-end
         if (event.weekend) {
-          var endDate = new Date(eventDate);
-          endDate.setDate(endDate.getDate() + 1);
-          var formattedEndDate = formatDate(endDate);
-
           var formattedDateRangeText = formatDateRangeText(eventDate, endDate);
 
           eventInfo.innerHTML = `
             <p><strong>${formattedDateRangeText}</strong></p>
             <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(
-              0,
-              5
-            )}</p>
+            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
             <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
             <p><strong>Lieu :</strong> ${eventLocation}</p>
         ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
@@ -82,10 +75,7 @@ function loadEvents() {
           eventInfo.innerHTML = `
             <p><strong>${dateRangeText}</strong></p>
             <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(
-              0,
-              5
-            )}</p>
+            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
             <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
             <p><strong>Lieu :</strong> ${eventLocation}</p>
         ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
@@ -185,12 +175,8 @@ function displayResult(event) {
 
   document.getElementById("result-date").textContent = formattedDate;
   document.getElementById("result-title").textContent = event.title;
-  document.getElementById("result-time-start").textContent =
-    event.startTime.slice(0, 5);
-  document.getElementById("result-time-end").textContent = event.endTime.slice(
-    0,
-    5
-  );
+  document.getElementById("result-time-start").textContent = event.startTime.slice(0, 5);
+  document.getElementById("result-time-end").textContent = event.endTime.slice(0, 5);
   document.getElementById("result-location").textContent = event.location;
   var resultAttireLabel = document.getElementById("result-attire-label");
   var resultAttire = document.getElementById("result-attire");
@@ -251,7 +237,6 @@ function createEditElement(event) {
   editElement.classList.add("edit-icon");
   editElement.innerHTML = "&#x270E;";
   editElement.addEventListener("click", function () {
-
     document.getElementById("event-id").value = event.id;
     document.getElementById("event-date").value = event.date;
     document.getElementById("event-title").value = event.title;
