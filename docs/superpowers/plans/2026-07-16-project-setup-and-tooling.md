@@ -508,7 +508,7 @@ A one-command local stack matching prod versions, wired so no dev file lands in 
 
 **Interfaces:**
 - Consumes: `code/` (mounted web root); `config/` (from Task 1).
-- Produces: `http://localhost:8080` (site), `http://localhost:8081` (Adminer), MariaDB on `localhost:3306`; documented test logins (`demo.admin`/`demo`, `demo.user`/`demo`, all seed passwords `demo`).
+- Produces: `http://localhost:8090` (site), `http://localhost:8091` (Adminer), MariaDB on `localhost:3307`; documented test logins (`demo.admin`/`demo`, `demo.user`/`demo`, all seed passwords `demo`). (Ports 8090/8091/3307 chosen to coexist with another Docker project on the dev machine.)
 
 - [ ] **Step 1: Create `docker/web/Dockerfile`**
 
@@ -548,7 +548,7 @@ services:
   web:
     build: ./docker/web
     ports:
-      - "8080:80"
+      - "8090:80"
     volumes:
       - ./code:/var/www/html
       - ./config/config.docker.php:/var/www/html/config.php:ro
@@ -564,7 +564,7 @@ services:
       MARIADB_PASSWORD: canetons
       MARIADB_ROOT_PASSWORD: root
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/db/init:/docker-entrypoint-initdb.d:ro
@@ -577,7 +577,7 @@ services:
   adminer:
     image: adminer:latest
     ports:
-      - "8081:8080"
+      - "8091:8080"
     depends_on:
       - db
 
@@ -709,13 +709,13 @@ Expected: `web`, `db`, `adminer` running; `db` healthy.
 Then verify the app + DB:
 ```bash
 # Home page renders (HTTP 200)
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/index.php
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8090/index.php
 # Login endpoint accepts a seeded account and returns its role
-curl -s -X POST http://localhost:8080/api/login.php \
+curl -s -X POST http://localhost:8090/api/login.php \
   -H "Content-Type: application/json" \
   -d '{"username":"demo.admin","password":"demo"}'
 ```
-Expected: `200`, and JSON `{"role":"admin"}`. Open `http://localhost:8081` (Adminer, server `db`, user `canetons`, pass `canetons`, db `lescanetons`) and confirm the five seeded tables are present with data.
+Expected: `200`, and JSON `{"role":"admin"}`. Open `http://localhost:8091` (Adminer, server `db`, user `canetons`, pass `canetons`, db `lescanetons`) and confirm the five seeded tables are present with data.
 
 - [ ] **Step 7: Tear down and commit**
 
@@ -884,7 +884,7 @@ events and view attendance summaries.
 ## Local Development
 
 ```bash
-docker compose up -d --build   # site: http://localhost:8080, Adminer: http://localhost:8081
+docker compose up -d --build   # site: http://localhost:8090, Adminer: http://localhost:8091
 docker compose down            # stop
 ```
 
