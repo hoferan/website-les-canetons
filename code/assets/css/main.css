@@ -303,3 +303,91 @@ form label.required::before {
   background: #b9760d;
   color: #fff;
 }
+
+/* -- SITE-WIDE POPUP ------------------ */
+
+.popup-overlay {
+  display: none;
+  position: fixed;
+
+  /* explicit sides kept for browser compatibility, not shorthand "inset" */
+  /* stylelint-disable declaration-block-no-redundant-longhand-properties */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  /* stylelint-enable declaration-block-no-redundant-longhand-properties */
+  background: rgba(20, 15, 5, 0.55);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.popup-overlay.show {
+  display: flex;
+}
+
+.popup-box {
+  background: #fff;
+  border-radius: 14px;
+  max-width: 420px;
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.popup-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.popup-banner {
+  background: #e7a11c;
+  color: #241a05;
+  text-align: center;
+  padding: 24px 20px 18px;
+}
+
+.popup-duck {
+  font-size: 38px;
+}
+
+.popup-banner h3 {
+  margin: 6px 0 2px;
+  font-size: 20px;
+}
+
+.popup-body {
+  padding: 20px;
+  text-align: center;
+}
+
+.popup-body p {
+  color: #555;
+  margin-bottom: 16px;
+}
+
+.popup-cta {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.popup-dismiss {
+  background: none;
+  border: none;
+  color: #777;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 13px;
+}
