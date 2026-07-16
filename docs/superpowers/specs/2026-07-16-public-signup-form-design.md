@@ -149,9 +149,10 @@ const MENU_DEFAULT = 'meat'; // pre-selected in the form, labelled "Viande (stan
 - Page guard: `Auth::requireLoginPage(...)` + `Auth::canViewSummary()` (like
   `inscriptions_admin.php`).
 - Displays (via `assets/js/signups_admin.js` consuming the `GET` API; French UI):
-  - **Menu totals** per type (Viande / Enfant / Végétarien).
-  - **Number of tables** and **persons per table**.
-  - **Total persons** (= total menus) and **total tables**.
+  - Summary tiles: **Total persons**, **Total tables**, then one **menu-total tile per
+    type** (Viande / Enfant / Végétarien). The three menu tiles are **color-coded with the
+    same per-menu colors** used for the dots in the table column headers (meat / child /
+    vegetarian), so the palette is consistent across tiles and table.
   - Signup list as a **simple table with one column per menu** holding the **count**
     (columns: `Table / Contact` | `Tél.` | `Viande` | `Enfant` | `Végét.` | `Total`).
     Numbers are right-aligned (`tabular-nums`); zero is shown as a muted "–". No chips
