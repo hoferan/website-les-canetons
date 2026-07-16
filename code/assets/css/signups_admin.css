@@ -103,7 +103,7 @@
 }
 
 #signups-table td.zero {
-  color: #bbb;
+  color: #767676; /* muted but WCAG-AA legible on the white table surface */
 }
 
 #signups-table .signup-row:hover td {
