@@ -1,58 +1,59 @@
-# Design: Formulaire de réservation publique (Souper – 25 ans des Canetons)
+# Design: Public Reservation Form (Souper – Canetons 25th Anniversary)
 
 - **Date:** 2026-07-16
-- **Statut:** Design validé (en attente de revue de la spec)
-- **Langue du produit:** Français (UI + colonnes DB), aligné sur le reste du site.
+- **Status:** Design approved (spec under review)
+- **Product language:** French (UI + DB columns), consistent with the rest of the site.
+  This design document is in English; only the shipped product strings are French.
 
-## 1. Contexte & objectif
+## 1. Context & goal
 
-La Guggenmusik organise un **Souper** unique : sortie du nouveau costume et **25e
-anniversaire des Canetons**. C'est un **remerciement destiné aux amis et à la famille**
-de la Guggenmusik — ce n'est **pas** un événement pour les membres eux-mêmes, et c'est
-donc totalement distinct du système d'inscription/présence des membres
-(`events` / `responses`, `sinscrire.php`, `inscriptions_*`).
+The Guggenmusik is hosting a one-off **Souper**: unveiling of the new costume and the
+**25th anniversary of the Canetons**. It is a **thank-you event for friends and family**
+of the band — it is **not** an event for the members themselves, so it is fully separate
+from the members' attendance system (`events` / `responses`, `sinscrire.php`,
+`inscriptions_*`).
 
-Objectif : une page publique (sans login) où une personne peut réserver pour
-**plusieurs convives** en un seul formulaire, en choisissant **un menu par personne**
-et en indiquant une **table** (nom de famille ou nom de table) permettant à plusieurs
-réservations distinctes de se regrouper à la même table. La Team Direction (admin)
-consulte les réservations et surtout les **totaux** utiles au traiteur et au plan de table.
+Goal: a public page (no login) where one person can register **several guests** in a
+single form, choosing **one menu per person** and giving a **table** (family name or
+table name) so that separate reservations can group at the same table. The Team
+Direction (admin) reviews reservations and, above all, the **totals** needed by the
+caterer and for the seating plan.
 
-L'anlass est **unique**, mais la mise en œuvre reste **réutilisable** pour de futurs
-anlässe grâce à une colonne discriminante `event_key`.
+The event is **one-off**, but the implementation stays **reusable** for future events via
+a discriminator column `event_key`.
 
-## 2. Décisions clés (issues du brainstorming)
+## 2. Key decisions (from brainstorming)
 
-| Sujet | Décision |
+| Topic | Decision |
 |---|---|
-| Accès | Public, sans login (comme `contact.php`). |
-| Modèle de données | **Une seule table** `reservations`. Les convives/menus sont stockés comme **liste de menus** dans une colonne. |
-| Réutilisation | Colonne `event_key` (discriminant) ; titre/description par clé dans une constante PHP. Pas de table d'événements, pas de CRUD admin d'événements. |
-| Champs par personne | Le **nom des convives n'importe pas** — seul le **menu par personne** compte. |
-| Contact | `nom` + `prenom` **conservés** = adresse de contact de la personne qui réserve (nécessaire pour les questions de suivi), avec `address` et `phone`. |
-| Table (Tisch) | Champ texte libre, **partagé** au niveau de la réservation. Suggestions des tables existantes via `<datalist>`. |
-| Menu | 3 choix fixes : `viande` (standard), `enfant`, `vegetarien`. |
-| Confirmation | Enregistrement en DB + page de remerciement dédiée. **Aucun e-mail.** |
-| Navigation | **Pas** d'entrée de menu. Un renvoi depuis la page d'accueil (`index.php`). |
-| Popup | Modale affichée **une seule fois par navigateur** (localStorage) au premier chargement de n'importe quelle page, renvoyant vers le formulaire. |
-| Admin | Consultation des réservations + **totaux** (menus, tables, personnes) + **export CSV**. |
-| Hors périmètre (YAGNI) | Délai d'inscription, capacité max, e-mails, édition par l'utilisateur, paiement, multi-événements dans l'UI. |
+| Access | Public, no login (like `contact.php`). |
+| Data model | **A single table** `reservations`. Guests/menus are stored as a **list of menus** in one column. |
+| Reusability | `event_key` discriminator column; per-key title/description in a PHP constant. No events table, no admin event CRUD. |
+| Per-person fields | The **guests' names do not matter** — only the **menu per person** counts. |
+| Contact | `nom` + `prenom` **kept** = contact details of the person who registers (needed for follow-up questions), plus `address` and `phone`. |
+| Table (Tisch) | Free-text field, **shared** at reservation level. Existing tables suggested via `<datalist>`. |
+| Menu | 3 fixed choices: `viande` (standard), `enfant`, `vegetarien`. |
+| Confirmation | Store in DB + dedicated thank-you page. **No e-mail.** |
+| Navigation | **No** menu entry. A link from the home page (`index.php`). |
+| Popup | Modal shown **once per browser** (localStorage) on first load of any page, linking to the form. |
+| Admin | View reservations + **totals** (menus, tables, persons) + **CSV export**. |
+| Out of scope (YAGNI) | Registration deadline, max capacity, e-mails, user editing, payment, multi-event admin UI. |
 
-## 3. Modèle de données
+## 3. Data model
 
-Une seule table, compatible MariaDB 10.3, ajoutée à
-`docker/db/init/01-schema.sql` (dev) **et** fournie comme migration pour la prod.
+A single table, MariaDB 10.3 compatible, added to `docker/db/init/01-schema.sql` (dev)
+**and** provided as a prod migration.
 
 ```sql
 CREATE TABLE `reservations` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `event_key`  varchar(64)  NOT NULL DEFAULT 'souper-25ans', -- discriminant réutilisable
-  `nom`        varchar(255) NOT NULL,   -- contact : nom
-  `prenom`     varchar(255) NOT NULL,   -- contact : prénom
-  `address`    varchar(255) NOT NULL,   -- contact : adresse
-  `phone`      varchar(64)  NOT NULL,   -- contact : téléphone (pour questions de suivi)
-  `table_name` varchar(255) NOT NULL,   -- nom de table / nom de famille (regroupement)
-  `menus`      text NOT NULL,           -- liste JSON, ex. ["viande","viande","enfant"]
+  `event_key`  varchar(64)  NOT NULL DEFAULT 'souper-25ans', -- reusable discriminator
+  `nom`        varchar(255) NOT NULL,   -- contact: last name
+  `prenom`     varchar(255) NOT NULL,   -- contact: first name
+  `address`    varchar(255) NOT NULL,   -- contact: address
+  `phone`      varchar(64)  NOT NULL,   -- contact: phone (for follow-up questions)
+  `table_name` varchar(255) NOT NULL,   -- table / family name (grouping)
+  `menus`      text NOT NULL,           -- JSON list, e.g. ["viande","viande","enfant"]
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_reservations_event` (`event_key`),
@@ -60,18 +61,17 @@ CREATE TABLE `reservations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-Notes :
-- **Nombre de personnes d'une réservation** = longueur de la liste `menus`.
-- `menus` contient uniquement des valeurs de l'ensemble `{viande, enfant, vegetarien}`
-  (validé côté serveur avant écriture). Stocké en JSON texte ; les agrégats sont
-  calculés **en PHP** (volumétrie faible), donc aucune fonction JSON SQL requise —
-  portable MariaDB 10.3.
-- On stocke la donnée brute et on échappe **à l'affichage** (même règle que `contact.php`).
+Notes:
+- **Number of persons in a reservation** = length of the `menus` list.
+- `menus` contains only values from `{viande, enfant, vegetarien}` (validated
+  server-side before write). Stored as JSON text; aggregates are computed **in PHP**
+  (low volume), so no SQL JSON functions are needed — portable to MariaDB 10.3.
+- Store raw data and escape **at output time** (same rule as `contact.php`).
 
-### Constante des anlässe (PHP)
+### Events constant (PHP)
 
-Petit tableau associatif (dans le repository ou un fichier de config léger) mappant
-`event_key` → libellés, pour piloter titre/description sans table dédiée :
+A small associative array (in the repository or a light config file) mapping
+`event_key` → labels, to drive title/description without a dedicated table:
 
 ```php
 const RESERVATION_EVENTS = [
@@ -83,123 +83,124 @@ const RESERVATION_EVENTS = [
 ];
 ```
 
-Le formulaire et la page admin utilisent une `event_key` active (constante
+The form and the admin page use one active `event_key` (constant
 `ACTIVE_EVENT_KEY = 'souper-25ans'`).
 
-## 4. Composants
+## 4. Components
 
-### 4.1 Formulaire public — `code/reservation.php`
-- Pas de login. Rend le titre/description de l'anlass actif.
-- **Bloc contact** (une fois) : Nom, Prénom, Adresse, Téléphone.
-- **Table** : `<input list="tables">` + `<datalist id="tables">` rempli côté serveur via
+### 4.1 Public form — `code/reservation.php`
+- No login. Renders the active event's title/description.
+- **Contact block** (once): Nom, Prénom, Adresse, Téléphone.
+- **Table**: `<input list="tables">` + `<datalist id="tables">` filled server-side via
   `SELECT DISTINCT table_name FROM reservations WHERE event_key = ? ORDER BY table_name`.
-- **Convives** : lignes dynamiques « + Ajouter une personne », chaque ligne = un
-  `<select>` de menu (Viande / Enfant / Végétarien). Minimum 1 ligne. Suppression de
-  ligne possible. JS vanilla (buildless), un fichier `assets/js/reservation.js`.
-- Soumission via `fetch` POST → `api/reservations.php`, puis redirection vers
-  `reservation_merci.php` (schéma identique au handler de `contact.php`).
-- CSS dédié : `assets/css/reservation.css`.
+- **Guests**: dynamic "+ Ajouter une personne" rows, each row = one menu `<select>`
+  (Viande / Enfant / Végétarien). Minimum 1 row. Row removal supported. Vanilla JS
+  (buildless), a single `assets/js/reservation.js` file.
+- Submit via `fetch` POST → `api/reservations.php`, then redirect to
+  `reservation_merci.php` (same pattern as the `contact.php` handler).
+- Dedicated CSS: `assets/css/reservation.css`.
 
-### 4.2 Page de remerciement — `code/reservation_merci.php`
-- Page statique « Merci pour votre réservation ! » **sans** promesse d'e-mail
-  (ne pas réutiliser `confirmation.php`, qui annonce un e-mail).
+### 4.2 Thank-you page — `code/reservation_merci.php`
+- Static "Merci pour votre réservation !" page **without** any e-mail promise
+  (do not reuse `confirmation.php`, which announces an e-mail).
 
 ### 4.3 API — `code/api/reservations.php`
-- `POST` (public) : lit les champs, valide, écrit **une** ligne.
-  - Validation : `nom`, `prenom`, `address`, `phone`, `table_name` non vides ;
-    `menus` = tableau de 1..N valeurs ∈ `{viande, enfant, vegetarien}`
-    (N borné, p.ex. ≤ 30, pour éviter les abus) ; `event_key` fixé côté serveur
-    (non piloté par le client au-delà d'une valeur autorisée).
-  - Requête préparée `mysqli`, `menus` encodé en JSON. Réponses JSON `{ok:true}` / erreurs
-    `400`/`405` comme les endpoints existants.
-- `GET` (guard `Auth::requireCanViewSummary`) : renvoie les données agrégées + la liste
-  pour l'admin (JSON).
-- `GET ?format=csv` (guard `view_summary`) : renvoie un CSV (`Content-Type: text/csv`,
+- `POST` (public): reads fields, validates, writes **one** row.
+  - Validation: `nom`, `prenom`, `address`, `phone`, `table_name` non-empty;
+    `menus` = array of 1..N values ∈ `{viande, enfant, vegetarien}` (N bounded,
+    e.g. ≤ 30, to prevent abuse); `event_key` set server-side (not driven by the
+    client beyond an allowed value).
+  - Prepared `mysqli` statement, `menus` JSON-encoded. JSON responses `{ok:true}` /
+    errors `400`/`405` like the existing endpoints.
+- `GET` (guard `Auth::requireCanViewSummary`): returns aggregated data + the admin list
+  (JSON).
+- `GET ?format=csv` (guard `view_summary`): returns CSV (`Content-Type: text/csv`,
   `Content-Disposition: attachment`).
 
 ### 4.4 Repository — `code/src/repositories/ReservationRepository.php`
-- Câblé via `require` dans `bootstrap.php` (pas d'autoloader).
-- Méthodes :
+- Wired via `require` in `bootstrap.php` (no autoloader).
+- Methods:
   - `create(array $data): void` — insert (menus → JSON).
-  - `distinctTables(string $eventKey): array` — pour le `<datalist>`.
-  - `allForEvent(string $eventKey): array` — réservations décodées (menus → array).
-  - `stats(string $eventKey): array` — agrégats calculés en PHP (voir §5).
+  - `distinctTables(string $eventKey): array` — for the `<datalist>`.
+  - `allForEvent(string $eventKey): array` — decoded reservations (menus → array).
+  - `stats(string $eventKey): array` — aggregates computed in PHP (see §5).
 
 ### 4.5 Admin — `code/reservations_admin.php`
-- Guard page : `Auth::requireLoginPage(...)` + `Auth::canViewSummary()` (comme
+- Page guard: `Auth::requireLoginPage(...)` + `Auth::canViewSummary()` (like
   `inscriptions_admin.php`).
-- Affiche (via `assets/js/reservations_admin.js` consommant l'API `GET`) :
-  - **Totaux menus** par type (Viande / Enfant / Végétarien).
-  - **Nombre de tables** et **personnes par table**.
-  - **Total personnes** (= total menus) et **total tables**.
-  - Liste des réservations **groupées par table** (contact + détail des menus).
-  - Bouton **Export CSV** (lien vers `api/reservations.php?format=csv`).
-- CSS dédié : `assets/css/reservations_admin.css`.
+- Displays (via `assets/js/reservations_admin.js` consuming the `GET` API):
+  - **Menu totals** per type (Viande / Enfant / Végétarien).
+  - **Number of tables** and **persons per table**.
+  - **Total persons** (= total menus) and **total tables**.
+  - Reservation list **grouped by table** (contact + menu breakdown).
+  - **CSV export** button (link to `api/reservations.php?format=csv`).
+- Dedicated CSS: `assets/css/reservations_admin.css`.
 
-### 4.6 Renvoi depuis l'accueil — `code/index.php`
-- Ajout d'un encart/bouton « Souper 25 ans – Réservez votre place » pointant vers
-  `reservation.php`. Pas d'entrée dans `partials/navigation.php`.
+### 4.6 Home-page link — `code/index.php`
+- Add a banner/button "Souper 25 ans – Réservez votre place" pointing to
+  `reservation.php`. No entry in `partials/navigation.php`.
 
-### 4.7 Popup site-wide (une fois par navigateur)
-- Snippet HTML + JS partagé, inclus globalement (via `partials/footer.php` pour être
-  présent sur toutes les pages).
-- Au chargement : si `localStorage.getItem('canetons_souper_popup_v1')` est absent,
-  afficher la modale (titre de l'anlass + bouton « Réserver » → `reservation.php` +
-  fermeture). À la fermeture **ou** au clic, poser le flag → plus jamais réaffichée
-  sur ce navigateur.
-- Accessible : fermable au clavier (Échap), focus piégé basique, `aria-modal`.
-- Fichiers : `assets/js/souper-popup.js` + styles (dans `main.css` ou un petit
+### 4.7 Site-wide popup (once per browser)
+- Shared HTML + JS snippet, included globally (via `partials/footer.php` so it appears
+  on every page).
+- On load: if `localStorage.getItem('canetons_souper_popup_v1')` is absent, show the
+  modal (event title + "Réserver" button → `reservation.php` + close). On close **or**
+  on click, set the flag → never shown again on this browser.
+- Accessible: closable via keyboard (Escape), basic focus trap, `aria-modal`.
+- Files: `assets/js/souper-popup.js` + styles (in `main.css` or a small
   `souper-popup.css`).
 
-## 5. Calcul des statistiques (PHP)
+## 5. Statistics computation (PHP)
 
-À partir de `allForEvent(eventKey)` (chaque réservation a `menus` = array) :
+From `allForEvent(eventKey)` (each reservation has `menus` = array):
 
-- `menuTotals` : compte par type sur l'ensemble des `menus` aplatis.
-- `totalPersons` = somme des longueurs de `menus` = somme de `menuTotals`.
-- `tables` : regroupement par `table_name` → pour chaque table, `personCount`
-  (somme des menus des réservations de cette table) et détail par menu.
-- `totalTables` = nombre de tables distinctes.
+- `menuTotals`: count per type over all flattened `menus`.
+- `totalPersons` = sum of `menus` lengths = sum of `menuTotals`.
+- `tables`: group by `table_name` → for each table, `personCount` (sum of menus of that
+  table's reservations) and per-menu breakdown.
+- `totalTables` = number of distinct tables.
 
-## 6. Flux de données
+## 6. Data flow
 
-**Réservation (public)**
+**Reservation (public)**
 ```
 reservation.php (form) --fetch POST--> api/reservations.php
   -> validation -> ReservationRepository::create (menus JSON)
-  -> {ok:true} -> redirection reservation_merci.php
+  -> {ok:true} -> redirect reservation_merci.php
 ```
 
-**Consultation (admin)**
+**Review (admin)**
 ```
 reservations_admin.php --fetch GET--> api/reservations.php (guard view_summary)
-  -> ReservationRepository::allForEvent + stats -> JSON -> rendu tableaux
-Export: lien api/reservations.php?format=csv -> CSV téléchargé
+  -> ReservationRepository::allForEvent + stats -> JSON -> render tables
+Export: link api/reservations.php?format=csv -> CSV downloaded
 ```
 
-**Popup** : footer global -> souper-popup.js -> localStorage (1×/navigateur).
+**Popup**: global footer -> souper-popup.js -> localStorage (1×/browser).
 
-## 7. Gestion des erreurs
+## 7. Error handling
 
-- API `POST` invalide → `400` + `{error:...}` ; mauvaise méthode → `405`.
-- Front : en cas d'échec `fetch`, `alert(...)` + maintien des données saisies
-  (même comportement que `contact.php`).
-- Admin non autorisé → `403` (page) / guard API `view_summary`.
-- Écriture DB en requête préparée ; `menus` toujours re-validé serveur avant insert.
+- Invalid API `POST` → `400` + `{error:...}`; wrong method → `405`.
+- Front-end: on `fetch` failure, `alert(...)` + keep entered data (same behavior as
+  `contact.php`).
+- Unauthorized admin → `403` (page) / `view_summary` guard (API).
+- DB writes via prepared statements; `menus` always re-validated server-side before insert.
 
-## 8. Tests / vérification
+## 8. Testing / verification
 
-- `npm run check` (php -l, phpcs PSR-12, eslint, stylelint, prettier, secret-guard) vert.
-- Manuel (Docker) :
-  1. Soumettre une réservation à 3 convives (menus mixtes) → ligne créée, `menus` JSON correct, redirection merci.
-  2. Deuxième réservation même `table_name` → suggestion `<datalist>` propose la table ; admin regroupe les deux.
-  3. Admin : totaux menus/tables/personnes cohérents avec les données saisies ; export CSV ouvrable dans Excel.
-  4. Popup : apparaît une fois, ne réapparaît plus après fermeture (localStorage) ; testé sur ≥ 2 pages.
-  5. Validation : soumission sans convive / menu invalide → `400`.
+- `npm run check` (php -l, phpcs PSR-12, eslint, stylelint, prettier, secret-guard) green.
+- Manual (Docker):
+  1. Submit a reservation with 3 guests (mixed menus) → row created, `menus` JSON
+     correct, redirect to thank-you page.
+  2. Second reservation with the same `table_name` → `<datalist>` suggests the table;
+     admin groups the two.
+  3. Admin: menu/table/person totals consistent with entered data; CSV opens in Excel.
+  4. Popup: appears once, does not reappear after close (localStorage); tested on ≥ 2 pages.
+  5. Validation: submission with no guest / invalid menu → `400`.
 
-## 9. Fichiers touchés / créés
+## 9. Files touched / created
 
-**Créés**
+**Created**
 - `code/reservation.php`
 - `code/reservation_merci.php`
 - `code/reservations_admin.php`
@@ -210,17 +211,17 @@ Export: lien api/reservations.php?format=csv -> CSV téléchargé
 - `code/assets/js/souper-popup.js`
 - `code/assets/css/reservation.css`
 - `code/assets/css/reservations_admin.css`
-- migration SQL prod pour la table `reservations`
+- prod SQL migration for the `reservations` table
 
-**Modifiés**
-- `docker/db/init/01-schema.sql` (table `reservations`)
-- `code/src/bootstrap.php` (require du nouveau repository)
-- `code/index.php` (encart de renvoi)
-- `code/partials/footer.php` (inclusion du snippet popup)
-- `code/assets/css/main.css` (styles popup, si non externalisés)
+**Modified**
+- `docker/db/init/01-schema.sql` (`reservations` table)
+- `code/src/bootstrap.php` (require the new repository)
+- `code/index.php` (link banner)
+- `code/partials/footer.php` (include the popup snippet)
+- `code/assets/css/main.css` (popup styles, if not externalized)
 
-## 10. Hors périmètre (rappel)
+## 10. Out of scope (recap)
 
-Délai/clôture des inscriptions, capacité maximale, e-mails (au réservant ou à l'admin),
-compte/édition par l'utilisateur, paiement, gestion multi-événements via UI admin
-(la réutilisation passe uniquement par `event_key` + constante PHP).
+Registration deadline/closing, maximum capacity, e-mails (to registrant or admin),
+user account/editing, payment, multi-event admin UI (reuse happens only via `event_key`
++ PHP constant).
