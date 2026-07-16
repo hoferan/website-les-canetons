@@ -283,3 +283,23 @@ form label.required::before {
   color: red;
   margin-right: 4px;
 }
+
+/* -- SHARED BUTTON (signup, popup, home CTA) ------------------ */
+
+.btn-primary {
+  display: inline-block;
+  background: #e7a11c;
+  color: #241a05;
+  border: none;
+  border-radius: 8px;
+  padding: 13px 26px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-primary:hover {
+  background: #b9760d;
+  color: #fff;
+}

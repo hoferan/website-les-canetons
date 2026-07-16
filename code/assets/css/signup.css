@@ -1,0 +1,124 @@
+@import url("main.css");
+
+.signup-title {
+  font-size: 30px;
+  margin-bottom: 4px;
+}
+
+.signup-subtitle {
+  color: #b9760d;
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.signup-desc {
+  color: #555;
+  max-width: 60ch;
+  margin-bottom: 24px;
+}
+
+.signup-section fieldset {
+  border: 1px solid #e7ded1;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.signup-section legend {
+  font-weight: bold;
+  padding: 0 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.hint {
+  color: #777;
+  font-size: 12px;
+}
+
+.guest-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  background: #faf6ef;
+  border: 1px solid #e7ded1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.guest-num {
+  font-weight: bold;
+  color: #b9760d;
+}
+
+.guest-menu {
+  padding: 9px 11px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.guest-remove {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.guest-row.solo .guest-remove {
+  visibility: hidden;
+}
+
+.add-guest {
+  width: 100%;
+  padding: 11px;
+  background: #fbeecb;
+  color: #b9760d;
+  border: 1px dashed #e7a11c;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.tally {
+  margin-top: 12px;
+  font-weight: bold;
+}
+
+.form-actions {
+  margin-top: 20px;
+}
+
+@media screen and (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-row {
+    grid-template-columns: 90px 1fr 40px;
+  }
+}
