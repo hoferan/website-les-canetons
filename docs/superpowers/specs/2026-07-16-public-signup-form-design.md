@@ -1,44 +1,46 @@
-# Design: Public Reservation Form (Souper – Canetons 25th Anniversary)
+# Design: Public Signup Form (Souper – Canetons 25th Anniversary)
 
 - **Date:** 2026-07-16
 - **Status:** Design approved (spec under review)
 - **Language rule:** Everything (this spec, code, DB columns, enum values, identifiers,
   slugs, file names) is in **English**. **French is used only for user-visible UI text**
-  (HTML labels, page copy, on-screen event title/description).
+  (HTML labels, page copy, on-screen occasion title/description).
+- **Naming:** consistent vocabulary — a **signup** (one contact registering guests) to an
+  **occasion** (the event people sign up for). The `occasion` column deliberately avoids
+  the word "event" to prevent confusion with the members' `events` table.
 
 ## 1. Context & goal
 
 The Guggenmusik is hosting a one-off **supper**: unveiling of the new costume and the
-**25th anniversary of the Canetons**. It is a **thank-you event for friends and family**
+**25th anniversary of the Canetons**. It is a **thank-you occasion for friends and family**
 of the band — it is **not** an event for the members themselves, so it is fully separate
 from the members' attendance system (`events` / `responses`, `sinscrire.php`,
 `inscriptions_*`).
 
-Goal: a public page (no login) where one person can register **several guests** in a
-single form, choosing **one menu per person** and giving a **table** (family name or
-table name) so that separate reservations can group at the same table. The Team
-Direction (admin) reviews reservations and, above all, the **totals** needed by the
-caterer and for the seating plan.
+Goal: a public page (no login) where one person can sign up **several guests** in a single
+form, choosing **one menu per person** and giving a **table** (family name or table name)
+so that separate signups can group at the same table. The Team Direction (admin) reviews
+signups and, above all, the **totals** needed by the caterer and for the seating plan.
 
-The event is **one-off**, but the implementation stays **reusable** for future events via
-a discriminator column `event_key`.
+The occasion is **one-off**, but the implementation stays **reusable** for future
+occasions via a discriminator column `occasion`.
 
 ## 2. Key decisions (from brainstorming)
 
 | Topic | Decision |
 |---|---|
 | Access | Public, no login (like `contact.php`). |
-| Data model | **A single table** `reservations`. Guests/menus are stored as a **list of menus** in one column. |
-| Reusability | `event_key` discriminator column; per-key title/description in a PHP constant. No events table, no admin event CRUD. |
+| Data model | **A single table** `signups`. Guests/menus are stored as a **list of menus** in one column. |
+| Reusability | `occasion` discriminator column; per-occasion title/description in a PHP constant. No occasions table, no admin occasion CRUD. |
 | Per-person fields | The **guests' names do not matter** — only the **menu per person** counts. |
-| Contact | `first_name` + `last_name` **kept** = contact details of the person who registers (needed for follow-up questions), plus `address` and `phone`. |
-| Table | Free-text field, **shared** at reservation level. Existing tables suggested via `<datalist>`. |
+| Contact | `first_name` + `last_name` **kept** = contact details of the person who signs up (needed for follow-up questions), plus `address` and `phone`. |
+| Table | Free-text field, **shared** at signup level. Existing tables suggested via `<datalist>`. |
 | Menu | 3 fixed choices, stored as English values `meat` (standard), `child`, `vegetarian`; shown in French (Viande / Enfant / Végétarien). |
 | Confirmation | Store in DB + dedicated thank-you page. **No e-mail.** |
 | Navigation | **No** menu entry. A link from the home page (`index.php`). |
 | Popup | Modal shown **once per browser** (localStorage) on first load of any page, linking to the form. |
-| Admin | View reservations + **totals** (menus, tables, persons) + **CSV export**. |
-| Out of scope (YAGNI) | Registration deadline, max capacity, e-mails, user editing, payment, multi-event admin UI. |
+| Admin | View signups + **totals** (menus, tables, persons) + **CSV export**. |
+| Out of scope (YAGNI) | Signup deadline, max capacity, e-mails, user editing, payment, multi-occasion admin UI. |
 
 ## 3. Data model
 
@@ -47,9 +49,9 @@ A single table, MariaDB 10.3 compatible, added to `docker/db/init/01-schema.sql`
 `contact_messages` table (`first_name` / `last_name`).
 
 ```sql
-CREATE TABLE `reservations` (
+CREATE TABLE `signups` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `event_key`  varchar(64)  NOT NULL DEFAULT 'anniversary-supper', -- reusable discriminator
+  `occasion`   varchar(64)  NOT NULL DEFAULT 'anniversary-supper', -- reusable discriminator
   `first_name` varchar(255) NOT NULL,   -- contact: first name
   `last_name`  varchar(255) NOT NULL,   -- contact: last name
   `address`    varchar(255) NOT NULL,   -- contact: address
@@ -58,13 +60,13 @@ CREATE TABLE `reservations` (
   `menus`      text NOT NULL,           -- JSON list, e.g. ["meat","meat","child"]
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
-  KEY `idx_reservations_event` (`event_key`),
-  KEY `idx_reservations_table` (`event_key`,`table_name`)
+  KEY `idx_signups_occasion` (`occasion`),
+  KEY `idx_signups_table` (`occasion`,`table_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
 Notes:
-- **Number of persons in a reservation** = length of the `menus` list.
+- **Number of persons in a signup** = length of the `menus` list.
 - `menus` contains only values from `{meat, child, vegetarian}` (validated server-side
   before write). Stored as JSON text; aggregates are computed **in PHP** (low volume), so
   no SQL JSON functions are needed — portable to MariaDB 10.3.
@@ -72,21 +74,21 @@ Notes:
 - English stored values follow the existing convention (`responses.answer` uses
   `participate` / `notparticipate`).
 
-### Events constant (PHP)
+### Occasions constant (PHP)
 
-A small associative array (in the repository or a light config file) mapping `event_key`
+A small associative array (in the repository or a light config file) mapping `occasion`
 → labels. The **values here are the French UI strings** shown on screen; the **key is an
 English identifier**:
 
 ```php
-const RESERVATION_EVENTS = [
+const OCCASIONS = [
     'anniversary-supper' => [
         'title'       => 'Souper – 25 ans des Canetons',   // UI text (French)
         'subtitle'    => 'Sortie du nouveau costume',       // UI text (French)
         'description' => "Un grand merci à nos amis et à nos familles : ...",
     ],
 ];
-const ACTIVE_EVENT_KEY = 'anniversary-supper';
+const ACTIVE_OCCASION = 'anniversary-supper';
 ```
 
 Menu value → French label mapping (used everywhere the menu is displayed):
@@ -97,30 +99,30 @@ const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'V
 
 ## 4. Components
 
-### 4.1 Public form — `code/reservation.php`
-- No login. Renders the active event's title/description (French UI text).
+### 4.1 Public form — `code/signup.php`
+- No login. Renders the active occasion's title/description (French UI text).
 - **Contact block** (once): Nom, Prénom, Adresse, Téléphone (French labels;
   `name` attributes and posted keys are English: `first_name`, `last_name`, `address`,
   `phone`).
 - **Table**: `<input list="tables">` + `<datalist id="tables">` filled server-side via
-  `SELECT DISTINCT table_name FROM reservations WHERE event_key = ? ORDER BY table_name`.
+  `SELECT DISTINCT table_name FROM signups WHERE occasion = ? ORDER BY table_name`.
 - **Guests**: dynamic "+ Ajouter une personne" rows, each row = one menu `<select>`
   (options: value=`meat`/`child`/`vegetarian`, label Viande/Enfant/Végétarien).
   Minimum 1 row. Row removal supported. Vanilla JS (buildless), a single
-  `assets/js/reservation.js` file.
-- Submit via `fetch` POST → `api/reservations.php`, then redirect to
-  `reservation_merci.php` (same pattern as the `contact.php` handler).
-- Dedicated CSS: `assets/css/reservation.css`.
+  `assets/js/signup.js` file.
+- Submit via `fetch` POST → `api/signups.php`, then redirect to `signup_thanks.php`
+  (same pattern as the `contact.php` handler).
+- Dedicated CSS: `assets/css/signup.css`.
 
-### 4.2 Thank-you page — `code/reservation_merci.php`
-- Static "Merci pour votre réservation !" page (French UI) **without** any e-mail promise
+### 4.2 Thank-you page — `code/signup_thanks.php`
+- Static "Merci pour votre inscription !" page (French UI) **without** any e-mail promise
   (do not reuse `confirmation.php`, which announces an e-mail).
 
-### 4.3 API — `code/api/reservations.php`
+### 4.3 API — `code/api/signups.php`
 - `POST` (public): reads fields, validates, writes **one** row.
   - Validation: `first_name`, `last_name`, `address`, `phone`, `table_name` non-empty;
     `menus` = array of 1..N values ∈ `{meat, child, vegetarian}` (N bounded, e.g. ≤ 30,
-    to prevent abuse); `event_key` set server-side (not driven by the client beyond an
+    to prevent abuse); `occasion` set server-side (not driven by the client beyond an
     allowed value).
   - Prepared `mysqli` statement, `menus` JSON-encoded. JSON responses `{ok:true}` /
     errors `400`/`405` like the existing endpoints. Error messages returned to the client
@@ -130,34 +132,34 @@ const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'V
 - `GET ?format=csv` (guard `view_summary`): returns CSV (`Content-Type: text/csv`,
   `Content-Disposition: attachment`).
 
-### 4.4 Repository — `code/src/repositories/ReservationRepository.php`
+### 4.4 Repository — `code/src/repositories/SignupRepository.php`
 - Wired via `require` in `bootstrap.php` (no autoloader).
 - Methods:
   - `create(array $data): void` — insert (menus → JSON).
-  - `distinctTables(string $eventKey): array` — for the `<datalist>`.
-  - `allForEvent(string $eventKey): array` — decoded reservations (menus → array).
-  - `stats(string $eventKey): array` — aggregates computed in PHP (see §5).
+  - `distinctTables(string $occasion): array` — for the `<datalist>`.
+  - `allForOccasion(string $occasion): array` — decoded signups (menus → array).
+  - `stats(string $occasion): array` — aggregates computed in PHP (see §5).
 
-### 4.5 Admin — `code/reservations_admin.php`
+### 4.5 Admin — `code/signups_admin.php`
 - Page guard: `Auth::requireLoginPage(...)` + `Auth::canViewSummary()` (like
   `inscriptions_admin.php`).
-- Displays (via `assets/js/reservations_admin.js` consuming the `GET` API; French UI):
+- Displays (via `assets/js/signups_admin.js` consuming the `GET` API; French UI):
   - **Menu totals** per type (Viande / Enfant / Végétarien).
   - **Number of tables** and **persons per table**.
   - **Total persons** (= total menus) and **total tables**.
-  - Reservation list **grouped by table** (contact + menu breakdown).
-  - **CSV export** button (link to `api/reservations.php?format=csv`).
-- Dedicated CSS: `assets/css/reservations_admin.css`.
+  - Signup list **grouped by table** (contact + menu breakdown).
+  - **CSV export** button (link to `api/signups.php?format=csv`).
+- Dedicated CSS: `assets/css/signups_admin.css`.
 
 ### 4.6 Home-page link — `code/index.php`
-- Add a banner/button "Souper 25 ans – Réservez votre place" (French UI) pointing to
-  `reservation.php`. No entry in `partials/navigation.php`.
+- Add a banner/button "Souper 25 ans – Inscrivez-vous" (French UI) pointing to
+  `signup.php`. No entry in `partials/navigation.php`.
 
 ### 4.7 Site-wide popup (once per browser)
 - Shared HTML + JS snippet, included globally (via `partials/footer.php` so it appears on
   every page).
 - On load: if `localStorage.getItem('canetons_supper_popup_v1')` is absent, show the
-  modal (event title + "Réserver" button → `reservation.php` + close). On close **or** on
+  modal (occasion title + "S'inscrire" button → `signup.php` + close). On close **or** on
   click, set the flag → never shown again on this browser.
 - Accessible: closable via keyboard (Escape), basic focus trap, `aria-modal`.
 - Files: `assets/js/supper-popup.js` + styles (in `main.css` or a small
@@ -165,28 +167,28 @@ const MENU_LABELS = ['meat' => 'Viande', 'child' => 'Enfant', 'vegetarian' => 'V
 
 ## 5. Statistics computation (PHP)
 
-From `allForEvent(eventKey)` (each reservation has `menus` = array):
+From `allForOccasion(occasion)` (each signup has `menus` = array):
 
 - `menuTotals`: count per type over all flattened `menus`.
 - `totalPersons` = sum of `menus` lengths = sum of `menuTotals`.
 - `tables`: group by `table_name` → for each table, `personCount` (sum of menus of that
-  table's reservations) and per-menu breakdown.
+  table's signups) and per-menu breakdown.
 - `totalTables` = number of distinct tables.
 
 ## 6. Data flow
 
-**Reservation (public)**
+**Signup (public)**
 ```
-reservation.php (form) --fetch POST--> api/reservations.php
-  -> validation -> ReservationRepository::create (menus JSON)
-  -> {ok:true} -> redirect reservation_merci.php
+signup.php (form) --fetch POST--> api/signups.php
+  -> validation -> SignupRepository::create (menus JSON)
+  -> {ok:true} -> redirect signup_thanks.php
 ```
 
 **Review (admin)**
 ```
-reservations_admin.php --fetch GET--> api/reservations.php (guard view_summary)
-  -> ReservationRepository::allForEvent + stats -> JSON -> render tables
-Export: link api/reservations.php?format=csv -> CSV downloaded
+signups_admin.php --fetch GET--> api/signups.php (guard view_summary)
+  -> SignupRepository::allForOccasion + stats -> JSON -> render tables
+Export: link api/signups.php?format=csv -> CSV downloaded
 ```
 
 **Popup**: global footer -> supper-popup.js -> localStorage (1×/browser).
@@ -203,10 +205,10 @@ Export: link api/reservations.php?format=csv -> CSV downloaded
 
 - `npm run check` (php -l, phpcs PSR-12, eslint, stylelint, prettier, secret-guard) green.
 - Manual (Docker):
-  1. Submit a reservation with 3 guests (mixed menus) → row created, `menus` JSON correct,
+  1. Submit a signup with 3 guests (mixed menus) → row created, `menus` JSON correct,
      redirect to thank-you page.
-  2. Second reservation with the same `table_name` → `<datalist>` suggests the table;
-     admin groups the two.
+  2. Second signup with the same `table_name` → `<datalist>` suggests the table; admin
+     groups the two.
   3. Admin: menu/table/person totals consistent with entered data; CSV opens in Excel.
   4. Popup: appears once, does not reappear after close (localStorage); tested on ≥ 2 pages.
   5. Validation: submission with no guest / invalid menu → `400`.
@@ -214,20 +216,20 @@ Export: link api/reservations.php?format=csv -> CSV downloaded
 ## 9. Files touched / created
 
 **Created**
-- `code/reservation.php`
-- `code/reservation_merci.php`
-- `code/reservations_admin.php`
-- `code/api/reservations.php`
-- `code/src/repositories/ReservationRepository.php`
-- `code/assets/js/reservation.js`
-- `code/assets/js/reservations_admin.js`
+- `code/signup.php`
+- `code/signup_thanks.php`
+- `code/signups_admin.php`
+- `code/api/signups.php`
+- `code/src/repositories/SignupRepository.php`
+- `code/assets/js/signup.js`
+- `code/assets/js/signups_admin.js`
 - `code/assets/js/supper-popup.js`
-- `code/assets/css/reservation.css`
-- `code/assets/css/reservations_admin.css`
-- prod SQL migration for the `reservations` table
+- `code/assets/css/signup.css`
+- `code/assets/css/signups_admin.css`
+- prod SQL migration for the `signups` table
 
 **Modified**
-- `docker/db/init/01-schema.sql` (`reservations` table)
+- `docker/db/init/01-schema.sql` (`signups` table)
 - `code/src/bootstrap.php` (require the new repository)
 - `code/index.php` (link banner)
 - `code/partials/footer.php` (include the popup snippet)
@@ -235,6 +237,6 @@ Export: link api/reservations.php?format=csv -> CSV downloaded
 
 ## 10. Out of scope (recap)
 
-Registration deadline/closing, maximum capacity, e-mails (to registrant or admin),
-user account/editing, payment, multi-event admin UI (reuse happens only via `event_key`
+Signup deadline/closing, maximum capacity, e-mails (to registrant or admin),
+user account/editing, payment, multi-occasion admin UI (reuse happens only via `occasion`
 + PHP constant).
