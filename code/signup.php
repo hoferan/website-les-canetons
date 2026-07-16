@@ -15,7 +15,7 @@ require 'partials/head.php';
   <p class="signup-subtitle"><?= htmlspecialchars($occasion['subtitle']) ?></p>
   <p class="signup-desc"><?= htmlspecialchars($occasion['description']) ?></p>
 
-  <form id="signup-form" novalidate>
+  <form id="signup-form">
     <fieldset>
       <legend>Vos coordonnées</legend>
       <div class="form-grid">
