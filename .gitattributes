@@ -1,0 +1,22 @@
+# Normalize all text files to LF in the repository and on checkout.
+# The deployed site is served from Linux/Apache and all tooling (Prettier,
+# Stylelint, PHP_CodeSniffer) writes LF, so LF is the single source of truth.
+# `eol=lf` overrides any local core.autocrlf setting, keeping Windows clones
+# consistent and preventing spurious CRLF/LF "modified" churn.
+* text=auto eol=lf
+
+# Binary assets: never touch line endings.
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.mp3   binary
+*.mp4   binary
+*.zip   binary
