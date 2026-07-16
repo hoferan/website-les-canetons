@@ -20,6 +20,9 @@ if ($method === 'POST') {
     if (
         $firstName === '' || $lastName === '' || $address === ''
         || $phone === '' || $tableName === '' || $menus === null
+        || mb_strlen($firstName) > 255 || mb_strlen($lastName) > 255
+        || mb_strlen($address) > 255 || mb_strlen($tableName) > 255
+        || mb_strlen($phone) > 64
     ) {
         http_response_code(400);
         echo json_encode(['error' => 'Formulaire invalide']);
