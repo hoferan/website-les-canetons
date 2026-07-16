@@ -1,3 +1,11 @@
+RewriteEngine on
+
+# Legacy URL redirect. Old .html pages were migrated to .php, so any request
+# for a .html file is permanently redirected (301) to the matching .php file.
+# This keeps old bookmarks, inbound links, and search-engine results working,
+# and tells search engines to update their index to the new .php URL.
+RedirectMatch 301 ^(.*)\.html$ $1.php
+
 # Cache policy for this buildless site.
 #
 # HTML / CSS / JS are edited in place (no build, no versioned filenames), so we

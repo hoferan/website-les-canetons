@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", function () {
   fetch("api/responses.php?eventId=" + encodeURIComponent(eventId), { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
-      const instrumentNames = ["Trompette", "Trombone", "Sousaphone", "Cloches", "Batterie", "Lyre", "Grosses-Caisse", "Maquillage"];
+      const instrumentNames = ["Trompette", "Trombone", "Sousaphone", "Cloches", "Batterie", "Lyre", "Grosses-Caisse", "Comite", "Maquillage"];
       const instrumentCounts = {};
       instrumentNames.sort().forEach((instrument) => {
         instrumentCounts[instrument] = data.filter((item) => item.response === "participate" && item.instrument === instrument).length;
