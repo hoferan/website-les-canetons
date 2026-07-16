@@ -20,19 +20,25 @@
 
 ## Testing approach (read before starting)
 
-This repo has **no PHPUnit** and must stay buildless. Verification uses:
-- **`npm run check`** — lint gate (PSR-12, eslint, stylelint, prettier, secret-guard), Dockerized PHP.
-- **`npm run test:php`** (added in Task 2) — a lightweight assertion script for the **pure** PHP logic (menu validation + stats aggregation), run inside `php:8.1-cli` via the existing `tools/php-in-docker.mjs` wrapper. This is where genuine TDD (red → green) applies.
+The app stays buildless (no runtime deps), but tests use the **standard PHP test
+framework, PHPUnit**, added as a **dev-only** Composer dependency alongside the existing
+PHP_CodeSniffer — consistent with how this repo already does dev tooling. Verification uses:
+- **`npm run check`** — lint + test gate (php -l, phpcs PSR-12, PHPUnit, eslint, stylelint, prettier, secret-guard), all Dockerized.
+- **`npm run test:php`** (added in Task 2) — runs **PHPUnit** inside `php:8.1-cli` (verified to include `mbstring`/`dom`/`xml`/`xmlwriter`/`tokenizer`) via the existing `tools/php-in-docker.mjs` wrapper. Unit tests cover the **pure** logic (menu validation + stats aggregation); this is where genuine TDD (red → green) applies.
 - **Manual functional checks** — for DB/HTTP/UI code: `curl` against `http://localhost:8090` with expected JSON, Adminer at `http://localhost:8091`, and the browser. These steps give exact commands and expected output.
 
-Docker must be running for all PHP checks. Local site: `docker compose up -d --build` → http://localhost:8090.
+Prereq: run `npm run php:install` once (installs `vendor/`, incl. PHPUnit). Docker must be
+running for all PHP checks. Local site: `docker compose up -d --build` → http://localhost:8090.
 
 ## File Structure
 
 **Created (dev-only, repo root — NOT deployed):**
-- `sql/2026-07-16-create-signups.sql` — prod migration (run manually against prod DB).
-- `tools/tests/signup_repository_test.php` — assertion tests for pure logic.
-- `tools/php-test.mjs` — Node runner that executes the test in Docker.
+- `sql/migrations/001_create_signups.sql` — numbered migration (run manually on prod, in order).
+- `sql/migrations/README.md` — how to apply migrations on prod.
+- `phpunit.xml.dist` — PHPUnit config (bootstrap + testsuite).
+- `tests/bootstrap.php` — requires the class under test (repo has no autoloader).
+- `tests/SignupRepositoryTest.php` — PHPUnit unit tests for the pure logic.
+- `tools/phpunit.mjs` — Node runner that executes PHPUnit in Docker.
 
 **Created (in `code/` — deployed):**
 - `code/src/repositories/SignupRepository.php` — constants (occasion/menu), pure logic (`normalizeMenus`, `computeStats`), DB methods (`create`, `distinctTables`, `allForOccasion`).
@@ -46,33 +52,42 @@ Docker must be running for all PHP checks. Local site: `docker compose up -d --b
 - `code/assets/css/signup.css`, `code/assets/css/signups_admin.css` — page styles.
 
 **Modified:**
-- `docker/db/init/01-schema.sql` — add `signups` table (fresh dev DB).
+- `docker-compose.yml` — mount the migration into the DB init dir so fresh dev volumes get it.
+- `composer.json` — add `phpunit/phpunit` to `require-dev`.
+- `.gitignore` — ignore the PHPUnit cache.
 - `code/src/bootstrap.php` — `require` the new repository.
 - `code/index.php` + `code/assets/css/accueil.css` — home-page call-to-action.
 - `code/partials/footer.php` — popup markup + script include (site-wide).
 - `code/assets/css/main.css` — shared `.btn-primary` + popup styles.
 - `package.json` — add `test:php` script; include it in `check`.
 
+**Not** modified: `docker/db/init/01-schema.sql` stays the dev baseline; new schema changes
+live only in `sql/migrations/` (single source of truth), mounted into the DB init dir for dev.
+
 ---
 
-### Task 1: Database schema + prod migration
+### Task 1: Database migration (`signups` table)
 
 **Files:**
-- Modify: `docker/db/init/01-schema.sql` (append the `signups` table)
-- Create: `sql/2026-07-16-create-signups.sql`
+- Create: `sql/migrations/001_create_signups.sql`
+- Create: `sql/migrations/README.md`
+- Modify: `docker-compose.yml` (mount the migration into the DB init dir for dev)
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: table `signups(id, occasion, first_name, last_name, address, phone, table_name, menus, created_at)` used by Task 2's repository.
+- Produces: table `signups(id, occasion, first_name, last_name, address, phone, table_name, menus, created_at)` used by Task 2's repository. `occasion` has **no DB default** — it is always set by the application.
 
-- [ ] **Step 1: Append the table to the dev schema**
+- [ ] **Step 1: Create the numbered migration**
 
-Add to the end of `docker/db/init/01-schema.sql`:
+Create `sql/migrations/001_create_signups.sql`:
 
 ```sql
+-- 001 — create `signups` table for the public occasion signup form.
+-- `occasion` has no default: the application always sets it explicitly.
+
 CREATE TABLE `signups` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `occasion`   varchar(64)  NOT NULL DEFAULT 'anniversary-supper',
+  `occasion`   varchar(64)  NOT NULL,
   `first_name` varchar(255) NOT NULL,
   `last_name`  varchar(255) NOT NULL,
   `address`    varchar(255) NOT NULL,
@@ -86,53 +101,70 @@ CREATE TABLE `signups` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-- [ ] **Step 2: Create the prod migration file**
+- [ ] **Step 2: Document the migration workflow**
 
-Create `sql/2026-07-16-create-signups.sql` with the **same** `CREATE TABLE` statement as Step 1, prefixed with a header comment:
+Create `sql/migrations/README.md`:
 
-```sql
--- Migration: create `signups` table for the public occasion signup form.
--- Apply manually to production (Adminer / phpMyAdmin) once.
--- Dev DBs get this from docker/db/init/01-schema.sql on a fresh volume.
+```markdown
+# Database migrations
 
-CREATE TABLE `signups` (
-  `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `occasion`   varchar(64)  NOT NULL DEFAULT 'anniversary-supper',
-  `first_name` varchar(255) NOT NULL,
-  `last_name`  varchar(255) NOT NULL,
-  `address`    varchar(255) NOT NULL,
-  `phone`      varchar(64)  NOT NULL,
-  `table_name` varchar(255) NOT NULL,
-  `menus`      text NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_signups_occasion` (`occasion`),
-  KEY `idx_signups_table` (`occasion`,`table_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+Incremental schema changes, applied **manually on production** in ascending numeric
+order. `docker/db/init/01-schema.sql` is the dev baseline (existing tables); every
+change *after* that baseline lives here as a numbered file — this directory is the
+single source of truth for those changes.
+
+## Naming
+
+`NNN_short_description.sql` — zero-padded, monotonically increasing (`001_…`, `002_…`).
+
+## Applying on production (manual)
+
+1. Open the prod DB (Adminer / phpMyAdmin).
+2. Run each not-yet-applied migration **in ascending order**, once each.
+3. Record which files you ran (they are not idempotent — do not re-run).
+
+## Local dev
+
+Fresh dev volumes apply these automatically: each migration is mounted into the
+MariaDB init dir in `docker-compose.yml` (after `01-schema.sql` / `02-seed.sql`).
+When you add a new migration, add a matching mount line there too. To re-bootstrap:
+`docker compose down -v && docker compose up -d --build`.
 ```
 
-- [ ] **Step 3: Recreate the dev DB and verify the table exists**
+- [ ] **Step 3: Mount the migration for dev**
 
-Run (init scripts only run on an empty volume, so recreate it):
+In `docker-compose.yml`, under the `db` service `volumes:`, add the migration after the
+existing init mount so it runs after the baseline + seed:
+
+```yaml
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+      - ./sql/migrations/001_create_signups.sql:/docker-entrypoint-initdb.d/03-001_create_signups.sql:ro
+```
+
+- [ ] **Step 4: Recreate the dev DB and verify the table exists**
+
+Init scripts only run on an empty volume, so recreate it:
 
 ```bash
 docker compose down -v
 docker compose up -d --build
 ```
 
-Wait ~15s for the DB healthcheck, then verify:
+Wait ~15s for the DB healthcheck, then verify (note: `occasion` has no Default):
 
 ```bash
 docker compose exec db mysql -ucanetons -pcanetons lescanetons -e "DESCRIBE signups;"
 ```
 
-Expected: a table description listing `id, occasion, first_name, last_name, address, phone, table_name, menus, created_at`.
+Expected: rows for `id, occasion, first_name, last_name, address, phone, table_name, menus, created_at`; the `occasion` row shows an empty `Default` (NULL/none).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add docker/db/init/01-schema.sql sql/2026-07-16-create-signups.sql
-git commit -m "feat(db): add signups table + prod migration"
+git add sql/migrations/001_create_signups.sql sql/migrations/README.md docker-compose.yml
+git commit -m "feat(db): add signups table via numbered migration"
 ```
 
 ---
@@ -142,9 +174,10 @@ git commit -m "feat(db): add signups table + prod migration"
 **Files:**
 - Create: `code/src/repositories/SignupRepository.php`
 - Modify: `code/src/bootstrap.php` (add `require`)
-- Create: `tools/tests/signup_repository_test.php`
-- Create: `tools/php-test.mjs`
-- Modify: `package.json` (add `test:php`, include in `check`)
+- Modify: `composer.json` (add `phpunit/phpunit` to `require-dev`)
+- Create: `phpunit.xml.dist`, `tests/bootstrap.php`, `tests/SignupRepositoryTest.php`
+- Create: `tools/phpunit.mjs`
+- Modify: `.gitignore` (PHPUnit cache), `package.json` (add `test:php`, include in `check`)
 
 **Interfaces:**
 - Consumes: `signups` table (Task 1); `mysqli` from `Database::get()`.
@@ -160,91 +193,153 @@ git commit -m "feat(db): add signups table + prod migration"
   - `distinctTables(string $occasion): string[]`
   - `allForOccasion(string $occasion): array` — rows with `menus` decoded to `string[]`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Add PHPUnit as a dev dependency**
 
-Create `tools/tests/signup_repository_test.php`:
+In `composer.json`, add `phpunit/phpunit` to `require-dev` (PHPUnit 10 is the last line supporting PHP 8.1):
+
+```json
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "squizlabs/php_codesniffer": "^3.10"
+    },
+```
+
+Install it (Dockerized Composer):
+
+```bash
+npm run php:install
+```
+
+Expected: `vendor/bin/phpunit` now exists.
+
+- [ ] **Step 2: Configure PHPUnit**
+
+Create `phpunit.xml.dist` at the repo root:
+
+```xml
+<?xml version="1.0"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache">
+  <testsuites>
+    <testsuite name="unit">
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+</phpunit>
+```
+
+Create `tests/bootstrap.php` (the app has no autoloader — classes are wired via explicit
+`require`, so the test bootstrap requires the class under test directly):
 
 ```php
 <?php
 
-require __DIR__ . '/../../code/src/repositories/SignupRepository.php';
-
-$failures = 0;
-
-function check(string $label, $actual, $expected): void
-{
-    global $failures;
-    if ($actual === $expected) {
-        echo "PASS: $label\n";
-        return;
-    }
-    $failures++;
-    fwrite(STDERR, "FAIL: $label\n  expected: " . json_encode($expected)
-        . "\n  actual:   " . json_encode($actual) . "\n");
-}
-
-// --- normalizeMenus ---
-check('valid menus', SignupRepository::normalizeMenus(['meat', 'child']), ['meat', 'child']);
-check('unknown value -> null', SignupRepository::normalizeMenus(['meat', 'pizza']), null);
-check('empty -> null', SignupRepository::normalizeMenus([]), null);
-check('non-array -> null', SignupRepository::normalizeMenus('meat'), null);
-check('over max -> null', SignupRepository::normalizeMenus(array_fill(0, 31, 'meat')), null);
-
-// --- computeStats ---
-$signups = [
-    ['first_name' => 'Marie', 'last_name' => 'Rossier', 'address' => 'A', 'phone' => 'p',
-        'table_name' => 'Famille Rossier', 'menus' => ['meat', 'meat', 'child', 'vegetarian']],
-    ['first_name' => 'Luc', 'last_name' => 'Rossier', 'address' => 'A', 'phone' => 'p',
-        'table_name' => 'Famille Rossier', 'menus' => ['meat', 'child']],
-    ['first_name' => 'Jean', 'last_name' => 'Python', 'address' => 'B', 'phone' => 'p',
-        'table_name' => 'Les voisins', 'menus' => ['meat', 'meat']],
-    ['first_name' => 'Sophie', 'last_name' => 'Aebischer', 'address' => 'C', 'phone' => 'p',
-        'table_name' => 'Copains musique', 'menus' => ['meat', 'vegetarian', 'vegetarian']],
-];
-$stats = SignupRepository::computeStats($signups);
-check('totalPersons', $stats['totalPersons'], 11);
-check('totalTables', $stats['totalTables'], 3);
-check('menuTotals', $stats['menuTotals'], ['meat' => 6, 'child' => 2, 'vegetarian' => 3]);
-check('first table name', $stats['tables'][0]['name'], 'Famille Rossier');
-check('first table personCount', $stats['tables'][0]['personCount'], 6);
-check(
-    'first table menuCounts',
-    $stats['tables'][0]['menuCounts'],
-    ['meat' => 3, 'child' => 2, 'vegetarian' => 1]
-);
-check('first table signups count', count($stats['tables'][0]['signups']), 2);
-check(
-    'Marie menuCounts',
-    $stats['tables'][0]['signups'][0]['menuCounts'],
-    ['meat' => 2, 'child' => 1, 'vegetarian' => 1]
-);
-
-if ($failures > 0) {
-    fwrite(STDERR, "\n$failures assertion(s) failed\n");
-    exit(1);
-}
-echo "\nAll assertions passed\n";
+require_once __DIR__ . '/../code/src/repositories/SignupRepository.php';
 ```
 
-- [ ] **Step 2: Create the Node test runner**
+Add the PHPUnit cache to `.gitignore` (under the "linter / tool caches" section):
 
-Create `tools/php-test.mjs`:
+```gitignore
+.phpcs.cache
+.phpunit.cache/
+.phpunit.result.cache
+```
+
+- [ ] **Step 3: Write the failing test**
+
+Create `tests/SignupRepositoryTest.php`:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+final class SignupRepositoryTest extends TestCase
+{
+    public function testNormalizeMenusAcceptsValidValues(): void
+    {
+        $this->assertSame(['meat', 'child'], SignupRepository::normalizeMenus(['meat', 'child']));
+    }
+
+    public function testNormalizeMenusRejectsUnknownValue(): void
+    {
+        $this->assertNull(SignupRepository::normalizeMenus(['meat', 'pizza']));
+    }
+
+    public function testNormalizeMenusRejectsEmpty(): void
+    {
+        $this->assertNull(SignupRepository::normalizeMenus([]));
+    }
+
+    public function testNormalizeMenusRejectsNonArray(): void
+    {
+        $this->assertNull(SignupRepository::normalizeMenus('meat'));
+    }
+
+    public function testNormalizeMenusRejectsTooMany(): void
+    {
+        $this->assertNull(SignupRepository::normalizeMenus(array_fill(0, 31, 'meat')));
+    }
+
+    public function testComputeStatsTotals(): void
+    {
+        $stats = SignupRepository::computeStats($this->sampleSignups());
+        $this->assertSame(11, $stats['totalPersons']);
+        $this->assertSame(3, $stats['totalTables']);
+        $this->assertSame(['meat' => 6, 'child' => 2, 'vegetarian' => 3], $stats['menuTotals']);
+    }
+
+    public function testComputeStatsGroupsByTable(): void
+    {
+        $stats = SignupRepository::computeStats($this->sampleSignups());
+        $first = $stats['tables'][0];
+        $this->assertSame('Famille Rossier', $first['name']);
+        $this->assertSame(6, $first['personCount']);
+        $this->assertSame(['meat' => 3, 'child' => 2, 'vegetarian' => 1], $first['menuCounts']);
+        $this->assertCount(2, $first['signups']);
+        $this->assertSame(
+            ['meat' => 2, 'child' => 1, 'vegetarian' => 1],
+            $first['signups'][0]['menuCounts']
+        );
+    }
+
+    /** @return array<int,array> */
+    private function sampleSignups(): array
+    {
+        return [
+            ['first_name' => 'Marie', 'last_name' => 'Rossier', 'address' => 'A', 'phone' => 'p',
+                'table_name' => 'Famille Rossier', 'menus' => ['meat', 'meat', 'child', 'vegetarian']],
+            ['first_name' => 'Luc', 'last_name' => 'Rossier', 'address' => 'A', 'phone' => 'p',
+                'table_name' => 'Famille Rossier', 'menus' => ['meat', 'child']],
+            ['first_name' => 'Jean', 'last_name' => 'Python', 'address' => 'B', 'phone' => 'p',
+                'table_name' => 'Les voisins', 'menus' => ['meat', 'meat']],
+            ['first_name' => 'Sophie', 'last_name' => 'Aebischer', 'address' => 'C', 'phone' => 'p',
+                'table_name' => 'Copains musique', 'menus' => ['meat', 'vegetarian', 'vegetarian']],
+        ];
+    }
+}
+```
+
+- [ ] **Step 4: Add the runner and wire `test:php` into `check`**
+
+Create `tools/phpunit.mjs`:
 
 ```javascript
-// Runs the PHP assertion tests inside php:8.1-cli (Docker), matching prod PHP.
-// Fails (non-zero exit) if any assertion fails.
+// Runs PHPUnit inside php:8.1-cli (Docker), matching prod PHP. Requires
+// `npm run php:install` first (installs vendor/, incl. PHPUnit).
 import { runInPhp } from './php-in-docker.mjs';
 
-runInPhp('php tools/tests/signup_repository_test.php');
+runInPhp('php vendor/bin/phpunit');
 ```
-
-- [ ] **Step 3: Add the `test:php` script and wire it into `check`**
 
 In `package.json`, add a `test:php` script and insert it into `check` right after `lint:php`:
 
 ```json
     "lint:php": "node tools/php-lint.mjs",
-    "test:php": "node tools/php-test.mjs",
+    "test:php": "node tools/phpunit.mjs",
     "lint:js": "eslint code/assets/js",
     "lint:css": "stylelint \"code/assets/css/**/*.css\"",
     "format:check": "prettier --check \"code/assets/**/*.{js,css}\"",
@@ -252,12 +347,12 @@ In `package.json`, add a `test:php` script and insert it into `check` right afte
     "check": "npm run lint:php && npm run test:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
 ```
 
-- [ ] **Step 4: Run the test to verify it fails**
+- [ ] **Step 5: Run the test to verify it fails**
 
 Run: `npm run test:php`
-Expected: FAIL — a fatal error that `code/src/repositories/SignupRepository.php` does not exist (file not created yet), non-zero exit.
+Expected: FAIL — PHPUnit errors that class `SignupRepository` is not found (not created yet), non-zero exit.
 
-- [ ] **Step 5: Write the repository (minimal to pass)**
+- [ ] **Step 6: Write the repository (minimal to pass)**
 
 Create `code/src/repositories/SignupRepository.php`:
 
@@ -437,12 +532,12 @@ final class SignupRepository
 }
 ```
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [ ] **Step 7: Run the test to verify it passes**
 
 Run: `npm run test:php`
-Expected: all `PASS:` lines then `All assertions passed`, exit 0.
+Expected: PHPUnit prints `OK (7 tests, ...)`, exit 0.
 
-- [ ] **Step 7: Wire the repository into bootstrap**
+- [ ] **Step 8: Wire the repository into bootstrap**
 
 In `code/src/bootstrap.php`, add after the `ResponseRepository` require line:
 
@@ -451,14 +546,14 @@ require __DIR__ . '/repositories/ResponseRepository.php';
 require __DIR__ . '/repositories/SignupRepository.php';
 ```
 
-- [ ] **Step 8: Lint and commit**
+- [ ] **Step 9: Lint and commit**
 
 Run: `npm run lint:php`
 Expected: no errors.
 
 ```bash
-git add code/src/repositories/SignupRepository.php code/src/bootstrap.php tools/tests/signup_repository_test.php tools/php-test.mjs package.json
-git commit -m "feat(signups): add SignupRepository with pure logic + tests"
+git add code/src/repositories/SignupRepository.php code/src/bootstrap.php composer.json composer.lock phpunit.xml.dist tests/ tools/phpunit.mjs .gitignore package.json
+git commit -m "feat(signups): add SignupRepository with PHPUnit tests"
 ```
 
 ---
@@ -1629,12 +1724,14 @@ git commit -m "feat(signups): site-wide once-per-browser popup"
 
 ## Final verification
 
-- [ ] Run `npm run check` — all green.
+- [ ] `npm run php:install` has been run (installs `vendor/`, incl. PHPUnit).
+- [ ] Run `npm run check` — all green (includes `test:php` → PHPUnit).
 - [ ] Full manual pass: home CTA → form (add/remove guests, table suggestion, submit) → thank-you → row in Adminer → admin totals + CSV → popup once-per-browser.
-- [ ] Confirm no dev-only files landed in `code/` (tests/migrations are at repo root).
+- [ ] Confirm no dev-only files landed in `code/` (tests, migrations, PHPUnit config are at repo root).
 
 ## Self-Review (completed during authoring)
 
 - **Spec coverage:** single `signups` table with `occasion` discriminator (Task 1) ✓; contact + menus-as-list, names-not-required per guest (Tasks 2–4) ✓; table datalist + type-ahead hint (Task 4) ✓; menu `meat/child/vegetarian` stored, "Viande (standard)" default (Tasks 2,4) ✓; DB-store + thank-you page, no e-mail (Tasks 3,4) ✓; admin totals as one-column-per-menu count table grouped by table + tfoot + color-coded tiles (Task 5) ✓; CSV export (Tasks 3,5) ✓; home-page link, no nav entry (Task 6) ✓; once-per-browser popup site-wide (Task 7) ✓; English code/French UI + prepared statements + escape-on-output (all tasks) ✓.
+- **Best-practice setup:** standard PHPUnit test framework (dev-only Composer dep) with `phpunit.xml.dist` + `tests/` (Task 2); numbered `sql/migrations/` with a README for manual prod application (Task 1); repository + thin JSON API following the codebase's existing patterns. `occasion` carries no DB default — set by the app.
 - **Placeholder scan:** no TBD/TODO; every code step has complete content.
 - **Type consistency:** `normalizeMenus`/`computeStats`/`create`/`distinctTables`/`allForOccasion` signatures and the `menuCounts`/`personCount`/`tables` shapes match across the repository (Task 2), API (Task 3), and admin JS (Task 5).

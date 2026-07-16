@@ -44,14 +44,17 @@ occasions via a discriminator column `occasion`.
 
 ## 3. Data model
 
-A single table, MariaDB 10.3 compatible, added to `docker/db/init/01-schema.sql` (dev)
-**and** provided as a prod migration. Column naming follows the existing
-`contact_messages` table (`first_name` / `last_name`).
+A single table, MariaDB 10.3 compatible, delivered as a **numbered migration**
+(`sql/migrations/001_create_signups.sql`) that is the single source of truth for the
+change: applied manually on prod in ascending order (see `sql/migrations/README.md`), and
+mounted into the DB init dir for local dev. `docker/db/init/01-schema.sql` remains the dev
+baseline (existing tables). Column naming follows the existing `contact_messages` table
+(`first_name` / `last_name`). `occasion` has **no DB default** — the app always sets it.
 
 ```sql
 CREATE TABLE `signups` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
-  `occasion`   varchar(64)  NOT NULL DEFAULT 'anniversary-supper', -- reusable discriminator
+  `occasion`   varchar(64)  NOT NULL,   -- reusable discriminator, always set by the app
   `first_name` varchar(255) NOT NULL,   -- contact: first name
   `last_name`  varchar(255) NOT NULL,   -- contact: last name
   `address`    varchar(255) NOT NULL,   -- contact: address
@@ -217,7 +220,10 @@ Export: link api/signups.php?format=csv -> CSV downloaded
 
 ## 8. Testing / verification
 
-- `npm run check` (php -l, phpcs PSR-12, eslint, stylelint, prettier, secret-guard) green.
+- **Unit tests (PHPUnit, dev-only Composer dep):** cover the pure logic —
+  `SignupRepository::normalizeMenus()` and `computeStats()` — run via `npm run test:php`
+  inside `php:8.1-cli`. TDD (red → green) applies here.
+- `npm run check` (php -l, phpcs PSR-12, PHPUnit, eslint, stylelint, prettier, secret-guard) green.
 - Manual (Docker):
   1. Submit a signup with 3 guests (mixed menus) → row created, `menus` JSON correct,
      redirect to thank-you page.
@@ -240,10 +246,13 @@ Export: link api/signups.php?format=csv -> CSV downloaded
 - `code/assets/js/supper-popup.js`
 - `code/assets/css/signup.css`
 - `code/assets/css/signups_admin.css`
-- prod SQL migration for the `signups` table
+- `sql/migrations/001_create_signups.sql` + `sql/migrations/README.md` (numbered migration)
+- `phpunit.xml.dist`, `tests/bootstrap.php`, `tests/SignupRepositoryTest.php`, `tools/phpunit.mjs` (dev-only test setup)
 
 **Modified**
-- `docker/db/init/01-schema.sql` (`signups` table)
+- `docker-compose.yml` (mount the migration into the DB init dir for dev)
+- `composer.json` (add `phpunit/phpunit` to require-dev), `.gitignore` (PHPUnit cache)
+- `package.json` (add `test:php`, include in `check`)
 - `code/src/bootstrap.php` (require the new repository)
 - `code/index.php` (link banner)
 - `code/partials/footer.php` (include the popup snippet)
