@@ -152,7 +152,16 @@ PHP/Composer are not installed locally, so this task creates the PHP tooling con
     <arg name="colors"/>
     <arg value="sp"/>
 
-    <rule ref="PSR12"/>
+    <!-- Warnings (e.g. unavoidable long URLs) stay visible but do not fail the
+         build, so a clean tree exits 0 for npm run check / CI. Errors stay fatal. -->
+    <config name="ignore_warnings_on_exit" value="1"/>
+
+    <rule ref="PSR12">
+        <!-- Buildless app: classes live in the global namespace by design (plain
+             `require` wiring in bootstrap.php, no autoloader). Namespacing would
+             touch every consumer across code/**.php. -->
+        <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace"/>
+    </rule>
 </ruleset>
 ```
 
