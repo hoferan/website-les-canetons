@@ -72,3 +72,16 @@ p1 {
   color: #fff;
   font-size: 20px;
 }
+
+.souper-cta {
+  text-align: center;
+}
+
+.souper-cta h2 {
+  color: #b9760d;
+  margin-bottom: 10px;
+}
+
+.souper-cta p {
+  margin-bottom: 18px;
+}
