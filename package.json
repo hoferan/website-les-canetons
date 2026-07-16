@@ -28,7 +28,13 @@
   },
   "lint-staged": {
     "code/**/*.php": "node tools/php-lint-file.mjs",
-    "code/assets/js/**/*.js": ["eslint --fix", "prettier --write"],
-    "code/assets/css/**/*.css": ["stylelint --fix", "prettier --write"]
+    "code/assets/js/**/*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "code/assets/css/**/*.css": [
+      "stylelint --fix",
+      "prettier --write"
+    ]
   }
 }
