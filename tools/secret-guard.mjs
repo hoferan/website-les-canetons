@@ -6,7 +6,11 @@ const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' })
   .filter(Boolean);
 
 const offenders = tracked.filter(
-  (f) => f === 'code/config.php' || /\.dump\.sql$/.test(f) || /(^|\/)prod-.*\.sql$/.test(f)
+  (f) =>
+    /(^|\/)config\.php$/.test(f) ||
+    /(^|\/)\.env$/.test(f) ||
+    /\.dump\.sql$/.test(f) ||
+    /(^|\/)prod-.*\.sql$/.test(f)
 );
 
 if (offenders.length > 0) {

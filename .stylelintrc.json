@@ -2,11 +2,14 @@
   "extends": "stylelint-config-standard",
   "rules": {
     "no-descending-specificity": null,
+    "media-feature-range-notation": "prefix",
+    "color-function-notation": "legacy",
+    "alpha-value-notation": "number",
     "selector-type-no-unknown": [
       true,
       {
-        "ignoreTypes": ["/^p[12]$/"],
-        "message": "p1/p2 are non-standard tags used intentionally as custom elements in the PHP templates (see code/moniteurs.php, code/commencement.php, code/partials/footer.php); not a typo for <p>."
+        "ignoreTypes": ["/^p1$/"],
+        "message": "p1 is a non-standard tag used intentionally as a custom element in the PHP templates (see code/commencement.php, code/moniteurs.php, code/partials/footer.php); not a typo for <p>."
       }
     ]
   }

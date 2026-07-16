@@ -4,7 +4,7 @@ h1 {
   font-size: 24px;
 }
 
-@media screen and (width <= 480px) {
+@media screen and (max-width: 480px) {
   h1 {
     font-size: 20px;
   }
@@ -85,9 +85,4 @@ p1 {
   color: red;
   font-weight: bold;
   margin-bottom: 20px;
-}
-
-p2 {
-  color: #fff;
-  font-size: 20px;
 }

@@ -60,7 +60,7 @@ p {
   display: inline-block;
   letter-spacing: 1px;
   background-color: #fdf9f9f1;
-  box-shadow: 0 0 5px rgb(0 0 0 / 20%);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
 }
 
 p1 {

@@ -99,7 +99,7 @@ header {
   background-color: gainsboro;
 }
 
-@media screen and (width <= 768px) {
+@media screen and (max-width: 768px) {
   /* Compact header: logo on the left, hamburger on the right, on one row.
      The redundant title and the header login button are hidden; the login
      action is relocated into the dropdown menu (see .nav-auth). */
@@ -194,7 +194,7 @@ header {
 }
 
 /* Mobile: collapse the link list behind the hamburger toggle */
-@media screen and (width <= 768px) {
+@media screen and (max-width: 768px) {
   .nav-toggle {
     display: block;
     margin: 0;
@@ -214,7 +214,7 @@ header {
     margin: 0;
     padding: 10px 15px;
     background-color: #333;
-    box-shadow: 0 6px 12px rgb(0 0 0 / 25%);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
     z-index: 100;
   }
 
@@ -259,18 +259,18 @@ footer > p1 {
 /* -- SECTION ----------------------------- */
 
 section {
-  background-color: rgb(255 255 255 / 90%);
+  background-color: rgba(255, 255, 255, 0.9);
   padding: 50px;
   width: 100%;
   max-width: 1200px;
   margin: 5px auto 50px;
-  box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
   border-radius: 10px;
   margin-bottom: 50px; /* footer placeholder */
   margin-top: 10px;
 }
 
-@media screen and (width <= 768px) {
+@media screen and (max-width: 768px) {
   section {
     padding: 20px;
   }
