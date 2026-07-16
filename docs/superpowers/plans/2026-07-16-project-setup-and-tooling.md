@@ -16,6 +16,7 @@
 - **Never commit** `code/config.php` (real secrets) or any production data / DB dump.
 - **Synthetic seed data only** — no real member names or passwords in git.
 - Dev dependencies (`vendor/`, `node_modules/`) are never uploaded via FTP.
+- **PHP/Composer are NOT installed on the dev machine.** Local PHP tooling (`php -l`, phpcs, phpcbf, composer) runs inside `php:8.1-cli` / `composer:2` Docker containers via cross-platform Node wrappers in `tools/`. Node, npm, and Docker ARE installed locally. CI runs PHP tooling natively via `shivammathur/setup-php` (no Docker in CI).
 - Preserve the existing Superpowers Skills table in `CLAUDE.md`.
 
 ---
@@ -95,17 +96,23 @@ git commit -m "chore: expand .gitignore and move config template to config/"
 
 ---
 
-### Task 2: PHP linting — Composer + PHP_CodeSniffer
+### Task 2: PHP linting via Docker — Composer + PHP_CodeSniffer
 
-Adds dev-only Composer tooling and normalizes existing PHP to PSR-12 so CI can enforce it.
+PHP/Composer are not installed locally, so this task creates the PHP tooling config plus cross-platform Node wrappers that run PHP inside Docker (`php:8.1-cli`, `composer:2`), then installs the dev dependency and normalizes existing PHP to PSR-12. CI runs these tools natively (Task 6); the committed `composer.json`/`phpcs.xml` serve both paths.
 
 **Files:**
 - Create: `composer.json`
 - Create: `phpcs.xml`
+- Create: `tools/php-in-docker.mjs`
+- Create: `tools/composer.mjs`
+- Create: `tools/php-lint.mjs`
+- Create: `tools/php-fix.mjs`
+- Create: `tools/php-lint-file.mjs`
 - Create (generated): `composer.lock`, `vendor/` (git-ignored)
 
 **Interfaces:**
-- Produces: `vendor/bin/phpcs` + `vendor/squizlabs/php_codesniffer/bin/phpcs` (invoked by Task 3/4 Node runners via `php`); Composer scripts `phpcs`, `phpcbf`.
+- Requires: Docker running locally.
+- Produces: `vendor/squizlabs/php_codesniffer/bin/phpcs` (run via the wrappers); runnable scripts `node tools/composer.mjs <args>`, `node tools/php-lint.mjs` (full `php -l` sweep + phpcs), `node tools/php-fix.mjs` (phpcbf), `node tools/php-lint-file.mjs <files...>` (staged-file lint). Task 3 wires these into `package.json`; Task 4 uses `php-lint-file.mjs` in lint-staged.
 
 - [ ] **Step 1: Create `composer.json`**
 
@@ -120,10 +127,6 @@ Adds dev-only Composer tooling and normalizes existing PHP to PSR-12 so CI can e
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.10"
-    },
-    "scripts": {
-        "phpcs": "phpcs",
-        "phpcbf": "phpcbf"
     },
     "config": {
         "optimize-autoloader": false,
@@ -153,30 +156,129 @@ Adds dev-only Composer tooling and normalizes existing PHP to PSR-12 so CI can e
 </ruleset>
 ```
 
-- [ ] **Step 3: Install and verify the tool runs**
+- [ ] **Step 3: Create `tools/php-in-docker.mjs`**
+
+```javascript
+// Runs a shell command inside a php:8.1-cli container with the repo mounted
+// at /app. Lets the project lint PHP without a local PHP install — the
+// container matches production (PHP 8.1). Requires Docker to be running.
+import { execFileSync } from 'node:child_process';
+
+// Forward slashes so the bind mount works on Windows Docker Desktop too.
+const mount = process.cwd().split('\\').join('/');
+
+export function runInPhp(shellCommand) {
+  execFileSync(
+    'docker',
+    ['run', '--rm', '-v', `${mount}:/app`, '-w', '/app', 'php:8.1-cli', 'sh', '-c', shellCommand],
+    { stdio: 'inherit' }
+  );
+}
+```
+
+- [ ] **Step 4: Create `tools/composer.mjs`**
+
+```javascript
+// Runs Composer inside the official composer:2 container (repo mounted at
+// /app) so no local Composer/PHP install is needed.
+// Usage: node tools/composer.mjs install --no-interaction
+import { execFileSync } from 'node:child_process';
+
+const mount = process.cwd().split('\\').join('/');
+const args = process.argv.slice(2);
+
+execFileSync('docker', ['run', '--rm', '-v', `${mount}:/app`, '-w', '/app', 'composer:2', ...args], {
+  stdio: 'inherit',
+});
+```
+
+- [ ] **Step 5: Create `tools/php-lint.mjs`**
+
+```javascript
+// Full PHP check: `php -l` over every code/**.php, then PHP_CodeSniffer,
+// all in one php:8.1-cli container. `php -l` parse errors surface on stderr.
+import { runInPhp } from './php-in-docker.mjs';
+
+const script = [
+  'fail=0',
+  "for f in $(find code -name '*.php' -not -path 'code/vendor/*' -not -path 'code/dist/*'); do",
+  '  if ! php -l "$f" >/dev/null; then fail=1; fi',
+  'done',
+  '[ "$fail" -eq 0 ] || { echo "php -l: syntax errors above"; exit 1; }',
+  'echo "php -l: OK"',
+  'php vendor/squizlabs/php_codesniffer/bin/phpcs --standard=phpcs.xml',
+].join('\n');
+
+try {
+  runInPhp(script);
+} catch {
+  process.exit(1);
+}
+```
+
+- [ ] **Step 6: Create `tools/php-fix.mjs`**
+
+```javascript
+// Auto-fixes PHP to PSR-12 with phpcbf (inside php:8.1-cli). phpcbf exits
+// non-zero when it successfully fixes files, so a throw here is expected —
+// verify the result with `node tools/php-lint.mjs` afterwards.
+import { runInPhp } from './php-in-docker.mjs';
+
+try {
+  runInPhp('php vendor/squizlabs/php_codesniffer/bin/phpcbf --standard=phpcs.xml');
+} catch {
+  // phpcbf returns 1 when it fixed something — not a failure for our purposes.
+}
+```
+
+- [ ] **Step 7: Create `tools/php-lint-file.mjs`**
+
+```javascript
+// lint-staged entry for staged .php files: `php -l` each + phpcs, in one
+// php:8.1-cli container. Receives absolute paths; converts to repo-relative.
+import { relative } from 'node:path';
+import { runInPhp } from './php-in-docker.mjs';
+
+const files = process.argv.slice(2).map((f) => relative(process.cwd(), f).split('\\').join('/'));
+if (files.length === 0) process.exit(0);
+
+const quoted = files.map((f) => `'${f}'`).join(' ');
+const script = [
+  `for f in ${quoted}; do php -l "$f" >/dev/null || exit 1; done`,
+  `php vendor/squizlabs/php_codesniffer/bin/phpcs --standard=phpcs.xml ${quoted}`,
+].join(' && ');
+
+try {
+  runInPhp(script);
+} catch {
+  process.exit(1);
+}
+```
+
+- [ ] **Step 8: Install the PHP dev dependency via Docker**
+
+Run (Docker must be running; first run pulls the `composer:2` and `php:8.1-cli` images):
+```bash
+node tools/composer.mjs install --no-interaction
+ls vendor/squizlabs/php_codesniffer/bin/phpcs && echo "phpcs installed"
+```
+Expected: `vendor/` and `composer.lock` created; prints "phpcs installed".
+
+- [ ] **Step 9: Normalize existing code to PSR-12, then verify**
 
 Run:
 ```bash
-composer install --no-interaction
-vendor/bin/phpcs --version
+node tools/php-fix.mjs
+node tools/php-lint.mjs
 ```
-Expected: `PHP_CodeSniffer version 3.x`.
+Expected: `php-lint` prints `php -l: OK` and phpcs reports no errors. If a handful of non-auto-fixable errors remain (e.g. a naming rule), fix them by hand in the reported `code/**.php` files and re-run `node tools/php-lint.mjs` until clean. Do **not** relax PSR-12 wholesale; only these files are in scope.
 
-- [ ] **Step 4: Auto-fix existing code to PSR-12, then check**
-
-Run:
-```bash
-composer phpcbf || true
-composer phpcs
-```
-Expected: after `phpcbf`, `phpcs` reports no errors. If a handful of non-auto-fixable errors remain (e.g. a line-length or a naming rule), fix them by hand in the reported `code/**.php` files and re-run `composer phpcs` until clean. Do **not** relax PSR-12 wholesale; only these files are in scope.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add composer.json composer.lock phpcs.xml
+git add composer.json composer.lock phpcs.xml tools/
 git add -u code/
-git commit -m "build: add Composer + PHP_CodeSniffer (PSR-12) and normalize PHP"
+git commit -m "build: add Dockerized PHP tooling (Composer + phpcs PSR-12) and normalize PHP"
 ```
 Note: `vendor/` is git-ignored (Task 1) — do not add it.
 
@@ -184,7 +286,7 @@ Note: `vendor/` is git-ignored (Task 1) — do not add it.
 
 ### Task 3: JS/CSS linting — Node toolchain (Prettier, ESLint, Stylelint)
 
-Adds the dev-only Node toolchain scoped to `code/assets/`, plus portable PHP-lint and secret-guard scripts, and normalizes existing assets.
+Adds the dev-only Node toolchain scoped to `code/assets/`, wires the unified `check`/`fix` runners (JS/CSS natively + PHP via the Task 2 Docker wrappers), adds the secret guard, and normalizes existing assets.
 
 **Files:**
 - Create: `package.json`
@@ -192,14 +294,13 @@ Adds the dev-only Node toolchain scoped to `code/assets/`, plus portable PHP-lin
 - Create: `.stylelintrc.json`
 - Create: `.prettierrc.json`
 - Create: `.prettierignore`
-- Create: `tools/php-lint.mjs`
-- Create: `tools/php-lint-file.mjs`
 - Create: `tools/secret-guard.mjs`
 - Create (generated): `package-lock.json`, `node_modules/` (git-ignored)
 
 **Interfaces:**
-- Consumes: `vendor/squizlabs/php_codesniffer/bin/phpcs` from Task 2.
-- Produces: npm scripts `lint:php`, `lint:js`, `lint:css`, `format:check`, `check`, `fix`; the `tools/*.mjs` runners used by Task 4 hooks and Task 6 CI.
+- Consumes: `tools/php-lint.mjs`, `tools/php-fix.mjs`, `tools/php-lint-file.mjs`, `tools/composer.mjs` and `vendor/` from Task 2 (all present in the working tree).
+- Requires: Docker running (the PHP sub-checks call the Task 2 wrappers).
+- Produces: npm scripts `php:install`, `lint:php`, `lint:js`, `lint:css`, `format:check`, `format:write`, `guard`, `check`, `fix`; `tools/secret-guard.mjs` (used by Task 6 CI).
 
 - [ ] **Step 1: Create `package.json`**
 
@@ -211,6 +312,7 @@ Adds the dev-only Node toolchain scoped to `code/assets/`, plus portable PHP-lin
   "description": "Dev tooling for the buildless Les Canetons de Fribourg website.",
   "type": "module",
   "scripts": {
+    "php:install": "node tools/composer.mjs install --no-interaction",
     "lint:php": "node tools/php-lint.mjs",
     "lint:js": "eslint code/assets/js",
     "lint:css": "stylelint \"code/assets/css/**/*.css\"",
@@ -218,7 +320,7 @@ Adds the dev-only Node toolchain scoped to `code/assets/`, plus portable PHP-lin
     "format:write": "prettier --write \"code/assets/**/*.{js,css}\"",
     "guard": "node tools/secret-guard.mjs",
     "check": "npm run lint:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
-    "fix": "eslint code/assets/js --fix && stylelint \"code/assets/css/**/*.css\" --fix && npm run format:write",
+    "fix": "node tools/php-fix.mjs && eslint code/assets/js --fix && stylelint \"code/assets/css/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -238,7 +340,7 @@ Adds the dev-only Node toolchain scoped to `code/assets/`, plus portable PHP-lin
   }
 }
 ```
-Note: `lint:php` calls phpcs internally (see Step 6); the `phpcs` npm alias is intentionally omitted to avoid duplicating the Composer script.
+Note: `lint:php`, `fix` (PHP part), `php:install`, and the lint-staged `*.php` entry all delegate to the Task 2 Docker wrappers — no local PHP is used.
 
 - [ ] **Step 2: Create `eslint.config.js`**
 
@@ -287,88 +389,7 @@ vendor
 code/dist
 ```
 
-- [ ] **Step 6: Create `tools/php-lint.mjs` (full syntax sweep + phpcs)**
-
-```javascript
-// Portable PHP linter: `php -l` over every code/**.php plus PHP_CodeSniffer.
-// Uses `php` directly (no OS-specific bin shims) so it runs the same on
-// Windows, macOS, and Linux. Requires php + composer install to have run.
-import { readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
-
-const ROOT = 'code';
-const SKIP_DIRS = new Set(['vendor', 'dist']);
-
-function collect(dir) {
-  const out = [];
-  for (const entry of readdirSync(dir)) {
-    const p = join(dir, entry);
-    if (statSync(p).isDirectory()) {
-      if (!SKIP_DIRS.has(entry)) out.push(...collect(p));
-    } else if (entry.endsWith('.php')) {
-      out.push(p);
-    }
-  }
-  return out;
-}
-
-const files = collect(ROOT);
-let syntaxErrors = 0;
-for (const file of files) {
-  try {
-    execFileSync('php', ['-l', file], { stdio: 'pipe' });
-  } catch (err) {
-    syntaxErrors++;
-    process.stderr.write((err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? ''));
-  }
-}
-if (syntaxErrors > 0) {
-  console.error(`\nphp -l: ${syntaxErrors} file(s) with syntax errors.`);
-  process.exit(1);
-}
-console.log(`php -l: ${files.length} files OK.`);
-
-try {
-  execFileSync('php', ['vendor/squizlabs/php_codesniffer/bin/phpcs', '--standard=phpcs.xml'], {
-    stdio: 'inherit',
-  });
-} catch {
-  process.exit(1);
-}
-```
-
-- [ ] **Step 7: Create `tools/php-lint-file.mjs` (staged-file variant)**
-
-```javascript
-// lint-staged entry: receives staged .php paths as argv, runs `php -l` on
-// each and phpcs on the batch. Same `php`-only invocation as php-lint.mjs.
-import { execFileSync } from 'node:child_process';
-
-const files = process.argv.slice(2);
-if (files.length === 0) process.exit(0);
-
-let failed = false;
-for (const file of files) {
-  try {
-    execFileSync('php', ['-l', file], { stdio: 'pipe' });
-  } catch (err) {
-    failed = true;
-    process.stderr.write((err.stdout?.toString() ?? '') + (err.stderr?.toString() ?? ''));
-  }
-}
-
-try {
-  execFileSync('php', ['vendor/squizlabs/php_codesniffer/bin/phpcs', '--standard=phpcs.xml', ...files], {
-    stdio: 'inherit',
-  });
-} catch {
-  failed = true;
-}
-process.exit(failed ? 1 : 0);
-```
-
-- [ ] **Step 8: Create `tools/secret-guard.mjs`**
+- [ ] **Step 6: Create `tools/secret-guard.mjs`**
 
 ```javascript
 // Fails if secrets or production data are tracked by git.
@@ -390,23 +411,23 @@ if (offenders.length > 0) {
 console.log('Secret guard: OK (no secrets or prod dumps tracked).');
 ```
 
-- [ ] **Step 9: Install and auto-fix existing assets, then check**
+- [ ] **Step 7: Install and auto-fix existing assets, then check**
 
-Run:
+Run (Docker must be running — `check`/`fix` include the PHP sub-checks):
 ```bash
 npm install
 npm run fix
 npm run check
 ```
-Expected: `npm run check` ends with all five sub-checks passing. Likely residual work after `fix`:
+Expected: `npm run check` ends with all five sub-checks passing (`lint:php`, `lint:js`, `lint:css`, `format:check`, `guard`). Likely residual work after `fix`:
 - **ESLint `no-undef`** for functions/vars shared across JS files via the global scope: for each *legitimate* shared global, add it to `globals` in `eslint.config.js` (e.g. `globals: { ...globals.browser, myShared: 'readonly' }`); fix any that are real bugs.
 - **Stylelint** errors auto-fix can't resolve: fix in the CSS, or if a rule is genuinely inappropriate for this hand-written CSS, disable just that rule in `.stylelintrc.json` with a comment.
 Re-run `npm run check` until green.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add package.json package-lock.json eslint.config.js .stylelintrc.json .prettierrc.json .prettierignore tools/
+git add package.json package-lock.json eslint.config.js .stylelintrc.json .prettierrc.json .prettierignore tools/secret-guard.mjs
 git add -u code/
 git commit -m "build: add JS/CSS tooling (prettier/eslint/stylelint) and normalize assets"
 ```
@@ -422,7 +443,7 @@ Wires the pre-commit hook so staged files are checked automatically; the manual 
 - Create: `.husky/pre-commit`
 
 **Interfaces:**
-- Consumes: the `lint-staged` config and `tools/*.mjs` from Task 3.
+- Consumes: the `lint-staged` config from Task 3 and the `tools/*.mjs` runners from Tasks 2–3. Docker must be running for the PHP part of a commit touching `*.php`.
 
 - [ ] **Step 1: Initialize Husky**
 
@@ -865,14 +886,19 @@ Seeded test logins (all passwords `demo`, synthetic data only):
 
 ## Development Commands
 
+PHP and Composer are **not** installed locally — the PHP tools run in Docker
+(`php:8.1-cli` / `composer:2`) via wrappers in `tools/`. Docker must be running
+for any PHP check. First-time setup: `npm install` then `npm run php:install`.
+
 ```bash
-npm run check     # run all checks (php -l, phpcs, eslint, stylelint, prettier, secret guard)
-npm run fix       # auto-fix eslint + stylelint + prettier
-composer phpcs    # PHP_CodeSniffer only
-composer phpcbf   # auto-fix PHP to PSR-12
+npm run php:install   # install PHP dev deps into vendor/ (Dockerized Composer; run once)
+npm run check         # all checks: php -l + phpcs (Docker), eslint, stylelint, prettier, secret guard
+npm run fix           # auto-fix: phpcbf (Docker) + eslint + stylelint + prettier
+npm run lint:php      # PHP only (php -l sweep + phpcs, Dockerized)
 ```
 
-A Husky pre-commit hook runs `lint-staged` on staged files automatically.
+A Husky pre-commit hook runs `lint-staged` on staged files automatically
+(PHP hunks are linted through the same Docker wrappers).
 
 ## Dos
 
