@@ -1,11 +1,5 @@
 <?php
 
-// This buildless app wires classes together with plain `require` includes (see
-// bootstrap.php) rather than namespaced autoloading, so this class intentionally
-// stays in the global namespace. Namespacing it would mean also updating every
-// unqualified reference across code/**.php — out of scope for a formatting-only
-// PSR-12 pass with no test coverage to verify the refactor.
-// phpcs:ignore PSR1.Classes.ClassDeclaration.MissingNamespace
 final class ResponseRepository
 {
     public function __construct(private mysqli $db)

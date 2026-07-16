@@ -6,7 +6,7 @@ $repo = new EventRepository(Database::get());
 $method = $_SERVER['REQUEST_METHOD'];
 $data = json_decode(file_get_contents('php://input'), true) ?? [];
 if ($method === 'GET') {
-// Reading events is public. Logged-in users additionally see each event
+    // Reading events is public. Logged-in users additionally see each event
     // annotated with THEIR OWN response; anonymous visitors get null responses.
     // (No ?username= param exists, so the old IDOR stays closed.)
     if (Auth::check()) {

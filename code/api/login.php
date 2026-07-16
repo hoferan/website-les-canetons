@@ -20,7 +20,7 @@ if ($username === '' || $password === '') {
 $role = Auth::attemptLogin($username, $password);
 if ($role === null) {
     http_response_code(401);
-// Single generic message — no username enumeration.
+    // Single generic message — no username enumeration.
     echo json_encode(['error' => 'Nom d’utilisateur ou mot de passe incorrect']);
     exit;
 }
