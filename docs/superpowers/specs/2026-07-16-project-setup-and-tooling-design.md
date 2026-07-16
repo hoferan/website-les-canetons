@@ -99,8 +99,10 @@ Notes: `config.php` (no leading slash) matches `code/config.php` at any depth. `
 Dev-only `composer.json` (never uploaded — `vendor/` git-ignored and FTP-excluded):
 
 - Dependency: `squizlabs/php_codesniffer`.
-- `phpcs.xml`: standard **PSR-12**, `testVersion 8.1`, scans `code/` excluding `code/vendor` and `code/dist`.
-- Composer scripts: `lint` (`php -l` over `code/**.php`), `phpcs`, `phpcbf`.
+- `phpcs.xml`: standard **PSR-12**, scans `code/` excluding `code/vendor`, `code/dist`, and `config.php`.
+- Composer scripts: `phpcs`, `phpcbf`.
+- Syntax coverage via a `php -l` sweep (portable `tools/php-lint.mjs`), run by `npm run check` and CI.
+- (Version-compatibility linting via PHPCompatibility deferred — see §13 follow-ups — to avoid extra Composer wiring.)
 
 ## 7. JS/CSS tooling
 
