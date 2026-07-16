@@ -1,4 +1,6 @@
-<?php $pageTitle = 'Planning et répétitions'; $pageCss = 'planning_repet.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = 'Planning et répétitions';
+$pageCss = 'planning_repet.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
@@ -24,7 +26,10 @@
       <input type="text" id="event-location" name="event-location" required />
       <label for="event-attire">Tenue :</label>
       <input type="text" id="event-attire" name="event-attire" /><br />
-      <label for="event-weekend"><span style="float: left">Weekend</span> <input type="checkbox" id="event-weekend" name="event-weekend" /></label><br />
+      <label for="event-weekend">
+        <span style="float: left">Weekend</span>
+        <input type="checkbox" id="event-weekend" name="event-weekend" />
+      </label><br />
       <input type="submit" value="Ajouter" />
     </form>
   </div>

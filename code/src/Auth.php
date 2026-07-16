@@ -1,5 +1,11 @@
 <?php
 
+// This buildless app wires classes together with plain `require` includes (see
+// bootstrap.php) rather than namespaced autoloading, so this class intentionally
+// stays in the global namespace. Namespacing it would mean also updating every
+// unqualified reference across code/**.php — out of scope for a formatting-only
+// PSR-12 pass with no test coverage to verify the refactor.
+// phpcs:ignore PSR1.Classes.ClassDeclaration.MissingNamespace
 final class Auth
 {
     // Capability matrix — the single source of truth for what each role may do.
@@ -126,9 +132,18 @@ final class Auth
         }
     }
 
-    public static function requireCanManageEvents(): void { self::requireCapability('manage_events'); }
-    public static function requireCanViewSummary(): void  { self::requireCapability('view_summary'); }
-    public static function requireCanRespond(): void      { self::requireCapability('respond'); }
+    public static function requireCanManageEvents(): void
+    {
+        self::requireCapability('manage_events');
+    }
+    public static function requireCanViewSummary(): void
+    {
+        self::requireCapability('view_summary');
+    }
+    public static function requireCanRespond(): void
+    {
+        self::requireCapability('respond');
+    }
 
     /** Guard for pages: redirect to login if not logged in. */
     public static function requireLoginPage(string $returnTo): void

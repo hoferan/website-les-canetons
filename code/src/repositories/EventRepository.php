@@ -1,8 +1,16 @@
 <?php
 
+// This buildless app wires classes together with plain `require` includes (see
+// bootstrap.php) rather than namespaced autoloading, so this class intentionally
+// stays in the global namespace. Namespacing it would mean also updating every
+// unqualified reference across code/**.php — out of scope for a formatting-only
+// PSR-12 pass with no test coverage to verify the refactor.
+// phpcs:ignore PSR1.Classes.ClassDeclaration.MissingNamespace
 final class EventRepository
 {
-    public function __construct(private mysqli $db) {}
+    public function __construct(private mysqli $db)
+    {
+    }
 
     /** All events, each annotated with the given user's response (or null). */
     public function allForUser(string $username): array
@@ -53,8 +61,16 @@ final class EventRepository
                 VALUES (?, ?, ?, ?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
         $weekend = (int) ($e['weekend'] ?? 0);
-        $stmt->bind_param('ssssssi', $e['date'], $e['title'], $e['startTime'],
-            $e['endTime'], $e['location'], $e['attire'], $weekend);
+        $stmt->bind_param(
+            'ssssssi',
+            $e['date'],
+            $e['title'],
+            $e['startTime'],
+            $e['endTime'],
+            $e['location'],
+            $e['attire'],
+            $weekend
+        );
         $stmt->execute();
         $stmt->close();
     }
@@ -66,8 +82,17 @@ final class EventRepository
         $stmt = $this->db->prepare($sql);
         $weekend = (int) ($e['weekend'] ?? 0);
         $id = (int) $e['id'];
-        $stmt->bind_param('ssssssii', $e['date'], $e['title'], $e['startTime'],
-            $e['endTime'], $e['location'], $e['attire'], $weekend, $id);
+        $stmt->bind_param(
+            'ssssssii',
+            $e['date'],
+            $e['title'],
+            $e['startTime'],
+            $e['endTime'],
+            $e['location'],
+            $e['attire'],
+            $weekend,
+            $id
+        );
         $stmt->execute();
         $stmt->close();
     }

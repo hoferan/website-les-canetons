@@ -1,11 +1,16 @@
-<?php $pageTitle = 'Commencer les Canetons'; $pageCss = 'commencement.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = 'Commencer les Canetons';
+$pageCss = 'commencement.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
 <section class="supervision-section">
   <div class="texte">
     <h2>Tu veux commencer la guggen?</h2>
-    <p>Nous sommes constamment à la recherche de quelques souffleurs pour s'époumonner et faire "concurrence" à nos percussions!</p>
+    <p>
+      Nous sommes constamment à la recherche de quelques souffleurs pour
+      s'époumonner et faire "concurrence" à nos percussions!
+    </p>
   </div>
   <div class="supervision-container">
     <div class="instruments-info">

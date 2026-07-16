@@ -1,9 +1,14 @@
 <?php
 require 'src/bootstrap.php';
 Auth::requireLoginPage('index');
-if (!Auth::canViewSummary()) { http_response_code(403); exit('Accès refusé'); }
+if (!Auth::canViewSummary()) {
+    http_response_code(403);
+    exit('Accès refusé');
+}
 ?>
-<?php $pageTitle = "Résumé des inscriptions"; $pageCss = 'inscriptions_admin.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = "Résumé des inscriptions";
+$pageCss = 'inscriptions_admin.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 

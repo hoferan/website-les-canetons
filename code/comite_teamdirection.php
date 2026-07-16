@@ -1,4 +1,6 @@
-<?php $pageTitle = 'Comité et team direction'; $pageCss = 'comite_teamdirection.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = 'Comité et team direction';
+$pageCss = 'comite_teamdirection.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 

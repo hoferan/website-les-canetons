@@ -1,12 +1,11 @@
 <?php
-require __DIR__ . '/../src/bootstrap.php';
 
+require __DIR__ . '/../src/bootstrap.php';
 header('Content-Type: application/json');
 $repo = new ResponseRepository(Database::get());
 $method = $_SERVER['REQUEST_METHOD'];
-
 if ($method === 'POST') {
-    // A logged-in user records THEIR OWN answer (username from session).
+// A logged-in user records THEIR OWN answer (username from session).
     // Only user/moderator may respond — admin (Team Direction) must not vote.
     Auth::requireCanRespond();
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -24,7 +23,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    // Admin-only summary of all users' answers for an event.
+// Admin-only summary of all users' answers for an event.
     Auth::requireCanViewSummary();
     $eventId = (int) ($_GET['eventId'] ?? 0);
     if ($eventId <= 0) {

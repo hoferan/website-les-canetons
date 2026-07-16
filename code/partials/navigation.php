@@ -1,4 +1,5 @@
 <?php
+
 $current = basename($_SERVER['SCRIPT_NAME']);
 // The two inscription sub-pages highlight the "Inscriptions" (sinscrire) item,
 // matching the old setActiveNavigation() behavior.
@@ -28,7 +29,11 @@ $active = fn(string $page): string => $current === $page ? 'active' : '';
     <li class="<?= $active('cd.php') ?>"><a href="cd.php">CD</a></li>
     <li class="<?= $active('sponsors.php') ?>"><a href="sponsors.php">Sponsors et liens amis</a></li>
     <li class="<?= $active('historique.php') ?>"><a href="historique.php">Historique</a></li>
-    <li><a href="https://www.flickr.com/photos/201962767@N02/collections" id="galerie-link" target="_blank">Galerie ↗</a></li>
+    <li><a
+      href="https://www.flickr.com/photos/201962767@N02/collections"
+      id="galerie-link"
+      target="_blank"
+    >Galerie ↗</a></li>
     <li class="<?= $active('multimedia.php') ?>"><a href="multimedia.php">Multimédia</a></li>
     <li class="nav-auth"><a href="#" id="nav-auth-link">Connexion</a></li>
   </ul>

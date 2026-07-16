@@ -1,5 +1,8 @@
-<?php require 'src/bootstrap.php'; Auth::requireLoginPage('sinscrire'); ?>
-<?php $pageTitle = "Inscription à l'événement"; $pageCss = 'authentification.css'; require 'partials/head.php'; ?>
+<?php require 'src/bootstrap.php';
+Auth::requireLoginPage('sinscrire'); ?>
+<?php $pageTitle = "Inscription à l'événement";
+$pageCss = 'authentification.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
@@ -9,7 +12,14 @@
     <!-- Ajoutez une zone de texte pour l'identifiant de l'utilisateur -->
     <div>
       <label for="user-username">Identifiant de l'utilisateur :</label>
-      <input type="text" id="user-username" name="user-username" readonly disabled value="<?= htmlspecialchars(Auth::user()['username']) ?>" />
+      <input
+        type="text"
+        id="user-username"
+        name="user-username"
+        readonly
+        disabled
+        value="<?= htmlspecialchars(Auth::user()['username']) ?>"
+      />
     </div>
     <div>
       <label for="participant-participation">Participation :</label>

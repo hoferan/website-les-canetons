@@ -1,4 +1,6 @@
-<?php $pageTitle = 'Sponsors et liens amis'; $pageCss = 'sponsors.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = 'Sponsors et liens amis';
+$pageCss = 'sponsors.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 

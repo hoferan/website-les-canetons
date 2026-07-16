@@ -1,4 +1,6 @@
-<?php $pageTitle = 'CD'; $pageCss = 'cd.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = 'CD';
+$pageCss = 'cd.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 

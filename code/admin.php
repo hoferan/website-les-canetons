@@ -1,9 +1,14 @@
 <?php
 require 'src/bootstrap.php';
 Auth::requireLoginPage('index');
-if (!Auth::canManageEvents()) { http_response_code(403); exit('Accès refusé'); }
+if (!Auth::canManageEvents()) {
+    http_response_code(403);
+    exit('Accès refusé');
+}
 ?>
-<?php $pageTitle = "Page d'administration"; $pageCss = 'admin.css'; require 'partials/head.php'; ?>
+<?php $pageTitle = "Page d'administration";
+$pageCss = 'admin.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 

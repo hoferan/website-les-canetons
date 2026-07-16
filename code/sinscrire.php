@@ -1,5 +1,8 @@
-<?php require 'src/bootstrap.php'; Auth::requireLoginPage('sinscrire'); ?>
-<?php $pageTitle = 'Inscriptions'; $pageCss = 'sinscrire.css'; require 'partials/head.php'; ?>
+<?php require 'src/bootstrap.php';
+Auth::requireLoginPage('sinscrire'); ?>
+<?php $pageTitle = 'Inscriptions';
+$pageCss = 'sinscrire.css';
+require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
 <?php require 'partials/navigation.php'; ?>
 
