@@ -7,12 +7,13 @@
   "scripts": {
     "php:install": "node tools/composer.mjs install --no-interaction",
     "lint:php": "node tools/php-lint.mjs",
+    "test:php": "node tools/phpunit.mjs",
     "lint:js": "eslint code/assets/js",
     "lint:css": "stylelint \"code/assets/css/**/*.css\"",
     "format:check": "prettier --check \"code/assets/**/*.{js,css}\"",
     "format:write": "prettier --write \"code/assets/**/*.{js,css}\"",
     "guard": "node tools/secret-guard.mjs",
-    "check": "npm run lint:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
+    "check": "npm run lint:php && npm run test:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
     "fix": "node tools/php-fix.mjs && eslint code/assets/js --fix && stylelint \"code/assets/css/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },

@@ -8,6 +8,7 @@ require __DIR__ . '/Auth.php';
 require __DIR__ . '/repositories/UserRepository.php';
 require __DIR__ . '/repositories/EventRepository.php';
 require __DIR__ . '/repositories/ResponseRepository.php';
+require __DIR__ . '/repositories/SignupRepository.php';
 Database::connect($config['db']);
 // Start the session up front (before any page output) so the authenticated
 // role can be read safely everywhere — including public pages whose head.php
