@@ -152,11 +152,16 @@ const MENU_DEFAULT = 'meat'; // pre-selected in the form, labelled "Viande (stan
   - **Menu totals** per type (Viande / Enfant / Végétarien).
   - **Number of tables** and **persons per table**.
   - **Total persons** (= total menus) and **total tables**.
-  - Signup list **grouped by table**. Each table row and each signup row shows the
-    **count per menu type** (e.g. "Viande 2 · Enfant 1 · Végét. 1"), **not** one chip per
-    person — order of guests does not matter; admins only need which menus go to which
-    table. Each signup row also shows the contact (name, address, phone).
-  - **CSV export** button (link to `api/signups.php?format=csv`).
+  - Signup list as a **simple table with one column per menu** holding the **count**
+    (columns: `Table / Contact` | `Tél.` | `Viande` | `Enfant` | `Végét.` | `Total`).
+    Numbers are right-aligned (`tabular-nums`); zero is shown as a muted "–". No chips
+    per guest — order of guests does not matter; admins only need which menus go to which
+    table.
+  - Rows are **grouped by table**: a highlighted group row per table with its per-menu
+    counts + total, then one row per signup (contact name, address, phone + counts). A
+    `<tfoot>` "Total général" row repeats the grand totals.
+  - **CSV export** button (link to `api/signups.php?format=csv`); the CSV mirrors these
+    columns (one row per signup, plus counts).
 - Dedicated CSS: `assets/css/signups_admin.css`.
 
 ### 4.6 Home-page link — `code/index.php`
