@@ -9,6 +9,7 @@ INSERT INTO `instruments` (`id`, `name`) VALUES
 (5, 'Batterie'),
 (6, 'Lyre'),
 (7, 'Grosses-Caisse'),
+(8, 'Comite'),
 (9, 'Maquillage');
 
 -- Synthetic users. All passwords are the literal string "demo" (the app compares
@@ -17,11 +18,11 @@ INSERT INTO `users` (`id`, `username`, `password`, `role`, `instrument_id`) VALU
 (1, 'demo.user',      'demo', 'user',      1),
 (2, 'demo.user2',     'demo', 'user',      2),
 (3, 'demo.user3',     'demo', 'user',      5),
-(4, 'demo.moderator', 'demo', 'moderator', NULL),
-(5, 'demo.admin',     'demo', 'admin',     NULL),
+(4, 'demo.moderator', 'demo', 'moderator', 8),
+(5, 'demo.admin',     'demo', 'admin',     8),
 (6, 'alex.muster',    'demo', 'user',      4),
 (7, 'sam.beispiel',   'demo', 'user',      7),
-(8, 'chris.exemple',  'demo', 'moderator', NULL);
+(8, 'chris.exemple',  'demo', 'moderator', 8);
 
 INSERT INTO `events`
   (`id`, `date`, `title`, `start_time`, `end_time`, `location`, `attire`, `weekend`) VALUES
@@ -37,4 +38,5 @@ INSERT INTO `responses` (`user_id`, `event_id`, `answer`) VALUES
 (3, 2, 'participate'),
 (4, 1, 'participate'),
 (6, 1, 'participate'),
+(6, 4, 'participate'),
 (7, 3, 'participate');
