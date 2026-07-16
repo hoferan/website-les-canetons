@@ -87,6 +87,16 @@ npm run lint:php      # PHP only (php -l sweep + phpcs, Dockerized)
 A Husky pre-commit hook runs `lint-staged` on staged files automatically
 (PHP hunks are linted through the same Docker wrappers).
 
+## Language
+
+- **Everything is written in English** — specs and plans (`docs/`), code, comments,
+  DB table/column names, enum/stored values, identifiers, slugs, and file names.
+- **French is used for ONE thing only: user-visible UI text** (HTML labels, page copy,
+  buttons, on-screen event titles/descriptions, error messages shown to the user).
+- The existing codebase already follows this: `contact_messages` uses
+  `first_name`/`last_name` columns and `responses.answer` uses English enum values
+  (`participate`/`notparticipate`), while page labels are French. Match that pattern.
+
 ## Dos
 
 - Keep the site buildless; edit JS/CSS in place.
