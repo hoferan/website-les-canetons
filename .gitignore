@@ -1,2 +1,21 @@
 # secrets & local-only
 config.php
+.env
+
+# real prod data — never commit (use the synthetic Docker seed instead)
+*.dump.sql
+prod-*.sql
+
+# dependencies (dev-only tooling; never deployed)
+/node_modules/
+/vendor/
+
+# linter / tool caches
+.php-cs-fixer.cache
+.phpcs.cache
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
