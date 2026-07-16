@@ -79,11 +79,23 @@ function signups_export_csv(array $signups): void
             $counts[$m]++;
         }
         fputcsv($out, [
-            $s['table_name'], $s['last_name'], $s['first_name'],
-            $s['address'], $s['phone'],
+            csv_safe($s['table_name']), csv_safe($s['last_name']), csv_safe($s['first_name']),
+            csv_safe($s['address']), csv_safe($s['phone']),
             $counts['meat'], $counts['child'], $counts['vegetarian'],
             count($s['menus']),
         ], ';');
     }
     fclose($out);
+}
+
+/**
+ * Neutralize CSV formula injection: prefix a leading =, +, -, @ (or control
+ * chars) with a quote so spreadsheet apps treat the cell as text, not a formula.
+ */
+function csv_safe(string $value): string
+{
+    if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value) === 1) {
+        return "'" . $value;
+    }
+    return $value;
 }
