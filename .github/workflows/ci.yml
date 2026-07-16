@@ -1,7 +1,50 @@
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
 
-## TODO
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          tools: composer
+      - name: Install PHP dev tools
+        run: composer install --no-interaction --no-progress
+      - name: PHP syntax check (php -l)
+        run: |
+          find code -name '*.php' -not -path 'code/vendor/*' -not -path 'code/dist/*' -print0 \
+            | xargs -0 -n1 -P4 php -l
+      - name: PHP_CodeSniffer (PSR-12)
+        run: vendor/bin/phpcs
+
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Node dev tools
+        run: npm ci
+      - name: ESLint
+        run: npm run lint:js
+      - name: Stylelint
+        run: npm run lint:css
+      - name: Prettier
+        run: npm run format:check
+
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Secret / prod-data guard
+        run: node tools/secret-guard.mjs
