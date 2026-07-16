@@ -10,8 +10,9 @@ events and view attendance summaries.
 
 ## Tech Stack
 
-- **PHP 8.1** (matches prod: PHP 8.1.34), **buildless** — no framework, no bundler,
-  no runtime dependencies. Files are edited in place and deployed as-is.
+- **PHP 8.1** (matches prod: PHP 8.1.34), **buildless** — no bundler, no build step, no
+  runtime dependencies. Third-party CSS may be **vendored** as a static file under
+  `code/assets/vendor/` (no CDN, no build). Files are edited in place and deployed as-is.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `code/assets/` — no build step.
 - **Apache** with `.htaccess` (cache policy) on `easy-hebergement.net` shared hosting.
@@ -107,5 +108,6 @@ A Husky pre-commit hook runs `lint-staged` on staged files automatically
 ## Don'ts
 
 - Never commit `code/config.php` or any production data / DB dump.
-- Never introduce a runtime build step or framework for the deployed site.
+- Never introduce a build step or bundler for the deployed site. (A CSS framework may be
+  used only as a **vendored static file** in `code/assets/vendor/` — no build, no CDN.)
 - Never store real member data or passwords in seed files.
