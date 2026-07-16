@@ -1,0 +1,143 @@
+@import "main.css";
+
+h1 {
+  font-size: 24px;
+}
+
+p {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+h2 {
+  position: relative;
+  margin-bottom: 20px;
+  font-size: 30px;
+  color: #000000f1;
+}
+
+.supervision-container {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+}
+
+.contact-info {
+  background-color: #ffff00;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-align: center;
+  width: 200px;
+}
+
+.contact-info a {
+  text-decoration: none;
+  text-decoration-color: black;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.hours-info {
+  background-color: #00ff00;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-align: center;
+  width: 200px;
+}
+
+.location-info {
+  background-color: #00ffff;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-align: center;
+  width: 200px;
+}
+
+.instruments-info {
+  background-color: #ee82ee;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-align: center;
+  width: 200px;
+}
+
+.contact-age {
+
+  background-color: #ffcc00;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  text-align: center;
+  width: 200px;
+}
+
+.contact-info h2,
+.hours-info h2,
+.location-info h2,
+.instruments-info h2,
+.contact-age h2 { 
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: #333; 
+}
+
+.contact-info p,
+.hours-info p,
+.location-info p,
+.instruments-info p,
+.contact-age p {
+  margin-bottom: 5px;
+  font-size: 18px; 
+  color: #444; 
+}
+
+.texte {
+  padding-bottom: 30px;
+}
+
+.flyer {
+  max-width: 100%;
+  height: 455px;
+  padding-top: 70px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.button-container {
+  max-width: 100%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media screen and (max-width: 768px) {
+  .supervision-container {
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .contact-info,
+  .hours-info,
+  .location-info,
+  .instruments-info,
+  .contact-age {
+    width: 100%;
+    max-width: 340px;
+  }
+
+  .flyer {
+    height: auto;
+    padding-top: 20px;
+  }
+}

@@ -1,0 +1,106 @@
+@import "main.css";
+
+h1 {
+  font-size: 40px;
+}
+
+p {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+h1 {
+  font-size: 24px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.planning_repet-section h2 {
+  position: relative;
+  margin-bottom: 20px;
+  font-size: 30px;
+  color: #333030f1;
+}
+
+.planning_repet-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.planning_repet-section ul li {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #a8a8a0;
+  background-color: #4effbb;
+  position: relative;
+}
+
+.planning_repet-section ul li:nth-child(odd) {
+  background-color: #98d6d1;
+}
+
+.event-item {
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid #a8a8a0;
+  background-color: #4effbb;
+}
+
+.delete-icon {
+  position: absolute;
+  top: 5px;
+  right: 20px;
+  font-size: 48px;
+  font-weight: bold;
+  color: #57a89d;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.delete-icon:hover {
+  color: #ff0000;
+}
+
+.edit-icon {
+  position: absolute;
+  top: 55px;
+  right: 20px;
+  font-size: 30px;
+  font-weight: bold;
+  color: #57a89d;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.edit-icon:hover {
+  color: dodgerblue;
+}
+
+/* Styles de l'interface de l'administrateur */
+#admin-interface {
+  margin-top: 20px;
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 5px;
+}
+
+#event-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-gap: 10px;
+  max-width: 400px;
+}
+
+#event-form label {
+  font-weight: bold;
+}
+
+#event-result {
+  text-align: left;
+}
+
+p1 {
+  color: #ffffff;
+  font-size: 20px;
+}

@@ -1,0 +1,36 @@
+@import "main.css";
+
+/* Réinitialisation des styles par défaut */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 24px;
+}
+
+p {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+h2 {
+  position: relative;
+  margin-bottom: 20px;
+  font-size: 30px;
+  color: #000000f1;
+}
+
+.historique-section p {
+  color: #333;
+  text-align: justify;
+  margin-bottom: 20px;
+}
+
+p1 {
+  color: #ffffff;
+  font-size: 20px;
+}

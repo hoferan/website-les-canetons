@@ -1,0 +1,65 @@
+@import "main.css";
+
+/* Réinitialisation des styles par défaut */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 24px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+h2 {
+  margin-bottom: 30px;
+  font-size: 35px;
+  color: rgb(5, 50, 112);
+}
+
+p {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: #1927ac;
+}
+
+p1 {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+  color: rgb(255, 255, 255);
+}
+
+.sponsors-section p {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.sponsors-section ul {
+  margin-left: 20px;
+  margin-bottom: 20px;
+}
+
+.sponsors-section ul li {
+  margin-bottom: 5px;
+}
+
+.sponsors-section ul li:before {
+  content: "\2022";
+  color: #337ab7;
+  display: inline-block;
+  width: 1em;
+  margin-left: -1em;
+}
+
+.sponsors-section ul li a {
+  color: #337ab7;
+  text-decoration: none;
+}
+
+.sponsors-section ul li a:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,79 @@
+@import "main.css";
+
+h1 {
+  margin-top: 30px;
+  padding: 20px;
+  text-align: center;
+  font-size: 50px;
+  background-color: #fdf9f9f1;
+  color: #313131;
+  border-radius: 15px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+h2 {
+  position: relative;
+  margin-bottom: 20px;
+  font-size: 36px;
+  color: #000000f1;
+}
+
+.wrapper {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+}
+
+.accueil {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px;
+}
+
+#imgaccueil {
+  border: 5px solid rgb(129, 137, 143);
+  border-radius: 5px;
+  max-width: 876px;
+  width: 100%;
+  height: auto;
+}
+
+.accueil {
+  text-align: center;
+  padding: 20px;
+}
+
+.accueil h2 {
+  margin-bottom: 20px;
+}
+
+.accueil li {
+  list-style-type: none;
+  margin-left: auto;
+}
+
+.accueil li a {
+  background-color: #688168;
+  color: white;
+  padding: 10px 20px;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.accueil li a:hover {
+  background-color: #aac0ab;
+}
+
+p1 {
+  color: #ffffff;
+  font-size: 20px;
+}

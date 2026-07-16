@@ -1,0 +1,58 @@
+@import "main.css";
+
+h1 {
+  font-size: 24px;
+}
+
+p {
+  font-size: 20px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+h2 {
+  position: relative;
+  margin-bottom: 20px;
+  font-size: 30px;
+  color: #000000f1;
+}
+
+.admin-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 600px;
+  margin: 20px auto;
+}
+
+.admin-buttons form {
+  margin: 10px;
+}
+
+.admin-buttons button {
+  background-color: #7e9e8c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  text-align: center;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.admin-buttons button:hover {
+  background-color: #4a534a;
+}
+
+.admin-buttons button i {
+  margin-right: 5px;
+}
+
+.admin-buttons button:first-child {
+  margin-top: 10px;
+}

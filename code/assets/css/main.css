@@ -1,0 +1,287 @@
+/*-- COMMON / BODY -----------------------------*/
+
+h1,
+h2,
+p,
+ul,
+li {
+  margin: 0;
+  padding: 0;
+}
+
+/*-- GLOBAL RESETS (mobile safety net) -----------------------------*/
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, sans-serif;
+  background-image: url("../img/Imagefondclean.jpg");
+  background-repeat: repeat;
+  background-position: center;
+  background-size: cover;
+  background-color: #fdf9f9f1;
+}
+
+header {
+  background-color: #333;
+  color: #fff;
+  padding: 30px;
+  overflow: hidden;
+}
+
+/*-- BANNER -----------------------------*/
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-container h1 {
+  margin-top: 0px;
+  padding: 20px;
+  text-align: center;
+  font-size: 50px;
+  background-color: #fdf9f9f1;
+  color: #313131;
+  border-radius: 15px;
+  text-shadow: none;
+  font-family: Arial, sans-serif;
+  margin-left: 20px;
+  margin-right: 20px;
+  padding-left: 40px;
+  padding-right: 40px;
+  display: flex;
+}
+
+.header-container img {
+  height: auto;
+  width: auto;
+}
+
+#login-btn {
+  top: 20px;
+  right: 20px;
+  color: #555;
+  background-color: white;
+  text-decoration: none;
+  padding: 10px;
+  padding-left: 15px;
+  padding-right: 15px;
+  border-radius: 5px;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  cursor: pointer;
+  display: flex;
+  align-self: flex-start;
+}
+
+#login-btn:hover {
+  color: #555;
+  background-color: gainsboro;
+}
+
+@media screen and (max-width: 768px) {
+  /* Compact header: logo on the left, hamburger on the right, on one row.
+     The redundant title and the header login button are hidden; the login
+     action is relocated into the dropdown menu (see .nav-auth). */
+  header {
+    padding: 10px 15px;
+    position: relative;
+    /* override the desktop `overflow: hidden` so the absolutely-positioned
+       dropdown (top: 100%, below the header box) isn't clipped */
+    overflow: visible;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 10px;
+  }
+
+  .header-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .header-container h1,
+  #login-btn {
+    display: none;
+  }
+
+  .header-container img {
+    max-height: 60px;
+    width: auto;
+  }
+}
+
+/*-- NAVIGATION -----------------------------*/
+
+.nav-toggle {
+  display: none; /* desktop: hidden, links shown inline */
+  background-color: #555;
+  color: #fff;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  padding: 10px 14px;
+  border-radius: 5px;
+  cursor: pointer;
+  width: fit-content;
+  margin: 0 0 10px auto; /* right-aligned menu control (top-right convention) */
+}
+
+.nav ul {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.nav ul li {
+  margin-right: 10px;
+  margin-top: 10px;
+}
+
+.nav ul li a {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #555;
+  transition: background-color 0.3s ease;
+}
+
+.nav ul li a:hover {
+  background-color: #777;
+}
+
+.nav ul li.active a {
+  color: #555;
+  background-color: white;
+}
+
+.nav ul li.active a:hover {
+  color: #555;
+  background-color: gainsboro;
+}
+
+/* The login/logout action lives in the header on desktop; this in-menu copy
+   is shown only on mobile (see the media query below). */
+.nav-auth {
+  display: none;
+}
+
+/* Mobile: collapse the link list behind the hamburger toggle */
+@media screen and (max-width: 768px) {
+  .nav-toggle {
+    display: block;
+    margin: 0;
+  }
+
+  /* Dropdown panel: full-width below the header, anchored to <header>
+     (which is position: relative on mobile) so the toggle can share the
+     header row with the logo. */
+  .nav ul {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 10px 15px;
+    background-color: #333;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+  }
+
+  .nav.open ul {
+    display: flex;
+  }
+
+  .nav ul li {
+    margin: 4px 0;
+  }
+
+  .nav ul li a {
+    text-align: center;
+    padding: 12px;
+  }
+
+  /* Déconnexion / Connexion as a menu item, separated from the nav links */
+  .nav-auth {
+    display: block;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #666;
+  }
+}
+
+/*-- FOOTER -----------------------------*/
+
+footer {
+  background-color: #333;
+  padding: 10px;
+  text-align: center;
+  width: 100%;
+  margin-top: auto; /* sticky footer: fills the gap when content is short */
+}
+
+footer > p1 {
+  color: #fff;
+  font-size: 16px;
+  font-weight: normal;
+}
+
+/*-- SECTION -----------------------------*/
+
+section {
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 50px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  margin-left: auto;
+  margin: 5px auto 50px auto;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  margin-bottom: 50px; /* footer placeholder */
+  margin-top: 10px;
+}
+
+@media screen and (max-width: 768px) {
+  section {
+    padding: 20px;
+  }
+}
+
+/*-- SECTION -----------------------------*/
+
+form label.required::before {
+  content: "*";
+  color: red;
+  margin-right: 4px;
+}

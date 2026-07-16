@@ -1,0 +1,64 @@
+@import "main.css";
+
+h1 {
+  font-size: 24px;
+}
+
+@media screen and (max-width: 480px) {
+  h1 {
+    font-size: 20px;
+  }
+}
+
+p {
+  font-size: 17px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+h2 {
+  position: relative;
+  margin-bottom: 30px;
+  margin-top: 40px;
+  font-size: 30px;
+  color: #000000f1;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="email"],
+textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+button[type="submit"] {
+  padding: 10px 20px;
+  background-color: #555;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button[type="submit"]:hover {
+  background-color: #777;
+}
+
+p1 {
+  color: #ffffff;
+  font-size: 20px;
+}
