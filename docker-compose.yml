@@ -4,7 +4,7 @@ services:
     ports:
       - "8090:80"
     volumes:
-      - ./code:/var/www/html
+      - ./app:/var/www/html
       - ./config/config.docker.php:/var/www/html/config.php:ro
     depends_on:
       db:

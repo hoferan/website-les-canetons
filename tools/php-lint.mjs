@@ -4,7 +4,7 @@ import { runInPhp } from './php-in-docker.mjs';
 
 const script = [
   'fail=0',
-  "for f in $(find code -name '*.php' -not -path 'code/vendor/*' -not -path 'code/dist/*'); do",
+  "for f in $(find app -name '*.php'); do",
   '  if ! php -l "$f" >/dev/null; then fail=1; fi',
   'done',
   '[ "$fail" -eq 0 ] || { echo "php -l: syntax errors above"; exit 1; }',

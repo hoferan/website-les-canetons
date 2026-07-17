@@ -2,10 +2,8 @@
 <ruleset name="LesCanetons">
     <description>PSR-12 for the site's PHP (buildless, PHP 8.1).</description>
 
-    <file>code</file>
+    <file>app</file>
 
-    <exclude-pattern>code/vendor/*</exclude-pattern>
-    <exclude-pattern>code/dist/*</exclude-pattern>
     <exclude-pattern>*/config.php</exclude-pattern>
 
     <arg name="extensions" value="php"/>
