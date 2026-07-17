@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "php:install": "node tools/composer.mjs install --no-interaction",
+    "build": "node tools/build.mjs",
     "lint:php": "node tools/php-lint.mjs",
     "lint:js": "eslint app/assets/js",
     "lint:css": "stylelint \"app/assets/css/**/*.css\"",
