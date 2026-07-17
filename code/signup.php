@@ -13,7 +13,8 @@ require 'partials/head.php';
 <section class="signup-section">
   <h1 class="signup-title"><?= htmlspecialchars($occasion['title']) ?></h1>
   <p class="signup-subtitle"><?= htmlspecialchars($occasion['subtitle']) ?></p>
-  <p class="signup-desc"><?= htmlspecialchars($occasion['description']) ?></p>
+  <p class="signup-desc"><?= htmlspecialchars($occasion['teaser']) ?></p>
+  <p class="signup-desc"><?= htmlspecialchars($occasion['invitation']) ?></p>
 
   <form id="signup-form">
     <fieldset>

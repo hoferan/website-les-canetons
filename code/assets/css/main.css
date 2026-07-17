@@ -306,7 +306,14 @@ form label.required::before {
 
 /* -- SITE-WIDE POPUP ------------------ */
 
-.popup-overlay {
+/* Every rule below is scoped to #supper-popup and states its own typography,
+   spacing and colours explicitly. The popup is injected by partials/footer.php
+   on every page, and each page loads its own stylesheet after main.css — so
+   without ID-scoped, self-contained rules the popup would inherit different
+   ambient styles (font sizes, `p`/`a`/`button` rules, .btn-primary variants)
+   and render differently per page. These rules keep it identical everywhere. */
+
+#supper-popup.popup-overlay {
   display: none;
   position: fixed;
 
@@ -318,81 +325,123 @@ form label.required::before {
   left: 0;
 
   /* stylelint-enable declaration-block-no-redundant-longhand-properties */
-  background: rgba(20, 15, 5, 0.55);
   z-index: 1000;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  background: rgba(20, 15, 5, 0.55);
+  font-family: Arial, sans-serif;
 }
 
-.popup-overlay.show {
+#supper-popup.popup-overlay.show {
   display: flex;
 }
 
-.popup-box {
-  background: #fff;
-  border-radius: 14px;
-  max-width: 420px;
+#supper-popup .popup-box {
   width: 100%;
+  max-width: 420px;
   overflow: hidden;
   position: relative;
+  background: #fff;
+  border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
-.popup-close {
+#supper-popup .popup-close {
   position: absolute;
   top: 8px;
   right: 10px;
   width: 30px;
   height: 30px;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.12);
-  cursor: pointer;
+  color: #241a05;
+  font-family: inherit;
   font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.popup-banner {
+#supper-popup .popup-banner {
+  padding: 24px 20px 18px;
   background: #e7a11c;
   color: #241a05;
   text-align: center;
-  padding: 24px 20px 18px;
 }
 
-.popup-duck {
+#supper-popup .popup-duck {
+  margin: 0;
   font-size: 38px;
+  line-height: 1;
 }
 
-.popup-banner h3 {
+#supper-popup .popup-banner h3 {
   margin: 6px 0 2px;
   font-size: 20px;
-}
-
-.popup-date {
-  margin-top: 4px;
   font-weight: bold;
+  line-height: 1.25;
+  color: #241a05;
 }
 
-.popup-body {
+#supper-popup .popup-subtitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.3;
+  color: #241a05;
+}
+
+#supper-popup .popup-date {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 1.3;
+  color: #241a05;
+}
+
+#supper-popup .popup-body {
   padding: 20px;
   text-align: center;
 }
 
-.popup-body p {
+#supper-popup .popup-body p {
+  margin: 0 0 12px;
   color: #555;
-  margin-bottom: 16px;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
-.popup-cta {
+#supper-popup .popup-cta {
   display: block;
-  margin-bottom: 12px;
+  width: 100%;
+  margin: 4px 0 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #e7a11c;
+  color: #241a05;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.popup-dismiss {
-  background: none;
+#supper-popup .popup-cta:hover {
+  background: #d9940f;
+}
+
+#supper-popup .popup-dismiss {
+  display: inline-block;
+  margin: 0;
+  padding: 0;
   border: none;
+  background: none;
   color: #777;
+  font-family: inherit;
+  font-size: 13px;
   text-decoration: underline;
   cursor: pointer;
-  font-size: 13px;
 }

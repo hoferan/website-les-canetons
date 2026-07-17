@@ -22,16 +22,11 @@ final class SignupRepository
             'subtitle'     => 'Sortie du nouveau costume · Soirée guggen',
             'date'         => '2027-11-13',
             'date_display' => '13 novembre 2027',
-            'teaser'       => 'Le 13 novembre 2027, fêtez avec nous les 25 ans '
-                . 'des Canetons ! Au programme : le dévoilement de notre nouveau '
-                . 'costume, un souper d\'anniversaire et une soirée guggen avec '
-                . 'des cliques invitées. Amis et familles, réservez votre place '
-                . 'et votre menu.',
-            'description'  => 'Un grand merci à nos amis et à nos familles ! Le '
-                . '13 novembre 2027, nous fêtons nos 25 ans : dévoilement du '
-                . 'nouveau costume, souper d\'anniversaire et soirée guggen. '
-                . 'Inscrivez-vous ci-dessous pour réserver votre place et votre '
-                . 'menu.',
+            // Two short paragraphs shown identically on the popup, home page and
+            // form: `teaser` (what the event is) then `invitation` (the ask).
+            'teaser'       => 'Fêtez avec nous les 25 ans des Canetons ! Nouveau '
+                . 'costume, un souper d\'anniversaire et une soirée guggen.',
+            'invitation'   => 'Amis et familles, réservez votre place et votre menu.',
         ],
     ];
 

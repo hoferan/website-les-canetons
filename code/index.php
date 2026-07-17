@@ -17,6 +17,7 @@ require 'partials/head.php'; ?>
       <a class="btn-primary" href="signups_admin.php">Voir les inscriptions</a>
     <?php else : ?>
       <p><?= htmlspecialchars($home['teaser']) ?></p>
+      <p><?= htmlspecialchars($home['invitation']) ?></p>
       <a class="btn-primary" href="signup.php">S'inscrire au souper</a>
     <?php endif; ?>
   </div>

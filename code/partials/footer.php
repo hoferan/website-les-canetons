@@ -17,12 +17,13 @@
     <div class="popup-banner">
       <div class="popup-duck">🦆🎉</div>
       <h3><?= htmlspecialchars($popupOccasion['title']) ?></h3>
-      <p><?= htmlspecialchars($popupOccasion['subtitle']) ?></p>
+      <p class="popup-subtitle"><?= htmlspecialchars($popupOccasion['subtitle']) ?></p>
       <p class="popup-date"><?= htmlspecialchars($popupOccasion['date_display']) ?></p>
     </div>
     <div class="popup-body">
       <p><?= htmlspecialchars($popupOccasion['teaser']) ?></p>
-      <a class="btn-primary popup-cta" href="signup.php">S'inscrire au souper</a>
+      <p><?= htmlspecialchars($popupOccasion['invitation']) ?></p>
+      <a class="popup-cta" href="signup.php">S'inscrire au souper</a>
       <button type="button" class="popup-dismiss">Non merci, ne plus afficher</button>
     </div>
   </div>

@@ -59,8 +59,9 @@ final class SignupRepositoryTest extends TestCase
         $this->assertSame('2027-11-13', $o['date']);
         $this->assertSame('13 novembre 2027', $o['date_display']);
         $this->assertArrayHasKey('teaser', $o);
-        $this->assertArrayHasKey('description', $o);
-        $this->assertStringContainsString('13 novembre 2027', $o['teaser']);
+        $this->assertArrayHasKey('invitation', $o);
+        $this->assertStringContainsString('25 ans des Canetons', $o['teaser']);
+        $this->assertStringContainsString('réservez votre place', $o['invitation']);
     }
 
     public function testComputeStatsCarriesEmail(): void
