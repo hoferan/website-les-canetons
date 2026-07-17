@@ -105,6 +105,7 @@ final class SignupRepository
                 'last_name'   => $s['last_name'],
                 'address'     => $s['address'],
                 'phone'       => $s['phone'],
+                'email'       => $s['email'] ?? '',
                 'personCount' => $personCount,
                 'menuCounts'  => $counts,
             ];
@@ -128,17 +129,18 @@ final class SignupRepository
     public function create(array $data): void
     {
         $sql = 'INSERT INTO signups
-                (occasion, first_name, last_name, address, phone, table_name, menus)
-                VALUES (?, ?, ?, ?, ?, ?, ?)';
+                (occasion, first_name, last_name, address, phone, email, table_name, menus)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
         $stmt = $this->db->prepare($sql);
         $menusJson = json_encode(array_values($data['menus']));
         $stmt->bind_param(
-            'sssssss',
+            'ssssssss',
             $data['occasion'],
             $data['first_name'],
             $data['last_name'],
             $data['address'],
             $data['phone'],
+            $data['email'],
             $data['table_name'],
             $menusJson
         );
@@ -167,7 +169,7 @@ final class SignupRepository
     public function allForOccasion(string $occasion): array
     {
         $stmt = $this->db->prepare(
-            'SELECT first_name, last_name, address, phone, table_name, menus
+            'SELECT first_name, last_name, address, phone, email, table_name, menus
              FROM signups WHERE occasion = ? ORDER BY table_name, id'
         );
         $stmt->bind_param('s', $occasion);
@@ -178,5 +180,52 @@ final class SignupRepository
             $r['menus'] = json_decode($r['menus'], true) ?: [];
             return $r;
         }, $rows);
+    }
+
+    /**
+     * Flat rows for the spreadsheet export: a header row followed by one row
+     * per signup with per-menu counts. String fields are neutralized against
+     * spreadsheet formula injection.
+     *
+     * @param array<int,array> $signups each with contact + menus(string[])
+     * @return array<int,array>
+     */
+    public static function exportRows(array $signups): array
+    {
+        $rows = [[
+            'Table', 'Nom', 'Prénom', 'Email', 'Adresse', 'Téléphone',
+            'Viande', 'Enfant', 'Végétarien', 'Total',
+        ]];
+        foreach ($signups as $s) {
+            $counts = self::zeroCounts();
+            foreach ($s['menus'] as $m) {
+                $counts[$m]++;
+            }
+            $rows[] = [
+                self::cellSafe($s['table_name']),
+                self::cellSafe($s['last_name']),
+                self::cellSafe($s['first_name']),
+                self::cellSafe($s['email'] ?? ''),
+                self::cellSafe($s['address']),
+                self::cellSafe($s['phone']),
+                $counts['meat'],
+                $counts['child'],
+                $counts['vegetarian'],
+                count($s['menus']),
+            ];
+        }
+        return $rows;
+    }
+
+    /**
+     * Neutralize spreadsheet formula injection: prefix a leading =, +, -, @
+     * (or control chars) with a quote so the cell is treated as text.
+     */
+    private static function cellSafe(string $value): string
+    {
+        if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value) === 1) {
+            return "'" . $value;
+        }
+        return $value;
     }
 }

@@ -63,6 +63,48 @@ final class SignupRepositoryTest extends TestCase
         $this->assertStringContainsString('13 novembre 2027', $o['teaser']);
     }
 
+    public function testComputeStatsCarriesEmail(): void
+    {
+        $signups = [[
+            'first_name' => 'Marie', 'last_name' => 'Rossier', 'address' => 'A',
+            'phone' => 'p', 'email' => 'marie@example.com',
+            'table_name' => 'Famille Rossier', 'menus' => ['meat', 'child'],
+        ]];
+        $stats = SignupRepository::computeStats($signups);
+        $this->assertSame('marie@example.com', $stats['tables'][0]['signups'][0]['email']);
+    }
+
+    public function testExportRowsHeaderAndValues(): void
+    {
+        $signups = [[
+            'first_name' => 'Marie', 'last_name' => 'Rossier',
+            'address' => '1 rue A', 'phone' => '079', 'email' => 'marie@example.com',
+            'table_name' => 'Famille Rossier', 'menus' => ['meat', 'meat', 'child'],
+        ]];
+        $rows = SignupRepository::exportRows($signups);
+        $this->assertSame(
+            ['Table', 'Nom', 'Prénom', 'Email', 'Adresse', 'Téléphone',
+                'Viande', 'Enfant', 'Végétarien', 'Total'],
+            $rows[0]
+        );
+        $this->assertSame(
+            ['Famille Rossier', 'Rossier', 'Marie', 'marie@example.com',
+                '1 rue A', '079', 2, 1, 0, 3],
+            $rows[1]
+        );
+    }
+
+    public function testExportRowsNeutralizesFormulaInjection(): void
+    {
+        $signups = [[
+            'first_name' => '=cmd', 'last_name' => 'X', 'address' => 'A',
+            'phone' => 'p', 'email' => 'e@e.ch',
+            'table_name' => 'T', 'menus' => ['meat'],
+        ]];
+        $rows = SignupRepository::exportRows($signups);
+        $this->assertSame("'=cmd", $rows[1][2]); // Prénom column, quoted
+    }
+
     /** @return array<int,array> */
     private function sampleSignups(): array
     {

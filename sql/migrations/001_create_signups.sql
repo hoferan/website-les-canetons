@@ -8,6 +8,7 @@ CREATE TABLE `signups` (
   `last_name`  varchar(255) NOT NULL,
   `address`    varchar(255) NOT NULL,
   `phone`      varchar(64)  NOT NULL,
+  `email`      varchar(255) NOT NULL,
   `table_name` varchar(255) NOT NULL,
   `menus`      text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
