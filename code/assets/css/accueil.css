@@ -74,14 +74,42 @@ p1 {
 }
 
 .souper-cta {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.souper-card {
+  max-width: 720px;
+  width: 100%;
   text-align: center;
+  padding: 28px 24px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #fbe7c6, #f7c873);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-.souper-cta h2 {
+.souper-duck {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.souper-card h2 {
   color: #b9760d;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
-.souper-cta p {
-  margin-bottom: 18px;
+.souper-subtitle {
+  color: #7a4e08;
+  margin-bottom: 4px;
+}
+
+.souper-date {
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.souper-card p {
+  margin-bottom: 16px;
 }
