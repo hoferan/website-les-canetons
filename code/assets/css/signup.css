@@ -54,6 +54,50 @@
   font-size: 12px;
 }
 
+.menu-intro {
+  color: #555;
+  margin-bottom: 12px;
+}
+
+.menu-info {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.menu-info-item {
+  background: #faf6ef;
+  border: 1px solid #e7ded1;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.menu-info-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.menu-info-name {
+  font-weight: bold;
+  color: #b9760d;
+}
+
+.menu-info-price {
+  font-weight: bold;
+  color: #241a05;
+  white-space: nowrap;
+}
+
+.menu-info-desc {
+  color: #555;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
 .guest-row {
   display: grid;
   grid-template-columns: 120px 1fr 40px;
@@ -111,6 +155,45 @@
 
 .form-actions {
   margin-top: 20px;
+}
+
+.thanks {
+  text-align: center;
+}
+
+.thanks-icon {
+  font-size: 54px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.thanks h1 {
+  font-size: 30px;
+  margin-bottom: 14px;
+}
+
+.thanks p {
+  max-width: 56ch;
+  margin: 0 auto 12px;
+  color: #555;
+}
+
+.thanks-lead {
+  font-size: 18px;
+  color: #333;
+}
+
+.thanks-date {
+  font-size: 17px;
+}
+
+.thanks-note {
+  font-size: 14px;
+  color: #777;
+}
+
+.thanks .btn-primary {
+  margin-top: 10px;
 }
 
 @media screen and (max-width: 560px) {

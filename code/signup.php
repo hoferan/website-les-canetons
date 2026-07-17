@@ -58,6 +58,21 @@ require 'partials/head.php';
 
     <fieldset>
       <legend>Convives &amp; menus</legend>
+      <p class="menu-intro">
+        Choisissez un menu par personne. Menus et prix indicatifs — les détails
+        définitifs vous seront communiqués.
+      </p>
+      <ul class="menu-info">
+        <?php foreach (SignupRepository::MENU_VALUES as $m) : ?>
+          <li class="menu-info-item">
+            <div class="menu-info-head">
+              <span class="menu-info-name"><?= htmlspecialchars(SignupRepository::MENU_LABELS[$m]) ?></span>
+              <span class="menu-info-price"><?= htmlspecialchars(SignupRepository::MENU_INFO[$m]['price']) ?></span>
+            </div>
+            <p class="menu-info-desc"><?= htmlspecialchars(SignupRepository::MENU_INFO[$m]['description']) ?></p>
+          </li>
+        <?php endforeach; ?>
+      </ul>
       <div id="guests"></div>
       <button type="button" id="add-guest" class="add-guest">＋ Ajouter une personne</button>
       <p class="tally" id="tally"></p>

@@ -64,6 +64,15 @@ final class SignupRepositoryTest extends TestCase
         $this->assertStringContainsString('réservez votre place', $o['invitation']);
     }
 
+    public function testMenuInfoCoversEveryMenuWithDescriptionAndPrice(): void
+    {
+        foreach (SignupRepository::MENU_VALUES as $menu) {
+            $this->assertArrayHasKey($menu, SignupRepository::MENU_INFO);
+            $this->assertNotSame('', SignupRepository::MENU_INFO[$menu]['description']);
+            $this->assertNotSame('', SignupRepository::MENU_INFO[$menu]['price']);
+        }
+    }
+
     public function testComputeStatsCarriesEmail(): void
     {
         $signups = [[

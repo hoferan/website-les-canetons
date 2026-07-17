@@ -10,6 +10,25 @@ final class SignupRepository
         'vegetarian' => 'Végétarien',
     ];
 
+    // What each menu is + its price, shown on the signup form so guests can
+    // choose. PLACEHOLDER copy and prices — the final wording and prices will
+    // be provided later; edit here (single source) when they arrive.
+    public const MENU_INFO = [
+        'meat'       => [
+            'description' => 'Rôti de bœuf, sauce aux morilles, gratin dauphinois '
+                . 'et légumes de saison.',
+            'price'       => 'CHF 45.–',
+        ],
+        'child'      => [
+            'description' => 'Émincé de poulet, frites maison et compote.',
+            'price'       => 'CHF 20.–',
+        ],
+        'vegetarian' => [
+            'description' => 'Risotto aux champignons et légumes rôtis de saison.',
+            'price'       => 'CHF 40.–',
+        ],
+    ];
+
     public const MENU_DEFAULT = 'meat';
 
     public const MAX_GUESTS = 30;
