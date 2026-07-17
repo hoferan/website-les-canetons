@@ -6,7 +6,8 @@ if (!Auth::canViewSummary()) {
     exit('Accès refusé');
 }
 ?>
-<?php $pageTitle = 'Inscriptions — Souper 25 ans';
+<?php $pageTitle = 'Inscriptions — '
+    . SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION]['title'];
 $pageCss = 'signups_admin.css';
 require 'partials/head.php'; ?>
 <?php require 'partials/banner.php'; ?>
