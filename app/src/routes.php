@@ -31,22 +31,28 @@ return function (RouteCollector $r): void {
         'inscriptions_admin'            => 'inscriptions_admin',
     ];
 
+    // GET+POST (not GET-only): a plain .php file under the old Apache setup
+    // ran regardless of HTTP method, and admin.php's native <form method="post">
+    // actions target page routes (/planning_repet, /) directly — page routes
+    // must keep accepting POST to preserve that pre-existing behavior.
+    $pageMethods = ['GET', 'POST'];
+
     foreach ($pages as $route => $file) {
         $path = $route === '' ? '/' : '/' . $route;
-        $r->addRoute('GET', $path, function () use ($file, $route): void {
+        $r->addRoute($pageMethods, $path, function () use ($file, $route): void {
             $GLOBALS['currentRoute'] = $route;
             require __DIR__ . '/../pages/' . $file . '.php';
         });
         if ($route !== '') {
             // Old direct-file URL -> 301 to the clean route.
-            $r->addRoute('GET', '/' . $file . '.php', function () use ($path): void {
+            $r->addRoute($pageMethods, '/' . $file . '.php', function () use ($path): void {
                 header('Location: ' . $path, true, 301);
                 exit;
             });
         }
     }
     // The homepage's old direct-file URL redirects to the root route.
-    $r->addRoute('GET', '/index.php', function (): void {
+    $r->addRoute($pageMethods, '/index.php', function (): void {
         header('Location: /', true, 301);
         exit;
     });
