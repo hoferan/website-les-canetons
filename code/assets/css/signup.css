@@ -59,19 +59,23 @@
   margin-bottom: 12px;
 }
 
+/* Compact, muted reference list — deliberately lighter than the per-person
+   guest rows below so it reads as information, not as a second set of choices. */
 .menu-info {
   list-style: none;
   margin: 0 0 16px;
-  padding: 0;
+  padding: 10px 14px;
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  background: #fcfaf6;
+  border: 1px solid #eee4d5;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
-.menu-info-item {
-  background: #faf6ef;
-  border: 1px solid #e7ded1;
-  border-radius: 8px;
-  padding: 10px 12px;
+.menu-info-item + .menu-info-item {
+  padding-top: 8px;
+  border-top: 1px solid #eee4d5;
 }
 
 .menu-info-head {
@@ -83,19 +87,17 @@
 
 .menu-info-name {
   font-weight: bold;
-  color: #b9760d;
+  color: #8a6a3a;
 }
 
 .menu-info-price {
-  font-weight: bold;
-  color: #241a05;
+  color: #8a6a3a;
   white-space: nowrap;
 }
 
 .menu-info-desc {
-  color: #555;
-  font-size: 14px;
-  margin-top: 4px;
+  color: #888;
+  margin-top: 2px;
 }
 
 .guest-row {
