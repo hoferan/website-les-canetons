@@ -17,7 +17,13 @@ single source of truth for those changes.
 
 ## Local dev
 
-Fresh dev volumes apply these automatically: each migration is mounted into the
-MariaDB init dir in `docker-compose.yml` (after `01-schema.sql` / `02-seed.sql`).
-When you add a new migration, add a matching mount line there too. To re-bootstrap:
-`docker compose down -v && docker compose up -d --build`.
+`docker compose up` runs a one-shot `migrate` service that applies every
+not-yet-applied migration in this directory, in ascending order, and records
+each in a `schema_migrations` table. It is **idempotent** — re-running applies
+nothing new — and runs on every `up`, so a plain `docker compose up` picks up
+new migrations without needing `docker compose down -v`. The `web` service waits
+for `migrate` to finish before serving.
+
+`docker/db/init/01-schema.sql` / `02-seed.sql` remain the fresh-volume baseline
+(existing tables + synthetic seed); the runner applies the numbered migrations
+on top.
