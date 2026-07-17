@@ -4,22 +4,24 @@
 
 <?php // The signup popup targets guests; admins (Team Direction) never see it. ?>
 <?php if (!Auth::canViewSummary()) : ?>
+    <?php $popupOccasion = SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION]; ?>
 <div
   id="supper-popup"
   class="popup-overlay"
   role="dialog"
   aria-modal="true"
-  aria-label="Souper 25 ans des Canetons"
+  aria-label="<?= htmlspecialchars($popupOccasion['title']) ?>"
 >
   <div class="popup-box">
     <button type="button" class="popup-close" aria-label="Fermer">✕</button>
     <div class="popup-banner">
       <div class="popup-duck">🦆🎉</div>
-      <h3>Souper — 25 ans des Canetons</h3>
-      <p>Sortie du nouveau costume</p>
+      <h3><?= htmlspecialchars($popupOccasion['title']) ?></h3>
+      <p><?= htmlspecialchars($popupOccasion['subtitle']) ?></p>
+      <p class="popup-date"><?= htmlspecialchars($popupOccasion['date_display']) ?></p>
     </div>
     <div class="popup-body">
-      <p>Amis et familles, fêtez nos 25 ans avec nous ! Réservez votre place et votre menu.</p>
+      <p><?= htmlspecialchars($popupOccasion['teaser']) ?></p>
       <a class="btn-primary popup-cta" href="signup.php">S'inscrire au souper</a>
       <button type="button" class="popup-dismiss">Non merci, ne plus afficher</button>
     </div>

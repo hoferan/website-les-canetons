@@ -368,6 +368,11 @@ form label.required::before {
   font-size: 20px;
 }
 
+.popup-date {
+  margin-top: 4px;
+  font-weight: bold;
+}
+
 .popup-body {
   padding: 20px;
   text-align: center;
