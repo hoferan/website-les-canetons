@@ -36,7 +36,7 @@ require __DIR__ . '/../partials/head.php'; ?>
 <script src="assets/js/main.js"></script>
 <script>
   // The contact endpoint returns JSON; submit via fetch and redirect to the
-  // confirmation page on success (buildless: a small inline handler).
+  // confirmation page on success (a small inline handler).
   document.getElementById("contact-form").addEventListener("submit", function (e) {
     e.preventDefault();
     fetch("/api/contact", { method: "POST", body: new FormData(this) })

@@ -6,19 +6,13 @@ RewriteEngine on
 # and tells search engines to update their index to the new .php URL.
 RedirectMatch 301 ^(.*)\.html$ $1.php
 
-# Deny direct web access to internal-only paths. pages/ and api/ are only
-# ever reached via require() from the front controller (which has already
-# run bootstrap.php); vendor/ and config.php must never be served directly.
-RewriteRule ^pages/ - [F,L]
-RewriteRule ^api/ - [F,L]
-RewriteRule ^vendor/ - [F,L]
-RewriteRule ^config\.php$ - [F,L]
-
-# Front controller: any request that isn't an existing real file or directory
-# (so assets/css, assets/js, assets/img keep serving directly) is dispatched
-# to index.php, which routes it — see src/routes.php.
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# Front controller: every request is dispatched to index.php EXCEPT real
+# static assets (assets/css, assets/js, assets/img), which are served
+# directly — see src/routes.php. This also means pages/, api/, vendor/, and
+# config.php are never reachable as raw files: a direct hit on any of them
+# isn't a registered route, so the front controller answers with a plain 404
+# instead of executing or serving the file's contents.
+RewriteCond %{REQUEST_URI} !^/assets/
 RewriteRule ^ index.php [L]
 
 # Cache policy for this site.
