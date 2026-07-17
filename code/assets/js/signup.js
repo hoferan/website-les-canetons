@@ -5,7 +5,6 @@
     ["vegetarian", "Végétarien"],
   ];
   var guests = document.getElementById("guests");
-  var tally = document.getElementById("tally");
   var form = document.getElementById("signup-form");
 
   function makeRow() {
@@ -49,14 +48,6 @@
       row.classList.toggle("solo", rows.length === 1);
       counts[row.querySelector(".guest-menu").value]++;
     });
-    tally.textContent =
-      rows.length +
-      " personne(s) — Viande " +
-      counts.meat +
-      ", Enfant " +
-      counts.child +
-      ", Végétarien " +
-      counts.vegetarian;
   }
 
   function addGuest() {

@@ -57,10 +57,9 @@ require 'partials/head.php';
     </fieldset>
 
     <fieldset>
-      <legend>Convives &amp; menus</legend>
+      <legend>Menus</legend>
       <p class="menu-intro">
-        Choisissez un menu par personne. Menus et prix indicatifs — les détails
-        définitifs vous seront communiqués.
+        Choisissez un menu par personne.
       </p>
       <ul class="menu-info">
         <?php foreach (SignupRepository::MENU_VALUES as $m) : ?>
@@ -75,7 +74,6 @@ require 'partials/head.php';
       </ul>
       <div id="guests"></div>
       <button type="button" id="add-guest" class="add-guest">＋ Ajouter une personne</button>
-      <p class="tally" id="tally"></p>
     </fieldset>
 
     <div class="form-actions">
