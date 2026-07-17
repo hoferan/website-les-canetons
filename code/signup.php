@@ -35,6 +35,10 @@ require 'partials/head.php';
           <label for="phone" class="required">Téléphone</label>
           <input type="tel" id="phone" name="phone" required />
         </div>
+        <div class="form-group">
+          <label for="email" class="required">E-mail</label>
+          <input type="email" id="email" name="email" required />
+        </div>
       </div>
       <div class="form-group">
         <label for="table_name" class="required">Table (nom de famille ou nom de table)</label>

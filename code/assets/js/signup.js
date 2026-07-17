@@ -78,6 +78,7 @@
       last_name: form.last_name.value.trim(),
       address: form.address.value.trim(),
       phone: form.phone.value.trim(),
+      email: form.email.value.trim(),
       table_name: form.table_name.value.trim(),
       menus: menus,
     };
