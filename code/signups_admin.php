@@ -18,8 +18,8 @@ require 'partials/head.php'; ?>
       <h1 class="title is-4" id="admin-title">Inscriptions</h1>
     </div>
     <div class="level-right">
-      <a class="button is-primary is-light" href="api/signups.php?format=csv">
-        ⬇ Exporter en CSV
+      <a class="button is-primary is-light" href="api/signups.php?format=xlsx">
+        ⬇ Exporter en Excel
       </a>
     </div>
   </div>
