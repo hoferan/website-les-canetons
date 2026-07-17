@@ -1,4 +1,8 @@
-<?php require 'src/bootstrap.php';
+<?php
+
+use App\Auth;
+
+require 'src/bootstrap.php';
 Auth::requireLoginPage('sinscrire'); ?>
 <?php $pageTitle = "Inscription à l'événement";
 $pageCss = 'authentification.css';

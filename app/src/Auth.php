@@ -1,5 +1,9 @@
 <?php
 
+namespace App;
+
+use App\Repositories\UserRepository;
+
 final class Auth
 {
     // Capability matrix — the single source of truth for what each role may do.

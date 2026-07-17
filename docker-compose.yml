@@ -5,6 +5,7 @@ services:
       - "8090:80"
     volumes:
       - ./app:/var/www/html
+      - ./vendor:/var/www/html/vendor:ro
       - ./config/config.docker.php:/var/www/html/config.php:ro
     depends_on:
       db:

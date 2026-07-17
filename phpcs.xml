@@ -12,10 +12,5 @@
 
     <config name="ignore_warnings_on_exit" value="1"/>
 
-    <rule ref="PSR12">
-        <!-- Buildless app: classes live in the global namespace by design (plain
-             `require` wiring in bootstrap.php, no autoloader). Namespacing would
-             touch every consumer across code/**.php. -->
-        <exclude name="PSR1.Classes.ClassDeclaration.MissingNamespace"/>
-    </rule>
+    <rule ref="PSR12"/>
 </ruleset>

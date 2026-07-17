@@ -1,5 +1,9 @@
 <?php
 
+use App\Auth;
+use App\Database;
+use App\Repositories\EventRepository;
+
 require __DIR__ . '/../src/bootstrap.php';
 header('Content-Type: application/json');
 $repo = new EventRepository(Database::get());

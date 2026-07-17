@@ -1,5 +1,7 @@
 <?php
 
+use App\Auth;
+
 require __DIR__ . '/../src/bootstrap.php';
 Auth::logout();
 header('Content-Type: application/json');

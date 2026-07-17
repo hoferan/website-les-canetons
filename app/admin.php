@@ -1,4 +1,7 @@
 <?php
+
+use App\Auth;
+
 require 'src/bootstrap.php';
 Auth::requireLoginPage('index');
 if (!Auth::canManageEvents()) {

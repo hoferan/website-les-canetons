@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Repositories;
+
 final class ResponseRepository
 {
     public function __construct(private mysqli $db)

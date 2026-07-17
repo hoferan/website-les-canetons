@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Repositories;
+
 final class UserRepository
 {
     public function __construct(private mysqli $db)

@@ -1,5 +1,7 @@
 <?php
 
+namespace App;
+
 final class Database
 {
     private static ?mysqli $conn = null;
