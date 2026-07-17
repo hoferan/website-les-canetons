@@ -11,7 +11,21 @@ $pass = getenv('DB_PASS') ?: 'root';
 $name = getenv('DB_NAME') ?: 'lescanetons';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
-$db = new mysqli($host, $user, $pass, $name);
+
+$attempts = 0;
+$maxAttempts = 30; // ~30s at 1s/attempt, generous for a cold MariaDB init
+while (true) {
+    try {
+        $db = new mysqli($host, $user, $pass, $name);
+        break;
+    } catch (mysqli_sql_exception $e) {
+        if (++$attempts >= $maxAttempts) {
+            fwrite(STDERR, "Could not connect to DB after {$maxAttempts} attempts: {$e->getMessage()}\n");
+            exit(1);
+        }
+        sleep(1);
+    }
+}
 $db->set_charset('utf8mb4');
 
 $db->query(
@@ -38,15 +52,15 @@ foreach ($files as $file) {
     }
     echo "Applying {$version} ...\n";
     $sql = file_get_contents($file);
-    if ($db->multi_query($sql)) {
+    try {
+        $db->multi_query($sql);
         do {
             if ($result = $db->store_result()) {
                 $result->free();
             }
         } while ($db->more_results() && $db->next_result());
-    }
-    if ($db->errno) {
-        fwrite(STDERR, "Migration {$version} failed: {$db->error}\n");
+    } catch (mysqli_sql_exception $e) {
+        fwrite(STDERR, "Migration {$version} failed: {$e->getMessage()}\n");
         exit(1);
     }
     $stmt = $db->prepare('INSERT INTO schema_migrations (version) VALUES (?)');
