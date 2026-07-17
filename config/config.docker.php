@@ -11,4 +11,14 @@ return [
         'name' => 'lescanetons',
         'charset' => 'utf8mb4',
     ],
+    // Local mail goes to Mailpit (no auth, no TLS). View it at localhost:8025.
+    'mail' => [
+        'host'       => 'mailpit',
+        'port'       => 1025,
+        'secure'     => '',
+        'username'   => '',
+        'password'   => '',
+        'from_email' => 'noreply@les-canetons.localhost',
+        'from_name'  => 'Les Canetons de Fribourg',
+    ],
 ];
