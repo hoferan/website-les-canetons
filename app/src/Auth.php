@@ -147,7 +147,7 @@ final class Auth
     public static function requireLoginPage(string $returnTo): void
     {
         if (!self::check()) {
-            header('Location: authentification_inscription.php?returnTo=' . urlencode($returnTo));
+            header('Location: /authentification_inscription?returnTo=' . urlencode($returnTo));
             exit;
         }
     }

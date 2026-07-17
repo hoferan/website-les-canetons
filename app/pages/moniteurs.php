@@ -1,8 +1,8 @@
 <?php $pageTitle = 'Moniteurs';
 $pageCss = 'moniteurs.css';
-require 'partials/head.php'; ?>
-<?php require 'partials/banner.php'; ?>
-<?php require 'partials/navigation.php'; ?>
+require __DIR__ . '/../partials/head.php'; ?>
+<?php require __DIR__ . '/../partials/banner.php'; ?>
+<?php require __DIR__ . '/../partials/navigation.php'; ?>
 
 <section class="moniteurs-section">
   <div class="group-members"></div>
@@ -23,7 +23,7 @@ require 'partials/head.php'; ?>
   </div>
 </section>
 
-<?php require 'partials/footer.php'; ?>
+<?php require __DIR__ . '/../partials/footer.php'; ?>
 <script src="assets/js/session.js"></script>
 <script src="assets/js/main.js"></script>
 </body>

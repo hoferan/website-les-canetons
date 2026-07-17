@@ -1,16 +1,26 @@
-<?php $pageTitle = 'Accueil';
-$pageCss = 'accueil.css';
-require 'partials/head.php'; ?>
-<?php require 'partials/banner.php'; ?>
-<?php require 'partials/navigation.php'; ?>
+<?php
 
-<section class="accueil">
-  <h2>Bienvenue sur notre site</h2>
-  <img src="assets/img/Cindyphotography-128.jpg" alt="Image d'accueil" id="imgaccueil" />
-</section>
+require __DIR__ . '/src/bootstrap.php';
 
-<?php require 'partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-</body>
-</html>
+use FastRoute\Dispatcher;
+use function FastRoute\simpleDispatcher;
+
+$dispatcher = simpleDispatcher(require __DIR__ . '/src/routes.php');
+$routeInfo = $dispatcher->dispatch(
+    $_SERVER['REQUEST_METHOD'],
+    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)
+);
+
+switch ($routeInfo[0]) {
+    case Dispatcher::NOT_FOUND:
+        http_response_code(404);
+        echo '404 Not Found';
+        break;
+    case Dispatcher::METHOD_NOT_ALLOWED:
+        http_response_code(405);
+        echo '405 Method Not Allowed';
+        break;
+    case Dispatcher::FOUND:
+        $routeInfo[1]();
+        break;
+}

@@ -4,7 +4,6 @@ use App\Auth;
 
 /** @var string|null $pageTitle */
 /** @var string $pageCss */
-require_once __DIR__ . '/../src/bootstrap.php'; // ensures Auth + session on every page, incl. public ones
 ?>
 <!DOCTYPE html>
 <html lang="fr">

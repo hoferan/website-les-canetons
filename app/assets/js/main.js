@@ -2,8 +2,8 @@
 // Auth is enforced server-side via the session cookie; everything here is
 // UI-only. Requires session.js to be loaded before this file.
 
-// Current page identifier (without the .php extension), used for returnTo links.
-var currentPage = window.location.pathname.split("/").pop().replace(".php", "");
+// Current page identifier (the route slug), used for returnTo links.
+var currentPage = window.location.pathname.split("/").pop();
 
 document.addEventListener("DOMContentLoaded", function () {
   setupNavToggle();
@@ -44,15 +44,15 @@ function wireAuthControl(el) {
     el.textContent = "Déconnexion";
     el.addEventListener("click", function (e) {
       e.preventDefault();
-      fetch("api/logout.php", { method: "POST" }).finally(function () {
-        window.location.href = "index.php";
+      fetch("/api/logout", { method: "POST" }).finally(function () {
+        window.location.href = "/";
       });
     });
   } else {
     el.textContent = "Connexion";
     el.addEventListener("click", function (e) {
       e.preventDefault();
-      window.location.href = "authentification_inscription.php?returnTo=" + currentPage;
+      window.location.href = "/authentification_inscription?returnTo=" + currentPage;
     });
   }
 }

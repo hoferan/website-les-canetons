@@ -27,7 +27,7 @@ function loadEvents() {
   // Effacer la liste actuelle
   eventsList.innerHTML = "";
 
-  fetch("api/events.php", {
+  fetch("/api/events", {
     method: "GET",
   })
     .then((response) => response.json())
@@ -124,7 +124,7 @@ document.getElementById("event-form").addEventListener("submit", function (e) {
 
   if (eventId) {
     // Update event
-    fetch("api/events.php", {
+    fetch("/api/events", {
       method: "PUT",
       body: JSON.stringify(newEvent),
       headers: {
@@ -142,7 +142,7 @@ document.getElementById("event-form").addEventListener("submit", function (e) {
       });
   } else {
     // Create new event
-    fetch("api/events.php", {
+    fetch("/api/events", {
       method: "POST",
       body: JSON.stringify(newEvent),
       headers: {
@@ -215,7 +215,7 @@ function createDeleteElement(event) {
   deleteElement.innerHTML = "&times;";
   deleteElement.addEventListener("click", function () {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
-      fetch("api/events.php?id=" + event.id, {
+      fetch("/api/events?id=" + event.id, {
         method: "DELETE",
       })
         .then((_) => {

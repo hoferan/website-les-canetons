@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
     submitButton.disabled = true;
 
     // The server records the response for the logged-in user (username from session).
-    fetch("api/responses.php", {
+    fetch("/api/responses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId: eventId, participation: participation }),
@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .then(function (r) {
         if (!r.ok) throw new Error("save-failed");
         alert("Votre choix pour cet événement a été enregistré avec succès!");
-        window.location.href = "sinscrire.php";
+        window.location.href = "/sinscrire";
       })
       .catch(function (error) {
         participationSelect.disabled = false;

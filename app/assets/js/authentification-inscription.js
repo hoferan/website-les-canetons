@@ -1,14 +1,14 @@
 // using session.js
 var urlParams = new URLSearchParams(window.location.search);
 var returnToPage = urlParams.get("returnTo");
-returnToPage = returnToPage ? returnToPage + ".php" : "index.php";
+returnToPage = returnToPage ? "/" + returnToPage : "/";
 
 document.getElementById("login-form").addEventListener("submit", function (event) {
   event.preventDefault();
   var username = document.getElementById("username").value;
   var password = document.getElementById("password").value;
 
-  fetch("api/login.php", {
+  fetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: username, password: password }),

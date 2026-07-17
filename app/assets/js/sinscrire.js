@@ -1,6 +1,6 @@
 // using session.js  (page access is enforced server-side)
 document.addEventListener("DOMContentLoaded", function () {
-  fetch("api/events.php", { method: "GET" })
+  fetch("/api/events", { method: "GET" })
     .then(function (r) {
       return r.json();
     })
@@ -40,7 +40,7 @@ function parseEvents(data) {
       } else {
         respondButton.textContent = "S'inscrire";
         respondButton.addEventListener("click", function () {
-          window.location.href = "inscriptions_utilisateurs.php?id=" + item.id;
+          window.location.href = "/inscriptions_utilisateurs?id=" + item.id;
         });
       }
       inscriptionCell.appendChild(respondButton);
@@ -50,7 +50,7 @@ function parseEvents(data) {
       var summaryButton = document.createElement("button");
       summaryButton.textContent = "Résumé";
       summaryButton.addEventListener("click", function () {
-        window.location.href = "inscriptions_admin.php?id=" + item.id;
+        window.location.href = "/inscriptions_admin?id=" + item.id;
       });
       inscriptionCell.appendChild(summaryButton);
     }

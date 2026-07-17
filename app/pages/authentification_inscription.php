@@ -1,8 +1,8 @@
 <?php $pageTitle = 'Connexion';
 $pageCss = 'authentification.css';
-require 'partials/head.php'; ?>
-<?php require 'partials/banner.php'; ?>
-<?php require 'partials/navigation.php'; ?>
+require __DIR__ . '/../partials/head.php'; ?>
+<?php require __DIR__ . '/../partials/banner.php'; ?>
+<?php require __DIR__ . '/../partials/navigation.php'; ?>
 
 <section class="page1-section">
   <h2>Authentification</h2>
@@ -18,7 +18,7 @@ require 'partials/head.php'; ?>
   </form>
 </section>
 
-<?php require 'partials/footer.php'; ?>
+<?php require __DIR__ . '/../partials/footer.php'; ?>
 <script src="assets/js/session.js"></script>
 <script src="assets/js/main.js"></script>
 <script src="assets/js/authentification-inscription.js"></script>

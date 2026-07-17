@@ -6,10 +6,25 @@ RewriteEngine on
 # and tells search engines to update their index to the new .php URL.
 RedirectMatch 301 ^(.*)\.html$ $1.php
 
-# Cache policy for this buildless site.
+# Deny direct web access to internal-only paths. pages/ and api/ are only
+# ever reached via require() from the front controller (which has already
+# run bootstrap.php); vendor/ and config.php must never be served directly.
+RewriteRule ^pages/ - [F,L]
+RewriteRule ^api/ - [F,L]
+RewriteRule ^vendor/ - [F,L]
+RewriteRule ^config\.php$ - [F,L]
+
+# Front controller: any request that isn't an existing real file or directory
+# (so assets/css, assets/js, assets/img keep serving directly) is dispatched
+# to index.php, which routes it — see src/routes.php.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Cache policy for this site.
 #
-# HTML / CSS / JS are edited in place (no build, no versioned filenames), so we
-# tell browsers to ALWAYS revalidate them with the server before reuse. Apache
+# HTML / CSS / JS are edited in place (no versioned filenames), so we tell
+# browsers to ALWAYS revalidate them with the server before reuse. Apache
 # returns a fast "304 Not Modified" when the file is unchanged, or the new file
 # the moment you deploy one. This means deploys are picked up automatically —
 # visitors do not need to hard-refresh (Ctrl+F5).

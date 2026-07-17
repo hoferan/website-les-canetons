@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  fetch("api/responses.php?eventId=" + encodeURIComponent(eventId), { method: "GET" })
+  fetch("/api/responses?eventId=" + encodeURIComponent(eventId), { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
       const instrumentNames = [

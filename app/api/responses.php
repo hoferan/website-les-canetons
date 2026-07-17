@@ -4,7 +4,6 @@ use App\Auth;
 use App\Database;
 use App\Repositories\ResponseRepository;
 
-require __DIR__ . '/../src/bootstrap.php';
 header('Content-Type: application/json');
 $repo = new ResponseRepository(Database::get());
 $method = $_SERVER['REQUEST_METHOD'];
