@@ -66,11 +66,14 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    // Admin only (Team Direction): totals + list, or CSV export.
+    // Admin only (Team Direction): totals + list, or xlsx export.
     Auth::requireCanViewSummary();
     $signups = $repo->allForOccasion($occasion);
-    if ((string) ($_GET['format'] ?? '') === 'csv') {
-        signups_export_csv($signups);
+    if ((string) ($_GET['format'] ?? '') === 'xlsx') {
+        require __DIR__ . '/../vendor/SimpleXLSXGen.php';
+        $rows = SignupRepository::exportRows($signups);
+        \Shuchkin\SimpleXLSXGen::fromArray($rows)
+            ->downloadAs('inscriptions-souper.xlsx');
         exit;
     }
     $stats = SignupRepository::computeStats($signups);
@@ -81,46 +84,3 @@ if ($method === 'GET') {
 
 http_response_code(405);
 echo json_encode(['error' => 'Méthode non autorisée']);
-
-/**
- * Stream signups as a semicolon-separated CSV (Excel-FR friendly), one row per
- * signup with per-menu counts. Sends its own headers.
- *
- * @param array<int,array> $signups
- */
-function signups_export_csv(array $signups): void
-{
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="inscriptions-souper.csv"');
-    $out = fopen('php://output', 'w');
-    fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel shows accents
-    fputcsv($out, [
-        'Table', 'Nom', 'Prénom', 'Adresse', 'Téléphone',
-        'Viande', 'Enfant', 'Végétarien', 'Total',
-    ], ';');
-    foreach ($signups as $s) {
-        $counts = ['meat' => 0, 'child' => 0, 'vegetarian' => 0];
-        foreach ($s['menus'] as $m) {
-            $counts[$m]++;
-        }
-        fputcsv($out, [
-            csv_safe($s['table_name']), csv_safe($s['last_name']), csv_safe($s['first_name']),
-            csv_safe($s['address']), csv_safe($s['phone']),
-            $counts['meat'], $counts['child'], $counts['vegetarian'],
-            count($s['menus']),
-        ], ';');
-    }
-    fclose($out);
-}
-
-/**
- * Neutralize CSV formula injection: prefix a leading =, +, -, @ (or control
- * chars) with a quote so spreadsheet apps treat the cell as text, not a formula.
- */
-function csv_safe(string $value): string
-{
-    if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value) === 1) {
-        return "'" . $value;
-    }
-    return $value;
-}
