@@ -11,8 +11,10 @@ events and view attendance summaries.
 ## Tech Stack
 
 - **PHP 8.1** (matches prod: PHP 8.1.34), **buildless** — no bundler, no build step, no
-  runtime dependencies. Third-party CSS may be **vendored** as a static file under
-  `code/assets/vendor/` (no CDN, no build). Files are edited in place and deployed as-is.
+  runtime dependencies. Third-party code may be **vendored** as static files under
+  `code/assets/vendor/` (CSS) or `code/vendor/` (dependency-free, single-purpose PHP
+  libraries, e.g. PHPMailer, SimpleXLSXGen) — no CDN, no Composer install and no build
+  step on production. Files are edited/committed and deployed as-is.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `code/assets/` — no build step.
 - **Apache** with `.htaccess` (cache policy) on `easy-hebergement.net` shared hosting.
@@ -108,6 +110,5 @@ A Husky pre-commit hook runs `lint-staged` on staged files automatically
 ## Don'ts
 
 - Never commit `code/config.php` or any production data / DB dump.
-- Never introduce a build step or bundler for the deployed site. (A CSS framework may be
-  used only as a **vendored static file** in `code/assets/vendor/` — no build, no CDN.)
+- Never introduce a build step or bundler for the deployed site, and never require a Composer install on production. (Third-party libraries may be used only as **vendored static files** — CSS under `code/assets/vendor/`, dependency-free PHP under `code/vendor/` — no CDN, no build.)
 - Never store real member data or passwords in seed files.
