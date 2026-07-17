@@ -51,6 +51,18 @@ final class SignupRepositoryTest extends TestCase
         );
     }
 
+    public function testActiveOccasionHasCopyAndDate(): void
+    {
+        $o = SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION];
+        $this->assertSame('Souper des 25 ans des Canetons', $o['title']);
+        $this->assertSame('Sortie du nouveau costume · Soirée guggen', $o['subtitle']);
+        $this->assertSame('2027-11-13', $o['date']);
+        $this->assertSame('13 novembre 2027', $o['date_display']);
+        $this->assertArrayHasKey('teaser', $o);
+        $this->assertArrayHasKey('description', $o);
+        $this->assertStringContainsString('13 novembre 2027', $o['teaser']);
+    }
+
     /** @return array<int,array> */
     private function sampleSignups(): array
     {

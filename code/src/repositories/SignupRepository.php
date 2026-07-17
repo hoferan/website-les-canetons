@@ -18,11 +18,20 @@ final class SignupRepository
 
     public const OCCASIONS = [
         'anniversary-supper' => [
-            'title'       => 'Souper — 25 ans des Canetons',
-            'subtitle'    => 'Sortie du nouveau costume',
-            'description' => 'Un grand merci à nos amis et à nos familles ! Pour fêter '
-                . 'nos 25 ans et dévoiler notre nouveau costume, nous vous invitons à '
-                . 'notre souper. Inscrivez-vous ci-dessous.',
+            'title'        => 'Souper des 25 ans des Canetons',
+            'subtitle'     => 'Sortie du nouveau costume · Soirée guggen',
+            'date'         => '2027-11-13',
+            'date_display' => '13 novembre 2027',
+            'teaser'       => 'Le 13 novembre 2027, fêtez avec nous les 25 ans '
+                . 'des Canetons ! Au programme : le dévoilement de notre nouveau '
+                . 'costume, un souper d\'anniversaire et une soirée guggen avec '
+                . 'des cliques invitées. Amis et familles, réservez votre place '
+                . 'et votre menu.',
+            'description'  => 'Un grand merci à nos amis et à nos familles ! Le '
+                . '13 novembre 2027, nous fêtons nos 25 ans : dévoilement du '
+                . 'nouveau costume, souper d\'anniversaire et soirée guggen. '
+                . 'Inscrivez-vous ci-dessous pour réserver votre place et votre '
+                . 'menu.',
         ],
     ];
 
