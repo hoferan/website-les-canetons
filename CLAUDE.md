@@ -10,12 +10,20 @@ events and view attendance summaries.
 
 ## Tech Stack
 
-- **PHP 8.1** (matches prod: PHP 8.1.34), **buildless** — no framework, no bundler,
-  no runtime dependencies. Files are edited in place and deployed as-is.
+- **PHP 8.1** (matches prod: PHP 8.1.34). `app/src/` classes are PSR-4
+  autoloaded under the `App\` namespace via Composer.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
-- **Vanilla JS + CSS** under `code/assets/` — no build step.
-- **Apache** with `.htaccess` (cache policy) on `easy-hebergement.net` shared hosting.
-- **Deployment:** manual FTP/SFTP upload of `code/`.
+- **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
+  pipeline is a separate, later roadmap item).
+- **Router:** `nikic/fast-route`, dispatched through a single front
+  controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
+- **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
+  `easy-hebergement.net` shared hosting.
+- **Build step:** `npm run build` assembles `app/` + a production-only
+  Composer `vendor/` into a generated `public/` directory — the actual FTP
+  payload. `public/` is git-ignored and never hand-edited.
+- **Deployment:** manual FTP/SFTP upload of `public/`'s contents (built
+  fresh via `npm run build` before each deploy).
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
@@ -44,20 +52,33 @@ Available skills:
 
 ## Architecture
 
-- **`code/` is the exact FTP payload.** Never put dev-only files in it. All tooling
-  lives at the repo root (`composer.json`, `package.json`, `phpcs.xml`, `docker/`,
-  `config/`, `tools/`, `.github/`).
-- **Entry point:** every page includes `partials/head.php`, which requires
-  `code/src/bootstrap.php`. `bootstrap.php` loads `config.php`, connects the DB
-  (`Database`), and starts the session (`Auth`).
-- **No autoloader:** `src/` classes are wired via explicit `require` in `bootstrap.php`.
-- **Auth:** `Auth` holds a capability matrix — `user`/`moderator` may `respond`;
-  `admin` may `manage_events` / `view_summary`. Not a hierarchy. `assets/js/session.js`
-  mirrors it on the client; the server session (`window.__sessionRole`) is source of truth.
-- **API:** `code/api/*.php` return JSON and guard with `Auth::require*`.
-- **Config:** the real `code/config.php` is git-ignored and uploaded via FTP. Create it
-  locally with `cp config/config.example.php code/config.php`. For Docker, the stack
-  mounts `config/config.docker.php` into the container instead.
+- **`app/` is the tracked source; `public/` is the generated FTP payload.**
+  `public/` is produced by `npm run build` and is never hand-edited or committed.
+  Never put dev-only files in `app/`. All tooling lives at the repo root
+  (`composer.json`, `package.json`, `phpcs.xml`, `docker/`, `config/`, `tools/`,
+  `.github/`).
+- **Entry point:** `app/index.php` is the single front controller. It requires
+  `app/src/bootstrap.php` (autoload + DB connect + session start), then
+  dispatches via `nikic/fast-route` using the route table in
+  `app/src/routes.php`. Route handlers `require` the matching file under
+  `app/pages/` or `app/api/` — both blocked from direct web access by
+  `.htaccess`, reachable only through the router.
+- **PSR-4 autoloading:** `app/src/` classes are namespaced under `App\` and
+  autoloaded via Composer (`composer.json`'s `autoload.psr-4`). No manual
+  `require` needed once `vendor/autoload.php` has run (done once, in
+  `bootstrap.php`).
+- **Auth:** `App\Auth` holds a capability matrix — `user`/`moderator` may
+  `respond`; `admin` may `manage_events` / `view_summary`. Not a hierarchy.
+  `assets/js/session.js` mirrors it on the client; the server session
+  (`window.__sessionRole`) is source of truth.
+- **API:** `app/api/*.php` return JSON, reached via `/api/*` clean routes, and
+  guard with `Auth::require*`.
+- **Config:** the real `app/config.php` is git-ignored. Create it locally with
+  `cp config/config.example.php app/config.php`. For Docker, the stack mounts
+  `config/config.docker.php` into the container instead. `npm run build`
+  copies `app/config.php` into `public/config.php` if present — **do not**
+  let this overwrite a production server's `config.php` when FTP-syncing;
+  exclude it from the upload selection.
 
 ## Local Development
 
@@ -89,13 +110,14 @@ A Husky pre-commit hook runs `lint-staged` on staged files automatically
 
 ## Dos
 
-- Keep the site buildless; edit JS/CSS in place.
+- Edit `app/` source in place; run `npm run build` before every FTP deploy.
 - Match production versions (PHP 8.1, MariaDB 10.3).
 - Run `npm run check` before pushing.
-- Put new tooling/config at the repo root, never in `code/`.
+- Put new tooling/config at the repo root, never in `app/`.
+- Add new routes in one place: `app/src/routes.php`.
 
 ## Don'ts
 
-- Never commit `code/config.php` or any production data / DB dump.
-- Never introduce a runtime build step or framework for the deployed site.
+- Never commit `app/config.php`, `public/`, or any production data / DB dump.
+- Never hand-edit `public/` — it's fully regenerated by `npm run build`.
 - Never store real member data or passwords in seed files.

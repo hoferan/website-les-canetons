@@ -48,3 +48,17 @@ jobs:
           node-version: "20"
       - name: Secret / prod-data guard
         run: node tools/secret-guard.mjs
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Node dev tools
+        run: npm ci
+      - name: Build deploy artifact
+        run: npm run build
+      - name: Verify public/ was produced
+        run: test -f public/index.php && test -d public/vendor
