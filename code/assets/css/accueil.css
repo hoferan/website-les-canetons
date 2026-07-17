@@ -74,9 +74,14 @@ p1 {
 }
 
 .souper-cta {
-  padding: 20px;
+  /* Drop the generic <section> chrome (white background, padding, shadow,
+     rounded corners) so only the gradient card shows on the page background. */
   display: flex;
   justify-content: center;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 .souper-card {
