@@ -2,6 +2,9 @@
 
 namespace App;
 
+use mysqli;
+use RuntimeException;
+
 final class Database
 {
     private static ?mysqli $conn = null;

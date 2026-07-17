@@ -2,6 +2,8 @@
 
 namespace App\Repositories;
 
+use mysqli;
+
 final class EventRepository
 {
     public function __construct(private mysqli $db)
