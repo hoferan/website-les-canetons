@@ -3,7 +3,7 @@
 // second composer.json needed). Never hand-edit public/; it's regenerated
 // on every run.
 import { execFileSync } from 'node:child_process';
-import { cpSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const mount = process.cwd().split('\\').join('/');
 
@@ -37,10 +37,31 @@ execFileSync(
 // map for this tree. Regenerate it in place, scoped to public/'s own
 // flattened layout, reusing the packages already installed — no network
 // access, no package re-resolution, just a corrected class map.
-writeFileSync('public/composer.json', JSON.stringify({ autoload: { 'psr-4': { 'App\\': 'src/' } } }, null, 2));
+//
+// This must be the FULL composer.json (require section included), not just
+// the autoload section: `composer dump-autoload` only includes a dependency's
+// own autoload rules (e.g. nikic/fast-route's FastRoute\ namespace) for
+// packages the current composer.json actually requires — a minimal
+// autoload-only composer.json silently drops every vendor package's
+// autoloading, even though the files are still physically installed.
+const rootComposerJson = JSON.parse(readFileSync('composer.json', 'utf8'));
+rootComposerJson.autoload = { 'psr-4': { 'App\\': 'src/' } };
+writeFileSync('public/composer.json', JSON.stringify(rootComposerJson, null, 2));
 execFileSync(
   'docker',
-  ['run', '--rm', '-v', `${mount}:/app`, '-w', '/app/public', 'composer:2', 'dump-autoload', '--optimize', '--no-interaction'],
+  [
+    'run',
+    '--rm',
+    '-v',
+    `${mount}:/app`,
+    '-w',
+    '/app/public',
+    'composer:2',
+    'dump-autoload',
+    '--no-dev',
+    '--optimize',
+    '--no-interaction',
+  ],
   { stdio: 'inherit' }
 );
 rmSync('public/composer.json');
