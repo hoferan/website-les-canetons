@@ -24,7 +24,14 @@ if docker info >/dev/null 2>&1; then
 fi
 
 if ! command -v mariadbd >/dev/null 2>&1 && ! command -v mysqld >/dev/null 2>&1; then
-  DEBIAN_FRONTEND=noninteractive sudo apt-get update -y
+  # `|| true`: some web-session images ship extra PPA sources (e.g. deadsnakes,
+  # ondrej/php) unrelated to this script that may be unreachable under the
+  # session's egress policy. apt-get update fails non-zero on ANY repo error
+  # even when the repos we actually need (Ubuntu main/universe/security)
+  # succeeded, so a hard failure here would abort provisioning over a package
+  # source we never use. The subsequent install still fails loudly if
+  # mariadb-server itself is genuinely unavailable.
+  DEBIAN_FRONTEND=noninteractive sudo apt-get update -y || true
   DEBIAN_FRONTEND=noninteractive sudo apt-get install -y mariadb-server
 fi
 
