@@ -1,5 +1,7 @@
 # Les Canetons de Fribourg — Website
 
+[![CI](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml/badge.svg)](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml)
+
 Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**,
 a Fribourg carnival brass band. Public pages present the band (history, sections,
 committee, sponsors, media, contact). A login-gated members' area lets members
