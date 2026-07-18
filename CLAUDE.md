@@ -117,19 +117,33 @@ A Husky pre-commit hook runs `lint-staged` on staged files automatically
 
 ### Claude Code web sessions (no Docker)
 
-Web sessions have no Docker daemon. `.claude/hooks/session-start.sh` detects
-this (`$CLAUDE_CODE_REMOTE` set, `docker info` failing) and provisions an
-equivalent stack natively instead: MariaDB installed via `apt` and started
-directly (no systemd), `lescanetons` + `lescanetons_test` databases seeded
-from `docker/db/init/*.sql`, `app/config.php` pointed at `127.0.0.1`, and
-`php -S 127.0.0.1:8090 -t app` standing in for the Apache container. The
-`tools/composer.mjs` and `tools/php-in-docker.mjs` wrappers fall back to the
-locally-installed `composer`/`php` the same way, so `npm run lint:php`,
+Web sessions have no Docker daemon. The Docker-free stack is provisioned
+**on-demand**, not at session start: `tools/ensure-dev-stack.sh` (via the
+cross-platform `tools/ensure-dev-stack.mjs` entry) detects a web session
+(`$CLAUDE_CODE_REMOTE=true`, `docker info` failing) and stands up an equivalent
+stack natively — MariaDB installed via `apt` and started directly (no systemd),
+`lescanetons` + `lescanetons_test` databases seeded from `docker/db/init/*.sql`,
+and `app/config.php` pointed at `127.0.0.1`. It is idempotent and a no-op when
+Docker is reachable or outside a web session. It is **not** run from
+`.claude/hooks/session-start.sh` — apt/DB provisioning is slow enough to blow
+the SessionStart hook timeout and stall session init, so the hook only injects
+the superpowers skill and stays fast.
+
+`npm run test:php` runs `ensure-dev-stack` first, then PHPUnit; `npm run serve`
+does the same, then starts `php -S 127.0.0.1:8090 -t app` (the Apache-container
+stand-in). The `tools/composer.mjs` and `tools/php-in-docker.mjs` wrappers fall
+back to the locally-installed `composer`/`php`, so `npm run lint:php`,
 `npm run fix`, and `npm run test:php` all work unchanged. `IntegrationTestCase`
 (in `tests/Integration/`) runs each test in a transaction rolled back in
 `tearDown()`, against `lescanetons_test`, so tests never touch dev data.
-Local Docker Compose dev is unaffected — the hook is a no-op when Docker is
-reachable.
+Local Docker Compose dev is unaffected.
+
+For first-time setup in a web session, run `npm run websession:init` once — it
+chains `npm install`, `npm run php:install`, and `ensure-dev-stack` (installing
+MariaDB, seeding both databases, writing `app/config.php`) in a single
+command, so `npm run check` / `test:php` / `serve` work right after. It's
+idempotent and a no-op outside web sessions beyond the plain installs, so it's
+also safe to run in local Docker dev.
 
 ## Pull Requests
 
