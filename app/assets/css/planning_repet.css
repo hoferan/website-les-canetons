@@ -47,11 +47,14 @@ h1 {
   position: absolute;
   top: 5px;
   right: 20px;
-  font-size: 48px;
-  font-weight: bold;
   color: #57a89d;
   cursor: pointer;
   transition: color 0.3s ease;
+}
+
+.delete-icon .icon {
+  width: 32px;
+  height: 32px;
 }
 
 .delete-icon:hover {
@@ -62,11 +65,14 @@ h1 {
   position: absolute;
   top: 55px;
   right: 20px;
-  font-size: 30px;
-  font-weight: bold;
   color: #57a89d;
   cursor: pointer;
   transition: color 0.3s ease;
+}
+
+.edit-icon .icon {
+  width: 22px;
+  height: 22px;
 }
 
 .edit-icon:hover {

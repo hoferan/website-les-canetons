@@ -135,6 +135,20 @@ header {
 
 /* -- NAVIGATION ----------------------------- */
 
+/* Inline SVG icons (Lucide, vendored via lucide-static) default to inline
+   display, which leaves a small gap below the glyph from text-line baseline
+   alignment; vertical-align removes it. icon-inline additionally nudges an
+   icon that sits next to link text (e.g. "Galerie <icon>") onto the text's
+   baseline. */
+.icon {
+  vertical-align: middle;
+}
+
+.icon-inline {
+  vertical-align: text-bottom;
+  margin-left: 4px;
+}
+
 .nav-toggle {
   display: none; /* desktop: hidden, links shown inline */
   background-color: #555;

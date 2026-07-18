@@ -16,7 +16,23 @@ $active = fn(string $page): string => $current === $page ? 'active' : '';
     aria-expanded="false"
     aria-controls="nav-menu"
   >
-    ☰
+    <svg
+      class="icon"
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    >
+      <path d="M4 5h16" />
+      <path d="M4 12h16" />
+      <path d="M4 19h16" />
+    </svg>
   </button>
   <ul id="nav-menu">
     <li class="<?= $active('') ?>"><a href="/">Accueil</a></li>
@@ -33,7 +49,25 @@ $active = fn(string $page): string => $current === $page ? 'active' : '';
       href="https://www.flickr.com/photos/201962767@N02/collections"
       id="galerie-link"
       target="_blank"
-    >Galerie ↗</a></li>
+    >Galerie
+      <svg
+        class="icon icon-inline"
+        aria-hidden="true"
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M15 3h6v6" />
+        <path d="M10 14 21 3" />
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      </svg>
+    </a></li>
     <li class="<?= $active('multimedia') ?>"><a href="/multimedia">Multimédia</a></li>
     <li class="nav-auth"><a href="#" id="nav-auth-link">Connexion</a></li>
   </ul>
