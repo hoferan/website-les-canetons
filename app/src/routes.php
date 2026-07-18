@@ -51,11 +51,16 @@ return function (RouteCollector $r): void {
             });
         }
     }
-    // The homepage's old direct-file URL redirects to the root route.
-    $r->addRoute($pageMethods, '/index.php', function (): void {
-        header('Location: /', true, 301);
-        exit;
-    });
+    // The homepage's old direct-file URLs redirect to the root route. Both
+    // index.php (old default document) and accueil.php (the homepage's source
+    // file, reached from a legacy accueil.html link via the .html->.php rule)
+    // must land on '/' rather than 404 — the homepage has no '/accueil' route.
+    foreach (['/index.php', '/accueil.php'] as $legacyHome) {
+        $r->addRoute($pageMethods, $legacyHome, function (): void {
+            header('Location: /', true, 301);
+            exit;
+        });
+    }
 
     $apiMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     $apis = ['contact', 'logout', 'events', 'login', 'responses'];
