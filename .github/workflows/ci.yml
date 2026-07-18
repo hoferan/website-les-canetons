@@ -59,7 +59,14 @@ jobs:
           TEST_DB_USER: canetons
           TEST_DB_PASS: canetons
           TEST_DB_NAME: lescanetons_test
-        run: vendor/bin/phpunit
+        run: vendor/bin/phpunit --log-junit=junit.xml
+      - uses: actions/setup-node@v4
+        if: always()
+        with:
+          node-version: "20"
+      - name: Test result summary
+        if: always()
+        run: node tools/phpunit-summary.mjs junit.xml >> "$GITHUB_STEP_SUMMARY"
 
   assets:
     runs-on: ubuntu-latest
