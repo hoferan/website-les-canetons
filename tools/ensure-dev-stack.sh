@@ -75,6 +75,7 @@ if [ ! -f "$PROJECT_DIR/app/config.php" ]; then
 // Mirrors config/config.docker.php but points at the native MariaDB
 // instance provisioned on-demand (no Docker daemon in Claude Code web sessions).
 return [
+    'env' => 'dev',
     'db' => [
         'host' => '127.0.0.1',
         'user' => 'canetons',

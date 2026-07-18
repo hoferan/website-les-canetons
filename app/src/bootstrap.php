@@ -6,8 +6,12 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use App\Auth;
 use App\Database;
+use App\Env;
 
 $config = require __DIR__ . '/../config.php';
+// Record the deployment environment (dev/test/qa/prod) for the env ribbon.
+// Absent/unknown collapses to prod (no ribbon) — see App\Env.
+Env::init($config['env'] ?? null);
 Database::connect($config['db']);
 // Start the session up front (before any page output) so the authenticated
 // role can be read safely everywhere — including public pages whose head.php

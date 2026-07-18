@@ -10,6 +10,13 @@ const mount = process.cwd().split('\\').join('/');
 rmSync('public', { recursive: true, force: true });
 cpSync('app', 'public', { recursive: true });
 
+// config.php is environment-specific and server-owned (real DB creds + env key).
+// Never ship it in the deploy artifact: each server keeps its own, set once by
+// hand, and it's excluded from every upload/promotion. Dropping it here (a local
+// app/config.php gets copied by the recursive cpSync above) keeps public/ a pure,
+// environment-agnostic artifact you can promote test -> qa -> prod unchanged.
+rmSync('public/config.php', { force: true });
+
 execFileSync(
   'docker',
   [

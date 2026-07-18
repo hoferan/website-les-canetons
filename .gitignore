@@ -2,6 +2,12 @@
 config.php
 .env
 .superpowers
+.tmp
+
+# HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
+# offline; usernames exposed). The .htaccess that references them IS tracked.
+# See staging/README.md for how to (re)generate these.
+.htpasswd
 
 # real prod data — never commit (use the synthetic Docker seed instead)
 *.dump.sql
@@ -17,6 +23,9 @@ prod-*.sql
 
 # generated FTP deploy artifact (npm run build); never hand-edit or commit
 /public/
+
+# generated per-env overlay files (npm run build:overlay); never hand-edit or commit
+/dist/
 
 # linter / tool caches
 .php-cs-fixer.cache
