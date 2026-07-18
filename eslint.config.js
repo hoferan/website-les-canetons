@@ -4,7 +4,7 @@ import globals from 'globals';
 export default [
   js.configs.recommended,
   {
-    files: ['code/assets/js/**/*.js'],
+    files: ['app/assets/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'script',
@@ -23,8 +23,8 @@ export default [
     // <script> tags loaded after it on the same page (main.js,
     // planning_repet.js, sinscrire.js) reference it. Excluded from
     // session.js itself, which would otherwise trip no-redeclare.
-    files: ['code/assets/js/**/*.js'],
-    ignores: ['code/assets/js/session.js'],
+    files: ['app/assets/js/**/*.js'],
+    ignores: ['app/assets/js/session.js'],
     languageOptions: {
       globals: { Session: 'readonly' },
     },

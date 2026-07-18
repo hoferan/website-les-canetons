@@ -1,5 +1,6 @@
 <?php
 
+use App\Auth;
 use PHPUnit\Framework\TestCase;
 
 final class AuthTest extends TestCase

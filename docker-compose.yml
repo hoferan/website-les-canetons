@@ -1,12 +1,29 @@
 services:
+  # One-shot init service: installs PHP deps into the shared `vendor` volume
+  # with an autoload map correct for the web container's flattened layout
+  # (App\ -> src/). Runs on every `up`, reconciling the volume to composer.lock,
+  # then exits; web waits for it via service_completed_successfully. This is why
+  # `docker compose up` needs no host-side vendor/ and no manual composer step.
+  vendor:
+    image: composer:2
+    volumes:
+      - ./composer.json:/repo/composer.json:ro
+      - ./composer.lock:/repo/composer.lock:ro
+      - ./docker/web/install-vendor.sh:/install-vendor.sh:ro
+      - vendor:/app/vendor
+    entrypoint: ["sh", "/install-vendor.sh"]
+
   web:
     build: ./docker/web
     ports:
       - "8090:80"
     volumes:
-      - ./code:/var/www/html
+      - ./app:/var/www/html
+      - vendor:/var/www/html/vendor:ro
       - ./config/config.docker.php:/var/www/html/config.php:ro
     depends_on:
+      vendor:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
 
@@ -37,3 +54,4 @@ services:
 
 volumes:
   db_data:
+  vendor:

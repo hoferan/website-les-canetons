@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: every job only reads the repo (checkout + lint/test/build).
+# None write via GITHUB_TOKEN, so restrict it to read-only contents for all jobs.
+permissions:
+  contents: read
+
 jobs:
   php:
     runs-on: ubuntu-latest
@@ -18,7 +23,7 @@ jobs:
         run: composer install --no-interaction --no-progress
       - name: PHP syntax check (php -l)
         run: |
-          find code -name '*.php' -not -path 'code/vendor/*' -not -path 'code/dist/*' -print0 \
+          find app -name '*.php' -print0 \
             | xargs -0 -n1 -P4 php -l
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
@@ -59,7 +64,14 @@ jobs:
           TEST_DB_USER: canetons
           TEST_DB_PASS: canetons
           TEST_DB_NAME: lescanetons_test
-        run: vendor/bin/phpunit
+        run: vendor/bin/phpunit --log-junit=junit.xml
+      - uses: actions/setup-node@v4
+        if: always()
+        with:
+          node-version: "20"
+      - name: Test result summary
+        if: always()
+        run: node tools/phpunit-summary.mjs junit.xml >> "$GITHUB_STEP_SUMMARY"
 
   assets:
     runs-on: ubuntu-latest
@@ -86,3 +98,17 @@ jobs:
           node-version: "20"
       - name: Secret / prod-data guard
         run: node tools/secret-guard.mjs
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Node dev tools
+        run: npm ci
+      - name: Build deploy artifact
+        run: npm run build
+      - name: Verify public/ was produced
+        run: test -f public/index.php && test -d public/vendor

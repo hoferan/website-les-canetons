@@ -15,4 +15,4 @@
 
 - [ ] No real credentials committed (`config.php` stays git-ignored)
 - [ ] No production data / DB dumps committed
-- [ ] `code/` contains only files meant to be deployed via FTP
+- [ ] `app/` contains only files meant to be deployed via FTP (as `public/`, via `npm run build`)

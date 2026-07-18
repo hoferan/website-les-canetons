@@ -1,5 +1,6 @@
 <?php
 
+use App\Database;
 use PHPUnit\Framework\TestCase;
 
 /**

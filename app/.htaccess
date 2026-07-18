@@ -1,0 +1,38 @@
+RewriteEngine on
+
+# Legacy URL redirect. Old .html pages were migrated to .php, so any request
+# for a .html file is permanently redirected (301) to the matching .php file.
+# This keeps old bookmarks, inbound links, and search-engine results working,
+# and tells search engines to update their index to the new .php URL.
+RedirectMatch 301 ^(.*)\.html$ $1.php
+
+# Front controller: every request is dispatched to index.php EXCEPT real
+# static assets (assets/css, assets/js, assets/img), which are served
+# directly — see src/routes.php. This also means pages/, api/, vendor/, and
+# config.php are never reachable as raw files: a direct hit on any of them
+# isn't a registered route, so the front controller answers with a plain 404
+# instead of executing or serving the file's contents.
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteRule ^ index.php [L]
+
+# Cache policy for this site.
+#
+# HTML / CSS / JS are edited in place (no versioned filenames), so we tell
+# browsers to ALWAYS revalidate them with the server before reuse. Apache
+# returns a fast "304 Not Modified" when the file is unchanged, or the new file
+# the moment you deploy one. This means deploys are picked up automatically —
+# visitors do not need to hard-refresh (Ctrl+F5).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|css|js)$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# Images change rarely; let them cache for a day to stay fast. Bump the file
+# name (or clear this rule) if you ever need an image to update immediately.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  <FilesMatch "\.(jpg|jpeg|png|gif|svg|ico|webp)$">
+    ExpiresDefault "access plus 1 day"
+  </FilesMatch>
+</IfModule>

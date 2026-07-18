@@ -1,5 +1,7 @@
 <?php
 
+use App\Repositories\UserRepository;
+
 final class UserRepositoryTest extends IntegrationTestCase
 {
     public function testFindByUsernameReturnsSeededUser(): void

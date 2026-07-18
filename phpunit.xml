@@ -14,7 +14,7 @@
     </testsuites>
     <source>
         <include>
-            <directory>code/src</directory>
+            <directory>app/src</directory>
         </include>
     </source>
 </phpunit>

@@ -1,10 +1,10 @@
-// Full PHP check: `php -l` over every code/**.php, then PHP_CodeSniffer,
+// Full PHP check: `php -l` over every app/**.php, then PHP_CodeSniffer,
 // all in one php:8.1-cli container. `php -l` parse errors surface on stderr.
 import { runInPhp } from './php-in-docker.mjs';
 
 const script = [
   'fail=0',
-  "for f in $(find code -name '*.php' -not -path 'code/vendor/*' -not -path 'code/dist/*'); do",
+  "for f in $(find app -name '*.php'); do",
   '  if ! php -l "$f" >/dev/null; then fail=1; fi',
   'done',
   '[ "$fail" -eq 0 ] || { echo "php -l: syntax errors above"; exit 1; }',

@@ -11,6 +11,13 @@ prod-*.sql
 /node_modules/
 /vendor/
 
+# empty mount-point stub Docker creates when compose mounts the `vendor` volume
+# into the ./app -> /var/www/html mount (docker-compose.yml). Not real content.
+/app/vendor/
+
+# generated FTP deploy artifact (npm run build); never hand-edit or commit
+/public/
+
 # linter / tool caches
 .php-cs-fixer.cache
 .phpcs.cache

@@ -1,5 +1,7 @@
 # Les Canetons de Fribourg — Website
 
+[![CI](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml/badge.svg)](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml)
+
 Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**,
 a Fribourg carnival brass band. Public pages present the band (history, sections,
 committee, sponsors, media, contact). A login-gated members' area lets members
@@ -8,10 +10,12 @@ and views attendance summaries.
 
 ## Tech stack
 
-- **PHP 8.1**, **buildless** — no framework, no bundler, no runtime dependencies.
+- **PHP 8.1**, PSR-4 autoloaded `App\*` classes, routed through a single
+  front controller (`nikic/fast-route`).
 - **MariaDB 10.3** via `mysqli`.
-- **Vanilla JS + CSS** (no build step), served by **Apache** with `.htaccess`.
-- Hosted on `easy-hebergement.net` shared hosting; deployed by **manual FTP** of `code/`.
+- **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
+- Hosted on `easy-hebergement.net` shared hosting; deployed by **manual FTP**
+  of the built `public/` directory (`npm run build`).
 
 ## Quick start (local dev)
 
@@ -27,6 +31,10 @@ docker compose up -d --build
 - Site: <http://localhost:8090>
 - Adminer (DB UI): <http://localhost:8091>
 
+The stack's one-shot `vendor` service installs the app's PHP deps into a shared volume
+(with an autoload map flattened for the container) before `web` starts, so no host-side
+`vendor/` is required to run the site.
+
 Seeded test logins (synthetic data, all passwords `demo`):
 
 | Username | Role |
@@ -40,15 +48,17 @@ Stop with `docker compose down`.
 ## Project structure
 
 ```
-code/          The exact FTP deploy payload — pages, api/, assets/, partials/, src/, .htaccess
+app/           Tracked source — pages/, api/, assets/, partials/, src/ (App\* classes), .htaccess
+public/        Generated FTP deploy payload (npm run build). Git-ignored; never hand-edited.
 config/        Config templates (config.example.php) + local Docker config (config.docker.php)
 docker/        Local dev stack (web Dockerfile, DB schema + synthetic seed)
-tools/         Cross-platform dev scripts (Dockerized PHP lint, secret guard)
+tools/         Cross-platform dev scripts (Dockerized PHP/Composer, build, secret guard)
 docs/          Design specs and implementation plans
 .github/       CI workflow, PR & issue templates
 ```
 
-`code/` contains **only** files that get deployed. All tooling lives at the repo root.
+`app/` is the source you edit. `public/` is what actually gets deployed — always
+rebuild it (`npm run build`) before an FTP upload.
 
 ## Development
 
@@ -62,16 +72,25 @@ for architecture details and conventions.
 
 ## Configuration
 
-The real `code/config.php` holds DB credentials, is **git-ignored**, and is uploaded
-via FTP. Create it locally with:
+The real `app/config.php` holds DB credentials and is **git-ignored**. Create it
+locally with:
 
 ```bash
-cp config/config.example.php code/config.php
+cp config/config.example.php app/config.php
 ```
 
 Local Docker uses `config/config.docker.php` automatically (mounted into the container).
 
 ## Deployment
 
-Buildless — upload the contents of `code/` to the host via FTP/SFTP. There is no build
-step; JS/CSS are edited in place.
+```bash
+npm run build
+```
+
+Upload the contents of the generated `public/` directory to the host via FTP/SFTP.
+`public/` is regenerated fresh on every run — never edit it by hand. When
+syncing, keep the server's existing `config.php` in place (exclude it from the
+upload, or maintain a separate local prod-values copy of `app/config.php` used
+only for from-scratch deploys) — `npm run build` will happily copy whatever
+local `app/config.php` you have, which is a dev convenience, not a production
+config source.

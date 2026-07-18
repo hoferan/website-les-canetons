@@ -1,5 +1,7 @@
 <?php
 
+use App\Repositories\EventRepository;
+
 final class EventRepositoryTest extends IntegrationTestCase
 {
     private function eventById(array $events, int $id): ?array

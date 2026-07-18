@@ -1,5 +1,7 @@
 <?php
 
+use App\Repositories\ResponseRepository;
+
 final class ResponseRepositoryTest extends IntegrationTestCase
 {
     private function responseFor(array $summary, string $username): ?array

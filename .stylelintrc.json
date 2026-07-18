@@ -9,7 +9,7 @@
       true,
       {
         "ignoreTypes": ["/^p1$/"],
-        "message": "p1 is a non-standard tag used intentionally as a custom element in the PHP templates (see code/commencement.php, code/moniteurs.php, code/partials/footer.php); not a typo for <p>."
+        "message": "p1 is a non-standard tag used intentionally as a custom element in the PHP templates (see app/pages/commencement.php, app/pages/moniteurs.php, app/partials/footer.php); not a typo for <p>."
       }
     ]
   }
