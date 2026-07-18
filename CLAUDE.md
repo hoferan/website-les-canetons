@@ -23,10 +23,19 @@ events and view attendance summaries.
   %{ENV:REDIRECT_STATUS} ^$` guard — without it the rewrite to `index.php`
   re-matches itself and loops into a 500. Don't remove it.
 - **Build step:** `npm run build` assembles `app/` + a production-only
-  Composer `vendor/` into a generated `public/` directory — the actual FTP
-  payload. `public/` is git-ignored and never hand-edited.
-- **Deployment:** manual FTP/SFTP upload of `public/`'s contents (built
-  fresh via `npm run build` before each deploy).
+  Composer `vendor/` into a generated `public/` directory — the
+  environment-agnostic code artifact. It deliberately excludes `config.php`
+  (server-owned). `public/` is git-ignored and never hand-edited.
+- **Deployment (promote one artifact):** build `public/` once, upload it to
+  **TEST**, then in WinSCP copy the code **test → qa → prod** so the exact
+  tested bytes reach prod. Every upload/promotion **excludes the three
+  server-owned files** (`.htaccess`, `robots.txt`, `config.php`) — WinSCP file
+  mask `| .htaccess; robots.txt; config.php`. Those per-env files are placed
+  once per server: `npm run build:overlay` generates them into
+  `dist/overlay/<env>/` (test/qa get the auth block auto-merged onto the built
+  front-controller `.htaccess` + a `noindex` `robots.txt`; prod gets the plain
+  `.htaccess`). `config.php` is always set by hand per server. See
+  `staging/README.md`.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
@@ -78,10 +87,11 @@ Available skills:
   guard with `Auth::require*`.
 - **Config:** the real `app/config.php` is git-ignored. Create it locally with
   `cp config/config.example.php app/config.php`. For Docker, the stack mounts
-  `config/config.docker.php` into the container instead. `npm run build`
-  copies `app/config.php` into `public/config.php` if present — **do not**
-  let this overwrite a production server's `config.php` when FTP-syncing;
-  exclude it from the upload selection.
+  `config/config.docker.php` into the container instead. `npm run build` does
+  **not** ship `config.php` into `public/` — it's server-owned (real DB creds +
+  `env` key), set once per server by hand, and excluded from every
+  upload/promotion. So the code artifact is safe to promote test → qa → prod
+  unchanged.
 - **Environments:** `config.php` carries an `'env'` key (`dev` | `test` | `qa` |
   `prod`). `bootstrap.php` feeds it to `App\Env`, which drives the non-prod
   corner ribbon (`app/partials/env_banner.php`, included from `head.php`;

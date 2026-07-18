@@ -24,6 +24,9 @@ prod-*.sql
 # generated FTP deploy artifact (npm run build); never hand-edit or commit
 /public/
 
+# generated per-env overlay files (npm run build:overlay); never hand-edit or commit
+/dist/
+
 # linter / tool caches
 .php-cs-fixer.cache
 .phpcs.cache
