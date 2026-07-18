@@ -283,3 +283,50 @@ form label.required::before {
   color: red;
   margin-right: 4px;
 }
+
+/* -- ENV RIBBON (non-production marker) -----------------------------
+   Diagonal corner ribbon shown on dev/test/qa (never prod — see
+   partials/env_banner.php / App\Env). Fixed to the top-left corner so it
+   stays visible while scrolling. */
+
+.env-ribbon {
+  position: fixed;
+  top: 30px;
+  left: -55px;
+  z-index: 1000;
+  width: 200px;
+  padding: 6px 0;
+  transform: rotate(-45deg);
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 18px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  user-select: none;
+}
+
+.env-ribbon-test {
+  background-color: #e8590c; /* orange */
+}
+
+.env-ribbon-qa {
+  background-color: #0c8599; /* teal */
+}
+
+.env-ribbon-dev {
+  background-color: #495057; /* grey */
+}
+
+@media screen and (max-width: 768px) {
+  .env-ribbon {
+    top: 22px;
+    left: -60px;
+    width: 180px;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+}

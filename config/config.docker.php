@@ -4,6 +4,7 @@
 // secrets. docker-compose mounts it into the web container at
 // /var/www/html/config.php, so it never lives inside app/ on the host.
 return [
+    'env' => 'dev',
     'db' => [
         'host' => 'db',
         'user' => 'canetons',

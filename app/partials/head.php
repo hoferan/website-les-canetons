@@ -18,3 +18,4 @@ use App\Auth;
     <script>window.__sessionRole = <?= json_encode(Auth::role()) ?>;</script>
 </head>
 <body>
+<?php require __DIR__ . '/env_banner.php'; ?>

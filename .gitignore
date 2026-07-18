@@ -2,6 +2,12 @@
 config.php
 .env
 .superpowers
+.tmp
+
+# HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
+# offline; usernames exposed). The .htaccess that references them IS tracked.
+# See staging/README.md for how to (re)generate these.
+.htpasswd
 
 # real prod data — never commit (use the synthetic Docker seed instead)
 *.dump.sql

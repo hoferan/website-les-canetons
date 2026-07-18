@@ -18,7 +18,10 @@ events and view attendance summaries.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
-  `easy-hebergement.net` shared hosting.
+  `easy-hebergement.net` shared hosting. PHP runs as **FastCGI** there, so the
+  front-controller rule in `app/.htaccess` carries a `RewriteCond
+  %{ENV:REDIRECT_STATUS} ^$` guard — without it the rewrite to `index.php`
+  re-matches itself and loops into a 500. Don't remove it.
 - **Build step:** `npm run build` assembles `app/` + a production-only
   Composer `vendor/` into a generated `public/` directory — the actual FTP
   payload. `public/` is git-ignored and never hand-edited.
@@ -79,6 +82,13 @@ Available skills:
   copies `app/config.php` into `public/config.php` if present — **do not**
   let this overwrite a production server's `config.php` when FTP-syncing;
   exclude it from the upload selection.
+- **Environments:** `config.php` carries an `'env'` key (`dev` | `test` | `qa` |
+  `prod`). `bootstrap.php` feeds it to `App\Env`, which drives the non-prod
+  corner ribbon (`app/partials/env_banner.php`, included from `head.php`;
+  styles in `assets/css/main.css`). A missing/unknown value is treated as
+  `prod` (no ribbon), so the live site stays clean by default. The two staging
+  sites (TEST/QA) are private behind HTTP Basic Auth — their access-control
+  overlay and the full deploy layout are documented in `staging/README.md`.
 
 ## Local Development
 
