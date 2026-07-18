@@ -108,6 +108,16 @@ npm run lint:php      # PHP only (php -l sweep + phpcs, Dockerized)
 A Husky pre-commit hook runs `lint-staged` on staged files automatically
 (PHP hunks are linted through the same Docker wrappers).
 
+## Pull Requests
+
+- **Title format:** Conventional Commits — `type(scope): description` (scope optional), matching
+  this repo's existing commit-message convention. Enforced by CI
+  (`.github/workflows/pr-title.yml`); a non-conforming title fails the check.
+  Types: `feat`, `fix`, `chore`, `docs`, `build`, `ci`, `test`, `refactor`, `style`, `perf`.
+  Example: `feat(routing): add clean URLs and old-URL redirects`.
+- **Body:** use `.github/PULL_REQUEST_TEMPLATE.md` (GitHub pre-fills it automatically for new
+  PRs) — fill in every section rather than leaving the placeholder comments unedited.
+
 ## Dos
 
 - Edit `app/` source in place; run `npm run build` before every FTP deploy.
