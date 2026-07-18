@@ -7,7 +7,8 @@
   "scripts": {
     "php:install": "node tools/composer.mjs install --no-interaction",
     "lint:php": "node tools/php-lint.mjs",
-    "test:php": "node tools/composer.mjs exec phpunit",
+    "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
+    "serve": "node tools/ensure-dev-stack.mjs && php -S 127.0.0.1:8090 -t code",
     "lint:js": "eslint code/assets/js",
     "lint:css": "stylelint \"code/assets/css/**/*.css\"",
     "format:check": "prettier --check \"code/assets/**/*.{js,css}\"",
