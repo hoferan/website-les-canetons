@@ -14,6 +14,8 @@ prod-*.sql
 # linter / tool caches
 .php-cs-fixer.cache
 .phpcs.cache
+.phpunit.cache
+.phpunit.result.cache
 
 # OS / editor junk
 .DS_Store
