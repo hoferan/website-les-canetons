@@ -2,6 +2,10 @@
 
 <!-- What does this PR change, and why? -->
 
+## Related issues
+
+<!-- Use a closing keyword (Closes/Fixes/Resolves #123) so the issue auto-closes when this PR merges. Delete this section if not applicable. -->
+
 ## Changes
 
 -
