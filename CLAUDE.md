@@ -82,10 +82,27 @@ npm run php:install   # install PHP dev deps into vendor/ (Dockerized Composer; 
 npm run check         # all checks: php -l + phpcs (Docker), eslint, stylelint, prettier, secret guard
 npm run fix           # auto-fix: phpcbf (Docker) + eslint + stylelint + prettier
 npm run lint:php      # PHP only (php -l sweep + phpcs, Dockerized)
+npm run test:php      # PHPUnit (code/src/**): unit tests + DB-integration tests
 ```
 
 A Husky pre-commit hook runs `lint-staged` on staged files automatically
 (PHP hunks are linted through the same Docker wrappers).
+
+### Claude Code web sessions (no Docker)
+
+Web sessions have no Docker daemon. `.claude/hooks/session-start.sh` detects
+this (`$CLAUDE_CODE_REMOTE` set, `docker info` failing) and provisions an
+equivalent stack natively instead: MariaDB installed via `apt` and started
+directly (no systemd), `lescanetons` + `lescanetons_test` databases seeded
+from `docker/db/init/*.sql`, `code/config.php` pointed at `127.0.0.1`, and
+`php -S 127.0.0.1:8090 -t code` standing in for the Apache container. The
+`tools/composer.mjs` and `tools/php-in-docker.mjs` wrappers fall back to the
+locally-installed `composer`/`php` the same way, so `npm run lint:php`,
+`npm run fix`, and `npm run test:php` all work unchanged. `IntegrationTestCase`
+(in `tests/Integration/`) runs each test in a transaction rolled back in
+`tearDown()`, against `lescanetons_test`, so tests never touch dev data.
+Local Docker Compose dev is unaffected — the hook is a no-op when Docker is
+reachable.
 
 ## Dos
 
