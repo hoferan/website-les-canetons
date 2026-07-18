@@ -12,7 +12,16 @@ RedirectMatch 301 ^(.*)\.html$ $1.php
 # config.php are never reachable as raw files: a direct hit on any of them
 # isn't a registered route, so the front controller answers with a plain 404
 # instead of executing or serving the file's contents.
+#
+# The REDIRECT_STATUS guard is essential on FastCGI hosts (e.g. easy-hebergement,
+# php-cgi/FPM): once Apache has internally rewritten a request to index.php it
+# sets REDIRECT_STATUS, so the rule does NOT match a second time. Without it,
+# `RewriteRule ^ index.php` re-matches the rewritten index.php and loops until
+# Apache aborts the request with 500 ("Request exceeded the limit of 10 internal
+# redirects"). We intentionally keep the catch-all (rather than a !-f/!-d guard)
+# so raw files under pages/, api/, src/, vendor/, and config.php stay unreachable.
 RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.php [L]
 
 # Cache policy for this site.
