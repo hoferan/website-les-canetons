@@ -111,6 +111,13 @@ back to the locally-installed `composer`/`php`, so `npm run lint:php`,
 `tearDown()`, against `lescanetons_test`, so tests never touch dev data.
 Local Docker Compose dev is unaffected.
 
+For first-time setup in a web session, run `npm run websession:init` once — it
+chains `npm install`, `npm run php:install`, and `ensure-dev-stack` (installing
+MariaDB, seeding both databases, writing `code/config.php`) in a single
+command, so `npm run check` / `test:php` / `serve` work right after. It's
+idempotent and a no-op outside web sessions beyond the plain installs, so it's
+also safe to run in local Docker dev.
+
 ## Dos
 
 - Keep the site buildless; edit JS/CSS in place.
