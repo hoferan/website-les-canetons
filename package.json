@@ -8,6 +8,7 @@
     "php:install": "node tools/composer.mjs install --no-interaction",
     "build": "node tools/build.mjs",
     "build:overlay": "node tools/build-overlays.mjs",
+    "deploy:test": "npm run build && node tools/deploy-test.mjs",
     "websession:init": "npm install && npm run php:install && node tools/ensure-dev-stack.mjs",
     "lint:php": "node tools/php-lint.mjs",
     "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "basic-ftp": "^6.0.1",
     "eslint": "^9.9.0",
     "globals": "^15.9.0",
     "husky": "^9.1.0",

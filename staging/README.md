@@ -42,7 +42,13 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the 3 server-owned f
    (`.htaccess`, `robots.txt`, and for test/qa `.htpasswd`), and create
    `config.php` by hand. Re-run `build:overlay` and re-upload only the
    `.htaccess` when `app/.htaccess` or the auth block changes.
-2. **Releasing:** upload `public/` to **TEST**, then in WinSCP copy the code
+2. **Releasing:** upload `public/` to **TEST** — either by hand in WinSCP, or
+   with `npm run deploy:test` (builds + FTP-uploads only new/changed files to
+   TEST, with progress; creds from a git-ignored `.env`, see `.env.example`).
+   Flags: `-- --dry-run` (preview new/changed/unchanged/stale — run before
+   pruning), `-- --prune` (delete remote plain files the build no longer
+   produces; dirs/symlinks and the server-owned files are always kept),
+   `-- --force` (re-upload everything). Then in WinSCP copy the code
    **test → qa → prod** so the exact tested bytes reach prod.
 3. **Always exclude the three server-owned files** from every upload/promotion
    so you never overwrite a server's `.htaccess`/`robots.txt`/`config.php`.

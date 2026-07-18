@@ -36,6 +36,20 @@ events and view attendance summaries.
   front-controller `.htaccess` + a `noindex` `robots.txt`; prod gets the plain
   `.htaccess`). `config.php` is always set by hand per server. See
   `staging/README.md`.
+- **Automated TEST deploy (optional):** `npm run deploy:test` builds then
+  uploads `public/` to the TEST server over plain FTP (creds from a git-ignored
+  `.env`; see `.env.example`), printing per-file progress. It uploads only
+  **new/changed** files (changed = different byte size; FTP timestamps aren't
+  trusted on this host) and never uploads or prunes the server-owned files
+  (`.htaccess`, `robots.txt`, `config.php`, `.htpasswd`). Flags: `-- --dry-run`
+  (print the new/changed/unchanged/stale plan, change nothing — run this before
+  `--prune`), `-- --prune` (also delete remote **plain files** the build no
+  longer produces; directories/symlinks like `cgi-bin` and the protected files
+  are always kept), `-- --force` (re-upload every file, for the rare edit that
+  keeps a file's size identical). TEST only — qa/prod stay manual promotions.
+  The FTP account can also write qa/prod, so the script **hard-refuses** to run
+  unless `FTP_TEST_DIR` points at a path containing `test` — a mistyped dir can
+  never deploy to (or `--prune`!) prod.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
