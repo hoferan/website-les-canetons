@@ -87,6 +87,13 @@ docker compose up -d --build   # site: http://localhost:8090, Adminer: http://lo
 docker compose down            # stop
 ```
 
+The stack's one-shot `vendor` service installs PHP deps into a shared `vendor` volume before
+`web` starts (gated by `depends_on: service_completed_successfully`). It gives that vendor an
+autoload map for the container's flattened layout (`App\ -> src/`, classes at `/var/www/html/src`),
+which the repo-root `vendor/` (`App\ -> app/src/`) does not — see `docker/web/install-vendor.sh`.
+No host-side `vendor/` or manual composer step is needed; changing a dependency is picked up on the
+next `up`.
+
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)
 - `demo.moderator` — moderator (respond)

@@ -31,6 +31,10 @@ docker compose up -d --build
 - Site: <http://localhost:8090>
 - Adminer (DB UI): <http://localhost:8091>
 
+The stack's one-shot `vendor` service installs the app's PHP deps into a shared volume
+(with an autoload map flattened for the container) before `web` starts, so no host-side
+`vendor/` is required to run the site.
+
 Seeded test logins (synthetic data, all passwords `demo`):
 
 | Username | Role |
