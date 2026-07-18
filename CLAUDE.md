@@ -50,6 +50,13 @@ events and view attendance summaries.
   The FTP account can also write qa/prod, so the script **hard-refuses** to run
   unless `FTP_TEST_DIR` points at a path containing `test` — a mistyped dir can
   never deploy to (or `--prune`!) prod.
+- **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
+  runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
+  Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
+  set on the `test` GitHub Environment (Settings → Environments → `test`), where
+  you can also add protection rules. Since that FTP account reaches prod too, the
+  `test`-path guard above applies in CI and `--prune` is never used there. qa and
+  prod remain manual promotions.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
