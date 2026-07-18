@@ -23,6 +23,44 @@ jobs:
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
 
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.3
+        env:
+          MARIADB_DATABASE: lescanetons_test
+          MARIADB_USER: canetons
+          MARIADB_PASSWORD: canetons
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: mysqli
+          tools: composer
+      - name: Install PHP dev tools
+        run: composer install --no-interaction --no-progress
+      - name: Seed test database
+        run: |
+          mysql -h 127.0.0.1 -u root -proot lescanetons_test < docker/db/init/01-schema.sql
+          mysql -h 127.0.0.1 -u root -proot lescanetons_test < docker/db/init/02-seed.sql
+      - name: PHPUnit
+        env:
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_USER: canetons
+          TEST_DB_PASS: canetons
+          TEST_DB_NAME: lescanetons_test
+        run: vendor/bin/phpunit
+
   assets:
     runs-on: ubuntu-latest
     steps:
