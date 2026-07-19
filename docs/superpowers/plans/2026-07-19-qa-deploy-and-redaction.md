@@ -14,7 +14,7 @@
 - **Keep** the provider name `easy-hebergement` / `easy-hebergement.net`.
 - **Keep** all public-page PII in `app/pages/*` (`comite@lescanetons.org`, member names, phone numbers) — it is intentionally published.
 - **Keep** Docker/dev values: container path `/var/www/html`, dev DB user/pass `canetons`, DB names `lescanetons` / `lescanetons_test`.
-- **Redact** (replace with placeholders): hosting account name `lescanetoqg` → `<account>`; absolute server paths under `/var/www/sites/...` → generic placeholder; staging hostnames `test.lescanetons.org` → `<test-host>`, `qa.lescanetons.org` → `<qa-host>`.
+- **Redact** (replace with placeholders): hosting account name `<account>` → `<account>`; absolute server paths under `<abs-server-path>/...` → generic placeholder; staging hostnames `<test-host>` → `<test-host>`, `<qa-host>` → `<qa-host>`.
 - **Working tree only** — no git-history rewrite.
 - Deploy scripts keep the per-target safety guard: the target dir must contain the env name, or the script refuses to run (this FTP account can also reach prod).
 - Placeholder conventions: `<account>`, `<test-host>`, `<qa-host>`, `__HTPASSWD_PATH__`.
@@ -81,7 +81,7 @@ Replace lines 12-18 (the two NOTE comments + directives). Old lines 12-13 and 18
 #       Absolute path confirmed on easy-hebergement.net (2026-07-18).
 ```
 ```apache
-AuthUserFile "/var/www/sites/lescanetoqg/public_html/staging/test.lescanetons.org/.htpasswd"
+AuthUserFile "/absolute/server/path/to/<test-host>/.htpasswd"
 ```
 
 New — comment lines 12-13:
@@ -98,7 +98,7 @@ New — directive line 18:
 AuthUserFile "__HTPASSWD_PATH__"
 ```
 
-Also change the header comment on line 2 from `# TEST / staging site (test.lescanetons.org) — access control` to:
+Also change the header comment on line 2 from `# TEST / staging site (<test-host>) — access control` to:
 
 ```apache
 # TEST / staging site (<test-host>) — access control
@@ -413,13 +413,13 @@ Also update the Development Commands list to mention `deploy:qa` beside `deploy:
 - [ ] **Step 2: Redact hostnames + path in staging/README.md**
 
 Global replacements across `staging/README.md`:
-- `test.lescanetons.org` → `<test-host>`
-- `qa.lescanetons.org` → `<qa-host>`
-- `/var/www/sites/lescanetoqg/public_html/staging/<host>/.htpasswd` → `/absolute/server/path/to/<host>/.htpasswd`
+- `<test-host>` → `<test-host>`
+- `<qa-host>` → `<qa-host>`
+- `/absolute/server/path/to/<host>/.htpasswd` → `/absolute/server/path/to/<host>/.htpasswd`
 
 Run:
 ```bash
-sed -i 's#test\.lescanetons\.org#<test-host>#g; s#qa\.lescanetons\.org#<qa-host>#g; s#/var/www/sites/lescanetoqg/public_html/staging/<host>/\.htpasswd#/absolute/server/path/to/<host>/.htpasswd#g' staging/README.md
+sed -i 's#<test-host>#<test-host>#g; s#<qa-host>#<qa-host>#g; s#/absolute/server/path/to/<host>/\.htpasswd#/absolute/server/path/to/<host>/.htpasswd#g' staging/README.md
 ```
 
 - [ ] **Step 3: Document the token mechanism + `qa` environment in staging/README.md**
@@ -448,7 +448,7 @@ deployed by CI.
 - [ ] **Step 4: Verify these docs are clean**
 
 ```bash
-grep -nE 'lescanetoqg|/var/www/sites|test\.lescanetons\.org|qa\.lescanetons\.org' CLAUDE.md staging/README.md
+grep -nE '<account>|<abs-server-path>|<test-host>|<qa-host>' CLAUDE.md staging/README.md
 ```
 Expected: no output.
 
@@ -469,7 +469,7 @@ git commit -m "docs: document deploy:qa + qa environment; redact staging host/pa
 
 ```bash
 git ls-files | grep -vE '^(vendor/|package-lock.json|composer.lock)' \
-  | xargs grep -nEI 'lescanetoqg|/var/www/sites|test\.lescanetons\.org|qa\.lescanetons\.org' 2>/dev/null \
+  | xargs grep -nEI '<account>|<abs-server-path>|<test-host>|<qa-host>' 2>/dev/null \
   | grep -avE '\.(jpg|jpeg|png|gif|ico)$' \
   || echo "CLEAN: no redact-target strings remain"
 ```

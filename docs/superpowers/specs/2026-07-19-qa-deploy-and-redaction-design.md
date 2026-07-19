@@ -98,9 +98,9 @@ once e2e passes against TEST.
 
 | Token | Action |
 | ----- | ------ |
-| hosting account name `lescanetoqg` | replace with placeholder `<account>` |
-| absolute path `/var/www/sites/lescanetoqg/public_html/...` | genericize (see 4.2 for the functional `.htaccess` case; prose → `/absolute/server/path/to/<host>/.htpasswd`) |
-| staging hostnames `test.lescanetons.org` / `qa.lescanetons.org` (incl. `https://`) | `<test-host>` / `<qa-host>` |
+| hosting account name `<account>` | replace with placeholder `<account>` |
+| absolute path `/absolute/server/path/to/...` | genericize (see 4.2 for the functional `.htaccess` case; prose → `/absolute/server/path/to/<host>/.htpasswd`) |
+| staging hostnames `<test-host>` / `<qa-host>` (incl. `https://`) | `<test-host>` / `<qa-host>` |
 | provider `easy-hebergement(.net)` | **keep** |
 | `comite@lescanetons.org`, member names/phones in `app/pages/*` | **keep** |
 | Docker container path `/var/www/html`, dev DB creds `canetons`, DB names | **keep** (stock image path / throwaway dev values) |
@@ -148,7 +148,7 @@ sensitive strings.
 
 Re-run the discovery greps and assert **zero** matches across tracked files
 (excluding `vendor/`, `package-lock.json`, `composer.lock`) for:
-`lescanetoqg`, `/var/www/sites`, `test.lescanetons.org`, `qa.lescanetons.org`.
+`<account>`, `<abs-server-path>`, `<test-host>`, `<qa-host>`.
 `easy-hebergement` and the `app/pages/*` PII are expected to remain.
 
 ## 5. Testing
