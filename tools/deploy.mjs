@@ -285,7 +285,12 @@ async function main() {
     process.exit(1);
   }
 
-  loadDotEnv();
+  // Env-specific values (FTP dir, migrate token, site URL, htpasswd path) live
+  // in .env.<target>; shared secrets (FTP host/user/pass) in .env. Load the
+  // env-specific file first — loadDotEnv never overwrites an already-set var, so
+  // env-specific wins and .env fills in the shared rest.
+  loadDotEnv(`.env.${target}`);
+  loadDotEnv('.env');
   const marker = writeDeploymentMarker(target);
   const local = walk(LOCAL_ROOT).sort((a, b) => a.rel.localeCompare(b.rel));
   console.log(`  marker: ${MARKER} @ ${marker.shortCommit} (${marker.deployedAt})`);

@@ -14,7 +14,14 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 
 import { loadDotEnv } from './dotenv.mjs';
 
-loadDotEnv();
+// Per-env values (e.g. HTPASSWD_PATH_TEST/HTPASSWD_PATH_QA) live in .env.<env>;
+// load every per-env file first, then the shared .env base. loadDotEnv never
+// overwrites an already-set var (first-wins), and the suffixed keys are
+// distinct per env, so loading all of them causes no collisions.
+for (const e of ['test', 'qa', 'prod']) {
+  loadDotEnv(`.env.${e}`);
+}
+loadDotEnv('.env');
 
 const ENVS = ['test', 'qa', 'prod'];
 
