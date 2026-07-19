@@ -31,10 +31,12 @@
 // initial setup), this only warns — the site can't run either way, deployed
 // code or not, so blocking wouldn't add protection there.
 import ftp from 'basic-ftp';
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import Engine from 'php-parser';
 import { loadDotEnv } from './dotenv.mjs';
 
 const LOCAL_ROOT = 'public';
@@ -48,24 +50,33 @@ const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd']
 const MARKER = 'deployment.json';
 const ALWAYS_UPLOAD = new Set([MARKER]);
 
-const args = process.argv.slice(2);
-const DRY_RUN = args.includes('--dry-run');
-const PRUNE = args.includes('--prune');
-const FORCE = args.includes('--force');
-
 // First non-flag arg selects the target environment.
 const TARGETS = {
   test: { dirVar: 'FTP_TEST_DIR', guard: /(^|[/.])test([/.]|$)/i },
   qa: { dirVar: 'FTP_QA_DIR', guard: /(^|[/.])qa([/.]|$)/i },
   prod: { dirVar: 'FTP_PROD_DIR', guard: /(^|[/.])prod([/.]|$)/i },
 };
-const target = args.find((a) => !a.startsWith('--'));
-if (!target || !TARGETS[target]) {
-  console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force]`);
-  process.exit(1);
+
+// Parse CLI args (target + flags) at run time, not import time, so this module
+// can be imported (e.g. by a test of configKeyPaths) without CLI side effects.
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const target = args.find((a) => !a.startsWith('--'));
+  if (!target || !TARGETS[target]) {
+    console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force]`);
+    process.exit(1);
+  }
+  const { dirVar, guard } = TARGETS[target];
+  return {
+    target,
+    DRY_RUN: args.includes('--dry-run'),
+    PRUNE: args.includes('--prune'),
+    FORCE: args.includes('--force'),
+    dirVar,
+    guard,
+    LABEL: target.toUpperCase(),
+  };
 }
-const { dirVar, guard } = TARGETS[target];
-const LABEL = target.toUpperCase();
 
 // --- local file walk: relative posix path + size + mtime, excluding PROTECTED
 function walk(dir, base = dir) {
@@ -133,28 +144,63 @@ function humanBytes(n) {
 
 // Flattens a config.php array to a sorted list of dotted key paths (e.g.
 // "db.host", "features.souper_signup") — never the values, so secrets never
-// appear in deploy output. Evaluated with a local `php`, not the remote host.
-const FLATTEN_KEYS_PHP = `
-function lc_flatten_keys(array $a, string $prefix = ''): array {
-    $out = [];
-    foreach ($a as $k => $v) {
-        $key = $prefix === '' ? (string) $k : $prefix . '.' . $k;
-        if (is_array($v)) {
-            $out = array_merge($out, lc_flatten_keys($v, $key));
-        } else {
-            $out[] = $key;
-        }
-    }
-    return $out;
+// appear in deploy output. The file is *parsed* to an AST (php-parser) and its
+// top-level `return [ ... ]` walked statically; it is never evaluated, so this
+// needs no `php` binary and never executes the config.php we just fetched off
+// the server. It assumes config.php is a plain literal array (as it always is —
+// see config/config.example.php): array keys must be string/int literals. Any
+// dynamic construct throws a clear error rather than silently under-reporting
+// keys. (An empty nested array `[]` contributes no keys — matching how a
+// recursive flatten drops a branch with nothing in it.)
+const phpEngine = new Engine({ ast: { withPositions: false }, parser: { extractDoc: false } });
+
+// Resolve an array-entry key node to its literal string form. PHP arrays index
+// unkeyed entries by a running integer (max int key seen so far + 1, from 0),
+// so we track that to stay faithful to how PHP would key a list-style array.
+function literalKey(node, autoIndex) {
+  if (node == null) {
+    return { key: String(autoIndex.next), next: autoIndex.next + 1 };
+  }
+  if (node.kind === 'string') {
+    return { key: String(node.value), next: autoIndex.next };
+  }
+  if (node.kind === 'number' && Number.isInteger(Number(node.value))) {
+    const n = Number(node.value);
+    return { key: String(n), next: Math.max(autoIndex.next, n + 1) };
+  }
+  throw new Error(`Unsupported config key: expected a string/int literal, got "${node.kind}".`);
 }
-$paths = lc_flatten_keys(require $argv[1]);
-sort($paths);
-echo implode("\\n", $paths);
-`;
+
+// Recursively collect dotted key paths from a php-parser `array` node.
+function arrayKeyPaths(arrayNode, prefix, out) {
+  const autoIndex = { next: 0 };
+  for (const item of arrayNode.items) {
+    if (item.kind !== 'entry' || item.unpack) {
+      throw new Error(`Unsupported config construct: "${item.unpack ? 'spread' : item.kind}" (expected a plain array entry).`);
+    }
+    const { key, next } = literalKey(item.key, autoIndex);
+    autoIndex.next = next;
+    const full = prefix === '' ? key : `${prefix}.${key}`;
+    if (item.value && item.value.kind === 'array') {
+      arrayKeyPaths(item.value, full, out); // empty array => contributes nothing
+    } else {
+      out.push(full);
+    }
+  }
+  return out;
+}
 
 function configKeyPaths(phpFilePath) {
-  const out = execFileSync('php', ['-r', FLATTEN_KEYS_PHP, '--', phpFilePath], { encoding: 'utf8' }).trim();
-  return out === '' ? [] : out.split('\n');
+  const src = readFileSync(phpFilePath, 'utf8');
+  const program = phpEngine.parseCode(src, phpFilePath);
+  const ret = program.children.find((n) => n.kind === 'return');
+  if (!ret || !ret.expr) {
+    throw new Error(`${phpFilePath}: expected a top-level "return [ ... ];".`);
+  }
+  if (ret.expr.kind !== 'array') {
+    throw new Error(`${phpFilePath}: top-level return is not an array literal — cannot read config key shape statically.`);
+  }
+  return arrayKeyPaths(ret.expr, '', []).sort();
 }
 
 // Pre-flight: compare the remote config.php's key *shape* (never its values)
@@ -204,6 +250,8 @@ async function checkConfigShape(client, remoteRoot, label) {
 }
 
 async function main() {
+  const { target, DRY_RUN, PRUNE, FORCE, dirVar, guard, LABEL } = parseArgs();
+
   if (!existsSync(LOCAL_ROOT)) {
     console.error(`No ${LOCAL_ROOT}/ found — run "npm run build" first.`);
     process.exit(1);
@@ -339,7 +387,13 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`\nDeploy failed: ${err.message}`);
-  process.exit(1);
-});
+// Run only when invoked directly (node tools/deploy.mjs ...), not when imported
+// (e.g. by a test exercising configKeyPaths in isolation).
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(`\nDeploy failed: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+export { configKeyPaths };

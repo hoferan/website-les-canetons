@@ -67,8 +67,12 @@ events and view attendance summaries.
   fails that server's deploy instead of silently misbehaving. `--dry-run`
   reports the same drift without refusing. If `config.php` can't be fetched
   at all (a brand-new environment before initial setup), this only warns.
-  Requires `php` on PATH (CI's deploy jobs set it up via `shivammathur/setup-php`
-  alongside Node).
+  The shape is read by *parsing* each `config.php` to an AST (`php-parser`, a
+  pure-JS devDependency) and walking its top-level `return [ ... ]` — the file
+  is never evaluated, so this needs no `php` binary and never executes the
+  fetched server config. It assumes `config.php` stays a literal array (as it
+  always is); a dynamic construct throws a clear error instead of under-reporting
+  keys.
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
