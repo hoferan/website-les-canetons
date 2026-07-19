@@ -17,11 +17,11 @@ the single source of truth for those changes.
   `npm run dbmigrate:<env>`. Remote DB login from CI/local is blocked by the
   host, so migrations run on the server where localhost DB access works. A
   failed migration fails the deploy.
-- **CI status:** TEST auto-applies migrations in the CI `deploy-test` job today.
-  QA and PROD currently use `npm run dbmigrate:qa` / `dbmigrate:prod` (locally or
-  manually); wiring them into the CI `deploy-qa` / `deploy-prod` jobs — with PROD
-  reporting pending via `dbmigrate:prod --dry-run` before applying inside the
-  manual prod approval gate — is the next phase.
+- **CI:** each deploy job (`deploy-test` / `deploy-qa` / `deploy-prod` in
+  `ci.yml`) applies migrations as a step after the upload. PROD first runs
+  `dbmigrate:prod --dry-run` (reports the pending list in the job log), then
+  applies — both inside the manually-approved prod job. TEST/QA also send the
+  staging Basic Auth credentials; PROD has none.
 
 ## Authoring rules (required)
 
