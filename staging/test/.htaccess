@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# TEST / staging site (test.lescanetons.org) — access control
+# TEST / staging site (<test-host>) — access control
 # ---------------------------------------------------------------------------
 
 # --- Keep search engines out (belt-and-suspenders; Basic Auth already blocks
@@ -9,13 +9,14 @@
 </IfModule>
 
 # --- HTTP Basic Auth for the whole staging site ----------------------------
-# NOTE: AuthUserFile requires an ABSOLUTE server path, which differs per host.
-#       Absolute path confirmed on easy-hebergement.net (2026-07-18).
+# NOTE: AuthUserFile needs an ABSOLUTE server path (host-specific). The real
+#       path is injected from HTPASSWD_PATH_TEST (.env) by build-overlays.mjs,
+#       replacing the __HTPASSWD_PATH__ token below — see staging/README.md.
 # NOTE: the referenced .htpasswd is git-ignored (it holds credentials) and must
 #       be created/uploaded by hand — see staging/README.md.
 AuthType Basic
 AuthName "Les Canetons — TEST (acces restreint)"
-AuthUserFile "/var/www/sites/lescanetoqg/public_html/staging/test.lescanetons.org/.htpasswd"
+AuthUserFile "__HTPASSWD_PATH__"
 Require valid-user
 
 # --- Never serve the auth/control files themselves -------------------------

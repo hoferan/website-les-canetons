@@ -12,6 +12,10 @@
 // config.php is deliberately NOT emitted — it is server-owned and set by hand.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
+import { loadDotEnv } from './dotenv.mjs';
+
+loadDotEnv();
+
 const ENVS = ['test', 'qa', 'prod'];
 
 const requested = process.argv.slice(2).filter((a) => a !== 'all');
@@ -27,7 +31,19 @@ const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
 
 /** test/qa .htaccess: auth overlay first, then the built front controller. */
 function mergedHtaccess(env) {
-  const auth = readFileSync(`staging/${env}/.htaccess`, 'utf8').trimEnd();
+  let auth = readFileSync(`staging/${env}/.htaccess`, 'utf8').trimEnd();
+  if (auth.includes('__HTPASSWD_PATH__')) {
+    const pathVar = `HTPASSWD_PATH_${env.toUpperCase()}`;
+    const real = process.env[pathVar];
+    if (real) {
+      auth = auth.split('__HTPASSWD_PATH__').join(real);
+    } else {
+      console.warn(
+        `  ! ${pathVar} not set — leaving __HTPASSWD_PATH__ placeholder in ` +
+          `${env}/.htaccess (set it in .env, or fill the path on the server).`
+      );
+    }
+  }
   return (
     `${auth}\n\n` +
     '# ---------------------------------------------------------------------------\n' +
