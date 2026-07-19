@@ -1,22 +1,24 @@
-// Deploys the built code artifact (public/) to the TEST staging server over
+// Deploys the built code artifact (public/) to a staging server (TEST or QA) over
 // plain FTP. Uploads only new/changed files — "changed" = a different byte size
 // on the server (FTP timestamps are unreliable on this host, so we don't trust
 // them). Use --force to re-upload everything (needed for the rare edit that
 // keeps a file's size identical). With --prune it also removes remote files the
 // build no longer produces. The server-owned files
 // (.htaccess, robots.txt, config.php, .htpasswd) are NEVER uploaded and NEVER
-// pruned, so a deploy can't clobber TEST's access-control overlay or DB config.
+// pruned, so a deploy can't clobber the access-control overlay or DB config.
 //
-//   npm run deploy:test               # upload new/changed files
-//   npm run deploy:test -- --dry-run  # show the plan (new/changed/unchanged/stale), change nothing
-//   npm run deploy:test -- --prune    # also delete remote files not in public/
-//   npm run deploy:test -- --force    # re-upload every file, even unchanged ones
+//   npm run deploy:test               # upload new/changed files to TEST
+//   npm run deploy:qa                 # upload new/changed files to QA
+//   node tools/deploy.mjs <target> -- --dry-run  # show the plan, change nothing
+//   node tools/deploy.mjs <target> -- --prune    # also delete remote files not in public/
+//   node tools/deploy.mjs <target> -- --force    # re-upload every file, even unchanged ones
 //
-// Credentials come from a git-ignored .env (see .env.example). TEST only, on
+// Credentials come from a git-ignored .env (see .env.example). test/qa only, on
 // purpose — prod stays a manual promotion.
 import ftp from 'basic-ftp';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { loadDotEnv } from './dotenv.mjs';
 
 const LOCAL_ROOT = 'public';
 
@@ -28,29 +30,18 @@ const DRY_RUN = args.includes('--dry-run');
 const PRUNE = args.includes('--prune');
 const FORCE = args.includes('--force');
 
-// --- minimal .env loader (no dependency) ----------------------------------
-function loadDotEnv() {
-  if (!existsSync('.env')) {
-    return;
-  }
-  for (const line of readFileSync('.env', 'utf8').split(/\r?\n/)) {
-    if (line.trimStart().startsWith('#')) {
-      continue;
-    }
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
-    if (!m) {
-      continue;
-    }
-    const key = m[1];
-    let val = m[2];
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-      val = val.slice(1, -1);
-    }
-    if (process.env[key] === undefined) {
-      process.env[key] = val;
-    }
-  }
+// First non-flag arg selects the target environment.
+const TARGETS = {
+  test: { dirVar: 'FTP_TEST_DIR', guard: /(^|[/.])test([/.]|$)/i },
+  qa: { dirVar: 'FTP_QA_DIR', guard: /(^|[/.])qa([/.]|$)/i },
+};
+const target = args.find((a) => !a.startsWith('--'));
+if (!target || !TARGETS[target]) {
+  console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force]`);
+  process.exit(1);
 }
+const { dirVar, guard } = TARGETS[target];
+const LABEL = target.toUpperCase();
 
 // --- local file walk: relative posix path + size + mtime, excluding PROTECTED
 function walk(dir, base = dir) {
@@ -99,11 +90,11 @@ async function main() {
   loadDotEnv();
   const local = walk(LOCAL_ROOT).sort((a, b) => a.rel.localeCompare(b.rel));
 
-  console.log(`TEST deploy — ${local.length} files in ${LOCAL_ROOT}/`);
+  console.log(`${LABEL} deploy — ${local.length} files in ${LOCAL_ROOT}/`);
   console.log(`  protected (never uploaded/pruned): ${[...PROTECTED].join(', ')}`);
   console.log(`  flags: dry-run=${DRY_RUN ? 'ON' : 'off'}  prune=${PRUNE ? 'ON' : 'off'}  force=${FORCE ? 'ON' : 'off'}`);
 
-  const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_TEST_DIR'].filter((k) => !process.env[k]);
+  const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', dirVar].filter((k) => !process.env[k]);
   if (missing.length) {
     const msg = `Missing FTP settings: ${missing.join(', ')} — set them in .env (see .env.example).`;
     if (DRY_RUN) {
@@ -118,25 +109,26 @@ async function main() {
     process.exit(1);
   }
 
-  const { FTP_HOST, FTP_TEST_DIR } = process.env;
+  const { FTP_HOST } = process.env;
+  const remoteRoot = process.env[dirVar];
 
-  // Safety: this FTP account also has write access to qa and prod. Refuse to run
-  // unless the target path clearly points at the TEST site, so a mistyped
-  // FTP_TEST_DIR (or a stray secret) can never deploy to — or --prune! — prod.
-  if (!/(^|[/.])test([/.]|$)/i.test(FTP_TEST_DIR)) {
-    console.error(`\nRefusing to run: FTP_TEST_DIR="${FTP_TEST_DIR}" does not look like the TEST target.`);
-    console.error('This account can reach qa/prod too, so deploy-test only runs against a path containing "test".');
+  // Safety: this FTP account can also write qa and prod. Refuse unless the
+  // target path clearly points at the intended env, so a mistyped dir can never
+  // deploy to — or --prune! — the wrong environment.
+  if (!guard.test(remoteRoot)) {
+    console.error(`\nRefusing to run: ${dirVar}="${remoteRoot}" does not look like the ${LABEL} target.`);
+    console.error(`This account can reach other environments too, so deploy only runs against a path matching "${target}".`);
     process.exit(1);
   }
 
-  console.log(`  target: ${FTP_HOST} ${FTP_TEST_DIR}\n`);
+  console.log(`  target: ${FTP_HOST} ${remoteRoot}\n`);
 
   const client = new ftp.Client();
   try {
     await client.access({ host: FTP_HOST, user: process.env.FTP_USER, password: process.env.FTP_PASS, secure: false });
-    await client.ensureDir(FTP_TEST_DIR);
+    await client.ensureDir(remoteRoot);
 
-    const remote = await listRemote(client, FTP_TEST_DIR);
+    const remote = await listRemote(client, remoteRoot);
 
     // Classify each local file against the remote copy.
     const newFiles = [];
@@ -188,7 +180,7 @@ async function main() {
     }
     let done = 0;
     for (const [d, files] of byDir) {
-      const remoteDir = d === '.' ? FTP_TEST_DIR : `${FTP_TEST_DIR}/${d}`;
+      const remoteDir = d === '.' ? remoteRoot : `${remoteRoot}/${d}`;
       await client.ensureDir(remoteDir);
       for (const f of files) {
         done++;
@@ -201,12 +193,12 @@ async function main() {
     if (PRUNE) {
       for (const rel of stale) {
         console.log(`  removing ${rel}`);
-        await client.remove(`${FTP_TEST_DIR}/${rel}`);
+        await client.remove(`${remoteRoot}/${rel}`);
       }
       console.log(`Pruned ${stale.length} file(s).`);
     }
 
-    console.log('\nTEST deploy complete.');
+    console.log(`\n${LABEL} deploy complete.`);
   } finally {
     client.close();
   }

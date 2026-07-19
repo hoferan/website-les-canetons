@@ -57,6 +57,13 @@ events and view attendance summaries.
   you can also add protection rules. Since that FTP account reaches prod too, the
   `test`-path guard above applies in CI and `--prune` is never used there. qa and
   prod remain manual promotions.
+- **QA deploy:** `npm run deploy:qa` builds and uploads `public/` to the QA
+  server (creds from `.env`, `FTP_QA_DIR`; same `deploy.mjs` as TEST, with a
+  `qa`-path guard). In CI, QA is a **manual** promotion: the `deploy-qa.yml`
+  workflow (`workflow_dispatch`) resolves the commit of the latest green `main`
+  run — i.e. what is currently on TEST — checks it out, builds, and uploads to
+  QA. Requires the same four FTP secrets on a `qa` GitHub Environment. prod
+  stays a manual WinSCP promotion.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
