@@ -72,7 +72,7 @@ return function (RouteCollector $r): void {
     }
 
     $apiMethods = ['GET', 'POST', 'PUT', 'DELETE'];
-    $apis = ['contact', 'logout', 'events', 'login', 'responses'];
+    $apis = ['contact', 'logout', 'events', 'login', 'responses', 'migrate'];
     if (Features::enabled('souper_signup')) {
         $apis[] = 'signups';
     }

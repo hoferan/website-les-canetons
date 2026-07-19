@@ -29,4 +29,9 @@ return [
     'features' => [
         'souper_signup' => false,
     ],
+    // Secret token gating the server-side migration endpoint (POST /api/migrate).
+    // Set a long random value per server. Empty/unset disables the endpoint (404).
+    'migrate' => [
+        'token' => 'CHANGE_ME',
+    ],
 ];

@@ -27,4 +27,9 @@ return [
     'features' => [
         'souper_signup' => true,
     ],
+    // Unused locally (docker migrates via the `migrate` service, not HTTP), but
+    // present so the config shape matches config.example.php.
+    'migrate' => [
+        'token' => 'dev-local-unused',
+    ],
 ];
