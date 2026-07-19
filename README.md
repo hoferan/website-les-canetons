@@ -1,6 +1,7 @@
 # Les Canetons de Fribourg — Website
 
 [![CI](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml/badge.svg)](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml)
+[![Deploy TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=deploy%20test)](https://github.com/hoferan/website-les-canetons/deployments)
 
 Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**,
 a Fribourg carnival brass band. Public pages present the band (history, sections,
@@ -14,8 +15,9 @@ and views attendance summaries.
   front controller (`nikic/fast-route`).
 - **MariaDB 10.3** via `mysqli`.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
-- Hosted on `easy-hebergement.net` shared hosting; deployed by **manual FTP**
-  of the built `public/` directory (`npm run build`).
+- Hosted on `easy-hebergement.net` shared hosting. `npm run build` assembles the
+  deploy artifact into `public/`; merges to `main` auto-deploy it to **TEST**
+  via CI, and qa/prod are manual promotions of the same tested bytes.
 
 ## Quick start (local dev)
 
