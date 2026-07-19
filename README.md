@@ -1,7 +1,9 @@
 # Les Canetons de Fribourg — Website
 
 [![CI](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml/badge.svg)](https://github.com/hoferan/website-les-canetons/actions/workflows/ci.yml)
-[![Deploy TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=deploy%20test)](https://github.com/hoferan/website-les-canetons/deployments)
+[![TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=TEST)](https://github.com/hoferan/website-les-canetons/deployments)
+[![QA](https://img.shields.io/github/deployments/hoferan/website-les-canetons/qa?label=QA)](https://github.com/hoferan/website-les-canetons/deployments)
+[![PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=PROD)](https://github.com/hoferan/website-les-canetons/deployments)
 
 Public website and members' area for the Guggenmusik **Les Canetons de Fribourg**,
 a Fribourg carnival brass band. Public pages present the band (history, sections,
@@ -17,7 +19,8 @@ and views attendance summaries.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
 - Hosted on `easy-hebergement.net` shared hosting. `npm run build` assembles the
   deploy artifact into `public/`; merges to `main` auto-deploy it to **TEST**
-  via CI, and qa/prod are manual promotions of the same tested bytes.
+  via CI, then **QA** and **PROD** are manual-approval gates in the same CI run
+  (GitHub Environment reviewers) that promote the exact same tested commit.
 
 ## Quick start (local dev)
 
@@ -39,11 +42,11 @@ The stack's one-shot `vendor` service installs the app's PHP deps into a shared 
 
 Seeded test logins (synthetic data, all passwords `demo`):
 
-| Username | Role |
-|----------|------|
-| `demo.admin` | admin (manage events, view summaries) |
-| `demo.moderator` | moderator (respond) |
-| `demo.user` | user (respond) |
+| Username         | Role                                  |
+| ---------------- | ------------------------------------- |
+| `demo.admin`     | admin (manage events, view summaries) |
+| `demo.moderator` | moderator (respond)                   |
+| `demo.user`      | user (respond)                        |
 
 Stop with `docker compose down`.
 
@@ -85,14 +88,28 @@ Local Docker uses `config/config.docker.php` automatically (mounted into the con
 
 ## Deployment
 
-```bash
-npm run build
+Deploys run entirely in CI as one pipeline (`.github/workflows/ci.yml`):
+
+```
+php,tests,assets,guard,build ─→ deploy-test ─→ deploy-qa ─→ deploy-prod
+                                 (auto)         (gated)       (gated)
 ```
 
-Upload the contents of the generated `public/` directory to the host via FTP/SFTP.
-`public/` is regenerated fresh on every run — never edit it by hand. When
-syncing, keep the server's existing `config.php` in place (exclude it from the
-upload, or maintain a separate local prod-values copy of `app/config.php` used
-only for from-scratch deploys) — `npm run build` will happily copy whatever
-local `app/config.php` you have, which is a dev convenience, not a production
-config source.
+- **TEST** deploys automatically on every merge to `main`, once all checks pass.
+- **QA** and **PROD** are manual gates: the run pauses at each until a maintainer
+  approves it (GitHub → the run → "Review deployments"). Because it is one run on
+  one commit, QA and PROD receive the exact bytes tested on TEST.
+- Each deploy writes a `deployment.json` to the site root recording the deployed
+  commit, ref, and time — e.g. `https://<prod-host>/deployment.json` — so you can
+  always see what is live where. Per-env status is also on the badges above.
+
+The server-owned files (`.htaccess`, `robots.txt`, `config.php`) are never
+uploaded, so promotion never touches a server's config. For the full server
+layout, the access-control overlay, and manual/WinSCP fallbacks, see
+[staging/README.md](staging/README.md).
+
+To build the artifact locally without deploying:
+
+```bash
+npm run build   # -> public/ (regenerated fresh; never edit by hand)
+```
