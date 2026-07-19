@@ -8,6 +8,10 @@ use App\Auth;
 use App\Database;
 use App\Env;
 
+require __DIR__ . '/../lib/PHPMailer/Exception.php';
+require __DIR__ . '/../lib/PHPMailer/PHPMailer.php';
+require __DIR__ . '/../lib/PHPMailer/SMTP.php';
+
 $config = require __DIR__ . '/../config.php';
 // Record the deployment environment (dev/test/qa/prod) for the env ribbon.
 // Absent/unknown collapses to prod (no ribbon) — see App\Env.

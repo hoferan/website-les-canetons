@@ -1,0 +1,161 @@
+@import url("../vendor/bulma.min.css");
+@import url("main.css");
+
+/* Theme Bulma to the Canetons identity. This stylesheet loads ONLY on the admin
+   overview page, so a global :root override here does not affect other pages. */
+:root {
+  --bulma-primary: #e7a11c;
+  --bulma-primary-invert: #241a05;
+  --bulma-link: #b9760d;
+}
+
+.signups-admin .title {
+  color: #2a2a2d;
+}
+
+.admin-head {
+  margin-bottom: 22px;
+}
+
+/* -- SUMMARY TILES (Bulma columns + box) -- */
+
+.tile-box {
+  height: 100%;
+  border-left: 5px solid #e7ded1;
+}
+
+.tile-k {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.tile-v {
+  font-size: 30px;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.tile-box.accent {
+  border-left-color: #e7a11c;
+  background: #fbeecb;
+}
+
+.tile-box.menu-meat {
+  border-left-color: #9c3c17;
+  background: #f6ddd0;
+}
+
+.tile-box.menu-meat .tile-k {
+  color: #7f3013;
+}
+
+.tile-box.menu-child {
+  border-left-color: #23577f;
+  background: #d8e6f4;
+}
+
+.tile-box.menu-child .tile-k {
+  color: #1c4664;
+}
+
+.tile-box.menu-veg {
+  border-left-color: #2f6b3c;
+  background: #d8ebd9;
+}
+
+.tile-box.menu-veg .tile-k {
+  color: #265630;
+}
+
+/* -- SIGNUPS TABLE (layered on Bulma .table) -- */
+
+#signups-table {
+  background: #fff;
+}
+
+#signups-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f1ece2;
+  color: #555;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-bottom-width: 2px;
+}
+
+#signups-table th.num,
+#signups-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#signups-table th.total,
+#signups-table td.total {
+  border-left: 1px solid #e0d6c7;
+  font-weight: bold;
+}
+
+#signups-table td.zero {
+  color: #767676; /* muted but WCAG-AA legible on the white table surface */
+}
+
+#signups-table .signup-row:hover td {
+  background: #fdf6e9;
+}
+
+#signups-table .signup-row td:first-child {
+  padding-left: 24px;
+}
+
+#signups-table .signup-row strong {
+  color: #2a2a2d;
+}
+
+.contact-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #888;
+}
+
+#signups-table .group-row td {
+  background: #fbeecb;
+  font-weight: bold;
+  color: #5a4a1e;
+}
+
+#signups-table .group-row td:first-child {
+  border-left: 5px solid #e7a11c;
+}
+
+#signups-table tfoot .group-row td {
+  background: #f4e6c2;
+  border-top: 2px solid #e0d6c7;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.dot-meat {
+  background: #9c3c17;
+}
+
+.dot-child {
+  background: #23577f;
+}
+
+.dot-veg {
+  background: #2f6b3c;
+}

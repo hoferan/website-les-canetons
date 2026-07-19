@@ -67,3 +67,50 @@ h2 {
 .accueil li a:hover {
   background-color: #aac0ab;
 }
+
+.souper-cta {
+  /* Drop the generic <section> chrome (white background, padding, shadow,
+     rounded corners) so only the gradient card shows on the page background. */
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  margin-top: 50px;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.souper-card {
+  max-width: 720px;
+  width: 100%;
+  text-align: center;
+  padding: 28px 24px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #fbe7c6, #f7c873);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.souper-duck {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.souper-card h2 {
+  color: #b9760d;
+  margin-bottom: 6px;
+}
+
+.souper-subtitle {
+  color: #7a4e08;
+  margin-bottom: 4px;
+}
+
+.souper-date {
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.souper-card p {
+  margin-bottom: 16px;
+}

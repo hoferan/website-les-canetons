@@ -15,6 +15,10 @@ events and view attendance summaries.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
   pipeline is a separate, later roadmap item).
+- **Vendored third-party PHP**: single-purpose libraries with no Composer package
+  (e.g. PHPMailer, SimpleXLSXGen) live as static files under `app/vendor/` and are
+  `require`d directly from `bootstrap.php` — no CDN, not installed via Composer.
+  Third-party CSS vendored the same way lives under `app/assets/vendor/`.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
@@ -206,6 +210,16 @@ also safe to run in local Docker dev.
   Example: `feat(routing): add clean URLs and old-URL redirects`.
 - **Body:** use `.github/PULL_REQUEST_TEMPLATE.md` (GitHub pre-fills it automatically for new
   PRs) — fill in every section rather than leaving the placeholder comments unedited.
+
+## Language
+
+- **Everything is written in English** — specs and plans (`docs/`), code, comments,
+  DB table/column names, enum/stored values, identifiers, slugs, and file names.
+- **French is used for ONE thing only: user-visible UI text** (HTML labels, page copy,
+  buttons, on-screen event titles/descriptions, error messages shown to the user).
+- The existing codebase already follows this: `contact_messages` uses
+  `first_name`/`last_name` columns and `responses.answer` uses English enum values
+  (`participate`/`notparticipate`), while page labels are French. Match that pattern.
 
 ## Dos
 
