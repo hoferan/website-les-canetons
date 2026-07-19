@@ -15,10 +15,11 @@ events and view attendance summaries.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
   pipeline is a separate, later roadmap item).
-- **Vendored third-party PHP**: single-purpose libraries with no Composer package
-  (e.g. PHPMailer, SimpleXLSXGen) live as static files under `app/vendor/` and are
-  `require`d directly from `bootstrap.php` — no CDN, not installed via Composer.
-  Third-party CSS vendored the same way lives under `app/assets/vendor/`.
+- **Third-party PHP libraries are Composer dependencies** (e.g. `nikic/fast-route`,
+  `phpmailer/phpmailer`, `shuchkin/simplexlsxgen`), installed into `app/vendor/`
+  (the Composer/Docker install target — never hand-edited or committed). Vendoring
+  a static, un-packaged file is the fallback only when no Composer package exists;
+  third-party CSS is vendored this way today, under `app/assets/vendor/`.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on

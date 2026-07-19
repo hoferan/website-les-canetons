@@ -4,6 +4,7 @@ use App\Auth;
 use App\Database;
 use App\Mailer;
 use App\Repositories\SignupRepository;
+use Shuchkin\SimpleXLSXGen;
 
 global $config;
 
@@ -76,9 +77,8 @@ if ($method === 'GET') {
     Auth::requireCanViewSummary();
     $signups = $repo->allForOccasion($occasion);
     if ((string) ($_GET['format'] ?? '') === 'xlsx') {
-        require __DIR__ . '/../lib/SimpleXLSXGen.php';
         $rows = SignupRepository::exportRows($signups);
-        \Shuchkin\SimpleXLSXGen::fromArray($rows)
+        SimpleXLSXGen::fromArray($rows)
             ->downloadAs('inscriptions-souper.xlsx');
         exit;
     }
