@@ -9,14 +9,18 @@
 //
 //   npm run deploy:test               # upload new/changed files to TEST
 //   npm run deploy:qa                 # upload new/changed files to QA
+//   npm run deploy:prod               # upload new/changed files to PROD
 //   node tools/deploy.mjs <target> -- --dry-run  # show the plan, change nothing
 //   node tools/deploy.mjs <target> -- --prune    # also delete remote files not in public/
 //   node tools/deploy.mjs <target> -- --force    # re-upload every file, even unchanged ones
 //
-// Credentials come from a git-ignored .env (see .env.example). test/qa only, on
-// purpose — prod stays a manual promotion.
+// Credentials come from a git-ignored .env (see .env.example). The one FTP
+// account can reach every environment, so each target hard-refuses to run unless
+// its FTP_*_DIR matches the env name (see the guards below). Each deploy also
+// writes a deployment.json marker into public/ recording the deployed commit.
 import ftp from 'basic-ftp';
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { loadDotEnv } from './dotenv.mjs';
 
@@ -24,6 +28,12 @@ const LOCAL_ROOT = 'public';
 
 // Files that live on the server and must never be uploaded or pruned.
 const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd']);
+
+// The deployment marker. Written into public/ on every deploy and always
+// re-uploaded (a commit SHA is a fixed length, so the size-based change check
+// below would otherwise treat it as "unchanged" and skip it forever).
+const MARKER = 'deployment.json';
+const ALWAYS_UPLOAD = new Set([MARKER]);
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -34,6 +44,7 @@ const FORCE = args.includes('--force');
 const TARGETS = {
   test: { dirVar: 'FTP_TEST_DIR', guard: /(^|[/.])test([/.]|$)/i },
   qa: { dirVar: 'FTP_QA_DIR', guard: /(^|[/.])qa([/.]|$)/i },
+  prod: { dirVar: 'FTP_PROD_DIR', guard: /(^|[/.])prod([/.]|$)/i },
 };
 const target = args.find((a) => !a.startsWith('--'));
 if (!target || !TARGETS[target]) {
@@ -56,6 +67,32 @@ function walk(dir, base = dir) {
     }
   }
   return out;
+}
+
+// Write a deployment marker into public/ so each server's root records exactly
+// which commit is deployed there. Values come from GitHub Actions env vars when
+// running in CI, falling back to local git for hand-runs.
+function writeDeploymentMarker(env) {
+  const gitOr = (fallback, ...gitArgs) => {
+    try {
+      return execFileSync('git', gitArgs, { encoding: 'utf8' }).trim();
+    } catch {
+      return fallback;
+    }
+  };
+  const commit = process.env.GITHUB_SHA || gitOr('local', 'rev-parse', 'HEAD');
+  const shortCommit = process.env.GITHUB_SHA
+    ? process.env.GITHUB_SHA.slice(0, 7)
+    : gitOr('local', 'rev-parse', '--short', 'HEAD');
+  const ref = process.env.GITHUB_REF_NAME || gitOr('', 'rev-parse', '--abbrev-ref', 'HEAD');
+  const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+  const runUrl =
+    GITHUB_SERVER_URL && GITHUB_REPOSITORY && GITHUB_RUN_ID
+      ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
+      : null;
+  const marker = { environment: env, commit, shortCommit, ref, deployedAt: new Date().toISOString(), runUrl };
+  writeFileSync(path.join(LOCAL_ROOT, MARKER), `${JSON.stringify(marker, null, 2)}\n`);
+  return marker;
 }
 
 // --- recursive remote listing: Map<relPath, size> -------------------------
@@ -88,7 +125,9 @@ async function main() {
   }
 
   loadDotEnv();
+  const marker = writeDeploymentMarker(target);
   const local = walk(LOCAL_ROOT).sort((a, b) => a.rel.localeCompare(b.rel));
+  console.log(`  marker: ${MARKER} @ ${marker.shortCommit} (${marker.deployedAt})`);
 
   console.log(`${LABEL} deploy — ${local.length} files in ${LOCAL_ROOT}/`);
   console.log(`  protected (never uploaded/pruned): ${[...PROTECTED].join(', ')}`);
@@ -138,7 +177,7 @@ async function main() {
       const remoteSize = remote.get(f.rel);
       if (remoteSize === undefined) {
         newFiles.push(f);
-      } else if (FORCE || remoteSize !== f.size) {
+      } else if (FORCE || ALWAYS_UPLOAD.has(f.rel) || remoteSize !== f.size) {
         changed.push({ ...f, remoteSize });
       } else {
         unchanged++;
