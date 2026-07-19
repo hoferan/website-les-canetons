@@ -175,6 +175,20 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      # Guard against out-of-order gate approvals. If main has advanced past this
+      # run's commit (a newer merge is queued behind it), approving this older run
+      # now would silently regress the environment to the stale commit. Refuse
+      # unless this run's commit is still the tip of main. Only needs the tip SHA,
+      # so it's shallow-clone-safe (no fetch depth required).
+      - name: Refuse stale commit
+        run: |
+          git fetch --quiet origin main
+          tip=$(git rev-parse origin/main)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::error::main has advanced to $tip but this run targets $GITHUB_SHA — refusing to deploy a stale commit. Approve the newer run instead."
+            exit 1
+          fi
+          echo "Confirmed $GITHUB_SHA is the current tip of main."
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -200,6 +214,20 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      # Guard against out-of-order gate approvals. If main has advanced past this
+      # run's commit (a newer merge is queued behind it), approving this older run
+      # now would silently regress the environment to the stale commit. Refuse
+      # unless this run's commit is still the tip of main. Only needs the tip SHA,
+      # so it's shallow-clone-safe (no fetch depth required).
+      - name: Refuse stale commit
+        run: |
+          git fetch --quiet origin main
+          tip=$(git rev-parse origin/main)
+          if [ "$tip" != "$GITHUB_SHA" ]; then
+            echo "::error::main has advanced to $tip but this run targets $GITHUB_SHA — refusing to deploy a stale commit. Approve the newer run instead."
+            exit 1
+          fi
+          echo "Confirmed $GITHUB_SHA is the current tip of main."
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
