@@ -1,7 +1,21 @@
 // using session.js
 var urlParams = new URLSearchParams(window.location.search);
-var returnToPage = urlParams.get("returnTo");
-returnToPage = returnToPage ? "/" + returnToPage : "/";
+// returnTo is a same-origin route slug (see main.js). Resolve it against our own
+// origin and keep only the path/query/hash of a same-origin result, so a crafted
+// value can't turn the post-login redirect into an open redirect (//evil.com,
+// /\evil.com) or a javascript: navigation. Anything else falls back to "/".
+var returnToPage = "/";
+var returnToRaw = urlParams.get("returnTo");
+if (returnToRaw) {
+  try {
+    var returnToUrl = new URL(returnToRaw, window.location.origin);
+    if (returnToUrl.origin === window.location.origin) {
+      returnToPage = returnToUrl.pathname + returnToUrl.search + returnToUrl.hash;
+    }
+  } catch {
+    // Malformed returnTo — keep the "/" default.
+  }
+}
 
 document.getElementById("login-form").addEventListener("submit", function (event) {
   event.preventDefault();
