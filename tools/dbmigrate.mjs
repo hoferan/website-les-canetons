@@ -31,10 +31,20 @@ const mode = DRY_RUN ? 'dry-run' : 'apply';
 const url = `${siteUrl.replace(/\/$/, '')}/api/migrate?mode=${mode}`;
 console.log(`${target.toUpperCase()} migrate (${mode}) -> ${siteUrl.replace(/\/$/, '')}/api/migrate`);
 
+// TEST/QA sit behind site-wide HTTP Basic Auth (this host rejects a per-path
+// exemption in .htaccess), so also send Basic Auth credentials when configured.
+// PROD has no Basic Auth — leave BASIC_AUTH_* unset there and none is sent.
+const headers = { 'X-Migrate-Token': token };
+const authUser = process.env.BASIC_AUTH_USER;
+const authPass = process.env.BASIC_AUTH_PASS;
+if (authUser && authPass) {
+  headers.Authorization = `Basic ${Buffer.from(`${authUser}:${authPass}`).toString('base64')}`;
+}
+
 let res;
 let text;
 try {
-  res = await fetch(url, { method: 'POST', headers: { 'X-Migrate-Token': token } });
+  res = await fetch(url, { method: 'POST', headers });
   text = await res.text();
 } catch (err) {
   console.error(`Migration request failed (could not reach ${siteUrl.replace(/\/$/, '')}): ${err.message}`);
@@ -52,8 +62,9 @@ try {
   console.error(`\nMigration ${mode} FAILED: expected JSON from ${url} but got a non-JSON response (HTTP ${res.status}).`);
   console.error(`Response starts with: ${snippet}`);
   console.error(
-    '\nLikely causes: the site is erroring (check the page loads), or migrate.token is ' +
-      "not set in this env's config.php (the endpoint 404s when unconfigured), or SITE_URL is wrong."
+    `\nLikely causes: HTTP ${res.status} 401 -> missing/wrong BASIC_AUTH_USER/BASIC_AUTH_PASS ` +
+      '(TEST/QA are behind Basic Auth); the site is erroring (check the page loads); migrate.token ' +
+      "not set in this env's config.php (the endpoint 404s when unconfigured); or SITE_URL is wrong."
   );
   process.exit(1);
 }

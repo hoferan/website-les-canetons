@@ -89,7 +89,10 @@ events and view attendance summaries.
   failed migration exits non-zero (fails the CI job). `dbmigrate:<env> -- --dry-run`
   reports pending without applying. Requires a `migrate.token` in each server's
   `config.php` and `MIGRATE_TOKEN` / `SITE_URL` in `.env.<env>` (or the env's CI
-  secrets). Migrations must be idempotent + backward-compatible (see
+  secrets). On TEST/QA the whole site is behind HTTP Basic Auth (this host 500s
+  on a per-path `.htaccess` exemption), so also set `BASIC_AUTH_USER` /
+  `BASIC_AUTH_PASS` — the trigger sends them so it can reach `/api/migrate`; PROD
+  has no Basic Auth. Migrations must be idempotent + backward-compatible (see
   `sql/migrations/README.md`).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.

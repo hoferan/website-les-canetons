@@ -17,16 +17,11 @@
 AuthType Basic
 AuthName "Les Canetons — QA (acces restreint)"
 AuthUserFile "__HTPASSWD_PATH__"
-
-# The server-side migration endpoint is triggered by CI over HTTPS and gated by
-# its own secret token (see app/api/migrate.php); exclude it from Basic Auth so
-# automated deploys can reach it. Everything else still requires a valid user.
-# Uses `Require expr` (mod_authz_core, same module as Require valid-user) rather
-# than SetEnvIf, to avoid depending on mod_setenvif in .htaccess.
-<RequireAny>
-    Require expr "%{REQUEST_URI} =~ m#^/api/migrate(\?|$)#"
-    Require valid-user
-</RequireAny>
+# The whole staging site stays behind Basic Auth, including the token-gated
+# migration endpoint /api/migrate. CI/local reach it by sending these Basic Auth
+# credentials alongside the token (see tools/dbmigrate.mjs) — this host rejects a
+# per-path RequireAny/expr exemption in .htaccess (returns 500).
+Require valid-user
 
 # --- Never serve the auth/control files themselves -------------------------
 <FilesMatch "^\.(htaccess|htpasswd)$">
