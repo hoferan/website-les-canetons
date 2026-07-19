@@ -1,0 +1,37 @@
+@import url("main.css");
+
+.notfound-section {
+  text-align: center;
+}
+
+.notfound-code {
+  margin: 0;
+  font-size: 96px;
+  font-weight: bold;
+  line-height: 1;
+  color: #e0201a;
+}
+
+.notfound-section h2 {
+  margin: 10px 0 20px;
+  color: #000000f1;
+}
+
+.notfound-text {
+  margin-bottom: 30px;
+  font-size: 18px;
+}
+
+.notfound-home {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 5px;
+  background-color: #e0201a;
+  color: #fff;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.notfound-home:hover {
+  background-color: #b81a14;
+}

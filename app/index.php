@@ -14,7 +14,7 @@ $routeInfo = $dispatcher->dispatch(
 switch ($routeInfo[0]) {
     case Dispatcher::NOT_FOUND:
         http_response_code(404);
-        echo '404 Not Found';
+        require __DIR__ . '/pages/404.php';
         break;
     case Dispatcher::METHOD_NOT_ALLOWED:
         http_response_code(405);
