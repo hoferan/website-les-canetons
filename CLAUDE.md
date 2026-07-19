@@ -59,8 +59,10 @@ events and view attendance summaries.
   same LIST-based size check) and exits non-zero if any file is missing or
   truncated; `-- --no-verify` skips that check.
   The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
-  hard-refuses to run unless its `FTP_*_DIR` matches the env name, so a mistyped
-  dir can never deploy to (or `--prune`!) the wrong environment.
+  hard-refuses to run unless its `FTP_DIR` matches the env name, so a mistyped
+  dir can never deploy to (or `--prune`!) the wrong environment. Per-env config
+  lives in a git-ignored `.env.<target>` (copy `.env.example`); the tooling loads
+  `.env.<target>` then falls back to a shared `.env`.
 - **Config-shape pre-flight check:** before uploading anything, `deploy.mjs`
   fetches the target's `config.php` and compares its key *shape* (never
   values — those are never logged) against `config.example.php`. Any drift
@@ -87,7 +89,7 @@ events and view attendance summaries.
   idempotent + backward-compatible (see `sql/migrations/README.md`).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
-  Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
+  Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
   set on the `test` GitHub Environment (Settings → Environments → `test`), where
   you can also add protection rules. Since that FTP account reaches every
   environment, the per-target path guard applies in CI and `--prune` is never
@@ -95,8 +97,8 @@ events and view attendance summaries.
 - **QA / PROD deploy (manual gates in CI):** `deploy-qa` and `deploy-prod` are
   jobs in `ci.yml`, gated by Required reviewers on the `qa`/`prod` GitHub
   Environments — approve `deploy-qa` when TEST is green, then `deploy-prod` when
-  QA is green, all within the same run. Each needs its env's `FTP_*_DIR` secret
-  (`FTP_QA_DIR` / `FTP_PROD_DIR`) plus the shared `FTP_HOST`/`USER`/`PASS`.
+  QA is green, all within the same run. Each needs its own `FTP_DIR` secret
+  (scoped to that Environment) plus the shared `FTP_HOST`/`USER`/`PASS`.
   Locally, `npm run deploy:qa` / `npm run deploy:prod` do the same over FTP.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
   (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA

@@ -14,10 +14,11 @@
 //   node tools/deploy.mjs <target> -- --prune    # also delete remote files not in public/
 //   node tools/deploy.mjs <target> -- --force    # re-upload every file, even unchanged ones
 //
-// Credentials come from a git-ignored .env (see .env.example). The one FTP
-// account can reach every environment, so each target hard-refuses to run unless
-// its FTP_*_DIR matches the env name (see the guards below). Each deploy also
-// writes a deployment.json marker into public/ recording the deployed commit.
+// Credentials come from a git-ignored per-env .env.<target> (see .env.example —
+// copy it to .env.test / .env.qa / .env.prod). The one FTP account can reach
+// every environment, so each target hard-refuses to run unless its FTP_DIR
+// matches the env name (see the guards below). Each deploy also writes a
+// deployment.json marker into public/ recording the deployed commit.
 //
 // Pre-flight config check: config.php is server-owned and never touched by
 // this script, so code that expects a new config key (e.g. a new App\Features
@@ -52,9 +53,9 @@ const ALWAYS_UPLOAD = new Set([MARKER]);
 
 // First non-flag arg selects the target environment.
 const TARGETS = {
-  test: { dirVar: 'FTP_TEST_DIR', guard: /(^|[/.])test([/.]|$)/i },
-  qa: { dirVar: 'FTP_QA_DIR', guard: /(^|[/.])qa([/.]|$)/i },
-  prod: { dirVar: 'FTP_PROD_DIR', guard: /(^|[/.])prod([/.]|$)/i },
+  test: { dirVar: 'FTP_DIR', guard: /(^|[/.])test([/.]|$)/i },
+  qa: { dirVar: 'FTP_DIR', guard: /(^|[/.])qa([/.]|$)/i },
+  prod: { dirVar: 'FTP_DIR', guard: /(^|[/.])prod([/.]|$)/i },
 };
 
 // Parse CLI args (target + flags) at run time, not import time, so this module
@@ -303,7 +304,7 @@ async function main() {
 
   const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', dirVar].filter((k) => !process.env[k]);
   if (missing.length) {
-    const msg = `Missing FTP settings: ${missing.join(', ')} — set them in .env (see .env.example).`;
+    const msg = `Missing FTP settings: ${missing.join(', ')} — set them in .env.${target} (copy .env.example).`;
     if (DRY_RUN) {
       console.log(`\n(dry-run) ${msg}`);
       console.log('(dry-run) Cannot compare with remote without credentials. Local files that would be considered:');

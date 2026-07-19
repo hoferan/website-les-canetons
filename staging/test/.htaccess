@@ -10,7 +10,7 @@
 
 # --- HTTP Basic Auth for the whole staging site ----------------------------
 # NOTE: AuthUserFile needs an ABSOLUTE server path (host-specific). The real
-#       path is injected from HTPASSWD_PATH_TEST (.env) by build-overlays.mjs,
+#       path is injected from HTPASSWD_PATH (.env.test) by build-overlays.mjs,
 #       replacing the __HTPASSWD_PATH__ token below — see staging/README.md.
 # NOTE: the referenced .htpasswd is git-ignored (it holds credentials) and must
 #       be created/uploaded by hand — see staging/README.md.

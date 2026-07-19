@@ -14,14 +14,10 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 
 import { loadDotEnv } from './dotenv.mjs';
 
-// Per-env values (e.g. HTPASSWD_PATH_TEST/HTPASSWD_PATH_QA) live in .env.<env>;
-// load every per-env file first, then the shared .env base. loadDotEnv never
-// overwrites an already-set var (first-wins), and the suffixed keys are
-// distinct per env, so loading all of them causes no collisions.
-for (const e of ['test', 'qa', 'prod']) {
-  loadDotEnv(`.env.${e}`);
-}
-loadDotEnv('.env');
+// HTPASSWD_PATH is a uniform key across the per-env files (.env.test / .env.qa),
+// so it is loaded per-env inside mergedHtaccess() below — this tool processes
+// several envs in one run, and loadDotEnv is first-wins, so a top-level load
+// would let the first env's value stick for the others.
 
 const ENVS = ['test', 'qa', 'prod'];
 
@@ -40,14 +36,18 @@ const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
 function mergedHtaccess(env) {
   let auth = readFileSync(`staging/${env}/.htaccess`, 'utf8').trimEnd();
   if (auth.includes('__HTPASSWD_PATH__')) {
-    const pathVar = `HTPASSWD_PATH_${env.toUpperCase()}`;
-    const real = process.env[pathVar];
+    // Read HTPASSWD_PATH fresh from THIS env's file. Delete first: loadDotEnv is
+    // first-wins, so a value loaded for a previous env in the loop would stick.
+    delete process.env.HTPASSWD_PATH;
+    loadDotEnv(`.env.${env}`);
+    loadDotEnv('.env');
+    const real = process.env.HTPASSWD_PATH;
     if (real) {
       auth = auth.split('__HTPASSWD_PATH__').join(real);
     } else {
       console.warn(
-        `  ! ${pathVar} not set — leaving __HTPASSWD_PATH__ placeholder in ` +
-          `${env}/.htaccess (set it in .env, or fill the path on the server).`
+        `  ! HTPASSWD_PATH not set in .env.${env} — leaving __HTPASSWD_PATH__ ` +
+          `placeholder in ${env}/.htaccess (set it there, or fill the path on the server).`
       );
     }
   }
