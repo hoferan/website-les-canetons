@@ -1,7 +1,7 @@
 -- 001 — create `signups` table for the public occasion signup form.
 -- `occasion` has no default: the application always sets it explicitly.
 
-CREATE TABLE `signups` (
+CREATE TABLE IF NOT EXISTS `signups` (
   `id`         int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `occasion`   varchar(64)  NOT NULL,
   `first_name` varchar(255) NOT NULL,
