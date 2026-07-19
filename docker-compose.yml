@@ -53,6 +53,7 @@ services:
     volumes:
       - ./tools:/repo/tools:ro
       - ./sql/migrations:/repo/sql/migrations:ro
+      - ./app/src:/repo/app/src:ro
     environment:
       DB_HOST: db
       DB_USER: root
