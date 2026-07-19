@@ -1,6 +1,7 @@
 <?php
 
 use App\Auth;
+use App\Features;
 use App\Repositories\SignupRepository;
 
 ?>
@@ -9,7 +10,7 @@ use App\Repositories\SignupRepository;
 </footer>
 
 <?php // The signup popup targets guests; admins (Team Direction) never see it. ?>
-<?php if (!Auth::canViewSummary()) : ?>
+<?php if (Features::enabled('souper_signup') && !Auth::canViewSummary()) : ?>
     <?php $popupOccasion = SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION]; ?>
 <div
   id="supper-popup"

@@ -29,10 +29,16 @@ return function (RouteCollector $r): void {
         'planning_repet'                => 'planning_repet',
         'admin'                         => 'admin',
         'inscriptions_admin'            => 'inscriptions_admin',
-        'signup'                        => 'signup',
-        'signup_thanks'                 => 'signup_thanks',
-        'signups_admin'                 => 'signups_admin',
     ];
+
+    // Server-owned flag (see App\Features) — routes only exist while the
+    // feature is on, so a disabled server genuinely 404s rather than
+    // exposing a dead link.
+    if (Features::enabled('souper_signup')) {
+        $pages['signup'] = 'signup';
+        $pages['signup_thanks'] = 'signup_thanks';
+        $pages['signups_admin'] = 'signups_admin';
+    }
 
     // GET+POST (not GET-only): a plain .php file under the old Apache setup
     // ran regardless of HTTP method, and admin.php's native <form method="post">
@@ -66,7 +72,10 @@ return function (RouteCollector $r): void {
     }
 
     $apiMethods = ['GET', 'POST', 'PUT', 'DELETE'];
-    $apis = ['contact', 'logout', 'events', 'login', 'responses', 'signups'];
+    $apis = ['contact', 'logout', 'events', 'login', 'responses'];
+    if (Features::enabled('souper_signup')) {
+        $apis[] = 'signups';
+    }
     foreach ($apis as $name) {
         $r->addRoute($apiMethods, '/api/' . $name, function () use ($name): void {
             require __DIR__ . '/../api/' . $name . '.php';

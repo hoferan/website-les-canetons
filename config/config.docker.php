@@ -22,4 +22,9 @@ return [
         'from_email' => 'noreply@les-canetons.localhost',
         'from_name'  => 'Les Canetons de Fribourg',
     ],
+    // On locally so the feature is exercisable in dev; TEST/QA turn it on the
+    // same way, PROD stays off until it's ready — see App\Features.
+    'features' => [
+        'souper_signup' => true,
+    ],
 ];

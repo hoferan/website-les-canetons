@@ -83,6 +83,12 @@ return [
         'name' => 'lescanetons',
         'charset' => 'utf8mb4',
     ],
+    // No 'mail' key: no SMTP relay in a web session (no Docker, so no
+    // Mailpit). Mail send is fail-safe (see api/signups.php) — it logs and
+    // continues rather than blocking the request.
+    'features' => [
+        'souper_signup' => true,
+    ],
 ];
 PHP
 fi

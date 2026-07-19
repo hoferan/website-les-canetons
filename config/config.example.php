@@ -24,4 +24,9 @@ return [
         'from_email' => 'CHANGE_ME',
         'from_name'  => 'CHANGE_ME',
     ],
+    // Server-owned feature flags (see App\Features): off by default so a new
+    // feature never goes live on a server until someone flips it here by hand.
+    'features' => [
+        'souper_signup' => false,
+    ],
 ];
