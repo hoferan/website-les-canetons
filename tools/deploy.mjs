@@ -63,7 +63,7 @@ function parseArgs() {
   const args = process.argv.slice(2);
   const target = args.find((a) => !a.startsWith('--'));
   if (!target || !TARGETS[target]) {
-    console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force]`);
+    console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force] [--no-verify]`);
     process.exit(1);
   }
   const { dirVar, guard } = TARGETS[target];
@@ -72,6 +72,7 @@ function parseArgs() {
     DRY_RUN: args.includes('--dry-run'),
     PRUNE: args.includes('--prune'),
     FORCE: args.includes('--force'),
+    NO_VERIFY: args.includes('--no-verify'),
     dirVar,
     guard,
     LABEL: target.toUpperCase(),
@@ -155,6 +156,14 @@ function diffSizes(uploaded, remoteSizes) {
     }
   }
   return { ok: missing.length === 0 && mismatched.length === 0, missing, mismatched };
+}
+
+// Take a fresh remote snapshot (reusing listRemote — same LIST-based sizes the
+// deploy already trusts, so no reliance on the FTP SIZE command) and compare the
+// files we just uploaded against it.
+async function verifyUpload(client, remoteRoot, uploaded) {
+  const remoteSizes = await listRemote(client, remoteRoot);
+  return diffSizes(uploaded, remoteSizes);
 }
 
 function humanBytes(n) {
@@ -269,7 +278,7 @@ async function checkConfigShape(client, remoteRoot, label) {
 }
 
 async function main() {
-  const { target, DRY_RUN, PRUNE, FORCE, dirVar, guard, LABEL } = parseArgs();
+  const { target, DRY_RUN, PRUNE, FORCE, NO_VERIFY, dirVar, guard, LABEL } = parseArgs();
 
   if (!existsSync(LOCAL_ROOT)) {
     console.error(`No ${LOCAL_ROOT}/ found — run "npm run build" first.`);
@@ -398,6 +407,31 @@ async function main() {
         await client.remove(`${remoteRoot}/${rel}`);
       }
       console.log(`Pruned ${stale.length} file(s).`);
+    }
+
+    // Post-deploy verification: confirm every file we uploaded landed on the
+    // server at the right byte size. Skipped when bypassed or when nothing was
+    // uploaded. A failure throws — caught by main().catch, which exits non-zero.
+    if (NO_VERIFY) {
+      console.log('\nSkipping post-deploy verification (--no-verify).');
+    } else if (toUpload.length === 0) {
+      console.log('\nNothing uploaded — skipping post-deploy verification.');
+    } else {
+      console.log(`\nVerifying ${toUpload.length} uploaded file(s) against the server...`);
+      const result = await verifyUpload(client, remoteRoot, toUpload);
+      if (result.ok) {
+        console.log(`Verified ${toUpload.length} uploaded file(s) — server matches the build.`);
+      } else {
+        result.mismatched.forEach((m) =>
+          console.log(`  MISMATCH ${m.rel} (local ${humanBytes(m.local)}, remote ${humanBytes(m.remote)})`)
+        );
+        result.missing.forEach((rel) => console.log(`  MISSING  ${rel}`));
+        throw new Error(
+          `verification FAILED — ${result.missing.length} missing, ${result.mismatched.length} truncated. ` +
+            `The upload completed but the server copy doesn't match the build. Re-run the deploy ` +
+            `(or investigate the FTP connection) before trusting this environment.`
+        );
+      }
     }
 
     console.log(`\n${LABEL} deploy complete.`);

@@ -54,7 +54,10 @@ events and view attendance summaries.
   `--prune`), `-- --prune` (also delete remote **plain files** the build no
   longer produces; directories/symlinks like `cgi-bin` and the protected files
   are always kept), `-- --force` (re-upload every file, for the rare edit that
-  keeps a file's size identical).
+  keeps a file's size identical). After a real upload it **verifies** every
+  uploaded file is present on the server at the matching byte size (reusing the
+  same LIST-based size check) and exits non-zero if any file is missing or
+  truncated; `-- --no-verify` skips that check.
   The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
   hard-refuses to run unless its `FTP_*_DIR` matches the env name, so a mistyped
   dir can never deploy to (or `--prune`!) the wrong environment.
