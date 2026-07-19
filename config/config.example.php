@@ -13,10 +13,16 @@ return [
         'name' => 'CHANGE_ME',
         'charset' => 'utf8mb4',
     ],
-    // Authenticated SMTP (easy-hebergement). Create a real mailbox and use it
-    // here. secure: 'ssl' (port 465) or 'tls' (port 587).
+    // Authenticated SMTP (easy-hebergement). Create a real, ACTIVE mailbox
+    // (a "boîte mail" — NOT an alias, which cannot send) and use its full
+    // address + password below.
+    // easy-hebergement SMTP ports are NON-STANDARD:
+    //   secure 'ssl' => port 465  (recommended)
+    //   secure 'tls' (STARTTLS) => port 4650  (NOT 587 — 587 is plain here)
+    // host is mail-a OR mail-b.easy-hebergement.net — whichever your messagerie
+    // detail page shows (it varies per messagerie).
     'mail' => [
-        'host'       => 'CHANGE_ME',
+        'host'       => 'mail-a.easy-hebergement.net',
         'port'       => 465,
         'secure'     => 'ssl',
         'username'   => 'CHANGE_ME',
