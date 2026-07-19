@@ -10,6 +10,12 @@ const mount = process.cwd().split('\\').join('/');
 rmSync('public', { recursive: true, force: true });
 cpSync('app', 'public', { recursive: true });
 
+// Ship the numbered migrations so the server-side endpoint (public/api/migrate.php)
+// can apply them. They live under public/sql/migrations and are unreachable via
+// direct HTTP: the front-controller catch-all (app/.htaccess) rewrites any
+// non-/assets/ path to index.php, which 404s anything that isn't a route.
+cpSync('sql/migrations', 'public/sql/migrations', { recursive: true });
+
 // config.php is environment-specific and server-owned (real DB creds + env key).
 // Never ship it in the deploy artifact: each server keeps its own, set once by
 // hand, and it's excluded from every upload/promotion. Dropping it here (a local
