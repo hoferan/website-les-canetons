@@ -14,11 +14,14 @@ the single source of truth for those changes.
 - **Local dev:** the docker `migrate` service runs `tools/migrate.php` (→ `App\Migrator`) on every `docker compose up`.
 - **TEST / QA / PROD:** applied **server-side** over HTTPS after each deploy, via
   the token-gated `POST /api/migrate` endpoint, triggered by
-  `npm run dbmigrate:<env>` (and the CI deploy jobs). Remote DB login from
-  CI/local is blocked by the host, so migrations run on the server where
-  localhost DB access works. A failed migration fails the deploy.
-- PROD reports pending migrations (`dbmigrate:prod --dry-run`) before applying,
-  within the manual prod approval gate.
+  `npm run dbmigrate:<env>`. Remote DB login from CI/local is blocked by the
+  host, so migrations run on the server where localhost DB access works. A
+  failed migration fails the deploy.
+- **CI status:** TEST auto-applies migrations in the CI `deploy-test` job today.
+  QA and PROD currently use `npm run dbmigrate:qa` / `dbmigrate:prod` (locally or
+  manually); wiring them into the CI `deploy-qa` / `deploy-prod` jobs — with PROD
+  reporting pending via `dbmigrate:prod --dry-run` before applying inside the
+  manual prod approval gate — is the next phase.
 
 ## Authoring rules (required)
 
