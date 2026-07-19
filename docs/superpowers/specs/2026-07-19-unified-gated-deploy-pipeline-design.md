@@ -120,13 +120,16 @@ it lands at the root of each env's folder. Shape:
 
 ### 4. Badges (README)
 
-Add two badges beside the existing TEST one, using the same GitHub Deployments
-shields source (works regardless of Basic Auth, since it reads GitHub's
-deployment API):
+Add QA/PROD badges beside the existing TEST one, and **relabel all three** to
+pair cleanly with the `CI` badge: `CD - TEST`, `CD - QA`, `CD - PROD` (the
+current TEST badge's ugly `deploy test` label is replaced). Same GitHub
+Deployments shields source (works regardless of Basic Auth, since it reads
+GitHub's deployment API):
 
 ```
-[![Deploy QA](https://img.shields.io/github/deployments/hoferan/website-les-canetons/qa?label=deploy%20qa)](https://github.com/hoferan/website-les-canetons/deployments)
-[![Deploy PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=deploy%20prod)](https://github.com/hoferan/website-les-canetons/deployments)
+[![CD - TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=CD%20-%20TEST)](https://github.com/hoferan/website-les-canetons/deployments)
+[![CD - QA](https://img.shields.io/github/deployments/hoferan/website-les-canetons/qa?label=CD%20-%20QA)](https://github.com/hoferan/website-les-canetons/deployments)
+[![CD - PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=CD%20-%20PROD)](https://github.com/hoferan/website-les-canetons/deployments)
 ```
 
 Every `environment:` job automatically creates a deployment record, so these
