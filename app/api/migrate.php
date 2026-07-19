@@ -10,8 +10,6 @@ use App\Database;
 use App\Env;
 use App\Migrator;
 
-header('Content-Type: application/json');
-
 $config = require __DIR__ . '/../config.php';
 $expected = (string) ($config['migrate']['token'] ?? '');
 
@@ -21,6 +19,8 @@ if ($expected === '') {
     require __DIR__ . '/../pages/404.php';
     exit;
 }
+
+header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
