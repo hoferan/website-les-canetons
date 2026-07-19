@@ -32,12 +32,29 @@ const url = `${siteUrl.replace(/\/$/, '')}/api/migrate?mode=${mode}`;
 console.log(`${target.toUpperCase()} migrate (${mode}) -> ${siteUrl.replace(/\/$/, '')}/api/migrate`);
 
 let res;
-let body;
+let text;
 try {
   res = await fetch(url, { method: 'POST', headers: { 'X-Migrate-Token': token } });
-  body = await res.json();
+  text = await res.text();
 } catch (err) {
-  console.error(`Migration request failed: ${err.message}`);
+  console.error(`Migration request failed (could not reach ${siteUrl.replace(/\/$/, '')}): ${err.message}`);
+  process.exit(1);
+}
+
+// The endpoint returns JSON. Anything else (an HTML error/404 page) means the
+// site is broken or /api/migrate isn't configured — report that clearly instead
+// of a cryptic JSON parse error.
+let body;
+try {
+  body = JSON.parse(text);
+} catch {
+  const snippet = text.trim().slice(0, 200).replace(/\s+/g, ' ');
+  console.error(`\nMigration ${mode} FAILED: expected JSON from ${url} but got a non-JSON response (HTTP ${res.status}).`);
+  console.error(`Response starts with: ${snippet}`);
+  console.error(
+    '\nLikely causes: the site is erroring (check the page loads), or migrate.token is ' +
+      "not set in this env's config.php (the endpoint 404s when unconfigured), or SITE_URL is wrong."
+  );
   process.exit(1);
 }
 
