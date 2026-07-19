@@ -30,7 +30,9 @@ events and view attendance summaries.
 - **Build step:** `npm run build` assembles `app/` + a production-only
   Composer `vendor/` into a generated `public/` directory — the
   environment-agnostic code artifact. It deliberately excludes `config.php`
-  (server-owned). `public/` is git-ignored and never hand-edited.
+  (server-owned) but ships `config.example.php` next to it on every deploy —
+  the live template, for diffing against a server's real `config.php` by
+  hand. `public/` is git-ignored and never hand-edited.
 - **Deployment (one gated CI pipeline):** all deploys run in
   `.github/workflows/ci.yml`. A merge to `main` auto-deploys the built `public/`
   to **TEST**; **QA** then **PROD** are manual-approval gates in the *same run*
@@ -56,6 +58,17 @@ events and view attendance summaries.
   The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
   hard-refuses to run unless its `FTP_*_DIR` matches the env name, so a mistyped
   dir can never deploy to (or `--prune`!) the wrong environment.
+- **Config-shape pre-flight check:** before uploading anything, `deploy.mjs`
+  fetches the target's `config.php` and compares its key *shape* (never
+  values — those are never logged) against `config.example.php`. Any drift
+  (a key the code now expects that's missing, or one no longer expected)
+  refuses the deploy with the exact key paths to fix — e.g. shipping a new
+  `App\Features` flag without first adding it to a server's `config.php`
+  fails that server's deploy instead of silently misbehaving. `--dry-run`
+  reports the same drift without refusing. If `config.php` can't be fetched
+  at all (a brand-new environment before initial setup), this only warns.
+  Requires `php` on PATH (CI's deploy jobs set it up via `shivammathur/setup-php`
+  alongside Node).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —

@@ -17,6 +17,12 @@ cpSync('app', 'public', { recursive: true });
 // environment-agnostic artifact you can promote test -> qa -> prod unchanged.
 rmSync('public/config.php', { force: true });
 
+// Ship the template next to the real (never-uploaded) config.php so it's on
+// every server for reference — diff it against config.php by hand to see
+// what's missing. deploy.mjs also uses it to fail the deploy if config.php's
+// shape has drifted (see checkConfigShape there).
+cpSync('config/config.example.php', 'public/config.example.php');
+
 execFileSync(
   'docker',
   [

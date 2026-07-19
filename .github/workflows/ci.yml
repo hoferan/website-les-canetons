@@ -151,6 +151,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
       - name: Install Node dev tools
         run: npm ci
       - name: Deploy to TEST over FTP
@@ -192,6 +195,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
       - name: Install Node dev tools
         run: npm ci
       - name: Deploy to QA over FTP
@@ -231,6 +237,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
       - name: Install Node dev tools
         run: npm ci
       - name: Deploy to PROD over FTP

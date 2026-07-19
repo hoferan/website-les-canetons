@@ -18,9 +18,22 @@
 // account can reach every environment, so each target hard-refuses to run unless
 // its FTP_*_DIR matches the env name (see the guards below). Each deploy also
 // writes a deployment.json marker into public/ recording the deployed commit.
+//
+// Pre-flight config check: config.php is server-owned and never touched by
+// this script, so code that expects a new config key (e.g. a new App\Features
+// flag) can ship here while the target's config.php is still missing it.
+// Before uploading anything, the target's config.php is fetched and its key
+// *shape* (not values — those are never logged) is compared against
+// config/config.example.php, the source of truth for what the code expects.
+// Any drift (missing OR extra keys) refuses the deploy with the exact key
+// paths to fix; --dry-run reports the same drift without refusing. If
+// config.php can't be fetched at all (e.g. a brand-new environment before
+// initial setup), this only warns — the site can't run either way, deployed
+// code or not, so blocking wouldn't add protection there.
 import ftp from 'basic-ftp';
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadDotEnv } from './dotenv.mjs';
 
@@ -118,6 +131,78 @@ function humanBytes(n) {
   return n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
 }
 
+// Flattens a config.php array to a sorted list of dotted key paths (e.g.
+// "db.host", "features.souper_signup") — never the values, so secrets never
+// appear in deploy output. Evaluated with a local `php`, not the remote host.
+const FLATTEN_KEYS_PHP = `
+function lc_flatten_keys(array $a, string $prefix = ''): array {
+    $out = [];
+    foreach ($a as $k => $v) {
+        $key = $prefix === '' ? (string) $k : $prefix . '.' . $k;
+        if (is_array($v)) {
+            $out = array_merge($out, lc_flatten_keys($v, $key));
+        } else {
+            $out[] = $key;
+        }
+    }
+    return $out;
+}
+$paths = lc_flatten_keys(require $argv[1]);
+sort($paths);
+echo implode("\\n", $paths);
+`;
+
+function configKeyPaths(phpFilePath) {
+  const out = execFileSync('php', ['-r', FLATTEN_KEYS_PHP, '--', phpFilePath], { encoding: 'utf8' }).trim();
+  return out === '' ? [] : out.split('\n');
+}
+
+// Pre-flight: compare the remote config.php's key *shape* (never its values)
+// against config/config.example.php, the single source of truth for which
+// keys the deployed code expects. A mismatch means a feature shipped in this
+// deploy needs a config.php key that hasn't been set by hand on this server
+// yet (or the reverse — the example is now stale) — either way, safer to
+// refuse the deploy with a clear message than to let it silently misbehave.
+// Best-effort: if config.php can't be fetched at all (e.g. a brand-new
+// environment where it hasn't been placed yet), this only warns.
+async function checkConfigShape(client, remoteRoot, label) {
+  const exampleKeys = configKeyPaths('config/config.example.php');
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'lc-config-'));
+  const tmpConfig = path.join(tmpDir, 'config.php');
+  try {
+    try {
+      await client.downloadTo(tmpConfig, `${remoteRoot}/config.php`);
+    } catch (err) {
+      console.log(`  config shape: could not fetch ${label}'s config.php (${err.message}) — skipping check.`);
+      return { ok: true, skipped: true };
+    }
+
+    const remoteKeys = configKeyPaths(tmpConfig);
+    const remoteSet = new Set(remoteKeys);
+    const exampleSet = new Set(exampleKeys);
+    const missing = exampleKeys.filter((k) => !remoteSet.has(k));
+    const extra = remoteKeys.filter((k) => !exampleSet.has(k));
+
+    if (missing.length === 0 && extra.length === 0) {
+      console.log(`  config shape: OK — ${label}'s config.php matches config.example.php.`);
+      return { ok: true, skipped: false };
+    }
+
+    console.log(`  config shape: MISMATCH between ${label}'s config.php and config.example.php.`);
+    if (missing.length) {
+      console.log(`    missing on ${label} (add these keys to its config.php):`);
+      missing.forEach((k) => console.log(`      - ${k}`));
+    }
+    if (extra.length) {
+      console.log(`    extra on ${label} (not in config.example.php):`);
+      extra.forEach((k) => console.log(`      - ${k}`));
+    }
+    return { ok: false, skipped: false, missing, extra };
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
   if (!existsSync(LOCAL_ROOT)) {
     console.error(`No ${LOCAL_ROOT}/ found — run "npm run build" first.`);
@@ -166,6 +251,17 @@ async function main() {
   try {
     await client.access({ host: FTP_HOST, user: process.env.FTP_USER, password: process.env.FTP_PASS, secure: false });
     await client.ensureDir(remoteRoot);
+
+    const shape = await checkConfigShape(client, remoteRoot, LABEL);
+    if (!shape.ok) {
+      if (DRY_RUN) {
+        console.log('\n(dry-run) Would refuse to deploy: fix config.php on the server before the real deploy runs.');
+      } else {
+        throw new Error(
+          `${LABEL}'s config.php has drifted from config.example.php — fix it by hand on the server, then re-run the deploy.`
+        );
+      }
+    }
 
     const remote = await listRemote(client, remoteRoot);
 
