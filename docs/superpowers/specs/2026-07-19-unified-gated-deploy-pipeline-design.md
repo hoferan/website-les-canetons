@@ -27,8 +27,8 @@ that single-graph mental model and complicates the commit/branch story.
    inside the same run (no `workflow_dispatch`, no inputs).
 3. Full PROD deploy over FTP from CI (replacing the manual WinSCP promotion),
    using the same `deploy.mjs` machinery as TEST/QA.
-4. README badges for QA and PROD deployment status (and relabel all deploy
-   badges to `CD - TEST/QA/PROD`).
+4. README badges for QA and PROD deployment status in the top row (and relabel
+   all deploy badges to just `TEST` / `QA` / `PROD`).
 5. A deployment marker file at each env's root so the maintainer can see exactly
    which commit is deployed where.
 6. Surface the PHPUnit summary on PRs (sticky comment + check-run annotations),
@@ -123,16 +123,17 @@ it lands at the root of each env's folder. Shape:
 
 ### 4. Badges (README)
 
-Add QA/PROD badges beside the existing TEST one, and **relabel all three** to
-pair cleanly with the `CI` badge: `CD - TEST`, `CD - QA`, `CD - PROD` (the
-current TEST badge's ugly `deploy test` label is replaced). Same GitHub
+Keep all three in the top badge row next to `CI`, and **relabel all three** to
+just the environment name: `TEST`, `QA`, `PROD` (the current TEST badge's ugly
+`deploy test` label is replaced). Rationale: GitHub's Deployments panel is
+desktop-only; the top-row badges give per-env state on mobile too. Same GitHub
 Deployments shields source (works regardless of Basic Auth, since it reads
 GitHub's deployment API):
 
 ```
-[![CD - TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=CD%20-%20TEST)](https://github.com/hoferan/website-les-canetons/deployments)
-[![CD - QA](https://img.shields.io/github/deployments/hoferan/website-les-canetons/qa?label=CD%20-%20QA)](https://github.com/hoferan/website-les-canetons/deployments)
-[![CD - PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=CD%20-%20PROD)](https://github.com/hoferan/website-les-canetons/deployments)
+[![TEST](https://img.shields.io/github/deployments/hoferan/website-les-canetons/test?label=TEST)](https://github.com/hoferan/website-les-canetons/deployments)
+[![QA](https://img.shields.io/github/deployments/hoferan/website-les-canetons/qa?label=QA)](https://github.com/hoferan/website-les-canetons/deployments)
+[![PROD](https://img.shields.io/github/deployments/hoferan/website-les-canetons/prod?label=PROD)](https://github.com/hoferan/website-les-canetons/deployments)
 ```
 
 Every `environment:` job automatically creates a deployment record, so these
@@ -174,8 +175,8 @@ works. These steps only run on `pull_request` events.
   workflows); PROD now deploys over FTP (remove "prod stays a manual WinSCP
   promotion" statements); document `FTP_PROD_DIR` and the `prod` target guard;
   document `deployment.json`.
-- **README.md** — relabelled `CD - TEST/QA/PROD` badges; update the deploy-flow
-  description; mention PR test reporting (sticky comment + check run).
+- **README.md** — top-row `TEST` / `QA` / `PROD` badges (relabelled); update the
+  deploy-flow description; mention PR test reporting (sticky comment + check run).
 - **staging/README.md** — describe the unified gated flow and the marker file;
   reconcile the WinSCP test→qa→prod copy narrative with the new FTP-based
   promotion.
