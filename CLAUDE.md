@@ -26,16 +26,17 @@ events and view attendance summaries.
   Composer `vendor/` into a generated `public/` directory — the
   environment-agnostic code artifact. It deliberately excludes `config.php`
   (server-owned). `public/` is git-ignored and never hand-edited.
-- **Deployment (promote one artifact):** build `public/` once, upload it to
-  **TEST**, then in WinSCP copy the code **test → qa → prod** so the exact
-  tested bytes reach prod. Every upload/promotion **excludes the three
-  server-owned files** (`.htaccess`, `robots.txt`, `config.php`) — WinSCP file
-  mask `| .htaccess; robots.txt; config.php`. Those per-env files are placed
-  once per server: `npm run build:overlay` generates them into
-  `dist/overlay/<env>/` (test/qa get the auth block auto-merged onto the built
-  front-controller `.htaccess` + a `noindex` `robots.txt`; prod gets the plain
-  `.htaccess`). `config.php` is always set by hand per server. See
-  `staging/README.md`.
+- **Deployment (one gated CI pipeline):** all deploys run in
+  `.github/workflows/ci.yml`. A merge to `main` auto-deploys the built `public/`
+  to **TEST**; **QA** then **PROD** are manual-approval gates in the *same run*
+  (`deploy-qa` needs `deploy-test`, `deploy-prod` needs `deploy-qa`), enforced by
+  **Required reviewers** on the `qa`/`prod` GitHub Environments. The run pauses at
+  each gate until a maintainer approves. Because it is one run on one commit, QA
+  and PROD get the exact bytes tested on TEST — no "resolve latest green commit"
+  step. Every upload still **excludes the three server-owned files**
+  (`.htaccess`, `robots.txt`, `config.php`). Those per-env files are placed once
+  per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
+  `config.php` is always set by hand per server. See `staging/README.md`.
 - **Automated TEST deploy (optional):** `npm run deploy:test` builds then
   uploads `public/` to the TEST server over plain FTP (creds from a git-ignored
   `.env`; see `.env.example`), printing per-file progress. It uploads only
@@ -46,24 +47,27 @@ events and view attendance summaries.
   `--prune`), `-- --prune` (also delete remote **plain files** the build no
   longer produces; directories/symlinks like `cgi-bin` and the protected files
   are always kept), `-- --force` (re-upload every file, for the rare edit that
-  keeps a file's size identical). TEST only — qa/prod stay manual promotions.
-  The FTP account can also write qa/prod, so the script **hard-refuses** to run
-  unless `FTP_TEST_DIR` points at a path containing `test` — a mistyped dir can
-  never deploy to (or `--prune`!) prod.
+  keeps a file's size identical).
+  The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
+  hard-refuses to run unless its `FTP_*_DIR` matches the env name, so a mistyped
+  dir can never deploy to (or `--prune`!) the wrong environment.
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
   set on the `test` GitHub Environment (Settings → Environments → `test`), where
-  you can also add protection rules. Since that FTP account reaches prod too, the
-  `test`-path guard above applies in CI and `--prune` is never used there. qa and
-  prod remain manual promotions.
-- **QA deploy:** `npm run deploy:qa` builds and uploads `public/` to the QA
-  server (creds from `.env`, `FTP_QA_DIR`; same `deploy.mjs` as TEST, with a
-  `qa`-path guard). In CI, QA is a **manual** promotion: the `deploy-qa.yml`
-  workflow (`workflow_dispatch`) resolves the commit of the latest green `main`
-  run — i.e. what is currently on TEST — checks it out, builds, and uploads to
-  QA. Requires the same four FTP secrets on a `qa` GitHub Environment. prod
-  stays a manual WinSCP promotion.
+  you can also add protection rules. Since that FTP account reaches every
+  environment, the per-target path guard applies in CI and `--prune` is never
+  used there.
+- **QA / PROD deploy (manual gates in CI):** `deploy-qa` and `deploy-prod` are
+  jobs in `ci.yml`, gated by Required reviewers on the `qa`/`prod` GitHub
+  Environments — approve `deploy-qa` when TEST is green, then `deploy-prod` when
+  QA is green, all within the same run. Each needs its env's `FTP_*_DIR` secret
+  (`FTP_QA_DIR` / `FTP_PROD_DIR`) plus the shared `FTP_HOST`/`USER`/`PASS`.
+  Locally, `npm run deploy:qa` / `npm run deploy:prod` do the same over FTP.
+- **Deployment marker:** each deploy writes `deployment.json` to the site root
+  (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA
+  is a fixed length, so the size-based change check would otherwise skip it) and
+  is web-readable at `/deployment.json`.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.
 
