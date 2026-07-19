@@ -13,10 +13,10 @@
 //   node tools/deploy.mjs <target> -- --prune    # also delete remote files not in public/
 //   node tools/deploy.mjs <target> -- --force    # re-upload every file, even unchanged ones
 //
-// Credentials come from a git-ignored .env (see .env.example). QA only, on
+// Credentials come from a git-ignored .env (see .env.example). test/qa only, on
 // purpose — prod stays a manual promotion.
 import ftp from 'basic-ftp';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { loadDotEnv } from './dotenv.mjs';
 
