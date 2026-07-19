@@ -45,9 +45,9 @@ require __DIR__ . '/../partials/head.php'; ?>
     <div class="contact-info">
       <h2>Contacts</h2>
       <p>Delphine Maillard</p>
-      <p1><a href="tel:0754177191">075 417 71 91</a></p1>
+      <p><a href="tel:0754177191">075 417 71 91</a></p>
       <p>Laura Mantel</p>
-      <p1><a href="tel:0792807767">079 280 77 67</a></p1>
+      <p><a href="tel:0792807767">079 280 77 67</a></p>
     </div>
   </div>
   <div class="flyer-container">

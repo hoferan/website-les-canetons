@@ -250,10 +250,11 @@ footer {
   margin-top: auto; /* sticky footer: fills the gap when content is short */
 }
 
-footer > p1 {
+footer > .footer-copyright {
   color: #fff;
   font-size: 16px;
   font-weight: normal;
+  margin: 0;
 }
 
 /* -- SECTION ----------------------------- */

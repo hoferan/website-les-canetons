@@ -11,6 +11,17 @@ use App\Auth;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle ?? 'Les Canetons') ?></title>
+    <!-- Favicons + PWA manifest. Root-absolute /assets/ paths: the front
+         controller (.htaccess) serves /assets/* directly but rewrites every
+         other root path to index.php, so a bare /favicon.ico would 404 — these
+         explicit links are what browsers use. -->
+    <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/icons/16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/48.png">
+    <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/assets/icons/manifest.json">
+    <meta name="theme-color" content="#e0201a">
     <!-- Single per-page stylesheet; it @imports main.css itself. -->
     <link rel="stylesheet" href="assets/css/<?= htmlspecialchars($pageCss) ?>">
     <!-- Authenticated role from the server session — the single source of truth
