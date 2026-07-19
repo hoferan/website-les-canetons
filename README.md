@@ -10,7 +10,7 @@ and views attendance summaries.
 
 ## Tech stack
 
-- **PHP 8.1**, PSR-4 autoloaded `App\*` classes, routed through a single
+- **PHP 8.4**, PSR-4 autoloaded `App\*` classes, routed through a single
   front controller (`nikic/fast-route`).
 - **MariaDB 10.3** via `mysqli`.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.

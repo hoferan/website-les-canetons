@@ -1,5 +1,5 @@
 // Full PHP check: `php -l` over every app/**.php, then PHP_CodeSniffer,
-// all in one php:8.1-cli container. `php -l` parse errors surface on stderr.
+// all in one php:8.4-cli container. `php -l` parse errors surface on stderr.
 import { runInPhp } from './php-in-docker.mjs';
 
 const script = [

@@ -10,7 +10,7 @@ events and view attendance summaries.
 
 ## Tech Stack
 
-- **PHP 8.1** (matches prod: PHP 8.1.34). `app/src/` classes are PSR-4
+- **PHP 8.4** (matches prod). `app/src/` classes are PSR-4
   autoloaded under the `App\` namespace via Composer.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
@@ -142,7 +142,7 @@ Seeded test logins (all passwords `demo`, synthetic data only):
 
 ## Development Commands
 
-PHP and Composer normally run in Docker (`php:8.1-cli` / `composer:2`) via
+PHP and Composer normally run in Docker (`php:8.4-cli` / `composer:2`) via
 wrappers in `tools/`. First-time setup: `npm install` then `npm run php:install`.
 
 ```bash
@@ -199,7 +199,7 @@ also safe to run in local Docker dev.
 ## Dos
 
 - Edit `app/` source in place; run `npm run build` before every FTP deploy.
-- Match production versions (PHP 8.1, MariaDB 10.3).
+- Match production versions (PHP 8.4, MariaDB 10.3).
 - Run `npm run check` before pushing.
 - Put new tooling/config at the repo root, never in `app/`.
 - Add new routes in one place: `app/src/routes.php`.

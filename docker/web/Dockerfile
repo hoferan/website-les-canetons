@@ -1,4 +1,4 @@
-FROM php:8.1-apache
+FROM php:8.4-apache
 
 # mysqli is required by app/src/Database.php and is NOT bundled in the base image.
 # Also enable the Apache modules the .htaccess relies on and allow .htaccess overrides.

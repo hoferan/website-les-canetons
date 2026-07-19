@@ -1,5 +1,5 @@
-// Runs a shell command inside a php:8.1-cli container with the repo mounted
-// at /app, matching production (PHP 8.1). Falls back to a local `sh -c`
+// Runs a shell command inside a php:8.4-cli container with the repo mounted
+// at /app, matching production (PHP 8.4). Falls back to a local `sh -c`
 // when no Docker daemon is reachable (e.g. Claude Code web sessions, which
 // have PHP/Composer installed natively but no Docker).
 import { execFileSync, execSync } from 'node:child_process';
@@ -23,7 +23,7 @@ export function runInPhp(shellCommand) {
   }
   execFileSync(
     'docker',
-    ['run', '--rm', '-v', `${mount}:/app`, '-w', '/app', 'php:8.1-cli', 'sh', '-c', shellCommand],
+    ['run', '--rm', '-v', `${mount}:/app`, '-w', '/app', 'php:8.4-cli', 'sh', '-c', shellCommand],
     { stdio: 'inherit' }
   );
 }
