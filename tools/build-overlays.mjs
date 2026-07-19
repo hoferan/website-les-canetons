@@ -43,7 +43,9 @@ function mergedHtaccess(env) {
     loadDotEnv('.env');
     const real = process.env.HTPASSWD_PATH;
     if (real) {
-      auth = auth.split('__HTPASSWD_PATH__').join(real);
+      // Replace only the quoted directive value (AuthUserFile "__HTPASSWD_PATH__"),
+      // leaving the bare token in the explanatory NOTE comment intact.
+      auth = auth.split('"__HTPASSWD_PATH__"').join(`"${real}"`);
     } else {
       console.warn(
         `  ! HTPASSWD_PATH not set in .env.${env} — leaving __HTPASSWD_PATH__ ` +

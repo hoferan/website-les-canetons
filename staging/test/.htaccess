@@ -21,9 +21,10 @@ AuthUserFile "__HTPASSWD_PATH__"
 # The server-side migration endpoint is triggered by CI over HTTPS and gated by
 # its own secret token (see app/api/migrate.php); exclude it from Basic Auth so
 # automated deploys can reach it. Everything else still requires a valid user.
-SetEnvIf Request_URI "^/api/migrate(\?|$)" MIGRATE_ENDPOINT
+# Uses `Require expr` (mod_authz_core, same module as Require valid-user) rather
+# than SetEnvIf, to avoid depending on mod_setenvif in .htaccess.
 <RequireAny>
-    Require env MIGRATE_ENDPOINT
+    Require expr "%{REQUEST_URI} =~ m#^/api/migrate(\?|$)#"
     Require valid-user
 </RequireAny>
 
