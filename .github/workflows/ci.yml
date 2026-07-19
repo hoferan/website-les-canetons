@@ -30,6 +30,10 @@ jobs:
 
   tests:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     services:
       mariadb:
         image: mariadb:10.3
@@ -71,7 +75,23 @@ jobs:
           node-version: "20"
       - name: Test result summary
         if: always()
-        run: node tools/phpunit-summary.mjs junit.xml >> "$GITHUB_STEP_SUMMARY"
+        run: node tools/phpunit-summary.mjs junit.xml | tee test-summary.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment test summary on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: phpunit
+          path: test-summary.md
+      - name: Publish PHPUnit check
+        if: always()
+        continue-on-error: true
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: junit.xml
+          check_name: PHPUnit
+          detailed_summary: true
+          include_passed: false
 
   assets:
     runs-on: ubuntu-latest
