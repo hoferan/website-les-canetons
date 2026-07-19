@@ -20,7 +20,10 @@ use App\Auth;
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/32.png">
     <link rel="icon" type="image/png" sizes="48x48" href="/assets/icons/48.png">
     <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
-    <link rel="manifest" href="/assets/icons/manifest.json">
+    <!-- crossorigin=use-credentials: browsers fetch the manifest in no-credentials
+         mode by default, so behind HTTP Basic Auth (TEST/QA) it 401s. This makes
+         the manifest fetch send credentials; harmless on prod (no auth). -->
+    <link rel="manifest" href="/assets/icons/manifest.json" crossorigin="use-credentials">
     <meta name="theme-color" content="#e0201a">
     <!-- Single per-page stylesheet; it @imports main.css itself. -->
     <link rel="stylesheet" href="assets/css/<?= htmlspecialchars($pageCss) ?>">
