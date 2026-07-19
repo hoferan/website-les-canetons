@@ -138,6 +138,25 @@ async function listRemote(client, remoteBase, sub = '', acc = new Map()) {
   return acc;
 }
 
+// Compare the files uploaded this run against a fresh remote snapshot. Pure so
+// it is unit-testable in isolation. `uploaded` is [{rel, size}]; `remoteSizes`
+// is the Map<rel, size> from listRemote. Reports files that did not land
+// (missing) or landed at the wrong byte count (mismatched = truncated/partial).
+// Remote files not in `uploaded` are ignored — only this run's uploads are judged.
+function diffSizes(uploaded, remoteSizes) {
+  const missing = [];
+  const mismatched = [];
+  for (const f of uploaded) {
+    const remote = remoteSizes.get(f.rel);
+    if (remote === undefined) {
+      missing.push(f.rel);
+    } else if (remote !== f.size) {
+      mismatched.push({ rel: f.rel, local: f.size, remote });
+    }
+  }
+  return { ok: missing.length === 0 && mismatched.length === 0, missing, mismatched };
+}
+
 function humanBytes(n) {
   return n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
 }
@@ -396,4 +415,4 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   });
 }
 
-export { configKeyPaths };
+export { configKeyPaths, diffSizes };
