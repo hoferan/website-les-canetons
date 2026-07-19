@@ -8,7 +8,7 @@
     "php:install": "node tools/composer.mjs install --no-interaction",
     "build": "node tools/build.mjs",
     "build:overlay": "node tools/build-overlays.mjs",
-    "deploy:test": "npm run build && node tools/deploy.mjs test",
+    "deploy:test": "npm run build && node tools/deploy.mjs test && node tools/dbmigrate.mjs test",
     "deploy:qa": "npm run build && node tools/deploy.mjs qa",
     "deploy:prod": "npm run build && node tools/deploy.mjs prod",
     "dbmigrate:test": "node tools/dbmigrate.mjs test",

@@ -162,6 +162,8 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USER }}
           FTP_PASS: ${{ secrets.FTP_PASS }}
           FTP_TEST_DIR: ${{ secrets.FTP_TEST_DIR }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+          MIGRATE_TOKEN: ${{ secrets.MIGRATE_TOKEN }}
         run: npm run deploy:test
 
   # Promote the SAME run's artifact to QA. The manual gate is the `qa` GitHub
