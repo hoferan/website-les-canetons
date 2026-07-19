@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # On-demand dev-stack provisioner for Claude Code web sessions.
 #
-# docker compose (site + MariaDB via Apache/php:8.1-apache) is how this repo
+# docker compose (site + MariaDB via Apache/php:8.4-apache) is how this repo
 # normally does local dev, but Claude Code web sessions have no Docker daemon.
 # When that's the case, this stands up an equivalent stack natively: MariaDB
 # directly, both databases seeded, and app/config.php pointing at it.

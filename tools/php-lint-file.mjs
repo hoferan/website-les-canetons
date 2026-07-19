@@ -1,5 +1,5 @@
 // lint-staged entry for staged .php files: `php -l` each + phpcs, in one
-// php:8.1-cli container. Receives absolute paths; converts to repo-relative.
+// php:8.4-cli container. Receives absolute paths; converts to repo-relative.
 import { relative } from 'node:path';
 import { runInPhp } from './php-in-docker.mjs';
 
