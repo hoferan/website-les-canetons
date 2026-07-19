@@ -27,10 +27,13 @@ that single-graph mental model and complicates the commit/branch story.
    inside the same run (no `workflow_dispatch`, no inputs).
 3. Full PROD deploy over FTP from CI (replacing the manual WinSCP promotion),
    using the same `deploy.mjs` machinery as TEST/QA.
-4. README badges for QA and PROD deployment status.
+4. README badges for QA and PROD deployment status (and relabel all deploy
+   badges to `CD - TEST/QA/PROD`).
 5. A deployment marker file at each env's root so the maintainer can see exactly
    which commit is deployed where.
-6. All docs updated to match.
+6. Surface the PHPUnit summary on PRs (sticky comment + check-run annotations),
+   not just on the run page.
+7. All docs updated to match.
 
 ## Non-goals
 
@@ -135,6 +138,35 @@ GitHub's deployment API):
 Every `environment:` job automatically creates a deployment record, so these
 populate with no extra wiring.
 
+**No separate test/coverage badge** — the `CI` badge already goes red when the
+`tests` job fails, and the detailed results are surfaced on the PR (§4a). A
+coverage badge is deferred (would need a coverage driver + external publishing).
+
+### 4a. PR test reporting
+
+The `tests` job surfaces the PHPUnit results on PRs, in addition to the existing
+`$GITHUB_STEP_SUMMARY`, two ways:
+
+1. **Sticky PR comment** — reuse `tools/phpunit-summary.mjs`: write its markdown
+   to a file (`summary.md`), append it to `$GITHUB_STEP_SUMMARY` as today **and**
+   feed the same file to `marocchino/sticky-pull-request-comment` (a fixed
+   `header:` makes it update one comment in place instead of spamming). No change
+   to `phpunit-summary.mjs` — just capture to a file and use it twice.
+2. **Check run + inline annotations** — `mikepenz/action-junit-report` reads
+   `junit.xml` and publishes a check with a per-test breakdown and annotations on
+   failing lines in the diff.
+
+Both steps run `if: always()` so failures still report.
+
+Permissions: add a **job-level** `permissions:` block to `tests` only —
+`pull-requests: write` (sticky comment) + `checks: write` (check run) — rather
+than widening the global `permissions: contents: read`. Least privilege stays
+intact for every other job.
+
+Fork PRs: `GITHUB_TOKEN` is read-only on forks, so the comment/check can't post
+there; acceptable for this single-maintainer repo, and the step-summary still
+works. These steps only run on `pull_request` events.
+
 ### 5. Docs
 
 - **CLAUDE.md** — rewrite the deploy bullets: single gated pipeline in `ci.yml`;
@@ -142,7 +174,8 @@ populate with no extra wiring.
   workflows); PROD now deploys over FTP (remove "prod stays a manual WinSCP
   promotion" statements); document `FTP_PROD_DIR` and the `prod` target guard;
   document `deployment.json`.
-- **README.md** — new QA/PROD badges; update the deploy-flow description.
+- **README.md** — relabelled `CD - TEST/QA/PROD` badges; update the deploy-flow
+  description; mention PR test reporting (sticky comment + check run).
 - **staging/README.md** — describe the unified gated flow and the marker file;
   reconcile the WinSCP test→qa→prod copy narrative with the new FTP-based
   promotion.
