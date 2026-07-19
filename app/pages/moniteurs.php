@@ -9,7 +9,7 @@ require __DIR__ . '/../partials/head.php'; ?>
   <h2>Nos Moniteurs</h2>
   <img src="assets/img/moniteurs.jpg" alt="moniteurs" />
   <div class="texte">
-    <p1>MERCI</p1>
+    <p class="thanks">MERCI</p>
     <p>à tous les moniteurs et toutes les personnes qui donnent de leur temps pour nos canetons</p>
     <ul>
       <li><strong>Batterie:</strong> Fabio, Théo, Nolan, Kevin</li>

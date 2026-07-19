@@ -57,8 +57,3 @@ button[type="submit"] {
 button[type="submit"]:hover {
   background-color: #777;
 }
-
-p1 {
-  color: #fff;
-  font-size: 20px;
-}
