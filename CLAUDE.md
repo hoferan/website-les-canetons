@@ -76,6 +76,15 @@ events and view attendance summaries.
   fetched server config. It assumes `config.php` stays a literal array (as it
   always is); a dynamic construct throws a clear error instead of under-reporting
   keys.
+- **Automated DB migrations:** after each deploy, `npm run dbmigrate:<env>`
+  triggers the token-gated server-side endpoint `POST /api/migrate`
+  (`app/api/migrate.php` → `App\Migrator`), which applies `sql/migrations/*.sql`
+  using the server's `config.php` DB connection (remote DB login is blocked, so
+  migrations run server-side). `deploy:<env>` runs it after the upload; a failed
+  migration fails the deploy. `-- --dry-run` reports pending without applying.
+  Requires a `migrate.token` in each server's `config.php` and `MIGRATE_TOKEN` /
+  `SITE_URL` in `.env.<env>` (or the env's CI secrets). Migrations must be
+  idempotent + backward-compatible (see `sql/migrations/README.md`).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
