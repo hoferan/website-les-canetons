@@ -82,11 +82,15 @@ events and view attendance summaries.
   triggers the token-gated server-side endpoint `POST /api/migrate`
   (`app/api/migrate.php` → `App\Migrator`), which applies `sql/migrations/*.sql`
   using the server's `config.php` DB connection (remote DB login is blocked, so
-  migrations run server-side). `deploy:<env>` runs it after the upload; a failed
-  migration fails the deploy. `-- --dry-run` reports pending without applying.
-  Requires a `migrate.token` in each server's `config.php` and `MIGRATE_TOKEN` /
-  `SITE_URL` in `.env.<env>` (or the env's CI secrets). Migrations must be
-  idempotent + backward-compatible (see `sql/migrations/README.md`).
+  migrations run server-side). It is a **separate step run after** `deploy:<env>`
+  — deliberately not chained into it, so `deploy:<env> -- --dry-run` still reaches
+  `deploy.mjs`. In CI it's a step after the deploy step (skipped if the deploy
+  fails); locally run `npm run dbmigrate:<env>` after `npm run deploy:<env>`. A
+  failed migration exits non-zero (fails the CI job). `dbmigrate:<env> -- --dry-run`
+  reports pending without applying. Requires a `migrate.token` in each server's
+  `config.php` and `MIGRATE_TOKEN` / `SITE_URL` in `.env.<env>` (or the env's CI
+  secrets). Migrations must be idempotent + backward-compatible (see
+  `sql/migrations/README.md`).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
