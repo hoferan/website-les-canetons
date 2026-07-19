@@ -282,7 +282,13 @@ Insert the verification block between the prune block and the `console.log(\`\n$
 
 - [ ] **Step 5: Verify the module still parses and imports cleanly**
 
-Run: `node --check tools/deploy.mjs && node -e "import('./tools/deploy.mjs').then(m => console.log('exports:', Object.keys(m)))"`
+Run: `node --check tools/deploy.mjs` for the syntax check. Then confirm the exports via a tiny throwaway script (NOT `node -e` — the entry guard reads `process.argv[1]`, which is undefined under `-e`, so `-e` would throw before the import resolves):
+
+```bash
+printf "import('./tools/deploy.mjs').then(m => console.log('exports:', Object.keys(m)))\n" > _exports.check.mjs
+node _exports.check.mjs && rm _exports.check.mjs
+```
+
 Expected: no syntax error, and prints `exports: [ 'configKeyPaths', 'diffSizes' ]` (importing does not run `main()` because of the entry guard).
 
 - [ ] **Step 6: Verify `--dry-run` skips verification (no regression)**

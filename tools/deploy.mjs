@@ -292,7 +292,9 @@ async function main() {
 
   console.log(`${LABEL} deploy — ${local.length} files in ${LOCAL_ROOT}/`);
   console.log(`  protected (never uploaded/pruned): ${[...PROTECTED].join(', ')}`);
-  console.log(`  flags: dry-run=${DRY_RUN ? 'ON' : 'off'}  prune=${PRUNE ? 'ON' : 'off'}  force=${FORCE ? 'ON' : 'off'}`);
+  console.log(
+    `  flags: dry-run=${DRY_RUN ? 'ON' : 'off'}  prune=${PRUNE ? 'ON' : 'off'}  force=${FORCE ? 'ON' : 'off'}  no-verify=${NO_VERIFY ? 'ON' : 'off'}`
+  );
 
   const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', dirVar].filter((k) => !process.env[k]);
   if (missing.length) {
