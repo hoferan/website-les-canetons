@@ -13,8 +13,10 @@ use App\Migrator;
 $config = require __DIR__ . '/../config.php';
 $expected = (string) ($config['migrate']['token'] ?? '');
 
-// No token configured -> endpoint does not exist here.
-if ($expected === '') {
+// No real token configured -> endpoint does not exist here. The placeholder
+// 'CHANGE_ME' counts as unconfigured: a server that shipped config.example.php's
+// default must not expose a live endpoint gated by a well-known string.
+if ($expected === '' || $expected === 'CHANGE_ME') {
     http_response_code(404);
     require __DIR__ . '/../pages/404.php';
     exit;
