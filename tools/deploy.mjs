@@ -45,11 +45,23 @@ const LOCAL_ROOT = 'public';
 // Files that live on the server and must never be uploaded or pruned.
 const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd']);
 
-// The deployment marker. Written into public/ on every deploy and always
-// re-uploaded (a commit SHA is a fixed length, so the size-based change check
-// below would otherwise treat it as "unchanged" and skip it forever).
+// The deployment marker. Written into public/ on every deploy.
 const MARKER = 'deployment.json';
-const ALWAYS_UPLOAD = new Set([MARKER]);
+
+// Files whose CONTENT can change while their byte SIZE stays identical, so the
+// size-based change check below would wrongly treat them as "unchanged" and skip
+// them. These MUST be re-uploaded every deploy:
+//  - deployment.json: the commit SHA is a fixed length.
+//  - Composer autoload glue (vendor/autoload.php + vendor/composer/*): the
+//    autoloader suffix (ComposerAutoloaderInit<hash> / ComposerStaticInit<hash>)
+//    changes whenever the dependency set / composer state changes, but is a
+//    fixed 32-char length — so vendor/autoload.php and vendor/composer/*.php can
+//    change content without changing size. A partial skip leaves autoload_real.php
+//    referencing a ComposerStaticInit<hash> that the uploaded autoload_static.php
+//    no longer defines -> fatal "class not found" on every page.
+function alwaysUpload(rel) {
+  return rel === MARKER || rel === 'vendor/autoload.php' || rel.startsWith('vendor/composer/');
+}
 
 // First non-flag arg selects the target environment.
 const TARGETS = {
@@ -357,7 +369,7 @@ async function main() {
       const remoteSize = remote.get(f.rel);
       if (remoteSize === undefined) {
         newFiles.push(f);
-      } else if (FORCE || ALWAYS_UPLOAD.has(f.rel) || remoteSize !== f.size) {
+      } else if (FORCE || alwaysUpload(f.rel) || remoteSize !== f.size) {
         changed.push({ ...f, remoteSize });
       } else {
         unchanged++;
