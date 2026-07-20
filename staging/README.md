@@ -165,3 +165,23 @@ Everything is one pipeline in `.github/workflows/ci.yml`:
 - A `deployment.json` at each site root (web-readable, e.g.
   `https://<prod-host>/deployment.json`) records the deployed commit, ref, time,
   and CI run URL.
+
+## Database migrations & recovery
+
+Migrations apply automatically **server-side** on the first request after a
+deploy: `bootstrap.php` runs `App\AutoMigrator`, which applies any pending
+`sql/migrations/*.sql` under a single-flight `GET_LOCK`. (CI no longer triggers
+migrations — the runner can't reach the staging hosts.)
+
+**Fail-loud:** if a migration fails, the whole environment serves HTTP 503
+("Site en maintenance…") on every request until fixed — this is intentional, so
+a broken schema is never served.
+
+**Recovery (per environment):**
+
+1. In that server's `config.php`, set `'auto_migrate' => false` (stops the 503
+   loop; the site serves again against the current schema).
+2. From an allowlisted machine, inspect and apply manually:
+   `npm run dbmigrate:<env> -- --dry-run` then `npm run dbmigrate:<env>`
+   (or POST `/api/migrate`). Fix the offending migration if it errors.
+3. Once migrations are clean, set `'auto_migrate' => true` again.

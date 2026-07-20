@@ -3,6 +3,7 @@
 namespace App;
 
 use mysqli;
+use mysqli_result;
 use RuntimeException;
 
 /**
@@ -54,6 +55,9 @@ final class AutoMigrator
         $res = $this->db->query(
             sprintf("SELECT GET_LOCK('%s', %d)", self::LOCK_NAME, self::LOCK_TIMEOUT_SECONDS)
         );
+        if (!$res instanceof mysqli_result) {
+            return false;
+        }
         $row = $res->fetch_row();
         $res->free();
 
@@ -63,7 +67,7 @@ final class AutoMigrator
     private function releaseLock(): void
     {
         $res = $this->db->query(sprintf("SELECT RELEASE_LOCK('%s')", self::LOCK_NAME));
-        if ($res instanceof \mysqli_result) {
+        if ($res instanceof mysqli_result) {
             $res->free();
         }
     }
