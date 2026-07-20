@@ -11,13 +11,13 @@ final class ResponseRepository
     }
 
     /** Record (or change) a user's answer for an event. Upsert on (user, event). */
-    public function record(string $username, int $eventId, string $answer): void
+    public function record(int $userId, int $eventId, string $answer): void
     {
         $sql = "INSERT INTO responses (user_id, event_id, answer)
-                VALUES ((SELECT id FROM users WHERE username = ?), ?, ?)
+                VALUES (?, ?, ?)
                 ON DUPLICATE KEY UPDATE answer = VALUES(answer)";
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('sis', $username, $eventId, $answer);
+        $stmt->bind_param('iis', $userId, $eventId, $answer);
         $stmt->execute();
         $stmt->close();
     }
