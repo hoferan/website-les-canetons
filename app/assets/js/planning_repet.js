@@ -7,9 +7,10 @@ window.addEventListener("load", function () {
   // Charger les événements
   loadEvents();
 
-  // Afficher le formulaire de l'administrateur si isAdmin est vrai
-  if (isAdmin) {
-    document.getElementById("admin-interface").style.display = "block";
+  // Le formulaire n'existe dans le DOM que pour les admins (rendu côté serveur).
+  var adminInterface = document.getElementById("admin-interface");
+  if (isAdmin && adminInterface) {
+    adminInterface.style.display = "block";
   }
 });
 
