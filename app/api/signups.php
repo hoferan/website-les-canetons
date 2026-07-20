@@ -52,8 +52,12 @@ if ($method === 'POST') {
     }
 
     // Proof-of-work gate (fail-closed) + single-use replay guard, before insert/mail.
-    $altcha = new Altcha((string) ($config['altcha']['hmac_secret'] ?? ''));
-    $signature = $altcha->verifySolution($altchaPayload);
+    $altchaSecret = (string) ($config['altcha']['hmac_secret'] ?? '');
+    // A server left on the placeholder/empty secret must fail closed: the default
+    // secret is public (config.example.php), so any challenge it signs is forgeable.
+    $signature = ($altchaSecret === '' || $altchaSecret === 'CHANGE_ME')
+        ? null
+        : (new Altcha($altchaSecret))->verifySolution($altchaPayload);
     $challenges = new ChallengeRepository(Database::get());
     if ($signature === null || !$challenges->consume($signature)) {
         http_response_code(403);
