@@ -20,6 +20,26 @@ function sortEventsByDate(events) {
   });
 }
 
+// Appends a <p><strong>label</strong> value</p> line, or just <p><strong>value</strong></p>
+// when boldValue is true and there is no label. All text goes through textContent,
+// never innerHTML, so event data from the API can never inject markup.
+function appendInfoLine(container, label, value, boldValue) {
+  var p = document.createElement("p");
+  if (label) {
+    var strongLabel = document.createElement("strong");
+    strongLabel.textContent = label + " ";
+    p.appendChild(strongLabel);
+    p.appendChild(document.createTextNode(value));
+  } else if (boldValue) {
+    var strongValue = document.createElement("strong");
+    strongValue.textContent = value;
+    p.appendChild(strongValue);
+  } else {
+    p.textContent = value;
+  }
+  container.appendChild(p);
+}
+
 // Fonction pour charger les événements depuis le stockage et les afficher dans la liste
 function loadEvents() {
   var eventsList = document.getElementById("events-list");
@@ -41,44 +61,25 @@ function loadEvents() {
       storedEvents.forEach(function (event, _) {
         var li = document.createElement("li");
         var eventDate = new Date(event.date);
-        var eventTitle = event.title;
-        var eventStartTime = event.startTime;
-        var eventEndTime = event.endTime;
-        var eventLocation = event.location;
-        var eventAttire = event.attire;
 
-        var eventInfo = document.createElement("div");
-        var eventDateText = formatDate(eventDate);
-
-        // Dans la fonction loadEvents()
         var endDate = new Date(eventDate);
         endDate.setDate(endDate.getDate() + 1);
-        var formattedEndDate = formatDate(endDate);
 
-        var dateRangeText = eventDateText;
+        var eventInfo = document.createElement("div");
+        var dateLine;
         if (event.weekend) {
-          dateRangeText += ` au ${formattedEndDate}`;
+          dateLine = formatDateRangeText(eventDate, endDate);
+        } else {
+          dateLine = formatDate(eventDate);
         }
 
-        // Vérifier si l'événement est un week-end
-        if (event.weekend) {
-          var formattedDateRangeText = formatDateRangeText(eventDate, endDate);
-
-          eventInfo.innerHTML = `
-            <p><strong>${formattedDateRangeText}</strong></p>
-            <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
-            <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
-            <p><strong>Lieu :</strong> ${eventLocation}</p>
-        ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
-        } else {
-          eventInfo.innerHTML = `
-            <p><strong>${dateRangeText}</strong></p>
-            <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
-            <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
-            <p><strong>Lieu :</strong> ${eventLocation}</p>
-        ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
+        appendInfoLine(eventInfo, null, dateLine, true);
+        appendInfoLine(eventInfo, "Titre :", event.title);
+        appendInfoLine(eventInfo, "Heure de début :", event.startTime.slice(0, 5));
+        appendInfoLine(eventInfo, "Heure de fin :", event.endTime.slice(0, 5));
+        appendInfoLine(eventInfo, "Lieu :", event.location);
+        if (event.attire) {
+          appendInfoLine(eventInfo, "Tenue :", event.attire);
         }
 
         li.appendChild(eventInfo);
@@ -264,7 +265,7 @@ function formatDate(date) {
     month: "long",
     day: "numeric",
   };
-  return `<strong>${date.toLocaleDateString("fr-FR", options)}</strong>`;
+  return date.toLocaleDateString("fr-FR", options);
 }
 
 // Fonction pour formater la plage de dates en "du jour mois année au jour mois année"
