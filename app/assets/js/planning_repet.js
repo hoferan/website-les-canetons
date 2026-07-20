@@ -107,58 +107,34 @@ if (eventForm) {
 
     // Récupérer les valeurs du formulaire
     var eventId = document.getElementById("event-id").value;
-    var eventDate = document.getElementById("event-date").value;
-    var eventTitle = document.getElementById("event-title").value;
-    var eventStartTime = document.getElementById("event-time-start").value;
-    var eventEndTime = document.getElementById("event-time-end").value;
-    var eventLocation = document.getElementById("event-location").value;
-    var eventAttire = document.getElementById("event-attire").value;
-    var eventWeekend = document.getElementById("event-weekend").checked;
 
     // Créer un objet pour l'événement
     var newEvent = {
       id: eventId,
-      date: eventDate,
-      title: eventTitle,
-      startTime: eventStartTime,
-      endTime: eventEndTime,
-      location: eventLocation,
-      attire: eventAttire,
-      weekend: eventWeekend,
+      date: document.getElementById("event-date").value,
+      title: document.getElementById("event-title").value,
+      startTime: document.getElementById("event-time-start").value,
+      endTime: document.getElementById("event-time-end").value,
+      location: document.getElementById("event-location").value,
+      attire: document.getElementById("event-attire").value,
+      weekend: document.getElementById("event-weekend").checked,
     };
-
-    // POST creates, PUT updates an existing event (eventId present).
-    var method = eventId ? "PUT" : "POST";
 
     clearFormError();
 
-    fetch("/api/events", {
-      method: method,
-      body: JSON.stringify(newEvent),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then(function (response) {
-        // fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok
-        // explicitly — otherwise an error would fall into the success path and
-        // wrongly reset the form. Parse the JSON body regardless (it carries the
-        // server's error message on failure), then branch on response.ok.
-        return response.json().then(function (body) {
-          if (!response.ok) {
-            // Expected, server-validated failure: surface the message to the
-            // user but flag it as handled so it is not logged as a fault below.
-            var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
-            var handled = new Error(message);
-            handled.handled = true;
-            throw handled;
-          }
-          return body;
-        });
-      })
-      .then(function (_) {
+    // Guard against double-click / slow-network double submit: disable the
+    // button for the duration of the request and always re-enable it in
+    // .finally() so a legitimate retry isn't left permanently blocked.
+    var submitButton = eventForm.querySelector('input[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+
+    // POST creates, PUT updates an existing event (eventId present).
+    saveEvent(eventId ? "PUT" : "POST", newEvent)
+      .then(function () {
         displayResult(newEvent); // API returns {ok:true}; show what we saved
-        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
+        eventForm.reset(); // Effacer les champs du formulaire
         loadEvents();
       })
       .catch(function (error) {
@@ -169,7 +145,40 @@ if (eventForm) {
         if (!error.handled) {
           console.error("Erreur lors de l'enregistrement de l'événement : ", error);
         }
+      })
+      .finally(function () {
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
       });
+  });
+}
+
+// Envoie l'événement au serveur (création ou modification) et rejette si la
+// réponse n'est pas OK, pour que l'appelant sache distinguer succès et échec.
+// fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok explicitly —
+// otherwise an error would fall into the success path and wrongly report
+// success. Parse the JSON body regardless (it carries the server's error
+// message on failure), then branch on response.ok.
+function saveEvent(method, event) {
+  return fetch("/api/events", {
+    method: method,
+    body: JSON.stringify(event),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  }).then(function (response) {
+    return response.json().then(function (body) {
+      if (!response.ok) {
+        // Expected, server-validated failure: surface the message to the
+        // user but flag it as handled so it is not logged as a fault above.
+        var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
+        var handled = new Error(message);
+        handled.handled = true;
+        throw handled;
+      }
+      return body;
+    });
   });
 }
 
@@ -250,11 +259,15 @@ function createDeleteElement(event) {
       fetch("/api/events?id=" + event.id, {
         method: "DELETE",
       })
-        .then((_) => {
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("Échec de la suppression (HTTP " + response.status + ")");
+          }
           loadEvents();
         })
-        .catch((error) => {
+        .catch(function (error) {
           console.error("Failed to delete event: ", error);
+          alert("La suppression de l'événement a échoué. Veuillez réessayer.");
         });
     }
   });
