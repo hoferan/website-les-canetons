@@ -58,26 +58,92 @@
   document.getElementById("add-guest").addEventListener("click", addGuest);
   addGuest(); // start with one row
 
+  function toHex(buffer) {
+    var bytes = new Uint8Array(buffer);
+    var hex = "";
+    for (var i = 0; i < bytes.length; i++) {
+      hex += bytes[i].toString(16).padStart(2, "0");
+    }
+    return hex;
+  }
+
+  // Fetch a fresh challenge and brute-force the proof-of-work. Returns the
+  // base64 solution payload, or null if it can't be solved.
+  function solveAltcha() {
+    return fetch("/api/altcha", { headers: { Accept: "application/json" } })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (ch) {
+        var enc = new TextEncoder();
+
+        function tryNumber(n) {
+          if (n > ch.maxnumber) {
+            return null;
+          }
+          return crypto.subtle.digest("SHA-256", enc.encode(ch.salt + n)).then(function (digest) {
+            if (toHex(digest) === ch.challenge) {
+              return btoa(
+                JSON.stringify({
+                  algorithm: ch.algorithm,
+                  challenge: ch.challenge,
+                  number: n,
+                  salt: ch.salt,
+                  signature: ch.signature,
+                }),
+              );
+            }
+            return tryNumber(n + 1);
+          });
+        }
+
+        return tryNumber(0);
+      });
+  }
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     var menus = [];
     guests.querySelectorAll(".guest-menu").forEach(function (s) {
       menus.push(s.value);
     });
-    var payload = {
-      first_name: form.first_name.value.trim(),
-      last_name: form.last_name.value.trim(),
-      address: form.address.value.trim(),
-      phone: form.phone.value.trim(),
-      email: form.email.value.trim(),
-      table_name: form.table_name.value.trim(),
-      menus: menus,
-    };
-    fetch("/api/signups", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var submitLabel = submitBtn ? submitBtn.textContent : "";
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Vérification…";
+    }
+
+    function restoreButton() {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = submitLabel;
+      }
+    }
+
+    solveAltcha()
+      .then(function (altcha) {
+        if (!altcha) {
+          throw new Error("altcha-failed");
+        }
+        var payload = {
+          first_name: form.first_name.value.trim(),
+          last_name: form.last_name.value.trim(),
+          address: form.address.value.trim(),
+          phone: form.phone.value.trim(),
+          email: form.email.value.trim(),
+          table_name: form.table_name.value.trim(),
+          menus: menus,
+          hp: form.website.value,
+          altcha: altcha,
+        };
+        return fetch("/api/signups", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      })
       .then(function (r) {
         if (!r.ok) {
           throw new Error("signup-failed");
@@ -85,6 +151,7 @@
         window.location.href = "/signup_thanks";
       })
       .catch(function () {
+        restoreButton();
         alert("Échec de l'envoi du formulaire. Veuillez vérifier les champs et réessayer.");
       });
   });

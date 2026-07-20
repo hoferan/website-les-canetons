@@ -20,6 +20,11 @@ require __DIR__ . '/../partials/head.php';
   <p class="signup-desc"><?= htmlspecialchars($occasion['invitation']) ?></p>
 
   <form id="signup-form">
+    <!-- Honeypot: hidden from real users; bots that autofill it are dropped server-side. -->
+    <div class="hp-field" aria-hidden="true">
+      <label for="website">Ne pas remplir ce champ</label>
+      <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+    </div>
     <fieldset>
       <legend>Vos coordonnées</legend>
       <div class="form-grid">
