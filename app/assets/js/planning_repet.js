@@ -127,44 +127,70 @@ if (eventForm) {
       weekend: eventWeekend,
     };
 
-    if (eventId) {
-      // Update event
-      fetch("/api/events", {
-        method: "PUT",
-        body: JSON.stringify(newEvent),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      })
-        .then((response) => response.json())
-        .then((_) => {
-          displayResult(newEvent); // API returns {ok:true}; show what we saved
-          document.getElementById("event-form").reset(); // Effacer les champs du formulaire
-          loadEvents();
-        })
-        .catch((error) => {
-          console.error("Erreur lors de l'actualisation de l'événement: ", error);
+    // POST creates, PUT updates an existing event (eventId present).
+    var method = eventId ? "PUT" : "POST";
+
+    clearFormError();
+
+    fetch("/api/events", {
+      method: method,
+      body: JSON.stringify(newEvent),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then(function (response) {
+        // fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok
+        // explicitly — otherwise an error would fall into the success path and
+        // wrongly reset the form. Parse the JSON body regardless (it carries the
+        // server's error message on failure), then branch on response.ok.
+        return response.json().then(function (body) {
+          if (!response.ok) {
+            // Expected, server-validated failure: surface the message to the
+            // user but flag it as handled so it is not logged as a fault below.
+            var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
+            var handled = new Error(message);
+            handled.handled = true;
+            throw handled;
+          }
+          return body;
         });
-    } else {
-      // Create new event
-      fetch("/api/events", {
-        method: "POST",
-        body: JSON.stringify(newEvent),
-        headers: {
-          "Content-Type": "application/json",
-        },
       })
-        .then((response) => response.json())
-        .then((_) => {
-          displayResult(newEvent); // API returns {ok:true}; show what we saved
-          document.getElementById("event-form").reset(); // Effacer les champs du formulaire
-          loadEvents();
-        })
-        .catch((error) => {
-          console.error("Erreur lors de l'ajout de l'événement : ", error);
-        });
-    }
+      .then(function (_) {
+        displayResult(newEvent); // API returns {ok:true}; show what we saved
+        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
+        loadEvents();
+      })
+      .catch(function (error) {
+        // Keep the form values intact so the user can correct and resubmit.
+        showFormError(error.message || "L'enregistrement a échoué. Veuillez réessayer.");
+        // Only log genuinely unexpected failures (network error, invalid JSON,
+        // server 5xx) — a handled validation error is normal flow, not noise.
+        if (!error.handled) {
+          console.error("Erreur lors de l'enregistrement de l'événement : ", error);
+        }
+      });
   });
+}
+
+// Show/clear a validation or network error above nothing destructive — the form
+// keeps its values so the admin can fix the issue and resubmit.
+function showFormError(message) {
+  var el = document.getElementById("event-error");
+  if (!el) {
+    return;
+  }
+  el.textContent = message;
+  el.style.display = "block";
+}
+
+function clearFormError() {
+  var el = document.getElementById("event-error");
+  if (!el) {
+    return;
+  }
+  el.textContent = "";
+  el.style.display = "none";
 }
 
 // Fonction pour afficher le résultat de l'ajout d'événement

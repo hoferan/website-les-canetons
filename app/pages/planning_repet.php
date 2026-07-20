@@ -36,6 +36,7 @@ require __DIR__ . '/../partials/head.php'; ?>
         <input type="checkbox" id="event-weekend" name="event-weekend" />
       </label><br />
       <input type="submit" value="Ajouter" />
+      <p id="event-error" class="form-error" role="alert" style="display: none"></p>
     </form>
   </div>
   <?php endif; ?>
