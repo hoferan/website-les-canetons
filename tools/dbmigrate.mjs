@@ -23,7 +23,7 @@ const siteUrl = process.env.SITE_URL;
 const token = process.env.MIGRATE_TOKEN;
 const missing = [!siteUrl && 'SITE_URL', !token && 'MIGRATE_TOKEN'].filter(Boolean);
 if (missing.length) {
-  console.error(`Missing ${missing.join(', ')} — set them in .env.${target} (see .env.${target}.example).`);
+  console.error(`Missing ${missing.join(', ')} — set them in .env.${target} (copy .env.example).`);
   process.exit(1);
 }
 
