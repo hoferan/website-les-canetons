@@ -2,6 +2,7 @@
 
 use App\Auth;
 use App\Database;
+use App\Repositories\EventRepository;
 use App\Repositories\ResponseRepository;
 
 header('Content-Type: application/json');
@@ -17,6 +18,12 @@ if ($method === 'POST') {
     if ($eventId <= 0 || !in_array($participation, ['participate', 'notparticipate'], true)) {
         http_response_code(400);
         echo json_encode(['error' => 'Données manquantes']);
+        exit;
+    }
+    $eventRepo = new EventRepository(Database::get());
+    if (!$eventRepo->exists($eventId)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Événement introuvable']);
         exit;
     }
     $repo->record(Auth::user()['username'], $eventId, $participation);
