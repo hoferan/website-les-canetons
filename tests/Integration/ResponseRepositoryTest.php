@@ -17,7 +17,7 @@ final class ResponseRepositoryTest extends IntegrationTestCase
     public function testRecordInsertsNewResponse(): void
     {
         $repo = new ResponseRepository($this->db);
-        $repo->record('sam.beispiel', 1, 'participate');
+        $repo->record(7, 1, 'participate'); // id 7 = sam.beispiel (see 02-seed.sql)
 
         $entry = $this->responseFor($repo->allForEvent(1, ['user', 'moderator']), 'sam.beispiel');
 
@@ -26,9 +26,9 @@ final class ResponseRepositoryTest extends IntegrationTestCase
 
     public function testRecordUpsertsExistingResponse(): void
     {
-        // demo.user already has 'participate' for event 1 in the seed data.
+        // demo.user (id 1) already has 'participate' for event 1 in the seed data.
         $repo = new ResponseRepository($this->db);
-        $repo->record('demo.user', 1, 'notparticipate');
+        $repo->record(1, 1, 'notparticipate');
 
         $entry = $this->responseFor($repo->allForEvent(1, ['user', 'moderator']), 'demo.user');
 

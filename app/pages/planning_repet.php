@@ -1,4 +1,8 @@
-<?php $pageTitle = 'Planning et répétitions';
+<?php
+
+use App\Auth;
+
+$pageTitle = 'Planning et répétitions';
 $pageCss = 'planning_repet.css';
 require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
@@ -10,8 +14,9 @@ require __DIR__ . '/../partials/head.php'; ?>
   <h4>Saison 2023-2024</h4>
   <ul id="events-list"></ul>
 
-  <!-- Interface de l'administrateur (visible uniquement si isAdmin est vrai) -->
-  <div id="admin-interface" style="display: none">
+  <?php if (Auth::canManageEvents()) : ?>
+  <!-- Interface de l'administrateur (rendue uniquement côté serveur pour les admins) -->
+  <div id="admin-interface">
     <form id="event-form">
       <input type="number" id="event-id" name="event-id" hidden/>
       <label class="required" for="event-date">Date :</label>
@@ -31,8 +36,10 @@ require __DIR__ . '/../partials/head.php'; ?>
         <input type="checkbox" id="event-weekend" name="event-weekend" />
       </label><br />
       <input type="submit" value="Ajouter" />
+      <p id="event-error" class="form-error" role="alert" style="display: none"></p>
     </form>
   </div>
+  <?php endif; ?>
 
   <!-- Résultat de l'ajout d'événement pour l'administrateur -->
   <div id="event-result" style="display: none">

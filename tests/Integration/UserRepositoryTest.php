@@ -20,4 +20,23 @@ final class UserRepositoryTest extends IntegrationTestCase
 
         $this->assertNull($repo->findByUsername('does.not.exist'));
     }
+
+    public function testFindByUsernameIncludesId(): void
+    {
+        $repo = new UserRepository($this->db);
+
+        $user = $repo->findByUsername('demo.user');
+
+        $this->assertSame(1, $user['id']);
+    }
+
+    public function testUpdatePasswordChangesStoredHash(): void
+    {
+        $repo = new UserRepository($this->db);
+        $hash = password_hash('new-secret', PASSWORD_DEFAULT);
+
+        $repo->updatePassword(1, $hash);
+
+        $this->assertSame($hash, $repo->findByUsername('demo.user')['password']);
+    }
 }

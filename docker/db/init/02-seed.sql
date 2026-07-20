@@ -12,8 +12,10 @@ INSERT INTO `instruments` (`id`, `name`) VALUES
 (8, 'Comite'),
 (9, 'Maquillage');
 
--- Synthetic users. All passwords are the literal string "demo" (the app compares
--- plaintext — see Auth.php). NO real member names or passwords.
+-- Synthetic users. All passwords are the literal string "demo". Auth::attemptLogin
+-- verifies these via a one-time legacy-plaintext compare and immediately upgrades
+-- the stored value to a password_hash() on first successful login (see Auth.php).
+-- NO real member names or passwords.
 INSERT INTO `users` (`id`, `username`, `password`, `role`, `instrument_id`) VALUES
 (1, 'demo.user',      'demo', 'user',      1),
 (2, 'demo.user2',     'demo', 'user',      2),

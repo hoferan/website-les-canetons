@@ -7,9 +7,10 @@ window.addEventListener("load", function () {
   // Charger les événements
   loadEvents();
 
-  // Afficher le formulaire de l'administrateur si isAdmin est vrai
-  if (isAdmin) {
-    document.getElementById("admin-interface").style.display = "block";
+  // Le formulaire n'existe dans le DOM que pour les admins (rendu côté serveur).
+  var adminInterface = document.getElementById("admin-interface");
+  if (isAdmin && adminInterface) {
+    adminInterface.style.display = "block";
   }
 });
 
@@ -18,6 +19,26 @@ function sortEventsByDate(events) {
   return events.sort(function (a, b) {
     return new Date(a.date) - new Date(b.date);
   });
+}
+
+// Appends a <p><strong>label</strong> value</p> line, or just <p><strong>value</strong></p>
+// when boldValue is true and there is no label. All text goes through textContent,
+// never innerHTML, so event data from the API can never inject markup.
+function appendInfoLine(container, label, value, boldValue) {
+  var p = document.createElement("p");
+  if (label) {
+    var strongLabel = document.createElement("strong");
+    strongLabel.textContent = label + " ";
+    p.appendChild(strongLabel);
+    p.appendChild(document.createTextNode(value));
+  } else if (boldValue) {
+    var strongValue = document.createElement("strong");
+    strongValue.textContent = value;
+    p.appendChild(strongValue);
+  } else {
+    p.textContent = value;
+  }
+  container.appendChild(p);
 }
 
 // Fonction pour charger les événements depuis le stockage et les afficher dans la liste
@@ -41,44 +62,25 @@ function loadEvents() {
       storedEvents.forEach(function (event, _) {
         var li = document.createElement("li");
         var eventDate = new Date(event.date);
-        var eventTitle = event.title;
-        var eventStartTime = event.startTime;
-        var eventEndTime = event.endTime;
-        var eventLocation = event.location;
-        var eventAttire = event.attire;
 
-        var eventInfo = document.createElement("div");
-        var eventDateText = formatDate(eventDate);
-
-        // Dans la fonction loadEvents()
         var endDate = new Date(eventDate);
         endDate.setDate(endDate.getDate() + 1);
-        var formattedEndDate = formatDate(endDate);
 
-        var dateRangeText = eventDateText;
+        var eventInfo = document.createElement("div");
+        var dateLine;
         if (event.weekend) {
-          dateRangeText += ` au ${formattedEndDate}`;
+          dateLine = formatDateRangeText(eventDate, endDate);
+        } else {
+          dateLine = formatDate(eventDate);
         }
 
-        // Vérifier si l'événement est un week-end
-        if (event.weekend) {
-          var formattedDateRangeText = formatDateRangeText(eventDate, endDate);
-
-          eventInfo.innerHTML = `
-            <p><strong>${formattedDateRangeText}</strong></p>
-            <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
-            <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
-            <p><strong>Lieu :</strong> ${eventLocation}</p>
-        ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
-        } else {
-          eventInfo.innerHTML = `
-            <p><strong>${dateRangeText}</strong></p>
-            <p><strong>Titre :</strong> ${eventTitle}</p>
-            <p><strong>Heure de début :</strong> ${eventStartTime.slice(0, 5)}</p>
-            <p><strong>Heure de fin :</strong> ${eventEndTime.slice(0, 5)}</p>
-            <p><strong>Lieu :</strong> ${eventLocation}</p>
-        ${eventAttire ? `<p><strong>Tenue :</strong> ${eventAttire}</p>` : ""}`;
+        appendInfoLine(eventInfo, null, dateLine, true);
+        appendInfoLine(eventInfo, "Titre :", event.title);
+        appendInfoLine(eventInfo, "Heure de début :", event.startTime.slice(0, 5));
+        appendInfoLine(eventInfo, "Heure de fin :", event.endTime.slice(0, 5));
+        appendInfoLine(eventInfo, "Lieu :", event.location);
+        if (event.attire) {
+          appendInfoLine(eventInfo, "Tenue :", event.attire);
         }
 
         li.appendChild(eventInfo);
@@ -97,69 +99,99 @@ function loadEvents() {
 }
 
 // Gérer la soumission du formulaire
-document.getElementById("event-form").addEventListener("submit", function (e) {
-  e.preventDefault();
+// Le formulaire n'existe dans le DOM que pour les admins (rendu côté serveur).
+var eventForm = document.getElementById("event-form");
+if (eventForm) {
+  eventForm.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-  // Récupérer les valeurs du formulaire
-  var eventId = document.getElementById("event-id").value;
-  var eventDate = document.getElementById("event-date").value;
-  var eventTitle = document.getElementById("event-title").value;
-  var eventStartTime = document.getElementById("event-time-start").value;
-  var eventEndTime = document.getElementById("event-time-end").value;
-  var eventLocation = document.getElementById("event-location").value;
-  var eventAttire = document.getElementById("event-attire").value;
-  var eventWeekend = document.getElementById("event-weekend").checked;
+    // Récupérer les valeurs du formulaire
+    var eventId = document.getElementById("event-id").value;
+    var eventDate = document.getElementById("event-date").value;
+    var eventTitle = document.getElementById("event-title").value;
+    var eventStartTime = document.getElementById("event-time-start").value;
+    var eventEndTime = document.getElementById("event-time-end").value;
+    var eventLocation = document.getElementById("event-location").value;
+    var eventAttire = document.getElementById("event-attire").value;
+    var eventWeekend = document.getElementById("event-weekend").checked;
 
-  // Créer un objet pour l'événement
-  var newEvent = {
-    id: eventId,
-    date: eventDate,
-    title: eventTitle,
-    startTime: eventStartTime,
-    endTime: eventEndTime,
-    location: eventLocation,
-    attire: eventAttire,
-    weekend: eventWeekend,
-  };
+    // Créer un objet pour l'événement
+    var newEvent = {
+      id: eventId,
+      date: eventDate,
+      title: eventTitle,
+      startTime: eventStartTime,
+      endTime: eventEndTime,
+      location: eventLocation,
+      attire: eventAttire,
+      weekend: eventWeekend,
+    };
 
-  if (eventId) {
-    // Update event
+    // POST creates, PUT updates an existing event (eventId present).
+    var method = eventId ? "PUT" : "POST";
+
+    clearFormError();
+
     fetch("/api/events", {
-      method: "PUT",
+      method: method,
       body: JSON.stringify(newEvent),
       headers: {
         "Content-Type": "application/json",
       },
     })
-      .then((response) => response.json())
-      .then((_) => {
+      .then(function (response) {
+        // fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok
+        // explicitly — otherwise an error would fall into the success path and
+        // wrongly reset the form. Parse the JSON body regardless (it carries the
+        // server's error message on failure), then branch on response.ok.
+        return response.json().then(function (body) {
+          if (!response.ok) {
+            // Expected, server-validated failure: surface the message to the
+            // user but flag it as handled so it is not logged as a fault below.
+            var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
+            var handled = new Error(message);
+            handled.handled = true;
+            throw handled;
+          }
+          return body;
+        });
+      })
+      .then(function (_) {
         displayResult(newEvent); // API returns {ok:true}; show what we saved
         document.getElementById("event-form").reset(); // Effacer les champs du formulaire
         loadEvents();
       })
-      .catch((error) => {
-        console.error("Erreur lors de l'actualisation de l'événement: ", error);
+      .catch(function (error) {
+        // Keep the form values intact so the user can correct and resubmit.
+        showFormError(error.message || "L'enregistrement a échoué. Veuillez réessayer.");
+        // Only log genuinely unexpected failures (network error, invalid JSON,
+        // server 5xx) — a handled validation error is normal flow, not noise.
+        if (!error.handled) {
+          console.error("Erreur lors de l'enregistrement de l'événement : ", error);
+        }
       });
-  } else {
-    // Create new event
-    fetch("/api/events", {
-      method: "POST",
-      body: JSON.stringify(newEvent),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((_) => {
-        displayResult(newEvent); // API returns {ok:true}; show what we saved
-        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
-        loadEvents();
-      })
-      .catch((error) => {
-        console.error("Erreur lors de l'ajout de l'événement : ", error);
-      });
+  });
+}
+
+// Show/clear a validation or network error above nothing destructive — the form
+// keeps its values so the admin can fix the issue and resubmit.
+function showFormError(message) {
+  var el = document.getElementById("event-error");
+  if (!el) {
+    return;
   }
-});
+  el.textContent = message;
+  el.style.display = "block";
+}
+
+function clearFormError() {
+  var el = document.getElementById("event-error");
+  if (!el) {
+    return;
+  }
+  el.textContent = "";
+  el.style.display = "none";
+}
 
 // Fonction pour afficher le résultat de l'ajout d'événement
 function displayResult(event) {
@@ -264,7 +296,7 @@ function formatDate(date) {
     month: "long",
     day: "numeric",
   };
-  return `<strong>${date.toLocaleDateString("fr-FR", options)}</strong>`;
+  return date.toLocaleDateString("fr-FR", options);
 }
 
 // Fonction pour formater la plage de dates en "du jour mois année au jour mois année"

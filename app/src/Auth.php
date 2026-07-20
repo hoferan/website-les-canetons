@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Repositories\UserRepository;
+use mysqli_sql_exception;
 
 final class Auth
 {
@@ -72,15 +73,35 @@ final class Auth
         if ($user === null) {
             return null;
         }
-        // Plaintext comparison for now. Hashing will return alongside a proper
-        // user-management UI (see sql/v2_schema.sql, `password` column).
-        if ($user['password'] !== $password) {
-            return null;
+
+        if (password_verify($password, $user['password'])) {
+            self::completeLogin($username, $user['role']);
+            return $user['role'];
         }
+
+        // Legacy rows created before hashing was added store the password as
+        // plain text (never a hash — hashes always start with '$'). Accept once
+        // via a timing-safe compare, then upgrade the stored value so this
+        // branch is never taken again for that user.
+        if (!str_starts_with($user['password'], '$') && hash_equals($user['password'], $password)) {
+            try {
+                $repo->updatePassword((int) $user['id'], password_hash($password, PASSWORD_DEFAULT));
+            } catch (mysqli_sql_exception $e) {
+                // Best-effort upgrade: the password already verified, so a failed
+                // rehash write must not block this (already-authenticated) login.
+            }
+            self::completeLogin($username, $user['role']);
+            return $user['role'];
+        }
+
+        return null;
+    }
+
+    private static function completeLogin(string $username, string $role): void
+    {
         self::startSession();
         session_regenerate_id(true);
-        $_SESSION['user'] = ['username' => $username, 'role' => $user['role']];
-        return $user['role'];
+        $_SESSION['user'] = ['username' => $username, 'role' => $role];
     }
 
     public static function check(): bool

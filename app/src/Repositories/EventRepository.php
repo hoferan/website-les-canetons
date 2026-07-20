@@ -75,11 +75,11 @@ final class EventRepository
 
     public function update(array $e): void
     {
+        $id = (int) $e['id'];
+        $weekend = array_key_exists('weekend', $e) ? (int) $e['weekend'] : $this->currentWeekend($id);
         $sql = "UPDATE events SET date=?, title=?, start_time=?, end_time=?,
                 location=?, attire=?, weekend=? WHERE id=?";
         $stmt = $this->db->prepare($sql);
-        $weekend = (int) ($e['weekend'] ?? 0);
-        $id = (int) $e['id'];
         $stmt->bind_param(
             'ssssssii',
             $e['date'],
@@ -93,6 +93,27 @@ final class EventRepository
         );
         $stmt->execute();
         $stmt->close();
+    }
+
+    /** The event's current 'weekend' flag, or 0 if the event doesn't exist. */
+    private function currentWeekend(int $id): int
+    {
+        $stmt = $this->db->prepare('SELECT weekend FROM events WHERE id = ?');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $row ? (int) $row['weekend'] : 0;
+    }
+
+    public function exists(int $id): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM events WHERE id = ? LIMIT 1');
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $found = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
+        return $found;
     }
 
     /** Delete an event; its responses go via the FK ON DELETE CASCADE. */

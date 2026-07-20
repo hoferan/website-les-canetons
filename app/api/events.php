@@ -22,24 +22,38 @@ if ($method === 'GET') {
 
 // All writes (create/update/delete events) require the manage_events capability (admin).
 Auth::requireCanManageEvents();
-if ($method === 'POST') {
-    foreach (['date', 'title', 'startTime', 'endTime', 'location', 'attire'] as $k) {
-        if (empty($data[$k])) {
+
+if ($method === 'POST' || $method === 'PUT') {
+    // 'attire' (Tenue) is optional — the column is nullable and the form marks it
+    // as such, so it is validated separately from the required fields below.
+    foreach (['date', 'title', 'startTime', 'endTime', 'location'] as $k) {
+        if (!isset($data[$k]) || !is_string($data[$k]) || trim($data[$k]) === '') {
             http_response_code(400);
-            echo json_encode(['error' => "Champ manquant: {$k}"]);
+            echo json_encode(['error' => "Champ manquant ou invalide: {$k}"]);
             exit;
         }
     }
-    $repo->create($data);
-    http_response_code(201);
-    echo json_encode(['ok' => true]);
-    exit;
-}
 
-if ($method === 'PUT') {
-    if (empty($data['id'])) {
+    // Normalize optional attire: accept an empty/missing value, reject a non-string.
+    if (isset($data['attire']) && !is_string($data['attire'])) {
         http_response_code(400);
-        echo json_encode(['error' => 'id manquant']);
+        echo json_encode(['error' => 'Champ invalide: attire']);
+        exit;
+    }
+    $data['attire'] = isset($data['attire']) ? trim($data['attire']) : '';
+
+    if ($method === 'POST') {
+        $repo->create($data);
+        http_response_code(201);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
+    // PUT also needs a valid id.
+    $id = (int) ($data['id'] ?? 0);
+    if ($id <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'id manquant ou invalide']);
         exit;
     }
     $repo->update($data);
