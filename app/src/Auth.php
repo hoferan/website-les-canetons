@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Repositories\UserRepository;
+use mysqli_sql_exception;
 
 final class Auth
 {
@@ -83,7 +84,12 @@ final class Auth
         // via a timing-safe compare, then upgrade the stored value so this
         // branch is never taken again for that user.
         if (!str_starts_with($user['password'], '$') && hash_equals($user['password'], $password)) {
-            $repo->updatePassword((int) $user['id'], password_hash($password, PASSWORD_DEFAULT));
+            try {
+                $repo->updatePassword((int) $user['id'], password_hash($password, PASSWORD_DEFAULT));
+            } catch (mysqli_sql_exception $e) {
+                // Best-effort upgrade: the password already verified, so a failed
+                // rehash write must not block this (already-authenticated) login.
+            }
             self::completeLogin($username, $user['role']);
             return $user['role'];
         }

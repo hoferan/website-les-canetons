@@ -24,6 +24,42 @@ final class AuthLoginTest extends IntegrationTestCase
         $this->assertNotSame('demo', $stored);
     }
 
+    public function testLegacyUpgradeWriteFailureDoesNotBlockLogin(): void
+    {
+        // Force the rehash UPDATE that Auth::attemptLogin() issues to fail
+        // with a real mysqli_sql_exception (matching what Database::connect()'s
+        // strict mode throws on any DB error), simulating a transient failure
+        // (e.g. a read-only replica). A BEFORE UPDATE trigger that always
+        // SIGNALs an error is the most direct way to force a genuine DB write
+        // failure here without a mocking framework -- UserRepository is
+        // constructed internally by Auth::attemptLogin(), so there's no seam
+        // to inject a fake repository, and this project tests exclusively
+        // against a real MariaDB (see IntegrationTestCase).
+        $this->db->query(
+            'CREATE TRIGGER force_update_password_failure '
+            . 'BEFORE UPDATE ON users FOR EACH ROW '
+            . "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Simulated DB failure'"
+        );
+
+        try {
+            // Seed data stores 'demo' as plaintext for every synthetic account,
+            // so this still takes the legacy-upgrade branch and attempts the
+            // (now-failing) rehash write.
+            $role = Auth::attemptLogin('demo.user', 'demo');
+
+            $this->assertSame('user', $role);
+
+            // The write failed, so the stored password must remain unchanged --
+            // proving the trigger really intercepted the UPDATE rather than the
+            // assertion above passing for an unrelated reason.
+            $repo = new UserRepository($this->db);
+            $stored = $repo->findByUsername('demo.user')['password'];
+            $this->assertSame('demo', $stored);
+        } finally {
+            $this->db->query('DROP TRIGGER IF EXISTS force_update_password_failure');
+        }
+    }
+
     public function testAlreadyHashedPasswordVerifiesDirectly(): void
     {
         $repo = new UserRepository($this->db);
