@@ -23,9 +23,6 @@ require __DIR__ . '/../partials/head.php';
     ne le trouvez pas.
   </p>
   <p class="thanks-date">Rendez-vous le <strong><?= htmlspecialchars($occasion['date_display']) ?></strong> !</p>
-  <p class="thanks-note">
-    Pour toute question, la Team Direction vous contactera au numéro indiqué.
-  </p>
   <p><a class="btn-primary" href="/">Retour à l'accueil</a></p>
 </section>
 
