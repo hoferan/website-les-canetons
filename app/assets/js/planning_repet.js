@@ -99,69 +99,73 @@ function loadEvents() {
 }
 
 // Gérer la soumission du formulaire
-document.getElementById("event-form").addEventListener("submit", function (e) {
-  e.preventDefault();
+// Le formulaire n'existe dans le DOM que pour les admins (rendu côté serveur).
+var eventForm = document.getElementById("event-form");
+if (eventForm) {
+  eventForm.addEventListener("submit", function (e) {
+    e.preventDefault();
 
-  // Récupérer les valeurs du formulaire
-  var eventId = document.getElementById("event-id").value;
-  var eventDate = document.getElementById("event-date").value;
-  var eventTitle = document.getElementById("event-title").value;
-  var eventStartTime = document.getElementById("event-time-start").value;
-  var eventEndTime = document.getElementById("event-time-end").value;
-  var eventLocation = document.getElementById("event-location").value;
-  var eventAttire = document.getElementById("event-attire").value;
-  var eventWeekend = document.getElementById("event-weekend").checked;
+    // Récupérer les valeurs du formulaire
+    var eventId = document.getElementById("event-id").value;
+    var eventDate = document.getElementById("event-date").value;
+    var eventTitle = document.getElementById("event-title").value;
+    var eventStartTime = document.getElementById("event-time-start").value;
+    var eventEndTime = document.getElementById("event-time-end").value;
+    var eventLocation = document.getElementById("event-location").value;
+    var eventAttire = document.getElementById("event-attire").value;
+    var eventWeekend = document.getElementById("event-weekend").checked;
 
-  // Créer un objet pour l'événement
-  var newEvent = {
-    id: eventId,
-    date: eventDate,
-    title: eventTitle,
-    startTime: eventStartTime,
-    endTime: eventEndTime,
-    location: eventLocation,
-    attire: eventAttire,
-    weekend: eventWeekend,
-  };
+    // Créer un objet pour l'événement
+    var newEvent = {
+      id: eventId,
+      date: eventDate,
+      title: eventTitle,
+      startTime: eventStartTime,
+      endTime: eventEndTime,
+      location: eventLocation,
+      attire: eventAttire,
+      weekend: eventWeekend,
+    };
 
-  if (eventId) {
-    // Update event
-    fetch("/api/events", {
-      method: "PUT",
-      body: JSON.stringify(newEvent),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((_) => {
-        displayResult(newEvent); // API returns {ok:true}; show what we saved
-        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
-        loadEvents();
+    if (eventId) {
+      // Update event
+      fetch("/api/events", {
+        method: "PUT",
+        body: JSON.stringify(newEvent),
+        headers: {
+          "Content-Type": "application/json",
+        },
       })
-      .catch((error) => {
-        console.error("Erreur lors de l'actualisation de l'événement: ", error);
-      });
-  } else {
-    // Create new event
-    fetch("/api/events", {
-      method: "POST",
-      body: JSON.stringify(newEvent),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((_) => {
-        displayResult(newEvent); // API returns {ok:true}; show what we saved
-        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
-        loadEvents();
+        .then((response) => response.json())
+        .then((_) => {
+          displayResult(newEvent); // API returns {ok:true}; show what we saved
+          document.getElementById("event-form").reset(); // Effacer les champs du formulaire
+          loadEvents();
+        })
+        .catch((error) => {
+          console.error("Erreur lors de l'actualisation de l'événement: ", error);
+        });
+    } else {
+      // Create new event
+      fetch("/api/events", {
+        method: "POST",
+        body: JSON.stringify(newEvent),
+        headers: {
+          "Content-Type": "application/json",
+        },
       })
-      .catch((error) => {
-        console.error("Erreur lors de l'ajout de l'événement : ", error);
-      });
-  }
-});
+        .then((response) => response.json())
+        .then((_) => {
+          displayResult(newEvent); // API returns {ok:true}; show what we saved
+          document.getElementById("event-form").reset(); // Effacer les champs du formulaire
+          loadEvents();
+        })
+        .catch((error) => {
+          console.error("Erreur lors de l'ajout de l'événement : ", error);
+        });
+    }
+  });
+}
 
 // Fonction pour afficher le résultat de l'ajout d'événement
 function displayResult(event) {
