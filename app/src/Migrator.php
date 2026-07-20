@@ -24,11 +24,12 @@ final class Migrator
     {
     }
 
-    /** Migration files in ascending order. */
+    /** Migration files in ascending numeric order (not plain lexicographic —
+     * '10_x.sql' must sort after '2_y.sql', and '1000_x.sql' after '999_y.sql'). */
     private function files(string $dir): array
     {
         $files = glob(rtrim($dir, '/') . '/[0-9]*.sql') ?: [];
-        sort($files, SORT_STRING);
+        usort($files, static fn(string $a, string $b): int => strnatcmp(basename($a), basename($b)));
         return $files;
     }
 

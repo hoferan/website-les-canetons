@@ -92,4 +92,22 @@ final class MigratorTest extends IntegrationTestCase
         // The bad migration is not recorded, so it is still pending.
         $this->assertContains('902_migrator_test_bad.sql', $migrator->pending($this->dir));
     }
+
+    public function testPendingOrdersFilesNaturallyAcrossDigitWidths(): void
+    {
+        // Same directory as setUp's 900/901 fixtures, plus an out-of-width one:
+        // lexicographic (SORT_STRING) would sort '1000_...' before '900_...'
+        // because '1' < '9' as the first character.
+        file_put_contents($this->dir . '/1000_migrator_test_late.sql', 'SELECT 1;');
+        $this->versions[] = '1000_migrator_test_late.sql';
+
+        $pending = (new Migrator($this->db))->pending($this->dir);
+
+        // Natural order: 900, 901, 1000 — not lexicographic (which would put
+        // '1000_...' before '900_...' since '1' < '9' as the first character).
+        $this->assertSame(
+            ['900_migrator_test_create.sql', '901_migrator_test_seed.sql', '1000_migrator_test_late.sql'],
+            $pending
+        );
+    }
 }
