@@ -2,7 +2,12 @@
 
 use App\Auth;
 
-Auth::requireLoginPage('sinscrire'); ?>
+Auth::requireLoginPage('sinscrire');
+if (!Auth::canRespond()) {
+    http_response_code(403);
+    exit('Accès refusé');
+}
+?>
 <?php $pageTitle = "Inscription à l'événement";
 $pageCss = 'authentification.css';
 require __DIR__ . '/../partials/head.php'; ?>
