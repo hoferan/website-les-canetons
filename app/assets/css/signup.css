@@ -1,0 +1,213 @@
+@import url("main.css");
+
+.signup-title {
+  font-size: 30px;
+  margin-bottom: 4px;
+}
+
+.signup-subtitle {
+  color: #b9760d;
+  font-weight: bold;
+  margin-bottom: 14px;
+}
+
+.signup-desc {
+  color: #555;
+  max-width: 60ch;
+  margin-bottom: 24px;
+}
+
+.signup-section fieldset {
+  border: 1px solid #e7ded1;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.signup-section legend {
+  font-weight: bold;
+  padding: 0 8px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.form-group input {
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.hint {
+  color: #777;
+  font-size: 12px;
+}
+
+.menu-intro {
+  color: #555;
+  margin-bottom: 12px;
+}
+
+/* Compact, muted reference list — deliberately lighter than the per-person
+   guest rows below so it reads as information, not as a second set of choices. */
+.menu-info {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  display: grid;
+  gap: 8px;
+  background: #fcfaf6;
+  border: 1px solid #eee4d5;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.menu-info-item + .menu-info-item {
+  padding-top: 8px;
+  border-top: 1px solid #eee4d5;
+}
+
+.menu-info-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.menu-info-name {
+  font-weight: bold;
+  color: #8a6a3a;
+}
+
+.menu-info-price {
+  color: #8a6a3a;
+  white-space: nowrap;
+}
+
+.menu-info-desc {
+  color: #888;
+  margin-top: 2px;
+}
+
+.guest-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  background: #faf6ef;
+  border: 1px solid #e7ded1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.guest-num {
+  font-weight: bold;
+  color: #b9760d;
+}
+
+.guest-menu {
+  padding: 9px 11px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.guest-remove {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.guest-row.solo .guest-remove {
+  visibility: hidden;
+}
+
+.add-guest {
+  width: 100%;
+  padding: 11px;
+  background: #fbeecb;
+  color: #b9760d;
+  border: 1px dashed #e7a11c;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.form-actions {
+  margin-top: 20px;
+}
+
+.thanks {
+  text-align: center;
+}
+
+.thanks-icon {
+  font-size: 54px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.thanks h1 {
+  font-size: 30px;
+  margin-bottom: 14px;
+}
+
+.thanks p {
+  max-width: 56ch;
+  margin: 0 auto 12px;
+  color: #555;
+}
+
+.thanks-lead {
+  font-size: 18px;
+  color: #333;
+}
+
+.thanks-date {
+  font-size: 17px;
+}
+
+.thanks-note {
+  font-size: 14px;
+  color: #777;
+}
+
+.thanks .btn-primary {
+  margin-top: 10px;
+}
+
+@media screen and (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-row {
+    grid-template-columns: 90px 1fr 40px;
+  }
+}
+
+/* Honeypot: kept out of the visual + tab flow; only bots fill it. */
+.hp-field {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

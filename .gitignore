@@ -1,6 +1,8 @@
 # secrets & local-only
 config.php
 .env
+/.env.*
+!/.env.example
 .superpowers
 .tmp
 

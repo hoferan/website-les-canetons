@@ -15,6 +15,11 @@ events and view attendance summaries.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
 - **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
   pipeline is a separate, later roadmap item).
+- **Third-party PHP libraries are Composer dependencies** (e.g. `nikic/fast-route`,
+  `phpmailer/phpmailer`, `shuchkin/simplexlsxgen`), installed into `app/vendor/`
+  (the Composer/Docker install target — never hand-edited or committed). Vendoring
+  a static, un-packaged file is the fallback only when no Composer package exists;
+  third-party CSS is vendored this way today, under `app/assets/vendor/`.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
@@ -25,7 +30,9 @@ events and view attendance summaries.
 - **Build step:** `npm run build` assembles `app/` + a production-only
   Composer `vendor/` into a generated `public/` directory — the
   environment-agnostic code artifact. It deliberately excludes `config.php`
-  (server-owned). `public/` is git-ignored and never hand-edited.
+  (server-owned) but ships `config.example.php` next to it on every deploy —
+  the live template, for diffing against a server's real `config.php` by
+  hand. `public/` is git-ignored and never hand-edited.
 - **Deployment (one gated CI pipeline):** all deploys run in
   `.github/workflows/ci.yml`. A merge to `main` auto-deploys the built `public/`
   to **TEST**; **QA** then **PROD** are manual-approval gates in the *same run*
@@ -47,13 +54,49 @@ events and view attendance summaries.
   `--prune`), `-- --prune` (also delete remote **plain files** the build no
   longer produces; directories/symlinks like `cgi-bin` and the protected files
   are always kept), `-- --force` (re-upload every file, for the rare edit that
-  keeps a file's size identical).
+  keeps a file's size identical). After a real upload it **verifies** every
+  uploaded file is present on the server at the matching byte size (reusing the
+  same LIST-based size check) and exits non-zero if any file is missing or
+  truncated; `-- --no-verify` skips that check.
   The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
-  hard-refuses to run unless its `FTP_*_DIR` matches the env name, so a mistyped
-  dir can never deploy to (or `--prune`!) the wrong environment.
+  hard-refuses to run unless its `FTP_DIR` matches the env name, so a mistyped
+  dir can never deploy to (or `--prune`!) the wrong environment. Per-env config
+  lives in a git-ignored `.env.<target>` (copy `.env.example`); the tooling loads
+  `.env.<target>` then falls back to a shared `.env`.
+- **Config-shape pre-flight check:** before uploading anything, `deploy.mjs`
+  fetches the target's `config.php` and compares its key *shape* (never
+  values — those are never logged) against `config.example.php`. Any drift
+  (a key the code now expects that's missing, or one no longer expected)
+  refuses the deploy with the exact key paths to fix — e.g. shipping a new
+  `App\Features` flag without first adding it to a server's `config.php`
+  fails that server's deploy instead of silently misbehaving. `--dry-run`
+  reports the same drift without refusing. If `config.php` can't be fetched
+  at all (a brand-new environment before initial setup), this only warns.
+  The shape is read by *parsing* each `config.php` to an AST (`php-parser`, a
+  pure-JS devDependency) and walking its top-level `return [ ... ]` — the file
+  is never evaluated, so this needs no `php` binary and never executes the
+  fetched server config. It assumes `config.php` stays a literal array (as it
+  always is); a dynamic construct throws a clear error instead of under-reporting
+  keys.
+- **Automated DB migrations:** after each deploy, `npm run dbmigrate:<env>`
+  triggers the token-gated server-side endpoint `POST /api/migrate`
+  (`app/api/migrate.php` → `App\Migrator`), which applies `sql/migrations/*.sql`
+  using the server's `config.php` DB connection (remote DB login is blocked, so
+  migrations run server-side). It is a **separate step run after** `deploy:<env>`
+  — deliberately not chained into it, so `deploy:<env> -- --dry-run` still reaches
+  `deploy.mjs`. In CI it's a step after the deploy step (skipped if the deploy
+  fails); locally run `npm run dbmigrate:<env>` after `npm run deploy:<env>`. A
+  failed migration exits non-zero (fails the CI job). `dbmigrate:<env> -- --dry-run`
+  reports pending without applying. Requires a `migrate.token` in each server's
+  `config.php` and `MIGRATE_TOKEN` / `SITE_URL` in `.env.<env>` (or the env's CI
+  secrets). On TEST/QA the whole site is behind HTTP Basic Auth (this host 500s
+  on a per-path `.htaccess` exemption), so also set `BASIC_AUTH_USER` /
+  `BASIC_AUTH_PASS` — the trigger sends them so it can reach `/api/migrate`; PROD
+  has no Basic Auth. Migrations must be idempotent + backward-compatible (see
+  `sql/migrations/README.md`).
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
-  Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_TEST_DIR` —
+  Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
   set on the `test` GitHub Environment (Settings → Environments → `test`), where
   you can also add protection rules. Since that FTP account reaches every
   environment, the per-target path guard applies in CI and `--prune` is never
@@ -61,8 +104,8 @@ events and view attendance summaries.
 - **QA / PROD deploy (manual gates in CI):** `deploy-qa` and `deploy-prod` are
   jobs in `ci.yml`, gated by Required reviewers on the `qa`/`prod` GitHub
   Environments — approve `deploy-qa` when TEST is green, then `deploy-prod` when
-  QA is green, all within the same run. Each needs its env's `FTP_*_DIR` secret
-  (`FTP_QA_DIR` / `FTP_PROD_DIR`) plus the shared `FTP_HOST`/`USER`/`PASS`.
+  QA is green, all within the same run. Each needs its own `FTP_DIR` secret
+  (scoped to that Environment) plus the shared `FTP_HOST`/`USER`/`PASS`.
   Locally, `npm run deploy:qa` / `npm run deploy:prod` do the same over FTP.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
   (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA
@@ -206,6 +249,16 @@ also safe to run in local Docker dev.
   Example: `feat(routing): add clean URLs and old-URL redirects`.
 - **Body:** use `.github/PULL_REQUEST_TEMPLATE.md` (GitHub pre-fills it automatically for new
   PRs) — fill in every section rather than leaving the placeholder comments unedited.
+
+## Language
+
+- **Everything is written in English** — specs and plans (`docs/`), code, comments,
+  DB table/column names, enum/stored values, identifiers, slugs, and file names.
+- **French is used for ONE thing only: user-visible UI text** (HTML labels, page copy,
+  buttons, on-screen event titles/descriptions, error messages shown to the user).
+- The existing codebase already follows this: `contact_messages` uses
+  `first_name`/`last_name` columns and `responses.answer` uses English enum values
+  (`participate`/`notparticipate`), while page labels are French. Match that pattern.
 
 ## Dos
 

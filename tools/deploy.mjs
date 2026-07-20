@@ -14,14 +14,30 @@
 //   node tools/deploy.mjs <target> -- --prune    # also delete remote files not in public/
 //   node tools/deploy.mjs <target> -- --force    # re-upload every file, even unchanged ones
 //
-// Credentials come from a git-ignored .env (see .env.example). The one FTP
-// account can reach every environment, so each target hard-refuses to run unless
-// its FTP_*_DIR matches the env name (see the guards below). Each deploy also
-// writes a deployment.json marker into public/ recording the deployed commit.
+// Credentials come from a git-ignored per-env .env.<target> (see .env.example —
+// copy it to .env.test / .env.qa / .env.prod). The one FTP account can reach
+// every environment, so each target hard-refuses to run unless its FTP_DIR
+// matches the env name (see the guards below). Each deploy also writes a
+// deployment.json marker into public/ recording the deployed commit.
+//
+// Pre-flight config check: config.php is server-owned and never touched by
+// this script, so code that expects a new config key (e.g. a new App\Features
+// flag) can ship here while the target's config.php is still missing it.
+// Before uploading anything, the target's config.php is fetched and its key
+// *shape* (not values — those are never logged) is compared against
+// config/config.example.php, the source of truth for what the code expects.
+// Any drift (missing OR extra keys) refuses the deploy with the exact key
+// paths to fix; --dry-run reports the same drift without refusing. If
+// config.php can't be fetched at all (e.g. a brand-new environment before
+// initial setup), this only warns — the site can't run either way, deployed
+// code or not, so blocking wouldn't add protection there.
 import ftp from 'basic-ftp';
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import Engine from 'php-parser';
 import { loadDotEnv } from './dotenv.mjs';
 
 const LOCAL_ROOT = 'public';
@@ -29,30 +45,52 @@ const LOCAL_ROOT = 'public';
 // Files that live on the server and must never be uploaded or pruned.
 const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd']);
 
-// The deployment marker. Written into public/ on every deploy and always
-// re-uploaded (a commit SHA is a fixed length, so the size-based change check
-// below would otherwise treat it as "unchanged" and skip it forever).
+// The deployment marker. Written into public/ on every deploy.
 const MARKER = 'deployment.json';
-const ALWAYS_UPLOAD = new Set([MARKER]);
 
-const args = process.argv.slice(2);
-const DRY_RUN = args.includes('--dry-run');
-const PRUNE = args.includes('--prune');
-const FORCE = args.includes('--force');
+// Files whose CONTENT can change while their byte SIZE stays identical, so the
+// size-based change check below would wrongly treat them as "unchanged" and skip
+// them. These MUST be re-uploaded every deploy:
+//  - deployment.json: the commit SHA is a fixed length.
+//  - Composer autoload glue (vendor/autoload.php + vendor/composer/*): the
+//    autoloader suffix (ComposerAutoloaderInit<hash> / ComposerStaticInit<hash>)
+//    changes whenever the dependency set / composer state changes, but is a
+//    fixed 32-char length — so vendor/autoload.php and vendor/composer/*.php can
+//    change content without changing size. A partial skip leaves autoload_real.php
+//    referencing a ComposerStaticInit<hash> that the uploaded autoload_static.php
+//    no longer defines -> fatal "class not found" on every page.
+function alwaysUpload(rel) {
+  return rel === MARKER || rel === 'vendor/autoload.php' || rel.startsWith('vendor/composer/');
+}
 
 // First non-flag arg selects the target environment.
 const TARGETS = {
-  test: { dirVar: 'FTP_TEST_DIR', guard: /(^|[/.])test([/.]|$)/i },
-  qa: { dirVar: 'FTP_QA_DIR', guard: /(^|[/.])qa([/.]|$)/i },
-  prod: { dirVar: 'FTP_PROD_DIR', guard: /(^|[/.])prod([/.]|$)/i },
+  test: { dirVar: 'FTP_DIR', guard: /(^|[/.])test([/.]|$)/i },
+  qa: { dirVar: 'FTP_DIR', guard: /(^|[/.])qa([/.]|$)/i },
+  prod: { dirVar: 'FTP_DIR', guard: /(^|[/.])prod([/.]|$)/i },
 };
-const target = args.find((a) => !a.startsWith('--'));
-if (!target || !TARGETS[target]) {
-  console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force]`);
-  process.exit(1);
+
+// Parse CLI args (target + flags) at run time, not import time, so this module
+// can be imported (e.g. by a test of configKeyPaths) without CLI side effects.
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const target = args.find((a) => !a.startsWith('--'));
+  if (!target || !TARGETS[target]) {
+    console.error(`Usage: node tools/deploy.mjs <${Object.keys(TARGETS).join('|')}> [--dry-run] [--prune] [--force] [--no-verify]`);
+    process.exit(1);
+  }
+  const { dirVar, guard } = TARGETS[target];
+  return {
+    target,
+    DRY_RUN: args.includes('--dry-run'),
+    PRUNE: args.includes('--prune'),
+    FORCE: args.includes('--force'),
+    NO_VERIFY: args.includes('--no-verify'),
+    dirVar,
+    guard,
+    LABEL: target.toUpperCase(),
+  };
 }
-const { dirVar, guard } = TARGETS[target];
-const LABEL = target.toUpperCase();
 
 // --- local file walk: relative posix path + size + mtime, excluding PROTECTED
 function walk(dir, base = dir) {
@@ -114,28 +152,171 @@ async function listRemote(client, remoteBase, sub = '', acc = new Map()) {
   return acc;
 }
 
+// Compare the files uploaded this run against a fresh remote snapshot. Pure so
+// it is unit-testable in isolation. `uploaded` is [{rel, size}]; `remoteSizes`
+// is the Map<rel, size> from listRemote. Reports files that did not land
+// (missing) or landed at the wrong byte count (mismatched = truncated/partial).
+// Remote files not in `uploaded` are ignored — only this run's uploads are judged.
+function diffSizes(uploaded, remoteSizes) {
+  const missing = [];
+  const mismatched = [];
+  for (const f of uploaded) {
+    const remote = remoteSizes.get(f.rel);
+    if (remote === undefined) {
+      missing.push(f.rel);
+    } else if (remote !== f.size) {
+      mismatched.push({ rel: f.rel, local: f.size, remote });
+    }
+  }
+  return { ok: missing.length === 0 && mismatched.length === 0, missing, mismatched };
+}
+
+// Take a fresh remote snapshot (reusing listRemote — same LIST-based sizes the
+// deploy already trusts, so no reliance on the FTP SIZE command) and compare the
+// files we just uploaded against it.
+async function verifyUpload(client, remoteRoot, uploaded) {
+  const remoteSizes = await listRemote(client, remoteRoot);
+  return diffSizes(uploaded, remoteSizes);
+}
+
 function humanBytes(n) {
   return n >= 1024 ? `${(n / 1024).toFixed(1)} KB` : `${n} B`;
 }
 
+// Flattens a config.php array to a sorted list of dotted key paths (e.g.
+// "db.host", "features.souper_signup") — never the values, so secrets never
+// appear in deploy output. The file is *parsed* to an AST (php-parser) and its
+// top-level `return [ ... ]` walked statically; it is never evaluated, so this
+// needs no `php` binary and never executes the config.php we just fetched off
+// the server. It assumes config.php is a plain literal array (as it always is —
+// see config/config.example.php): array keys must be string/int literals. Any
+// dynamic construct throws a clear error rather than silently under-reporting
+// keys. (An empty nested array `[]` contributes no keys — matching how a
+// recursive flatten drops a branch with nothing in it.)
+const phpEngine = new Engine({ ast: { withPositions: false }, parser: { extractDoc: false } });
+
+// Resolve an array-entry key node to its literal string form. PHP arrays index
+// unkeyed entries by a running integer (max int key seen so far + 1, from 0),
+// so we track that to stay faithful to how PHP would key a list-style array.
+function literalKey(node, autoIndex) {
+  if (node == null) {
+    return { key: String(autoIndex.next), next: autoIndex.next + 1 };
+  }
+  if (node.kind === 'string') {
+    return { key: String(node.value), next: autoIndex.next };
+  }
+  if (node.kind === 'number' && Number.isInteger(Number(node.value))) {
+    const n = Number(node.value);
+    return { key: String(n), next: Math.max(autoIndex.next, n + 1) };
+  }
+  throw new Error(`Unsupported config key: expected a string/int literal, got "${node.kind}".`);
+}
+
+// Recursively collect dotted key paths from a php-parser `array` node.
+function arrayKeyPaths(arrayNode, prefix, out) {
+  const autoIndex = { next: 0 };
+  for (const item of arrayNode.items) {
+    if (item.kind !== 'entry' || item.unpack) {
+      throw new Error(`Unsupported config construct: "${item.unpack ? 'spread' : item.kind}" (expected a plain array entry).`);
+    }
+    const { key, next } = literalKey(item.key, autoIndex);
+    autoIndex.next = next;
+    const full = prefix === '' ? key : `${prefix}.${key}`;
+    if (item.value && item.value.kind === 'array') {
+      arrayKeyPaths(item.value, full, out); // empty array => contributes nothing
+    } else {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+function configKeyPaths(phpFilePath) {
+  const src = readFileSync(phpFilePath, 'utf8');
+  const program = phpEngine.parseCode(src, phpFilePath);
+  const ret = program.children.find((n) => n.kind === 'return');
+  if (!ret || !ret.expr) {
+    throw new Error(`${phpFilePath}: expected a top-level "return [ ... ];".`);
+  }
+  if (ret.expr.kind !== 'array') {
+    throw new Error(`${phpFilePath}: top-level return is not an array literal — cannot read config key shape statically.`);
+  }
+  return arrayKeyPaths(ret.expr, '', []).sort();
+}
+
+// Pre-flight: compare the remote config.php's key *shape* (never its values)
+// against config/config.example.php, the single source of truth for which
+// keys the deployed code expects. A mismatch means a feature shipped in this
+// deploy needs a config.php key that hasn't been set by hand on this server
+// yet (or the reverse — the example is now stale) — either way, safer to
+// refuse the deploy with a clear message than to let it silently misbehave.
+// Best-effort: if config.php can't be fetched at all (e.g. a brand-new
+// environment where it hasn't been placed yet), this only warns.
+async function checkConfigShape(client, remoteRoot, label) {
+  const exampleKeys = configKeyPaths('config/config.example.php');
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'lc-config-'));
+  const tmpConfig = path.join(tmpDir, 'config.php');
+  try {
+    try {
+      await client.downloadTo(tmpConfig, `${remoteRoot}/config.php`);
+    } catch (err) {
+      console.log(`  config shape: could not fetch ${label}'s config.php (${err.message}) — skipping check.`);
+      return { ok: true, skipped: true };
+    }
+
+    const remoteKeys = configKeyPaths(tmpConfig);
+    const remoteSet = new Set(remoteKeys);
+    const exampleSet = new Set(exampleKeys);
+    const missing = exampleKeys.filter((k) => !remoteSet.has(k));
+    const extra = remoteKeys.filter((k) => !exampleSet.has(k));
+
+    if (missing.length === 0 && extra.length === 0) {
+      console.log(`  config shape: OK — ${label}'s config.php matches config.example.php.`);
+      return { ok: true, skipped: false };
+    }
+
+    console.log(`  config shape: MISMATCH between ${label}'s config.php and config.example.php.`);
+    if (missing.length) {
+      console.log(`    missing on ${label} (add these keys to its config.php):`);
+      missing.forEach((k) => console.log(`      - ${k}`));
+    }
+    if (extra.length) {
+      console.log(`    extra on ${label} (not in config.example.php):`);
+      extra.forEach((k) => console.log(`      - ${k}`));
+    }
+    return { ok: false, skipped: false, missing, extra };
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 async function main() {
+  const { target, DRY_RUN, PRUNE, FORCE, NO_VERIFY, dirVar, guard, LABEL } = parseArgs();
+
   if (!existsSync(LOCAL_ROOT)) {
     console.error(`No ${LOCAL_ROOT}/ found — run "npm run build" first.`);
     process.exit(1);
   }
 
-  loadDotEnv();
+  // Env-specific values (FTP dir, migrate token, site URL, htpasswd path) live
+  // in .env.<target>; shared secrets (FTP host/user/pass) in .env. Load the
+  // env-specific file first — loadDotEnv never overwrites an already-set var, so
+  // env-specific wins and .env fills in the shared rest.
+  loadDotEnv(`.env.${target}`);
+  loadDotEnv('.env');
   const marker = writeDeploymentMarker(target);
   const local = walk(LOCAL_ROOT).sort((a, b) => a.rel.localeCompare(b.rel));
   console.log(`  marker: ${MARKER} @ ${marker.shortCommit} (${marker.deployedAt})`);
 
   console.log(`${LABEL} deploy — ${local.length} files in ${LOCAL_ROOT}/`);
   console.log(`  protected (never uploaded/pruned): ${[...PROTECTED].join(', ')}`);
-  console.log(`  flags: dry-run=${DRY_RUN ? 'ON' : 'off'}  prune=${PRUNE ? 'ON' : 'off'}  force=${FORCE ? 'ON' : 'off'}`);
+  console.log(
+    `  flags: dry-run=${DRY_RUN ? 'ON' : 'off'}  prune=${PRUNE ? 'ON' : 'off'}  force=${FORCE ? 'ON' : 'off'}  no-verify=${NO_VERIFY ? 'ON' : 'off'}`
+  );
 
   const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', dirVar].filter((k) => !process.env[k]);
   if (missing.length) {
-    const msg = `Missing FTP settings: ${missing.join(', ')} — set them in .env (see .env.example).`;
+    const msg = `Missing FTP settings: ${missing.join(', ')} — set them in .env.${target} (copy .env.example).`;
     if (DRY_RUN) {
       console.log(`\n(dry-run) ${msg}`);
       console.log('(dry-run) Cannot compare with remote without credentials. Local files that would be considered:');
@@ -167,6 +348,17 @@ async function main() {
     await client.access({ host: FTP_HOST, user: process.env.FTP_USER, password: process.env.FTP_PASS, secure: false });
     await client.ensureDir(remoteRoot);
 
+    const shape = await checkConfigShape(client, remoteRoot, LABEL);
+    if (!shape.ok) {
+      if (DRY_RUN) {
+        console.log('\n(dry-run) Would refuse to deploy: fix config.php on the server before the real deploy runs.');
+      } else {
+        throw new Error(
+          `${LABEL}'s config.php has drifted from config.example.php — fix it by hand on the server, then re-run the deploy.`
+        );
+      }
+    }
+
     const remote = await listRemote(client, remoteRoot);
 
     // Classify each local file against the remote copy.
@@ -177,7 +369,7 @@ async function main() {
       const remoteSize = remote.get(f.rel);
       if (remoteSize === undefined) {
         newFiles.push(f);
-      } else if (FORCE || ALWAYS_UPLOAD.has(f.rel) || remoteSize !== f.size) {
+      } else if (FORCE || alwaysUpload(f.rel) || remoteSize !== f.size) {
         changed.push({ ...f, remoteSize });
       } else {
         unchanged++;
@@ -237,13 +429,44 @@ async function main() {
       console.log(`Pruned ${stale.length} file(s).`);
     }
 
+    // Post-deploy verification: confirm every file we uploaded landed on the
+    // server at the right byte size. Skipped when bypassed or when nothing was
+    // uploaded. A failure throws — caught by main().catch, which exits non-zero.
+    if (NO_VERIFY) {
+      console.log('\nSkipping post-deploy verification (--no-verify).');
+    } else if (toUpload.length === 0) {
+      console.log('\nNothing uploaded — skipping post-deploy verification.');
+    } else {
+      console.log(`\nVerifying ${toUpload.length} uploaded file(s) against the server...`);
+      const result = await verifyUpload(client, remoteRoot, toUpload);
+      if (result.ok) {
+        console.log(`Verified ${toUpload.length} uploaded file(s) — server matches the build.`);
+      } else {
+        result.mismatched.forEach((m) =>
+          console.log(`  MISMATCH ${m.rel} (local ${humanBytes(m.local)}, remote ${humanBytes(m.remote)})`)
+        );
+        result.missing.forEach((rel) => console.log(`  MISSING  ${rel}`));
+        throw new Error(
+          `verification FAILED — ${result.missing.length} missing, ${result.mismatched.length} truncated. ` +
+            `The upload completed but the server copy doesn't match the build. Re-run the deploy ` +
+            `(or investigate the FTP connection) before trusting this environment.`
+        );
+      }
+    }
+
     console.log(`\n${LABEL} deploy complete.`);
   } finally {
     client.close();
   }
 }
 
-main().catch((err) => {
-  console.error(`\nDeploy failed: ${err.message}`);
-  process.exit(1);
-});
+// Run only when invoked directly (node tools/deploy.mjs ...), not when imported
+// (e.g. by a test exercising configKeyPaths in isolation).
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(`\nDeploy failed: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+export { configKeyPaths, diffSizes };

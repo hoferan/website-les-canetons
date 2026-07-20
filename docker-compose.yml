@@ -26,6 +26,8 @@ services:
         condition: service_completed_successfully
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   db:
     image: mariadb:10.3
@@ -44,6 +46,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  migrate:
+    build: ./docker/web
+    working_dir: /repo
+    volumes:
+      - ./tools:/repo/tools:ro
+      - ./sql/migrations:/repo/sql/migrations:ro
+      - ./app/src:/repo/app/src:ro
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: lescanetons
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["php", "tools/migrate.php", "sql/migrations"]
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
 
   adminer:
     image: adminer:latest

@@ -10,13 +10,17 @@
 
 # --- HTTP Basic Auth for the whole staging site ----------------------------
 # NOTE: AuthUserFile needs an ABSOLUTE server path (host-specific). The real
-#       path is injected from HTPASSWD_PATH_TEST (.env) by build-overlays.mjs,
+#       path is injected from HTPASSWD_PATH (.env.test) by build-overlays.mjs,
 #       replacing the __HTPASSWD_PATH__ token below — see staging/README.md.
 # NOTE: the referenced .htpasswd is git-ignored (it holds credentials) and must
 #       be created/uploaded by hand — see staging/README.md.
 AuthType Basic
 AuthName "Les Canetons — TEST (acces restreint)"
 AuthUserFile "__HTPASSWD_PATH__"
+# The whole staging site stays behind Basic Auth, including the token-gated
+# migration endpoint /api/migrate. CI/local reach it by sending these Basic Auth
+# credentials alongside the token (see tools/dbmigrate.mjs) — this host rejects a
+# per-path RequireAny/expr exemption in .htaccess (returns 500).
 Require valid-user
 
 # --- Never serve the auth/control files themselves -------------------------
