@@ -32,6 +32,10 @@ return [
     'altcha' => [
         'hmac_secret' => 'dev-local-altcha-secret',
     ],
+    // On in dev too; the docker `migrate` service still applies dev migrations
+    // before web starts, so this is effectively a no-op there (app/sql/migrations
+    // is absent in the dev layout) — present so the config shape matches.
+    'auto_migrate' => true,
     // Unused locally (docker migrates via the `migrate` service, not HTTP), but
     // present so the config shape matches config.example.php.
     'migrate' => [
