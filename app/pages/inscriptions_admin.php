@@ -2,7 +2,7 @@
 
 use App\Auth;
 
-Auth::requireLoginPage('');
+Auth::requireLoginPage('inscriptions_admin');
 if (!Auth::canViewSummary()) {
     http_response_code(403);
     exit('Accès refusé');

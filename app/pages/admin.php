@@ -2,7 +2,7 @@
 
 use App\Auth;
 
-Auth::requireLoginPage('');
+Auth::requireLoginPage('admin');
 if (!Auth::canManageEvents()) {
     http_response_code(403);
     exit('Accès refusé');
