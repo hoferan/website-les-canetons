@@ -14,5 +14,6 @@ if ($secret === '' || $secret === 'CHANGE_ME') {
 }
 
 $altcha = new Altcha($secret);
-// 100k max iterations solves in well under a second; 10-minute expiry.
-echo json_encode($altcha->createChallenge(100000, 600));
+// PoW cost: up to 50k client-side SHA-256 iterations (a few thousand on
+// average) — light friction per submission; 10-minute expiry.
+echo json_encode($altcha->createChallenge(50000, 600));

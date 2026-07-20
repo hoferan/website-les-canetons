@@ -72,9 +72,20 @@
   function solveAltcha() {
     return fetch("/api/altcha", { headers: { Accept: "application/json" } })
       .then(function (r) {
+        if (!r.ok) {
+          return null;
+        }
         return r.json();
       })
       .then(function (ch) {
+        if (
+          !ch ||
+          typeof ch.maxnumber !== "number" ||
+          typeof ch.challenge !== "string" ||
+          typeof ch.salt !== "string"
+        ) {
+          return null;
+        }
         var enc = new TextEncoder();
 
         function tryNumber(n) {
