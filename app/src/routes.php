@@ -75,6 +75,7 @@ return function (RouteCollector $r): void {
     $apis = ['contact', 'logout', 'events', 'login', 'responses', 'migrate'];
     if (Features::enabled('souper_signup')) {
         $apis[] = 'signups';
+        $apis[] = 'altcha';
     }
     foreach ($apis as $name) {
         $r->addRoute($apiMethods, '/api/' . $name, function () use ($name): void {

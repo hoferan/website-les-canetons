@@ -3,6 +3,8 @@
 use App\Auth;
 use App\Database;
 use App\Mailer;
+use App\Altcha;
+use App\Repositories\ChallengeRepository;
 use App\Repositories\SignupRepository;
 use Shuchkin\SimpleXLSXGen;
 
@@ -25,6 +27,17 @@ if ($method === 'POST') {
     $tableName = trim((string) ($data['table_name'] ?? ''));
     $menus     = SignupRepository::normalizeMenus($data['menus'] ?? null);
 
+    $honeypot = trim((string) ($data['hp'] ?? ''));
+    $altchaPayload = (string) ($data['altcha'] ?? '');
+
+    // Honeypot: a real form never fills this. Silently accept (201) without
+    // storing or mailing, so a bot never learns it was trapped.
+    if ($honeypot !== '') {
+        http_response_code(201);
+        echo json_encode(['ok' => true]);
+        exit;
+    }
+
     if (
         $firstName === '' || $lastName === '' || $address === ''
         || $phone === '' || $tableName === '' || $menus === null
@@ -35,6 +48,16 @@ if ($method === 'POST') {
     ) {
         http_response_code(400);
         echo json_encode(['error' => 'Formulaire invalide']);
+        exit;
+    }
+
+    // Proof-of-work gate (fail-closed) + single-use replay guard, before insert/mail.
+    $altcha = new Altcha((string) ($config['altcha']['hmac_secret'] ?? ''));
+    $signature = $altcha->verifySolution($altchaPayload);
+    $challenges = new ChallengeRepository(Database::get());
+    if ($signature === null || !$challenges->consume($signature)) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Vérification anti-robot échouée, veuillez réessayer.']);
         exit;
     }
 

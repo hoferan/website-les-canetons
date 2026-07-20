@@ -27,6 +27,11 @@ return [
     'features' => [
         'souper_signup' => true,
     ],
+    // Throwaway PoW secret so local dev/CI just work. Real per-server secrets
+    // live in each server's config.php.
+    'altcha' => [
+        'hmac_secret' => 'dev-local-altcha-secret',
+    ],
     // Unused locally (docker migrates via the `migrate` service, not HTTP), but
     // present so the config shape matches config.example.php.
     'migrate' => [

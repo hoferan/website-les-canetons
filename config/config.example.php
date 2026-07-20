@@ -35,6 +35,13 @@ return [
     'features' => [
         'souper_signup' => false,
     ],
+    // Self-hosted proof-of-work secret for the public signup challenge
+    // (App\Altcha). ANY long random string — generate one per server, no
+    // external service. Empty/placeholder fails verification CLOSED (signups
+    // blocked), so a server needs a real value before souper_signup is enabled.
+    'altcha' => [
+        'hmac_secret' => 'CHANGE_ME',
+    ],
     // Secret token gating the server-side migration endpoint (POST /api/migrate).
     // Set a long random value per server. Empty/unset — or left as the literal
     // 'CHANGE_ME' placeholder — disables the endpoint (404), so a half-configured
