@@ -47,7 +47,25 @@ try {
   res = await fetch(url, { method: 'POST', headers });
   text = await res.text();
 } catch (err) {
-  console.error(`Migration request failed (could not reach ${siteUrl.replace(/\/$/, '')}): ${err.message}`);
+  // fetch() wraps the real network failure in err.cause (undici) — surface it,
+  // since "fetch failed" alone can't tell DNS from connection-refused from TLS
+  // from timeout. When several addresses are tried, undici nests them in
+  // cause.errors[]. The error CODE is generic (not the secret host), so it is
+  // safe to print even though SITE_URL is masked in CI logs.
+  const cause = err.cause;
+  let detail = '';
+  if (cause) {
+    detail = ` [${cause.code ?? cause.name ?? 'cause'}: ${cause.message ?? cause}]`;
+    if (Array.isArray(cause.errors)) {
+      const inner = cause.errors
+        .map((e) => `${e.code ?? e.name ?? 'err'}: ${e.message ?? e}`)
+        .join('; ');
+      detail += ` {${inner}}`;
+    }
+  }
+  console.error(
+    `Migration request failed (could not reach ${siteUrl.replace(/\/$/, '')}): ${err.message}${detail}`
+  );
   process.exit(1);
 }
 
