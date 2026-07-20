@@ -42,15 +42,15 @@ return [
     'altcha' => [
         'hmac_secret' => 'CHANGE_ME',
     ],
-    // Secret token gating the server-side migration endpoint (POST /api/migrate).
-    // Set a long random value per server. Empty/unset — or left as the literal
-    // 'CHANGE_ME' placeholder — disables the endpoint (404), so a half-configured
-    // server never exposes a live endpoint gated by a well-known string.
     // Apply pending DB migrations automatically on the first request after a
     // deploy (App\AutoMigrator, single-flight via GET_LOCK, fail-loud 503).
     // Default on. Set false on a server to fall back to manual migration
     // (npm run dbmigrate:<env> / POST /api/migrate) if it ever misbehaves.
     'auto_migrate' => true,
+    // Secret token gating the server-side migration endpoint (POST /api/migrate).
+    // Set a long random value per server. Empty/unset — or left as the literal
+    // 'CHANGE_ME' placeholder — disables the endpoint (404), so a half-configured
+    // server never exposes a live endpoint gated by a well-known string.
     'migrate' => [
         'token' => 'CHANGE_ME',
     ],
