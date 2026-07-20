@@ -109,6 +109,36 @@ final class EventRepositoryTest extends IntegrationTestCase
         $this->assertSame(1, $event['weekend']);
     }
 
+    public function testUpdateWithExplicitFalsyWeekendOverridesExistingValue(): void
+    {
+        $repo = new EventRepository($this->db);
+        $repo->update([
+            'id'        => 1,
+            'date'      => '2026-08-23',
+            'title'     => 'Répétition modifiée',
+            'startTime' => '11:00:00',
+            'endTime'   => '13:00:00',
+            'location'  => 'Werkhof',
+            'attire'    => 'Libre',
+            'weekend'   => 1,
+        ]);
+
+        // Second update EXPLICITLY sets weekend to 0 — it must become 0, not stay 1.
+        $repo->update([
+            'id'        => 1,
+            'date'      => '2026-08-23',
+            'title'     => 'Répétition modifiée à nouveau',
+            'startTime' => '11:00:00',
+            'endTime'   => '13:00:00',
+            'location'  => 'Werkhof',
+            'attire'    => 'Libre',
+            'weekend'   => 0,
+        ]);
+
+        $event = $this->eventById($repo->all(), 1);
+        $this->assertSame(0, $event['weekend']);
+    }
+
     public function testExistsReturnsTrueForKnownEvent(): void
     {
         $repo = new EventRepository($this->db);
