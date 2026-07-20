@@ -1,5 +1,12 @@
 @import url("main.css");
 
+/* The section is a flex item of the body flex-column; without this it defaults
+   to min-width:auto and can be forced wider than the viewport by an
+   intrinsically-wide child (e.g. a <select>), clipping content on the right. */
+.signup-section {
+  min-width: 0;
+}
+
 .signup-title {
   font-size: 30px;
   margin-bottom: 4px;
@@ -46,7 +53,9 @@
   padding: 10px 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  font-size: 15px;
+
+  /* 16px keeps iOS Safari from auto-zooming the page when a field is focused. */
+  font-size: 16px;
 }
 
 .hint {
@@ -80,9 +89,10 @@
 
 .menu-info-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 2px 12px;
 }
 
 .menu-info-name {
@@ -102,7 +112,10 @@
 
 .guest-row {
   display: grid;
-  grid-template-columns: 120px 1fr 40px;
+
+  /* minmax(0, 1fr) lets the select track shrink below the option text instead
+     of forcing the row (and the whole section) wider than the viewport. */
+  grid-template-columns: 120px minmax(0, 1fr) 40px;
   align-items: center;
   gap: 12px;
   background: #faf6ef;
@@ -118,15 +131,16 @@
 }
 
 .guest-menu {
+  min-width: 0;
   padding: 9px 11px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .guest-remove {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border: 1px solid #ccc;
   background: #fff;
   border-radius: 8px;
@@ -193,8 +207,28 @@
     grid-template-columns: 1fr;
   }
 
+  /* Stack the guest row: "Personne N" on its own line, then the full-width
+     dropdown next to the remove button — so the select gets real width on
+     narrow screens instead of being crushed into a fixed label column. */
   .guest-row {
-    grid-template-columns: 90px 1fr 40px;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    grid-template-areas:
+      "num num"
+      "menu remove";
+    gap: 8px 10px;
+    align-items: center;
+  }
+
+  .guest-num {
+    grid-area: num;
+  }
+
+  .guest-menu {
+    grid-area: menu;
+  }
+
+  .guest-remove {
+    grid-area: remove;
   }
 }
 
