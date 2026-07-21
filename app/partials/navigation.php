@@ -16,7 +16,7 @@ $active = fn(string $page): string => $current === $page ? 'active' : '';
     aria-expanded="false"
     aria-controls="nav-menu"
   >
-    ☰
+    <i data-lucide="menu"></i>
   </button>
   <ul id="nav-menu">
     <li class="<?= $active('') ?>"><a href="/">Accueil</a></li>
@@ -33,7 +33,7 @@ $active = fn(string $page): string => $current === $page ? 'active' : '';
       href="https://www.flickr.com/photos/201962767@N02/collections"
       id="galerie-link"
       target="_blank"
-    >Galerie ↗</a></li>
+    >Galerie <i data-lucide="external-link"></i></a></li>
     <li class="<?= $active('multimedia') ?>"><a href="/multimedia">Multimédia</a></li>
     <li class="nav-auth"><a href="#" id="nav-auth-link">Connexion</a></li>
   </ul>
