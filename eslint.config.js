@@ -29,4 +29,40 @@ export default [
       globals: { Session: 'readonly' },
     },
   },
+  {
+    // `formatFrenchDate` is a shared global: main.js defines it as a
+    // top-level function (marked `/* exported formatFrenchDate */` there)
+    // and other classic <script> tags loaded after it on the same page
+    // (planning_repet.js, sinscrire.js) reference it. Excluded from
+    // main.js itself, which would otherwise trip no-redeclare.
+    files: ['app/assets/js/**/*.js'],
+    ignores: ['app/assets/js/main.js'],
+    languageOptions: {
+      globals: { formatFrenchDate: 'readonly' },
+    },
+  },
+  {
+    // `i18next` (vendored, app/assets/vendor/i18next.min.js) and
+    // `translateApiError` (this file's own exported helper) are shared
+    // globals: i18n.js initializes/uses i18next and defines
+    // translateApiError as a top-level function (marked
+    // `/* exported translateApiError */` there), and other classic
+    // <script> tags loaded after it on the same page (planning_repet.js)
+    // reference translateApiError. Excluded from i18n.js itself, which
+    // would otherwise trip no-redeclare on translateApiError.
+    files: ['app/assets/js/**/*.js'],
+    ignores: ['app/assets/js/i18n.js'],
+    languageOptions: {
+      globals: { i18next: 'readonly', translateApiError: 'readonly' },
+    },
+  },
+  {
+    // i18n.js itself consumes the vendored i18next global (from
+    // app/assets/vendor/i18next.min.js, loaded before it) but does not
+    // redeclare it — no `ignores` needed here, unlike the block above.
+    files: ['app/assets/js/i18n.js'],
+    languageOptions: {
+      globals: { i18next: 'readonly' },
+    },
+  },
 ];

@@ -2,10 +2,13 @@
 
 use App\Auth;
 use App\Database;
+use App\Dto\SignupInput;
+use App\Http\JsonResponse;
 use App\Mailer;
 use App\Altcha;
 use App\Repositories\ChallengeRepository;
 use App\Repositories\SignupRepository;
+use App\Validation\Validator;
 use Shuchkin\SimpleXLSXGen;
 
 global $config;
@@ -25,7 +28,6 @@ if ($method === 'POST') {
     $phone     = trim((string) ($data['phone'] ?? ''));
     $email     = trim((string) ($data['email'] ?? ''));
     $tableName = trim((string) ($data['table_name'] ?? ''));
-    $menus     = SignupRepository::normalizeMenus($data['menus'] ?? null);
 
     $honeypot = trim((string) ($data['hp'] ?? ''));
     $altchaPayload = (string) ($data['altcha'] ?? '');
@@ -38,17 +40,14 @@ if ($method === 'POST') {
         exit;
     }
 
-    if (
-        $firstName === '' || $lastName === '' || $address === ''
-        || $phone === '' || $tableName === '' || $menus === null
-        || !filter_var($email, FILTER_VALIDATE_EMAIL)
-        || mb_strlen($firstName) > 255 || mb_strlen($lastName) > 255
-        || mb_strlen($address) > 255 || mb_strlen($tableName) > 255
-        || mb_strlen($email) > 255 || mb_strlen($phone) > 64
-    ) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Formulaire invalide']);
-        exit;
+    // Deferred until past the honeypot so a trapped bot never triggers this work.
+    $menus = SignupRepository::normalizeMenus($data['menus'] ?? null);
+    $errors = Validator::validate(new SignupInput($firstName, $lastName, $address, $phone, $email, $tableName));
+    if ($menus === null) {
+        $errors[] = ['field' => 'menus', 'reason' => 'invalid_value'];
+    }
+    if ($errors !== []) {
+        JsonResponse::error(400, 'validation_failed', 'Invalid form submission', $errors);
     }
 
     // Proof-of-work gate (fail-closed) + single-use replay guard, before insert/mail.
@@ -60,9 +59,7 @@ if ($method === 'POST') {
         : (new Altcha($altchaSecret))->verifySolution($altchaPayload);
     $challenges = new ChallengeRepository(Database::get());
     if ($signature === null || !$challenges->consume($signature)) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Vérification anti-robot échouée, veuillez réessayer.']);
-        exit;
+        JsonResponse::error(403, 'captcha_failed', 'Anti-bot verification failed, please try again');
     }
 
     $repo->create([
@@ -115,5 +112,4 @@ if ($method === 'GET') {
     exit;
 }
 
-http_response_code(405);
-echo json_encode(['error' => 'Méthode non autorisée']);
+JsonResponse::methodNotAllowed();

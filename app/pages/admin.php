@@ -2,7 +2,7 @@
 
 use App\Auth;
 
-Auth::requireLoginPage('');
+Auth::requireLoginPage('admin');
 if (!Auth::canManageEvents()) {
     http_response_code(403);
     exit('Accès refusé');
@@ -10,6 +10,7 @@ if (!Auth::canManageEvents()) {
 ?>
 <?php $pageTitle = "Page d'administration";
 $pageCss = 'admin.css';
+$pageScripts = ['admin.js'];
 require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
 <?php require __DIR__ . '/../partials/navigation.php'; ?>
@@ -27,8 +28,3 @@ require __DIR__ . '/../partials/head.php'; ?>
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/js/admin.js"></script>
-</body>
-</html>

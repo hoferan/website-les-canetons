@@ -1,5 +1,6 @@
 <?php $pageTitle = 'Connexion';
 $pageCss = 'authentification.css';
+$pageScripts = ['authentification-inscription.js'];
 require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
 <?php require __DIR__ . '/../partials/navigation.php'; ?>
@@ -19,8 +20,3 @@ require __DIR__ . '/../partials/head.php'; ?>
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/js/authentification-inscription.js"></script>
-</body>
-</html>

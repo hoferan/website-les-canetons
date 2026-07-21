@@ -8,6 +8,7 @@ $repo = new SignupRepository(Database::get());
 $tables = $repo->distinctTables(SignupRepository::ACTIVE_OCCASION);
 $pageTitle = $occasion['title'];
 $pageCss = 'signup.css';
+$pageScripts = ['signup.js'];
 require __DIR__ . '/../partials/head.php';
 ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
@@ -91,8 +92,3 @@ require __DIR__ . '/../partials/head.php';
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/js/signup.js"></script>
-</body>
-</html>

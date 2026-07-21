@@ -34,20 +34,16 @@ final class ResponseRepository
             return [];
         }
         $placeholders = implode(',', array_fill(0, count($respondingRoles), '?'));
-        $sql = "SELECT u.username AS username, i.name AS instrument,
-                   (SELECT r.answer FROM responses r
-                    WHERE r.user_id = u.id AND r.event_id = ? LIMIT 1) AS response
+        $sql = "SELECT u.username AS username, i.name AS instrument, r.answer AS response
                 FROM users u
                 LEFT JOIN instruments i ON u.instrument_id = i.id
+                LEFT JOIN responses r ON r.user_id = u.id AND r.event_id = ?
                 WHERE u.role IN ($placeholders)
-                ORDER BY COALESCE(
-                    (SELECT r.answer FROM responses r
-                     WHERE r.user_id = u.id AND r.event_id = ? LIMIT 1), ''
-                ) DESC, u.username";
+                ORDER BY COALESCE(r.answer, '') DESC, u.username";
         $stmt = $this->db->prepare($sql);
-        // Bind order follows placeholder order: eventId (SELECT), roles (WHERE), eventId (ORDER BY).
-        $types = 'i' . str_repeat('s', count($respondingRoles)) . 'i';
-        $params = array_merge([$eventId], $respondingRoles, [$eventId]);
+        // Bind order follows placeholder order: eventId (JOIN), roles (WHERE).
+        $types = 'i' . str_repeat('s', count($respondingRoles));
+        $params = array_merge([$eventId], $respondingRoles);
         $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

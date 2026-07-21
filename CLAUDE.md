@@ -254,8 +254,16 @@ also safe to run in local Docker dev.
 
 - **Everything is written in English** — specs and plans (`docs/`), code, comments,
   DB table/column names, enum/stored values, identifiers, slugs, and file names.
+- **API JSON response bodies are English** — every `app/api/*.php` error response's
+  `error` message, `code`, and `fields[].field`/`fields[].reason` are English
+  identifiers/text (e.g. `{"error":"Invalid form submission","code":"validation_failed",
+  "fields":[{"field":"date","reason":"required"}]}`). Nothing here is user-facing
+  directly — translation to French happens exclusively at the JS display layer, via
+  `app/assets/js/i18n.js`'s `translateApiError()` (i18next). `app/api/migrate.php` is
+  the one exception: a token-gated deploy-tooling endpoint, never seen by an end user.
 - **French is used for ONE thing only: user-visible UI text** (HTML labels, page copy,
-  buttons, on-screen event titles/descriptions, error messages shown to the user).
+  buttons, on-screen event titles/descriptions) — rendered page-level text, not API
+  response bodies.
 - The existing codebase already follows this: `contact_messages` uses
   `first_name`/`last_name` columns and `responses.answer` uses English enum values
   (`participate`/`notparticipate`), while page labels are French. Match that pattern.

@@ -11,6 +11,7 @@ if (!Auth::canViewSummary()) {
 $pageTitle = 'Inscriptions — '
     . SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION]['title'];
 $pageCss = 'signups_admin.css';
+$pageScripts = ['signups_admin.js'];
 require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
 <?php require __DIR__ . '/../partials/navigation.php'; ?>
@@ -49,8 +50,3 @@ require __DIR__ . '/../partials/head.php'; ?>
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/js/signups_admin.js"></script>
-</body>
-</html>

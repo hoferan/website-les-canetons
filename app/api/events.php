@@ -2,7 +2,10 @@
 
 use App\Auth;
 use App\Database;
+use App\Dto\EventInput;
+use App\Http\JsonResponse;
 use App\Repositories\EventRepository;
+use App\Validation\Validator;
 
 header('Content-Type: application/json');
 $repo = new EventRepository(Database::get());
@@ -24,23 +27,20 @@ if ($method === 'GET') {
 Auth::requireCanManageEvents();
 
 if ($method === 'POST' || $method === 'PUT') {
-    // 'attire' (Tenue) is optional — the column is nullable and the form marks it
-    // as such, so it is validated separately from the required fields below.
-    foreach (['date', 'title', 'startTime', 'endTime', 'location'] as $k) {
-        if (!isset($data[$k]) || !is_string($data[$k]) || trim($data[$k]) === '') {
-            http_response_code(400);
-            echo json_encode(['error' => "Champ manquant ou invalide: {$k}"]);
-            exit;
-        }
+    $input = new EventInput(
+        $data['date'] ?? null,
+        $data['title'] ?? null,
+        $data['startTime'] ?? null,
+        $data['endTime'] ?? null,
+        $data['location'] ?? null,
+        $data['attire'] ?? null,
+        $data['weekend'] ?? false,
+    );
+    $errors = Validator::validate($input);
+    if ($errors !== []) {
+        JsonResponse::error(400, 'validation_failed', 'Invalid form submission', $errors);
     }
-
-    // Normalize optional attire: accept an empty/missing value, reject a non-string.
-    if (isset($data['attire']) && !is_string($data['attire'])) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Champ invalide: attire']);
-        exit;
-    }
-    $data['attire'] = isset($data['attire']) ? trim($data['attire']) : '';
+    $data['attire'] = is_string($input->attire) ? trim($input->attire) : '';
 
     if ($method === 'POST') {
         $repo->create($data);
@@ -52,9 +52,7 @@ if ($method === 'POST' || $method === 'PUT') {
     // PUT also needs a valid id.
     $id = (int) ($data['id'] ?? 0);
     if ($id <= 0) {
-        http_response_code(400);
-        echo json_encode(['error' => 'id manquant ou invalide']);
-        exit;
+        JsonResponse::error(400, 'validation_failed', 'Invalid form submission', [['field' => 'id', 'reason' => 'invalid_value']]);
     }
     $repo->update($data);
     echo json_encode(['ok' => true]);
@@ -62,16 +60,17 @@ if ($method === 'POST' || $method === 'PUT') {
 }
 
 if ($method === 'DELETE') {
-    $id = (int) ($_GET['id'] ?? 0);
+    $rawId = $_GET['id'] ?? null;
+    if ($rawId === null || $rawId === '') {
+        JsonResponse::error(400, 'validation_failed', 'Invalid form submission', [['field' => 'id', 'reason' => 'required']]);
+    }
+    $id = (int) $rawId;
     if ($id <= 0) {
-        http_response_code(400);
-        echo json_encode(['error' => 'id invalide']);
-        exit;
+        JsonResponse::error(400, 'validation_failed', 'Invalid form submission', [['field' => 'id', 'reason' => 'invalid_value']]);
     }
     $repo->delete($id);
     echo json_encode(['ok' => true]);
     exit;
 }
 
-http_response_code(405);
-echo json_encode(['error' => 'Méthode non autorisée']);
+JsonResponse::methodNotAllowed();

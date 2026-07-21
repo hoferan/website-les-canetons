@@ -23,6 +23,10 @@ prod-*.sql
 # into the ./app -> /var/www/html mount (docker-compose.yml). Not real content.
 /app/vendor/
 
+# runtime error log written by bootstrap.php on non-prod (dev/test/qa); a local
+# artifact inside the deployed app/ tree — never commit it.
+/app/php-error.log
+
 # generated FTP deploy artifact (npm run build); never hand-edit or commit
 /public/
 

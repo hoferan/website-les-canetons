@@ -1,9 +1,17 @@
+/* exported formatFrenchDate */
 // main.js — nav + banner UI wiring.
 // Auth is enforced server-side via the session cookie; everything here is
 // UI-only. Requires session.js to be loaded before this file.
 
 // Current page identifier (the route slug), used for returnTo links.
 var currentPage = window.location.pathname.split("/").pop();
+
+// Formats a Date as French text ("22 août 2026" by default). Pass options to
+// override toLocaleDateString's format, e.g. { weekday: "long", ...defaults }.
+function formatFrenchDate(date, options) {
+  var defaults = { day: "numeric", month: "long", year: "numeric" };
+  return date.toLocaleDateString("fr-FR", options || defaults);
+}
 
 document.addEventListener("DOMContentLoaded", function () {
   setupNavToggle();

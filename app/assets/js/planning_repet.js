@@ -107,90 +107,149 @@ if (eventForm) {
 
     // Récupérer les valeurs du formulaire
     var eventId = document.getElementById("event-id").value;
-    var eventDate = document.getElementById("event-date").value;
-    var eventTitle = document.getElementById("event-title").value;
-    var eventStartTime = document.getElementById("event-time-start").value;
-    var eventEndTime = document.getElementById("event-time-end").value;
-    var eventLocation = document.getElementById("event-location").value;
-    var eventAttire = document.getElementById("event-attire").value;
-    var eventWeekend = document.getElementById("event-weekend").checked;
 
     // Créer un objet pour l'événement
     var newEvent = {
       id: eventId,
-      date: eventDate,
-      title: eventTitle,
-      startTime: eventStartTime,
-      endTime: eventEndTime,
-      location: eventLocation,
-      attire: eventAttire,
-      weekend: eventWeekend,
+      date: document.getElementById("event-date").value,
+      title: document.getElementById("event-title").value,
+      startTime: document.getElementById("event-time-start").value,
+      endTime: document.getElementById("event-time-end").value,
+      location: document.getElementById("event-location").value,
+      attire: document.getElementById("event-attire").value,
+      weekend: document.getElementById("event-weekend").checked,
     };
-
-    // POST creates, PUT updates an existing event (eventId present).
-    var method = eventId ? "PUT" : "POST";
 
     clearFormError();
 
-    fetch("/api/events", {
-      method: method,
-      body: JSON.stringify(newEvent),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then(function (response) {
-        // fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok
-        // explicitly — otherwise an error would fall into the success path and
-        // wrongly reset the form. Parse the JSON body regardless (it carries the
-        // server's error message on failure), then branch on response.ok.
-        return response.json().then(function (body) {
-          if (!response.ok) {
-            // Expected, server-validated failure: surface the message to the
-            // user but flag it as handled so it is not logged as a fault below.
-            var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
-            var handled = new Error(message);
-            handled.handled = true;
-            throw handled;
-          }
-          return body;
-        });
-      })
-      .then(function (_) {
+    // Guard against double-click / slow-network double submit: disable the
+    // button for the duration of the request and always re-enable it in
+    // .finally() so a legitimate retry isn't left permanently blocked.
+    var submitButton = eventForm.querySelector('input[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+    }
+
+    // POST creates, PUT updates an existing event (eventId present).
+    saveEvent(eventId ? "PUT" : "POST", newEvent)
+      .then(function () {
         displayResult(newEvent); // API returns {ok:true}; show what we saved
-        document.getElementById("event-form").reset(); // Effacer les champs du formulaire
+        eventForm.reset(); // Effacer les champs du formulaire
         loadEvents();
       })
       .catch(function (error) {
         // Keep the form values intact so the user can correct and resubmit.
-        showFormError(error.message || "L'enregistrement a échoué. Veuillez réessayer.");
+        var translated = error.body
+          ? translateApiError(error.body)
+          : { message: "L'enregistrement a échoué. Veuillez réessayer.", fields: [] };
+        showFormError(translated.message, translated.fields);
         // Only log genuinely unexpected failures (network error, invalid JSON,
         // server 5xx) — a handled validation error is normal flow, not noise.
         if (!error.handled) {
           console.error("Erreur lors de l'enregistrement de l'événement : ", error);
         }
+      })
+      .finally(function () {
+        if (submitButton) {
+          submitButton.disabled = false;
+        }
       });
   });
 }
 
-// Show/clear a validation or network error above nothing destructive — the form
-// keeps its values so the admin can fix the issue and resubmit.
-function showFormError(message) {
+// Envoie l'événement au serveur (création ou modification) et rejette si la
+// réponse n'est pas OK, pour que l'appelant sache distinguer succès et échec.
+// fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok explicitly —
+// otherwise an error would fall into the success path and wrongly report
+// success. Parse the JSON body regardless (it carries the server's error
+// code/fields on failure), then branch on response.ok.
+function saveEvent(method, event) {
+  return fetch("/api/events", {
+    method: method,
+    body: JSON.stringify(event),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  }).then(function (response) {
+    // Read the body as text and parse defensively: an unexpected server error
+    // (e.g. a PHP fatal or a maintenance page) can return non-JSON even with a
+    // JSON content-type, and response.json() would throw an opaque SyntaxError.
+    return response.text().then(function (text) {
+      var body = null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = null;
+      }
+      if (!response.ok || body === null) {
+        // Failure. When we have a parsed JSON body, carry it through so the
+        // caller can translate/highlight fields, and flag it handled so it is
+        // not logged as a fault. A non-JSON body is genuinely unexpected —
+        // leave it unhandled so it is logged, and let the caller fall back to
+        // a generic message.
+        var handled = new Error((body && body.error) || "save-failed");
+        handled.handled = body !== null;
+        handled.body = body;
+        throw handled;
+      }
+      return body;
+    });
+  });
+}
+
+// Maps an API validation field name (fields[].field) to its form input id.
+// The ids don't uniformly follow `event-<field>` — startTime/endTime map to
+// event-time-start/event-time-end — so the mapping is explicit.
+var EVENT_FIELD_INPUT_IDS = {
+  date: "event-date",
+  title: "event-title",
+  startTime: "event-time-start",
+  endTime: "event-time-end",
+  location: "event-location",
+  attire: "event-attire",
+};
+
+// Show a validation or network error above the form (keeps the form's
+// values intact so the admin can fix the issue and resubmit) and, when
+// per-field detail is available, highlight each invalid field and focus
+// the first one.
+function showFormError(message, fields) {
   var el = document.getElementById("event-error");
-  if (!el) {
-    return;
+  if (el) {
+    el.textContent = message;
+    el.style.display = "block";
   }
-  el.textContent = message;
-  el.style.display = "block";
+
+  var invalidFields = fields || [];
+  var firstInput = null;
+  invalidFields.forEach(function (entry) {
+    var inputId = EVENT_FIELD_INPUT_IDS[entry.field];
+    var input = inputId ? document.getElementById(inputId) : null;
+    if (!input) {
+      return;
+    }
+    input.classList.add("field-error");
+    if (!firstInput) {
+      firstInput = input;
+    }
+  });
+  if (firstInput) {
+    firstInput.focus();
+  }
 }
 
 function clearFormError() {
   var el = document.getElementById("event-error");
-  if (!el) {
-    return;
+  if (el) {
+    el.textContent = "";
+    el.style.display = "none";
   }
-  el.textContent = "";
-  el.style.display = "none";
+  Object.keys(EVENT_FIELD_INPUT_IDS).forEach(function (field) {
+    var input = document.getElementById(EVENT_FIELD_INPUT_IDS[field]);
+    if (input) {
+      input.classList.remove("field-error");
+    }
+  });
 }
 
 // Fonction pour afficher le résultat de l'ajout d'événement
@@ -199,11 +258,7 @@ function displayResult(event) {
   eventResult.style.display = "block";
 
   var eventDate = new Date(event.date);
-  var formattedDate = eventDate.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  var formattedDate = formatFrenchDate(eventDate);
 
   document.getElementById("result-date").textContent = formattedDate;
   document.getElementById("result-title").textContent = event.title;
@@ -226,11 +281,7 @@ function displayResult(event) {
   if (event.weekend) {
     var endDate = new Date(eventDate);
     endDate.setDate(endDate.getDate() + 1);
-    var formattedEndDate = endDate.toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    var formattedEndDate = formatFrenchDate(endDate);
     resultDatesLabel.style.display = "inline";
     resultDates.textContent = formattedDate + " au " + formattedEndDate;
   } else {
@@ -250,11 +301,15 @@ function createDeleteElement(event) {
       fetch("/api/events?id=" + event.id, {
         method: "DELETE",
       })
-        .then((_) => {
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error("Échec de la suppression (HTTP " + response.status + ")");
+          }
           loadEvents();
         })
-        .catch((error) => {
+        .catch(function (error) {
           console.error("Failed to delete event: ", error);
+          alert("La suppression de l'événement a échoué. Veuillez réessayer.");
         });
     }
   });
@@ -290,29 +345,32 @@ function createEditElement(event) {
 
 // Fonction pour formater la date en "jour mois année"
 function formatDate(date) {
-  var options = {
+  return formatFrenchDate(date, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  };
-  return date.toLocaleDateString("fr-FR", options);
+  });
 }
 
 // Fonction pour formater la plage de dates en "du jour mois année au jour mois année"
 function formatDateRangeText(startDate, endDate) {
-  var options = {
+  var formattedStartDate = formatFrenchDate(startDate, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  };
-  var formattedStartDate = startDate.toLocaleDateString("fr-FR", options);
-  var formattedEndDate = endDate.toLocaleDateString("fr-FR", options);
+  });
+  var formattedEndDate = formatFrenchDate(endDate, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   // Vérifiez si les dates sont de la même année
   if (startDate.getFullYear() === endDate.getFullYear()) {
-    formattedStartDate = startDate.toLocaleDateString("fr-FR", {
+    formattedStartDate = formatFrenchDate(startDate, {
       weekday: "long",
       month: "long",
       day: "numeric",

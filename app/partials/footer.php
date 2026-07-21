@@ -4,6 +4,7 @@ use App\Auth;
 use App\Features;
 use App\Repositories\SignupRepository;
 
+/** @var string[] $pageScripts Optional page-specific scripts (filenames under assets/js/), set by the page before this include. */
 ?>
 <footer>
   <p class="footer-copyright">&copy; 2026 Guggenmusik les canetons de Fribourg Tous droits réservés.</p>
@@ -37,3 +38,14 @@ use App\Repositories\SignupRepository;
 </div>
 <script src="assets/js/supper-popup.js"></script>
 <?php endif; ?>
+
+<?php // Scripts shared by every page, then any page-specific scripts (in load order). ?>
+<script src="assets/js/session.js"></script>
+<script src="assets/js/main.js"></script>
+<script src="assets/vendor/i18next.min.js"></script>
+<script src="assets/js/i18n.js"></script>
+<?php foreach ($pageScripts ?? [] as $script) : ?>
+<script src="assets/js/<?= htmlspecialchars($script) ?>"></script>
+<?php endforeach; ?>
+</body>
+</html>
