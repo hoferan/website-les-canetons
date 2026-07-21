@@ -16,9 +16,3 @@ require __DIR__ . '/../partials/head.php'; ?>
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/vendor/i18next.min.js"></script>
-<script src="assets/js/i18n.js"></script>
-</body>
-</html>

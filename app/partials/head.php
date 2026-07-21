@@ -4,6 +4,7 @@ use App\Auth;
 
 /** @var string|null $pageTitle */
 /** @var string $pageCss */
+/** @var string[] $pageScripts Optional page-specific scripts, consumed by footer.php (see there). */
 ?>
 <!DOCTYPE html>
 <html lang="fr">

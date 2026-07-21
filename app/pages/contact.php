@@ -1,5 +1,6 @@
 <?php $pageTitle = 'Contact';
 $pageCss = 'contact.css';
+$pageScripts = ['contact.js'];
 require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/banner.php'; ?>
 <?php require __DIR__ . '/../partials/navigation.php'; ?>
@@ -32,24 +33,3 @@ require __DIR__ . '/../partials/head.php'; ?>
 </section>
 
 <?php require __DIR__ . '/../partials/footer.php'; ?>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/vendor/i18next.min.js"></script>
-<script src="assets/js/i18n.js"></script>
-<script>
-  // The contact endpoint returns JSON; submit via fetch and redirect to the
-  // confirmation page on success (a small inline handler).
-  document.getElementById("contact-form").addEventListener("submit", function (e) {
-    e.preventDefault();
-    fetch("/api/contact", { method: "POST", body: new FormData(this) })
-      .then(function (r) {
-        if (!r.ok) throw new Error("contact-failed");
-        window.location.href = "/confirmation";
-      })
-      .catch(function () {
-        alert("Échec de l’envoi du formulaire. Veuillez réessayer.");
-      });
-  });
-</script>
-</body>
-</html>
