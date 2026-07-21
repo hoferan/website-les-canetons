@@ -139,7 +139,10 @@ if (eventForm) {
       })
       .catch(function (error) {
         // Keep the form values intact so the user can correct and resubmit.
-        showFormError(error.message || "L'enregistrement a échoué. Veuillez réessayer.");
+        var translated = error.body
+          ? translateApiError(error.body)
+          : { message: "L'enregistrement a échoué. Veuillez réessayer.", fields: [] };
+        showFormError(translated.message, translated.fields);
         // Only log genuinely unexpected failures (network error, invalid JSON,
         // server 5xx) — a handled validation error is normal flow, not noise.
         if (!error.handled) {
@@ -159,7 +162,7 @@ if (eventForm) {
 // fetch() does NOT reject on HTTP 4xx/5xx, so inspect response.ok explicitly —
 // otherwise an error would fall into the success path and wrongly report
 // success. Parse the JSON body regardless (it carries the server's error
-// message on failure), then branch on response.ok.
+// code/fields on failure), then branch on response.ok.
 function saveEvent(method, event) {
   return fetch("/api/events", {
     method: method,
@@ -170,11 +173,12 @@ function saveEvent(method, event) {
   }).then(function (response) {
     return response.json().then(function (body) {
       if (!response.ok) {
-        // Expected, server-validated failure: surface the message to the
-        // user but flag it as handled so it is not logged as a fault above.
-        var message = (body && body.error) || "L'enregistrement a échoué. Veuillez réessayer.";
-        var handled = new Error(message);
+        // Expected, server-validated failure: carry the parsed body through
+        // so the caller can translate/highlight fields, but flag it as
+        // handled so it is not logged as a fault above.
+        var handled = new Error(body && body.error);
         handled.handled = true;
+        handled.body = body;
         throw handled;
       }
       return body;
@@ -182,24 +186,59 @@ function saveEvent(method, event) {
   });
 }
 
-// Show/clear a validation or network error above nothing destructive — the form
-// keeps its values so the admin can fix the issue and resubmit.
-function showFormError(message) {
+// Maps an API validation field name (fields[].field) to its form input id.
+// The ids don't uniformly follow `event-<field>` — startTime/endTime map to
+// event-time-start/event-time-end — so the mapping is explicit.
+var EVENT_FIELD_INPUT_IDS = {
+  date: "event-date",
+  title: "event-title",
+  startTime: "event-time-start",
+  endTime: "event-time-end",
+  location: "event-location",
+  attire: "event-attire",
+};
+
+// Show a validation or network error above the form (keeps the form's
+// values intact so the admin can fix the issue and resubmit) and, when
+// per-field detail is available, highlight each invalid field and focus
+// the first one.
+function showFormError(message, fields) {
   var el = document.getElementById("event-error");
-  if (!el) {
-    return;
+  if (el) {
+    el.textContent = message;
+    el.style.display = "block";
   }
-  el.textContent = message;
-  el.style.display = "block";
+
+  var invalidFields = fields || [];
+  var firstInput = null;
+  invalidFields.forEach(function (entry) {
+    var inputId = EVENT_FIELD_INPUT_IDS[entry.field];
+    var input = inputId ? document.getElementById(inputId) : null;
+    if (!input) {
+      return;
+    }
+    input.classList.add("field-error");
+    if (!firstInput) {
+      firstInput = input;
+    }
+  });
+  if (firstInput) {
+    firstInput.focus();
+  }
 }
 
 function clearFormError() {
   var el = document.getElementById("event-error");
-  if (!el) {
-    return;
+  if (el) {
+    el.textContent = "";
+    el.style.display = "none";
   }
-  el.textContent = "";
-  el.style.display = "none";
+  Object.keys(EVENT_FIELD_INPUT_IDS).forEach(function (field) {
+    var input = document.getElementById(EVENT_FIELD_INPUT_IDS[field]);
+    if (input) {
+      input.classList.remove("field-error");
+    }
+  });
 }
 
 // Fonction pour afficher le résultat de l'ajout d'événement

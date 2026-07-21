@@ -101,3 +101,8 @@ h1 {
   color: #b00020;
   font-weight: bold;
 }
+
+.field-error {
+  border-color: #b00020;
+  outline-color: #b00020;
+}
