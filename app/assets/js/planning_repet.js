@@ -171,13 +171,24 @@ function saveEvent(method, event) {
       "Content-Type": "application/json",
     },
   }).then(function (response) {
-    return response.json().then(function (body) {
-      if (!response.ok) {
-        // Expected, server-validated failure: carry the parsed body through
-        // so the caller can translate/highlight fields, but flag it as
-        // handled so it is not logged as a fault above.
-        var handled = new Error(body && body.error);
-        handled.handled = true;
+    // Read the body as text and parse defensively: an unexpected server error
+    // (e.g. a PHP fatal or a maintenance page) can return non-JSON even with a
+    // JSON content-type, and response.json() would throw an opaque SyntaxError.
+    return response.text().then(function (text) {
+      var body = null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = null;
+      }
+      if (!response.ok || body === null) {
+        // Failure. When we have a parsed JSON body, carry it through so the
+        // caller can translate/highlight fields, and flag it handled so it is
+        // not logged as a fault. A non-JSON body is genuinely unexpected —
+        // leave it unhandled so it is logged, and let the caller fall back to
+        // a generic message.
+        var handled = new Error((body && body.error) || "save-failed");
+        handled.handled = body !== null;
         handled.body = body;
         throw handled;
       }
