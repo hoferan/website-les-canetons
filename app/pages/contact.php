@@ -34,6 +34,8 @@ require __DIR__ . '/../partials/head.php'; ?>
 <?php require __DIR__ . '/../partials/footer.php'; ?>
 <script src="assets/js/session.js"></script>
 <script src="assets/js/main.js"></script>
+<script src="assets/vendor/i18next.min.js"></script>
+<script src="assets/js/i18n.js"></script>
 <script>
   // The contact endpoint returns JSON; submit via fetch and redirect to the
   // confirmation page on success (a small inline handler).
