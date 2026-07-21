@@ -59,7 +59,7 @@ final class ResponseRepositoryTest extends IntegrationTestCase
         $usernames = array_column($repo->allForEvent(1, ['user', 'moderator']), 'username');
         $demoUserIndex = array_search('demo.user', $usernames, true); // has a seeded response
         $samIndex = array_search('sam.beispiel', $usernames, true); // just responded above
-        $noResponseIndex = array_search('demo.user2', $usernames, true); // never responds in seed data
+        $noResponseIndex = array_search('demo.user3', $usernames, true); // no response for event 1 in seed data
 
         $this->assertLessThan($noResponseIndex, $demoUserIndex);
         $this->assertLessThan($noResponseIndex, $samIndex);
