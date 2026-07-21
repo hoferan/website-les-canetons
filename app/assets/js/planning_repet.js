@@ -92,6 +92,8 @@ function loadEvents() {
 
         eventsList.appendChild(li);
       });
+
+      lucide.createIcons();
     })
     .catch((error) => {
       console.error("Erreur lors de l'ajout de l'événement : ", error);
@@ -295,7 +297,7 @@ function createDeleteElement(event) {
   var deleteElement = document.createElement("span");
   deleteElement.classList.add("delete-event");
   deleteElement.classList.add("delete-icon");
-  deleteElement.innerHTML = "&times;";
+  deleteElement.innerHTML = '<i data-lucide="trash-2"></i>';
   deleteElement.addEventListener("click", function () {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
       fetch("/api/events?id=" + event.id, {
@@ -322,7 +324,7 @@ function createEditElement(event) {
   var editElement = document.createElement("span");
   editElement.classList.add("edit-event");
   editElement.classList.add("edit-icon");
-  editElement.innerHTML = "&#x270E;";
+  editElement.innerHTML = '<i data-lucide="pencil"></i>';
   editElement.addEventListener("click", function () {
     document.getElementById("event-id").value = event.id;
     document.getElementById("event-date").value = event.date;

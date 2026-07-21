@@ -47,11 +47,16 @@ h1 {
   position: absolute;
   top: 5px;
   right: 20px;
-  font-size: 48px;
-  font-weight: bold;
   color: #57a89d;
   cursor: pointer;
   transition: color 0.3s ease;
+}
+
+.delete-icon svg,
+.edit-icon svg {
+  width: 24px;
+  height: 24px;
+  display: block;
 }
 
 .delete-icon:hover {
@@ -60,10 +65,8 @@ h1 {
 
 .edit-icon {
   position: absolute;
-  top: 55px;
+  top: 35px;
   right: 20px;
-  font-size: 30px;
-  font-weight: bold;
   color: #57a89d;
   cursor: pointer;
   transition: color 0.3s ease;
