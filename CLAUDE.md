@@ -182,13 +182,22 @@ Available skills:
   dynamically after that (e.g. `planning_repet.js`'s `loadEvents()`).
   Style is outline/stroke-only (`fill="none"`, `stroke="currentColor"`) —
   there is no solid/filled variant, so never override `fill` on a Lucide
-  icon. Size is one standard 24×24px for every icon in normal UI usage
-  (buttons, nav, inline with text, list actions) — never size icons ad hoc
-  per spot; the only exception is large-format decorative usage (a hero
-  section, a page title, a logo lockup) where the icon isn't part of a UI
-  control or running text. Don't set `stroke` directly — icons inherit
-  `currentColor` from the surrounding element's CSS `color`, so hover/state
-  colors are styled on the parent as usual.
+  icon. Size comes from a small fixed scale in `rem` (never an arbitrary
+  or one-off px value, and never `em`/text-relative sizing — a discrete
+  scale keeps every icon's size predictable and reusable instead of
+  drifting to whatever value happens to look right in one spot):
+  `1.5rem` (24px) for standalone icon controls (buttons, list-item
+  actions — the icon *is* the whole control, e.g. the nav hamburger, the
+  admin delete/edit icons) and `1rem` (16px) for an icon inline within a
+  run of text or a link label (e.g. the Galerie link's external-link
+  icon) — sized down from the standalone scale so it doesn't inflate that
+  element's line-height above its text-only siblings. `0.875rem` (14px)
+  is reserved on the same scale for a future smaller inline context if
+  one comes up. The only exception to this scale is large-format
+  decorative usage (a hero section, a page title, a logo lockup) where
+  the icon isn't part of a UI control or running text. Don't set `stroke`
+  directly — icons inherit `currentColor` from the surrounding element's
+  CSS `color`, so hover/state colors are styled on the parent as usual.
 
 ## Local Development
 

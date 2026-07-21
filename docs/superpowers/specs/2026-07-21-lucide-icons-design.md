@@ -79,10 +79,21 @@ continues to cascade for free from the parent element's `color` — the
 white icon need no change on that front. What SVGs *don't* pick up from
 `font-size` is their box size, so `.nav-toggle`, `.delete-icon`,
 `.edit-icon`, and the Galerie link each get an explicit `width`/`height`
-rule for their icon, standardized to the single size below. Any further
-spacing/alignment tweaks (e.g. margin between "Galerie" and its icon) are
-tuned by eye via `npm run serve` during implementation rather than
-guessed here.
+rule for their icon, from the two-tier `rem` scale below rather than a
+single fixed size (see "Icon usage convention").
+
+**Revision (post-implementation):** the first version of this spec set a
+single flat `24px` for every icon, including the Galerie link's — an icon
+inline in a run of text. That broke the Galerie nav pill's layout: a
+24px inline SVG next to ~16px text forces that `<a>`'s line box to grow
+to fit the icon, so the pill rendered visibly taller than its all-text
+siblings, with `vertical-align: middle` unable to compensate (it centers
+within the taller line box, not the box height itself). Caught via
+screenshot review before merge. Fixed by splitting the standard into two
+sizes (see below) instead of one — `#galerie-link svg` now gets `1rem`
+(16px, matching the link's own font-size) instead of `1.5rem` (24px).
+Any further spacing/alignment tweaks (e.g. margin between "Galerie" and
+its icon) are tuned by eye via `npm run serve`.
 
 ## Icon usage convention (new, documented in `CLAUDE.md`)
 
@@ -93,11 +104,16 @@ establishes the convention future icon usage must follow — added as a new
 - **Style:** Lucide ships one style only — outline/stroke
   (`fill="none"`, `stroke="currentColor"`). There's no solid/filled
   variant to accidentally mix in; never override `fill` on a Lucide icon.
-- **Size:** one standard size, **24×24px**, for every icon in normal UI
-  usage (buttons, nav, inline with text, list actions) — never size icons
-  ad hoc per spot. This is why the delete/edit icons (currently 48px/30px)
-  are equalized to 24px, and why the Galerie link's icon is 24px rather
-  than scaled to the surrounding link text. Exception: large-format
+- **Size:** a small fixed scale in `rem`, never an arbitrary or one-off px
+  value and never `em`/text-relative sizing — `1.5rem` (24px) for
+  standalone icon controls (buttons, list-item actions, where the icon
+  *is* the whole control — the nav hamburger, the admin delete/edit
+  icons), and `1rem` (16px) for an icon inline within a run of text or a
+  link label (the Galerie link's external-link icon), so it doesn't
+  inflate that element's line-height above its text-only siblings.
+  `0.875rem` (14px) is reserved on the same scale for a future smaller
+  inline context. This is why the delete/edit icons (previously 48px/30px
+  text glyphs) are equalized to `1.5rem`. Exception: large-format
   decorative usage (a hero section, a page title, a logo lockup) where the
   icon isn't part of a UI control or running text — those may use a
   different, purpose-fit size. No such usage exists in the codebase today.
@@ -117,9 +133,9 @@ establishes the convention future icon usage must follow — added as a new
    README entry), no new devDependency.
 3. Icons render correctly on first page load (server-rendered markup) and
    after the admin event list is dynamically rebuilt.
-4. Delete and edit icons are visually equalized to the new 24×24px
-   standard; hover-color behavior (red on delete-hover, blue on
-   edit-hover) is preserved.
+4. Delete and edit icons are visually equalized to the new `1.5rem`
+   (24px) standalone-control standard; hover-color behavior (red on
+   delete-hover, blue on edit-hover) is preserved.
 5. `CLAUDE.md` documents the icon usage convention (style/size/color/
    mechanism) so future icon additions follow it without re-deriving it.
 

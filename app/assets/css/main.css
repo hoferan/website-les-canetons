@@ -149,14 +149,14 @@ header {
 }
 
 .nav-toggle svg {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem; /* standalone control icon size */
+  height: 1.5rem;
   display: block;
 }
 
 #galerie-link svg {
-  width: 24px;
-  height: 24px;
+  width: 1rem; /* inline-with-text icon size, matches the link's own font-size */
+  height: 1rem;
   vertical-align: middle;
   margin-left: 4px;
 }

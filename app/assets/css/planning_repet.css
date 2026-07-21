@@ -54,8 +54,8 @@ h1 {
 
 .delete-icon svg,
 .edit-icon svg {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem; /* standalone control icon size */
+  height: 1.5rem;
   display: block;
 }
 
