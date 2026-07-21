@@ -174,6 +174,21 @@ Available skills:
   `prod` (no ribbon), so the live site stays clean by default. The two staging
   sites (TEST/QA) are private behind HTTP Basic Auth — their access-control
   overlay and the full deploy layout are documented in `staging/README.md`.
+- **Icons:** [Lucide](https://lucide.dev), vendored at
+  `app/assets/vendor/lucide.min.js` (see `app/assets/vendor/README.md`).
+  Markup: `<i data-lucide="icon-name"></i>`, converted to inline `<svg>` by
+  calling `lucide.createIcons()` — globally in `main.js`'s
+  `DOMContentLoaded` handler, and again anywhere JS creates icon markup
+  dynamically after that (e.g. `planning_repet.js`'s `loadEvents()`).
+  Style is outline/stroke-only (`fill="none"`, `stroke="currentColor"`) —
+  there is no solid/filled variant, so never override `fill` on a Lucide
+  icon. Size is one standard 24×24px for every icon in normal UI usage
+  (buttons, nav, inline with text, list actions) — never size icons ad hoc
+  per spot; the only exception is large-format decorative usage (a hero
+  section, a page title, a logo lockup) where the icon isn't part of a UI
+  control or running text. Don't set `stroke` directly — icons inherit
+  `currentColor` from the surrounding element's CSS `color`, so hover/state
+  colors are styled on the parent as usual.
 
 ## Local Development
 
