@@ -2,6 +2,7 @@
 
 use App\Auth;
 use App\Database;
+use App\Http\JsonResponse;
 use App\Repositories\EventRepository;
 use App\Repositories\ResponseRepository;
 use App\Repositories\UserRepository;
@@ -54,5 +55,4 @@ if ($method === 'GET') {
     exit;
 }
 
-http_response_code(405);
-echo json_encode(['error' => 'Méthode non autorisée']);
+JsonResponse::methodNotAllowed();

@@ -2,6 +2,7 @@
 
 use App\Auth;
 use App\Database;
+use App\Http\JsonResponse;
 use App\Repositories\EventRepository;
 
 header('Content-Type: application/json');
@@ -73,5 +74,4 @@ if ($method === 'DELETE') {
     exit;
 }
 
-http_response_code(405);
-echo json_encode(['error' => 'Méthode non autorisée']);
+JsonResponse::methodNotAllowed();

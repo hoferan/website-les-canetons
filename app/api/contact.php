@@ -1,12 +1,11 @@
 <?php
 
 use App\Database;
+use App\Http\JsonResponse;
 
 header('Content-Type: application/json');
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Méthode non autorisée']);
-    exit;
+    JsonResponse::methodNotAllowed();
 }
 
 $lastName  = trim((string) ($_POST['nom'] ?? ''));
