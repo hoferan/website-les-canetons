@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Http\JsonResponse;
 use App\Repositories\UserRepository;
 use mysqli_sql_exception;
 
@@ -132,10 +133,7 @@ final class Auth
     public static function requireLogin(): void
     {
         if (!self::check()) {
-            http_response_code(401);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Non authentifié']);
-            exit;
+            JsonResponse::error(401, 'not_authenticated', 'Not authenticated');
         }
     }
 
@@ -144,10 +142,7 @@ final class Auth
     {
         self::requireLogin();
         if (!self::roleCan(self::role(), $capability)) {
-            http_response_code(403);
-            header('Content-Type: application/json');
-            echo json_encode(['error' => 'Accès refusé']);
-            exit;
+            JsonResponse::error(403, 'access_denied', 'Access denied');
         }
     }
 

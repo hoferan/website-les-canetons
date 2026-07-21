@@ -1,6 +1,7 @@
 <?php
 
 use App\Altcha;
+use App\Http\JsonResponse;
 
 global $config;
 
@@ -8,9 +9,7 @@ header('Content-Type: application/json');
 
 $secret = (string) ($config['altcha']['hmac_secret'] ?? '');
 if ($secret === '' || $secret === 'CHANGE_ME') {
-    http_response_code(503);
-    echo json_encode(['error' => 'Service indisponible']);
-    return;
+    JsonResponse::error(503, 'service_unavailable', 'Service unavailable');
 }
 
 $altcha = new Altcha($secret);
