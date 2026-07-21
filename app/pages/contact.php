@@ -8,20 +8,20 @@ require __DIR__ . '/../partials/head.php'; ?>
   <h2>Contact</h2>
   <form id="contact-form" action="/api/contact" method="POST">
     <div class="form-group">
-      <label for="nom">Nom:</label>
-      <input type="text" id="nom" name="nom" required />
+      <label for="lastName">Nom:</label>
+      <input type="text" id="lastName" name="lastName" required />
     </div>
     <div class="form-group">
-      <label for="prenom">Prénom:</label>
-      <input type="text" id="prenom" name="prenom" required />
+      <label for="firstName">Prénom:</label>
+      <input type="text" id="firstName" name="firstName" required />
     </div>
     <div class="form-group">
       <label for="email">E-mail:</label>
       <input type="email" id="email" name="email" required />
     </div>
     <div class="form-group">
-      <label for="sujet">Sujet:</label>
-      <input type="text" id="sujet" name="sujet" />
+      <label for="subject">Sujet:</label>
+      <input type="text" id="subject" name="subject" />
     </div>
     <div class="form-group">
       <label for="message">Contenu du message:</label>
