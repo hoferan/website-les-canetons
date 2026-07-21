@@ -29,4 +29,16 @@ export default [
       globals: { Session: 'readonly' },
     },
   },
+  {
+    // `formatFrenchDate` is a shared global: main.js defines it as a
+    // top-level function (marked `/* exported formatFrenchDate */` there)
+    // and other classic <script> tags loaded after it on the same page
+    // (planning_repet.js, sinscrire.js) reference it. Excluded from
+    // main.js itself, which would otherwise trip no-redeclare.
+    files: ['app/assets/js/**/*.js'],
+    ignores: ['app/assets/js/main.js'],
+    languageOptions: {
+      globals: { formatFrenchDate: 'readonly' },
+    },
+  },
 ];

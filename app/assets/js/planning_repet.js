@@ -208,11 +208,7 @@ function displayResult(event) {
   eventResult.style.display = "block";
 
   var eventDate = new Date(event.date);
-  var formattedDate = eventDate.toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  var formattedDate = formatFrenchDate(eventDate);
 
   document.getElementById("result-date").textContent = formattedDate;
   document.getElementById("result-title").textContent = event.title;
@@ -235,11 +231,7 @@ function displayResult(event) {
   if (event.weekend) {
     var endDate = new Date(eventDate);
     endDate.setDate(endDate.getDate() + 1);
-    var formattedEndDate = endDate.toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    var formattedEndDate = formatFrenchDate(endDate);
     resultDatesLabel.style.display = "inline";
     resultDates.textContent = formattedDate + " au " + formattedEndDate;
   } else {
@@ -303,29 +295,32 @@ function createEditElement(event) {
 
 // Fonction pour formater la date en "jour mois année"
 function formatDate(date) {
-  var options = {
+  return formatFrenchDate(date, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  };
-  return date.toLocaleDateString("fr-FR", options);
+  });
 }
 
 // Fonction pour formater la plage de dates en "du jour mois année au jour mois année"
 function formatDateRangeText(startDate, endDate) {
-  var options = {
+  var formattedStartDate = formatFrenchDate(startDate, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
-  };
-  var formattedStartDate = startDate.toLocaleDateString("fr-FR", options);
-  var formattedEndDate = endDate.toLocaleDateString("fr-FR", options);
+  });
+  var formattedEndDate = formatFrenchDate(endDate, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   // Vérifiez si les dates sont de la même année
   if (startDate.getFullYear() === endDate.getFullYear()) {
-    formattedStartDate = startDate.toLocaleDateString("fr-FR", {
+    formattedStartDate = formatFrenchDate(startDate, {
       weekday: "long",
       month: "long",
       day: "numeric",

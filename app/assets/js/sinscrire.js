@@ -28,8 +28,7 @@ function parseEvents(data) {
     var titleCell = document.createElement("td");
     var inscriptionCell = document.createElement("td");
 
-    var options = { day: "numeric", month: "long", year: "numeric" };
-    dateCell.textContent = new Date(item.date).toLocaleDateString("fr-FR", options);
+    dateCell.textContent = formatFrenchDate(new Date(item.date));
     titleCell.textContent = item.title;
 
     if (canRespond) {
