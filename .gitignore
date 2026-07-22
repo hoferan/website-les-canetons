@@ -36,6 +36,9 @@ prod-*.sql
 # generated per-env overlay files (npm run build:overlay); never hand-edit or commit
 /dist/
 
+# generated Vite build output (npm run build / vite build); never hand-edit or commit
+/app/assets/dist/
+
 # linter / tool caches
 .php-cs-fixer.cache
 .phpcs.cache
