@@ -4,10 +4,10 @@
 **Status:** Approved (pending spec review)
 **Scope:** Filed from a conversation during issue #4 planning — not (yet) its own
 GitHub issue. Adds a `workflow_dispatch` trigger to `.github/workflows/ci.yml`
-with two independent, rarely-used inputs: `prune` (clean up stale remote FTP
-files) and `deploy_ref` (redeploy an older commit — rollback). Both reuse the
-existing test→qa→prod pipeline and its approval gates unchanged; neither adds a
-new deploy code path.
+with two independent, rarely-used boolean inputs: `prune` (clean up stale
+remote FTP files) and `rollback` (redeploy the previous version, auto-detected —
+no input needed beyond the flag itself). Both reuse the existing test→qa→prod
+pipeline and its approval gates unchanged; neither adds a new deploy code path.
 
 ## 1. Context
 
@@ -23,7 +23,9 @@ theoretical one):
    --prune` by hand from a local checkout with the right `.env.<env>`
    credentials — there's no way to do it from CI.
 2. **Rolling back a bad deploy** today means checking out an older commit
-   locally and running the deploy script by hand — same friction.
+   locally and running the deploy script by hand — same friction, and requires
+   the maintainer to already know (or go dig up) which commit was previously
+   live.
 
 Both are rare, deliberate, maintainer-triggered actions — not something that
 should ever happen from a routine merge to `main`.
@@ -36,11 +38,16 @@ should ever happen from a routine merge to `main`.
    `gh workflow run`.
 2. A `prune` boolean input: when true, passes `--prune` to all three
    `deploy:<env>` steps in that run.
-3. A `deploy_ref` string input: when set, builds and deploys that commit SHA or
-   tag instead of `main`'s tip — a rollback.
+3. A `rollback` boolean input: when true, automatically determines "the
+   previous version" from CI run history and deploys it — no SHA/tag to look
+   up or type in by hand.
 4. Both inputs are independent and optional; omitting both reproduces today's
    push-triggered behavior exactly.
-5. Preserve every existing safety property: `php`/`tests`/`assets`/`guard`/
+5. A human-readable summary of what a rollback resolved to (current vs.
+   previous commit, each with message/date/run link) surfaces before deploy so
+   a maintainer can confirm it's right — reusing the existing qa/prod
+   Required-reviewers gates rather than adding new approval infrastructure.
+6. Preserve every existing safety property: `php`/`tests`/`assets`/`guard`/
    `build` still gate the deploy jobs, and `qa`/`prod` still require their
    GitHub Environment's Required-reviewers approval.
 
@@ -48,12 +55,18 @@ should ever happen from a routine merge to `main`.
 
 - No fast path that deploys to a single environment only (e.g. prod-only
   rollback) — both features go through the full test→qa→prod pipeline, per
-  the confirmed scope decision below.
+  the confirmed scope decision.
 - No stored/replayed build artifacts — a rollback rebuilds the target commit
   through the normal `build` job, it does not replay a saved `public/` from a
   past run.
-- No changes to `tools/deploy.mjs` itself — both flags already exist there
-  (`--prune`) or are achieved by checking out a different commit before the
+- No manual "roll back to an arbitrary specific commit" input — `rollback`
+  always means "the one previous version," full stop. Rolling back further
+  than one step just means running `rollback` again once the first rollback
+  itself is live (see §5's handling of that case).
+- No new GitHub Environment / dedicated pre-deploy approval gate — confirmed
+  scope decision was to reuse the existing qa/prod gates rather than add one.
+- No changes to `tools/deploy.mjs` itself — the `--prune` flag already exists
+  there; rollback is achieved by checking out a different commit before the
   existing build/deploy steps run.
 
 ## 3. `workflow_dispatch` inputs
@@ -69,18 +82,16 @@ on:
         description: "Pass --prune to all three deploy steps (deletes stale remote files the build no longer produces). Rare — only for FTP cleanup."
         type: boolean
         default: false
-      deploy_ref:
-        description: "Commit SHA or tag to build & deploy instead of main's tip (rollback). Leave empty for normal behavior."
-        type: string
-        default: ""
+      rollback:
+        description: "Redeploy the previous version instead of main's tip (auto-detected from deploy history). Rare — only for undoing a bad deploy."
+        type: boolean
+        default: false
 ```
 
 Dispatching still uses the standard "Use workflow from" branch/tag selector at
 the top of the Actions UI — that should stay `main` (it's what makes
 `github.ref == 'refs/heads/main'`, the existing guard on every deploy job,
-still hold). `deploy_ref` is a separate, explicit input for *which commit gets
-built and deployed*, so there's no ambiguity between "which ref runs the
-workflow" and "which ref gets shipped."
+still hold).
 
 Each deploy job's existing `if: github.ref == 'refs/heads/main' &&
 github.event_name == 'push'` also gains `workflow_dispatch` as an accepted
@@ -93,29 +104,70 @@ if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.ev
 
 `pull_request` runs remain excluded, unchanged.
 
-## 4. Checkout: building the right commit
+## 4. Determining "the previous version"
 
-Every job that currently does `uses: actions/checkout@v5` with no `ref:`
-(implicitly checking out the triggering commit) changes to:
+There's no existing deploy-history storage (`deployment.json` is overwritten
+on every deploy — it only ever reflects the *current* state). The source of
+truth used instead is `ci.yml`'s own run history: a run's overall conclusion
+is `success` only once every job that actually ran completed successfully —
+and for any `push`- or `workflow_dispatch`-triggered run on `main`,
+`deploy-prod` always runs (per §3's `if:` condition) — so **a successful run
+of this workflow on `main`, triggered by `push` or `workflow_dispatch`,
+implies that run's commit really did reach PROD.** (`pull_request`-triggered
+runs are explicitly excluded from this query — their `deploy-*` jobs are
+always skipped, so a "successful" PR check run never implies a deploy.)
+
+New job `rollback-plan` (runs only `if: inputs.rollback == true`):
+
+1. Queries the GitHub Actions API (`gh run list --workflow=ci.yml
+   --branch=main --status=success -L <n>`, using the run's own `GITHUB_TOKEN`
+   with `actions: read` permission — a new permission this job needs, added
+   only for it) for the most recent successful runs, filtered to
+   `event == 'push' || event == 'workflow_dispatch'`, newest first.
+2. **Current** = the first (most recent) run's commit SHA.
+3. **Previous** = the first *later* run in that same list whose commit SHA
+   differs from Current (skips over any consecutive runs that happen to share
+   a commit — e.g. a `prune`-only dispatch against the same tip doesn't count
+   as a distinct "version").
+4. If fewer than two distinct commits are found, the job fails loudly
+   ("No previous successful deploy found — nothing to roll back to") rather
+   than deploying something unintended.
+5. Prints a clear summary to `$GITHUB_STEP_SUMMARY` — for both Current and
+   Previous: short SHA, commit subject, author date, and a link to the run
+   that deployed it — and sets a `target_sha` job output to Previous's SHA.
+
+**Repeated rollbacks:** if `rollback` is run again while a previous rollback
+is the current live version, "Current" (from the algorithm above) is that
+rollback's commit, and "Previous" naturally resolves to whatever was live
+*before* it — the search walks back through real run history each time
+rather than toggling between the same two commits.
+
+## 5. Checkout: building the right commit
+
+Every job that currently checks out the triggering commit implicitly now
+needs the resolved target when a rollback is in progress. Since
+`rollback-plan` only runs for `rollback` dispatches, downstream jobs depend on
+it *and* tolerate it being skipped (the normal case):
+
+```yaml
+needs: [rollback-plan]   # added to php, tests, assets, guard, build
+if: always() && (needs.rollback-plan.result == 'success' || needs.rollback-plan.result == 'skipped')
+```
 
 ```yaml
 - uses: actions/checkout@v5
   with:
-    ref: ${{ inputs.deploy_ref || github.sha }}
+    ref: ${{ needs.rollback-plan.outputs.target_sha || github.sha }}
 ```
 
-On a normal `push` run, `inputs.deploy_ref` is empty/absent, so this resolves
-to `github.sha` — identical to today. On a manual dispatch with `deploy_ref`
-set, every job — `php`, `tests`, `assets`, `guard`, `build`, and the three
-`deploy-*` jobs — checks out and verifies *that* commit, not `main`'s tip. This
-is deliberate: a rollback should re-run the full quality-gate pipeline against
-the old code, not skip straight to deploying it.
+On a normal `push`/PR run, `rollback-plan` is skipped, its output is empty,
+and `ref` resolves to `github.sha` — identical to today. On a `rollback`
+dispatch, every job — `php`, `tests`, `assets`, `guard`, `build`, and the
+three `deploy-*` jobs — checks out and verifies the resolved previous commit,
+not `main`'s tip. This is deliberate: a rollback re-runs the full quality-gate
+pipeline against the old code rather than skipping straight to deploying it.
 
-`deploy_ref` must be a full commit SHA or an existing tag reachable in the
-repo's history — GitHub's default server config allows fetching an arbitrary
-reachable SHA directly, which `actions/checkout` relies on here.
-
-## 5. Prune passthrough
+## 6. Prune passthrough
 
 Each of the three `Deploy to <ENV> over FTP` steps changes from
 
@@ -136,17 +188,17 @@ adds `--prune`, and `deploy.mjs`'s existing per-target path guard (refusing to
 run unless `FTP_DIR` matches the target env name) still applies, so a mistyped
 target still can't prune the wrong environment.
 
-## 6. The "refuse stale commit" exception
+## 7. The "refuse stale commit" exception
 
 `deploy-qa` and `deploy-prod` each have a guard step that fails the job if
 `main` has advanced past the run's commit — it exists to stop an out-of-order
 *approval* of a normal push run that a newer merge has since superseded. A
-deliberate rollback via `deploy_ref` is, by definition, not `main`'s tip, so
-this check must not fire for it:
+rollback is, by definition, not `main`'s tip, so this check must not fire for
+it:
 
 ```yaml
 - name: Refuse stale commit
-  if: inputs.deploy_ref == ''
+  if: inputs.rollback != true
   run: |
     git fetch --quiet origin main
     tip=$(git rev-parse origin/main)
@@ -158,10 +210,23 @@ this check must not fire for it:
 ```
 
 The check stays fully active for every ordinary push-triggered run (and for a
-plain manual dispatch with no `deploy_ref`) — it's only skipped when a rollback
-was explicitly requested.
+plain manual dispatch with neither input set) — it's only skipped when a
+rollback was explicitly requested.
 
-## 7. Database migrations
+## 8. Confirmation: reusing the qa/prod gates
+
+Per the confirmed scope decision, there's no new dedicated approval gate.
+Instead: `rollback-plan`'s summary (§4.5) is visible on the run page as soon
+as it completes, well before `deploy-qa`'s or `deploy-prod`'s Required-
+reviewers gate is reached — a maintainer approving those gates on a rollback
+run can (and should) check that summary first to confirm Current/Previous are
+what they expect, then approve or cancel the run. TEST has no gate today and
+still doesn't for a rollback — it auto-deploys the resolved previous version
+before anyone approves anything, consistent with TEST's existing "low-stakes,
+always auto-deploys" role; QA and PROD, the environments that matter, remain
+gated exactly as they are today.
+
+## 9. Database migrations
 
 No special-casing needed. `dbmigrate:<env>` (run as the existing post-deploy
 step, unchanged) re-running against an older checkout's `sql/migrations/`
@@ -172,7 +237,7 @@ pre- and post-migration schema. A rollback to older code never needs the
 schema to move backward — the DB simply keeps whatever migrations were already
 applied.
 
-## 8. Safety properties preserved
+## 10. Safety properties preserved
 
 - **Approval gates unchanged**: `qa`/`prod` still require their GitHub
   Environment's Required-reviewers approval for *every* run, rollback or not.
@@ -188,23 +253,31 @@ applied.
   server's `config.php`, the deploy still refuses with the same clear error it
   gives today.
 
-## 9. Documentation
+## 11. Documentation
 
 `CLAUDE.md`'s deployment section gains a short note next to the existing local
 `--prune` documentation, describing both new capabilities and how to trigger
-them (`gh workflow run ci.yml -f prune=true` / `-f deploy_ref=<sha>`, or the
+them (`gh workflow run ci.yml -f prune=true` / `-f rollback=true`, or the
 Actions tab's "Run workflow" form), and framing them explicitly as rare,
-maintainer-initiated actions.
+maintainer-initiated actions. It calls out that `rollback` needs no other
+input — check the `rollback-plan` job's summary on the run to see what it
+resolved to before approving `qa`/`prod`.
 
-## 10. Testing
+## 12. Testing
 
 This is a CI workflow configuration change — no unit test exercises it (no
 `tests/` coverage for `.github/workflows/*.yml` exists in this project today).
-Verification is manual, after merging: a `workflow_dispatch` run against `main`
-with both inputs left empty must behave identically to a normal push (smoke
-check that nothing regressed), followed by one deliberate manual run with
-`prune: true` only (confirms `--prune` reaches the deploy step and the
-existing dry-run/verify machinery in `deploy.mjs` still behaves as documented)
-and, separately, one with `deploy_ref` set to a known older commit on TEST
-(confirms checkout, build, and deploy all correctly target the older commit
-and the stale-commit guard is skipped).
+Verification is manual, after merging:
+
+1. A `workflow_dispatch` run with both inputs left `false` must behave
+   identically to a normal push (smoke check that nothing regressed).
+2. A manual run with `prune: true` only, confirming `--prune` reaches the
+   deploy step and `deploy.mjs`'s existing dry-run/verify machinery behaves as
+   documented.
+3. A manual run with `rollback: true` after at least two real successful
+   deploys exist in history, confirming `rollback-plan` correctly identifies
+   Current/Previous, the summary is legible, checkout/build/deploy all target
+   the resolved previous commit, and the stale-commit guard is skipped.
+4. A manual run with `rollback: true` when fewer than two successful deploys
+   exist in history (or run against a fresh fork), confirming `rollback-plan`
+   fails loudly instead of deploying something unintended.
