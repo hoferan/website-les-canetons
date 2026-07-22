@@ -1,9 +1,9 @@
 // main.js — nav + banner UI wiring.
 // Auth is enforced server-side via the session cookie; everything here is
 // UI-only.
-import { createIcons } from 'lucide';
-import { icons } from './icons.js';
-import { Session } from './session.js';
+import { createIcons } from "lucide";
+import { icons } from "./icons.js";
+import { Session } from "./session.js";
 
 // Current page identifier (the route slug), used for returnTo links.
 var currentPage = window.location.pathname.split("/").pop();

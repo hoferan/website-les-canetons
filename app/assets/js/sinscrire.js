@@ -1,5 +1,5 @@
-import { Session } from './session.js';
-import { formatFrenchDate } from './main.js';
+import { Session } from "./session.js";
+import { formatFrenchDate } from "./main.js";
 
 // Page access is enforced server-side.
 document.addEventListener("DOMContentLoaded", function () {

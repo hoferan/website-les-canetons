@@ -1,8 +1,8 @@
-import { createIcons } from 'lucide';
-import { icons } from './icons.js';
-import { translateApiError } from './i18n.js';
-import { formatFrenchDate } from './main.js';
-import { Session } from './session.js';
+import { createIcons } from "lucide";
+import { icons } from "./icons.js";
+import { translateApiError } from "./i18n.js";
+import { formatFrenchDate } from "./main.js";
+import { Session } from "./session.js";
 
 const isAdmin = Session.canManageEvents();
 
