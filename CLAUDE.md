@@ -24,9 +24,9 @@ events and view attendance summaries.
   devDependencies bundled in at build time (not vendored static files).
 - **Third-party PHP libraries are Composer dependencies** (e.g. `nikic/fast-route`,
   `phpmailer/phpmailer`, `shuchkin/simplexlsxgen`), installed into `app/vendor/`
-  (the Composer/Docker install target — never hand-edited or committed). Vendoring
-  a static, un-packaged file is the fallback only when no Composer package exists;
-  third-party CSS is vendored this way today, under `app/assets/vendor/`.
+  (the Composer/Docker install target — never hand-edited or committed). Third-party
+  JS/CSS is npm-managed and bundled by Vite (see above) rather than vendored as
+  static files.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
