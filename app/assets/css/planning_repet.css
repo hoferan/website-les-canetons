@@ -52,13 +52,6 @@ h1 {
   transition: color 0.3s ease;
 }
 
-.delete-icon svg,
-.edit-icon svg {
-  width: 1.5rem; /* standalone control icon size */
-  height: 1.5rem;
-  display: block;
-}
-
 .delete-icon:hover {
   color: #f00;
 }

@@ -47,6 +47,26 @@ header {
   overflow: hidden;
 }
 
+/* -- ICONS -----------------------------
+   Lucide's createIcons() copies any class already present on a
+   <i data-lucide="..."> placeholder onto the <svg> it generates, so these
+   size utilities are applied directly in markup (e.g.
+   <i data-lucide="menu" class="icon-md"></i>) rather than targeted per
+   spot with a descendant selector. See CLAUDE.md's Icons convention for
+   the full size scale. */
+
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: middle;
+}
+
+.icon-md {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: block;
+}
+
 /* -- BANNER ----------------------------- */
 
 .header-container {
@@ -148,16 +168,7 @@ header {
   margin: 0 0 10px auto; /* right-aligned menu control (top-right convention) */
 }
 
-.nav-toggle svg {
-  width: 1.5rem; /* standalone control icon size */
-  height: 1.5rem;
-  display: block;
-}
-
-#galerie-link svg {
-  width: 1rem; /* inline-with-text icon size, matches the link's own font-size */
-  height: 1rem;
-  vertical-align: middle;
+#galerie-link .icon-sm {
   margin-left: 4px;
 }
 
