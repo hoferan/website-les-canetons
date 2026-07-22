@@ -1,5 +1,6 @@
 <?php
 
+use App\Assets;
 use App\Auth;
 use App\Features;
 use App\Repositories\SignupRepository;
@@ -36,17 +37,14 @@ use App\Repositories\SignupRepository;
     </div>
   </div>
 </div>
-<script src="assets/js/supper-popup.js"></script>
+    <?= Assets::scriptTags('supper-popup.js') ?>
 <?php endif; ?>
 
-<?php // Scripts shared by every page, then any page-specific scripts (in load order). ?>
-<script src="assets/vendor/lucide.min.js"></script>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/vendor/i18next.min.js"></script>
-<script src="assets/js/i18n.js"></script>
-<?php foreach ($pageScripts ?? [] as $script) : ?>
-<script src="assets/js/<?= htmlspecialchars($script) ?>"></script>
-<?php endforeach; ?>
+<?php // Scripts loaded on every page, then any page-specific scripts (in load order). ?>
+    <?= Assets::scriptTags('main.js') ?>
+    <?= Assets::scriptTags('i18n.js') ?>
+    <?php foreach ($pageScripts ?? [] as $script) : ?>
+        <?= Assets::scriptTags($script) ?>
+    <?php endforeach; ?>
 </body>
 </html>
