@@ -1194,9 +1194,9 @@ with:
   <FilesMatch "\.html$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>
-  <!-- Vite's build output (see App\Assets) is content-hashed: a given
-       filename's bytes never change, only the filename does when the
-       content does. Safe to cache indefinitely instead of revalidating. -->
+  # Vite's build output (see App\Assets) is content-hashed: a given
+  # filename's bytes never change, only the filename does when the
+  # content does. Safe to cache indefinitely instead of revalidating.
   <FilesMatch "\.(css|js)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
