@@ -40,6 +40,7 @@ use App\Repositories\SignupRepository;
 <?php endif; ?>
 
 <?php // Scripts shared by every page, then any page-specific scripts (in load order). ?>
+<script src="assets/vendor/lucide.min.js"></script>
 <script src="assets/js/session.js"></script>
 <script src="assets/js/main.js"></script>
 <script src="assets/vendor/i18next.min.js"></script>

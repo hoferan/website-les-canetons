@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
   setupNavToggle();
   setupNavAuth();
   setupLoginBtn();
+  lucide.createIcons();
 });
 
 // Mobile hamburger toggle. The nav markup is server-rendered, so it exists at

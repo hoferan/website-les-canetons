@@ -174,6 +174,55 @@ Available skills:
   `prod` (no ribbon), so the live site stays clean by default. The two staging
   sites (TEST/QA) are private behind HTTP Basic Auth — their access-control
   overlay and the full deploy layout are documented in `staging/README.md`.
+- **Icons:** [Lucide](https://lucide.dev), vendored at
+  `app/assets/vendor/lucide.min.js` (see `app/assets/vendor/README.md`).
+  Markup: `<i data-lucide="icon-name"></i>`, converted to inline `<svg>` by
+  calling `lucide.createIcons()` — globally in `main.js`'s
+  `DOMContentLoaded` handler, and again anywhere JS creates icon markup
+  dynamically after that (e.g. `planning_repet.js`'s `loadEvents()` calls
+  it again after every list rebuild, since the global `DOMContentLoaded`
+  call only ever sees the page's initial markup).
+  Style is outline/stroke-only (`fill="none"`, `stroke="currentColor"`) —
+  there is no solid/filled variant, so never override `fill` on a Lucide
+  icon.
+
+  Sizing and orientation are two separate, composable utility classes
+  (`app/assets/css/main.css`) applied directly on the `<i data-lucide>`
+  placeholder — `createIcons()` copies an element's existing attributes,
+  including `class`, onto the `<svg>` it generates, so e.g.
+  `<i data-lucide="menu" class="icon-md icon-block"></i>` becomes
+  `<svg class="lucide lucide-menu icon-md icon-block">`. Never target an
+  icon's size with a per-spot descendant selector (`.foo svg { width:
+  ... }`), an arbitrary/one-off value, or `em`/text-relative sizing — a
+  discrete, reusable scale keeps every icon's size predictable instead of
+  drifting to whatever value happens to look right in one spot, and
+  keeping size and orientation as separate classes means either can vary
+  independently instead of being bundled per size (e.g. a future icon
+  could pair `icon-lg` with `icon-inline`).
+
+  **Size** (pick one): `icon-xs` (0.875rem / 14px), `icon-sm` (1rem /
+  16px — icons inline within a run of text or a link label, e.g. the
+  Galerie link's external-link icon, sized down so it doesn't inflate
+  that element's line-height above its text-only siblings), `icon-md`
+  (1.5rem / 24px — standalone icon controls, where the icon *is* the
+  whole control, e.g. the nav hamburger, the admin delete/edit icons),
+  `icon-lg` (2rem / 32px), `icon-xl` (2.5rem / 40px). `icon-lg`/`icon-xl`
+  are prepared but not yet used by any icon in the codebase. The only
+  exception to this scale is large-format decorative usage (a hero
+  section, a page title, a logo lockup) that isn't really "an icon" —
+  those may use a different, purpose-fit size outside this scale.
+
+  **Orientation** (pick one, alongside a size class): `icon-block`
+  (`display: block` — for an icon that is the sole content of a control,
+  e.g. a button or an absolutely-positioned list-item action, removing
+  the small inline-baseline gap under an inline SVG) or `icon-inline`
+  (`vertical-align: middle` — for an icon inline within a run of text or
+  a link label, aligning it to the surrounding text instead of the SVG's
+  own baseline).
+
+  Don't set `stroke` directly — icons inherit `currentColor` from the
+  surrounding element's CSS `color`, so hover/state colors are styled on
+  the parent as usual.
 
 ## Local Development
 

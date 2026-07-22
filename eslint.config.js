@@ -65,4 +65,14 @@ export default [
       globals: { i18next: 'readonly' },
     },
   },
+  {
+    // `lucide` (vendored, app/assets/vendor/lucide.min.js) is a shared
+    // global consumed directly by main.js (global icon init) and
+    // planning_repet.js (re-init after the admin event list is rebuilt).
+    // No first-party file declares it, so no `ignores` is needed here.
+    files: ['app/assets/js/main.js', 'app/assets/js/planning_repet.js'],
+    languageOptions: {
+      globals: { lucide: 'readonly' },
+    },
+  },
 ];

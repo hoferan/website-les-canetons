@@ -47,6 +47,55 @@ header {
   overflow: hidden;
 }
 
+/* -- ICONS -----------------------------
+   Lucide's createIcons() copies any class already present on a
+   <i data-lucide="..."> placeholder onto the <svg> it generates, so these
+   utilities are applied directly in markup (e.g.
+   <i data-lucide="menu" class="icon-md icon-block"></i>) rather than
+   targeted per spot with a descendant selector. See CLAUDE.md's Icons
+   convention for the full scale and which size/orientation pair to use
+   where. Size and orientation are separate, composable classes so either
+   can vary independently — e.g. a future icon could need icon-lg paired
+   with icon-inline. */
+
+.icon-xs {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.icon-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+.icon-md {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.icon-lg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.icon-xl {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+/* For an icon inline within a run of text or a link label (aligns with
+   the surrounding text instead of the SVG's own baseline). */
+.icon-inline {
+  vertical-align: middle;
+}
+
+/* For an icon that is the sole content of a control (a button, or an
+   absolutely-positioned list-item action) — removes the small
+   inline-baseline gap under an inline SVG. */
+.icon-block {
+  display: block;
+}
+
 /* -- BANNER ----------------------------- */
 
 .header-container {
@@ -140,13 +189,16 @@ header {
   background-color: #555;
   color: #fff;
   border: none;
-  font-size: 24px;
   line-height: 1;
   padding: 10px 14px;
   border-radius: 5px;
   cursor: pointer;
   width: fit-content;
   margin: 0 0 10px auto; /* right-aligned menu control (top-right convention) */
+}
+
+#galerie-link svg {
+  margin-left: 4px;
 }
 
 .nav ul {
