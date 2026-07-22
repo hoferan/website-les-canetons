@@ -68,6 +68,22 @@ for db in lescanetons lescanetons_test; do
   fi
 done
 
+# app/src/bootstrap.php does `require __DIR__ . '/../vendor/autoload.php'`,
+# i.e. it expects vendor/ as a sibling of app/src/ — true both under Docker
+# Compose (which mounts a vendor volume at app/vendor) and in the built
+# public/ deploy artifact (public/vendor sits beside public/src). This
+# native session's Composer install instead puts vendor/ at the repo root
+# (composer.json's own autoload map: App\ -> app/src/), a sibling of app/
+# itself, one level higher than bootstrap.php's require expects — so
+# `php -S ... -t app` (npm run serve) 500s on every request without this
+# symlink. Only created once root vendor/ actually exists (npm run
+# php:install runs separately, before or after this script); left for the
+# next run to pick up otherwise. `[ ! -e ]` keeps this idempotent and never
+# clobbers a real app/vendor from some other setup.
+if [ -f "$PROJECT_DIR/vendor/autoload.php" ] && [ ! -e "$PROJECT_DIR/app/vendor" ]; then
+  ln -s ../vendor "$PROJECT_DIR/app/vendor"
+fi
+
 if [ ! -f "$PROJECT_DIR/app/config.php" ]; then
   cat > "$PROJECT_DIR/app/config.php" <<'PHP'
 <?php
