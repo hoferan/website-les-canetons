@@ -7,8 +7,18 @@ import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const mount = process.cwd().split('\\').join('/');
 
+// Bundle JS/CSS first so app/assets/dist/ exists before the app/ -> public/
+// copy below picks it up.
+execFileSync('npx', ['vite', 'build'], { stdio: 'inherit' });
+
 rmSync('public', { recursive: true, force: true });
 cpSync('app', 'public', { recursive: true });
+
+// The raw JS/CSS source is superseded by the bundled output just copied
+// above (public/assets/dist/) — the server never references it directly
+// anymore (see App\Assets), so don't ship dead source alongside the bundles.
+rmSync('public/assets/js', { recursive: true, force: true });
+rmSync('public/assets/css', { recursive: true, force: true });
 
 // Ship the numbered migrations so the server-side endpoint (public/api/migrate.php)
 // can apply them. They live under public/sql/migrations and are unreachable via
