@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
     <link rel="manifest" href="/assets/icons/manifest.json" crossorigin="use-credentials">
     <meta name="theme-color" content="#e0201a">
-    <link rel="stylesheet" href="assets/css/{{ page_css }}">
+    {{ page_stylesheet_tag|raw }}
     <script>window.__sessionRole = {{ session_role_json|raw }};</script>
 </head>
 <body>
@@ -89,16 +89,12 @@
     </div>
   </div>
 </div>
-<script src="assets/js/supper-popup.js"></script>
+{{ popup_script_tag|raw }}
 {% endif %}
 
-<script src="assets/vendor/lucide.min.js"></script>
-<script src="assets/js/session.js"></script>
-<script src="assets/js/main.js"></script>
-<script src="assets/vendor/i18next.min.js"></script>
-<script src="assets/js/i18n.js"></script>
-{% for script in page_scripts %}
-<script src="assets/js/{{ script }}"></script>
+{{ common_script_tags|raw }}
+{% for tag in page_script_tags %}
+{{ tag|raw }}
 {% endfor %}
 </body>
 </html>
