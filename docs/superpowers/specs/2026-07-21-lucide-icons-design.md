@@ -45,10 +45,10 @@ source/refresh-command). No npm devDependency, no `node_modules` involved
 
 | Location | Old | New |
 |---|---|---|
-| `app/partials/navigation.php` — mobile hamburger button | `☰` | `<i data-lucide="menu" class="icon-md"></i>` |
-| `app/partials/navigation.php` — Galerie link | `Galerie ↗` | `Galerie <i data-lucide="external-link" class="icon-sm"></i>` |
-| `app/assets/js/planning_repet.js` — `createDeleteElement` | `innerHTML = "&times;"` | `innerHTML = '<i data-lucide="trash-2" class="icon-md"></i>'` |
-| `app/assets/js/planning_repet.js` — `createEditElement` | `innerHTML = "&#x270E;"` | `innerHTML = '<i data-lucide="pencil" class="icon-md"></i>'` |
+| `app/partials/navigation.php` — mobile hamburger button | `☰` | `<i data-lucide="menu" class="icon-md icon-block"></i>` |
+| `app/partials/navigation.php` — Galerie link | `Galerie ↗` | `Galerie <i data-lucide="external-link" class="icon-sm icon-inline"></i>` |
+| `app/assets/js/planning_repet.js` — `createDeleteElement` | `innerHTML = "&times;"` | `innerHTML = '<i data-lucide="trash-2" class="icon-md icon-block"></i>'` |
+| `app/assets/js/planning_repet.js` — `createEditElement` | `innerHTML = "&#x270E;"` | `innerHTML = '<i data-lucide="pencil" class="icon-md icon-block"></i>'` |
 
 **Script loading & initialization:**
 
@@ -98,14 +98,26 @@ matching the link's own font-size) instead of `1.5rem` (24px).
 **Revision 2 (post-implementation):** the two sizes were initially
 implemented as per-spot descendant selectors (`.nav-toggle svg`,
 `#galerie-link svg`, `.delete-icon svg, .edit-icon svg`), each repeating
-the same `width`/`height` declaration. Replaced with two reusable t-shirt
-utility classes, `.icon-sm`/`.icon-md`, applied directly in markup —
-matching how Font Awesome (`.fa-sm`/`.fa-lg`) and other icon systems
-expose a size scale, and avoiding one CSS rule per usage site as more
-icons are added later. `#galerie-link`'s icon-to-text spacing
-(`margin-left: 4px`) stays a small link-specific rule
-(`#galerie-link .icon-sm`), since that spacing choice isn't part of the
-general size scale.
+the same `width`/`height` declaration, with `display: block`/
+`vertical-align: middle` bundled into the same class as the size.
+Replaced with reusable t-shirt utility classes applied directly in
+markup — matching how Font Awesome (`.fa-sm`/`.fa-lg`) and other icon
+systems expose a size scale — and split into two independent axes
+instead of one:
+
+- **Size:** `.icon-xs`/`.icon-sm`/`.icon-md`/`.icon-lg`/`.icon-xl`
+  (0.875rem/1rem/1.5rem/2rem/2.5rem) — pure `width`/`height`, nothing
+  else, so a future icon can mix any size with either orientation.
+- **Orientation:** `.icon-block` (`display: block`, for a standalone
+  control icon) or `.icon-inline` (`vertical-align: middle`, for an icon
+  inline in text) — kept separate from size so bundling them per size
+  (as the first version did) doesn't force every "md-sized" icon to also
+  be block-level, or every "sm-sized" icon to also be inline.
+
+`#galerie-link`'s icon-to-text spacing (`margin-left: 4px`) stays a
+small link-specific rule, now targeting `#galerie-link svg` directly
+(rather than a class name) so it keeps working regardless of which size
+class that link's icon ends up using.
 
 ## Icon usage convention (new, documented in `CLAUDE.md`)
 
@@ -116,31 +128,37 @@ establishes the convention future icon usage must follow — added as a new
 - **Style:** Lucide ships one style only — outline/stroke
   (`fill="none"`, `stroke="currentColor"`). There's no solid/filled
   variant to accidentally mix in; never override `fill` on a Lucide icon.
-- **Size:** a small fixed scale of utility classes in `rem`, never a
+- **Size and orientation are separate, composable classes** — never a
   per-spot descendant selector, an arbitrary/one-off value, or
-  `em`/text-relative sizing — `.icon-md` (1.5rem / 24px) for standalone
-  icon controls (buttons, list-item actions, where the icon *is* the
-  whole control — the nav hamburger, the admin delete/edit icons), and
-  `.icon-sm` (1rem / 16px) for an icon inline within a run of text or a
-  link label (the Galerie link's external-link icon), so it doesn't
-  inflate that element's line-height above its text-only siblings. A
-  reserved `.icon-xs` (0.875rem / 14px) exists on the same scale for a
-  future smaller inline context. This is why the delete/edit icons
-  (previously 48px/30px text glyphs) are equalized to `.icon-md`.
-  Exception: large-format decorative usage (a hero section, a page
-  title, a logo lockup) where the icon isn't part of a UI control or
-  running text — those may use a different, purpose-fit size. No such
-  usage exists in the codebase today.
+  `em`/text-relative sizing:
+  - **Size** (pick one): `.icon-xs` (0.875rem/14px), `.icon-sm`
+    (1rem/16px — an icon inline within a run of text or a link label,
+    e.g. the Galerie link's external-link icon, sized down so it
+    doesn't inflate that element's line-height above its text-only
+    siblings), `.icon-md` (1.5rem/24px — a standalone icon control,
+    where the icon *is* the whole control, e.g. the nav hamburger, the
+    admin delete/edit icons), `.icon-lg` (2rem/32px), `.icon-xl`
+    (2.5rem/40px). `.icon-lg`/`.icon-xl` are prepared but not yet used
+    by any icon in the codebase. This is why the delete/edit icons
+    (previously 48px/30px text glyphs) are equalized to `.icon-md`.
+  - **Orientation** (pick one, alongside a size class): `.icon-block`
+    (`display: block`) or `.icon-inline` (`vertical-align: middle`).
+  - Exception: large-format decorative usage (a hero section, a page
+    title, a logo lockup) that isn't really "an icon" — those may use a
+    different, purpose-fit size outside this scale. No such usage
+    exists in the codebase today.
 - **Color:** don't set `stroke` directly on an icon — it inherits
   `currentColor` from the surrounding element's CSS `color`, so hover/state
   colors are styled on the parent as usual.
-- **Markup/init mechanism:** `<i data-lucide="icon-name" class="icon-md"></i>`
-  (size class applied directly on the placeholder — `lucide.createIcons()`
-  carries `class` and other attributes over onto the `<svg>` it
-  generates), converted by `lucide.createIcons()` — called globally on
-  `DOMContentLoaded` (`main.js`), and again by any JS that creates icon
-  markup dynamically after that point (see `planning_repet.js`'s
-  `loadEvents()`).
+- **Markup/init mechanism:** `<i data-lucide="icon-name" class="icon-md icon-block"></i>`
+  (size + orientation classes applied directly on the placeholder —
+  `lucide.createIcons()` carries `class` and other attributes over onto
+  the `<svg>` it generates), converted by `lucide.createIcons()` —
+  called globally on `DOMContentLoaded` (`main.js`), and again by any JS
+  that creates icon markup dynamically after that point, since the
+  global call only ever sees the page's initial markup (see
+  `planning_repet.js`'s `loadEvents()`, which re-calls it after every
+  list rebuild).
 
 ## Goals
 

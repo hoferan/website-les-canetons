@@ -93,6 +93,11 @@ function loadEvents() {
         eventsList.appendChild(li);
       });
 
+      // main.js's DOMContentLoaded-time lucide.createIcons() call only ever
+      // sees the page's initial markup. The delete/edit <i data-lucide>
+      // placeholders above are created fresh every time loadEvents() runs
+      // (first load, and again after every create/edit/delete), so each
+      // run needs its own conversion pass to turn them into <svg>.
       lucide.createIcons();
     })
     .catch((error) => {
@@ -297,7 +302,7 @@ function createDeleteElement(event) {
   var deleteElement = document.createElement("span");
   deleteElement.classList.add("delete-event");
   deleteElement.classList.add("delete-icon");
-  deleteElement.innerHTML = '<i data-lucide="trash-2" class="icon-md"></i>';
+  deleteElement.innerHTML = '<i data-lucide="trash-2" class="icon-md icon-block"></i>';
   deleteElement.addEventListener("click", function () {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
       fetch("/api/events?id=" + event.id, {
@@ -324,7 +329,7 @@ function createEditElement(event) {
   var editElement = document.createElement("span");
   editElement.classList.add("edit-event");
   editElement.classList.add("edit-icon");
-  editElement.innerHTML = '<i data-lucide="pencil" class="icon-md"></i>';
+  editElement.innerHTML = '<i data-lucide="pencil" class="icon-md icon-block"></i>';
   editElement.addEventListener("click", function () {
     document.getElementById("event-id").value = event.id;
     document.getElementById("event-date").value = event.date;
