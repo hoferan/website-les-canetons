@@ -7,6 +7,7 @@
   "scripts": {
     "php:install": "node tools/composer.mjs install --no-interaction",
     "build": "node tools/build.mjs",
+    "build:assets": "vite build",
     "build:overlay": "node tools/build-overlays.mjs",
     "deploy:test": "npm run build && node tools/deploy.mjs test",
     "deploy:qa": "npm run build && node tools/deploy.mjs qa",
@@ -17,13 +18,13 @@
     "websession:init": "npm install && npm run php:install && node tools/ensure-dev-stack.mjs",
     "lint:php": "node tools/php-lint.mjs",
     "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
-    "serve": "node tools/ensure-dev-stack.mjs && php -S 127.0.0.1:8090 -t app",
+    "serve": "node tools/ensure-dev-stack.mjs && npm run build:assets && php -S 127.0.0.1:8090 -t app",
     "lint:js": "eslint app/assets/js",
     "lint:css": "stylelint \"app/assets/css/**/*.css\"",
     "format:check": "prettier --check \"app/assets/**/*.{js,css}\"",
     "format:write": "prettier --write \"app/assets/**/*.{js,css}\"",
     "guard": "node tools/secret-guard.mjs",
-    "check": "npm run lint:php && npm run test:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
+    "check": "npm run build:assets && npm run lint:php && npm run test:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
     "fix": "node tools/php-fix.mjs && eslint app/assets/js --fix && stylelint \"app/assets/css/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },
