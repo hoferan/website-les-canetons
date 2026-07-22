@@ -1,4 +1,8 @@
-// using session.js
+import { createIcons } from "lucide";
+import { icons } from "./icons.js";
+import { translateApiError } from "./i18n.js";
+import { formatFrenchDate } from "./main.js";
+import { Session } from "./session.js";
 
 const isAdmin = Session.canManageEvents();
 
@@ -98,7 +102,7 @@ function loadEvents() {
       // placeholders above are created fresh every time loadEvents() runs
       // (first load, and again after every create/edit/delete), so each
       // run needs its own conversion pass to turn them into <svg>.
-      lucide.createIcons();
+      createIcons({ icons });
     })
     .catch((error) => {
       console.error("Erreur lors de l'ajout de l'événement : ", error);

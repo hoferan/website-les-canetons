@@ -1,4 +1,4 @@
-@import url("../vendor/bulma.min.css");
+@import url("bulma/css/bulma.css");
 @import url("main.css");
 
 /* Theme Bulma to the Canetons identity. This stylesheet loads ONLY on the admin

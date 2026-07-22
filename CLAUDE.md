@@ -13,13 +13,20 @@ events and view attendance summaries.
 - **PHP 8.4** (matches prod). `app/src/` classes are PSR-4
   autoloaded under the `App\` namespace via Composer.
 - **MariaDB 10.3** (prod: 10.3.8) via the `mysqli` extension.
-- **Vanilla JS + CSS** under `app/assets/` — no bundler (a JS/CSS build
-  pipeline is a separate, later roadmap item).
+- **Vanilla JS + CSS** under `app/assets/`, built by **Vite** (`vite.config.js`)
+  into `app/assets/dist/` — one entry per currently-independent `<script>`/
+  page-CSS file, ES modules (native `import`/`export`, no framework), with
+  content-hashed output and a `manifest.json` that `App\Assets`
+  (`app/src/Assets.php`) reads to emit the right `<script type="module">`/
+  `<link rel="modulepreload">`/`<link rel="stylesheet">` tags — the one
+  mechanism both `head.php`/`footer.php` and `layout.html.twig` use, instead
+  of hardcoding asset paths. `bulma`, `i18next`, and `lucide` are npm
+  devDependencies bundled in at build time (not vendored static files).
 - **Third-party PHP libraries are Composer dependencies** (e.g. `nikic/fast-route`,
   `phpmailer/phpmailer`, `shuchkin/simplexlsxgen`), installed into `app/vendor/`
-  (the Composer/Docker install target — never hand-edited or committed). Vendoring
-  a static, un-packaged file is the fallback only when no Composer package exists;
-  third-party CSS is vendored this way today, under `app/assets/vendor/`.
+  (the Composer/Docker install target — never hand-edited or committed). Third-party
+  JS/CSS is npm-managed and bundled by Vite (see above) rather than vendored as
+  static files.
 - **Router:** `nikic/fast-route`, dispatched through a single front
   controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
 - **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
@@ -174,10 +181,12 @@ Available skills:
   `prod` (no ribbon), so the live site stays clean by default. The two staging
   sites (TEST/QA) are private behind HTTP Basic Auth — their access-control
   overlay and the full deploy layout are documented in `staging/README.md`.
-- **Icons:** [Lucide](https://lucide.dev), vendored at
-  `app/assets/vendor/lucide.min.js` (see `app/assets/vendor/README.md`).
-  Markup: `<i data-lucide="icon-name"></i>`, converted to inline `<svg>` by
-  calling `lucide.createIcons()` — globally in `main.js`'s
+- **Icons:** [Lucide](https://lucide.dev), an npm devDependency bundled by
+  Vite — the small fixed icon set actually used is centralized in
+  `app/assets/js/icons.js` (`export const icons = { ExternalLink, Menu,
+  Pencil, Trash2 }`; add a new icon there, not per call site). Markup:
+  `<i data-lucide="icon-name"></i>`, converted to inline `<svg>` by calling
+  `createIcons({ icons })` (imported from `'lucide'`) — in `main.js`'s
   `DOMContentLoaded` handler, and again anywhere JS creates icon markup
   dynamically after that (e.g. `planning_repet.js`'s `loadEvents()` calls
   it again after every list rebuild, since the global `DOMContentLoaded`

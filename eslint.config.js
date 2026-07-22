@@ -7,7 +7,7 @@ export default [
     files: ['app/assets/js/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'script',
+      sourceType: 'module',
       globals: { ...globals.browser },
     },
     rules: {
@@ -15,64 +15,6 @@ export default [
       // "intentionally unused" placeholder (e.g. `.then((_) => ...)`), which
       // is a common, readable convention rather than a bug.
       'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-    },
-  },
-  {
-    // `Session` is a shared global: session.js assigns it as a top-level
-    // const (marked `/* exported Session */` there), and other classic
-    // <script> tags loaded after it on the same page (main.js,
-    // planning_repet.js, sinscrire.js) reference it. Excluded from
-    // session.js itself, which would otherwise trip no-redeclare.
-    files: ['app/assets/js/**/*.js'],
-    ignores: ['app/assets/js/session.js'],
-    languageOptions: {
-      globals: { Session: 'readonly' },
-    },
-  },
-  {
-    // `formatFrenchDate` is a shared global: main.js defines it as a
-    // top-level function (marked `/* exported formatFrenchDate */` there)
-    // and other classic <script> tags loaded after it on the same page
-    // (planning_repet.js, sinscrire.js) reference it. Excluded from
-    // main.js itself, which would otherwise trip no-redeclare.
-    files: ['app/assets/js/**/*.js'],
-    ignores: ['app/assets/js/main.js'],
-    languageOptions: {
-      globals: { formatFrenchDate: 'readonly' },
-    },
-  },
-  {
-    // `i18next` (vendored, app/assets/vendor/i18next.min.js) and
-    // `translateApiError` (this file's own exported helper) are shared
-    // globals: i18n.js initializes/uses i18next and defines
-    // translateApiError as a top-level function (marked
-    // `/* exported translateApiError */` there), and other classic
-    // <script> tags loaded after it on the same page (planning_repet.js)
-    // reference translateApiError. Excluded from i18n.js itself, which
-    // would otherwise trip no-redeclare on translateApiError.
-    files: ['app/assets/js/**/*.js'],
-    ignores: ['app/assets/js/i18n.js'],
-    languageOptions: {
-      globals: { i18next: 'readonly', translateApiError: 'readonly' },
-    },
-  },
-  {
-    // i18n.js itself consumes the vendored i18next global (from
-    // app/assets/vendor/i18next.min.js, loaded before it) but does not
-    // redeclare it — no `ignores` needed here, unlike the block above.
-    files: ['app/assets/js/i18n.js'],
-    languageOptions: {
-      globals: { i18next: 'readonly' },
-    },
-  },
-  {
-    // `lucide` (vendored, app/assets/vendor/lucide.min.js) is a shared
-    // global consumed directly by main.js (global icon init) and
-    // planning_repet.js (re-init after the admin event list is rebuilt).
-    // No first-party file declares it, so no `ignores` is needed here.
-    files: ['app/assets/js/main.js', 'app/assets/js/planning_repet.js'],
-    languageOptions: {
-      globals: { lucide: 'readonly' },
     },
   },
 ];

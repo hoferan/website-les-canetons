@@ -1,5 +1,4 @@
-// using vendor/i18next.min.js
-/* exported translateApiError */
+import i18next from "i18next";
 
 i18next.init({
   lng: "fr",
@@ -62,7 +61,7 @@ var API_ERROR_FALLBACK = "Une erreur est survenue. Veuillez réessayer.";
 // field falls back to a generic message rather than leaking an English or
 // raw i18next key to the user (i18next's own miss behavior is to return the
 // key itself, which this function never lets reach the UI).
-function translateApiError(body) {
+export function translateApiError(body) {
   var code = body && body.code;
   var rawFields = (body && body.fields) || [];
 

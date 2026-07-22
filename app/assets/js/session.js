@@ -1,11 +1,10 @@
-/* exported Session */
 // UI-only helper. NOT a source of truth for authentication — the server
 // enforces auth via the session cookie and injects the authenticated role as
 // window.__sessionRole on every page (see partials/head.php). The UI reads that
 // server value, so it can never disagree with the real session (e.g. a fresh
 // tab no longer shows a "logged out" UI while the server session is still alive).
 // The capability map mirrors Auth::CAPABILITIES in src/Auth.php.
-const Session = (function () {
+export const Session = (function () {
   var CAPABILITIES = {
     user: ["respond"],
     moderator: ["respond"],

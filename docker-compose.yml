@@ -13,6 +13,21 @@ services:
       - vendor:/app/vendor
     entrypoint: ["sh", "/install-vendor.sh"]
 
+  # Rebuilds app/assets/dist/ whenever a JS/CSS source file under app/assets/
+  # changes, so `web` always serves real built output from disk — same code
+  # path as production, no HMR/second port. First build takes a few seconds
+  # after `up`; a request to web before it finishes may 404 on an asset tag
+  # until the initial watch build completes (self-resolves on the next
+  # request/refresh, unlike the one-shot `vendor`/`migrate` services this
+  # can't block on completion since it runs forever).
+  assets:
+    image: node:20
+    working_dir: /repo
+    volumes:
+      - .:/repo
+      - node_modules:/repo/node_modules
+    command: sh -c "npm ci && npx vite build --watch"
+
   web:
     build: ./docker/web
     ports:
@@ -28,6 +43,8 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      assets:
+        condition: service_started
 
   db:
     image: mariadb:10.3
@@ -80,3 +97,4 @@ services:
 volumes:
   db_data:
   vendor:
+  node_modules:

@@ -1,16 +1,27 @@
 <?php
 
+use App\Assets;
 use App\Env;
 use App\Features;
 use PHPUnit\Framework\TestCase;
 
 final class ViewTest extends TestCase
 {
+    private string $manifestPath;
+
     protected function setUp(): void
     {
         Env::init('prod');
         Features::init([]);
         $_SESSION = [];
+        $this->manifestPath = sys_get_temp_dir() . '/view-test-manifest-' . uniqid() . '.json';
+        file_put_contents($this->manifestPath, json_encode([
+            'js/main.js' => ['file' => 'assets/main-fixture.js', 'isEntry' => true],
+            'js/i18n.js' => ['file' => 'assets/i18n-fixture.js', 'isEntry' => true],
+            'js/supper-popup.js' => ['file' => 'assets/supper-popup-fixture.js', 'isEntry' => true],
+            'css/test.css' => ['file' => 'assets/test-fixture.css', 'isEntry' => true],
+        ]));
+        Assets::init($this->manifestPath);
     }
 
     protected function tearDown(): void
@@ -18,6 +29,8 @@ final class ViewTest extends TestCase
         Env::init('prod');
         Features::init([]);
         $_SESSION = [];
+        Assets::init();
+        @unlink($this->manifestPath);
     }
 
     private function render(string $template, string $currentRoute = '404'): string
@@ -31,7 +44,7 @@ final class ViewTest extends TestCase
     {
         $html = $this->render('404.html.twig');
         $this->assertStringContainsString('<title>Test Title</title>', $html);
-        $this->assertStringContainsString('assets/css/test.css', $html);
+        $this->assertStringContainsString('/assets/dist/assets/test-fixture.css', $html);
     }
 
     public function testSessionRoleNullWhenLoggedOut(): void

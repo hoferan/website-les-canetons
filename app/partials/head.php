@@ -1,5 +1,6 @@
 <?php
 
+use App\Assets;
 use App\Auth;
 
 /** @var string|null $pageTitle */
@@ -26,8 +27,9 @@ use App\Auth;
          the manifest fetch send credentials; harmless on prod (no auth). -->
     <link rel="manifest" href="/assets/icons/manifest.json" crossorigin="use-credentials">
     <meta name="theme-color" content="#e0201a">
-    <!-- Single per-page stylesheet; it @imports main.css itself. -->
-    <link rel="stylesheet" href="assets/css/<?= htmlspecialchars($pageCss) ?>">
+    <!-- Bundled by Vite (tools/build.mjs); main.css's content is inlined into
+         this file at build time, so this is the only stylesheet request. -->
+    <?= Assets::styleTag($pageCss) ?>
     <!-- Authenticated role from the server session — the single source of truth
          the UI reads (assets/js/session.js). null when not logged in. -->
     <script>window.__sessionRole = <?= json_encode(Auth::role()) ?>;</script>

@@ -44,14 +44,19 @@ final class View
 
         echo self::twig()->render($template, [
             'page_title' => $pageTitle,
-            'page_css' => $pageCss,
-            'page_scripts' => $pageScripts,
+            'page_stylesheet_tag' => Assets::styleTag($pageCss),
+            'common_script_tags' => Assets::scriptTags('main.js') . "\n" . Assets::scriptTags('i18n.js'),
+            'page_script_tags' => array_map(
+                static fn (string $script): string => Assets::scriptTags($script),
+                $pageScripts
+            ),
             'current_route' => $currentRoute,
             'session_role_json' => json_encode(Auth::role()),
             'env_is_prod' => Env::isProd(),
             'env_current' => Env::current(),
             'env_ribbon_label' => Env::ribbonLabel(),
             'show_signup_popup' => $showSignupPopup,
+            'popup_script_tag' => $showSignupPopup ? Assets::scriptTags('supper-popup.js') : null,
             'popup_occasion' => $showSignupPopup
                 ? SignupRepository::OCCASIONS[SignupRepository::ACTIVE_OCCASION]
                 : null,

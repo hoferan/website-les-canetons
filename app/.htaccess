@@ -25,15 +25,15 @@ RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.php [L]
 
 # Cache policy for this site.
-#
-# HTML / CSS / JS are edited in place (no versioned filenames), so we tell
-# browsers to ALWAYS revalidate them with the server before reuse. Apache
-# returns a fast "304 Not Modified" when the file is unchanged, or the new file
-# the moment you deploy one. This means deploys are picked up automatically —
-# visitors do not need to hard-refresh (Ctrl+F5).
 <IfModule mod_headers.c>
-  <FilesMatch "\.(html|css|js)$">
+  <FilesMatch "\.html$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+  # Vite's build output (see App\Assets) is content-hashed: a given
+  # filename's bytes never change, only the filename does when the
+  # content does. Safe to cache indefinitely instead of revalidating.
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>
 
