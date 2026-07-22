@@ -14,7 +14,7 @@ $routeInfo = $dispatcher->dispatch(
 switch ($routeInfo[0]) {
     case Dispatcher::NOT_FOUND:
         http_response_code(404);
-        require __DIR__ . '/pages/404.php';
+        \App\View::renderPage('404.html.twig', 'Page introuvable', '404.css', [], '404');
         break;
     case Dispatcher::METHOD_NOT_ALLOWED:
         http_response_code(405);

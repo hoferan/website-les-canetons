@@ -5,6 +5,13 @@
     <file>app</file>
 
     <exclude-pattern>*/config.php</exclude-pattern>
+    <!-- app/vendor only exists as a symlink in native (Docker-less) web
+         sessions, bridging bootstrap.php's require path to the repo-root
+         Composer install (see tools/ensure-dev-stack.sh). PHPCS follows
+         symlinks when walking directories (plain `find` does not), so
+         without this it lints every vendor package's source against this
+         project's own PSR-12 ruleset. -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
 
     <arg name="extensions" value="php"/>
     <arg name="colors"/>
