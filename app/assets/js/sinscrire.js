@@ -1,4 +1,7 @@
-// using session.js  (page access is enforced server-side)
+import { Session } from './session.js';
+import { formatFrenchDate } from './main.js';
+
+// Page access is enforced server-side.
 document.addEventListener("DOMContentLoaded", function () {
   fetch("/api/events", { method: "GET" })
     .then(function (r) {
