@@ -37,14 +37,14 @@ use App\Repositories\SignupRepository;
     </div>
   </div>
 </div>
-    <?= Assets::scriptTags('supper-popup.js') ?>
+<?= Assets::scriptTags('supper-popup.js') ?>
 <?php endif; ?>
 
 <?php // Scripts loaded on every page, then any page-specific scripts (in load order). ?>
-    <?= Assets::scriptTags('main.js') ?>
-    <?= Assets::scriptTags('i18n.js') ?>
-    <?php foreach ($pageScripts ?? [] as $script) : ?>
-        <?= Assets::scriptTags($script) ?>
-    <?php endforeach; ?>
+<?= Assets::scriptTags('main.js') ?>
+<?= Assets::scriptTags('i18n.js') ?>
+<?php foreach ($pageScripts ?? [] as $script) : ?>
+<?= Assets::scriptTags($script) ?>
+<?php endforeach; ?>
 </body>
 </html>
