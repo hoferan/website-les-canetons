@@ -59,8 +59,20 @@ const MARKER = 'deployment.json';
 //    change content without changing size. A partial skip leaves autoload_real.php
 //    referencing a ComposerStaticInit<hash> that the uploaded autoload_static.php
 //    no longer defines -> fatal "class not found" on every page.
+//  - Vite's build manifest (assets/dist/.vite/manifest.json, see App\Assets):
+//    entry keys and Vite's default hash length are stable across ordinary
+//    content edits, so an unrelated JS/CSS change routinely leaves the
+//    manifest's byte size unchanged even though every hash inside it changed.
+//    A skipped manifest means App\Assets keeps emitting the PREVIOUS deploy's
+//    asset filenames — the new JS/CSS silently never reaches users (or, with
+//    --prune removing the now-unreferenced old files, a live 404).
 function alwaysUpload(rel) {
-  return rel === MARKER || rel === 'vendor/autoload.php' || rel.startsWith('vendor/composer/');
+  return (
+    rel === MARKER ||
+    rel === 'vendor/autoload.php' ||
+    rel.startsWith('vendor/composer/') ||
+    rel === 'assets/dist/.vite/manifest.json'
+  );
 }
 
 // First non-flag arg selects the target environment.
