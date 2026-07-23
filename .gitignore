@@ -20,6 +20,9 @@ prod-*.sql
 /node_modules/
 /vendor/
 
+# Persistent Composer download cache reused across builds (tools/build.mjs)
+/.composer-cache/
+
 # Laravel API (api/) — dependencies & generated runtime artifacts. api/ ships
 # its own .gitignore too (Composer vendor/, .env, storage/framework caches,
 # bootstrap/cache, logs); these root-level entries are belt-and-suspenders so
