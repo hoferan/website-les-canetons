@@ -1,0 +1,30 @@
+name: Deploy TEST
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pass --dry-run to preview the deploy plan without changing anything"
+        type: boolean
+        default: false
+      prune:
+        description: "Pass --prune to delete stale remote files the build no longer produces"
+        type: boolean
+        default: false
+      force:
+        description: "Pass --force to re-upload every file, even ones whose size is unchanged"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: test
+      dry_run: ${{ inputs.dry_run }}
+      prune: ${{ inputs.prune }}
+      force: ${{ inputs.force }}
+    secrets: inherit
