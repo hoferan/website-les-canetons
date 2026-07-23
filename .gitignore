@@ -19,6 +19,29 @@ prod-*.sql
 /node_modules/
 /vendor/
 
+# Laravel API (api/) — dependencies & generated runtime artifacts. api/ ships
+# its own .gitignore too (Composer vendor/, .env, storage/framework caches,
+# bootstrap/cache, logs); these root-level entries are belt-and-suspenders so
+# nothing generated under api/ is ever tracked from the repo root.
+/api/vendor/
+/api/node_modules/
+/api/.env
+/api/public/build/
+/api/public/hot
+/api/storage/*.key
+/api/.phpunit.result.cache
+
+# Laravel scaffold files this API-only project does NOT use — `composer
+# create-project laravel/laravel` regenerates these, but they're dead weight
+# here (no Blade/Vite frontend; GitHub ignores nested workflow dirs; StyleCI
+# unused). Ignored so a future re-scaffold + `git add` can't re-track them.
+/api/package.json
+/api/package-lock.json
+/api/vite.config.js
+/api/.styleci.yml
+/api/.npmrc
+/api/.github/
+
 # empty mount-point stub Docker creates when compose mounts the `vendor` volume
 # into the ./app -> /var/www/html mount (docker-compose.yml); also the symlink
 # tools/ensure-dev-stack.sh creates for native (Docker-less) web sessions. No
