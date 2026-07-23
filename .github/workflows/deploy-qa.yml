@@ -3,8 +3,16 @@ name: Deploy QA
 on:
   workflow_dispatch:
     inputs:
+      dry_run:
+        description: "Pass --dry-run to preview the deploy plan without changing anything"
+        type: boolean
+        default: false
       prune:
         description: "Pass --prune to delete stale remote files the build no longer produces"
+        type: boolean
+        default: false
+      force:
+        description: "Pass --force to re-upload every file, even ones whose size is unchanged"
         type: boolean
         default: false
 
@@ -12,33 +20,11 @@ permissions:
   contents: read
 
 jobs:
-  deploy-qa:
-    runs-on: ubuntu-latest
-    environment: qa
-    concurrency:
-      group: deploy-qa
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "20"
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.4"
-
-      - name: Install Node dev tools
-        run: npm ci
-
-      - name: Deploy to QA over FTP
-        env:
-          FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USER: ${{ secrets.FTP_USER }}
-          FTP_PASS: ${{ secrets.FTP_PASS }}
-          FTP_DIR: ${{ secrets.FTP_DIR }}
-        run: npm run deploy:qa -- ${{ inputs.prune && '--prune' || '' }}
-
-      - name: Summary
-        run: echo "Deployed tag \`${GITHUB_REF_NAME}\` (\`${GITHUB_SHA}\`) to QA." >> "$GITHUB_STEP_SUMMARY"
+  deploy:
+    uses: ./.github/workflows/_deploy.yml
+    with:
+      environment: qa
+      dry_run: ${{ inputs.dry_run }}
+      prune: ${{ inputs.prune }}
+      force: ${{ inputs.force }}
+    secrets: inherit
