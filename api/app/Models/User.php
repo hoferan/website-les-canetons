@@ -2,30 +2,29 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+// Note: Notifiable/MustVerifyEmail traits from Laravel's default scaffold are
+// intentionally omitted — this project sends no notification emails and has
+// no email-verification flow, matching the old app's Auth behavior exactly.
+//
+// Deliberately no canRespond()/canManageEvents()/canViewSummary() convenience
+// methods here yet — nothing in this sub-project needs capability gating
+// (login/logout/user don't check it), so adding untested, unused wrappers
+// around App\Support\Capability would be scope creep. Sub-project 2b (events/
+// responses) adds them when it actually needs them.
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
+    protected $fillable = ['username', 'password', 'role', 'instrument_id'];
+
+    protected $hidden = ['password'];
+
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
