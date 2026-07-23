@@ -40,7 +40,7 @@ import { pathToFileURL } from 'node:url';
 import Engine from 'php-parser';
 import { loadDotEnv } from './dotenv.mjs';
 
-const LOCAL_ROOT = 'public';
+const LOCAL_ROOT = 'dist/build';
 
 // Files that live on the server and must never be uploaded or pruned.
 const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd']);

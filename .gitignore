@@ -31,7 +31,7 @@ prod-*.sql
 /app/php-error.log
 
 # generated FTP deploy artifact (npm run build); never hand-edit or commit
-/public/
+/dist/build/
 
 # generated per-env overlay files (npm run build:overlay); never hand-edit or commit
 /dist/
