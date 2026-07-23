@@ -2,6 +2,12 @@ name: Tag Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Optional custom tag name (leave blank to auto-generate YYYY-MM-DD-<short-sha>)"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -17,18 +23,35 @@ jobs:
       - name: Compute tag name
         id: tagname
         run: |
-          short_sha=$(git rev-parse --short=7 HEAD)
-          date=$(date -u +%Y-%m-%d)
-          echo "name=${date}-${short_sha}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            name="${{ inputs.tag_name }}"
+          else
+            short_sha=$(git rev-parse --short=7 HEAD)
+            date=$(date -u +%Y-%m-%d)
+            name="${date}-${short_sha}"
+          fi
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
 
       - name: Check if tag already exists
         id: check
         run: |
-          if git ls-remote --tags origin "refs/tags/${{ steps.tagname.outputs.name }}" | grep -q .; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
+          existing_sha=$(git ls-remote --tags origin "refs/tags/${{ steps.tagname.outputs.name }}" | awk '{print $1}')
+          if [ -z "$existing_sha" ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "same_commit=false" >> "$GITHUB_OUTPUT"
+          elif [ "$existing_sha" = "$GITHUB_SHA" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "same_commit=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "same_commit=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Refuse if the name collides with a different commit
+        if: steps.check.outputs.exists == 'true' && steps.check.outputs.same_commit == 'false'
+        run: |
+          echo "::error::Tag '${{ steps.tagname.outputs.name }}' already exists and points at a different commit. Refusing to overwrite it."
+          exit 1
 
       - name: Create and push tag
         if: steps.check.outputs.exists == 'false'
@@ -37,9 +60,12 @@ jobs:
           git push origin "${{ steps.tagname.outputs.name }}"
 
       - name: Summary
+        if: always()
         run: |
-          if [ "${{ steps.check.outputs.exists }}" = "true" ]; then
+          if [ "${{ steps.check.outputs.exists }}" = "true" ] && [ "${{ steps.check.outputs.same_commit }}" = "true" ]; then
             echo "Tag \`${{ steps.tagname.outputs.name }}\` already exists — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.check.outputs.exists }}" = "true" ]; then
+            echo "Refused: tag \`${{ steps.tagname.outputs.name }}\` already exists and points at a different commit." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Created tag \`${{ steps.tagname.outputs.name }}\`." >> "$GITHUB_STEP_SUMMARY"
           fi

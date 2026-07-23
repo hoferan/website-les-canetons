@@ -148,36 +148,48 @@ token. Nothing host-specific is committed.
 
 ## CI: decoupled tag-based promotion
 
-`ci.yml` only auto-deploys TEST. QA and PROD are separate, manually-dispatched
-workflows:
+`ci.yml` only auto-deploys TEST. TEST (again, on demand), QA, and PROD are also
+each separate, manually-dispatched workflows, all sharing one reusable
+deploy workflow:
 
 ```
-… checks … ─→ deploy-test        Tag Release ──┐
-              (auto on main)                    ├─→ Deploy QA ─→ Deploy PROD
-                                                 │   (manual)     (manual, checks QA)
-                                    (manual, no inputs)
+… checks … ─→ deploy-test        Tag Release ──┬─→ Deploy TEST (manual)
+              (auto on main)                    ├─→ Deploy QA (manual)
+                                                 └─→ Deploy PROD (manual, checks QA)
+                              (manual, no inputs, or a custom tag_name)
 ```
 
 - **TEST** deploys automatically after all checks pass on a merge to `main`.
-- **Tag Release** (`tag-release.yml`) is a no-input `workflow_dispatch` — dispatch
-  it from the commit you've verified on TEST (defaults to `main`); it creates (or
-  no-ops if one already exists) a tag named `YYYY-MM-DD-<short-sha>`.
-- **Deploy QA** (`deploy-qa.yml`) and **Deploy PROD** (`deploy-prod.yml`) are
-  independent `workflow_dispatch` workflows with an optional `prune` boolean
-  input. Dispatch either by picking a tag from GitHub's native ref selector —
-  never type a ref in by hand. No Required-reviewers approval gate on either —
-  the deliberate act of dispatching with a chosen tag is the gate.
-- **Deploy PROD** additionally queries the GitHub Deployments API for the `qa`
-  environment's most recent successful deployment and refuses to proceed unless
+- **Tag Release** (`tag-release.yml`) is a `workflow_dispatch` with one
+  optional input, `tag_name` — dispatch it from the commit you've verified on
+  TEST (defaults to `main`); blank `tag_name` creates (or no-ops if one
+  already exists) a tag named `YYYY-MM-DD-<short-sha>`; a custom `tag_name` is
+  used instead, refusing rather than moving it if that name already points at
+  a different commit.
+- **Deploy TEST** (`deploy-test.yml`), **Deploy QA** (`deploy-qa.yml`), and
+  **Deploy PROD** (`deploy-prod.yml`) are independent `workflow_dispatch`
+  workflows with `dry_run`/`prune`/`force` boolean inputs, all calling one
+  shared reusable workflow (`_deploy.yml`) that does the actual
+  checkout/build/deploy/summary — so the three stay in sync instead of
+  drifting independently. Dispatch any of them by picking a tag from GitHub's
+  native ref selector — never type a ref in by hand. No Required-reviewers
+  approval gate on any of them — the deliberate act of dispatching with a
+  chosen tag is the gate.
+- **Deploy PROD** additionally runs its own `validate-qa` job first, which
+  queries the GitHub Deployments API for the `qa` environment's most recent
+  successful deployment and refuses to proceed (even with `dry_run`) unless
   its commit matches the ref being deployed to PROD.
-- **Rollback** is redeploying an older tag with `Deploy QA`/`Deploy PROD` — there
-  is no separate rollback mechanism or run-history lookup.
-- Each `qa`/`prod` Environment needs `FTP_HOST`, `FTP_USER`, `FTP_PASS` and its
-  own `FTP_DIR` secret (uniform name, scoped per Environment). The `deploy.mjs`
-  path guard refuses any dir that does not match the env name.
+- **Rollback** is redeploying an older tag with any of the three deploy
+  workflows — there is no separate rollback mechanism or run-history lookup.
+- Each `test`/`qa`/`prod` Environment needs `FTP_HOST`, `FTP_USER`, `FTP_PASS`
+  and its own `FTP_DIR` secret (uniform name, scoped per Environment). The
+  `deploy.mjs` path guard refuses any dir that does not match the env name.
+- Each run's summary shows which flags were used, `deploy.mjs`'s own
+  "N new, M changed, K unchanged, J stale" line, and the full deploy log in a
+  collapsible section.
 - A `deployment.json` at each site root (web-readable, e.g.
   `https://<prod-host>/deployment.json`) records the deployed commit, ref (the
-  tag name, for QA/PROD), time, and CI run URL.
+  tag name, for TEST/QA/PROD manual deploys), time, and CI run URL.
 
 ## Database migrations & recovery
 

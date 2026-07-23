@@ -1,4 +1,4 @@
-name: Deploy QA
+name: Deploy TEST
 
 on:
   workflow_dispatch:
@@ -23,7 +23,7 @@ jobs:
   deploy:
     uses: ./.github/workflows/_deploy.yml
     with:
-      environment: qa
+      environment: test
       dry_run: ${{ inputs.dry_run }}
       prune: ${{ inputs.prune }}
       force: ${{ inputs.force }}
