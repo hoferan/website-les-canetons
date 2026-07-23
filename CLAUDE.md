@@ -264,7 +264,7 @@ Available skills:
 ## Local Development
 
 ```bash
-docker compose up -d --build   # site: http://localhost:8090, Adminer: http://localhost:8091
+docker compose up -d --build   # old app: http://localhost:8090, Laravel API: http://localhost:8092, Adminer: http://localhost:8091
 docker compose down            # stop
 ```
 
@@ -274,6 +274,22 @@ autoload map for the container's flattened layout (`App\ -> src/`, classes at `/
 which the repo-root `vendor/` (`App\ -> app/src/`) does not — see `docker/web/install-vendor.sh`.
 No host-side `vendor/` or manual composer step is needed; changing a dependency is picked up on the
 next `up`.
+
+**Laravel API (`api/`) in Docker:** the `api` service (`docker/api/Dockerfile`,
+`php:8.4-cli` + `pdo_mysql`/`mbstring`) runs `php artisan serve` on
+**http://localhost:8092**, independent of the old app on :8090 — production
+dispatch (root `.htaccess` routing `/api/*` into Laravel on one origin) is a
+later sub-project. Its one-shot `api-vendor` service installs `api/`'s Composer
+deps into a separate `api_vendor` volume (no autoload rewrite needed — `api/`
+is mounted whole, so `vendor/` sits beside `app/` as `api/composer.json`
+expects), and `api-migrate` applies Laravel's migrations. The API uses its own
+**`lescanetons_api`** database (created by `docker/db/init/03-create-api-db.sql`),
+kept separate from the old app's `lescanetons` so the two projects' schemas and
+migration histories don't mix. All of `api/`'s generated artifacts (`vendor/`,
+`storage/` caches, `bootstrap/cache`, `.env`) stay in the volume or gitignored
+paths — never the tracked tree. Because MariaDB's init scripts only run on a
+fresh volume, picking up the new `lescanetons_api` database on an existing dev
+volume needs a one-time `docker compose down -v` (destroys synthetic dev data).
 
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)
