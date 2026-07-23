@@ -1,7 +1,15 @@
 # CI: Manual Deploy Dispatch — Prune Cleanup & Rollback — Design
 
+> **Superseded in full** by `2026-07-23-decoupled-qa-prod-tag-promotion-design.md`.
+> This spec was approved but never implemented. Its `rollback-plan` job
+> (auto-detecting "the previous version" from CI run history) is replaced by
+> tag-based redeploy — every promotion is now a permanent tag, so rolling
+> back is just redeploying an older one. Its `prune` input survives, re-homed
+> onto the newer design's independent `deploy-qa.yml`/`deploy-prod.yml`
+> workflows instead of the chained `ci.yml` jobs described below.
+
 **Date:** 2026-07-22
-**Status:** Approved (pending spec review)
+**Status:** Superseded
 **Scope:** Filed from a conversation during issue #4 planning — not (yet) its own
 GitHub issue. Adds a `workflow_dispatch` trigger to `.github/workflows/ci.yml`
 with two independent, rarely-used boolean inputs: `prune` (clean up stale

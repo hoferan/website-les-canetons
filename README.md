@@ -19,8 +19,8 @@ and views attendance summaries.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
 - Hosted on `easy-hebergement.net` shared hosting. `npm run build` assembles the
   deploy artifact into `public/`; merges to `main` auto-deploy it to **TEST**
-  via CI, then **QA** and **PROD** are manual-approval gates in the same CI run
-  (GitHub Environment reviewers) that promote the exact same tested commit.
+  via CI, while **QA** and **PROD** are promoted independently via tag-based
+  `workflow_dispatch` workflows (see "Deployment" below).
 
 ## Quick start (local dev)
 
@@ -88,17 +88,17 @@ Local Docker uses `config/config.docker.php` automatically (mounted into the con
 
 ## Deployment
 
-Deploys run entirely in CI as one pipeline (`.github/workflows/ci.yml`):
+`ci.yml` auto-deploys **TEST** on every merge to `main`. **QA** and **PROD** are
+promoted independently via tag-based `workflow_dispatch` workflows, not gated
+approvals in that same run:
 
-```
-php,tests,assets,guard,build ─→ deploy-test ─→ deploy-qa ─→ deploy-prod
-                                 (auto)         (gated)       (gated)
-```
-
-- **TEST** deploys automatically on every merge to `main`, once all checks pass.
-- **QA** and **PROD** are manual gates: the run pauses at each until a maintainer
-  approves it (GitHub → the run → "Review deployments"). Because it is one run on
-  one commit, QA and PROD receive the exact bytes tested on TEST.
+- **`Tag Release`** — dispatch once you've verified a commit on TEST; it tags
+  that commit `YYYY-MM-DD-<short-sha>` (no-ops if already tagged).
+- **`Deploy QA`** / **`Deploy PROD`** — dispatch either by picking a tag from
+  GitHub's native ref selector. `Deploy PROD` first checks, via the GitHub
+  Deployments API, that its target commit was already successfully deployed to
+  QA — refusing to proceed otherwise. Rolling back is redeploying an older tag;
+  there is no separate rollback mechanism.
 - Each deploy writes a `deployment.json` to the site root recording the deployed
   commit, ref, and time — e.g. `https://<prod-host>/deployment.json` — so you can
   always see what is live where. Per-env status is also on the badges above.

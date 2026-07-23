@@ -1,0 +1,45 @@
+name: Tag Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compute tag name
+        id: tagname
+        run: |
+          short_sha=$(git rev-parse --short=7 HEAD)
+          date=$(date -u +%Y-%m-%d)
+          echo "name=${date}-${short_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check
+        run: |
+          if git ls-remote --tags origin "refs/tags/${{ steps.tagname.outputs.name }}" | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and push tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git tag "${{ steps.tagname.outputs.name }}"
+          git push origin "${{ steps.tagname.outputs.name }}"
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.check.outputs.exists }}" = "true" ]; then
+            echo "Tag \`${{ steps.tagname.outputs.name }}\` already exists — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Created tag \`${{ steps.tagname.outputs.name }}\`." >> "$GITHUB_STEP_SUMMARY"
+          fi

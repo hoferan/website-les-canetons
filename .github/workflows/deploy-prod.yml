@@ -1,0 +1,84 @@
+name: Deploy PROD
+
+on:
+  workflow_dispatch:
+    inputs:
+      prune:
+        description: "Pass --prune to delete stale remote files the build no longer produces"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    environment: prod
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verify this commit was deployed to QA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="${{ github.repository }}"
+
+          # Assumes <100 lifetime qa deployments; picks latest by created_at from page 1 (no pagination).
+          deployment=$(gh api "repos/${repo}/deployments?environment=qa&per_page=100" \
+            --jq 'sort_by(.created_at) | reverse | .[0]')
+
+          if [ -z "$deployment" ] || [ "$deployment" = "null" ]; then
+            echo "::error::No deployments found for the qa environment — deploy this ref to QA first."
+            exit 1
+          fi
+
+          deployment_id=$(echo "$deployment" | jq -r '.id')
+          qa_sha=$(echo "$deployment" | jq -r '.sha')
+          qa_ref=$(echo "$deployment" | jq -r '.ref')
+
+          latest_status=$(gh api "repos/${repo}/deployments/${deployment_id}/statuses?per_page=100" \
+            --jq 'sort_by(.created_at) | reverse | .[0].state // empty')
+
+          if [ "$latest_status" != "success" ]; then
+            echo "::error::QA's most recent deployment (tag ${qa_ref}, commit ${qa_sha}) has status '${latest_status:-unknown}', not success — refusing to deploy to PROD."
+            exit 1
+          fi
+
+          if [ "$qa_sha" != "$GITHUB_SHA" ]; then
+            echo "::error::This ref (${GITHUB_REF_NAME}, commit ${GITHUB_SHA}) does not match QA's last successful deployment (tag ${qa_ref}, commit ${qa_sha}). Deploy this ref to QA first."
+            exit 1
+          fi
+
+          echo "Confirmed: ${GITHUB_REF_NAME} (${GITHUB_SHA}) matches QA's last successful deployment (${qa_ref})."
+          {
+            echo "### PROD validation"
+            echo "- Deploying tag: \`${GITHUB_REF_NAME}\` (\`${GITHUB_SHA}\`)"
+            echo "- Matched QA deployment: \`${qa_ref}\` (\`${qa_sha}\`)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+
+      - name: Install Node dev tools
+        run: npm ci
+
+      - name: Deploy to PROD over FTP
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASS: ${{ secrets.FTP_PASS }}
+          FTP_DIR: ${{ secrets.FTP_DIR }}
+        run: npm run deploy:prod -- ${{ inputs.prune && '--prune' || '' }}

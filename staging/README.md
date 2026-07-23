@@ -43,10 +43,12 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the 3 server-owned f
    (`.htaccess`, `robots.txt`, and for test/qa `.htpasswd`), and create
    `config.php` by hand. Re-run `build:overlay` and re-upload only the
    `.htaccess` when `app/.htaccess` or the auth block changes.
-2. **Releasing (normal path — CI):** a merge to `main` auto-deploys to **TEST**;
-   then approve the **QA** and **PROD** gates in the same CI run (see
-   "CI: gated deploy pipeline" below). Each deploy writes a `deployment.json`
-   marker to the site root recording the deployed commit.
+2. **Releasing (normal path — CI):** a merge to `main` auto-deploys to **TEST**.
+   Once you've verified TEST, dispatch `Tag Release` (see "CI: decoupled
+   tag-based promotion" below) to stamp that commit; then dispatch `Deploy QA`
+   and, once you've verified QA, `Deploy PROD` — each picking the tag from
+   GitHub's ref selector, no approval click needed. Each deploy writes a
+   `deployment.json` marker to the site root recording the deployed commit.
    **Manual fallback:** `npm run deploy:test` / `deploy:qa` / `deploy:prod` do the
    same over FTP from your machine (creds from a git-ignored `.env`, see
    `.env.example`). Flags: `-- --dry-run` (preview new/changed/unchanged/stale —
@@ -144,27 +146,38 @@ token. Nothing host-specific is committed.
   (and the env's CI secrets) to the same credentials as the `.htpasswd`. PROD has
   no Basic Auth, so leave them blank there.
 
-## CI: gated deploy pipeline
+## CI: decoupled tag-based promotion
 
-Everything is one pipeline in `.github/workflows/ci.yml`:
+`ci.yml` only auto-deploys TEST. QA and PROD are separate, manually-dispatched
+workflows:
 
 ```
-… checks … ─→ deploy-test ─→ deploy-qa ─→ deploy-prod
-              (auto on main)  (gated)       (gated)
+… checks … ─→ deploy-test        Tag Release ──┐
+              (auto on main)                    ├─→ Deploy QA ─→ Deploy PROD
+                                                 │   (manual)     (manual, checks QA)
+                                    (manual, no inputs)
 ```
 
 - **TEST** deploys automatically after all checks pass on a merge to `main`.
-- **QA** and **PROD** are jobs gated by **Required reviewers** on the `qa` and
-  `prod` GitHub Environments (Settings → Environments → `qa` / `prod`). The run
-  pauses at each; a maintainer clicks **Review deployments → Approve**. QA is
-  reachable once TEST is done; PROD once QA is done.
+- **Tag Release** (`tag-release.yml`) is a no-input `workflow_dispatch` — dispatch
+  it from the commit you've verified on TEST (defaults to `main`); it creates (or
+  no-ops if one already exists) a tag named `YYYY-MM-DD-<short-sha>`.
+- **Deploy QA** (`deploy-qa.yml`) and **Deploy PROD** (`deploy-prod.yml`) are
+  independent `workflow_dispatch` workflows with an optional `prune` boolean
+  input. Dispatch either by picking a tag from GitHub's native ref selector —
+  never type a ref in by hand. No Required-reviewers approval gate on either —
+  the deliberate act of dispatching with a chosen tag is the gate.
+- **Deploy PROD** additionally queries the GitHub Deployments API for the `qa`
+  environment's most recent successful deployment and refuses to proceed unless
+  its commit matches the ref being deployed to PROD.
+- **Rollback** is redeploying an older tag with `Deploy QA`/`Deploy PROD` — there
+  is no separate rollback mechanism or run-history lookup.
 - Each `qa`/`prod` Environment needs `FTP_HOST`, `FTP_USER`, `FTP_PASS` and its
   own `FTP_DIR` secret (uniform name, scoped per Environment). The `deploy.mjs`
-  path guard refuses any dir that does not match the env name, and `--prune` is
-  never used in CI.
+  path guard refuses any dir that does not match the env name.
 - A `deployment.json` at each site root (web-readable, e.g.
-  `https://<prod-host>/deployment.json`) records the deployed commit, ref, time,
-  and CI run URL.
+  `https://<prod-host>/deployment.json`) records the deployed commit, ref (the
+  tag name, for QA/PROD), time, and CI run URL.
 
 ## Database migrations & recovery
 
