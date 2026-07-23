@@ -312,6 +312,26 @@ export function parseConcurrency(raw) {
   return Math.min(8, Math.max(1, n));
 }
 
+// Directories that hold no surviving file once `stalePaths` are removed, given
+// the full pre-prune remote file list `remoteFiles` (both posix rel-paths).
+// Returned deepest-first so a parent is only removed after its children. Used
+// for both the --dry-run prediction and to order real removeEmptyDir calls.
+export function emptyDirsAfterPrune(stalePaths, remoteFiles) {
+  const staleSet = new Set(stalePaths);
+  const survivors = remoteFiles.filter((f) => !staleSet.has(f));
+  const candidates = new Set();
+  for (const rel of stalePaths) {
+    let dir = path.posix.dirname(rel);
+    while (dir && dir !== '.') {
+      candidates.add(dir);
+      dir = path.posix.dirname(dir);
+    }
+  }
+  const empty = [...candidates].filter((dir) => !survivors.some((s) => s.startsWith(`${dir}/`)));
+  empty.sort((a, b) => b.split('/').length - a.split('/').length || a.localeCompare(b));
+  return empty;
+}
+
 // Run `worker(item, index)` across up to `concurrency` coopered workers pulling
 // from a shared cursor. Pure w.r.t. I/O (worker is injected). Fail-fast: the
 // first worker rejection stops new items from starting and rejects the pool.
@@ -439,6 +459,13 @@ async function main() {
     if (stale.length) {
       console.log(`  STALE on remote${PRUNE ? ' — will be removed' : ' — run with --prune to remove'}:`);
       stale.forEach((rel) => console.log(`    - ${rel}`));
+      if (PRUNE) {
+        const emptyDirs = emptyDirsAfterPrune(stale, [...remote.keys()]);
+        if (emptyDirs.length) {
+          console.log('  EMPTY DIRECTORIES after prune — will be removed:');
+          emptyDirs.forEach((d) => console.log(`    - ${d}/`));
+        }
+      }
     }
 
     if (DRY_RUN) {
@@ -501,6 +528,22 @@ async function main() {
         await client.remove(`${remoteRoot}/${rel}`);
       }
       console.log(`Pruned ${stale.length} file(s).`);
+
+      const emptyDirs = emptyDirsAfterPrune(stale, [...remote.keys()]);
+      let removedDirs = 0;
+      for (const d of emptyDirs) {
+        try {
+          await client.removeEmptyDir(`${remoteRoot}/${d}`);
+          console.log(`  removing empty dir ${d}/`);
+          removedDirs++;
+        } catch {
+          // RMD fails on a non-empty dir (a surviving file, or a PROTECTED file
+          // like .htaccess kept on the server) — expected; skip it.
+        }
+      }
+      if (removedDirs) {
+        console.log(`Removed ${removedDirs} empty director${removedDirs === 1 ? 'y' : 'ies'}.`);
+      }
     }
 
     // Post-deploy verification: confirm every file we uploaded landed on the

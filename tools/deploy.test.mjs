@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseConcurrency, runPool } from './deploy.mjs';
+import { parseConcurrency, runPool, emptyDirsAfterPrune } from './deploy.mjs';
 
 test('parseConcurrency: default 4 when absent/invalid', () => {
   assert.equal(parseConcurrency(undefined), 4);
@@ -54,4 +54,33 @@ test('runPool: empty items resolves without calling worker', async () => {
     called = true;
   });
   assert.equal(called, false);
+});
+
+test('emptyDirsAfterPrune: dir with only stale files is listed', () => {
+  const stale = ['old/a.js', 'old/b.js'];
+  const remote = ['old/a.js', 'old/b.js', 'keep/c.js'];
+  assert.deepEqual(emptyDirsAfterPrune(stale, remote), ['old']);
+});
+
+test('emptyDirsAfterPrune: dir with a surviving file is NOT listed', () => {
+  const stale = ['mix/old.js'];
+  const remote = ['mix/old.js', 'mix/keep.js'];
+  assert.deepEqual(emptyDirsAfterPrune(stale, remote), []);
+});
+
+test('emptyDirsAfterPrune: nested empties are deepest-first', () => {
+  const stale = ['a/b/c/x.js', 'a/b/c/y.js'];
+  const remote = ['a/b/c/x.js', 'a/b/c/y.js'];
+  assert.deepEqual(emptyDirsAfterPrune(stale, remote), ['a/b/c', 'a/b', 'a']);
+});
+
+test('emptyDirsAfterPrune: partial nesting keeps the surviving ancestor', () => {
+  const stale = ['a/b/c/x.js'];
+  const remote = ['a/b/c/x.js', 'a/keep.js'];
+  // a/b/c and a/b become empty; a survives (has keep.js)
+  assert.deepEqual(emptyDirsAfterPrune(stale, remote), ['a/b/c', 'a/b']);
+});
+
+test('emptyDirsAfterPrune: root-level stale files yield no dirs', () => {
+  assert.deepEqual(emptyDirsAfterPrune(['x.js'], ['x.js', 'y.js']), []);
 });
