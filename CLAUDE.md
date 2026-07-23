@@ -40,19 +40,23 @@ events and view attendance summaries.
   (server-owned) but ships `config.example.php` next to it on every deploy —
   the live template, for diffing against a server's real `config.php` by
   hand. `public/` is git-ignored and never hand-edited.
-- **Deployment (auto TEST, tag-promoted QA/PROD):** a merge to `main` auto-deploys
-  the built `public/` to **TEST** via the `deploy-test` job in
-  `.github/workflows/ci.yml`. **QA** and **PROD** are independent
-  `workflow_dispatch` workflows (`deploy-qa.yml`, `deploy-prod.yml`) — no
+- **Deployment (auto TEST, tag-promoted TEST/QA/PROD):** a merge to `main`
+  auto-deploys the built `public/` to **TEST** via the `deploy-test` job in
+  `.github/workflows/ci.yml`. **TEST**, **QA**, and **PROD** are also each
+  independently deployable on demand via `workflow_dispatch` workflows
+  (`deploy-test.yml`, `deploy-qa.yml`, `deploy-prod.yml`) — no
   Required-reviewers approval gate; the deliberate act of dispatching one with a
-  chosen ref *is* the gate. Promotions are identified by git tags named
-  `YYYY-MM-DD-<short-sha>` (see `tag-release.yml`), created from whichever commit
-  you've verified on TEST; dispatching `deploy-qa.yml`/`deploy-prod.yml` always
-  uses GitHub's native branch/tag selector, never a free-text ref. `deploy-prod.yml`
-  additionally checks, via the GitHub Deployments API, that its target commit was
-  already successfully deployed to `qa` — refusing to proceed otherwise. Rolling
-  back is simply redeploying an older tag; there is no separate rollback
-  mechanism. Every upload still **excludes the three server-owned files**
+  chosen ref *is* the gate. All three call one reusable workflow, `_deploy.yml`,
+  so their deploy/summary logic stays in sync instead of drifting
+  independently. Promotions are identified by git tags named
+  `YYYY-MM-DD-<short-sha>` by default, or a custom name (see `tag-release.yml`),
+  created from whichever commit you've verified on TEST; dispatching any of the
+  three deploy workflows always uses GitHub's native branch/tag selector, never
+  a free-text ref. `deploy-prod.yml` additionally checks, via the GitHub
+  Deployments API, that its target commit was already successfully deployed to
+  `qa` — refusing to proceed otherwise, even with `dry_run`. Rolling back is
+  simply redeploying an older tag; there is no separate rollback mechanism.
+  Every upload still **excludes the three server-owned files**
   (`.htaccess`, `robots.txt`, `config.php`). Those per-env files are placed once
   per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
   `config.php` is always set by hand per server. See `staging/README.md`.
@@ -113,22 +117,31 @@ events and view attendance summaries.
   you can also add protection rules. Since that FTP account reaches every
   environment, the per-target path guard applies in CI and `--prune` is never
   used there.
-- **Tagging a promotion candidate:** `tag-release.yml` is a no-input
-  `workflow_dispatch` workflow — dispatch it from whatever commit you've
-  verified on TEST (defaults to `main`) and it creates (or, if already present,
-  leaves alone) a tag named `YYYY-MM-DD-<short-sha>`. Usable from the GitHub
-  mobile app.
-- **QA / PROD deploy (independent, tag-based):** `deploy-qa.yml` and
-  `deploy-prod.yml` are separate `workflow_dispatch` workflows, each with an
-  optional `prune` boolean input. Dispatch either by picking a tag (or branch)
-  from GitHub's native ref selector — never a typed-in ref. `deploy-prod.yml`
-  first checks the GitHub Deployments API for the `qa` environment's most recent
-  successful deployment and refuses to proceed unless its commit matches the
-  ref being deployed to PROD. Neither workflow has a Required-reviewers approval
-  step. Each needs its own `FTP_DIR` secret (scoped to that Environment) plus
-  the shared `FTP_HOST`/`USER`/`PASS`. Locally, `npm run deploy:qa` /
-  `npm run deploy:prod` do the same over FTP. Rolling back is redeploying an
-  older tag with either workflow — no dedicated rollback mechanism exists.
+- **Tagging a promotion candidate:** `tag-release.yml` is a `workflow_dispatch`
+  workflow with one optional input, `tag_name` — dispatch it from whatever
+  commit you've verified on TEST (defaults to `main`); a blank `tag_name`
+  creates (or, if already present, leaves alone) a tag named
+  `YYYY-MM-DD-<short-sha>`; a non-blank `tag_name` is used instead — if that
+  name already exists pointing at a different commit, the run refuses rather
+  than moving it. Usable from the GitHub mobile app.
+- **TEST / QA / PROD deploy (independent, tag-based):** `deploy-test.yml`,
+  `deploy-qa.yml`, and `deploy-prod.yml` are separate `workflow_dispatch`
+  workflows, each with `dry_run`/`prune`/`force` boolean inputs (mirroring
+  `deploy.mjs`'s CLI flags of the same names — `--no-verify` deliberately
+  excluded). All three call one reusable workflow, `_deploy.yml`, which does
+  the actual checkout/build/deploy/summary. Dispatch any of them by picking a
+  tag (or branch) from GitHub's native ref selector — never a typed-in ref.
+  `deploy-prod.yml` additionally runs its own `validate-qa` job first, which
+  checks the GitHub Deployments API for the `qa` environment's most recent
+  successful deployment and refuses to proceed (even with `dry_run`) unless
+  its commit matches the ref being deployed to PROD. None of the three has a
+  Required-reviewers approval step. Each environment needs its own `FTP_DIR`
+  secret (scoped to that Environment) plus the shared `FTP_HOST`/`USER`/`PASS`.
+  Locally, `npm run deploy:test` / `deploy:qa` / `deploy:prod` do the same over
+  FTP. Rolling back is redeploying an older tag with any of the three — no
+  dedicated rollback mechanism exists. Each run's summary shows which flags
+  were used, `deploy.mjs`'s own "N new, M changed, K unchanged, J stale" line,
+  and the full deploy log in a collapsible section.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
   (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA
   is a fixed length, so the size-based change check would otherwise skip it) and
