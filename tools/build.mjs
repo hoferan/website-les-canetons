@@ -114,13 +114,23 @@ rmSync('dist/build/composer.json');
 
 console.log('Built dist/build/ — ready to FTP upload.');
 
-// --- Build the Laravel API project (api/) into dist/build/api/ -----------
-console.log('\nBuilding api/ (Laravel)...');
-rmrf('dist/build/api');
-cpSync('api', 'dist/build/api', { recursive: true });
-rmrf('dist/build/api/vendor');
-rmrf('dist/build/api/node_modules');
-rmSync('dist/build/api/.env', { force: true });
+// --- Build the Laravel API project (api/) into dist/build/api-laravel/ ----
+//
+// Deliberately NOT dist/build/api/: that path already holds the OLD app's PHP
+// endpoints (app/api/login.php, events.php, …, copied by the app/ -> dist/build/
+// cpSync above), which src/routes.php requires and which are the live backend
+// on every server. Production dispatch of /api/* into Laravel is a later
+// sub-project (see CLAUDE.md) — until it's wired, Laravel must live BESIDE those
+// endpoints, not on top of them. Building to dist/build/api/ would wipe them from
+// the artifact, and a --prune deploy would then delete them off the server,
+// 500ing every /api/* call (missing require). Keep the two trees separate.
+const laravelBuild = 'dist/build/api-laravel';
+console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
+rmrf(laravelBuild);
+cpSync('api', laravelBuild, { recursive: true });
+rmrf(`${laravelBuild}/vendor`);
+rmrf(`${laravelBuild}/node_modules`);
+rmSync(`${laravelBuild}/.env`, { force: true });
 
 execFileSync(
   'docker',
@@ -130,7 +140,7 @@ execFileSync(
     '-v',
     `${mount}:/app`,
     '-w',
-    '/app/dist/build/api',
+    `/app/${laravelBuild}`,
     '-e',
     'COMPOSER_CACHE_DIR=/app/.composer-cache',
     'composer:2',
@@ -142,4 +152,4 @@ execFileSync(
   { stdio: 'inherit' }
 );
 
-console.log('Built dist/build/api/ — ready to FTP upload alongside dist/build/.');
+console.log('Built dist/build/api-laravel/ — ready to FTP upload alongside dist/build/.');
