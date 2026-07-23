@@ -5,6 +5,7 @@ config.php
 !/.env.example
 .superpowers
 .tmp
+public
 
 # HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
 # offline; usernames exposed). The .htaccess that references them IS tracked.
