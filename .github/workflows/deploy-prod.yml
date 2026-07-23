@@ -31,6 +31,7 @@ jobs:
           set -euo pipefail
           repo="${{ github.repository }}"
 
+          # Assumes <100 lifetime qa deployments; picks latest by created_at from page 1 (no pagination).
           deployment=$(gh api "repos/${repo}/deployments?environment=qa&per_page=100" \
             --jq 'sort_by(.created_at) | reverse | .[0]')
 
