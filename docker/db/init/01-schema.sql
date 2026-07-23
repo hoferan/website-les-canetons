@@ -29,6 +29,7 @@ CREATE TABLE `events` (
   `attire` varchar(255) DEFAULT NULL,
   `weekend` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
