@@ -15,6 +15,7 @@ CREATE TABLE `contact_messages` (
 CREATE TABLE `instruments` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_instruments_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

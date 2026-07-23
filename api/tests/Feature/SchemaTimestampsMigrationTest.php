@@ -26,4 +26,9 @@ class SchemaTimestampsMigrationTest extends TestCase
             'id', 'user_id', 'event_id', 'answer', 'created_at', 'updated_at',
         ]));
     }
+
+    public function test_instruments_table_has_created_at(): void
+    {
+        $this->assertTrue(Schema::hasColumns('instruments', ['id', 'name', 'created_at', 'updated_at']));
+    }
 }
