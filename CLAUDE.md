@@ -40,14 +40,19 @@ events and view attendance summaries.
   (server-owned) but ships `config.example.php` next to it on every deploy —
   the live template, for diffing against a server's real `config.php` by
   hand. `public/` is git-ignored and never hand-edited.
-- **Deployment (one gated CI pipeline):** all deploys run in
-  `.github/workflows/ci.yml`. A merge to `main` auto-deploys the built `public/`
-  to **TEST**; **QA** then **PROD** are manual-approval gates in the *same run*
-  (`deploy-qa` needs `deploy-test`, `deploy-prod` needs `deploy-qa`), enforced by
-  **Required reviewers** on the `qa`/`prod` GitHub Environments. The run pauses at
-  each gate until a maintainer approves. Because it is one run on one commit, QA
-  and PROD get the exact bytes tested on TEST — no "resolve latest green commit"
-  step. Every upload still **excludes the three server-owned files**
+- **Deployment (auto TEST, tag-promoted QA/PROD):** a merge to `main` auto-deploys
+  the built `public/` to **TEST** via the `deploy-test` job in
+  `.github/workflows/ci.yml`. **QA** and **PROD** are independent
+  `workflow_dispatch` workflows (`deploy-qa.yml`, `deploy-prod.yml`) — no
+  Required-reviewers approval gate; the deliberate act of dispatching one with a
+  chosen ref *is* the gate. Promotions are identified by git tags named
+  `YYYY-MM-DD-<short-sha>` (see `tag-release.yml`), created from whichever commit
+  you've verified on TEST; dispatching `deploy-qa.yml`/`deploy-prod.yml` always
+  uses GitHub's native branch/tag selector, never a free-text ref. `deploy-prod.yml`
+  additionally checks, via the GitHub Deployments API, that its target commit was
+  already successfully deployed to `qa` — refusing to proceed otherwise. Rolling
+  back is simply redeploying an older tag; there is no separate rollback
+  mechanism. Every upload still **excludes the three server-owned files**
   (`.htaccess`, `robots.txt`, `config.php`). Those per-env files are placed once
   per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
   `config.php` is always set by hand per server. See `staging/README.md`.
@@ -108,12 +113,22 @@ events and view attendance summaries.
   you can also add protection rules. Since that FTP account reaches every
   environment, the per-target path guard applies in CI and `--prune` is never
   used there.
-- **QA / PROD deploy (manual gates in CI):** `deploy-qa` and `deploy-prod` are
-  jobs in `ci.yml`, gated by Required reviewers on the `qa`/`prod` GitHub
-  Environments — approve `deploy-qa` when TEST is green, then `deploy-prod` when
-  QA is green, all within the same run. Each needs its own `FTP_DIR` secret
-  (scoped to that Environment) plus the shared `FTP_HOST`/`USER`/`PASS`.
-  Locally, `npm run deploy:qa` / `npm run deploy:prod` do the same over FTP.
+- **Tagging a promotion candidate:** `tag-release.yml` is a no-input
+  `workflow_dispatch` workflow — dispatch it from whatever commit you've
+  verified on TEST (defaults to `main`) and it creates (or, if already present,
+  leaves alone) a tag named `YYYY-MM-DD-<short-sha>`. Usable from the GitHub
+  mobile app.
+- **QA / PROD deploy (independent, tag-based):** `deploy-qa.yml` and
+  `deploy-prod.yml` are separate `workflow_dispatch` workflows, each with an
+  optional `prune` boolean input. Dispatch either by picking a tag (or branch)
+  from GitHub's native ref selector — never a typed-in ref. `deploy-prod.yml`
+  first checks the GitHub Deployments API for the `qa` environment's most recent
+  successful deployment and refuses to proceed unless its commit matches the
+  ref being deployed to PROD. Neither workflow has a Required-reviewers approval
+  step. Each needs its own `FTP_DIR` secret (scoped to that Environment) plus
+  the shared `FTP_HOST`/`USER`/`PASS`. Locally, `npm run deploy:qa` /
+  `npm run deploy:prod` do the same over FTP. Rolling back is redeploying an
+  older tag with either workflow — no dedicated rollback mechanism exists.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
   (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA
   is a fixed length, so the size-based change check would otherwise skip it) and
