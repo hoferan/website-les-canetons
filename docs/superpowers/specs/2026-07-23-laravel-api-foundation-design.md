@@ -162,10 +162,14 @@ concept.
 - Routes: `POST /api/login`, `POST /api/logout`, `GET /api/user` (current-user
   info, standard Sanctum SPA convention), plus Sanctum's built-in
   `GET /sanctum/csrf-cookie`.
-- Password verification reuses the same `password_verify()`/legacy-plaintext-
-  upgrade logic `Auth::attemptLogin()` has today (the legacy-plaintext branch
-  matters because some existing rows predate hashing) — ported into the new
-  login flow, not dropped.
+- Login uses Laravel's standard `Auth::attempt(['username' => …, 'password' =>
+  …])` — the auth core is field-agnostic, so username identification needs no
+  custom flow. Passwords are always stored hashed (the `User` model's `hashed`
+  cast). **Superseded decision:** the design originally ported the old app's
+  in-app legacy-plaintext→bcrypt upgrade branch into the login flow; that was
+  dropped during implementation (see Revisions). Pre-hashing rows are converted
+  once, out of band, by a manual DB-level migration the maintainer runs — not
+  by the app — which keeps the login path on the plain framework `Auth::attempt`.
 
 ### 4. Migrations: Laravel's own system, adopted safely onto existing schema
 
@@ -291,3 +295,58 @@ for this migration:
 6. Confirm dead-code removal didn't break anything: `npm run check` (PHP
    lint/PHPUnit/JS lint/etc.) still passes against the old app's remaining
    code after the listed files are removed.
+
+## Revisions & implementation notes (post-approval)
+
+Recorded during/after implementation so this design matches what actually
+shipped on the branch. The commits are the source of truth; this captures the
+*why* of the deltas.
+
+### Decision changes
+
+- **No in-app legacy-password upgrade (supersedes §3).** The approved design
+  ported the old app's plaintext→bcrypt upgrade branch into the login flow.
+  That was dropped: pre-hashing rows are converted once, out of band, by a
+  manual DB-level migration the maintainer runs. Login is now the plain,
+  framework-standard `Auth::attempt` with no custom password handling.
+- **Username-only user, documented as intentional.** The `users` table keeps
+  no `email`/`name` (members are children ~6-16 who often have no email;
+  passwords are admin-managed and stored hashed). The rationale is recorded in
+  `api/app/Models/User.php` and the users migration so it isn't "fixed" back
+  to Laravel's email default later.
+
+### Laravel-version realities (design assumed ~11.x; shipped on 13.x)
+
+- API scaffolding + Sanctum installed via `php artisan install:api` (the
+  idiomatic Laravel 13 path: it publishes `routes/api.php`, wires API routing
+  into `bootstrap/app.php`, and requires `laravel/sanctum`). SPA mode enabled
+  with `$middleware->statefulApi()`.
+- Laravel 13 bundles `users`/`password_reset_tokens`/`sessions` into one
+  default migration whose `users` schema conflicts with this project's. That
+  file was reduced to a **sessions-only** migration (needed for
+  `SESSION_DRIVER=database`); the real `users` table is owned by this
+  sub-project's guarded migration.
+- Tests run against a dedicated **MariaDB** `laravel_api_test` database (the
+  migrations use MariaDB-specific SQL — `enum`, `char`, the raw
+  `used_challenges` PK swap — that SQLite can't reproduce). Auth feature tests
+  send an `Origin` header to simulate the same-origin SPA so `statefulApi()`
+  starts a session.
+
+### Follow-ups added beyond the original 10-task plan
+
+- **Scaffold cleanup:** removed Laravel-default files this API-only project
+  doesn't use (`api/.github/workflows/*` — inert; `api/package.json`,
+  `api/vite.config.js` — frontend toolchain; `api/.styleci.yml`, `api/.npmrc`),
+  and hardened root `.gitignore` so they can't be re-tracked.
+- **Local dev in docker compose:** added `api-vendor`/`api-migrate`/`api`
+  services (`php artisan serve` on :8092) using a separate `lescanetons_api`
+  database, plus `docker/api/Dockerfile`; API mail goes to the existing
+  Mailpit. Generated artifacts live in volumes/gitignored paths, never the
+  tracked tree.
+
+### Not yet implemented from this design
+
+- **The `.env` drift-check (§6)** for the Laravel app's `.env` is not built
+  yet — `tools/deploy.mjs` does not manage `api/.env`. Deferred alongside the
+  actual `/api/*` dispatch cutover (sub-project 2a-ii), since that is when the
+  deployed Laravel app first needs a server-side `.env` to function.
