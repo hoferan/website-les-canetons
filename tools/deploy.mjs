@@ -302,6 +302,40 @@ async function checkConfigShape(client, remoteRoot, label) {
   }
 }
 
+// Parse FTP_CONCURRENCY: default 4, clamped to 1..8 (stays under the typical
+// shared-host connection cap; =1 reproduces the old serial upload).
+export function parseConcurrency(raw) {
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    return 4;
+  }
+  return Math.min(8, Math.max(1, n));
+}
+
+// Run `worker(item, index)` across up to `concurrency` coopered workers pulling
+// from a shared cursor. Pure w.r.t. I/O (worker is injected). Fail-fast: the
+// first worker rejection stops new items from starting and rejects the pool.
+export async function runPool(items, concurrency, worker) {
+  let next = 0;
+  let failed = false;
+  const runWorker = async () => {
+    while (!failed) {
+      const i = next++;
+      if (i >= items.length) {
+        return;
+      }
+      try {
+        await worker(items[i], i);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
+    }
+  };
+  const workers = Math.max(0, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workers }, () => runWorker()));
+}
+
 async function main() {
   const { target, DRY_RUN, PRUNE, FORCE, NO_VERIFY, dirVar, guard, LABEL } = parseArgs();
 
