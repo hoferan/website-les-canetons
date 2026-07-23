@@ -466,14 +466,15 @@ async function main() {
 
     if (toUpload.length) {
       const pool = [];
-      for (let i = 0; i < workers; i++) {
-        const c = new ftp.Client();
-        await c.access(accessOpts);
-        pool.push(c);
-      }
-      const free = [...pool];
+      const free = [];
       let done = 0;
       try {
+        for (let i = 0; i < workers; i++) {
+          const c = new ftp.Client();
+          pool.push(c); // track before access() so a failed connection is still closed
+          await c.access(accessOpts);
+          free.push(c);
+        }
         await runPool(batches, workers, async ([d, files]) => {
           const c = free.pop();
           try {
