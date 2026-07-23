@@ -18,4 +18,12 @@ class SchemaTimestampsMigrationTest extends TestCase
             'location', 'attire', 'weekend', 'created_at', 'updated_at',
         ]));
     }
+
+    public function test_responses_table_has_timestamps(): void
+    {
+        $this->assertTrue(Schema::hasTable('responses'));
+        $this->assertTrue(Schema::hasColumns('responses', [
+            'id', 'user_id', 'event_id', 'answer', 'created_at', 'updated_at',
+        ]));
+    }
 }
