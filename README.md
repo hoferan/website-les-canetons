@@ -19,8 +19,8 @@ and views attendance summaries.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
 - Hosted on `easy-hebergement.net` shared hosting. `npm run build` assembles the
   deploy artifact into `public/`; merges to `main` auto-deploy it to **TEST**
-  via CI, then **QA** and **PROD** are manual-approval gates in the same CI run
-  (GitHub Environment reviewers) that promote the exact same tested commit.
+  via CI, while **QA** and **PROD** are promoted independently via tag-based
+  `workflow_dispatch` workflows (see "Deployment" below).
 
 ## Quick start (local dev)
 
