@@ -96,3 +96,31 @@ execFileSync(
 rmSync('dist/build/composer.json');
 
 console.log('Built dist/build/ — ready to FTP upload.');
+
+// --- Build the Laravel API project (api/) into dist/build/api/ -----------
+console.log('\nBuilding api/ (Laravel)...');
+rmSync('dist/build/api', { recursive: true, force: true });
+cpSync('api', 'dist/build/api', { recursive: true });
+rmSync('dist/build/api/vendor', { recursive: true, force: true });
+rmSync('dist/build/api/node_modules', { recursive: true, force: true });
+rmSync('dist/build/api/.env', { force: true });
+
+execFileSync(
+  'docker',
+  [
+    'run',
+    '--rm',
+    '-v',
+    `${mount}:/app`,
+    '-w',
+    '/app/dist/build/api',
+    'composer:2',
+    'install',
+    '--no-dev',
+    '--optimize-autoloader',
+    '--no-interaction',
+  ],
+  { stdio: 'inherit' }
+);
+
+console.log('Built dist/build/api/ — ready to FTP upload alongside dist/build/.');
