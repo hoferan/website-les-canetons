@@ -282,14 +282,17 @@ dispatch (root `.htaccess` routing `/api/*` into Laravel on one origin) is a
 later sub-project. Its one-shot `api-vendor` service installs `api/`'s Composer
 deps into a separate `api_vendor` volume (no autoload rewrite needed — `api/`
 is mounted whole, so `vendor/` sits beside `app/` as `api/composer.json`
-expects), and `api-migrate` applies Laravel's migrations. The API uses its own
-**`lescanetons_api`** database (created by `docker/db/init/03-create-api-db.sql`),
-kept separate from the old app's `lescanetons` so the two projects' schemas and
-migration histories don't mix. All of `api/`'s generated artifacts (`vendor/`,
-`storage/` caches, `bootstrap/cache`, `.env`) stay in the volume or gitignored
-paths — never the tracked tree. Because MariaDB's init scripts only run on a
-fresh volume, picking up the new `lescanetons_api` database on an existing dev
-volume needs a one-time `docker compose down -v` (destroys synthetic dev data).
+expects), and `api-migrate` applies Laravel's migrations. The API shares the
+**same `lescanetons` database as the old app** (no separate DB): its guarded
+migrations *adopt* the old app's existing tables in place (add `updated_at`,
+convert the `used_challenges` PK) and create Laravel's own tables (`sessions`,
+`cache`, `migrations`, …) alongside them — so `api-migrate` runs after the old
+app's `migrate` service, and never drops or reseeds anything. All of `api/`'s
+generated artifacts (`vendor/`, `storage/` caches, `bootstrap/cache`, `.env`)
+stay in the volume or gitignored paths — never the tracked tree. (The Laravel
+*test* suite still uses its own throwaway `laravel_api_test` database — see
+`phpunit.xml` — because `RefreshDatabase` drops every table, which must never
+touch a shared DB.)
 
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)

@@ -314,6 +314,18 @@ shipped on the branch. The commits are the source of truth; this captures the
   passwords are admin-managed and stored hashed). The rationale is recorded in
   `api/app/Models/User.php` and the users migration so it isn't "fixed" back
   to Laravel's email default later.
+- **Shared database, not a separate one.** The Laravel app uses the *same*
+  database connection as the old app (no `lescanetons_api`). This is exactly
+  what the §4 baseline-adoption strategy was built for: the guarded migrations
+  run against the existing DB and **adopt** its tables in place — they never
+  drop-and-recreate. So the cutover is *not* dump → drop → migrate-fresh →
+  reseed (which would destroy every table Laravel doesn't yet manage, e.g.
+  events/responses from sub-project 2b); it is: **back up, then run the guarded
+  migrations** (add `updated_at`, convert the `used_challenges` PK, create
+  Laravel's own `sessions`/`cache`/`migrations` tables). Existing data and the
+  old app keep working (the deltas are backward-compatible). The automated test
+  suite still uses an isolated `laravel_api_test` database, because
+  `RefreshDatabase` drops all tables and must never run against a shared DB.
 
 ### Laravel-version realities (design assumed ~11.x; shipped on 13.x)
 
