@@ -107,7 +107,9 @@ parseArgs → load .env.<target> → connect (1 client)
 
 ## Testing
 
-- **Unit (pure helpers), runnable locally** via the existing Node test path:
+The repo currently has **no JS test runner** (the "unit-testable" pure helpers in `deploy.mjs` have no tests today). This work introduces a zero-dependency harness: Node's built-in **`node --test`**, a new `test:js` npm script (`node --test tools/`), added to `npm run check`. The new pure helpers are `export`ed from `deploy.mjs` so the test files can import them without triggering the CLI `main()` (already guarded by the `import.meta.url` check).
+
+- **Unit (pure helpers), runnable locally** via `npm run test:js`:
   - `planUploadBatches` / `byDir` grouping — correct bucketing, PROTECTED excluded (already are, upstream).
   - `runPool` — with a fake async worker: every item processed exactly once, respects the concurrency cap, rejects if a worker throws.
   - `emptyDirsAfterPrune` — dirs all-stale → listed deepest-first; dirs with a survivor → excluded; nested empties ordered child-before-parent; `remoteRoot` excluded.
