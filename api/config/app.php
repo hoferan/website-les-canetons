@@ -17,6 +17,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Migrate Endpoint Token
+    |--------------------------------------------------------------------------
+    |
+    | Shared secret gating the token-protected POST /api/migrate endpoint used
+    | by the deploy tooling (tools/dbmigrate.mjs) to run migrations server-side
+    | — remote DB login is blocked and there is no SSH. Server-owned, set once
+    | per server in .env; blank here means the endpoint refuses every request.
+    |
+    */
+
+    'migrate_token' => env('MIGRATE_TOKEN'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |
