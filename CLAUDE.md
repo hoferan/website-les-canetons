@@ -39,7 +39,9 @@ events and view attendance summaries.
   environment-agnostic code artifact. It deliberately excludes `config.php`
   (server-owned) but ships `config.example.php` next to it on every deploy —
   the live template, for diffing against a server's real `config.php` by
-  hand. `dist/build/` is git-ignored and never hand-edited.
+  hand. `dist/build/` is git-ignored and never hand-edited. `npm run build`
+  reuses a persistent Composer cache at `.composer-cache/` (git-ignored)
+  across builds.
 - **Deployment (auto TEST, tag-promoted TEST/QA/PROD):** a merge to `main`
   auto-deploys the built `dist/build/` to **TEST** via the `deploy-test` job in
   `.github/workflows/ci.yml`. **TEST**, **QA**, and **PROD** are also each
@@ -65,15 +67,18 @@ events and view attendance summaries.
   `.env`; see `.env.example`), printing per-file progress. It uploads only
   **new/changed** files (changed = different byte size; FTP timestamps aren't
   trusted on this host) and never uploads or prunes the server-owned files
-  (`.htaccess`, `robots.txt`, `config.php`, `.htpasswd`). Flags: `-- --dry-run`
+  (`.htaccess`, `robots.txt`, `config.php`, `.htpasswd`). Uploads run over a
+  pool of parallel FTP connections; concurrency is `FTP_CONCURRENCY` (default
+  4, clamped 1-8 — set 1 for the old serial behavior). Flags: `-- --dry-run`
   (print the new/changed/unchanged/stale plan, change nothing — run this before
   `--prune`), `-- --prune` (also delete remote **plain files** the build no
-  longer produces; directories/symlinks like `cgi-bin` and the protected files
-  are always kept), `-- --force` (re-upload every file, for the rare edit that
-  keeps a file's size identical). After a real upload it **verifies** every
-  uploaded file is present on the server at the matching byte size (reusing the
-  same LIST-based size check) and exits non-zero if any file is missing or
-  truncated; `-- --no-verify` skips that check.
+  longer produces, plus any directories left empty afterward, via FTP RMD,
+  which is safe on non-empty dirs; directories/symlinks like `cgi-bin` and the
+  protected files are always kept), `-- --force` (re-upload every file, for
+  the rare edit that keeps a file's size identical). After a real upload it
+  **verifies** every uploaded file is present on the server at the matching
+  byte size (reusing the same LIST-based size check) and exits non-zero if
+  any file is missing or truncated; `-- --no-verify` skips that check.
   The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
   hard-refuses to run unless its `FTP_DIR` matches the env name, so a mistyped
   dir can never deploy to (or `--prune`!) the wrong environment. Per-env config

@@ -332,7 +332,7 @@ export function emptyDirsAfterPrune(stalePaths, remoteFiles) {
   return empty;
 }
 
-// Run `worker(item, index)` across up to `concurrency` coopered workers pulling
+// Run `worker(item, index)` across up to `concurrency` cooperating workers pulling
 // from a shared cursor. Pure w.r.t. I/O (worker is injected). Fail-fast: the
 // first worker rejection stops new items from starting and rejects the pool.
 export async function runPool(items, concurrency, worker) {
@@ -456,15 +456,13 @@ async function main() {
       console.log('  CHANGED:');
       changed.forEach((f) => console.log(`    ~ ${f.rel} (local ${humanBytes(f.size)}, remote ${humanBytes(f.remoteSize)})`));
     }
+    const emptyDirs = PRUNE ? emptyDirsAfterPrune(stale, [...remote.keys()]) : [];
     if (stale.length) {
       console.log(`  STALE on remote${PRUNE ? ' — will be removed' : ' — run with --prune to remove'}:`);
       stale.forEach((rel) => console.log(`    - ${rel}`));
-      if (PRUNE) {
-        const emptyDirs = emptyDirsAfterPrune(stale, [...remote.keys()]);
-        if (emptyDirs.length) {
-          console.log('  EMPTY DIRECTORIES after prune — will be removed:');
-          emptyDirs.forEach((d) => console.log(`    - ${d}/`));
-        }
+      if (PRUNE && emptyDirs.length) {
+        console.log('  EMPTY DIRECTORIES after prune — will be removed:');
+        emptyDirs.forEach((d) => console.log(`    - ${d}/`));
       }
     }
 
@@ -522,6 +520,14 @@ async function main() {
     }
     console.log(toUpload.length ? `Uploaded ${toUpload.length} file(s) (concurrency ${workers}).` : 'Nothing to upload — remote already up to date.');
 
+    // The main client was idle throughout the (possibly long) parallel upload
+    // on the pool connections above; a short host FTP idle-timeout could have
+    // silently dropped it. Re-establish it before prune/verify so those don't
+    // fail on a dead socket after a successful upload.
+    if (toUpload.length) {
+      await client.access(accessOpts);
+    }
+
     if (PRUNE) {
       for (const rel of stale) {
         console.log(`  removing ${rel}`);
@@ -529,7 +535,6 @@ async function main() {
       }
       console.log(`Pruned ${stale.length} file(s).`);
 
-      const emptyDirs = emptyDirsAfterPrune(stale, [...remote.keys()]);
       let removedDirs = 0;
       for (const d of emptyDirs) {
         try {
