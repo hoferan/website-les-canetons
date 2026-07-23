@@ -446,7 +446,12 @@ async function main() {
       return;
     }
 
-    // Upload, grouped by remote directory so we ensureDir once per folder.
+    // Upload, grouped by remote directory so each connection ensureDir's once
+    // per folder. Parallelised across a small pool of connections: per-file FTP
+    // round-trip latency — not bandwidth — dominates, so N connections give a
+    // near-linear speedup. Every dir op uses an ABSOLUTE ${remoteRoot}/${dir}
+    // path (ensureDir resets to root for absolute paths), so the independent
+    // connections never clobber each other's working directory.
     const byDir = new Map();
     for (const f of toUpload) {
       const d = path.posix.dirname(f.rel);
@@ -455,17 +460,39 @@ async function main() {
       }
       byDir.get(d).push(f);
     }
-    let done = 0;
-    for (const [d, files] of byDir) {
-      const remoteDir = d === '.' ? remoteRoot : `${remoteRoot}/${d}`;
-      await client.ensureDir(remoteDir);
-      for (const f of files) {
-        done++;
-        console.log(`  [${done}/${toUpload.length}] ${f.rel}`);
-        await client.uploadFrom(path.join(LOCAL_ROOT, f.rel), path.posix.basename(f.rel));
+    const batches = [...byDir.entries()];
+    const workers = Math.max(1, Math.min(parseConcurrency(process.env.FTP_CONCURRENCY), batches.length || 1));
+    const accessOpts = { host: FTP_HOST, user: process.env.FTP_USER, password: process.env.FTP_PASS, secure: false };
+
+    if (toUpload.length) {
+      const pool = [];
+      for (let i = 0; i < workers; i++) {
+        const c = new ftp.Client();
+        await c.access(accessOpts);
+        pool.push(c);
+      }
+      const free = [...pool];
+      let done = 0;
+      try {
+        await runPool(batches, workers, async ([d, files]) => {
+          const c = free.pop();
+          try {
+            const remoteDir = d === '.' ? remoteRoot : `${remoteRoot}/${d}`;
+            await c.ensureDir(remoteDir);
+            for (const f of files) {
+              done++;
+              console.log(`  [${done}/${toUpload.length}] ${f.rel}`);
+              await c.uploadFrom(path.join(LOCAL_ROOT, f.rel), path.posix.basename(f.rel));
+            }
+          } finally {
+            free.push(c);
+          }
+        });
+      } finally {
+        pool.forEach((c) => c.close());
       }
     }
-    console.log(toUpload.length ? `Uploaded ${toUpload.length} file(s).` : 'Nothing to upload — remote already up to date.');
+    console.log(toUpload.length ? `Uploaded ${toUpload.length} file(s) (concurrency ${workers}).` : 'Nothing to upload — remote already up to date.');
 
     if (PRUNE) {
       for (const rel of stale) {
