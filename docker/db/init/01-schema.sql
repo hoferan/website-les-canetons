@@ -15,6 +15,7 @@ CREATE TABLE `contact_messages` (
 CREATE TABLE `instruments` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_instruments_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -29,6 +30,7 @@ CREATE TABLE `events` (
   `attire` varchar(255) DEFAULT NULL,
   `weekend` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -52,6 +54,7 @@ CREATE TABLE `responses` (
   `event_id` int(10) UNSIGNED NOT NULL,
   `answer` enum('participate','notparticipate') NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_response` (`user_id`,`event_id`),
   KEY `fk_resp_event` (`event_id`),

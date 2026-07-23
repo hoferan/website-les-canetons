@@ -82,6 +82,95 @@ services:
     command: ["php", "tools/migrate.php", "sql/migrations"]
     restart: "no"
 
+  # --- Laravel API (api/) ------------------------------------------------
+  # The new backend runs as its own service on :8092, independent of the old
+  # app on :8090. Production dispatch (root .htaccess routing /api/* into
+  # Laravel on the same origin) is a later sub-project; locally it's a
+  # separate port so the two stacks don't interfere.
+
+  # One-shot: install api/'s Composer deps into the shared `api_vendor` volume,
+  # mirroring the old app's `vendor` service. No autoload rewrite is needed here
+  # (unlike the old app's flattened layout): api/ is mounted whole, so vendor/
+  # sits next to app/ exactly as api/composer.json's App\ -> app/ map expects.
+  api-vendor:
+    image: composer:2
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - api_vendor:/app/vendor
+    command: install --no-interaction --no-progress
+    restart: "no"
+
+  # One-shot: apply Laravel's own migrations against the SAME `lescanetons`
+  # database the old app uses (this project shares one DB — it gets no separate
+  # database). The guarded migrations adopt the old app's existing tables in
+  # place (add updated_at, convert the used_challenges PK) and create Laravel's
+  # own tables (sessions, cache, migrations, …) alongside them. Runs after the
+  # old app's `migrate` service so the tables to adopt already exist.
+  api-migrate:
+    build: ./docker/api
+    working_dir: /var/www/api
+    volumes:
+      - ./api:/var/www/api
+      - api_vendor:/var/www/api/vendor
+    environment: &api-env
+      APP_KEY: base64:laLm1TQBwlapjrscB5SkLK7IqyMJjX+p4VTcWKVQOE4=
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8092
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: lescanetons
+      DB_USERNAME: canetons
+      DB_PASSWORD: canetons
+      SESSION_DRIVER: database
+      SESSION_DOMAIN: localhost
+      SANCTUM_STATEFUL_DOMAINS: localhost:8092,localhost,127.0.0.1
+      CACHE_STORE: database
+      QUEUE_CONNECTION: sync
+      # Local mail goes to Mailpit (no auth, no TLS), same as the old app.
+      # View it at http://localhost:8025. Username/password/scheme are left
+      # unset (null) so Symfony's SMTP transport attempts no AUTH/TLS.
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_FROM_ADDRESS: noreply@les-canetons.localhost
+      MAIL_FROM_NAME: Les Canetons
+      MIGRATE_TOKEN: local-dev-migrate-token
+    depends_on:
+      api-vendor:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["php", "artisan", "migrate", "--force"]
+    restart: "no"
+
+  # The Laravel API dev server (PHP's built-in server via artisan serve). Host
+  # edits under ./api are live; vendor/ lives in the api_vendor volume (never
+  # the host tree). Reachable at http://localhost:8092.
+  api:
+    build: ./docker/api
+    working_dir: /var/www/api
+    ports:
+      - "8092:8000"
+    volumes:
+      - ./api:/var/www/api
+      - api_vendor:/var/www/api/vendor
+    environment: *api-env
+    depends_on:
+      api-vendor:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      api-migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_started
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+
   mailpit:
     image: axllent/mailpit:latest
     ports:
@@ -97,4 +186,5 @@ services:
 volumes:
   db_data:
   vendor:
+  api_vendor:
   node_modules:

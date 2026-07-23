@@ -1,43 +1,43 @@
-// Assembles public/ — the FTP-ready deploy artifact — from app/ plus a
+// Assembles dist/build/ — the FTP-ready deploy artifact — from app/ plus a
 // production-only Composer vendor/ (installed via COMPOSER_VENDOR_DIR, no
-// second composer.json needed). Never hand-edit public/; it's regenerated
-// on every run.
+// second composer.json needed). Never hand-edit dist/build/; it's
+// regenerated on every run.
 import { execFileSync } from 'node:child_process';
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 
 const mount = process.cwd().split('\\').join('/');
 
-// Bundle JS/CSS first so app/assets/dist/ exists before the app/ -> public/
+// Bundle JS/CSS first so app/assets/dist/ exists before the app/ -> dist/build/
 // copy below picks it up.
 execFileSync('npx', ['vite', 'build'], { stdio: 'inherit' });
 
-rmSync('public', { recursive: true, force: true });
-cpSync('app', 'public', { recursive: true });
+rmSync('dist/build', { recursive: true, force: true });
+cpSync('app', 'dist/build', { recursive: true });
 
 // The raw JS/CSS source is superseded by the bundled output just copied
-// above (public/assets/dist/) — the server never references it directly
+// above (dist/build/assets/dist/) — the server never references it directly
 // anymore (see App\Assets), so don't ship dead source alongside the bundles.
-rmSync('public/assets/js', { recursive: true, force: true });
-rmSync('public/assets/css', { recursive: true, force: true });
+rmSync('dist/build/assets/js', { recursive: true, force: true });
+rmSync('dist/build/assets/css', { recursive: true, force: true });
 
-// Ship the numbered migrations so the server-side endpoint (public/api/migrate.php)
-// can apply them. They live under public/sql/migrations and are unreachable via
+// Ship the numbered migrations so the server-side endpoint (dist/build/api/migrate.php)
+// can apply them. They live under dist/build/sql/migrations and are unreachable via
 // direct HTTP: the front-controller catch-all (app/.htaccess) rewrites any
 // non-/assets/ path to index.php, which 404s anything that isn't a route.
-cpSync('sql/migrations', 'public/sql/migrations', { recursive: true });
+cpSync('sql/migrations', 'dist/build/sql/migrations', { recursive: true });
 
 // config.php is environment-specific and server-owned (real DB creds + env key).
 // Never ship it in the deploy artifact: each server keeps its own, set once by
 // hand, and it's excluded from every upload/promotion. Dropping it here (a local
-// app/config.php gets copied by the recursive cpSync above) keeps public/ a pure,
-// environment-agnostic artifact you can promote test -> qa -> prod unchanged.
-rmSync('public/config.php', { force: true });
+// app/config.php gets copied by the recursive cpSync above) keeps dist/build/ a
+// pure, environment-agnostic artifact you can promote test -> qa -> prod unchanged.
+rmSync('dist/build/config.php', { force: true });
 
 // Ship the template next to the real (never-uploaded) config.php so it's on
 // every server for reference — diff it against config.php by hand to see
 // what's missing. deploy.mjs also uses it to fail the deploy if config.php's
 // shape has drifted (see checkConfigShape there).
-cpSync('config/config.example.php', 'public/config.example.php');
+cpSync('config/config.example.php', 'dist/build/config.example.php');
 
 execFileSync(
   'docker',
@@ -49,7 +49,7 @@ execFileSync(
     '-w',
     '/app',
     '-e',
-    'COMPOSER_VENDOR_DIR=public/vendor',
+    'COMPOSER_VENDOR_DIR=dist/build/vendor',
     'composer:2',
     'install',
     '--no-dev',
@@ -60,10 +60,10 @@ execFileSync(
 );
 
 // The repo-root composer.json maps App\ -> app/src/ (correct for the dev
-// tree, where composer.json sits next to app/). Inside the built public/,
-// app/'s CONTENTS were copied flat (classes now live at public/src/, not
-// public/app/src/), so the vendor/ installed above has the wrong autoload
-// map for this tree. Regenerate it in place, scoped to public/'s own
+// tree, where composer.json sits next to app/). Inside the built dist/build/,
+// app/'s CONTENTS were copied flat (classes now live at dist/build/src/, not
+// dist/build/app/src/), so the vendor/ installed above has the wrong autoload
+// map for this tree. Regenerate it in place, scoped to dist/build/'s own
 // flattened layout, reusing the packages already installed — no network
 // access, no package re-resolution, just a corrected class map.
 //
@@ -75,7 +75,7 @@ execFileSync(
 // autoloading, even though the files are still physically installed.
 const rootComposerJson = JSON.parse(readFileSync('composer.json', 'utf8'));
 rootComposerJson.autoload = { 'psr-4': { 'App\\': 'src/' } };
-writeFileSync('public/composer.json', JSON.stringify(rootComposerJson, null, 2));
+writeFileSync('dist/build/composer.json', JSON.stringify(rootComposerJson, null, 2));
 execFileSync(
   'docker',
   [
@@ -84,7 +84,7 @@ execFileSync(
     '-v',
     `${mount}:/app`,
     '-w',
-    '/app/public',
+    '/app/dist/build',
     'composer:2',
     'dump-autoload',
     '--no-dev',
@@ -93,6 +93,34 @@ execFileSync(
   ],
   { stdio: 'inherit' }
 );
-rmSync('public/composer.json');
+rmSync('dist/build/composer.json');
 
-console.log('Built public/ — ready to FTP upload.');
+console.log('Built dist/build/ — ready to FTP upload.');
+
+// --- Build the Laravel API project (api/) into dist/build/api/ -----------
+console.log('\nBuilding api/ (Laravel)...');
+rmSync('dist/build/api', { recursive: true, force: true });
+cpSync('api', 'dist/build/api', { recursive: true });
+rmSync('dist/build/api/vendor', { recursive: true, force: true });
+rmSync('dist/build/api/node_modules', { recursive: true, force: true });
+rmSync('dist/build/api/.env', { force: true });
+
+execFileSync(
+  'docker',
+  [
+    'run',
+    '--rm',
+    '-v',
+    `${mount}:/app`,
+    '-w',
+    '/app/dist/build/api',
+    'composer:2',
+    'install',
+    '--no-dev',
+    '--optimize-autoloader',
+    '--no-interaction',
+  ],
+  { stdio: 'inherit' }
+);
+
+console.log('Built dist/build/api/ — ready to FTP upload alongside dist/build/.');

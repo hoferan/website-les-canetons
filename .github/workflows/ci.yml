@@ -130,8 +130,8 @@ jobs:
         run: npm ci
       - name: Build deploy artifact
         run: npm run build
-      - name: Verify public/ was produced
-        run: test -f public/index.php && test -d public/vendor
+      - name: Verify dist/build/ was produced
+        run: test -f dist/build/index.php && test -d dist/build/vendor
 
   # Auto-deploy the built artifact to the TEST staging site on merge to main,
   # only after every other job is green. The FTP account can also reach qa/prod,

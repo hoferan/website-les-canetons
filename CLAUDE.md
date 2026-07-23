@@ -35,13 +35,13 @@ events and view attendance summaries.
   %{ENV:REDIRECT_STATUS} ^$` guard — without it the rewrite to `index.php`
   re-matches itself and loops into a 500. Don't remove it.
 - **Build step:** `npm run build` assembles `app/` + a production-only
-  Composer `vendor/` into a generated `public/` directory — the
+  Composer `vendor/` into a generated `dist/build/` directory — the
   environment-agnostic code artifact. It deliberately excludes `config.php`
   (server-owned) but ships `config.example.php` next to it on every deploy —
   the live template, for diffing against a server's real `config.php` by
-  hand. `public/` is git-ignored and never hand-edited.
+  hand. `dist/build/` is git-ignored and never hand-edited.
 - **Deployment (auto TEST, tag-promoted TEST/QA/PROD):** a merge to `main`
-  auto-deploys the built `public/` to **TEST** via the `deploy-test` job in
+  auto-deploys the built `dist/build/` to **TEST** via the `deploy-test` job in
   `.github/workflows/ci.yml`. **TEST**, **QA**, and **PROD** are also each
   independently deployable on demand via `workflow_dispatch` workflows
   (`deploy-test.yml`, `deploy-qa.yml`, `deploy-prod.yml`) — no
@@ -61,7 +61,7 @@ events and view attendance summaries.
   per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
   `config.php` is always set by hand per server. See `staging/README.md`.
 - **Automated TEST deploy (optional):** `npm run deploy:test` builds then
-  uploads `public/` to the TEST server over plain FTP (creds from a git-ignored
+  uploads `dist/build/` to the TEST server over plain FTP (creds from a git-ignored
   `.env`; see `.env.example`), printing per-file progress. It uploads only
   **new/changed** files (changed = different byte size; FTP timestamps aren't
   trusted on this host) and never uploads or prunes the server-owned files
@@ -174,8 +174,8 @@ Available skills:
 
 ## Architecture
 
-- **`app/` is the tracked source; `public/` is the generated FTP payload.**
-  `public/` is produced by `npm run build` and is never hand-edited or committed.
+- **`app/` is the tracked source; `dist/build/` is the generated FTP payload.**
+  `dist/build/` is produced by `npm run build` and is never hand-edited or committed.
   Never put dev-only files in `app/`. All tooling lives at the repo root
   (`composer.json`, `package.json`, `phpcs.xml`, `docker/`, `config/`, `tools/`,
   `.github/`).
@@ -198,7 +198,7 @@ Available skills:
 - **Config:** the real `app/config.php` is git-ignored. Create it locally with
   `cp config/config.example.php app/config.php`. For Docker, the stack mounts
   `config/config.docker.php` into the container instead. `npm run build` does
-  **not** ship `config.php` into `public/` — it's server-owned (real DB creds +
+  **not** ship `config.php` into `dist/build/` — it's server-owned (real DB creds +
   `env` key), set once per server by hand, and excluded from every
   upload/promotion. So the code artifact is safe to promote test → qa → prod
   unchanged.
@@ -264,7 +264,7 @@ Available skills:
 ## Local Development
 
 ```bash
-docker compose up -d --build   # site: http://localhost:8090, Adminer: http://localhost:8091
+docker compose up -d --build   # old app: http://localhost:8090, Laravel API: http://localhost:8092, Adminer: http://localhost:8091
 docker compose down            # stop
 ```
 
@@ -274,6 +274,25 @@ autoload map for the container's flattened layout (`App\ -> src/`, classes at `/
 which the repo-root `vendor/` (`App\ -> app/src/`) does not — see `docker/web/install-vendor.sh`.
 No host-side `vendor/` or manual composer step is needed; changing a dependency is picked up on the
 next `up`.
+
+**Laravel API (`api/`) in Docker:** the `api` service (`docker/api/Dockerfile`,
+`php:8.4-cli` + `pdo_mysql`/`mbstring`) runs `php artisan serve` on
+**http://localhost:8092**, independent of the old app on :8090 — production
+dispatch (root `.htaccess` routing `/api/*` into Laravel on one origin) is a
+later sub-project. Its one-shot `api-vendor` service installs `api/`'s Composer
+deps into a separate `api_vendor` volume (no autoload rewrite needed — `api/`
+is mounted whole, so `vendor/` sits beside `app/` as `api/composer.json`
+expects), and `api-migrate` applies Laravel's migrations. The API shares the
+**same `lescanetons` database as the old app** (no separate DB): its guarded
+migrations *adopt* the old app's existing tables in place (add `updated_at`,
+convert the `used_challenges` PK) and create Laravel's own tables (`sessions`,
+`cache`, `migrations`, …) alongside them — so `api-migrate` runs after the old
+app's `migrate` service, and never drops or reseeds anything. All of `api/`'s
+generated artifacts (`vendor/`, `storage/` caches, `bootstrap/cache`, `.env`)
+stay in the volume or gitignored paths — never the tracked tree. (The Laravel
+*test* suite still uses its own throwaway `laravel_api_test` database — see
+`phpunit.xml` — because `RefreshDatabase` drops every table, which must never
+touch a shared DB.)
 
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)
@@ -364,6 +383,6 @@ also safe to run in local Docker dev.
 
 ## Don'ts
 
-- Never commit `app/config.php`, `public/`, or any production data / DB dump.
-- Never hand-edit `public/` — it's fully regenerated by `npm run build`.
+- Never commit `app/config.php`, `dist/build/`, or any production data / DB dump.
+- Never hand-edit `dist/build/` — it's fully regenerated by `npm run build`.
 - Never store real member data or passwords in seed files.

@@ -1,0 +1,12 @@
+# Deny direct access to everything in this directory (Laravel project root:
+# vendor/, app/, .env, etc.). Only api/public/ (Laravel's own front
+# controller, which has its own .htaccess re-allowing access there) should
+# ever be reachable — this file exists because the deploy FTP account is
+# chrooted to the web-root, so this whole project sits inside the
+# web-accessible tree instead of outside it (Laravel's normal convention).
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>
