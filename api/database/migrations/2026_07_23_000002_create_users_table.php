@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Intentional deviation from Laravel's default users table: no email /
+        // name columns. Members are children (~6-16) in the Guggenmusik who
+        // often have no email, so accounts are identified by username only and
+        // passwords are admin-managed (stored hashed). See app/Models/User.php
+        // for the full rationale.
         if (!Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id();

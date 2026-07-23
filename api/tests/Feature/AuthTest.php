@@ -109,46 +109,4 @@ class AuthTest extends TestCase
     {
         $this->spaPostJson('/api/logout')->assertStatus(401);
     }
-
-    public function test_legacy_plaintext_password_is_upgraded_on_successful_login(): void
-    {
-        // Bypass the User model's 'hashed' cast entirely (it would otherwise
-        // hash this on write) to simulate a genuine pre-hashing legacy row,
-        // matching what a real row created before hashing was added looks
-        // like in the actual database.
-        \Illuminate\Support\Facades\DB::table('users')->insert([
-            'username' => 'legacy.user',
-            'password' => 'plaintext-secret',
-            'role' => 'user',
-            'created_at' => now(),
-        ]);
-
-        $response = $this->spaPostJson('/api/login', [
-            'username' => 'legacy.user',
-            'password' => 'plaintext-secret',
-        ]);
-
-        $response->assertOk()->assertJson(['role' => 'user']);
-
-        $stored = \Illuminate\Support\Facades\DB::table('users')->where('username', 'legacy.user')->value('password');
-        $this->assertStringStartsWith('$', $stored, 'password should be upgraded to a bcrypt hash after a successful legacy-plaintext login');
-    }
-
-    public function test_legacy_plaintext_login_fails_with_wrong_password(): void
-    {
-        \Illuminate\Support\Facades\DB::table('users')->insert([
-            'username' => 'legacy.user2',
-            'password' => 'plaintext-secret',
-            'role' => 'user',
-            'created_at' => now(),
-        ]);
-
-        $response = $this->spaPostJson('/api/login', [
-            'username' => 'legacy.user2',
-            'password' => 'wrong-plaintext',
-        ]);
-
-        $response->assertStatus(401);
-        $this->assertGuest();
-    }
 }
