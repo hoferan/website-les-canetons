@@ -1,5 +1,13 @@
 # Unified, gated deploy pipeline (test → qa → prod in one workflow)
 
+> **Partially superseded** by
+> `2026-07-23-decoupled-qa-prod-tag-promotion-design.md`: the chained
+> `deploy-qa`/`deploy-prod` jobs and the Required-reviewers prerequisite
+> described below (§1 and the Prerequisites section) were replaced by
+> independent, tag-based `workflow_dispatch` promotions. `deploy-test` and
+> the `deployment.json` marker format (§3) remain valid and are reused
+> unchanged by the newer design.
+
 **Date:** 2026-07-19
 **Status:** Approved (design)
 
