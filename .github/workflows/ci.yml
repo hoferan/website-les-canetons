@@ -102,6 +102,8 @@ jobs:
           node-version: "20"
       - name: Install Node dev tools
         run: npm ci
+      - name: JS unit tests
+        run: npm run test:js
       - name: ESLint
         run: npm run lint:js
       - name: Stylelint
