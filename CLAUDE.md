@@ -69,7 +69,7 @@ events and view attendance summaries.
   trusted on this host) and never uploads or prunes the server-owned files
   (`.htaccess`, `robots.txt`, `config.php`, `.htpasswd`). Uploads run over a
   pool of parallel FTP connections; concurrency is `FTP_CONCURRENCY` (default
-  4, clamped 1-8 — set 1 for the old serial behavior). Flags: `-- --dry-run`
+  6, clamped 1-8 — set 1 for the old serial behavior). Flags: `-- --dry-run`
   (print the new/changed/unchanged/stale plan, change nothing — run this before
   `--prune`), `-- --prune` (also delete remote **plain files** the build no
   longer produces, plus any directories left empty afterward, via FTP RMD,

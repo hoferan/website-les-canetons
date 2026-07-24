@@ -302,12 +302,12 @@ async function checkConfigShape(client, remoteRoot, label) {
   }
 }
 
-// Parse FTP_CONCURRENCY: default 4, clamped to 1..8 (stays under the typical
-// shared-host connection cap; =1 reproduces the old serial upload).
+// Parse FTP_CONCURRENCY: default 6, clamped to 1..8 (stays under this host's
+// ~10 concurrent-connection budget; =1 reproduces the old serial upload).
 export function parseConcurrency(raw) {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n)) {
-    return 4;
+    return 6;
   }
   return Math.min(8, Math.max(1, n));
 }

@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { parseConcurrency, runPool, emptyDirsAfterPrune } from './deploy.mjs';
 
-test('parseConcurrency: default 4 when absent/invalid', () => {
-  assert.equal(parseConcurrency(undefined), 4);
-  assert.equal(parseConcurrency('abc'), 4);
-  assert.equal(parseConcurrency(''), 4);
+test('parseConcurrency: default 6 when absent/invalid', () => {
+  assert.equal(parseConcurrency(undefined), 6);
+  assert.equal(parseConcurrency('abc'), 6);
+  assert.equal(parseConcurrency(''), 6);
 });
 
 test('parseConcurrency: clamps to 1..8', () => {
