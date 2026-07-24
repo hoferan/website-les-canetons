@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
 
       - uses: shivammathur/setup-php@v2
         with:

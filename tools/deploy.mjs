@@ -302,6 +302,60 @@ async function checkConfigShape(client, remoteRoot, label) {
   }
 }
 
+// Parse FTP_CONCURRENCY: default 6, clamped to 1..8 (stays under this host's
+// ~10 concurrent-connection budget; =1 reproduces the old serial upload).
+export function parseConcurrency(raw) {
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) {
+    return 6;
+  }
+  return Math.min(8, Math.max(1, n));
+}
+
+// Directories that hold no surviving file once `stalePaths` are removed, given
+// the full pre-prune remote file list `remoteFiles` (both posix rel-paths).
+// Returned deepest-first so a parent is only removed after its children. Used
+// for both the --dry-run prediction and to order real removeEmptyDir calls.
+export function emptyDirsAfterPrune(stalePaths, remoteFiles) {
+  const staleSet = new Set(stalePaths);
+  const survivors = remoteFiles.filter((f) => !staleSet.has(f));
+  const candidates = new Set();
+  for (const rel of stalePaths) {
+    let dir = path.posix.dirname(rel);
+    while (dir && dir !== '.') {
+      candidates.add(dir);
+      dir = path.posix.dirname(dir);
+    }
+  }
+  const empty = [...candidates].filter((dir) => !survivors.some((s) => s.startsWith(`${dir}/`)));
+  empty.sort((a, b) => b.split('/').length - a.split('/').length || a.localeCompare(b));
+  return empty;
+}
+
+// Run `worker(item, index)` across up to `concurrency` cooperating workers pulling
+// from a shared cursor. Pure w.r.t. I/O (worker is injected). Fail-fast: the
+// first worker rejection stops new items from starting and rejects the pool.
+export async function runPool(items, concurrency, worker) {
+  let next = 0;
+  let failed = false;
+  const runWorker = async () => {
+    while (!failed) {
+      const i = next++;
+      if (i >= items.length) {
+        return;
+      }
+      try {
+        await worker(items[i], i);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
+    }
+  };
+  const workers = Math.max(0, Math.min(concurrency, items.length));
+  await Promise.all(Array.from({ length: workers }, () => runWorker()));
+}
+
 async function main() {
   const { target, DRY_RUN, PRUNE, FORCE, NO_VERIFY, dirVar, guard, LABEL } = parseArgs();
 
@@ -402,9 +456,14 @@ async function main() {
       console.log('  CHANGED:');
       changed.forEach((f) => console.log(`    ~ ${f.rel} (local ${humanBytes(f.size)}, remote ${humanBytes(f.remoteSize)})`));
     }
+    const emptyDirs = PRUNE ? emptyDirsAfterPrune(stale, [...remote.keys()]) : [];
     if (stale.length) {
       console.log(`  STALE on remote${PRUNE ? ' — will be removed' : ' — run with --prune to remove'}:`);
       stale.forEach((rel) => console.log(`    - ${rel}`));
+      if (PRUNE && emptyDirs.length) {
+        console.log('  EMPTY DIRECTORIES after prune — will be removed:');
+        emptyDirs.forEach((d) => console.log(`    - ${d}/`));
+      }
     }
 
     if (DRY_RUN) {
@@ -412,7 +471,12 @@ async function main() {
       return;
     }
 
-    // Upload, grouped by remote directory so we ensureDir once per folder.
+    // Upload, grouped by remote directory so each connection ensureDir's once
+    // per folder. Parallelised across a small pool of connections: per-file FTP
+    // round-trip latency — not bandwidth — dominates, so N connections give a
+    // near-linear speedup. Every dir op uses an ABSOLUTE ${remoteRoot}/${dir}
+    // path (ensureDir resets to root for absolute paths), so the independent
+    // connections never clobber each other's working directory.
     const byDir = new Map();
     for (const f of toUpload) {
       const d = path.posix.dirname(f.rel);
@@ -421,17 +485,48 @@ async function main() {
       }
       byDir.get(d).push(f);
     }
-    let done = 0;
-    for (const [d, files] of byDir) {
-      const remoteDir = d === '.' ? remoteRoot : `${remoteRoot}/${d}`;
-      await client.ensureDir(remoteDir);
-      for (const f of files) {
-        done++;
-        console.log(`  [${done}/${toUpload.length}] ${f.rel}`);
-        await client.uploadFrom(path.join(LOCAL_ROOT, f.rel), path.posix.basename(f.rel));
+    const batches = [...byDir.entries()];
+    const workers = Math.max(1, Math.min(parseConcurrency(process.env.FTP_CONCURRENCY), batches.length || 1));
+    const accessOpts = { host: FTP_HOST, user: process.env.FTP_USER, password: process.env.FTP_PASS, secure: false };
+
+    if (toUpload.length) {
+      const pool = [];
+      const free = [];
+      let done = 0;
+      try {
+        for (let i = 0; i < workers; i++) {
+          const c = new ftp.Client();
+          pool.push(c); // track before access() so a failed connection is still closed
+          await c.access(accessOpts);
+          free.push(c);
+        }
+        await runPool(batches, workers, async ([d, files]) => {
+          const c = free.pop();
+          try {
+            const remoteDir = d === '.' ? remoteRoot : `${remoteRoot}/${d}`;
+            await c.ensureDir(remoteDir);
+            for (const f of files) {
+              done++;
+              console.log(`  [${done}/${toUpload.length}] ${f.rel}`);
+              await c.uploadFrom(path.join(LOCAL_ROOT, f.rel), path.posix.basename(f.rel));
+            }
+          } finally {
+            free.push(c);
+          }
+        });
+      } finally {
+        pool.forEach((c) => c.close());
       }
     }
-    console.log(toUpload.length ? `Uploaded ${toUpload.length} file(s).` : 'Nothing to upload — remote already up to date.');
+    console.log(toUpload.length ? `Uploaded ${toUpload.length} file(s) (concurrency ${workers}).` : 'Nothing to upload — remote already up to date.');
+
+    // The main client was idle throughout the (possibly long) parallel upload
+    // on the pool connections above; a short host FTP idle-timeout could have
+    // silently dropped it. Re-establish it before prune/verify so those don't
+    // fail on a dead socket after a successful upload.
+    if (toUpload.length) {
+      await client.access(accessOpts);
+    }
 
     if (PRUNE) {
       for (const rel of stale) {
@@ -439,6 +534,21 @@ async function main() {
         await client.remove(`${remoteRoot}/${rel}`);
       }
       console.log(`Pruned ${stale.length} file(s).`);
+
+      let removedDirs = 0;
+      for (const d of emptyDirs) {
+        try {
+          await client.removeEmptyDir(`${remoteRoot}/${d}`);
+          console.log(`  removing empty dir ${d}/`);
+          removedDirs++;
+        } catch {
+          // RMD fails on a non-empty dir (a surviving file, or a PROTECTED file
+          // like .htaccess kept on the server) — expected; skip it.
+        }
+      }
+      if (removedDirs) {
+        console.log(`Removed ${removedDirs} empty director${removedDirs === 1 ? 'y' : 'ies'}.`);
+      }
     }
 
     // Post-deploy verification: confirm every file we uploaded landed on the

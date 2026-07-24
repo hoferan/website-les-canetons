@@ -4,21 +4,34 @@
 // regenerated on every run.
 import { execFileSync } from 'node:child_process';
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 
 const mount = process.cwd().split('\\').join('/');
 
 // Bundle JS/CSS first so app/assets/dist/ exists before the app/ -> dist/build/
-// copy below picks it up.
-execFileSync('npx', ['vite', 'build'], { stdio: 'inherit' });
+// copy below picks it up. Invoke Vite's bin directly with the current Node
+// executable rather than `npx`: on Windows `npx` is a .cmd shim that
+// execFileSync can't spawn without a shell (spawnSync npx ENOENT), so resolve
+// the installed vite bin from node_modules and run it — works on every OS.
+const require = createRequire(import.meta.url);
+const viteBin = path.join(path.dirname(require.resolve('vite/package.json')), 'bin', 'vite.js');
+execFileSync(process.execPath, [viteBin, 'build'], { stdio: 'inherit' });
 
-rmSync('dist/build', { recursive: true, force: true });
+// Recursive delete that tolerates Windows' intermittent ENOTEMPTY/EPERM when
+// removing large trees (e.g. dist/build/api/vendor's thousands of files): the
+// OS can still hold handles briefly (AV scanners, Docker bind-mount, async
+// unlink), so Node's maxRetries backs off and retries instead of hard-failing.
+const rmrf = (p) => rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+
+rmrf('dist/build');
 cpSync('app', 'dist/build', { recursive: true });
 
 // The raw JS/CSS source is superseded by the bundled output just copied
 // above (dist/build/assets/dist/) — the server never references it directly
 // anymore (see App\Assets), so don't ship dead source alongside the bundles.
-rmSync('dist/build/assets/js', { recursive: true, force: true });
-rmSync('dist/build/assets/css', { recursive: true, force: true });
+rmrf('dist/build/assets/js');
+rmrf('dist/build/assets/css');
 
 // Ship the numbered migrations so the server-side endpoint (dist/build/api/migrate.php)
 // can apply them. They live under dist/build/sql/migrations and are unreachable via
@@ -50,6 +63,8 @@ execFileSync(
     '/app',
     '-e',
     'COMPOSER_VENDOR_DIR=dist/build/vendor',
+    '-e',
+    'COMPOSER_CACHE_DIR=/app/.composer-cache',
     'composer:2',
     'install',
     '--no-dev',
@@ -85,6 +100,8 @@ execFileSync(
     `${mount}:/app`,
     '-w',
     '/app/dist/build',
+    '-e',
+    'COMPOSER_CACHE_DIR=/app/.composer-cache',
     'composer:2',
     'dump-autoload',
     '--no-dev',
@@ -97,13 +114,23 @@ rmSync('dist/build/composer.json');
 
 console.log('Built dist/build/ — ready to FTP upload.');
 
-// --- Build the Laravel API project (api/) into dist/build/api/ -----------
-console.log('\nBuilding api/ (Laravel)...');
-rmSync('dist/build/api', { recursive: true, force: true });
-cpSync('api', 'dist/build/api', { recursive: true });
-rmSync('dist/build/api/vendor', { recursive: true, force: true });
-rmSync('dist/build/api/node_modules', { recursive: true, force: true });
-rmSync('dist/build/api/.env', { force: true });
+// --- Build the Laravel API project (api/) into dist/build/api-laravel/ ----
+//
+// Deliberately NOT dist/build/api/: that path already holds the OLD app's PHP
+// endpoints (app/api/login.php, events.php, …, copied by the app/ -> dist/build/
+// cpSync above), which src/routes.php requires and which are the live backend
+// on every server. Production dispatch of /api/* into Laravel is a later
+// sub-project (see CLAUDE.md) — until it's wired, Laravel must live BESIDE those
+// endpoints, not on top of them. Building to dist/build/api/ would wipe them from
+// the artifact, and a --prune deploy would then delete them off the server,
+// 500ing every /api/* call (missing require). Keep the two trees separate.
+const laravelBuild = 'dist/build/api-laravel';
+console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
+rmrf(laravelBuild);
+cpSync('api', laravelBuild, { recursive: true });
+rmrf(`${laravelBuild}/vendor`);
+rmrf(`${laravelBuild}/node_modules`);
+rmSync(`${laravelBuild}/.env`, { force: true });
 
 execFileSync(
   'docker',
@@ -113,7 +140,9 @@ execFileSync(
     '-v',
     `${mount}:/app`,
     '-w',
-    '/app/dist/build/api',
+    `/app/${laravelBuild}`,
+    '-e',
+    'COMPOSER_CACHE_DIR=/app/.composer-cache',
     'composer:2',
     'install',
     '--no-dev',
@@ -123,4 +152,4 @@ execFileSync(
   { stdio: 'inherit' }
 );
 
-console.log('Built dist/build/api/ — ready to FTP upload alongside dist/build/.');
+console.log('Built dist/build/api-laravel/ — ready to FTP upload alongside dist/build/.');
