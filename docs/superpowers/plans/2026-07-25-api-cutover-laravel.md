@@ -28,7 +28,8 @@ Read these before starting. Each has bitten someone already.
 4. **Do not touch `api/.htaccess` or `api/public/.htaccess`.** Spec §6: they never reach a server, the root catch-all protects the tree, and delivering the `public/` grant would open staging `/api/*` to bots.
 5. **The Laravel test suite uses `laravel_api_test`** (`api/phpunit.xml`). `RefreshDatabase` drops every table, so it must never point at the shared `lescanetons` database.
 6. **A new JS or CSS entry file requires `docker compose restart assets`** before it appears in Vite's manifest.
-7. **Never use `abort(403)` or `abort(401)` in an API controller or middleware.** They raise a bare `HttpException`, which the error renderer deliberately does not catch, so the response is Laravel's native untranslatable shape. Throw `AuthorizationException` or `AuthenticationException` instead (or use `Gate::authorize()`). Verified against the running kernel during Task 1 — this is the exact trap that made the first version of Task 1's 403 renderer dead code.
+7. **A `reason` token whose French string interpolates MUST be given its `params`.** `i18n.js` renders `invalid_value` as `"doit être l'une des valeurs suivantes : {{allowed}}"`, and i18next does **not** blank a missing interpolation value — it emits the literal `{{allowed}}` to the user. So `invalid_value` is reserved for the `in` rule, which supplies `allowed`. Numeric/range failures (`gt`, `min`) map to `invalid_number`, a paramless token added for exactly this reason. Any new rule that needs a user-visible message gets its own explicit map entry; the unmapped fallback is a degraded last resort, not a safe default.
+8. **Never use `abort(403)` or `abort(401)` in an API controller or middleware.** They raise a bare `HttpException`, which the error renderer deliberately does not catch, so the response is Laravel's native untranslatable shape. Throw `AuthorizationException` or `AuthenticationException` instead (or use `Gate::authorize()`). Verified against the running kernel during Task 1 — this is the exact trap that made the first version of Task 1's 403 renderer dead code.
 
 ## Test commands
 
@@ -486,6 +487,57 @@ Expected: PASS, 8 tests.
 ```bash
 git add api/app/Http/Controllers/Api/AuthController.php api/tests/Feature/AuthTest.php
 git commit -m "fix(api): send invalid_credentials code so the login error translates"
+```
+
+---
+
+### Task 2b: A style gate for `api/`
+
+`phpcs.xml` scopes only `<file>app</file>`, so the Laravel tree is **entirely unlinted**. Pint is already a dependency but is wired into no npm script and no CI step, and `api/` carries ~15 pre-existing issues. Doing this now, rather than after the remaining Laravel tasks, is the point — otherwise inconsistency accumulates across every file they add.
+
+**Files:**
+- Modify: `package.json`, `.github/workflows/ci.yml`
+- Create: `tools/pint.mjs` (only if the Dockerised wrapper pattern needs it — check how `tools/php-lint.mjs` does it first and follow that pattern)
+
+- [ ] **Step 1: See the current state**
+
+Run: `docker compose exec -w /var/www/html/api-laravel web ./vendor/bin/pint --test`
+Expected: FAIL, listing roughly 15 files.
+
+- [ ] **Step 2: Fix them**
+
+Run: `docker compose exec -w /var/www/html/api-laravel web ./vendor/bin/pint`
+Then re-run `--test` and expect PASS.
+
+Review the diff before committing — Pint reformats, and you want to see nothing surprising in files this plan has already touched.
+
+- [ ] **Step 3: Add npm scripts**
+
+In `package.json`, following the naming of the existing `lint:php` / `fix` scripts:
+
+```json
+"lint:api": "docker compose exec -T -w /var/www/html/api-laravel web ./vendor/bin/pint --test",
+"fix:api": "docker compose exec -T -w /var/www/html/api-laravel web ./vendor/bin/pint"
+```
+
+Add `lint:api` to the `check` chain, and `fix:api` to the `fix` chain.
+
+**Check first whether `npm run check` must work without Docker** (a Claude Code web session has no daemon — see CLAUDE.md). If the other PHP scripts fall back to a local binary via `tools/php-in-docker.mjs`, mirror that pattern instead of calling `docker compose` directly, or `check` will break in web sessions.
+
+- [ ] **Step 4: Add it to CI**
+
+Add a step running `npm run lint:api` alongside the existing lint jobs in `.github/workflows/ci.yml`. CI has no compose stack, so this must use whatever mechanism the other PHP lint step uses there — read that job before writing this one.
+
+- [ ] **Step 5: Verify**
+
+Run: `npm run lint:api`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add package.json .github/workflows/ci.yml api/
+git commit -m "build(api): lint the Laravel tree with Pint in check and CI"
 ```
 
 ---
@@ -2996,7 +3048,7 @@ class ResponseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'eventId' => ['required', 'integer', 'gt:0'],
+            'eventId' => ['required', 'integer', 'gt:0'], // gt -> invalid_number (paramless)
             'participation' => ['required', 'in:' . implode(',', self::ANSWERS)],
         ];
     }
@@ -3342,6 +3394,7 @@ class ApiErrorVocabularyTest extends TestCase
     /** Every reason token App\Exceptions\ApiError can emit. */
     private const REASONS = [
         'required', 'too_long', 'invalid_format', 'invalid_type', 'invalid_value',
+        'invalid_number',
     ];
 
     /** Every code any controller can emit. */
