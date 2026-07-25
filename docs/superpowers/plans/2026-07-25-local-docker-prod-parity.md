@@ -941,16 +941,35 @@ services:
       - ./dist/overlay/docker/.htaccess:/var/www/html/.htaccess:ro
       - ./config/config.docker.php:/var/www/html/config.php:ro
       - vendor:/var/www/html/vendor:ro
-      # App\AutoMigrator (auto_migrate => true) applies these on the first
-      # request, exactly as on a real server — which is why there is no longer a
-      # `migrate` service.
+      # In the document root because dist/build/ ships them there too
+      # (tools/build.mjs) and App\AutoMigrator resolves them as
+      # dirname(__DIR__)/sql/migrations. The entrypoint applies them before
+      # Laravel's, so AutoMigrator finds nothing pending on the first request —
+      # same code path as production, just already satisfied.
       - ./sql/migrations:/var/www/html/sql/migrations:ro
+      # OUTSIDE the document root: dist/build/ does not ship tools/, so putting
+      # it under /var/www/html would break the shape this mount list exists to
+      # preserve. The entrypoint runs /srv/tools/migrate.php; the image
+      # symlinks /srv/app/src -> /var/www/html/src for that script's relative
+      # require of App\Migrator.
+      - ./tools:/srv/tools:ro
       # The Laravel project lands at api-laravel/, not api/: the document root
       # already holds the old app's api/ endpoints. tools/build.mjs uses the
       # same name for the same reason. The URL path /api/* dispatches here.
       - ./api:/var/www/html/api-laravel
       - ./docker/api/env.docker:/var/www/html/api-laravel/.env:ro
       - api_vendor:/var/www/html/api-laravel/vendor
+    # ONLY the old app's four DB_* keys, which tools/migrate.php reads from the
+    # environment. Laravel deliberately gets nothing here — its configuration
+    # comes from the .env file mounted above, which is the whole point (it
+    # exercises Laravel's real dotenv path and mirrors how each server owns its
+    # own .env). `php api-laravel/artisan` loads it natively from the project
+    # base path. DB_HOST is the one key both tools read, and both want `db`.
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASS: root
+      DB_NAME: lescanetons
     depends_on:
       deps:
         condition: service_completed_successfully
@@ -973,8 +992,15 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    # -h 127.0.0.1, NOT localhost. Against `localhost` mysqladmin uses the unix
+    # socket, which succeeds against MariaDB's temporary --skip-networking init
+    # server while TCP is still unreachable and the schema is unloaded — a
+    # reproducible false positive that can release `web` too early (observed:
+    # PASS at t=4s with zero tables, fail at t=5s, PASS for real at t=6s).
+    # Forcing TCP makes the check mean what `depends_on: service_healthy` needs
+    # it to mean.
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -proot || exit 1"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 20
