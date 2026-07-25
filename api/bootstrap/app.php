@@ -8,6 +8,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -50,9 +52,34 @@ return Application::configure(basePath: dirname(__DIR__))
         // AuthenticationException above need no such treatment —
         // prepareException() leaves both untouched.
         //
-        // This stays narrower than "any 403": abort(403) throws a plain
-        // HttpException, which is deliberately not covered here.
+        // This stays narrower than "any 403". Three other paths reach a 403
+        // WITHOUT becoming an AccessDeniedHttpException, and none is covered
+        // here — each yields a bare HttpException(403):
+        //   - abort(403);
+        //   - Gate::denyWithStatus(403) / Response::denyWithStatus(403), i.e.
+        //     an AuthorizationException that hasStatus();
+        //   - OriginMismatchException.
+        // The plan recommends Gate::authorize() as the safe idiom, and it is —
+        // but only for status-less denials, which is the arm that becomes an
+        // AccessDeniedHttpException. Attach a status and it silently leaves the
+        // contract.
         $exceptions->render(fn (AccessDeniedHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::forbidden($e)
+            : null);
+
+        // MethodNotAllowedHttpException passes through prepareException()
+        // untouched, so it can be type-hinted directly.
+        $exceptions->render(fn (MethodNotAllowedHttpException $e, Request $request) => $request->is('api/*')
+            ? ApiError::methodNotAllowed($e)
+            : null);
+
+        // 419/CSRF. Same prepareException() trap as the 403 above, but worse:
+        // TokenMismatchException is rewritten into a BARE HttpException(419),
+        // not a dedicated subclass, so there is no precise type left to hint.
+        // Hence the base type plus a status check inside invalidSession(),
+        // which returns null for every other HttpException and falls through.
+        // Registered last so the specific subclasses above always win.
+        $exceptions->render(fn (HttpException $e, Request $request) => $request->is('api/*')
+            ? ApiError::invalidSession($e)
             : null);
     })->create();
