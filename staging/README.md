@@ -51,11 +51,12 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the 3 server-owned f
    `deployment.json` marker to the site root recording the deployed commit.
    **Manual fallback:** `npm run deploy:test` / `deploy:qa` / `deploy:prod` do the
    same over FTP from your machine (creds from a git-ignored `.env`, see
-   `.env.example`). Flags: `-- --dry-run` (preview new/changed/unchanged/stale —
-   run before pruning), `-- --prune` (delete remote plain files the build no
-   longer produces; dirs/symlinks and the server-owned files are always kept),
-   `-- --force` (re-upload everything). WinSCP hand-copy remains available for
-   recovery.
+   `.env.example`). Flags: `-- --dry-run` (preview the full plan — new/changed/unchanged/stale —
+   without changing anything), `-- --force` (re-upload everything),
+   `-- --force-delete` (override the mass-delete safety brake after checking
+   the plan), `-- --no-delete` (skip deletion once). Deletion of stale
+   files/dirs is part of every deploy by default. WinSCP hand-copy remains
+   available for recovery.
 3. **Always exclude the three server-owned files** from every upload/promotion
    so you never overwrite a server's `.htaccess`/`robots.txt`/`config.php`.
    WinSCP file mask: `| .htaccess; robots.txt; config.php`.
@@ -168,7 +169,7 @@ deploy workflow:
   a different commit.
 - **Deploy TEST** (`deploy-test.yml`), **Deploy QA** (`deploy-qa.yml`), and
   **Deploy PROD** (`deploy-prod.yml`) are independent `workflow_dispatch`
-  workflows with `dry_run`/`prune`/`force` boolean inputs, all calling one
+  workflows with `dry_run`/`force` boolean inputs, all calling one
   shared reusable workflow (`_deploy.yml`) that does the actual
   checkout/build/deploy/summary — so the three stay in sync instead of
   drifting independently. Dispatch any of them by picking a tag from GitHub's
@@ -183,10 +184,10 @@ deploy workflow:
   workflows — there is no separate rollback mechanism or run-history lookup.
 - Each `test`/`qa`/`prod` Environment needs `FTP_HOST`, `FTP_USER`, `FTP_PASS`
   and its own `FTP_DIR` secret (uniform name, scoped per Environment). The
-  `deploy.mjs` path guard refuses any dir that does not match the env name.
-- Each run's summary shows which flags were used, `deploy.mjs`'s own
-  "N new, M changed, K unchanged, J stale" line, and the full deploy log in a
-  collapsible section.
+  deploy CLI's path guard refuses any dir that does not match the env name.
+- Each run's summary shows which flags were used, the deploy CLI's final
+  summary line (`... deploy done in ... — N uploaded, D deleted, ...`), and the
+  full deploy log in a collapsible section.
 - A `deployment.json` at each site root (web-readable, e.g.
   `https://<prod-host>/deployment.json`) records the deployed commit, ref (the
   tag name, for TEST/QA/PROD manual deploys), time, and CI run URL.

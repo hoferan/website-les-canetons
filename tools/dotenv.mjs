@@ -1,6 +1,6 @@
 // Minimal .env loader (no dependency): reads KEY=VALUE lines from a git-ignored
 // .env into process.env without overwriting already-set vars. Shared by the
-// deploy script (tools/deploy.mjs) and the overlay builder (build-overlays.mjs).
+// deploy CLI (tools/deploy/cli.mjs) and the overlay builder (build-overlays.mjs).
 import { existsSync, readFileSync } from 'node:fs';
 
 export function loadDotEnv(file = '.env') {

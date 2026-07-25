@@ -5,7 +5,7 @@ config.php
 !/.env.example
 .superpowers
 .tmp
-public
+/public/
 
 # HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
 # offline; usernames exposed). The .htaccess that references them IS tracked.
@@ -19,6 +19,9 @@ prod-*.sql
 # dependencies (dev-only tooling; never deployed)
 /node_modules/
 /vendor/
+
+# Persistent Composer download cache reused across builds (tools/build.mjs)
+/.composer-cache/
 
 # Laravel API (api/) — dependencies & generated runtime artifacts. api/ ships
 # its own .gitignore too (Composer vendor/, .env, storage/framework caches,
