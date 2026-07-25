@@ -959,17 +959,14 @@ services:
       - ./api:/var/www/html/api-laravel
       - ./docker/api/env.docker:/var/www/html/api-laravel/.env:ro
       - api_vendor:/var/www/html/api-laravel/vendor
-    # ONLY the old app's four DB_* keys, which tools/migrate.php reads from the
-    # environment. Laravel deliberately gets nothing here — its configuration
-    # comes from the .env file mounted above, which is the whole point (it
+    # No `environment:` block, deliberately. Laravel's configuration comes from
+    # the .env mounted above — that is the whole point of Task 5, since it
     # exercises Laravel's real dotenv path and mirrors how each server owns its
-    # own .env). `php api-laravel/artisan` loads it natively from the project
-    # base path. DB_HOST is the one key both tools read, and both want `db`.
-    environment:
-      DB_HOST: db
-      DB_USER: root
-      DB_PASS: root
-      DB_NAME: lescanetons
+    # own .env. Setting DB_HOST here would defeat it: Dotenv::createImmutable
+    # does not overwrite real process environment variables, so a compose
+    # DB_HOST silently wins over the file and that .env line becomes dead
+    # config. The old app's four DB_* keys are instead scoped inline to the one
+    # command that reads them, in docker/web/entrypoint.sh.
     depends_on:
       deps:
         condition: service_completed_successfully
