@@ -1114,7 +1114,9 @@ Expected: `0`.
 
 - [ ] **Step 4: Confirm the old app's dynamic features are broken as designed**
 
-Nothing to run — the smoke script's 8th check covers this. An earlier draft of this step used `curl -s -o /dev/null -w "%{http_code}" .../api/contact -X POST` and expected `404`, but that command cannot verify what it claims: `-o /dev/null` discards the body and *both* apps return 404, so it can't tell which one answered. The smoke check asserts 404 **and** a JSON content-type, which is what actually distinguishes Laravel's 404 from the old app's.
+Nothing to run — the smoke script's 8th check covers this.
+
+An earlier draft of this step used `curl -s -o /dev/null -w "%{http_code}" .../api/contact -X POST` and expected `404`. It would in fact have caught a dispatch failure, but not for the reason given, and it could not confirm the success case. `app/src/routes.php:75` registers `contact` under `/api/`, so if dispatch failed the old app would run `app/api/contact.php`, which rejects the empty POST body and returns **400** JSON — not the 404 the draft assumed, and not HTML either (`app/api/contact.php:8` sets a JSON content-type first). So **status** is the discriminator, 400 versus 404; and `-o /dev/null` discarded the body, leaving no way to confirm a 404 came from Laravel rather than from an Apache error document. The smoke check asserts both, and names the 400 case explicitly.
 
 This is the accepted cost recorded in the spec's §6, not a bug — `/api/contact` now goes to Laravel, which does not implement it until sub-project 2a-ii.
 
