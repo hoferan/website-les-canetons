@@ -32,6 +32,9 @@ app's API layer and migration system.
 - **Public pages and the auth page** — sub-project 4, undecided.
 - **The `.env` shape drift-check** — deferred again; see §9.
 - **Reworking the Laravel tree's `.htaccess`** — deliberately left alone; see §6.
+- **Renaming `api-laravel/` to `api/`** — a follow-up PR once this cutover is
+  verified on PROD; see §12. The end goal is that name, but the rename carries
+  its own site-wide-500 hazard and must not share a deploy with this one.
 
 ## Decisions
 
@@ -47,6 +50,8 @@ Each of these was chosen explicitly, with alternatives considered.
 | Port style | Eloquent + Laravel validation + Laravel Mail, with a custom error renderer | Lift-and-shift the `App\` classes; adopt Laravel's native 422 shape |
 | Old migrations | Delete `sql/migrations/` and the old migrator entirely (§7) | Keep them, applied by `AutoMigrator` on first request |
 | Laravel server config | Hand-provisioned `.env`, added to `PROTECTED` (§9) | Build the drift-check now; render `.env` at deploy time |
+| Bot protection | Keep self-hosted Altcha; drop `used_challenges` for `Cache::add()` (§1) | Cloudflare Turnstile; honeypot + rate limiting only |
+| `api-laravel/` → `api/` | Follow-up PR after PROD verification (§12) | Same PR as the cutover; keep the name permanently |
 
 ## 1. Scope of the port
 
@@ -62,8 +67,31 @@ FormRequest per write endpoint, and the capability matrix from 2a-i
 
 Two pieces of the old app move rather than get rewritten:
 
-- **`App\Altcha` → `App\Support\Altcha`, ported as-is.** Proof-of-work has no
-  Laravel equivalent, and the HMAC verification is genuinely ours.
+- **`App\Altcha` → `App\Support\Altcha`, ported as-is.** Laravel ships no bot
+  protection for public forms at all — no CAPTCHA, no proof-of-work. The
+  alternatives are external services (Turnstile, hCaptcha) or weaker packages
+  that only duplicate the honeypot this code already has *in addition to*
+  Altcha. This implementation is self-hosted, Altcha-wire-compatible, and
+  deliberately fail-closed to mitigate advisory GHSA-82w8-65qw-gch6 in the
+  upstream PHP library, so replacing it would be a downgrade.
+- **`used_challenges` is dropped; the replay guard moves to Laravel's cache.**
+  `ChallengeRepository::consume()` is an atomic "insert if absent, report
+  whether it was new", plus a manual prune of day-old rows. That is exactly
+  `Cache::add($key, true, $ttl)`, which is atomic, returns `false` when the key
+  exists, and expires by itself so the prune disappears. The TTL comes from the
+  challenge's own `?expires=<unixts>` in its salt. Laravel's `cache` table
+  already exists from 2a-i, so this replaces a bespoke table with the
+  framework's own infrastructure.
+
+  Two conditions: it requires the **database** cache store, not `file` or
+  `array`, so the guard is shared and durable; and `artisan cache:clear` would
+  clear outstanding guards, permitting one replay inside a challenge's short
+  remaining TTL by an attacker holding the exact payload. Both are acceptable;
+  neither is silent.
+
+  Dropping the table needs a **new** migration. `2026_07_23_000005_create_used_challenges_table.php`
+  has already run on all three servers and is recorded in Laravel's
+  `migrations` table by filename, so it stays where it is.
 - **`App\Mailer::sendConfirmation` → a Mailable** over the same SMTP settings.
 
 The xlsx export keeps `shuchkin/simplexlsxgen`, added to `api/composer.json`
@@ -79,8 +107,8 @@ in a rewrite. Every one needs a test.
 - **Altcha fails closed on an empty or `CHANGE_ME` HMAC secret.** The example
   secret is public, so any challenge signed with it is forgeable. A
   half-configured server must reject, never accept.
-- **The single-use replay guard** (`ChallengeRepository::consume($signature)`)
-  runs before any insert or mail.
+- **The single-use replay guard runs before any insert or mail**, now via
+  `Cache::add()` rather than `used_challenges`.
 - **A mail failure must not fail the request.** The reservation is already
   stored; log the error and still return 201.
 - **`GET /api/events` annotates only the caller's own response.** There is
@@ -117,8 +145,13 @@ silently to `"Une erreur est survenue"` and nobody notices.
 
 ## 3. Old app removal
 
-Delete the eight handlers in `app/api/` and the route generation that requires
-them in `app/src/routes.php`. Then delete only what becomes unreachable:
+**The end goal is that `app/api/` no longer exists**, and this sub-project
+reaches it: all eight handlers and the route generation that requires them in
+`app/src/routes.php` are deleted, leaving no old API layer behind. What remains
+after this PR is only the *directory name* of the Laravel tree, addressed in
+§12.
+
+Then delete only what becomes unreachable:
 `App\Altcha`, `App\Mailer`, `App\Http\JsonResponse`, all of `App\Dto`, all of
 `App\Validation`, and the `Event`, `Response` and `Challenge` repositories —
 plus their unit and integration tests.
@@ -227,8 +260,12 @@ Two prerequisites, in this order:
    path, so their `signups.id` is `int(10) UNSIGNED`; the Laravel create branch
    uses `$table->id()`, which is `bigint unsigned`. A fresh local database
    would therefore diverge from every server. Change it to
-   `$table->increments('id')`, and audit `used_challenges` the same way — its
-   adopt branch converts the primary key.
+   `$table->increments('id')`.
+
+   `signups` is now the only table needing this. `used_challenges` would have
+   needed the same audit, but §1 drops it — its create-or-adopt migration still
+   runs, then the new drop migration removes the table, so any divergence in
+   between is irrelevant.
 
 Prerequisite 2 is the reason the previous session kept these files. Skipping it
 would silently forfeit the local/prod schema parity that #50 exists to provide.
@@ -322,6 +359,33 @@ instruction. It is currently untracked.
 - **`sql/migrations` is retired, not preserved.** The handover assumes the old
   migrator stays.
 
+## 12. Follow-up: renaming `api-laravel/` to `api/`
+
+Out of scope here, but specified now because the hazard is non-obvious and
+whoever does it will not rediscover it.
+
+`api-laravel` was chosen deliberately: `^api(/|$)` **cannot** match
+`api-laravel/…`, because the hyphen defeats `(/|$)`. That is the only reason
+the dispatch rewrite does not loop. Rename the directory and
+`RewriteRule ^api(/|$) api/public/index.php [L]` matches its own substitution;
+`[L]` ends only the current pass, so the ruleset re-runs against the new path,
+matches again, and Apache aborts at ten internal redirects — a **500 on every
+`/api/*` request**. `[END]` would prevent it, but §4 rules `[END]` out.
+
+**The fix is one line:** add `RewriteCond %{ENV:REDIRECT_STATUS} ^$` to the
+dispatch rule, so the second pass no longer matches. This is the same guard the
+front controller already depends on on this FastCGI host.
+
+Two other things that follow-up PR must handle:
+
+- **The mirror churn.** Renaming deletes all of `api-laravel/` — thousands of
+  files under `vendor/` — and re-uploads them as `api/`. That will trip the
+  deploy CLI's mass-delete brake (>50 files and >20% of the tree). It needs a
+  reviewed `-- --dry-run` followed by `-- --force-delete`, which is precisely
+  why it does not belong in the cutover's deploy.
+- **Nothing user-facing changes.** The public URL is already `/api/*`; only the
+  internal directory name moves.
+
 ## Risks
 
 | Risk | Mitigation |
@@ -333,3 +397,6 @@ instruction. It is currently untracked.
 | A server's `.env` deleted by `--relist` | Added to `PROTECTED` (§9) |
 | Config-shape check refusing every deploy | Hand-edit all three `config.php` first (§7) |
 | Members' area broken by the dual session | Bridge (§5), verified by hand on TEST |
+| Replay guards lost to `artisan cache:clear` | Accepted: one replay inside a short TTL, needing the exact payload (§1) |
+| Cache store misconfigured to `file`/`array`, splitting the replay guard | `.env` provisioning checklist pins the database store (§9) |
+| Rewrite loop when `api-laravel/` is later renamed | Specified with its fix in §12, out of scope here |
