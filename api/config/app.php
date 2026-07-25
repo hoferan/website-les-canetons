@@ -29,6 +29,11 @@ return [
 
     'migrate_token' => env('MIGRATE_TOKEN'),
 
+    // Shared secret signing Altcha proof-of-work challenges. Empty or the
+    // literal CHANGE_ME makes the endpoint fail closed (503): the example
+    // value is public, so challenges signed with it are forgeable.
+    'altcha_secret' => env('ALTCHA_HMAC_SECRET', ''),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
