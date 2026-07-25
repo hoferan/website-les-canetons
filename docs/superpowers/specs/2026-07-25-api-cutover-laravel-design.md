@@ -66,9 +66,41 @@ Each of these was chosen explicitly, with alternatives considered.
 
 ## 1. Scope of the port
 
-One PR, one cutover. No new DB migrations: 2a-i's guarded migrations already
-cover all seven tables, so this is a code-only change — which materially lowers
-its risk.
+One PR, one cutover.
+
+> **CORRECTION — found during implementation (Task 19).** This section
+> originally claimed "no new DB migrations: 2a-i's guarded migrations already
+> cover all seven tables, so this is a code-only change". That was wrong on both
+> counts.
+>
+> **Laravel's migrations have never run on any server.** `tools/dbmigrate.mjs`
+> posts to `/api/migrate`, which on a server still reaches the *old* app's
+> `app/api/migrate.php` → `App\Migrator` → `sql/migrations/*.sql` only.
+> `api-laravel/` is uploaded as files, but nothing has ever invoked
+> `artisan migrate` there. Verified by tracing both the deploy tooling and the
+> generated per-env `.htaccess`, which dispatches `/api/*` into Laravel for the
+> **docker** target only.
+>
+> So this is not a code-only change. At the cutover, the first
+> `npm run dbmigrate:<env>` applies every Laravel migration to that server for
+> the first time: the create-or-adopt ones (taking the adopt branch), Laravel's
+> own `sessions`/`cache`/`jobs` tables, and the `used_challenges` drop.
+>
+> **Two consequences that must be managed deliberately:**
+>
+> 1. **A deployment window where `/api/*` is dispatched but Laravel's tables do
+>    not exist.** Sanctum sessions need `sessions`; the Altcha replay guard needs
+>    `cache`. Between the deploy and the migration step, login and signup fail.
+>    Public pages are unaffected. See §10.
+> 2. **An ordering hazard on `used_challenges`.** The drop migration and the
+>    deletion of `app/api/signups.php` must land together. The old handler's
+>    `ChallengeRepository::consume()` opens with an unguarded
+>    `DELETE FROM used_challenges`, and `App\Database` sets
+>    `MYSQLI_REPORT_STRICT`, so a missing table throws and 500s the live signup
+>    form. In this plan they *do* land together — the same deploy carries the
+>    dispatch change and the handler deletion — but nothing enforces it, so
+>    running `artisan migrate` on a server ahead of the dispatch overlay would
+>    break signups.
 
 New Eloquent models `ContactMessage`, `Signup`, `UsedChallenge`, `Event`,
 `Response` join the existing `User` and `Instrument`. Five controllers, a

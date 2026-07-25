@@ -4626,7 +4626,24 @@ In order. The first three are hand steps on each server and must precede the dep
 2. **Place `api-laravel/.env`** on each server from `api/.env.example` (Task 28).
 3. **Trim each `config.php`** — remove `auto_migrate` and `migrate.token` (Task 27). Until this is done the deploy refuses with exit 2.
 4. **Merge to `main`** — auto-deploys TEST.
-5. **Run the migrations:** `npm run dbmigrate:test`.
+5. **Run the migrations immediately:** `npm run dbmigrate:test`.
+
+   **This is the first time Laravel's migrations have ever run on a server** (see
+   the spec's §1 correction). Between step 4 and this step, `/api/*` is
+   dispatched into Laravel but Laravel's `sessions` and `cache` tables do not yet
+   exist — so **login and signup fail during that window**, while public pages
+   are unaffected. Keep the gap short and expect it; do not debug it as a
+   cutover bug.
+
+   Run `-- --dry-run` first and read the pending list: it should show the
+   create-or-adopt migrations, Laravel's `sessions`/`cache`/`jobs` tables, and
+   the `used_challenges` drop. Task 17b made `--dry-run` genuinely apply nothing;
+   before that fix it would have applied for real.
+
+   **Measure the window on TEST** and decide whether it is acceptable for PROD
+   before promoting. If it is not, the mitigation is a two-step deploy —
+   dispatch only `/api/migrate` first, migrate, then deploy the wildcard — which
+   trades the combined-cutover decision for a shorter outage.
 6. **Verify TEST by hand** using the Task 31 step 4 checklist against `https://test.lescanetons.org`.
 7. **Tag** via `tag-release.yml`, then dispatch `deploy-qa.yml`; verify; then `deploy-prod.yml`.
 8. **Rollback if needed:** redeploy the previous tag. `app/.htaccess` and the old handlers are restored as a set — never promote one without the other.
