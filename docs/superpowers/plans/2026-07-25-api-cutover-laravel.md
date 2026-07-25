@@ -2080,9 +2080,13 @@ class SignupStoreTest extends TestCase
     {
         $response = $this->postJson('/api/signups', $this->payload(['menus' => ['lobster']]));
 
+        // invalid_format, NOT invalid_value: the closure-validator path cannot
+        // attach params, and invalid_value's French interpolates {{allowed}}.
+        // invalid_format is also the accurate token, since normalizeMenus()
+        // rejects on count (empty, > MAX_GUESTS) as well as on value.
         $response->assertStatus(400)->assertJsonPath('fields.0', [
             'field' => 'menus',
-            'reason' => 'invalid_value',
+            'reason' => 'invalid_format',
         ]);
         $this->assertDatabaseCount('signups', 0);
     }
@@ -2850,7 +2854,7 @@ Add to `EventController`:
         $id = (int) $request->input('id', 0);
         if ($id <= 0) {
             return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'id', 'reason' => 'invalid_value'],
+                ['field' => 'id', 'reason' => 'invalid_number'],
             ]);
         }
 
@@ -2871,7 +2875,7 @@ Add to `EventController`:
         $id = (int) $raw;
         if ($id <= 0) {
             return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'id', 'reason' => 'invalid_value'],
+                ['field' => 'id', 'reason' => 'invalid_number'],
             ]);
         }
 
@@ -3248,7 +3252,7 @@ class ResponseSummaryTest extends TestCase
     {
         $this->actingAs($this->admin())->getJson('/api/responses?eventId=0')
             ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'eventId', 'reason' => 'invalid_value']);
+            ->assertJsonPath('fields.0', ['field' => 'eventId', 'reason' => 'invalid_number']);
     }
 }
 ```
@@ -3283,7 +3287,7 @@ Add to `ResponseController`:
         $eventId = (int) $raw;
         if ($eventId <= 0) {
             return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'eventId', 'reason' => 'invalid_value'],
+                ['field' => 'eventId', 'reason' => 'invalid_number'],
             ]);
         }
 
