@@ -199,8 +199,20 @@ Both files live in the tracked `api/` tree — `api/.htaccess` (deny-all) and
 inherited restriction rather than adding one. See the correction below before
 assuming either is safe to activate on a real server.
 
+**Confirmed during implementation:** the 403 described above is exactly what
+happens — verified against the running stack, where `/api-laravel/.env`,
+`/api-laravel/vendor/autoload.php` and even a nonexistent path under the tree
+all return 403 (`authz_core` `AH01630`). Authorization is evaluated during
+Apache's directory walk, *before* mod_rewrite's per-directory rules run in the
+fixup phase, so the old app's catch-all never sees these requests. (An
+intermediate draft of the implementation plan claimed the opposite and was
+wrong.) The deny-all is the load-bearing protection here, not a second layer.
+
 **Correction, established during implementation:** `api/.htaccess` was not new —
 commit `e904b92` already added it — and neither file actually reaches a server.
+Given the paragraph above, that is worse than it first appeared: on TEST, QA and
+PROD the Laravel tree has no protection *and* no catch-all backstop for paths
+resolving to real files.
 The deploy CLI protects the basenames `.htaccess` / `robots.txt` / `config.php` /
 `.htpasswd` **at any depth** (`tools/deploy/preflight.mjs:16`, applied by
 basename in `local.mjs:24` and `sync.mjs:51,79`), though the documented intent is

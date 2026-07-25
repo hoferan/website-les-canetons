@@ -5,11 +5,15 @@
 # though they are physically web-accessible; public/.htaccess grants access
 # back for the one subdirectory that is meant to be reachable.
 #
-# Defense in depth, not the only line: the old app's front-controller catch-all
-# (app/.htaccess) already rewrites every non-/assets/ URL to index.php before
-# authorization runs, so a direct hit on /api-laravel/.env is answered by the
-# old app's 404 today and never reaches this file. This matters once that
-# catch-all changes — which sub-projects 2a-ii and 3 will do.
+# This is the load-bearing line, not a second layer behind the front-controller
+# catch-all. Authorization is evaluated during Apache's directory walk, BEFORE
+# mod_rewrite's per-directory rules run in the fixup phase — so the catch-all in
+# app/.htaccess never gets the chance to rewrite a request that resolves under
+# this tree. Verified against the local stack: /api-laravel/.env,
+# /api-laravel/vendor/autoload.php and even a nonexistent path all return 403
+# (authz_core AH01630), not the old app's 404.
+#
+# Which makes the NOTE below the important one: this file reaches no server.
 #
 # NOTE: this file does NOT currently reach any server. The deploy CLI treats
 # ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs
