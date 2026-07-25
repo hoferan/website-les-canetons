@@ -53,7 +53,7 @@ export async function downloadState(client, remoteRoot, accessOpts) {
   } catch {
     return null;
   } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
 
@@ -72,6 +72,6 @@ export async function uploadState(client, remoteRoot, accessOpts, state) {
       reconnector(client, accessOpts)
     );
   } finally {
-    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
 }
