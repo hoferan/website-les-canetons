@@ -7,19 +7,26 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ResponseRequest;
 use App\Models\Event;
 use App\Models\Response;
+use App\Models\User;
+use App\Support\Capability;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 /**
- * /api/responses — the members' RSVP write.
+ * /api/responses — the members' RSVP write and the admin's attendance summary.
  *
- * A straight port of the legacy app/api/responses.php POST branch:
+ * A straight port of the legacy app/api/responses.php. The two verbs on this one
+ * path have OPPOSITE access rules, and that asymmetry is the whole point:
  *
  *   POST /api/responses — `respond` (user/moderator). A member records THEIR
  *                         OWN answer for one event.
+ *   GET  /api/responses — `view_summary` (admin). Every eligible member's answer
+ *                         for one event.
  *
  * The capability matrix is deliberately not a hierarchy (see
- * App\Support\Capability): `admin` must be refused here — the Team Direction
- * organises events but does not vote in them.
+ * App\Support\Capability): `admin` must be refused by the POST — the Team
+ * Direction organises events but does not vote in them — and `user`/`moderator`
+ * must be refused by the GET, which exposes the whole band's answers.
  *
  * There is deliberately no respond-on-behalf-of path, no bulk write and no
  * deletion: the legacy API had none, and each would be a new way for one member
@@ -71,5 +78,101 @@ class ResponseController extends Controller
         );
 
         return response()->json(['ok' => true], 201);
+    }
+
+    /**
+     * GET /api/responses?eventId=N — the admin's attendance summary for one
+     * event: [{username, instrument, response}, ...].
+     *
+     * A member who has NOT answered is still listed, with response: null —
+     * inscriptions_admin.js derives both "Convoqués" and "Pas de réponse" from
+     * the length of this list, so an omitted row would silently shrink the roll
+     * call instead of showing up as a pending answer.
+     *
+     * Deliberately NOT a 404 for an unknown eventId: the legacy GET never
+     * checked the event's existence (only the POST did) and its LEFT JOIN simply
+     * matched nothing, so an unknown id lists everyone as unanswered. Changing
+     * that would be a user-visible behaviour change, out of scope for this port.
+     *
+     * Validation is hand-rolled rather than a FormRequest because the two
+     * failures the legacy endpoint distinguished — absent vs unusable — map onto
+     * different reason tokens, and because ?eventId= arrives in the query string
+     * of a GET.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $raw = $request->query('eventId');
+        if ($raw === null || $raw === '') {
+            return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
+                ['field' => 'eventId', 'reason' => 'required'],
+            ]);
+        }
+
+        // A plain (int) cast, as the old endpoint used: non-numeric text becomes
+        // 0 and is refused below. Deliberately not a stricter numeric check —
+        // this route is admin-only and tightening it is a behaviour change the
+        // port does not need.
+        $eventId = (int) $raw;
+        if ($eventId <= 0) {
+            return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
+                ['field' => 'eventId', 'reason' => 'invalid_value'],
+            ]);
+        }
+
+        return response()->json($this->summary($eventId));
+    }
+
+    /**
+     * The summary rows, reproducing ResponseRepository::allForEvent()'s single
+     * query — one statement, not a per-member lookup.
+     *
+     * WHICH MEMBERS ARE LISTED is derived from the capability matrix, never
+     * hardcoded: only roles holding `respond` belong in an attendance roll call,
+     * so the admin is absent. Hardcoding ['user', 'moderator'] here would make
+     * the Team Direction show up as "Pas de réponse" on every event the moment a
+     * new non-voting role appeared. An empty role list needs no special case —
+     * whereIn([]) matches nothing.
+     *
+     * The event id lives in the LEFT JOIN's ON clause, not in a WHERE: as a
+     * WHERE it would drop every member who has not answered, which is precisely
+     * the set the summary exists to show.
+     *
+     * ORDER BY COALESCE(answer, '') DESC, username — the legacy ordering,
+     * reproduced rather than improved. On the two enum values it sorts
+     * participate, then notparticipate, then the unanswered (COALESCE'd to ''),
+     * each alphabetical by username.
+     *
+     * @return array<int, array{username: string, instrument: ?string, response: ?string}>
+     */
+    private function summary(int $eventId): array
+    {
+        return User::query()
+            ->leftJoin('instruments', 'instruments.id', '=', 'users.instrument_id')
+            ->leftJoin('responses', function ($join) use ($eventId) {
+                $join->on('responses.user_id', '=', 'users.id')
+                    ->where('responses.event_id', '=', $eventId);
+            })
+            ->whereIn('users.role', Capability::rolesWith('respond'))
+            ->orderByRaw("COALESCE(responses.answer, '') DESC")
+            ->orderBy('users.username')
+            ->get([
+                'users.username',
+                'instruments.name as instrument',
+                'responses.answer as response',
+            ])
+            // Shaped explicitly, in the legacy SELECT's key order: the joined
+            // rows are hydrated as User models, so returning them raw would ship
+            // the model's other attributes — and this list goes to the admin
+            // screen, where an extra column is a leak. instrument and response
+            // stay nullable; inscriptions_admin.js switches on response and
+            // treats anything else as "Pas de réponse".
+            ->map(fn (User $row): array => [
+                'username' => (string) $row->username,
+                'instrument' => $row->instrument === null ? null : (string) $row->instrument,
+                'response' => $row->response === null ? null : (string) $row->response,
+            ])
+            // ->all(), because an empty collection serialises as {} through some
+            // paths and inscriptions_admin.js calls .filter() on the parsed body.
+            ->all();
     }
 }

@@ -57,6 +57,12 @@ Route::middleware(['auth:sanctum', 'capability:manage_events'])->group(function 
 Route::middleware(['auth:sanctum', 'capability:respond'])
     ->post('/responses', [ResponseController::class, 'store']);
 
+// Admin-only, and the exact opposite of the POST above: writing your own answer
+// is `respond`, reading the whole band's answers is `view_summary`, which
+// `admin` alone holds. Same path, opposite holders.
+Route::middleware(['auth:sanctum', 'capability:view_summary'])
+    ->get('/responses', [ResponseController::class, 'index']);
+
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
