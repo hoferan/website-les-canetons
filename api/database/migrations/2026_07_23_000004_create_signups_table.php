@@ -10,7 +10,13 @@ return new class extends Migration
     {
         if (! Schema::hasTable('signups')) {
             Schema::create('signups', function (Blueprint $table) {
-                $table->id();
+                // increments(), not id(): every server took the ADOPT branch
+                // below, so their signups.id is int(10) UNSIGNED (the table was
+                // created long ago by the old sql/migrations/001_create_signups.sql).
+                // id() is bigint unsigned and would make a fresh local database
+                // silently diverge from every deployed environment. Do not
+                // "modernise" this back to id().
+                $table->increments('id');
                 $table->string('occasion', 64);
                 $table->string('first_name');
                 $table->string('last_name');
