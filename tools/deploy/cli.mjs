@@ -17,7 +17,7 @@ import { pathToFileURL } from 'node:url';
 import { loadDotEnv } from '../dotenv.mjs';
 import { createUI, humanBytes, fmtDuration } from './ui.mjs';
 import { parseConcurrency, classify, classifyWithList, brakeTrips, emptyDirsAfterDelete } from './sync.mjs';
-import { listRemote, uploadFiles, deleteFiles, sweepEmptyDirs, verifyUploaded } from './ftp.mjs';
+import { withRetry, listRemote, uploadFiles, deleteFiles, sweepEmptyDirs, verifyUploaded } from './ftp.mjs';
 import { STATE_FILE, buildState, downloadState, uploadState } from './state.mjs';
 import { walkBuild, fingerprint, writeDeploymentMarker } from './local.mjs';
 import { PROTECTED, TARGETS, checkTargetDir, checkConfigShape } from './preflight.mjs';
@@ -158,6 +158,11 @@ async function main() {
     { id: 'finalize', title: 'Finalize' },
   ]);
 
+  // Hoisted so the catch below can flush an in-flight checkpoint before the
+  // finally closes the client (else a killed checkpoint can truncate the
+  // remote state file — self-healing via bootstrap, but loses the resume).
+  let checkpointChain = Promise.resolve();
+
   const client = new ftp.Client();
   try {
     // --- Build ------------------------------------------------------------
@@ -271,7 +276,6 @@ async function main() {
     // client while the upload pool works.
     const CHECKPOINT_EVERY = 1000;
     let sinceCheckpoint = 0;
-    let checkpointChain = Promise.resolve();
     const onUploaded = (rel, size) => {
       confirmed.set(rel, localEntries.get(rel));
       uploadedCount++;
@@ -294,7 +298,7 @@ async function main() {
       await checkpointChain; // flush any in-flight checkpoint before reusing the main client
       // The main client sat idle during the (possibly long) parallel upload;
       // the host may have dropped it. Re-establish before delete/verify/finalize.
-      await client.access(accessOpts);
+      await withRetry(() => client.access(accessOpts), () => {});
       ui.done('upload', `${toUpload.length} files (${humanBytes(uploadedBytes)})`);
     } else {
       ui.done('upload', 'nothing to upload — remote already up to date');
@@ -352,6 +356,7 @@ async function main() {
         `${toUpload.length} uploaded, ${deletedFiles} deleted, ${removedDirs} dirs removed, ${unchanged} unchanged.`
     );
   } catch (err) {
+    await checkpointChain.catch(() => {}); // flush any in-flight checkpoint before close
     ui.failActive(err.message, err.hint);
     process.exitCode = err.exitCode ?? 1;
   } finally {
@@ -363,5 +368,8 @@ async function main() {
 // Run only when invoked directly (node tools/deploy/cli.mjs ...), not when
 // imported (e.g. by cli.test.mjs exercising parseArgs).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
+  main().catch((err) => {
+    console.error(`\nDeploy failed: ${err.message}`);
+    process.exit(err.exitCode ?? 1);
+  });
 }
