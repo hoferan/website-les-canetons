@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       force:
-        description: "Pass --force to re-upload every file, even ones whose size is unchanged"
+        description: "Pass --force to re-upload every file, even ones that appear unchanged"
         type: boolean
         default: false
 

@@ -39,6 +39,7 @@ jobs:
         run: npm ci
 
       - name: Deploy over FTP
+        id: deploy
         env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
@@ -46,10 +47,13 @@ jobs:
           FTP_DIR: ${{ secrets.FTP_DIR }}
         run: |
           set -o pipefail
+          rc=0
           npm run deploy:${{ inputs.environment }} -- \
             ${{ inputs.dry_run && '--dry-run' || '' }} \
             ${{ inputs.force && '--force' || '' }} \
-            2>&1 | tee deploy-output.log
+            2>&1 | tee deploy-output.log || rc=$?
+          echo "exit_code=$rc" >> "$GITHUB_OUTPUT"
+          exit $rc
 
       - name: Summary
         if: always()
@@ -58,8 +62,11 @@ jobs:
             echo "### Deploy to ${{ inputs.environment }}"
             echo "- Ref: \`${GITHUB_REF_NAME}\` (\`${GITHUB_SHA}\`)"
             echo "- Flags: dry-run=${{ inputs.dry_run }}, force=${{ inputs.force }}"
+            if [ "${{ steps.deploy.outputs.exit_code }}" = "2" ]; then
+              echo "- ⛔ Refused by a guard or the mass-delete safety brake (exit 2) — deletion list in the log below."
+            fi
             if [ -f deploy-output.log ]; then
-              grep -E 'deploy done in|\(dry-run\)' deploy-output.log || true
+              grep -E 'deploy done in|^\(dry-run\)|^FAILED' deploy-output.log || true
               echo ""
               echo "<details><summary>Full deploy log</summary>"
               echo ""
