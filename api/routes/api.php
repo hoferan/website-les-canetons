@@ -18,6 +18,13 @@ Route::post('/contact', ContactController::class);
 // proof-of-work challenge above, not authentication.
 Route::post('/signups', [SignupController::class, 'store']);
 
+// Admin-only, and the exact opposite of the POST above: the summary and the
+// xlsx export list every guest's name, address, phone and email. `view_summary`
+// is held by `admin` alone — the capability matrix is not a hierarchy, so
+// `user`/`moderator` (who may `respond`) are refused here.
+Route::middleware(['auth:sanctum', 'capability:view_summary'])
+    ->get('/signups', [SignupController::class, 'index']);
+
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {

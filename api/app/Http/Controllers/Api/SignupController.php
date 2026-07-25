@@ -10,14 +10,22 @@ use App\Models\Signup;
 use App\Support\Altcha;
 use App\Support\ChallengeGuard;
 use App\Support\Occasion;
+use App\Support\SignupStats;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Shuchkin\SimpleXLSXGen;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * POST /api/signups — the public reservation form. One contact registers a
- * table of guests; the occasion is fixed server-side.
+ * The signup endpoints, with deliberately opposite access rules:
+ *
+ *   POST /api/signups — PUBLIC (see store() below);
+ *   GET  /api/signups — admin-only, `view_summary` (see index()).
+ *
+ * store(): the public reservation form. One contact registers a table of
+ * guests; the occasion is fixed server-side.
  *
  * A straight port of the legacy app/api/signups.php POST branch, whose four
  * security properties and their ORDER are the whole point of this class:
@@ -33,6 +41,76 @@ use Illuminate\Support\Facades\Mail;
  */
 class SignupController extends Controller
 {
+    /**
+     * GET /api/signups — the admin summary, or ?format=xlsx for the export.
+     *
+     * Admin-only (`view_summary`), enforced by the route's middleware.
+     * Deliberately parameterless apart from `format`: the old endpoint had no
+     * paging, filtering or sorting and signups_admin.js expects the whole set.
+     */
+    public function index(Request $request): JsonResponse|StreamedResponse
+    {
+        // ORDER BY table_name, id — the old query's ordering, and load-bearing:
+        // SignupStats::compute() groups tables in FIRST-SEEN order, so this is
+        // what decides the order of `tables` in the response.
+        $signups = Signup::query()
+            ->where('occasion', Occasion::ACTIVE)
+            ->orderBy('table_name')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Signup $s): array => [
+                'first_name' => (string) $s->first_name,
+                'last_name' => (string) $s->last_name,
+                'address' => (string) $s->address,
+                'phone' => (string) $s->phone,
+                'email' => (string) $s->email,
+                'table_name' => (string) $s->table_name,
+                'menus' => is_array($s->menus) ? $s->menus : [],
+            ])
+            ->all();
+
+        if ((string) $request->query('format', '') === 'xlsx') {
+            return $this->xlsx($signups);
+        }
+
+        // Same body as the old endpoint: computeStats() plus the occasion.
+        return response()->json(
+            SignupStats::compute($signups) + ['occasion' => Occasion::active()]
+        );
+    }
+
+    /**
+     * The spreadsheet export. SignupStats::exportRows() has already neutralized
+     * leading =, +, -, @ so no cell can open as a formula in the admin's
+     * spreadsheet app.
+     *
+     * The workbook is built BEFORE the response, not inside the callback: a
+     * failure there happens after the headers are already on the wire, which
+     * would hand the admin a file with perfect headers and no contents. Built
+     * here, a failure is still an error response. Size is bounded by the guest
+     * list, so holding it in memory is not a concern.
+     *
+     * @param  array<int,array>  $signups
+     */
+    private function xlsx(array $signups): StreamedResponse
+    {
+        // __toString() writes through a seekable php://memory stream. Do NOT
+        // swap in saveAs('php://output'): the ZIP writer ftell()s to record
+        // central-directory offsets, and php://output is not seekable.
+        $book = (string) SimpleXLSXGen::fromArray(SignupStats::exportRows($signups));
+        if ($book === '') {
+            throw new \RuntimeException('Failed to generate the signups spreadsheet.');
+        }
+
+        return response()->streamDownload(
+            function () use ($book) {
+                echo $book;
+            },
+            'inscriptions-souper.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        );
+    }
+
     public function store(Request $request): JsonResponse
     {
         // (1) Honeypot: a real form never fills this. Silently accept — same
