@@ -236,6 +236,9 @@ export async function deleteFiles(stale, remoteRoot, accessOpts, concurrency, on
         await withRetry(() => c.remove(`${remoteRoot}/${f.rel}`), reconnector(c, accessOpts), { retries: 1 });
       } catch (err) {
         if (err?.code === 550) {
+          // 550 also covers rare permission-denied cases, but treating it as
+          // already-gone is the spec'd trade-off: a survivor stays on the
+          // server and is re-detected as stale by the next --relist.
           continue; // already gone — the goal state is reached either way
         }
         throw err;
@@ -263,8 +266,11 @@ export async function sweepEmptyDirs(dirs, remoteRoot, accessOpts, client, onSwe
         retries: 1,
       });
       removed++;
-    } catch {
-      // still non-empty (a surviving or protected file) — leave it.
+    } catch (err) {
+      if (err?.code !== 550) {
+        throw err; // a real failure (connection/auth), not "still non-empty"
+      }
+      // 550: still non-empty (a surviving or protected file) — leave it.
     }
     if (onSwept) {
       onSwept(attempted, removed);
