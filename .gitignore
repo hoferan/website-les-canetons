@@ -46,12 +46,16 @@ prod-*.sql
 /api/.npmrc
 /api/.github/
 
-# empty mount-point stub Docker creates when compose mounts the `vendor` volume
-# into the ./app -> /var/www/html mount (docker-compose.yml); also the symlink
-# tools/ensure-dev-stack.sh creates for native (Docker-less) web sessions. No
-# trailing slash: unlike a directory-only pattern, this also matches the
-# symlink, which `git status` would otherwise show as untracked.
+# empty mount-point stubs Docker creates when compose nests mounts inside the
+# ./app -> /var/www/html mount (docker-compose.yml): the `vendor` volume, the
+# sql/migrations bind, and the Laravel tree at api-laravel/. Creating a nested
+# mount point writes through to the host side of the outer bind, so these
+# appear as untracked directories in app/. /app/vendor also covers the symlink
+# tools/ensure-dev-stack.sh creates for native (Docker-less) web sessions — no
+# trailing slash on these, so the pattern matches a symlink too.
 /app/vendor
+/app/sql
+/app/api-laravel
 
 # runtime error log written by bootstrap.php on non-prod (dev/test/qa); a local
 # artifact inside the deployed app/ tree — never commit it.

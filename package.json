@@ -9,6 +9,8 @@
     "build": "node tools/build.mjs",
     "build:assets": "vite build",
     "build:overlay": "node tools/build-overlays.mjs",
+    "dev": "node tools/build-overlays.mjs docker && docker compose up -d --build",
+    "dev:down": "docker compose down",
     "deploy:test": "node tools/deploy/cli.mjs test",
     "deploy:qa": "node tools/deploy/cli.mjs qa",
     "deploy:prod": "node tools/deploy/cli.mjs prod",
