@@ -738,6 +738,11 @@ Create `docker/api/env.docker`:
 # and never travel with a deploy. See api/.env.example for the documented shape.
 #
 # NOT named ".env": the repo's .gitignore ignores that filename everywhere.
+# NEVER copy this to a server as .env: APP_KEY is public.
+#
+# The web service deliberately has no compose `environment:` block — Laravel's
+# Dotenv does not overwrite real process env vars, so a compose key would
+# silently shadow the corresponding line here and make it dead config.
 APP_NAME="Les Canetons API"
 APP_ENV=local
 APP_KEY=base64:laLm1TQBwlapjrscB5SkLK7IqyMJjX+p4VTcWKVQOE4=
@@ -769,8 +774,10 @@ DB_PASSWORD=canetons
 # (SANCTUM_STATEFUL_DOMAINS used to list localhost:8092,localhost,127.0.0.1).
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
-SESSION_DOMAIN=localhost
-SANCTUM_STATEFUL_DOMAINS=localhost:8090
+# Explicitly null, not a host: on a same-origin stack a Domain attribute only
+# makes the cookie non-host-only and breaks access via 127.0.0.1:8090.
+SESSION_DOMAIN=null
+SANCTUM_STATEFUL_DOMAINS=localhost:8090,127.0.0.1:8090
 
 QUEUE_CONNECTION=sync
 CACHE_STORE=database
@@ -860,7 +867,7 @@ Run: `docker run --rm -v "$(pwd)/docker/web/install-vendor.sh:/s.sh:ro" composer
 
 Expected: no output, exit 0.
 
-On PowerShell use `${PWD}` in place of `$(pwd)`.
+On PowerShell use `${PWD}` in place of `$(pwd)`. **In Git Bash, prefix the command with `MSYS_NO_PATHCONV=1`** — otherwise MSYS rewrites the `-v` argument, Docker treats the mangled result as a bind source, and it silently creates an empty directory named `install-vendor.sh;C` under `docker/web/`. `git status` does not report empty directories, so it goes unnoticed.
 
 - [ ] **Step 3: Commit**
 
