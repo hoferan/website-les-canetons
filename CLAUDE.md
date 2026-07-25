@@ -82,9 +82,12 @@ events and view attendance summaries.
   deploys diff against that one small file — **no recursive remote LIST** — and
   an aborted deploy is resumable (checkpointed during upload, finalized at the
   end). The full parallel LIST runs only on bootstrap (no state file) or
-  `-- --relist` (reconcile against the server's real tree — also the only way
-  deletion can see files the tool didn't itself deploy; routine deletion is
-  state-file-based, so it can never remove more than what the tool put there).
+  `-- --relist` (reconcile against the server's real tree). Deletion can see
+  files the tool didn't itself deploy only on those authoritative runs —
+  `--relist`, or the **bootstrap** first deploy of an environment with no state
+  file yet; routine deletion is state-file-based, so it can never remove more
+  than what the tool put there. **Always `-- --dry-run` the first deploy to a
+  new environment** and check its deletion list before the real run.
 - **Deploy commands (never call `node tools/deploy/cli.mjs` directly):**
   `deploy:<env>` (build + mirror + verify) and the build-free `status:<env>`
   (state header: commit, file count, status, updated-at), `<env>` =
@@ -158,8 +161,8 @@ events and view attendance summaries.
   Locally, `npm run deploy:test` / `deploy:qa` / `deploy:prod` do the same over
   FTP. Rolling back is redeploying an older tag with any of the three — no
   dedicated rollback mechanism exists. Each run's summary shows which flags
-  were used, the deploy CLI's own "N new, M changed, K unchanged, J stale" line,
-  and the full deploy log in a collapsible section.
+  were used, the deploy CLI's final summary line (`... deploy done in ... — N
+  uploaded, D deleted, ...`), and the full deploy log in a collapsible section.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
   (deployed commit, ref, time, run URL). It is re-uploaded every deploy (its
   content hash changes every run, so it re-uploads naturally) and

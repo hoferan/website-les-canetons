@@ -169,7 +169,7 @@ deploy workflow:
   a different commit.
 - **Deploy TEST** (`deploy-test.yml`), **Deploy QA** (`deploy-qa.yml`), and
   **Deploy PROD** (`deploy-prod.yml`) are independent `workflow_dispatch`
-  workflows with `dry_run`/`prune`/`force` boolean inputs, all calling one
+  workflows with `dry_run`/`force` boolean inputs, all calling one
   shared reusable workflow (`_deploy.yml`) that does the actual
   checkout/build/deploy/summary — so the three stay in sync instead of
   drifting independently. Dispatch any of them by picking a tag from GitHub's
@@ -185,9 +185,9 @@ deploy workflow:
 - Each `test`/`qa`/`prod` Environment needs `FTP_HOST`, `FTP_USER`, `FTP_PASS`
   and its own `FTP_DIR` secret (uniform name, scoped per Environment). The
   deploy CLI's path guard refuses any dir that does not match the env name.
-- Each run's summary shows which flags were used, the deploy CLI's own
-  "N new, M changed, K unchanged, J stale" line, and the full deploy log in a
-  collapsible section.
+- Each run's summary shows which flags were used, the deploy CLI's final
+  summary line (`... deploy done in ... — N uploaded, D deleted, ...`), and the
+  full deploy log in a collapsible section.
 - A `deployment.json` at each site root (web-readable, e.g.
   `https://<prod-host>/deployment.json`) records the deployed commit, ref (the
   tag name, for TEST/QA/PROD manual deploys), time, and CI run URL.
