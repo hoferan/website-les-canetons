@@ -62,30 +62,43 @@ events and view attendance summaries.
   (`.htaccess`, `robots.txt`, `config.php`). Those per-env files are placed once
   per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
   `config.php` is always set by hand per server. See `staging/README.md`.
-- **Automated TEST deploy (optional):** `npm run deploy:test` builds then
-  uploads `dist/build/` to the TEST server over plain FTP (creds from a git-ignored
-  `.env`; see `.env.example`), printing per-file progress. It uploads only
-  **new/changed** files (changed = different byte size; FTP timestamps aren't
-  trusted on this host) and never uploads or prunes the server-owned files
-  (`.htaccess`, `robots.txt`, `config.php`, `.htpasswd`). Uploads run over a
-  pool of parallel FTP connections; concurrency is `FTP_CONCURRENCY` (default
-  6, clamped 1-8 — set 1 for the old serial behavior). Flags: `-- --dry-run`
-  (print the new/changed/unchanged/stale plan, change nothing — run this before
-  `--prune`), `-- --prune` (also delete remote **plain files** the build no
-  longer produces, plus any directories left empty afterward, via FTP RMD,
-  which is safe on non-empty dirs; directories/symlinks like `cgi-bin` and the
-  protected files are always kept), `-- --force` (re-upload every file, for
-  the rare edit that keeps a file's size identical). After a real upload it
-  **verifies** every uploaded file is present on the server at the matching
-  byte size (reusing the same LIST-based size check) and exits non-zero if
-  any file is missing or truncated; `-- --no-verify` skips that check.
-  The same `deploy.mjs` also powers `deploy:qa` and `deploy:prod`; each target
-  hard-refuses to run unless its `FTP_DIR` matches the env name, so a mistyped
-  dir can never deploy to (or `--prune`!) the wrong environment. Per-env config
-  lives in a git-ignored `.env.<target>` (copy `.env.example`); the tooling loads
-  `.env.<target>` then falls back to a shared `.env`.
-- **Config-shape pre-flight check:** before uploading anything, `deploy.mjs`
-  fetches the target's `config.php` and compares its key *shape* (never
+- **Automated deploy (`npm run deploy:<env>`):** `tools/deploy/cli.mjs` builds
+  and then **mirrors** `dist/build/` to the target server over plain FTP (creds
+  from a git-ignored `.env.<env>`, falling back to `.env`; see `.env.example`):
+  uploads new/changed files (changed = different **sha256 content hash**),
+  deletes stale remote files, and removes directories left empty —
+  **deepest-first, children before parents** (FTP can only delete empty dirs).
+  A **mass-delete safety brake** refuses the deploy (exit 2) when it would
+  delete both >50 files and >20% of the remote tree — after checking the plan,
+  override with `-- --force-delete`. Server-owned files (`.htaccess`,
+  `robots.txt`, `config.php`, `.htpasswd`) and the tool-owned
+  `.sync-state.json` are never uploaded and never deleted. Every bulk phase
+  (LIST/upload/delete/verify) fans out over `FTP_CONCURRENCY` connections
+  (default 6, clamped 1-8) and every FTP op retries with exponential-backoff
+  reconnect — the host is flaky under concurrency. Output is a live step list
+  with progress bars on a TTY and plain sequential lines when piped/in CI.
+- **Sync state (`.sync-state.json`):** each deploy writes a manifest at the
+  site root (deployed path → `{size, sha256}` plus commit/status). Routine
+  deploys diff against that one small file — **no recursive remote LIST** — and
+  an aborted deploy is resumable (checkpointed during upload, finalized at the
+  end). The full parallel LIST runs only on bootstrap (no state file) or
+  `-- --relist` (reconcile against the server's real tree — also the only way
+  deletion can see files the tool didn't itself deploy; routine deletion is
+  state-file-based, so it can never remove more than what the tool put there).
+- **Deploy commands (never call `node tools/deploy/cli.mjs` directly):**
+  `deploy:<env>` (build + mirror + verify) and the build-free `status:<env>`
+  (state header: commit, file count, status, updated-at), `<env>` =
+  `test`|`qa`|`prod`. Flags appended after `--`: `--dry-run` (full plan incl.
+  file lists, changes nothing), `--force` (re-upload everything),
+  `--force-delete` (override the brake), `--relist` (authoritative LIST),
+  `--no-delete` (skip deletion this once), `--verbose` (per-file detail). After
+  upload it verifies every file landed at the right byte size (LISTing only
+  the touched directories) and exits non-zero on any shortfall. Exit codes:
+  0 ok, 1 failure, 2 refused by a guard/brake. Each target hard-refuses unless
+  its `FTP_DIR` matches the env name, so a mistyped dir can never deploy to
+  (or delete from!) the wrong environment.
+- **Config-shape pre-flight check:** before uploading anything, the deploy CLI
+  (tools/deploy/) fetches the target's `config.php` and compares its key *shape* (never
   values — those are never logged) against `config.example.php`. Any drift
   (a key the code now expects that's missing, or one no longer expected)
   refuses the deploy with the exact key paths to fix — e.g. shipping a new
@@ -105,7 +118,7 @@ events and view attendance summaries.
   using the server's `config.php` DB connection (remote DB login is blocked, so
   migrations run server-side). It is a **separate step run after** `deploy:<env>`
   — deliberately not chained into it, so `deploy:<env> -- --dry-run` still reaches
-  `deploy.mjs`. In CI it's a step after the deploy step (skipped if the deploy
+  the deploy CLI (tools/deploy/). In CI it's a step after the deploy step (skipped if the deploy
   fails); locally run `npm run dbmigrate:<env>` after `npm run deploy:<env>`. A
   failed migration exits non-zero (fails the CI job). `dbmigrate:<env> -- --dry-run`
   reports pending without applying. Requires a `migrate.token` in each server's
@@ -120,8 +133,8 @@ events and view attendance summaries.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
   set on the `test` GitHub Environment (Settings → Environments → `test`), where
   you can also add protection rules. Since that FTP account reaches every
-  environment, the per-target path guard applies in CI and `--prune` is never
-  used there.
+  environment, the per-target path guard applies in CI and the mass-delete
+  safety brake bounds the mirror's deletions.
 - **Tagging a promotion candidate:** `tag-release.yml` is a `workflow_dispatch`
   workflow with one optional input, `tag_name` — dispatch it from whatever
   commit you've verified on TEST (defaults to `main`); a blank `tag_name`
@@ -131,9 +144,9 @@ events and view attendance summaries.
   than moving it. Usable from the GitHub mobile app.
 - **TEST / QA / PROD deploy (independent, tag-based):** `deploy-test.yml`,
   `deploy-qa.yml`, and `deploy-prod.yml` are separate `workflow_dispatch`
-  workflows, each with `dry_run`/`prune`/`force` boolean inputs (mirroring
-  `deploy.mjs`'s CLI flags of the same names — `--no-verify` deliberately
-  excluded). All three call one reusable workflow, `_deploy.yml`, which does
+  workflows, each with `dry_run`/`force` boolean inputs (deletion is on by
+  default, bounded by the deploy CLI's mass-delete safety brake). All three
+  call one reusable workflow, `_deploy.yml`, which does
   the actual checkout/build/deploy/summary. Dispatch any of them by picking a
   tag (or branch) from GitHub's native ref selector — never a typed-in ref.
   `deploy-prod.yml` additionally runs its own `validate-qa` job first, which
@@ -145,11 +158,11 @@ events and view attendance summaries.
   Locally, `npm run deploy:test` / `deploy:qa` / `deploy:prod` do the same over
   FTP. Rolling back is redeploying an older tag with any of the three — no
   dedicated rollback mechanism exists. Each run's summary shows which flags
-  were used, `deploy.mjs`'s own "N new, M changed, K unchanged, J stale" line,
+  were used, the deploy CLI's own "N new, M changed, K unchanged, J stale" line,
   and the full deploy log in a collapsible section.
 - **Deployment marker:** each deploy writes `deployment.json` to the site root
-  (deployed commit, ref, time, run URL). It is force-uploaded every deploy (a SHA
-  is a fixed length, so the size-based change check would otherwise skip it) and
+  (deployed commit, ref, time, run URL). It is re-uploaded every deploy (its
+  content hash changes every run, so it re-uploads naturally) and
   is web-readable at `/deployment.json`.
 - **Dev tooling (never deployed):** Composer + PHP_CodeSniffer (PSR-12); Node with
   Prettier, ESLint, Stylelint; Husky + lint-staged; Docker Compose for local dev.

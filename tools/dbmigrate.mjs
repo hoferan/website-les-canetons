@@ -15,7 +15,7 @@ if (!target || !TARGETS.includes(target)) {
   process.exit(1);
 }
 
-// Env-specific first (wins), then shared base — matches deploy.mjs.
+// Env-specific first (wins), then shared base — matches the deploy CLI.
 loadDotEnv(`.env.${target}`);
 loadDotEnv('.env');
 

@@ -48,8 +48,8 @@ rmSync('dist/build/config.php', { force: true });
 
 // Ship the template next to the real (never-uploaded) config.php so it's on
 // every server for reference — diff it against config.php by hand to see
-// what's missing. deploy.mjs also uses it to fail the deploy if config.php's
-// shape has drifted (see checkConfigShape there).
+// what's missing. The deploy CLI (tools/deploy/) also uses it to fail the deploy
+// if config.php's shape has drifted (see checkConfigShape there).
 cpSync('config/config.example.php', 'dist/build/config.example.php');
 
 execFileSync(
@@ -122,7 +122,7 @@ console.log('Built dist/build/ — ready to FTP upload.');
 // on every server. Production dispatch of /api/* into Laravel is a later
 // sub-project (see CLAUDE.md) — until it's wired, Laravel must live BESIDE those
 // endpoints, not on top of them. Building to dist/build/api/ would wipe them from
-// the artifact, and a --prune deploy would then delete them off the server,
+// the artifact, and the deploy's mirror deletion would then remove them from the server,
 // 500ing every /api/* call (missing require). Keep the two trees separate.
 const laravelBuild = 'dist/build/api-laravel';
 console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
