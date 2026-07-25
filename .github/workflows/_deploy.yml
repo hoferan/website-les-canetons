@@ -10,9 +10,6 @@ on:
       dry_run:
         type: boolean
         default: false
-      prune:
-        type: boolean
-        default: false
       force:
         type: boolean
         default: false
@@ -51,7 +48,6 @@ jobs:
           set -o pipefail
           npm run deploy:${{ inputs.environment }} -- \
             ${{ inputs.dry_run && '--dry-run' || '' }} \
-            ${{ inputs.prune && '--prune' || '' }} \
             ${{ inputs.force && '--force' || '' }} \
             2>&1 | tee deploy-output.log
 
@@ -61,9 +57,9 @@ jobs:
           {
             echo "### Deploy to ${{ inputs.environment }}"
             echo "- Ref: \`${GITHUB_REF_NAME}\` (\`${GITHUB_SHA}\`)"
-            echo "- Flags: dry-run=${{ inputs.dry_run }}, prune=${{ inputs.prune }}, force=${{ inputs.force }}"
+            echo "- Flags: dry-run=${{ inputs.dry_run }}, force=${{ inputs.force }}"
             if [ -f deploy-output.log ]; then
-              grep '^Compared with remote:' deploy-output.log || true
+              grep -E 'deploy done in|\(dry-run\)' deploy-output.log || true
               echo ""
               echo "<details><summary>Full deploy log</summary>"
               echo ""

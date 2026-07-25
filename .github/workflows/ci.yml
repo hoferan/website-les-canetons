@@ -138,8 +138,8 @@ jobs:
   # Auto-deploy the built artifact to the TEST staging site on merge to main,
   # only after every other job is green. The FTP account can also reach qa/prod,
   # so: secrets live in the `test` GitHub Environment (add protection rules
-  # there), deploy-test hard-refuses any target path without "test", and --prune
-  # is never passed here (destructive deletes stay manual/local).
+  # there), deploy-test hard-refuses any target path without "test", and the
+  # mirror's deletions are bounded by the mass-delete safety brake (exit 2).
   deploy-test:
     runs-on: ubuntu-latest
     needs: [php, tests, assets, guard, build]
