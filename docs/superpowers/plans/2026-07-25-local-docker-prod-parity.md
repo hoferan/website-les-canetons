@@ -1081,7 +1081,7 @@ git commit -m "feat(docker): collapse to a six-service single-origin stack"
 
 Run: `npm run smoke`
 
-Expected: `7/7 checks passed against http://localhost:8090`.
+Expected: `8/8 checks passed against http://localhost:8090`.
 
 - [ ] **Step 2: Work through any failures**
 
@@ -1089,7 +1089,7 @@ Each check names its own cause. The likely ones, and where to look:
 
 | Failure | Cause | Fix |
 | --- | --- | --- |
-| `/api/user` returns 200 with HTML | the catch-all won — `[L]` instead of `[END]`, or the dispatch block is not first in the merged file | `docker/web/api-dispatch.htaccess`; re-run `node tools/build-overlays.mjs docker` and `docker compose restart web` |
+| `/api/user` returns 404 | either the catch-all won (`[L]` instead of `[END]`, or the dispatch block is not first in the merged file) or Laravel booted with no `/api/user` route. The check message distinguishes them; the response body tells you which app answered | `docker/web/api-dispatch.htaccess`; re-run `node tools/build-overlays.mjs docker` and `docker compose restart web` |
 | `/api/user` returns 403 | `Require all granted` missing or below the `<IfModule>` block | `api/public/.htaccess` (Task 2, Step 2) |
 | `/api/user` returns 500 | Laravel cannot boot — usually a missing `.env` mount or an unreadable `APP_KEY` | `docker compose exec web cat api-laravel/.env`, then `docker compose logs web` |
 | `/sanctum/csrf-cookie` returns 404 | the `^sanctum(/\|$)` rule is missing from the dispatch block | `docker/web/api-dispatch.htaccess` |
@@ -1112,11 +1112,11 @@ Run: `git checkout app/pages/historique.php && curl -s http://localhost:8090/his
 
 Expected: `0`.
 
-- [ ] **Step 4: Verify the old app's dynamic features are broken as designed**
+- [ ] **Step 4: Confirm the old app's dynamic features are broken as designed**
 
-Run: `curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8090/api/contact -X POST`
+Nothing to run — the smoke script's 8th check covers this. An earlier draft of this step used `curl -s -o /dev/null -w "%{http_code}" .../api/contact -X POST` and expected `404`, but that command cannot verify what it claims: `-o /dev/null` discards the body and *both* apps return 404, so it can't tell which one answered. The smoke check asserts 404 **and** a JSON content-type, which is what actually distinguishes Laravel's 404 from the old app's.
 
-Expected: `404`. This is the accepted cost recorded in the spec's §6, not a bug — `/api/contact` now goes to Laravel, which does not implement it until sub-project 2a-ii. Confirming it fails the *expected* way (a Laravel 404, not an old-app HTML page) is the point.
+This is the accepted cost recorded in the spec's §6, not a bug — `/api/contact` now goes to Laravel, which does not implement it until sub-project 2a-ii.
 
 - [ ] **Step 5: Run the full check suite**
 
@@ -1298,7 +1298,7 @@ Fix options: have `tools/build-overlays.mjs` emit a per-env `api-laravel/public/
 ## Done when
 
 - `npm run dev` brings up exactly six services and the site answers on `http://localhost:8090`.
-- `npm run smoke` reports `7/7 checks passed`.
+- `npm run smoke` reports `8/8 checks passed`.
 - `npm run check` passes.
 - A PHP edit under `app/` is visible on refresh with no rebuild and no restart.
 - `docker compose ps --services` shows no `api`, `api-vendor`, `api-migrate`, `migrate` or `vendor` service, and nothing listens on `:8092`.
