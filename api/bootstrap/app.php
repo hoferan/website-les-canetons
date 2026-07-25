@@ -1,13 +1,13 @@
 <?php
 
 use App\Exceptions\ApiError;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -39,7 +39,20 @@ return Application::configure(basePath: dirname(__DIR__))
             ? ApiError::unauthenticated($e)
             : null);
 
-        $exceptions->render(fn (AuthorizationException $e, Request $request) => $request->is('api/*')
+        // Typed on AccessDeniedHttpException, not on Laravel's
+        // AuthorizationException, and that is load-bearing: Handler::render()
+        // runs prepareException() BEFORE renderViaCallbacks(), and
+        // prepareException() rewrites an AuthorizationException into a Symfony
+        // AccessDeniedHttpException. A closure type-hinted on
+        // AuthorizationException therefore never matches anything and silently
+        // leaks Laravel's native {message, exception, trace} shape on a 403.
+        // Do not "simplify" this back. ValidationException and
+        // AuthenticationException above need no such treatment —
+        // prepareException() leaves both untouched.
+        //
+        // This stays narrower than "any 403": abort(403) throws a plain
+        // HttpException, which is deliberately not covered here.
+        $exceptions->render(fn (AccessDeniedHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::forbidden($e)
             : null);
     })->create();

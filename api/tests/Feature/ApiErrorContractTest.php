@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -67,6 +68,18 @@ class ApiErrorContractTest extends TestCase
         $this->getJson('/api/user')->assertStatus(401)->assertExactJson([
             'error' => 'Not authenticated',
             'code' => 'not_authenticated',
+        ]);
+    }
+
+    public function test_authorization_failure_uses_the_legacy_contract(): void
+    {
+        Route::get('/api/_contract_probe_403', function () {
+            throw new AuthorizationException;
+        });
+
+        $this->getJson('/api/_contract_probe_403')->assertStatus(403)->assertExactJson([
+            'error' => 'Access denied',
+            'code' => 'access_denied',
         ]);
     }
 

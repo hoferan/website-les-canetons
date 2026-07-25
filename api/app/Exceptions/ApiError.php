@@ -2,10 +2,10 @@
 
 namespace App\Exceptions;
 
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * Renders exceptions into the JSON error contract the front-end consumes:
@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  * contract is also what upholds the project rule that API bodies stay English.
  *
  * Every `reason` and `field` token emitted here must exist as a key in
- * i18n.js.
+ * i18n.js; ApiErrorVocabularyTest enforces that.
  */
 final class ApiError
 {
@@ -75,7 +75,13 @@ final class ApiError
         return self::json(401, 'not_authenticated', 'Not authenticated');
     }
 
-    public static function forbidden(AuthorizationException $e): JsonResponse
+    /**
+     * Typed on Symfony's AccessDeniedHttpException, NOT on Laravel's
+     * AuthorizationException — see bootstrap/app.php for why. A thrown
+     * AuthorizationException still lands here; it has just been rewritten by
+     * then.
+     */
+    public static function forbidden(AccessDeniedHttpException $e): JsonResponse
     {
         return self::json(403, 'access_denied', 'Access denied');
     }
