@@ -30,14 +30,21 @@ test('header-forwarding rules run before the first [END], so a reorder cannot si
 
   const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
   // Match actual directive LINES, not prose — the explanatory comments above
-  // these rules mention "[END]" and "E=HTTP_AUTHORIZATION" too.
+  // these rules mention "[END]", "E=HTTP_AUTHORIZATION", and
+  // "E=HTTP_X_XSRF_TOKEN" too.
   const authRule = out.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
+  const xsrfRule = out.match(/^RewriteRule .*E=HTTP_X_XSRF_TOKEN.*$/m);
   const firstEndRule = out.match(/^RewriteRule .*\[END\]$/m);
   assert.ok(authRule, 'the E=HTTP_AUTHORIZATION RewriteRule must be present');
+  assert.ok(xsrfRule, 'the E=HTTP_X_XSRF_TOKEN RewriteRule must be present');
   assert.ok(firstEndRule, 'a RewriteRule ending in [END] must be present');
   assert.ok(
     authRule.index < firstEndRule.index,
     'the Authorization forwarding rule must precede the first [END] rule'
+  );
+  assert.ok(
+    xsrfRule.index < firstEndRule.index,
+    'the X-XSRF-Token forwarding rule must precede the first [END] rule'
   );
 });
 
