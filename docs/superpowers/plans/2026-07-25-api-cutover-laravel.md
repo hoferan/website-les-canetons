@@ -4063,9 +4063,18 @@ In `tools/build.mjs`, delete the `sql/migrations` copy step and the comment bloc
 
 - [ ] **Step 3: Remove the entrypoint's old-migrations step**
 
-In `docker/web/entrypoint.sh`, delete the step that runs `/srv/tools/migrate.php` and its retry wrapper, keeping the `artisan migrate --force` step and the `chown` that follows. Also remove the now-unneeded `./tools:/srv/tools:ro` mount from `docker-compose.yml` and the `/srv/app/src` symlink from `docker/web/Dockerfile` if nothing else uses them — check first:
+In `docker/web/entrypoint.sh`, delete the step that runs `/srv/tools/migrate.php` and its retry wrapper, keeping the `artisan migrate --force` step and the `chown` that follows.
 
-Run: `grep -rn "srv/tools\|srv/app" docker/ tools/`
+**Then remove two bind mounts from `docker-compose.yml`, in the same commit as the deletions.** Both point at paths this task deletes:
+
+- `- ./sql/migrations:/var/www/html/sql/migrations:ro` (around line 61)
+- `- ./tools:/srv/tools:ro` (around line 67)
+
+This is not cosmetic. A bind mount whose host path does not exist makes Docker **create a directory in its place**, and `web` then fails to start — the same failure mode CLAUDE.md documents for the generated `.htaccess` overlay. Deleting `sql/migrations/` while that mount remains takes the local stack down.
+
+Also drop the `/srv/app/src` symlink from `docker/web/Dockerfile` if nothing else uses it. Check first:
+
+Run: `grep -rn "srv/tools\|srv/app\|sql/migrations" docker/ tools/ docker-compose.yml`
 
 - [ ] **Step 4: Delete the files**
 
