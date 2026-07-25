@@ -17,6 +17,7 @@ set -e
 # ignores autoload, so `composer install` stays happy against the repo lock.
 # tools/build.mjs performs the same rewrite when it assembles dist/build/, so
 # this is parity-preserving, not a divergence.
+echo "deps: installing old-app dependencies (App\\ -> src/, --no-dev)..."
 cd /app
 cp /repo/composer.json /repo/composer.lock ./
 sed -i 's#"app/src/"#"src/"#' composer.json
@@ -27,5 +28,16 @@ composer install --no-dev --no-interaction --no-progress
 # so vendor/ sits beside app/ exactly as api/composer.json's App\ -> app/ map
 # expects. Dev dependencies stay installed, unlike the old app above — the
 # Laravel test suite runs against this vendor.
+#
+# NOTE: this writes root-owned files into the host api/ tree. Composer's
+# post-autoload-dump runs `artisan package:discover`, which regenerates
+# api/bootstrap/cache/{packages,services}.php through the read-write ./api:/api
+# bind, as root (this container has no user-mapping). The web entrypoint's
+# chown cleans this up for the running stack, and it's invisible on Docker
+# Desktop's shared filesystem, but on a native Linux host it leaves files the
+# host user can't overwrite, so a later host-side `composer install` in api/
+# fails until you `sudo chown` them back. Not introduced here — the old
+# api-vendor service had the same bind and the same effect.
+echo "deps: installing Laravel dependencies (dev included)..."
 cd /api
 composer install --no-interaction --no-progress
