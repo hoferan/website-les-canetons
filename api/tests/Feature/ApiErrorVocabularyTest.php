@@ -103,32 +103,16 @@ class ApiErrorVocabularyTest extends TestCase
         'eventId', 'participation', 'id',
     ];
 
-    /**
-     * Tokens known to be missing from i18n.js, awaiting the maintainer's French
-     * copy. Adding that copy is deliberately not this test's call, and this
-     * suite may not edit i18n.js — so a genuine gap is parked here rather than
-     * left as a red suite, and reported.
+    /*
+     * There is deliberately NO exemption list here.
      *
-     * `weekend` is a rules() key on EventRequest (`['nullable', 'boolean']`), so
-     * a client sending a non-boolean gets fields[] = [{field: 'weekend', reason:
-     * 'invalid_type'}] and i18n.js, having no `fields.weekend`, falls back to
-     * echoing the raw English identifier: "weekend a un type invalide". The old
-     * app could not emit it — App\Dto\EventInput declared $weekend as bare
-     * `mixed` with no validation attributes — so this gap arrived with the
-     * Laravel port. planning_repet.js always posts a real checkbox boolean, so
-     * our own UI cannot trigger it; another client can.
-     *
-     * Suggested copy: fields.weekend => "Week-end".
-     *
-     * test_the_known_gap_list_is_still_needed below forces this list to shrink:
-     * once the copy lands, the entry must be REMOVED or the suite fails. It
-     * cannot rot into a permanent exemption.
-     *
-     * @var array<string, list<string>> category => tokens
+     * This file once carried a KNOWN_GAPS constant holding the single token the
+     * guard found untranslated (fields.weekend), paired with a test that failed
+     * the moment the French copy landed — a self-deleting escape hatch. The copy
+     * landed, so both are gone. An empty exemption list is an invitation to add
+     * the next entry; a missing one means the only way to satisfy this guard is
+     * to write the French.
      */
-    private const KNOWN_GAPS = [
-        'fields' => ['weekend'],
-    ];
 
     // ---------------------------------------------------------------- the tests
 
@@ -147,26 +131,6 @@ class ApiErrorVocabularyTest extends TestCase
         $this->assertVocabularyCovered('fields', 'fields', $this->emittableFields());
     }
 
-    /**
-     * The KNOWN_GAPS escape hatch is only allowed to point at real gaps. The
-     * moment the French copy lands, this fails and the entry has to go — which
-     * is what stops a temporary exemption becoming a permanent hole in the guard.
-     */
-    public function test_the_known_gap_list_is_still_needed(): void
-    {
-        foreach (self::KNOWN_GAPS as $category => $tokens) {
-            $existing = $this->i18nKeys($category);
-            foreach ($tokens as $token) {
-                self::assertNotContains(
-                    $token,
-                    $existing,
-                    "i18n.js now defines {$category}.{$token}, so it is no longer a gap. "
-                    .'Remove it from ApiErrorVocabularyTest::KNOWN_GAPS.'
-                );
-            }
-        }
-    }
-
     // ----------------------------------------------------------- the assertion
 
     /**
@@ -177,9 +141,8 @@ class ApiErrorVocabularyTest extends TestCase
     private function assertVocabularyCovered(string $label, string $section, array $tokens): void
     {
         $existing = $this->i18nKeys($section);
-        $exempt = self::KNOWN_GAPS[$section] ?? [];
 
-        $missing = array_values(array_diff($tokens, $existing, $exempt));
+        $missing = array_values(array_diff($tokens, $existing));
 
         self::assertSame([], $missing, sprintf(
             "app/assets/js/i18n.js is missing French copy for %d %s token(s) the API can emit:\n  - %s\n\n"

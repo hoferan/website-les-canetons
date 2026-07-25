@@ -32,6 +32,7 @@ i18next.init({
           endTime: "Heure de fin",
           location: "Lieu",
           attire: "Tenue",
+          weekend: "Week-end",
           id: "Identifiant",
           lastName: "Nom",
           firstName: "Prénom",
