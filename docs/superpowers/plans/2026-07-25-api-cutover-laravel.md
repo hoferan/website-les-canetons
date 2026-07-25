@@ -28,6 +28,7 @@ Read these before starting. Each has bitten someone already.
 4. **Do not touch `api/.htaccess` or `api/public/.htaccess`.** Spec §6: they never reach a server, the root catch-all protects the tree, and delivering the `public/` grant would open staging `/api/*` to bots.
 5. **The Laravel test suite uses `laravel_api_test`** (`api/phpunit.xml`). `RefreshDatabase` drops every table, so it must never point at the shared `lescanetons` database.
 6. **A new JS or CSS entry file requires `docker compose restart assets`** before it appears in Vite's manifest.
+7. **Never use `abort(403)` or `abort(401)` in an API controller or middleware.** They raise a bare `HttpException`, which the error renderer deliberately does not catch, so the response is Laravel's native untranslatable shape. Throw `AuthorizationException` or `AuthenticationException` instead (or use `Gate::authorize()`). Verified against the running kernel during Task 1 — this is the exact trap that made the first version of Task 1's 403 renderer dead code.
 
 ## Test commands
 
