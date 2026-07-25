@@ -58,3 +58,35 @@ test('writeDeploymentMarker: writes deployment.json with env/commit/time into th
   assert.ok(typeof marker.shortCommit === 'string' && marker.shortCommit.length > 0);
   assert.match(onDisk.deployedAt, /^\d{4}-\d{2}-\d{2}T/);
 });
+
+test('writeDeploymentMarker: CI env vars take precedence and build runUrl', () => {
+  const root = fixture();
+  const saved = {};
+  const vars = {
+    GITHUB_SHA: 'abcdef0123456789abcdef0123456789abcdef01',
+    GITHUB_REF_NAME: 'v2026-07-25',
+    GITHUB_SERVER_URL: 'https://github.com',
+    GITHUB_REPOSITORY: 'acme/website',
+    GITHUB_RUN_ID: '12345',
+  };
+  for (const [k, v] of Object.entries(vars)) {
+    saved[k] = process.env[k];
+    process.env[k] = v;
+  }
+  try {
+    const marker = writeDeploymentMarker('qa', root);
+    assert.equal(marker.commit, vars.GITHUB_SHA);
+    assert.equal(marker.shortCommit, 'abcdef0');
+    assert.equal(marker.ref, 'v2026-07-25');
+    assert.equal(marker.runUrl, 'https://github.com/acme/website/actions/runs/12345');
+    assert.equal(marker.environment, 'qa');
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) {
+        delete process.env[k];
+      } else {
+        process.env[k] = v;
+      }
+    }
+  }
+});
