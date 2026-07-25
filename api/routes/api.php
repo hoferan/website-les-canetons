@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AltchaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\SignupController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,13 @@ Route::post('/signups', [SignupController::class, 'store']);
 // `user`/`moderator` (who may `respond`) are refused here.
 Route::middleware(['auth:sanctum', 'capability:view_summary'])
     ->get('/signups', [SignupController::class, 'index']);
+
+// Public: planning_repet.js and sinscrire.js both fetch the events list before
+// the visitor has logged in, so this must not require authentication. A
+// logged-in caller additionally gets their OWN response on each event; there is
+// deliberately no parameter naming a user, which is what keeps a
+// previously-fixed IDOR closed. See EventController::index().
+Route::get('/events', [EventController::class, 'index']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
