@@ -1957,6 +1957,11 @@ git commit -m "feat(api): add occasion reference data and signup aggregation"
 
 The most behaviour-sensitive endpoint. Four things must hold, in this order: honeypot → validation → Altcha (fail-closed) + replay → insert → mail (fail-safe).
 
+**Two prerequisites discovered in Task 7:**
+
+1. **Add `ALTCHA_HMAC_SECRET` to `docker/api/env.docker`.** It is absent, so `/api/altcha` currently 503s locally — correct fail-closed behaviour, but it means the signup form cannot be exercised end-to-end in the local stack until this task sets it. Use an obviously-synthetic local value; that file is committed on purpose and carries a "NEVER copy this to a server" warning. This task owns the change because it is the first one that needs a working local challenge.
+2. **Assert the guard lifetime against `AltchaController::TTL_SECONDS`, not a literal `600`.** The constants are public so the two stay in step, but nothing enforces that this controller reads them rather than re-hardcoding the number. The test is what makes the coupling real.
+
 **Files:**
 - Create: `api/app/Http/Requests/SignupRequest.php`, `api/app/Http/Controllers/Api/SignupController.php`
 - Create: `api/tests/Feature/SignupStoreTest.php`
