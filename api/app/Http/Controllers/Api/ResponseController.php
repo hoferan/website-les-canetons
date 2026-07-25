@@ -43,13 +43,21 @@ class ResponseController extends Controller
      * to answer on someone else's behalf — that absence is the endpoint's main
      * security property and ResponseStoreTest pins it.
      *
-     * $request->user() on the DEFAULT guard, not $request->user('sanctum').
-     * Sanctum's RequestGuard memoizes the user it resolved and actingAs() sets
-     * the user on the `web` guard without clearing that memo, so the explicit
-     * 'sanctum' form makes a second request in one test silently reuse the FIRST
-     * caller — a false negative on exactly the cross-user properties this
-     * endpoint is tested for. See EventController::index() for the full
-     * reasoning; the two behave identically over real HTTP.
+     * $request->user() on the DEFAULT guard, not $request->user('sanctum'),
+     * following EventController::index() — see its docblock for the full
+     * reasoning. The hazard there is real in principle: Sanctum's RequestGuard
+     * memoizes the user it resolved, RequestGuard::setRequest() does not clear
+     * that memo, and actingAs() sets the user on the `web` guard without
+     * touching it either — so a second request in one test can silently reuse
+     * the FIRST caller, a false negative on exactly the cross-user properties
+     * this endpoint is tested for.
+     *
+     * Honest scope of that claim: THESE tests do not exhibit it. Both forms were
+     * tried here and ResponseStoreTest passed either way, cross-user cases
+     * included, so the choice is convention rather than a difference this file
+     * can demonstrate. The two also behave identically over real HTTP (verified
+     * against a live login). Kept as the default guard because it is the form
+     * the rest of this API uses and the one whose failure mode is understood.
      *
      * The user is never null here: auth:sanctum runs first, so an anonymous
      * caller is already a 401.
@@ -112,10 +120,29 @@ class ResponseController extends Controller
         // 0 and is refused below. Deliberately not a stricter numeric check —
         // this route is admin-only and tightening it is a behaviour change the
         // port does not need.
+        //
+        // 'invalid_number', NOT the legacy endpoint's 'invalid_value'. Do not
+        // "correct" this back to the more specific-looking token — it has been
+        // reintroduced twice already:
+        //
+        //  - it must be PARAMLESS. i18n.js renders invalid_value as "doit être
+        //    l'une des valeurs suivantes : {{allowed}}", and i18next prints a
+        //    missing interpolation value literally, so a hand-rolled fields[]
+        //    entry — which has nowhere to carry params — would put a raw
+        //    {{allowed}} on the admin's screen. invalid_value is reachable ONLY
+        //    from Laravel's `in` rule, which does supply that list;
+        //  - it is also the ACCURATE one. eventId=0 is a bad number, not an enum
+        //    mismatch: "Événement n'est pas un nombre valide" is what actually
+        //    went wrong. Same reasoning as SignupRequest's `menus` case.
+        //
+        // This also makes the read agree with the write: ResponseRequest's gt:0
+        // maps to invalid_number too, so the same bad eventId reports the same
+        // reason whether it arrives on the POST or the GET (pinned by
+        // ResponseSummaryTest::test_a_non_positive_event_id_reports_the_same_token_as_the_post).
         $eventId = (int) $raw;
         if ($eventId <= 0) {
             return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'eventId', 'reason' => 'invalid_value'],
+                ['field' => 'eventId', 'reason' => 'invalid_number'],
             ]);
         }
 

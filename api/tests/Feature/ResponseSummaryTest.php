@@ -240,23 +240,58 @@ class ResponseSummaryTest extends TestCase
             ->assertJsonPath('fields.0.reason', 'required');
     }
 
-    public function test_a_zero_event_id_is_an_invalid_value(): void
+    /**
+     * 'invalid_number', deliberately NOT the legacy endpoint's 'invalid_value'.
+     * assertExactJson pins the ABSENCE of a `params` key as hard as the token:
+     * this hand-rolled path has nowhere to carry params, and invalid_value's
+     * French interpolates {{allowed}} — which i18next would print literally.
+     * invalid_value is reserved for Laravel's `in` rule, the only thing that
+     * supplies that list. invalid_number is also simply the accurate token: 0 is
+     * a bad number, not an enum mismatch. See ResponseController::index().
+     */
+    public function test_a_zero_event_id_is_not_a_valid_number(): void
     {
         $this->actingAs($this->admin())->getJson('/api/responses?eventId=0')
             ->assertStatus(400)
             ->assertExactJson([
                 'error' => 'Invalid form submission',
                 'code' => 'validation_failed',
-                'fields' => [['field' => 'eventId', 'reason' => 'invalid_value']],
+                'fields' => [['field' => 'eventId', 'reason' => 'invalid_number']],
             ]);
     }
 
-    public function test_a_non_numeric_event_id_is_an_invalid_value(): void
+    public function test_a_non_numeric_event_id_is_not_a_valid_number(): void
     {
         // (int) 'abc' is 0, which the <= 0 branch refuses — the legacy cast.
         $this->actingAs($this->admin())->getJson('/api/responses?eventId=abc')
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.reason', 'invalid_value');
+            ->assertJsonPath('fields.0.reason', 'invalid_number');
+    }
+
+    /**
+     * CONSISTENCY: the same bad eventId reports the same reason whether it
+     * arrives on the write or the read. The GET's check is hand-rolled while the
+     * POST's comes from ResponseRequest's gt:0 rule, so nothing but a test keeps
+     * the two tokens aligned — and it is the drift, not either value alone, that
+     * would confuse a translating consumer looking at one field.
+     *
+     * Asserted by comparing the two live responses rather than against a
+     * literal, so re-tokenising one side without the other fails here.
+     */
+    public function test_a_non_positive_event_id_reports_the_same_token_as_the_post(): void
+    {
+        $onRead = $this->actingAs($this->admin())
+            ->getJson('/api/responses?eventId=0')
+            ->assertStatus(400)
+            ->json('fields.0');
+
+        $onWrite = $this->actingAs($this->user('demo.writer'))
+            ->postJson('/api/responses', ['eventId' => 0, 'participation' => 'participate'])
+            ->assertStatus(400)
+            ->json('fields.0');
+
+        $this->assertSame($onWrite, $onRead);
+        $this->assertSame(['field' => 'eventId', 'reason' => 'invalid_number'], $onRead);
     }
 
     /**
