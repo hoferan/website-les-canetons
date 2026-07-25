@@ -11,7 +11,13 @@ the single source of truth for those changes.
 
 ## How migrations are applied
 
-- **Local dev:** the docker `migrate` service runs `tools/migrate.php` (→ `App\Migrator`) on every `docker compose up`.
+- **Local dev:** the `web` container's entrypoint (`docker/web/entrypoint.sh`) runs
+  `tools/migrate.php` (→ `App\Migrator`) against the old app's SQL migrations first,
+  then `php artisan migrate --force` for Laravel's own (whose guarded migrations
+  adopt some of the old app's tables in place — which is why the ordering
+  matters). `App\AutoMigrator` still runs on the old app's first request
+  afterward, same as production, but finds nothing pending since the entrypoint
+  already applied everything.
 - **TEST / QA / PROD:** applied **server-side** over HTTPS after each deploy, via
   the token-gated `POST /api/migrate` endpoint, triggered by
   `npm run dbmigrate:<env>`. Remote DB login from CI/local is blocked by the
@@ -41,13 +47,19 @@ even if a migration fails (MariaDB cannot roll back DDL):
 
 ## Local dev
 
-`docker compose up` runs a one-shot `migrate` service that applies every
-not-yet-applied migration in this directory, in ascending order, and records
-each in a `schema_migrations` table. It is **idempotent** — re-running applies
-nothing new — and runs on every `up`, so a plain `docker compose up` picks up
-new migrations without needing `docker compose down -v`. The `web` service waits
-for `migrate` to finish before serving.
+The `web` container's entrypoint (`docker/web/entrypoint.sh`) applies every
+not-yet-applied migration in this directory, in ascending order, recording each
+in a `schema_migrations` table, before Apache/PHP-FPM start serving requests.
+It runs `tools/migrate.php` (the old app's SQL migrations) FIRST, then
+`php artisan migrate --force` (Laravel's own) — Laravel's guarded migrations
+adopt some of the old app's tables in place (add `updated_at`, convert the
+`used_challenges` primary key), so they must run against tables that already
+exist. It is **idempotent** — re-running applies nothing new — and runs on
+every `npm run dev`, so new migrations are picked up without a volume reset.
+`App\AutoMigrator` (`auto_migrate => true` in `config/config.docker.php`) still
+runs on the old app's first request afterward, exactly as production does, but
+finds nothing pending since the entrypoint already applied everything.
 
 `docker/db/init/01-schema.sql` / `02-seed.sql` remain the fresh-volume baseline
-(existing tables + synthetic seed); the runner applies the numbered migrations
-on top.
+(existing tables + synthetic seed); the entrypoint applies the numbered
+migrations on top.

@@ -32,6 +32,44 @@ A server folder is **two layers stacked in the same directory**:
    - `robots.txt` — test/qa `Disallow: /`; prod the real one (or none).
    - `config.php` — env key + DB creds (git-ignored, set by hand).
 
+Two further `.htaccess` files travel **with** the code artifact instead —
+tracked source, built into every `dist/build/`, not server-owned — because the
+FTP account is chrooted to the web root and the Laravel API project (`api/`)
+therefore sits physically *inside* the document root, unlike Laravel's normal
+deployment where everything but `public/` lives outside it:
+
+- `api/.htaccess` (ships as `api-laravel/.htaccess`) — `Require all denied`
+  over the whole Laravel tree, so `.env`, `vendor/` and `app/` are unreachable
+  even though they are physically web-accessible.
+- `api/public/.htaccess` (ships as `api-laravel/public/.htaccess`) —
+  `Require all granted`, re-granting access back for the one subdirectory
+  that's meant to be reachable (Apache evaluates authorization against the
+  resolved file's parent directories, and with `AuthMerging` at its default of
+  `Off` the innermost `Require` replaces rather than adds to the inherited
+  one).
+
+**Neither currently reaches any server.** `tools/deploy/preflight.mjs`
+protects the basenames `.htaccess` / `robots.txt` / `config.php` /
+`.htpasswd` **at any depth**, not just at the site root, so both files above
+are silently dropped from every upload even though `tools/build.mjs` copies
+them into `dist/build/api-laravel/`. Nothing signals this today: no server
+dispatches `/api/*` into `api-laravel/` yet, and — *precisely because the
+deny-all was never uploaded* — a direct hit like `/api-laravel/.env` falls
+through to the old app's front-controller catch-all and gets its 404.
+
+That last point is worth stating carefully, because it is the reverse of what
+happens locally. Where `api/.htaccess` **is** present, authorization is
+evaluated during Apache's directory walk, before mod_rewrite's per-directory
+rules run in the fixup phase, so the catch-all never sees the request and it
+returns 403 instead (verified against the local stack; see the comments in
+`api/.htaccess`). On a server the file is absent, so there is no denial to
+evaluate and the catch-all does handle it. The 404 is therefore an accident of
+the missing file, not evidence that the boundary is redundant. The boundary is
+live only in the local Docker stack (see `## Local Development` in `CLAUDE.md`). Making the protected set root-relative — so it only excludes
+the three files actually at the deploy root — is recorded as a prerequisite
+for the sub-project that turns on real `/api/*` dispatch; see `api/.htaccess`'s
+own comments for the full reasoning.
+
 ## Deployment: build once, promote one artifact
 
 ```bash

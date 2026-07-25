@@ -1,9 +1,41 @@
-# Deny direct access to everything in this directory (Laravel project root:
-# vendor/, app/, .env, etc.). Only api/public/ (Laravel's own front
-# controller, which has its own .htaccess re-allowing access there) should
-# ever be reachable — this file exists because the deploy FTP account is
-# chrooted to the web-root, so this whole project sits inside the
-# web-accessible tree instead of outside it (Laravel's normal convention).
+# The FTP account on the shared host is chrooted to the web root, so this
+# Laravel project physically lives INSIDE the document root — unlike Laravel's
+# normal deployment, where everything but public/ sits outside it. Deny direct
+# web access to the whole tree so .env, vendor/ and app/ are unreachable even
+# though they are physically web-accessible; public/.htaccess grants access
+# back for the one subdirectory that is meant to be reachable.
+#
+# This is the load-bearing line, not a second layer behind the front-controller
+# catch-all. Authorization is evaluated during Apache's directory walk, BEFORE
+# mod_rewrite's per-directory rules run in the fixup phase — so the catch-all in
+# app/.htaccess never gets the chance to rewrite a request that resolves under
+# this tree. Verified against the local stack: /api-laravel/.env,
+# /api-laravel/vendor/autoload.php and even a nonexistent path all return 403
+# (authz_core AH01630), not the old app's 404.
+#
+# Which makes the NOTE below the important one: this file reaches no server.
+#
+# NOTE: this file does NOT currently reach any server. The deploy CLI treats
+# ".htaccess" as a protected basename at ANY depth (the PROTECTED set in
+# tools/deploy/preflight.mjs, applied by walkBuild in local.mjs and by the
+# stale-file filters in sync.mjs), so it is filtered out of every upload even
+# though tools/build.mjs copies it into dist/build/. The boundary below is
+# therefore live only in the local Docker stack. Making the protected set
+# root-relative is a prerequisite for sub-project 2a-ii — until then,
+# dispatching /api/* on a real server would expose .env and vendor/.
+#
+# Deliberately no line numbers here: this file outlives them. The dated
+# implementation plan carries the precise citations.
+#
+# The host's Apache version is NOT established by anything in this repo, so
+# both spellings stay guarded. staging/README.md's note that the host 500s on
+# <RequireAny> leans 2.2 (it is a valid container on 2.4, and AuthConfig
+# override is granted here). The unguarded "Require all denied" in
+# staging/test/.htaccess proves nothing to the contrary: Require is RAW_ARGS on
+# 2.2 so it parses there too, and that line sits in a <FilesMatch> the host's
+# stock ^\.ht deny already covers, so it never runs. Do NOT simplify the guard
+# away — on 2.2 an unguarded "Require all granted" is an unrecognized entity
+# and yields 401/500 instead of a grant.
 <IfModule mod_authz_core.c>
     Require all denied
 </IfModule>

@@ -30,15 +30,17 @@ tooling runs in containers).
 ```bash
 npm install          # dev tooling
 npm run php:install  # PHP dev deps into vendor/ (Dockerized Composer; run once)
-docker compose up -d --build
+npm run dev          # generate the docker .htaccess overlay, then bring the stack up
 ```
 
-- Site: <http://localhost:8090>
-- Adminer (DB UI): <http://localhost:8091>
+**Never `docker compose up` directly** — the stack needs a generated overlay file in
+place first, which `npm run dev` handles for you (see [CLAUDE.md](CLAUDE.md) for why).
 
-The stack's one-shot `vendor` service installs the app's PHP deps into a shared volume
-(with an autoload map flattened for the container) before `web` starts, so no host-side
-`vendor/` is required to run the site.
+| URL | What |
+| --- | --- |
+| http://localhost:8090 | the site — both the old app and the Laravel API |
+| http://localhost:8091 | Adminer (DB UI) |
+| http://localhost:8025 | Mailpit (catches outgoing mail) |
 
 Seeded test logins (synthetic data, all passwords `demo`):
 
@@ -48,7 +50,10 @@ Seeded test logins (synthetic data, all passwords `demo`):
 | `demo.moderator` | moderator (respond)                   |
 | `demo.user`      | user (respond)                        |
 
-Stop with `docker compose down`.
+```bash
+npm run smoke     # HTTP smoke checks against the running stack (8 checks)
+npm run dev:down  # stop
+```
 
 ## Project structure
 
