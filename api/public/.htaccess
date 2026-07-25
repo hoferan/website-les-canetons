@@ -19,8 +19,8 @@
 #
 # No effect locally: the Docker stack deliberately runs without Basic Auth.
 #
-# The 2.2 spelling below is guarded alongside the 2.4 one at no cost, even
-# though the host is confirmed 2.4 (see api/.htaccess).
+# The host's Apache version is unresolved — see api/.htaccess for why both
+# spellings below stay guarded rather than relying on the 2.4 one alone.
 <IfModule mod_authz_core.c>
     Require all granted
 </IfModule>

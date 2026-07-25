@@ -15,14 +15,20 @@
 # ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs
 # PROTECTED, applied in local.mjs walkBuild and sync.mjs), so it is filtered out
 # of every upload even though tools/build.mjs copies it into dist/build/. The
-# boundary below is therefore live only in local Docker today. Making the
-# protected set root-relative is a prerequisite for sub-project 2a-ii — until
-# then, dispatching /api/* on a real server would expose .env and vendor/.
+# boundary below is therefore live only in the local Docker stack, from Task 7
+# onward. Making the protected set root-relative is a prerequisite for
+# sub-project 2a-ii — until then, dispatching /api/* on a real server would
+# expose .env and vendor/.
 #
-# The 2.2 spellings are belt-and-braces inherited from this file's original
-# version; the host is in fact 2.4 (staging/test/.htaccess ships an unguarded
-# "Require all denied" and TEST serves normally). The guard costs nothing and
-# the !mod_authz_core branch never executes there, so it stays.
+# The host's Apache version is NOT established by anything in this repo, so
+# both spellings stay guarded. staging/README.md's note that the host 500s on
+# <RequireAny> leans 2.2 (it is a valid container on 2.4, and AuthConfig
+# override is granted here). The unguarded "Require all denied" in
+# staging/test/.htaccess proves nothing to the contrary: Require is RAW_ARGS on
+# 2.2 so it parses there too, and that line sits in a <FilesMatch> the host's
+# stock ^\.ht deny already covers, so it never runs. Do NOT simplify the guard
+# away — on 2.2 an unguarded "Require all granted" is an unrecognized entity
+# and yields 401/500 instead of a grant.
 <IfModule mod_authz_core.c>
     Require all denied
 </IfModule>
