@@ -163,13 +163,34 @@ class SignupStoreTest extends TestCase
         $this->assertDatabaseCount('signups', 0);
     }
 
+    /**
+     * 'invalid_format', NOT the more specific-looking 'invalid_value' — do not
+     * "correct" this back. A closure-added error has nowhere to carry `params`,
+     * and i18n.js renders invalid_value as "doit être l'une des valeurs
+     * suivantes : {{allowed}}", which i18next would print with that placeholder
+     * literal on screen. invalid_format is also the truthful token: this same
+     * error covers Occasion::normalizeMenus()'s COUNT rejections (empty list,
+     * more than MAX_GUESTS), which are not a wrong-value problem at all.
+     */
     public function test_an_invalid_menu_value_is_rejected(): void
     {
         $response = $this->postJson('/api/signups', $this->payload(['menus' => ['caviar']]));
 
         $response->assertStatus(400)->assertJsonPath('fields', [
-            ['field' => 'menus', 'reason' => 'invalid_value'],
+            ['field' => 'menus', 'reason' => 'invalid_format'],
         ]);
+        $this->assertDatabaseCount('signups', 0);
+    }
+
+    /** The same paramless token has to serve the count-based rejections. */
+    public function test_too_many_menus_is_rejected(): void
+    {
+        $menus = array_fill(0, Occasion::MAX_GUESTS + 1, 'meat');
+
+        $this->postJson('/api/signups', $this->payload(['menus' => $menus]))
+            ->assertStatus(400)
+            ->assertJsonPath('fields', [['field' => 'menus', 'reason' => 'invalid_format']]);
+
         $this->assertDatabaseCount('signups', 0);
     }
 

@@ -41,20 +41,37 @@ class SignupRequest extends FormRequest
     /**
      * `menus` is validated by Occasion::normalizeMenus(), not by Laravel rules.
      *
-     * The accepted values, the 1..MAX_GUESTS guest cap and the reason token the
-     * UI receives then all live in that one method, exactly as the legacy
-     * endpoint had them — instead of being split across an `array`, a `min`, a
-     * `max` and an `in` rule whose reported reasons would differ from the old
-     * contract. The message added here IS the reason token; see
+     * The accepted values and the 1..MAX_GUESTS guest cap then live in that one
+     * method, instead of being split across an `array`, a `min`, a `max` and an
+     * `in` rule. The message added here IS the reason token; see
      * App\Exceptions\ApiError::validation() for how a closure-added error with
      * no failed rule still reaches fields[].
+     *
+     * That token must be a PARAMLESS one, which is why it is 'invalid_format'
+     * and not the more specific-looking 'invalid_value' the legacy endpoint
+     * emitted. Two independent reasons, either sufficient:
+     *
+     *  - i18n.js renders invalid_value as "doit être l'une des valeurs
+     *    suivantes : {{allowed}}", and i18next prints a missing interpolation
+     *    value literally — a closure-added error has nowhere to carry `params`,
+     *    so the user would read a raw {{allowed}}. Structurally, invalid_value
+     *    is reachable only via the `in` rule, which does supply them.
+     *  - invalid_format ("n'est pas dans un format valide") is also the more
+     *    accurate of the two here, because normalizeMenus() rejects on COUNT as
+     *    well as on value — an empty list or more than MAX_GUESTS entries is not
+     *    a "must be one of the following values" problem at all.
+     *
+     * Supplying params.allowed => Occasion::MENU_VALUES was considered and
+     * rejected: those are English enum values (meat/child/vegetarian), so
+     * showing them to a French user is worse than a generic message, and it
+     * would still be the wrong sentence for the count-based rejections.
      */
     public function after(): array
     {
         return [
             function (Validator $validator) {
                 if (Occasion::normalizeMenus($this->input('menus')) === null) {
-                    $validator->errors()->add('menus', 'invalid_value');
+                    $validator->errors()->add('menus', 'invalid_format');
                 }
             },
         ];

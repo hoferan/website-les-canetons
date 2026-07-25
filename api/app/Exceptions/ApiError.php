@@ -79,12 +79,15 @@ final class ApiError
      * the UI would have nothing to highlight. The second loop closes that gap:
      * for any field carrying a message but no failed rule, the MESSAGE IS THE
      * REASON TOKEN, emitted as-is. So a closure validator must add a bare token
-     * (e.g. 'invalid_value'), never a prose sentence — see
+     * (e.g. 'invalid_format'), never a prose sentence — see
      * App\Http\Requests\SignupRequest::after().
      *
-     * A token that interpolates i18n.js parameters cannot be raised this way
-     * (there is nowhere to put `params`); use ApiError::json() with an explicit
-     * `fields` array for that.
+     * That token must also be a PARAMLESS one. This path emits `field` and
+     * `reason` only, with no way to attach `params`, and i18next prints a
+     * missing interpolation value literally — so a token whose French
+     * interpolates (today: 'too_long' and the `in`-only 'invalid_value') would
+     * put a raw {{max}} or {{allowed}} on the user's screen. Raise those
+     * through ApiError::json() with an explicit `fields` array instead.
      */
     public static function validation(ValidationException $e): JsonResponse
     {
