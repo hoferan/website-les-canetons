@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AltchaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Controllers\Api\SignupController;
 use Illuminate\Support\Facades\Route;
 
 // Public: anonymous visitors filling the signup form need a challenge before
@@ -12,6 +13,10 @@ Route::get('/altcha', AltchaController::class);
 
 // Public: the contact form is open to anonymous visitors.
 Route::post('/contact', ContactController::class);
+
+// Public: anyone may reserve a place. Anti-abuse is the honeypot plus the
+// proof-of-work challenge above, not authentication.
+Route::post('/signups', [SignupController::class, 'store']);
 
 Route::post('/login', [AuthController::class, 'login']);
 

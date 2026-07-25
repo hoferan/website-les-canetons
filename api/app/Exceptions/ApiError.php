@@ -68,15 +68,23 @@ final class ApiError
     ];
 
     /**
-     * Only rule-driven failures populate `fields`, because that list is built
-     * from the validator's failedRules. The two idiomatic ways to raise a
-     * business-rule error — ValidationException::withMessages() and
-     * $validator->after(fn ($v) => $v->errors()->add(...)) — never touch
-     * failedRules, so they render here with NO `fields` key at all and the UI
-     * has nothing to highlight.
+     * Rule-driven failures are mapped through REASONS below; closure-added ones
+     * are passed through verbatim.
      *
-     * Raise those through ApiError::json() with an explicit `fields` array
-     * instead.
+     * The first loop is built from the validator's failedRules, so it sees only
+     * rule failures. The two idiomatic ways to raise a business-rule error —
+     * ValidationException::withMessages() and
+     * $validator->after(fn ($v) => $v->errors()->add(...)) — never touch
+     * failedRules, so on their own they would render with NO `fields` entry and
+     * the UI would have nothing to highlight. The second loop closes that gap:
+     * for any field carrying a message but no failed rule, the MESSAGE IS THE
+     * REASON TOKEN, emitted as-is. So a closure validator must add a bare token
+     * (e.g. 'invalid_value'), never a prose sentence — see
+     * App\Http\Requests\SignupRequest::after().
+     *
+     * A token that interpolates i18n.js parameters cannot be raised this way
+     * (there is nowhere to put `params`); use ApiError::json() with an explicit
+     * `fields` array for that.
      */
     public static function validation(ValidationException $e): JsonResponse
     {
@@ -108,6 +116,21 @@ final class ApiError
             }
 
             $fields[] = $entry;
+        }
+
+        // Closure-added errors, appended after the rule-driven ones so the
+        // reported order still starts with the rules() sequence. Only the first
+        // message per field is used, matching the one-entry-per-field rule above.
+        $reported = array_column($fields, 'field');
+        foreach ($e->validator->errors()->keys() as $field) {
+            if (in_array((string) $field, $reported, true)) {
+                continue;
+            }
+
+            $fields[] = [
+                'field' => (string) $field,
+                'reason' => (string) $e->validator->errors()->first($field),
+            ];
         }
 
         return self::json(400, 'validation_failed', 'Invalid form submission', $fields);
