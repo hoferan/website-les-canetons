@@ -1,11 +1,26 @@
 # Re-grant web access inside public/. The parent api/.htaccess denies the whole
-# Laravel tree (it sits inside the document root on this host — see there), and
-# Apache inherits authorization from every parent directory of the RESOLVED
-# file. Without this, every request the root .htaccess dispatches into
-# api-laravel/public/index.php would 403 before Laravel ever booted.
+# Laravel tree (it sits inside the document root on this host — see there).
+# Apache evaluates authorization against the RESOLVED file, walking its parent
+# directories; with AuthMerging at its default of Off, the innermost section's
+# Require directives REPLACE inherited ones rather than adding to them. That is
+# why this grant overrides the parent deny at all. Today, only the local Docker
+# overlay (tools/build-overlays.mjs) dispatches requests into
+# api-laravel/public/index.php this way — no real server does yet (see the
+# NOTE in api/.htaccess); every environment gets this from sub-project 2a-ii
+# onward.
 #
-# The host's Apache version is unconfirmed (see api/.htaccess), so both the 2.4
-# and 2.2 spellings are guarded rather than relying on a bare 2.4-only directive.
+# WARNING for sub-project 2a-ii: that same replacement also discards the staging
+# Basic Auth. TEST/QA carry "Require valid-user" at the document root
+# (staging/*/.htaccess); once /api/* is dispatched here on a real server, this
+# grant becomes the innermost section and the API would be reachable with no
+# authentication. 2a-ii must handle it — e.g. have tools/build-overlays.mjs emit
+# a per-env api-laravel/public/.htaccess carrying the auth block, the same
+# merge-a-block pattern it already uses for the document root.
+#
+# No effect locally: the Docker stack deliberately runs without Basic Auth.
+#
+# The 2.2 spelling below is guarded alongside the 2.4 one at no cost, even
+# though the host is confirmed 2.4 (see api/.htaccess).
 <IfModule mod_authz_core.c>
     Require all granted
 </IfModule>

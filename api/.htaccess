@@ -11,12 +11,18 @@
 # old app's 404 today and never reaches this file. This matters once that
 # catch-all changes — which sub-projects 2a-ii and 3 will do.
 #
-# The host's Apache version is not confirmed: staging/README.md records that it
-# 500s on <RequireAny>/Require expr, which are 2.4-only constructs — consistent
-# with 2.2, where a bare "Require all denied" would itself be a syntax error.
-# So keep both spellings guarded. This file ships to real servers
-# (tools/build.mjs -> dist/build/api-laravel/), so a syntax error here would
-# surface the moment sub-project 2a-ii starts dispatching traffic into it.
+# NOTE: this file does NOT currently reach any server. The deploy CLI treats
+# ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs
+# PROTECTED, applied in local.mjs walkBuild and sync.mjs), so it is filtered out
+# of every upload even though tools/build.mjs copies it into dist/build/. The
+# boundary below is therefore live only in local Docker today. Making the
+# protected set root-relative is a prerequisite for sub-project 2a-ii — until
+# then, dispatching /api/* on a real server would expose .env and vendor/.
+#
+# The 2.2 spellings are belt-and-braces inherited from this file's original
+# version; the host is in fact 2.4 (staging/test/.htaccess ships an unguarded
+# "Require all denied" and TEST serves normally). The guard costs nothing and
+# the !mod_authz_core branch never executes there, so it stays.
 <IfModule mod_authz_core.c>
     Require all denied
 </IfModule>
