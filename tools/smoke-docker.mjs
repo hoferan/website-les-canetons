@@ -49,10 +49,10 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // The JSON body distinguishes Laravel from any other 401.
   const res = await request('/api/user', { headers: { Accept: 'application/json' } });
   if (res.status === 403) {
-    return 'got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the /historique result first)';
+    return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the /historique result first): ${await detail(res)}`;
   }
   if (res.status === 404) {
-    return 'got 404 — either the old app answered (dispatch lost the catch-all: [L] not [END], or the block is not first in the merged .htaccess), or Laravel booted with no /api/user route';
+    return `got 404 — either the old app answered (dispatch lost the catch-all: [L] not [END], or the block is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
   }
   if (res.status !== 401) return `expected 401 from Laravel, got ${await detail(res)}`;
   const body = await res.json().catch(() => ({}));
@@ -108,11 +108,26 @@ check('the token-gated migrate route works end to end', async () => {
 });
 
 check('the old app /api/* endpoints are shadowed by Laravel (accepted cost, spec §6)', async () => {
-  // Task 8's manual `curl -o /dev/null` step can't tell these apps apart —
-  // both 404 the same status. The content-type can: Laravel's 404 is JSON,
-  // the old app's is an HTML error page.
+  // Task 8's manual `curl -o /dev/null` step can't tell these apps apart by
+  // status alone the way this check needs to: the old app answers 400 (its
+  // validator rejects the empty POST body, via App\Http\JsonResponse::error
+  // at app/api/contact.php:20-21), Laravel answers 404 (no matching route) —
+  // status IS the discriminator here. The content-type check below is
+  // belt-and-braces against a third party answering (e.g. an Apache error
+  // document), not the primary signal — app/api/contact.php:8 sets
+  // Content-Type: application/json before it even validates, so both apps'
+  // responses are JSON and content-type alone can't tell them apart.
+  //
+  // Latent hazard: this check is safe today only because contact.php's
+  // validation rejects the empty body BEFORE the `INSERT INTO
+  // contact_messages` at app/api/contact.php:26. If a future contact.php
+  // moved validation after that insert (or accepted an empty body), this
+  // check would start writing rows to the dev database on every smoke run.
   const res = await request('/api/contact', { method: 'POST', headers: { Accept: 'application/json' } });
-  if (res.status !== 404) return `expected Laravel's 404, got ${res.status}`;
+  if (res.status === 400) {
+    return `got 400 — the old app answered (app/api/contact.php is a registered route at routes.php:75), so /api/* is not reaching Laravel: ${await detail(res)}`;
+  }
+  if (res.status !== 404) return `expected Laravel's 404, got ${await detail(res)}`;
   const ct = res.headers.get('content-type') ?? '';
   return ct.includes('json') ? null : `404 came from the old app, not Laravel (content-type "${ct}")`;
 });
@@ -148,9 +163,11 @@ for (const { name, fn } of checks) {
     // reason lives on `.cause`. For a dual-stack connection refusal that cause
     // is itself an AggregateError with an EMPTY `.message` — the real text is
     // one level deeper, on `.cause.errors[0].message` (or, failing that,
-    // `.cause.code`, e.g. `ECONNREFUSED`/`ENOTFOUND`).
+    // `.cause.code` for a single-attempt cause, or
+    // `.cause.errors[0].code` for a multi-attempt one — AggregateError
+    // itself never has `.code`, only its per-attempt sub-errors do).
     const cause = error.cause;
-    const causeMessage = cause?.message || cause?.errors?.[0]?.message || cause?.code;
+    const causeMessage = cause?.message || cause?.errors?.[0]?.message || cause?.code || cause?.errors?.[0]?.code;
     problem = causeMessage ? `${error.message} — ${causeMessage}` : error.message;
   }
   if (problem) {
