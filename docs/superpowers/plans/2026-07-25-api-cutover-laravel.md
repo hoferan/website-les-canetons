@@ -4348,10 +4348,17 @@ ALTCHA_HMAC_SECRET=
 
 MAIL_MAILER=smtp
 MAIL_HOST=
-MAIL_PORT=587
+MAIL_PORT=465
 MAIL_USERNAME=
 MAIL_PASSWORD=
-MAIL_ENCRYPTION=tls
+# Set this EXPLICITLY. The old app's config.php had secure => 'ssl' on port 465
+# (implicit TLS). Laravel reads MAIL_SCHEME in config/mail.php; if it is unset,
+# Symfony's transport factory infers TLS from the port number instead — which
+# happens to give the right answer for 465, but by inference rather than
+# instruction. Use `smtps` for 465, or `smtp` with MAIL_PORT=587 for STARTTLS.
+MAIL_SCHEME=smtps
+# The real per-server sender. This lived in the old config.php's
+# mail.from_email / mail.from_name and has no other home now.
 MAIL_FROM_ADDRESS=
 MAIL_FROM_NAME="Les Canetons de Fribourg"
 ```
