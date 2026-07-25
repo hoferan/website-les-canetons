@@ -85,11 +85,19 @@ Removed:
   rewrite, Laravel's needs none (`api/` is mounted whole, so `vendor/` sits
   beside `app/` exactly as `api/composer.json` expects).
 - `api-migrate` — folded into `web`'s entrypoint.
-- `migrate` — **deleted outright**. `config/config.docker.php` already sets
-  `auto_migrate => true`, so `App\AutoMigrator` applies `sql/migrations/*.sql`
-  on the first request under a single-flight `GET_LOCK`. That is exactly what
-  prod does, so removing the service both drops a container *and* increases
-  parity.
+- `migrate` — the service is gone, but **its work moved into `web`'s entrypoint
+  rather than disappearing**. This design originally deleted it outright, on the
+  grounds that `config/config.docker.php` sets `auto_migrate => true` and
+  `App\AutoMigrator` applies `sql/migrations/*.sql` on the first request, as
+  prod does. That is true but insufficient: Laravel's guarded migrations *adopt*
+  the old app's tables in place, so on a fresh database they must run **after**
+  them. Deferring the old app's migrations to the first HTTP request would let
+  `artisan migrate` take its create branch instead — leaving `signups.id` as
+  `bigint` rather than `int(10) unsigned`, and never exercising the adopt
+  branches that actually run on TEST/QA/PROD. The entrypoint therefore runs
+  `tools/migrate.php` first, then `artisan migrate`. `AutoMigrator` still runs
+  on the first request, exactly as in production — it just finds nothing
+  pending.
 
 `docker/api/Dockerfile` is deleted along with the `api` service.
 
@@ -110,10 +118,24 @@ Entrypoint, no supervisor needed:
 
 ```sh
 cd /var/www/html
-php api-laravel/artisan migrate --force   # prod equivalent: the deploy POSTs /api/migrate
+# Old app first — Laravel's migrations adopt these tables in place.
+DB_HOST=db DB_USER=root DB_PASS=root DB_NAME=lescanetons \
+  php /srv/tools/migrate.php /var/www/html/sql/migrations
+retry php api-laravel/artisan migrate --force   # prod equivalent: the deploy POSTs /api/migrate
+# Both ran as root; FPM serves as www-data.
+chown -R www-data:www-data api-laravel/storage api-laravel/bootstrap/cache
 php-fpm -D
-exec apache2ctl -DFOREGROUND
+exec apache2 -DFOREGROUND
 ```
+
+Three details that only emerged in implementation. The `retry` wrapper is on
+`artisan` alone — `tools/migrate.php` already retries its own connection, and
+wrapping both would compound to ~15 minutes. `apache2 -DFOREGROUND` rather than
+`apache2ctl` (which does not `exec`) requires baking `/var/run/apache2/socks`
+and `/var/lock/apache2` into the image, since `apache2ctl` is what normally
+creates them. And the `chown` is not optional: a single transient migration
+failure otherwise leaves `storage/logs/laravel.log` root-owned, after which
+every Laravel request 500s on "could not be opened in append mode".
 
 `web` depends on `deps` (`service_completed_successfully`), `db`
 (`service_healthy`), `assets` (`service_started`), and `mailpit`.
@@ -126,8 +148,8 @@ Both now run under the SAPI they were written for.
 
 ### 3. Document-root assembly
 
-`DocumentRoot` is `/var/www/html`, shaped exactly like `dist/build/`. Eight
-mounts:
+`DocumentRoot` is `/var/www/html`, shaped exactly like `dist/build/`. Nine
+mounts — eight in the document root, plus `tools/` outside it:
 
 ```
 /var/www/html/                      <- ./app                              (whole)
@@ -140,7 +162,16 @@ mounts:
     public/index.php
     .env                            <- ./docker/api/env.docker            :ro
     vendor/                         <- volume `api_vendor`
+
+/srv/tools/                         <- ./tools                            :ro
 ```
+
+`tools/` sits outside the document root precisely because `dist/build/` does
+not ship it — the discriminator throughout is "does the build artifact contain
+this?". `sql/migrations` does (`tools/build.mjs` copies it, and `AutoMigrator`
+resolves it as `dirname(__DIR__)/sql/migrations`), so it stays inside. The image
+symlinks `/srv/app/src -> /var/www/html/src` for `tools/migrate.php`'s relative
+`require` of `App\Migrator`, avoiding a second bind mount of `app/src`.
 
 - Every PHP edit is live; Vite keeps writing `app/assets/dist/` on the host.
 - `app/api/*.php` stays mounted although it is now unreachable over HTTP —
@@ -149,7 +180,9 @@ mounts:
 - Laravel's `.env` becomes a **real mounted file** rather than compose
   `environment:` keys — the same pattern as `config.docker.php` → `config.php`,
   and it exercises Laravel's actual dotenv path.
-- No writable directory is required: `App\View` sets Twig `'cache' => false`.
+- The old app needs no writable directory: `App\View` sets Twig
+  `'cache' => false`. Laravel does — `storage/` and `bootstrap/cache` — which is
+  why the entrypoint `chown`s them to `www-data` after running `artisan` as root.
 
 Two accepted, minor divergences from `dist/build/`: the raw `assets/js` and
 `assets/css` source directories exist locally (the build strips them), so a
@@ -215,7 +248,7 @@ PROD the Laravel tree has no protection *and* no catch-all backstop for paths
 resolving to real files.
 The deploy CLI protects the basenames `.htaccess` / `robots.txt` / `config.php` /
 `.htpasswd` **at any depth** (`tools/deploy/preflight.mjs:16`, applied by
-basename in `local.mjs:24` and `sync.mjs:51,79`), though the documented intent is
+basename in `local.mjs:26` and `sync.mjs:50,78`), though the documented intent is
 the three server-owned files *at the site root*. So the Laravel tree has no
 authorization boundary on TEST, QA or PROD. Separately, Apache 2.4's
 `AuthMerging` defaults to `Off`, so `api/public/.htaccess`'s `Require all
@@ -245,8 +278,8 @@ source tree and `api-laravel/` to where it lands in the document root.
 | Key | Today | After |
 | --- | --- | --- |
 | `APP_URL` | `http://localhost:8092` | `http://localhost:8090` |
-| `SANCTUM_STATEFUL_DOMAINS` | `localhost:8092,localhost,127.0.0.1` | `localhost:8090` |
-| `SESSION_DOMAIN` | `localhost` | `localhost` |
+| `SANCTUM_STATEFUL_DOMAINS` | `localhost:8092,localhost,127.0.0.1` | `localhost:8090,127.0.0.1:8090` |
+| `SESSION_DOMAIN` | `localhost` | `null` |
 
 The rest of today's compose `environment:` block (`APP_KEY`, DB, session/cache
 drivers, Mailpit, `MIGRATE_TOKEN`) moves verbatim into `docker/api/env.docker`.
@@ -301,19 +334,28 @@ topology, and was not possible while the two apps were separate services.
 `tools/smoke-docker.mjs`, behind `npm run smoke`, asserting against
 `http://localhost:8090`:
 
+The eight checks as shipped:
+
 | Request | Expect | Proves |
 | --- | --- | --- |
-| `GET /historique` | 200 | old app still served; catch-all intact |
-| `GET /api/user` (with `Accept: application/json`) | 401 | dispatch reaches Laravel; `[END]` beat the catch-all |
+| `GET /historique` | 200, HTML, no `<?php` | old app served; catch-all intact; **and the FastCGI handler engaged** — without it Apache serves the front controller's source as `text/plain` with a 200 |
+| `GET /api/user` (`Accept: application/json`) | 401 + Laravel's JSON | dispatch reaches Laravel, and `Require all granted` overrode the parent deny — this is the only request whose resolved file sits under the denied tree |
 | `GET /sanctum/csrf-cookie` | 204 + `XSRF-TOKEN` cookie | `/sanctum/*` dispatch; SPA flow alive |
-| `GET /api-laravel/.env` | 403 | deny-all hardening works |
-| `GET /api-laravel/vendor/autoload.php` | 403 | same |
-| `GET /api-laravel/public/index.php` | not 403 | `Require all granted` override works |
-| `POST /api/login` with an `Authorization` header | header visible to PHP | FastCGI `HTTP_AUTHORIZATION` workaround exercised |
+| `GET /api-laravel/.env` | not 200, no `APP_KEY` in body | the tree is not web-readable (403 locally) |
+| `GET /api-laravel/vendor/autoload.php` | not 200, no PHP source | same |
+| `POST /api/migrate` with the token | 200 `{ok:true}` with an `output` key | dispatch + Laravel boot + `.env` + DB connection, end to end |
+| `POST /api/contact` | 404 + JSON content-type | the accepted cost of §6, and that Laravel — not the old app, which would 400 — answered |
 | `GET /assets/dist/<hashed>.css` | 200 + `immutable` | `mod_headers` / `mod_expires` policy applied |
 
-The `HTTP_AUTHORIZATION` row is inert under today's mod_php and only becomes a
-real test under FPM.
+Two checks from an earlier draft were dropped as unsound.
+`GET /api-laravel/public/index.php` proves nothing — it resolves outside the
+dispatch rule, so the old app's catch-all answers it. And an `Authorization`
+header check has no observable: Sanctum SPA is cookie-based, `/api/user` 401s
+with or without a bearer token, and no route echoes the header. The
+`HTTP_AUTHORIZATION` forwarding in the dispatch block is therefore a **recorded
+blind spot**, noted in the smoke script's own header. The SAPI is instead
+verified by construction: `apache2ctl -M` lists `proxy_fcgi_module` and no
+`php_module`.
 
 Manual checks beyond the script: a PHP edit under `app/pages/` is visible on
 refresh without a rebuild, and a JS edit under `app/assets/js/` is picked up

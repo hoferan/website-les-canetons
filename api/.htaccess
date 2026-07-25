@@ -16,13 +16,16 @@
 # Which makes the NOTE below the important one: this file reaches no server.
 #
 # NOTE: this file does NOT currently reach any server. The deploy CLI treats
-# ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs:16
-# PROTECTED, applied in local.mjs:26 walkBuild and sync.mjs:50,78), so it is filtered out
-# of every upload even though tools/build.mjs copies it into dist/build/. The
-# boundary below is therefore live only in the local Docker stack, from Task 7
-# onward. Making the protected set root-relative is a prerequisite for
-# sub-project 2a-ii — until then, dispatching /api/* on a real server would
-# expose .env and vendor/.
+# ".htaccess" as a protected basename at ANY depth (the PROTECTED set in
+# tools/deploy/preflight.mjs, applied by walkBuild in local.mjs and by the
+# stale-file filters in sync.mjs), so it is filtered out of every upload even
+# though tools/build.mjs copies it into dist/build/. The boundary below is
+# therefore live only in the local Docker stack. Making the protected set
+# root-relative is a prerequisite for sub-project 2a-ii — until then,
+# dispatching /api/* on a real server would expose .env and vendor/.
+#
+# Deliberately no line numbers here: this file outlives them. The dated
+# implementation plan carries the precise citations.
 #
 # The host's Apache version is NOT established by anything in this repo, so
 # both spellings stay guarded. staging/README.md's note that the host 500s on
