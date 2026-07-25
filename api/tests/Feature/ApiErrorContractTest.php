@@ -112,6 +112,20 @@ class ApiErrorContractTest extends TestCase
             ->assertJsonPath('fields.0', ['field' => 'startTime', 'reason' => 'invalid_format']);
     }
 
+    public function test_a_numeric_rule_failure_uses_a_paramless_reason(): void
+    {
+        // invalid_value interpolates {{allowed}} in i18n.js, and i18next emits
+        // that placeholder literally when no value is supplied — so numeric
+        // failures must NOT use it.
+        Route::post('/api/_contract_probe_gt', fn () => request()->validate([
+            'eventId' => ['required', 'integer', 'gt:0'],
+        ]));
+
+        $this->postJson('/api/_contract_probe_gt', ['eventId' => 0])
+            ->assertStatus(400)
+            ->assertJsonPath('fields', [['field' => 'eventId', 'reason' => 'invalid_number']]);
+    }
+
     public function test_method_not_allowed_uses_the_legacy_contract(): void
     {
         Route::get('/api/_contract_probe_405', fn () => response()->json(['ok' => true]));

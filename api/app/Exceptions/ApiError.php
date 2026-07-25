@@ -29,16 +29,18 @@ final class ApiError
     /**
      * Laravel rule name => legacy reason token.
      *
-     * Rules absent from this map fall back to 'invalid_value', which is a
-     * DEGRADED last resort, not a safe default: i18n.js renders that reason as
-     * "doit être l'une des valeurs suivantes : {{allowed}}", and validation()
-     * only supplies `allowed` for the `in` rule. Every other rule reaching that
-     * fallback — including the mapped 'min', 'gt' and 'exists' — shows the user
-     * a literal, unsubstituted "{{allowed}}".
+     * 'invalid_value' is RESERVED for the `in` rule. i18n.js renders it as
+     * "doit être l'une des valeurs suivantes : {{allowed}}", and `in` is the
+     * only rule for which validation() supplies that `allowed` parameter —
+     * i18next emits the placeholder literally when no value is given. Numeric
+     * failures therefore use the paramless 'invalid_number' instead.
      *
-     * So any new rule that needs a sane user-visible message must get an
-     * explicit entry here (and, if it interpolates, a `params` branch in
-     * validation()). Fixing the underlying i18n string is a separate decision.
+     * Rules absent from this map still fall back to 'invalid_value', and that
+     * fallback remains a DEGRADED last resort rather than a safe default: with
+     * no `allowed` to interpolate it shows the user an unsubstituted
+     * "{{allowed}}". So any new rule that needs a sane user-visible message
+     * must get an explicit entry here (and, if it interpolates, a matching
+     * `params` branch in validation()).
      */
     private const REASONS = [
         'required' => 'required',
@@ -51,9 +53,8 @@ final class ApiError
         'boolean' => 'invalid_type',
         'array' => 'invalid_type',
         'in' => 'invalid_value',
-        'min' => 'invalid_value',
-        'gt' => 'invalid_value',
-        'exists' => 'invalid_value',
+        'min' => 'invalid_number',
+        'gt' => 'invalid_number',
     ];
 
     /**
