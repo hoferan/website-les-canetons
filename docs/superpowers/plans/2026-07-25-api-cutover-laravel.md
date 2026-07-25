@@ -4341,9 +4341,12 @@ SESSION_DOMAIN=lescanetons.org
 # POST /api/migrate.
 MIGRATE_TOKEN=
 
-# Signs Altcha proof-of-work challenges. Empty or CHANGE_ME makes /api/altcha
-# fail closed (503) and every signup submission refuse — the example value is
-# public, so challenges signed with it are forgeable.
+# Signs Altcha proof-of-work challenges. REQUIRED — set a long random value per
+# server. Empty or the literal CHANGE_ME makes /api/altcha fail closed (503) and
+# every signup submission refuse with captcha_failed, which looks like a broken
+# form rather than a missing setting. The example value is public, so any
+# challenge signed with it is forgeable; that is why it fails closed rather than
+# falling back.
 ALTCHA_HMAC_SECRET=
 
 MAIL_MAILER=smtp
