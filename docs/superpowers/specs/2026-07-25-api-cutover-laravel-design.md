@@ -160,9 +160,48 @@ plus their unit and integration tests.
 under `app/pages/` still `use` them. "Remove the old handlers" is not "delete
 the `App\` layer", and conflating the two would break the members' area.
 
-`App\Repositories\UserRepository` is deleted **only if** `App\Auth` no longer
-needs it once login moves to Laravel — verify before removing, since `Auth`
-retains `check()`/`user()` for page-gating.
+**`App\Auth` is trimmed, not deleted.** It splits cleanly along the API/page
+line:
+
+- **Delete** `attemptLogin` (the sole `UserRepository` consumer), `logout`,
+  `requireLogin`, `requireCapability`, the three `requireCanX` guards (the sole
+  `App\Http\JsonResponse` consumers), and `rolesWithCapability` once
+  `ResponseRepository` goes — its role-filtering logic moves to Laravel, where
+  it stays the source of truth for summary filtering.
+- **Keep** `requireLoginPage`, `canManageEvents`, `canViewSummary`,
+  `canRespond`, `user`, `role`, `startSession`, and the internal
+  `roleCan`/`check`, all reached from `app/pages/`, `app/partials/` and
+  `App\View`.
+
+`UserRepository` and `JsonResponse` are therefore both confirmed deletable, not
+conditional. The `CAPABILITIES` matrix stays: `app/assets/js/session.js` mirrors
+it and the pages depend on it.
+
+### Legacy plain-text passwords — verify before cutover
+
+`Auth::attemptLogin()` accepts a **plain-text stored password** once via a
+timing-safe compare and then upgrades the row to a hash. Laravel's
+`AuthController` deliberately does not: it states that legacy rows are
+"converted once, out of band, by a manual DB-level migration — not by the app."
+
+**That migration is an assumption, not a verified fact.** Any `users` row whose
+password does not start with `$` authenticates today and silently stops working
+at the cutover — the member sees only "invalid credentials". Because the old
+code upgraded rows lazily *on login*, the rows still un-migrated are precisely
+those of the least active members, who are the least likely to report it
+quickly.
+
+Before the cutover, on each of TEST, QA and PROD:
+
+```sql
+SELECT COUNT(*) FROM users WHERE password NOT LIKE '$%';
+```
+
+It must return 0. If not, hash those rows in place first — the plain text is
+readable in the column, so a one-off `UPDATE` per row is possible, and it is
+backward-compatible since the old code accepts hashes too. This must happen
+*before* the deploy, not after, and it belongs in the pre-flight checklist
+alongside the `config.php` trim (§7) and `.env` provisioning (§9).
 
 ## 4. Dispatch
 
@@ -400,3 +439,4 @@ Two other things that follow-up PR must handle:
 | Replay guards lost to `artisan cache:clear` | Accepted: one replay inside a short TTL, needing the exact payload (§1) |
 | Cache store misconfigured to `file`/`array`, splitting the replay guard | `.env` provisioning checklist pins the database store (§9) |
 | Rewrite loop when `api-laravel/` is later renamed | Specified with its fix in §12, out of scope here |
+| Members with un-hashed passwords silently locked out | `SELECT COUNT(*) … NOT LIKE '$%'` must be 0 on all three servers first (§3) |
