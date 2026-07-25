@@ -1,12 +1,15 @@
-# Deny direct access to everything in this directory (Laravel project root:
-# vendor/, app/, .env, etc.). Only api/public/ (Laravel's own front
-# controller, which has its own .htaccess re-allowing access there) should
-# ever be reachable — this file exists because the deploy FTP account is
-# chrooted to the web-root, so this whole project sits inside the
-# web-accessible tree instead of outside it (Laravel's normal convention).
-<IfModule mod_authz_core.c>
-    Require all denied
-</IfModule>
-<IfModule !mod_authz_core.c>
-    Deny from all
-</IfModule>
+# The FTP account on the shared host is chrooted to the web root, so this
+# Laravel project physically lives INSIDE the document root — unlike Laravel's
+# normal deployment, where everything but public/ sits outside it. Deny direct
+# web access to the whole tree so .env, vendor/ and app/ are unreachable even
+# though they are physically web-accessible; public/.htaccess grants access
+# back for the one subdirectory that is meant to be reachable.
+#
+# Defense in depth, not the only line: the old app's front-controller catch-all
+# (app/.htaccess) already rewrites every non-/assets/ URL to index.php before
+# authorization runs, so a direct hit on /api-laravel/.env is answered by the
+# old app's 404 today and never reaches this file. This matters once that
+# catch-all changes — which sub-projects 2a-ii and 3 will do.
+#
+# Apache 2.4 syntax; easy-hebergement runs 2.4.
+Require all denied

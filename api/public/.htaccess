@@ -1,3 +1,10 @@
+# Re-grant web access inside public/. The parent api/.htaccess denies the whole
+# Laravel tree (it sits inside the document root on this host — see there), and
+# Apache inherits authorization from every parent directory of the RESOLVED
+# file. Without this, every request the root .htaccess dispatches into
+# api-laravel/public/index.php would 403 before Laravel ever booted.
+Require all granted
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
