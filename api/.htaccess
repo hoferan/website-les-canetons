@@ -16,8 +16,8 @@
 # Which makes the NOTE below the important one: this file reaches no server.
 #
 # NOTE: this file does NOT currently reach any server. The deploy CLI treats
-# ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs
-# PROTECTED, applied in local.mjs walkBuild and sync.mjs), so it is filtered out
+# ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs:16
+# PROTECTED, applied in local.mjs:26 walkBuild and sync.mjs:50,78), so it is filtered out
 # of every upload even though tools/build.mjs copies it into dist/build/. The
 # boundary below is therefore live only in the local Docker stack, from Task 7
 # onward. Making the protected set root-relative is a prerequisite for

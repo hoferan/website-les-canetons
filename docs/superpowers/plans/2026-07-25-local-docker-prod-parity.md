@@ -1128,7 +1128,7 @@ Each check names its own cause. The likely ones, and where to look:
 | `/api/user` returns 500 | Laravel cannot boot — usually a missing `.env` mount or an unreadable `APP_KEY` | `docker compose exec web cat api-laravel/.env`, then `docker compose logs web` |
 | `/sanctum/csrf-cookie` returns 404 | the `^sanctum(/\|$)` rule is missing from the dispatch block | `docker/web/api-dispatch.htaccess` |
 | `/historique` returns 500 | the front-controller rewrite is looping; the merged `.htaccess` lost the `REDIRECT_STATUS` guard | check `dist/overlay/docker/.htaccess` contains `app/.htaccess` verbatim |
-| `/historique` returns 403 or a directory listing | the `.htaccess` bind mounted as a directory — `up` ran without the overlay step | `docker compose down`, `rm -rf dist/overlay/docker`, `npm run dev` |
+| `web` won't start at all (nothing answers on :8090) | the `.htaccess` bind mounted as a directory — `up` ran before the overlay step existed; `docker compose logs web` shows a mount error ("not a directory") | `docker compose down`, `rm -rf dist/overlay/docker`, `npm run dev` |
 | migrate route returns 403 | `MIGRATE_TOKEN` in `docker/api/env.docker` does not match the value in `tools/smoke-docker.mjs` | make them match |
 | asset check finds no manifest | the `assets` container has not finished its first build | `docker compose logs assets`, wait, re-run |
 

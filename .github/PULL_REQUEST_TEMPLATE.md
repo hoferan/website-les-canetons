@@ -13,7 +13,7 @@
 ## Testing
 
 - [ ] `npm run check` passes locally
-- [ ] Verified in local Docker (`docker compose up`) where relevant
+- [ ] Verified in local Docker (`npm run dev`) where relevant
 
 ## Config & secrets safety
 

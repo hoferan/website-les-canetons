@@ -52,7 +52,12 @@ prod-*.sql
 # mount point writes through to the host side of the outer bind, so these
 # appear as untracked directories in app/. /app/vendor also covers the symlink
 # tools/ensure-dev-stack.sh creates for native (Docker-less) web sessions — no
-# trailing slash on these, so the pattern matches a symlink too.
+# trailing slash on these, so the pattern matches a symlink too. The same
+# nesting mounts docker/api/env.docker onto api-laravel/.env inside the
+# ./api -> api-laravel mount, which writes through to an empty (0-byte)
+# api/.env on the host — already covered by /api/.env above, but note that
+# stub will silently shadow a real .env for host-side `php artisan` use under
+# api/, since Laravel finds a (useless) .env already present instead of none.
 /app/vendor
 /app/sql
 /app/api-laravel

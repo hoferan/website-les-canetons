@@ -17,12 +17,21 @@ test('the docker target merges the dispatch block onto app/.htaccess', () => {
   assert.ok(out.endsWith(`${frontController}\n`), 'app/.htaccess must be appended verbatim');
 });
 
-test('the dispatch rules terminate rewriting so the catch-all cannot hijack them', () => {
+test('the header-forwarding rules precede the first [END] rule, and both dispatch rules end in one', () => {
   run('docker');
 
   const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
   assert.match(out, /^RewriteRule \^api\(\/\|\$\) api-laravel\/public\/index\.php \[END\]$/m);
   assert.match(out, /^RewriteRule \^sanctum\(\/\|\$\) api-laravel\/public\/index\.php \[END\]$/m);
+
+  const authRule = out.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
+  const firstEndRule = out.match(/^RewriteRule .*\[END\]$/m);
+  assert.ok(authRule, 'the E=HTTP_AUTHORIZATION RewriteRule must be present');
+  assert.ok(firstEndRule, 'a RewriteRule ending in [END] must be present');
+  assert.ok(
+    authRule.index < firstEndRule.index,
+    'the Authorization forwarding rule must precede the first [END] rule'
+  );
 });
 
 test('header-forwarding rules run before the first [END], so a reorder cannot silently drop them', () => {

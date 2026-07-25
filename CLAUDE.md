@@ -293,11 +293,14 @@ npm run dev:down    # stop
 **Never `docker compose up` directly.** `npm run dev` first runs
 `node tools/build-overlays.mjs docker`, which generates
 `dist/overlay/docker/.htaccess` (the Laravel dispatch block merged onto
-`app/.htaccess`). `docker-compose.yml` bind-mounts that one file into the
-`web` container; if it doesn't exist yet, Docker silently creates a
-**directory** in its place instead of failing, and Apache then serves the
-site with no `.htaccess` rules at all — no front controller, no dispatch,
-nothing.
+`app/.htaccess`) — and removes any stale `dist/overlay/docker/` left over from
+a previous bad run before regenerating it. `docker-compose.yml` bind-mounts
+that one file into the `web` container; if it doesn't exist yet, Docker
+creates a **directory** in its place, and `web` then refuses to start at all
+("error mounting ... not a directory: are you trying to mount a directory
+onto a file?"). The site is simply down — not silently missing rules — until
+`npm run dev` is run again to regenerate the file and remove the bogus
+directory.
 
 | URL | What |
 | --- | --- |

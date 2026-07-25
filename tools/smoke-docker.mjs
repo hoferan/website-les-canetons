@@ -43,7 +43,9 @@ check('the old app is still served (front-controller catch-all intact)', async (
 
 check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // Three things at once. 401 rather than the old app's 404 proves the dispatch
-  // rule won against the catch-all ([END], not [L]). 401 rather than 403 proves
+  // rule won against the catch-all (it says nothing about [END] specifically —
+  // REDIRECT_STATUS is what actually defeats the catch-all on the second pass;
+  // see docker/web/api-dispatch.htaccess). 401 rather than 403 proves
   // api/public/.htaccess's "Require all granted" overrode the parent deny —
   // this is the ONLY request whose resolved file sits under that denied tree.
   // The JSON body distinguishes Laravel from any other 401.
@@ -52,7 +54,7 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
     return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the /historique result first): ${await detail(res)}`;
   }
   if (res.status === 404) {
-    return `got 404 — either the old app answered (dispatch lost the catch-all: [L] not [END], or the block is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
+    return `got 404 — either the old app answered (the dispatch block lost to the catch-all, or is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
   }
   if (res.status !== 401) return `expected 401 from Laravel, got ${await detail(res)}`;
   const body = await res.json().catch(() => ({}));
@@ -69,9 +71,16 @@ check('/sanctum/* reaches Laravel and starts the SPA cookie flow', async () => {
 });
 
 check("Laravel's .env is not readable over the web", async () => {
-  // Answered by the old app's 404 today (its catch-all rewrites this to
-  // index.php before authorization runs), and by api/.htaccess's deny-all once
-  // that catch-all changes. Either way it must not be the file.
+  // Locally this is 403, from api/.htaccess's deny-all: Apache evaluates
+  // authorization during the directory walk, before mod_rewrite's per-directory
+  // fixup ever runs the old app's catch-all, so the deny-all wins first (see
+  // that file's own comment). On a real server it would 404 instead — not
+  // because the catch-all wins there, but because .htaccess is a protected
+  // basename never uploaded (tools/deploy/preflight.mjs's PROTECTED set), so
+  // the deny-all doesn't exist to answer first. Loose on purpose (assert "not
+  // exposed", not the exact status) so this keeps passing across that
+  // difference and across the 2a-ii catch-all change — but locally, expect 403
+  // specifically; a future 404 here is worth digging into, not shrugging off.
   const res = await request('/api-laravel/.env');
   if (res.status === 200) return 'served 200 — the .env is exposed';
   const body = await res.text();
