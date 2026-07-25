@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,9 @@ class AuthController extends Controller
         // 'hashed' cast); any pre-hashing legacy rows are converted once, out
         // of band, by a manual DB-level migration — not by the app.
         if (!Auth::attempt($credentials)) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
+            // One generic code, never a per-field error: that would reveal
+            // which of username/password was wrong, and enable enumeration.
+            return ApiError::json(401, 'invalid_credentials', 'Incorrect username or password');
         }
 
         $request->session()->regenerate();

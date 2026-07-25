@@ -71,6 +71,23 @@ class AuthTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_failed_login_carries_the_translatable_error_code(): void
+    {
+        User::create([
+            'username' => 'demo.user',
+            'password' => 'secret123',
+            'role' => 'user',
+        ]);
+
+        $this->spaPostJson('/api/login', [
+            'username' => 'demo.user',
+            'password' => 'wrong',
+        ])->assertStatus(401)->assertExactJson([
+            'error' => 'Incorrect username or password',
+            'code' => 'invalid_credentials',
+        ]);
+    }
+
     public function test_current_user_endpoint_returns_role_when_authenticated(): void
     {
         $user = User::create([
