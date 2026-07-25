@@ -211,10 +211,14 @@ PROD:
 SELECT COUNT(*) FROM users WHERE password NOT LIKE '$%';
 ```
 
-It almost certainly returns 0, in which case there is nothing to do. If it
-doesn't, hash those rows in place before the deploy — the plain text is readable
-in the column, and the change is backward-compatible since the old code already
-accepts hashes.
+**Resolution:** the maintainer runs a one-time script that hashes any remaining
+plain-text rows in place, before promoting to QA and PROD. The change is
+backward-compatible — the old code already accepts hashes — so it can be run at
+any point ahead of the cutover, independently of this PR.
+
+Run it on **TEST too**, before the hand-verification in §10. The cutover lands
+on TEST first, and a plain-text row there would make the manual login check fail
+in a way that looks like a dispatch or Sanctum fault rather than a data one.
 
 ## 4. Dispatch
 
