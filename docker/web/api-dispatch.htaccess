@@ -52,6 +52,9 @@ RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 # REDIRECT_STATUS note in the front-controller block below — the value here
 # is that correctness stops depending on REDIRECT_STATUS semantics, or on
 # Laravel's own public/.htaccess re-rewriting the already-redirected
-# request. Task 8's smoke script verifies this empirically.
+# request. Task 8's smoke script verifies this half — the dispatch surviving
+# the old app's catch-all — empirically; it does not exercise the
+# Authorization/X-XSRF-Token header-forwarding rules above (see that script's
+# header comment for why).
 RewriteRule ^api(/|$) api-laravel/public/index.php [END]
 RewriteRule ^sanctum(/|$) api-laravel/public/index.php [END]
