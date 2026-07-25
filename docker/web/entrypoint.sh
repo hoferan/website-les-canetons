@@ -19,9 +19,11 @@ retry() {
         if "$@"; then
             return 0
         fi
-        echo "entrypoint: '$*' failed (attempt $attempt/$max_attempts); retrying in 2s..." >&2
+        if [ "$attempt" -lt "$max_attempts" ]; then
+            echo "entrypoint: '$*' failed (attempt $attempt/$max_attempts); retrying in 2s..." >&2
+            sleep 2
+        fi
         attempt=$((attempt + 1))
-        sleep 2
     done
     echo "entrypoint: '$*' failed after $max_attempts attempts, giving up" >&2
     return 1
@@ -44,7 +46,16 @@ retry() {
 # cold-MariaDB case, over the same TCP path this false positive affects — that
 # is the right layer for it, and wrapping it here would compound to up to
 # max_attempts^2 attempts. Don't "fix" this by making the two calls symmetric.
-php /srv/tools/migrate.php /var/www/html/sql/migrations
+#
+# DB_HOST/DB_USER/DB_PASS/DB_NAME are scoped to this command only, not
+# exported into the shell (and so not inherited by `artisan migrate` below).
+# Laravel's Dotenv::createImmutable never overwrites a variable already
+# present in the process environment, so an exported DB_HOST here would
+# silently win over api-laravel/.env's DB_HOST for every artisan/php-fpm
+# process this script spawns afterward — quietly defeating the whole point
+# of mounting a real .env for Laravel to read.
+DB_HOST=db DB_USER=root DB_PASS=root DB_NAME=lescanetons \
+    php /srv/tools/migrate.php /var/www/html/sql/migrations
 
 # Laravel's own migrations. On a real server the deploy triggers these over HTTP
 # (POST /api/migrate); there is no deploy step locally, so run them before
@@ -59,6 +70,17 @@ php /srv/tools/migrate.php /var/www/html/sql/migrations
 # former one-shot `migrate`/`api-migrate` compose services are gone rather
 # than folded in here unchanged.
 retry php api-laravel/artisan migrate --force
+
+# Both artisan calls above ran as root (this entrypoint's own user); php-fpm
+# serves every subsequent request as www-data. Without this, any log line
+# artisan wrote along the way (routine, and guaranteed at least once if the
+# retry above ever absorbed a transient failure) leaves storage/logs/*.log —
+# and bootstrap/cache/*.php, populated the same way — root-owned, and every
+# Laravel request that logs anything then 500s on "could not be opened in
+# append mode: Permission denied". Reproduced empirically; re-chowning here
+# (rather than running artisan as www-data) also repairs a tree a previous,
+# pre-fix run already left broken.
+chown -R www-data:www-data api-laravel/storage api-laravel/bootstrap/cache
 
 # php-fpm in the background, Apache in the foreground so the container's
 # lifetime tracks Apache. No supervisor: two processes, one of them daemonised

@@ -78,7 +78,12 @@ EXPOSE 80
 # this, a dead FPM process leaves the container reporting "healthy" — Apache
 # (PID 1) stays up — while every request 503s, invisibly. Probe FPM's
 # listening socket directly instead of relying on Apache's liveness alone.
-HEALTHCHECK --interval=15s --timeout=3s --start-period=40s \
+#
+# --start-period=120s: measured worst case before php-fpm starts is ~95s (30s
+# in tools/migrate.php's own retry + up to 65s in the entrypoint's retry
+# around `artisan migrate`) — 120s leaves headroom so the container cannot
+# flip to unhealthy while still legitimately migrating.
+HEALTHCHECK --interval=15s --timeout=3s --start-period=120s \
   CMD php -r 'exit(@fsockopen("127.0.0.1",9000)?0:1);' || exit 1
 
 # Overrides the base image's `php-fpm` CMD: this container runs both processes.
