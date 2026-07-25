@@ -285,7 +285,7 @@ git commit -m "feat(docker): add the Laravel dispatch block and a docker overlay
 
 **Files:**
 
-- Create: `api/.htaccess`
+- Modify: `api/.htaccess` — **it already exists**, created by commit `e904b92`
 - Modify: `api/public/.htaccess`
 
 **Interfaces:**
@@ -294,9 +294,11 @@ git commit -m "feat(docker): add the Laravel dispatch block and a docker overlay
 
 Both files only ever *restrict* access, so they are safe to ship ahead of the `/api/*` cutover. They already travel to servers today — `tools/build.mjs` copies `api/` into `dist/build/api-laravel/`.
 
-- [ ] **Step 1: Deny the Laravel tree**
+**The host's Apache version is unknown, and both files ship to production.** `staging/README.md` records that this host **500s on `<RequireAny>` / `Require expr`** — both Apache 2.4-only constructs, and "Invalid command → 500" is exactly how 2.2 reacts. So a bare `Require all denied` may itself be a syntax error there. Every authorization directive in these two files stays wrapped in an `<IfModule mod_authz_core.c>` / `<IfModule !mod_authz_core.c>` pair, as the pre-existing `api/.htaccess` already did. Do not "simplify" the guard away.
 
-Create `api/.htaccess`:
+- [ ] **Step 1: Improve the comment on the existing deny, keeping its guard**
+
+`api/.htaccess` already contains a guarded `Require all denied`. Keep the directive's guarded shape exactly; replace only the comment, so it records the defense-in-depth reasoning and the Apache-version uncertainty:
 
 ```apache
 # The FTP account on the shared host is chrooted to the web root, so this
@@ -312,8 +314,18 @@ Create `api/.htaccess`:
 # old app's 404 today and never reaches this file. This matters once that
 # catch-all changes — which sub-projects 2a-ii and 3 will do.
 #
-# Apache 2.4 syntax; easy-hebergement runs 2.4.
-Require all denied
+# The host's Apache version is not confirmed: staging/README.md records that it
+# 500s on <RequireAny>/Require expr, which are 2.4-only constructs — consistent
+# with 2.2, where a bare "Require all denied" would itself be a syntax error.
+# So keep both spellings guarded. This file ships to real servers
+# (tools/build.mjs -> dist/build/api-laravel/), so a syntax error here would
+# surface the moment sub-project 2a-ii starts dispatching traffic into it.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>
 ```
 
 - [ ] **Step 2: Grant access back inside `public/`**
@@ -326,7 +338,15 @@ In `api/public/.htaccess`, insert at the very top of the file, above the existin
 # Apache inherits authorization from every parent directory of the RESOLVED
 # file. Without this, every request the root .htaccess dispatches into
 # api-laravel/public/index.php would 403 before Laravel ever booted.
-Require all granted
+#
+# Guarded for the same unconfirmed-Apache-version reason as api/.htaccess.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
 
 ```
 
@@ -334,7 +354,7 @@ Require all granted
 
 Run: `git diff api/public/.htaccess`
 
-Expected: exactly one added hunk — the comment block, `Require all granted`, and a blank line. The `<IfModule mod_rewrite.c>` block is untouched.
+Expected: exactly one added hunk — the comment block, the guarded grant, and a blank line. The `<IfModule mod_rewrite.c>` block is untouched.
 
 - [ ] **Step 4: Commit**
 
