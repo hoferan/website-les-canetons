@@ -33,6 +33,19 @@ Route::middleware(['auth:sanctum', 'capability:view_summary'])
 // previously-fixed IDOR closed. See EventController::index().
 Route::get('/events', [EventController::class, 'index']);
 
+// Admin-only, and the exact opposite of the GET above: reading the planning is
+// public, changing it needs `manage_events`, which `admin` alone holds. The
+// capability matrix is not a hierarchy, so `user`/`moderator` (who may
+// `respond`) are refused here. auth:sanctum is paired with it so an anonymous
+// caller gets 401, not 403.
+Route::middleware(['auth:sanctum', 'capability:manage_events'])->group(function () {
+    Route::post('/events', [EventController::class, 'store']);
+    Route::put('/events', [EventController::class, 'update']);
+    // No {id} path segment: the id arrives in the query string, which is what
+    // planning_repet.js sends. See EventController::destroy().
+    Route::delete('/events', [EventController::class, 'destroy']);
+});
+
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
