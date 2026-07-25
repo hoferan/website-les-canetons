@@ -26,6 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // This governs only Laravel's DEFAULT renderer — whether it falls back
+        // to JSON or an HTML error page. Render callbacks bypass it entirely,
+        // so it does not scope any of the closures below. That is why each one
+        // repeats $request->is('api/*'): those guards are what keep the old
+        // app's web pages on HTML error pages, and deleting them as redundant
+        // would put the JSON contract on every non-api route too.
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );

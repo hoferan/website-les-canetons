@@ -35,12 +35,17 @@ final class ApiError
      * i18next emits the placeholder literally when no value is given. Numeric
      * failures therefore use the paramless 'invalid_number' instead.
      *
-     * Rules absent from this map still fall back to 'invalid_value', and that
-     * fallback remains a DEGRADED last resort rather than a safe default: with
-     * no `allowed` to interpolate it shows the user an unsubstituted
-     * "{{allowed}}". So any new rule that needs a sane user-visible message
-     * must get an explicit entry here (and, if it interpolates, a matching
-     * `params` branch in validation()).
+     * That reservation is structural, not a convention to remember: rules
+     * absent from this map fall back to the generic, paramless
+     * 'invalid_format', so 'invalid_value' is reachable ONLY via the explicit
+     * 'in' entry below and no interpolating token can ever ship without its
+     * params. Keep it that way — if a future entry maps to a reason that
+     * interpolates, it needs a matching `params` branch in validation().
+     *
+     * The fallback still only guarantees a sensible sentence, not an accurate
+     * one: an unmapped rule tells the user their input "n'est pas dans un
+     * format valide" whatever actually went wrong. Anything needing a precise
+     * message gets an explicit entry.
      */
     private const REASONS = [
         'required' => 'required',
@@ -53,6 +58,11 @@ final class ApiError
         'boolean' => 'invalid_type',
         'array' => 'invalid_type',
         'in' => 'invalid_value',
+        // Laravel's `min` is polymorphic — numeric value, string length and
+        // array count all report as `Min`, with nothing in failedRules to tell
+        // them apart. This mapping suits the numeric case; a string or array
+        // `min` would render "n'est pas un nombre valide" and needs its own
+        // too_short token (mirroring too_long) rather than reusing this entry.
         'min' => 'invalid_number',
         'gt' => 'invalid_number',
     ];
@@ -79,14 +89,19 @@ final class ApiError
             $failedRule = (string) array_key_first($rules);
             $rule = self::snake($failedRule);
             $parameters = array_values((array) $rules[$failedRule]);
-            $reason = self::REASONS[$rule] ?? 'invalid_value';
+            $reason = self::REASONS[$rule] ?? 'invalid_format';
 
             // Both branches key on the RULE, not the reason: $parameters is
-            // positional and only means what we assume for that one rule.
-            // `between:1,255` also maps to too_long but yields ["1","255"],
-            // which would emit params.max = 1.
-            $entry = ['field' => $field, 'reason' => $reason];
-            if ($rule === 'max' && isset($parameters[0])) {
+            // positional, so it only means what we assume for that one rule.
+            // Nothing else maps to too_long today, but if `between:1,255` were
+            // ever added to REASONS as one, keying on the reason would read its
+            // ["1","255"] and emit params.max = 1.
+            //
+            // $field is cast because PHP turns numeric-string array keys into
+            // ints, which would ship "field": 0 for a list payload and change
+            // the contract's type.
+            $entry = ['field' => (string) $field, 'reason' => $reason];
+            if ($rule === 'max') {
                 $entry['params'] = ['max' => (int) $parameters[0]];
             } elseif ($rule === 'in') {
                 $entry['params'] = ['allowed' => $parameters];
@@ -99,10 +114,11 @@ final class ApiError
     }
 
     /**
-     * The $e parameter is unused on purpose. These renderers keep a uniform
-     * signature for the render() closures in bootstrap/app.php, and the
-     * type-hint is load-bearing: Laravel matches render callbacks on the first
-     * closure parameter's type. Do not "simplify" it away.
+     * The $e parameter is unused on purpose: these renderers mirror the types
+     * of the render() closures in bootstrap/app.php so the two cannot drift.
+     * The load-bearing type-hints are the closures' own — Laravel matches
+     * callbacks on the first closure parameter's type, so widening one of these
+     * to `mixed` would change no behaviour, it would just remove the signal.
      */
     public static function unauthenticated(AuthenticationException $e): JsonResponse
     {
@@ -149,13 +165,26 @@ final class ApiError
     ): JsonResponse {
         $body = ['error' => $message, 'code' => $code];
         if ($fields !== []) {
-            $body['fields'] = $fields;
+            // array_values, because an associative array would serialise as a
+            // JSON object and i18n.js calls .map() on this — a TypeError in the
+            // browser. Nothing statically checks the @param above.
+            $body['fields'] = array_values($fields);
         }
 
         return response()->json($body, $status);
     }
 
-    /** Laravel reports failed rules in StudlyCase (e.g. DateFormat). */
+    /**
+     * Laravel reports failed STRING rules in StudlyCase (e.g. DateFormat).
+     *
+     * Object rules do not: Validator::validateUsingCustomRule() keys
+     * failedRules on get_class($rule), so Rule::enum(...), Password::defaults()
+     * or any custom ValidationRule arrives as a fully-qualified class name with
+     * an empty parameter list. This mangles it to something like
+     * illuminate\_validation\_rules\_enum, which never matches REASONS and
+     * lands on the fallback — by design, and the reason that fallback must stay
+     * paramless.
+     */
     private static function snake(string $rule): string
     {
         return strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $rule));

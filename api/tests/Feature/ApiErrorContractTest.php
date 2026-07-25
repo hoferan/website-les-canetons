@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\Rules\Password;
 use Tests\TestCase;
 
 class ApiErrorContractTest extends TestCase
@@ -143,6 +144,46 @@ class ApiErrorContractTest extends TestCase
         $this->postJson('/api/_contract_probe_419')->assertStatus(419)->assertExactJson([
             'error' => 'Invalid session',
             'code' => 'invalid_session',
+        ]);
+    }
+
+    /**
+     * The 419 renderer is the one closure deliberately type-hinted on the broad
+     * HttpException base, so its status check is the only thing stopping it
+     * swallowing every other HttpException. The 403/405 tests cannot pin that:
+     * their closures are registered earlier and short-circuit before the
+     * catch-all runs.
+     */
+    public function test_the_catch_all_http_renderer_ignores_other_statuses(): void
+    {
+        Route::get('/api/_contract_probe_404', fn () => abort(404));
+
+        $response = $this->getJson('/api/_contract_probe_404');
+
+        $response->assertStatus(404);
+        $this->assertStringNotContainsString('invalid_session', $response->getContent());
+        $response->assertJsonMissingPath('code');
+    }
+
+    /**
+     * Rules outside REASONS must not reach a reason that interpolates. Object
+     * rules are the likely trigger: Validator::validateUsingCustomRule() keys
+     * failedRules on get_class($rule), so Rule::enum(...) arrives as an FQCN
+     * that snake() cannot map, with no parameters to interpolate from.
+     */
+    public function test_an_unmapped_rule_falls_back_to_a_paramless_reason(): void
+    {
+        Route::post('/api/_contract_probe_unmapped', fn () => request()->validate([
+            'subject' => ['between:1,10'],
+            'password' => [Password::min(8)],
+        ]));
+
+        $this->postJson('/api/_contract_probe_unmapped', [
+            'subject' => str_repeat('x', 50),
+            'password' => 'short',
+        ])->assertStatus(400)->assertJsonPath('fields', [
+            ['field' => 'subject', 'reason' => 'invalid_format'],
+            ['field' => 'password', 'reason' => 'invalid_format'],
         ]);
     }
 
