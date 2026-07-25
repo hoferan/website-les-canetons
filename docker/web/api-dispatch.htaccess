@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Laravel API dispatch.
+#
+# Local-dev only for now: tools/build-overlays.mjs merges this block onto
+# app/.htaccess to produce the local Docker document root's .htaccess. Shipping
+# it to a real server is sub-project 2a-ii's job, and only once Laravel actually
+# implements contact/signups/altcha — today it would 404 five live endpoints.
+# When that happens this block moves into app/.htaccess unchanged.
+#
+#   /api/*     -> the Laravel app in api-laravel/
+#   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
+#                 which is not under /api/.
+#
+# The document root holds BOTH api/ (the old app's PHP endpoints) and
+# api-laravel/ (the Laravel project) — see tools/build.mjs, which picks the
+# api-laravel name so building Laravel cannot overwrite the old endpoints. The
+# URL path /api/* therefore dispatches into api-laravel/, not api/.
+# ---------------------------------------------------------------------------
+RewriteEngine on
+
+# Forward the Authorization header into the request environment BEFORE the
+# dispatch rules below terminate rewrite processing. Laravel ships this same
+# rule in its own public/.htaccess, but [END] means that file's rewrite rules
+# never run, so it has to happen here. CGI-family SAPIs — which is what this
+# host and now this container use — do not hand Authorization to PHP otherwise.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# [END], not [L]. In per-directory context [L] only ends the current pass; the
+# whole ruleset then re-runs against the rewritten path. On that second pass
+# REDIRECT_STATUS is still empty and REQUEST_URI is still /api/..., so the
+# front-controller catch-all below would hijack the request to index.php and
+# the old app would answer every API call. [END] terminates rewrite processing
+# outright (Apache 2.3.9+).
+RewriteRule ^api(/|$) api-laravel/public/index.php [END]
+RewriteRule ^sanctum(/|$) api-laravel/public/index.php [END]

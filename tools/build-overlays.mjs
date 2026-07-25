@@ -20,13 +20,25 @@ import { loadDotEnv } from './dotenv.mjs';
 // would let the first env's value stick for the others.
 
 const ENVS = ['test', 'qa', 'prod'];
+// `docker` is not a server. It generates the local Docker document root's
+// .htaccess (Laravel API dispatch block + app/.htaccess) into
+// dist/overlay/docker/, which docker-compose.yml bind-mounts. It lives here
+// rather than in a tool of its own because it is the very same
+// merge-a-block-onto-app/.htaccess operation the staging auth overlay performs,
+// and because sub-project 2a-ii will promote that block into app/.htaccess —
+// at which point this target simply stops being needed.
+//
+// It is never part of a default or `all` run: those emit server overlays you
+// upload, and this one is a local build artifact. Ask for it by name.
+const LOCAL = ['docker'];
+const ALL = [...ENVS, ...LOCAL];
 
 const requested = process.argv.slice(2).filter((a) => a !== 'all');
 const targets = requested.length ? requested : ENVS;
 
-const unknown = targets.filter((e) => !ENVS.includes(e));
+const unknown = targets.filter((e) => !ALL.includes(e));
 if (unknown.length) {
-  console.error(`Unknown environment(s): ${unknown.join(', ')}. Use: ${ENVS.join(' | ')} | all`);
+  console.error(`Unknown environment(s): ${unknown.join(', ')}. Use: ${ALL.join(' | ')} | all`);
   process.exit(1);
 }
 
@@ -63,12 +75,27 @@ function mergedHtaccess(env) {
   );
 }
 
+/** docker .htaccess: Laravel API dispatch block first, then the front controller. */
+function dockerHtaccess() {
+  const dispatch = readFileSync('docker/web/api-dispatch.htaccess', 'utf8').trimEnd();
+  return (
+    `${dispatch}\n\n` +
+    '# ---------------------------------------------------------------------------\n' +
+    '# Front controller + cache policy (generated from app/.htaccess by\n' +
+    '# tools/build-overlays.mjs — do not edit here; edit app/.htaccess)\n' +
+    '# ---------------------------------------------------------------------------\n' +
+    `${frontController}\n`
+  );
+}
+
 for (const env of targets) {
   const outDir = `dist/overlay/${env}`;
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
-  if (env === 'prod') {
+  if (env === 'docker') {
+    writeFileSync(`${outDir}/.htaccess`, dockerHtaccess());
+  } else if (env === 'prod') {
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
     // Prod's public robots.txt is part of the site content (app/), if one
     // exists yet. No app/robots.txt -> prod simply serves none (fully crawlable).
@@ -88,4 +115,6 @@ for (const env of targets) {
   console.log(`Built dist/overlay/${env}/ (${files})`);
 }
 
-console.log('\nUpload each env overlay to its server once (config.php is set by hand, separately).');
+if (targets.some((env) => ENVS.includes(env))) {
+  console.log('\nUpload each env overlay to its server once (config.php is set by hand, separately).');
+}
