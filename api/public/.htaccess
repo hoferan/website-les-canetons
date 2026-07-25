@@ -3,7 +3,16 @@
 # Apache inherits authorization from every parent directory of the RESOLVED
 # file. Without this, every request the root .htaccess dispatches into
 # api-laravel/public/index.php would 403 before Laravel ever booted.
-Require all granted
+#
+# The host's Apache version is unconfirmed (see api/.htaccess), so both the 2.4
+# and 2.2 spellings are guarded rather than relying on a bare 2.4-only directive.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
 
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>

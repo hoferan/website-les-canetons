@@ -11,5 +11,15 @@
 # old app's 404 today and never reaches this file. This matters once that
 # catch-all changes — which sub-projects 2a-ii and 3 will do.
 #
-# Apache 2.4 syntax; easy-hebergement runs 2.4.
-Require all denied
+# The host's Apache version is not confirmed: staging/README.md records that it
+# 500s on <RequireAny>/Require expr, which are 2.4-only constructs — consistent
+# with 2.2, where a bare "Require all denied" would itself be a syntax error.
+# So keep both spellings guarded. This file ships to real servers
+# (tools/build.mjs -> dist/build/api-laravel/), so a syntax error here would
+# surface the moment sub-project 2a-ii starts dispatching traffic into it.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Deny from all
+</IfModule>
