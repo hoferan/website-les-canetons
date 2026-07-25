@@ -19,7 +19,7 @@ class AuthTest extends TestCase
      * this mirrors exactly how the real front-end (same origin, different path)
      * reaches these routes in production.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     private function spaPostJson(string $uri, array $data = []): TestResponse
     {

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -21,7 +22,7 @@ class UsedChallengesMigrationTest extends TestCase
     {
         DB::table('used_challenges')->insert(['signature' => str_repeat('a', 64)]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         DB::table('used_challenges')->insert(['signature' => str_repeat('a', 64)]);
     }
 

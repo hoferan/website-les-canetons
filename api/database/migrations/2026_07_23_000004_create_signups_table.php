@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('signups')) {
+        if (! Schema::hasTable('signups')) {
             Schema::create('signups', function (Blueprint $table) {
                 $table->id();
                 $table->string('occasion', 64);
@@ -24,10 +24,11 @@ return new class extends Migration
                 $table->index('occasion', 'idx_signups_occasion');
                 $table->index(['occasion', 'table_name'], 'idx_signups_table');
             });
+
             return;
         }
 
-        if (!Schema::hasColumn('signups', 'updated_at')) {
+        if (! Schema::hasColumn('signups', 'updated_at')) {
             Schema::table('signups', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });

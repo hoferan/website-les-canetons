@@ -21,7 +21,7 @@ class AuthController extends Controller
         // configured hasher. Passwords are always stored hashed (User's
         // 'hashed' cast); any pre-hashing legacy rows are converted once, out
         // of band, by a manual DB-level migration — not by the app.
-        if (!Auth::attempt($credentials)) {
+        if (! Auth::attempt($credentials)) {
             // One generic code, never a per-field error: that would reveal
             // which of username/password was wrong, and enable enumeration.
             return ApiError::json(401, 'invalid_credentials', 'Incorrect username or password');

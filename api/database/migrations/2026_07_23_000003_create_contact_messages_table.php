@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('contact_messages')) {
+        if (! Schema::hasTable('contact_messages')) {
             Schema::create('contact_messages', function (Blueprint $table) {
                 $table->id();
                 $table->string('last_name');
@@ -19,10 +19,11 @@ return new class extends Migration
                 $table->timestamp('created_at')->useCurrent();
                 $table->timestamp('updated_at')->nullable();
             });
+
             return;
         }
 
-        if (!Schema::hasColumn('contact_messages', 'updated_at')) {
+        if (! Schema::hasColumn('contact_messages', 'updated_at')) {
             Schema::table('contact_messages', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });

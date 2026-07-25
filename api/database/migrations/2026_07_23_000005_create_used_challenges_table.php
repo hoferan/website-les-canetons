@@ -9,7 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('used_challenges')) {
+        if (! Schema::hasTable('used_challenges')) {
             // Fresh creation (e.g. a wiped TEST database): create it directly
             // in the corrected shape — id as the real primary key, signature
             // as a unique-indexed column instead of the primary key.
@@ -20,13 +20,14 @@ return new class extends Migration
                 $table->timestamp('updated_at')->nullable();
                 $table->index('created_at', 'idx_used_challenges_created');
             });
+
             return;
         }
 
         // Table already exists in the OLD shape (created by the old app):
         // signature CHAR(64) is the primary key, no id column at all. Convert
         // it to the corrected shape without losing existing rows.
-        if (!Schema::hasColumn('used_challenges', 'id')) {
+        if (! Schema::hasColumn('used_challenges', 'id')) {
             // MariaDB requires the new AUTO_INCREMENT column to be part of a
             // key at the moment it's added, so add it with its own unique
             // key first, then swap the primary key, in explicit statements
@@ -37,7 +38,7 @@ return new class extends Migration
             DB::statement('ALTER TABLE used_challenges ADD UNIQUE KEY used_challenges_signature_unique (signature)');
         }
 
-        if (!Schema::hasColumn('used_challenges', 'updated_at')) {
+        if (! Schema::hasColumn('used_challenges', 'updated_at')) {
             Schema::table('used_challenges', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });

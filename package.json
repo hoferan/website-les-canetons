@@ -22,6 +22,8 @@
     "dbmigrate:prod": "node tools/dbmigrate.mjs prod",
     "websession:init": "npm install && npm run php:install && node tools/ensure-dev-stack.mjs",
     "lint:php": "node tools/php-lint.mjs",
+    "lint:api": "node tools/pint.mjs --test",
+    "fix:api": "node tools/pint.mjs",
     "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
     "serve": "node tools/ensure-dev-stack.mjs && npm run build:assets && php -S 127.0.0.1:8090 -t app",
     "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\"",
@@ -31,8 +33,8 @@
     "format:check": "prettier --check \"app/assets/**/*.{js,css}\"",
     "format:write": "prettier --write \"app/assets/**/*.{js,css}\"",
     "guard": "node tools/secret-guard.mjs",
-    "check": "npm run build:assets && npm run lint:php && npm run test:php && npm run test:js && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
-    "fix": "node tools/php-fix.mjs && eslint app/assets/js --fix && stylelint \"app/assets/css/**/*.css\" --fix && npm run format:write",
+    "check": "npm run build:assets && npm run lint:php && npm run lint:api && npm run test:php && npm run test:js && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
+    "fix": "node tools/php-fix.mjs && npm run fix:api && eslint app/assets/js --fix && stylelint \"app/assets/css/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -13,7 +13,7 @@ class MigrateController extends Controller
         $expectedToken = config('app.migrate_token');
         $providedToken = $request->input('token');
 
-        if (!$expectedToken || !$providedToken || !hash_equals($expectedToken, (string) $providedToken)) {
+        if (! $expectedToken || ! $providedToken || ! hash_equals($expectedToken, (string) $providedToken)) {
             return response()->json(['error' => 'Invalid or missing token'], 403);
         }
 

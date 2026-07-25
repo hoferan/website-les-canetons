@@ -11,7 +11,7 @@ return new class extends Migration
         // The old schema created `instruments` with neither timestamp; the
         // original adopt-migration only added `updated_at`, leaving already-
         // migrated shared DBs without `created_at`. Repair that here.
-        if (Schema::hasTable('instruments') && !Schema::hasColumn('instruments', 'created_at')) {
+        if (Schema::hasTable('instruments') && ! Schema::hasColumn('instruments', 'created_at')) {
             Schema::table('instruments', function (Blueprint $table) {
                 $table->timestamp('created_at')->useCurrent();
             });

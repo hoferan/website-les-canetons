@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('events')) {
+        if (! Schema::hasTable('events')) {
             Schema::create('events', function (Blueprint $table) {
                 $table->id();
                 $table->date('date');
@@ -21,12 +21,13 @@ return new class extends Migration
                 $table->timestamp('created_at')->useCurrent();
                 $table->timestamp('updated_at')->nullable();
             });
+
             return;
         }
 
         // Table already exists (old app / 01-schema.sql) — adopt it: add the
         // one column it's missing, leave everything else untouched.
-        if (!Schema::hasColumn('events', 'updated_at')) {
+        if (! Schema::hasColumn('events', 'updated_at')) {
             Schema::table('events', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });

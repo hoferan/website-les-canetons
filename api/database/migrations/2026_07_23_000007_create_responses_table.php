@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasTable('responses')) {
+        if (! Schema::hasTable('responses')) {
             Schema::create('responses', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -18,12 +18,13 @@ return new class extends Migration
                 $table->timestamp('updated_at')->nullable();
                 $table->unique(['user_id', 'event_id'], 'uq_response');
             });
+
             return;
         }
 
         // Table already exists (old app / 01-schema.sql) — adopt it: add the
         // one column it's missing, leave everything else untouched.
-        if (!Schema::hasColumn('responses', 'updated_at')) {
+        if (! Schema::hasColumn('responses', 'updated_at')) {
             Schema::table('responses', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });

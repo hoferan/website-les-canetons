@@ -27,6 +27,19 @@ jobs:
             | xargs -0 -n1 -P4 php -l
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
+      # phpcs.xml scopes only app/ (the old app), so the Laravel tree at api/
+      # gets its own formatter gate: Laravel Pint, pinned by api/composer.lock.
+      # Pint lives in api/vendor/, which the root install above does not
+      # provide, hence the second install. --no-scripts skips Laravel's
+      # post-autoload-dump `artisan package:discover`, which Pint doesn't need.
+      - name: Install Laravel API dev tools
+        run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
+      # Same check as `npm run lint:api`, invoked natively like the phpcs step
+      # above: CI calls the binaries directly, while the npm scripts are the
+      # local Docker-or-native wrapper (tools/pint.mjs).
+      - name: Laravel Pint (api/)
+        working-directory: api
+        run: vendor/bin/pint --test
 
   tests:
     runs-on: ubuntu-latest

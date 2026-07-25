@@ -13,7 +13,7 @@ return new class extends Migration
         // often have no email, so accounts are identified by username only and
         // passwords are admin-managed (stored hashed). See app/Models/User.php
         // for the full rationale.
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
                 $table->string('username')->unique();
@@ -23,13 +23,14 @@ return new class extends Migration
                 $table->timestamp('created_at')->useCurrent();
                 $table->timestamp('updated_at')->nullable();
             });
+
             return;
         }
 
         // Table already exists (created by the old app) — adopt it: add the
         // one column it's missing, leave everything else (including existing
         // rows and the instrument_id foreign key) untouched.
-        if (!Schema::hasColumn('users', 'updated_at')) {
+        if (! Schema::hasColumn('users', 'updated_at')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->timestamp('updated_at')->nullable();
             });
