@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Controllers\Api\ResponseController;
 use App\Http\Controllers\Api\SignupController;
 use Illuminate\Support\Facades\Route;
 
@@ -45,6 +46,16 @@ Route::middleware(['auth:sanctum', 'capability:manage_events'])->group(function 
     // planning_repet.js sends. See EventController::destroy().
     Route::delete('/events', [EventController::class, 'destroy']);
 });
+
+// A member records THEIR OWN answer. `respond` is held by `user`/`moderator`
+// alone — the capability matrix is not a hierarchy, so `admin` (the Team
+// Direction, who organises events but does not vote in them) is refused here,
+// which is what keeps the summary's "Pas de réponse" count meaningful.
+// auth:sanctum is paired with it so an anonymous caller gets 401, not 403. The
+// answering user comes from the session; no route parameter or body field names
+// one. See ResponseController::store().
+Route::middleware(['auth:sanctum', 'capability:respond'])
+    ->post('/responses', [ResponseController::class, 'store']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
