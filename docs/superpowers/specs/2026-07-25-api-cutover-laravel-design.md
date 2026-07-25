@@ -36,6 +36,17 @@ app's API layer and migration system.
   verified on PROD; see §12. The end goal is that name, but the rename carries
   its own site-wide-500 hazard and must not share a deploy with this one.
 
+## Guiding principle
+
+**Don't carry the old app forward.** Where the old code has a
+backward-compatibility path, a lazy data upgrade, or a shim for a state that
+should no longer exist, it is dropped rather than ported. Laravel gets the clean
+implementation. If that costs a user a re-login, that is an acceptable price.
+
+The one deliberate exception is the session bridge (§5), which exists solely so
+the not-yet-replaced pages keep working, and which is written to be deleted in
+one commit.
+
 ## Decisions
 
 Each of these was chosen explicitly, with alternatives considered.
@@ -177,31 +188,33 @@ line:
 conditional. The `CAPABILITIES` matrix stays: `app/assets/js/session.js` mirrors
 it and the pages depend on it.
 
-### Legacy plain-text passwords — verify before cutover
+### Legacy plain-text passwords — one checklist query, not a gate
 
 `Auth::attemptLogin()` accepts a **plain-text stored password** once via a
 timing-safe compare and then upgrades the row to a hash. Laravel's
 `AuthController` deliberately does not: it states that legacy rows are
 "converted once, out of band, by a manual DB-level migration — not by the app."
 
-**That migration is an assumption, not a verified fact.** Any `users` row whose
-password does not start with `$` authenticates today and silently stops working
-at the cutover — the member sees only "invalid credentials". Because the old
-code upgraded rows lazily *on login*, the rows still un-migrated are precisely
-those of the least active members, who are the least likely to report it
-quickly.
+**The lazy-upgrade code is deliberately not ported.** Laravel stays clean; no
+backward-compatibility shim enters the new codebase.
 
-Before the cutover, on each of TEST, QA and PROD:
+The one thing worth knowing is that this failure is *not* a lost session. A lost
+session costs a re-login. A plain-text row makes every future login fail too,
+because `Auth::attempt()` bcrypt-verifies against plain text and can never
+match — so the member is locked out until someone edits the database, with no
+self-service recovery.
+
+So it is a single line on the pre-flight checklist, on each of TEST, QA and
+PROD:
 
 ```sql
 SELECT COUNT(*) FROM users WHERE password NOT LIKE '$%';
 ```
 
-It must return 0. If not, hash those rows in place first — the plain text is
-readable in the column, so a one-off `UPDATE` per row is possible, and it is
-backward-compatible since the old code accepts hashes too. This must happen
-*before* the deploy, not after, and it belongs in the pre-flight checklist
-alongside the `config.php` trim (§7) and `.env` provisioning (§9).
+It almost certainly returns 0, in which case there is nothing to do. If it
+doesn't, hash those rows in place before the deploy — the plain text is readable
+in the column, and the change is backward-compatible since the old code already
+accepts hashes.
 
 ## 4. Dispatch
 
@@ -290,12 +303,14 @@ Laravel becomes the single schema owner, so `POST /api/migrate` running
 `artisan migrate` is complete rather than partial, and nothing depends on
 `auto_migrate` any more.
 
-Two prerequisites, in this order:
+**No pending-migration check is needed.** An earlier draft required confirming
+that every server had applied both SQL files first. It doesn't matter: Laravel's
+migrations are create-*or*-adopt, so a server missing `signups` simply takes the
+create branch. Nothing can be orphaned, and the check was redundant.
 
-1. **Confirm no server is behind.** Run `npm run dbmigrate:<env> -- --dry-run`
-   against TEST, QA and PROD. If any reports pending work, deleting the files
-   orphans that server's schema.
-2. **Align the create branches with the adopt result.** Servers took the adopt
+One prerequisite remains:
+
+1. **Align the create branch with the adopt result.** Servers took the adopt
    path, so their `signups.id` is `int(10) UNSIGNED`; the Laravel create branch
    uses `$table->id()`, which is `bigint unsigned`. A fresh local database
    would therefore diverge from every server. Change it to
