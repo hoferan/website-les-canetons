@@ -4342,7 +4342,14 @@ APP_DEBUG=false
 APP_URL=https://lescanetons.org
 
 # APP_DEBUG must be false on every server: true renders stack traces into API
-# responses. Use test/qa for APP_ENV on the staging servers.
+# responses.
+#
+# APP_ENV is NOT merely cosmetic: POST /api/migrate reports it back in its
+# `environment` field, which tools/dbmigrate.mjs prints. Left at Laravel's
+# default, every server logs `environment: production` — so a QA migration would
+# claim to be production, which is the worst possible thing to be misleading
+# about during a promotion. Set it to test / qa / prod per server, matching the
+# old config.php's `env` key.
 
 LOG_CHANNEL=stack
 LOG_LEVEL=error
@@ -4489,7 +4496,15 @@ The point of each is that **Laravel answers at all** — a 404 would mean dispat
 
 - [ ] **Step 3: Simplify the migrate token to header-only**
 
-The controller now reads only `X-Migrate-Token`, so drop the duplicate body/query parameter.
+The controller now reads only `X-Migrate-Token`, so drop the duplicate body/query parameter — it is dead weight, and the check is stricter without it. Also fix the now-false comment above it (around line 100), which still says `MigrateController` reads the token from a request input.
+
+Keep the `json.ok === true` **and** `typeof json.output === 'string'` assertions. Those are deliberate — they stop a `200 {ok:true}` from some other handler passing — and Task 17b kept both keys in the response specifically so this check keeps working.
+
+- [ ] **Step 3b: Fix the two currently-failing smoke checks**
+
+`npm run smoke` is **6/8** as of Task 17b, and both failures are pre-existing rather than caused by this work: `/api/* reaches Laravel` and `old app /api/* shadowed`. They concern `/api/contact`, and they encode the old "known limitation" world where Laravel implemented none of these endpoints. Now that it implements all five, the assertions themselves are stale.
+
+Diagnose before rewriting — a smoke check that was asserting the wrong thing is worth understanding, since these two were the only guard on dispatch behaviour.
 
 - [ ] **Step 4: Run the smoke checks**
 
