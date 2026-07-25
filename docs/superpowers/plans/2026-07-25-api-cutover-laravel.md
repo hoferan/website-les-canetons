@@ -223,6 +223,22 @@ class ApiErrorContractTest extends TestCase
 
         $response->assertStatus(400)->assertJsonCount(1, 'fields');
     }
+
+    public function test_authorization_failure_uses_the_legacy_contract(): void
+    {
+        // Regression guard: Handler::render() rewrites AuthorizationException
+        // into AccessDeniedHttpException before the render callbacks run, so a
+        // closure type-hinted on the original silently never fires. Task 4's
+        // capability middleware throws exactly this.
+        Route::get('/api/_contract_probe_403', function () {
+            throw new \Illuminate\Auth\Access\AuthorizationException();
+        });
+
+        $this->getJson('/api/_contract_probe_403')->assertStatus(403)->assertExactJson([
+            'error' => 'Access denied',
+            'code' => 'access_denied',
+        ]);
+    }
 }
 ```
 
@@ -363,7 +379,13 @@ Replace the `withExceptions` block in `api/bootstrap/app.php`:
             ? ApiError::unauthenticated($e)
             : null);
 
-        $exceptions->render(fn (AuthorizationException $e, Request $request) => $request->is('api/*')
+        // AccessDeniedHttpException, NOT AuthorizationException. Handler::render()
+        // calls prepareException() BEFORE renderViaCallbacks(), and that rewrites
+        // an AuthorizationException into AccessDeniedHttpException — so a closure
+        // type-hinted on the original never fires and the 403 falls through to
+        // Laravel's native shape. Verified against the real kernel. Do not
+        // "simplify" this back.
+        $exceptions->render(fn (AccessDeniedHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::forbidden($e)
             : null);
     })->create();
@@ -373,15 +395,17 @@ Add these imports at the top of `api/bootstrap/app.php`:
 
 ```php
 use App\Exceptions\ApiError;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 ```
+
+`ApiError::forbidden()`'s parameter type must match — take the Symfony exception (or drop the type entirely, since the argument is unused).
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
 Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ApiErrorContractTest`
-Expected: PASS, 5 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 6: Run the whole suite**
 
