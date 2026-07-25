@@ -194,8 +194,10 @@ discovered on TEST, over FTP:
   **`Require all granted` must be added to the `public/.htaccess`.**
 
 Both files live in the tracked `api/` tree — `api/.htaccess` (deny-all) and
-`api/public/.htaccess` (amended). They only ever *restrict* access, so having
-them in place ahead of the cutover is safe.
+`api/public/.htaccess` (amended). Note that only the first *restricts*: the
+`public/` file grants, and under `AuthMerging Off` that grant removes an
+inherited restriction rather than adding one. See the correction below before
+assuming either is safe to activate on a real server.
 
 **Correction, established during implementation:** `api/.htaccess` was not new —
 commit `e904b92` already added it — and neither file actually reaches a server.
@@ -209,6 +211,12 @@ granted` will *replace* the staging `Require valid-user` rather than accumulate
 with it — exposing the whole API on TEST/QA once dispatch is on. Both are
 inert today and both are hard prerequisites for sub-project 2a-ii; see
 "Prerequisites for sub-project 2a-ii" in the implementation plan.
+
+The host's Apache version also turns out to be **unknown**. `staging/README.md`'s
+`<RequireAny>` 500 leans 2.2; nothing in the repo establishes 2.4. The
+`<IfModule mod_authz_core.c>` guards in both files therefore stay, and the
+version should be settled by reading `SERVER_SOFTWARE` (or the `Server:` header)
+from TEST before 2a-ii — the `AuthMerging` behavior above is 2.4-only semantics.
 
 **A note on the two `api` names.** The document root contains both `api/` (the
 old app's PHP endpoints, copied from `app/api/`) and `api-laravel/` (the Laravel
