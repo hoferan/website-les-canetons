@@ -292,13 +292,17 @@ git commit -m "feat(docker): add the Laravel dispatch block and a docker overlay
 
 - Produces: an authorization boundary around the deployed Laravel tree. Consumed by nothing directly; verified in Task 8 by `GET /api/user` returning 401 rather than 403 (that request's resolved file is the only one whose authorization walk crosses this boundary).
 
-Both files only ever *restrict* access, so they are safe to ship ahead of the `/api/*` cutover. They already travel to servers today — `tools/build.mjs` copies `api/` into `dist/build/api-laravel/`.
+Both files only ever *restrict* access, so they are safe to ship ahead of the `/api/*` cutover.
 
-**The host's Apache version is unknown, and both files ship to production.** `staging/README.md` records that this host **500s on `<RequireAny>` / `Require expr`** — both Apache 2.4-only constructs, and "Invalid command → 500" is exactly how 2.2 reacts. So a bare `Require all denied` may itself be a syntax error there. Every authorization directive in these two files stays wrapped in an `<IfModule mod_authz_core.c>` / `<IfModule !mod_authz_core.c>` pair, as the pre-existing `api/.htaccess` already did. Do not "simplify" the guard away.
+**Two corrections to earlier drafts of this task, both established during implementation:**
+
+1. **These files do NOT reach any server.** An earlier draft claimed they "already travel to servers today" because `tools/build.mjs` copies `api/` into `dist/build/api-laravel/`. It does — but the deploy CLI then filters them out. `tools/deploy/preflight.mjs:16` protects the *basenames* `.htaccess` / `robots.txt` / `config.php` / `.htpasswd` **at any depth** (`local.mjs:24` matches `entry.name`; `sync.mjs:51,79` match `path.posix.basename(rel)`). So `api-laravel/.htaccess`, `api-laravel/public/.htaccess` and `api-laravel/public/robots.txt` are dropped from every upload, and since protected names are never deleted either, nothing signals it. The boundary is live in local Docker only. **Making the protected set root-relative is a prerequisite for sub-project 2a-ii** — see "Prerequisites for 2a-ii" at the end of this plan. Not fixed here: `tools/deploy/` is what the unmerged `feat/deploy-tooling-improvements` branch rewrites, and changing it here would conflict.
+
+2. **The host runs Apache 2.4.** An earlier draft inferred possible 2.2 from `staging/README.md`'s note that the host 500s on `<RequireAny>`/`Require expr`. That inference is wrong: `staging/test/.htaccess:28` ships an **unguarded** `Require all denied` and TEST serves normally, which a 2.2 server could not do. (The `<RequireAny>` 500 has some other cause — likely override level or a missing provider.) The `<IfModule mod_authz_core.c>` / `<IfModule !mod_authz_core.c>` guards in these two files are belt-and-braces inherited from the pre-existing `api/.htaccess`; they cost nothing and the `!` branch never executes, so **keep them** — but do not justify them with an Apache-version doubt the repo already resolves.
 
 - [ ] **Step 1: Improve the comment on the existing deny, keeping its guard**
 
-`api/.htaccess` already contains a guarded `Require all denied`. Keep the directive's guarded shape exactly; replace only the comment, so it records the defense-in-depth reasoning and the Apache-version uncertainty:
+`api/.htaccess` already contains a guarded `Require all denied`. Keep the directive's guarded shape exactly; replace only the comment, so it records the defense-in-depth reasoning, the fact that the file does not currently ship, and the real reason the guard stays:
 
 ```apache
 # The FTP account on the shared host is chrooted to the web root, so this
@@ -314,12 +318,18 @@ Both files only ever *restrict* access, so they are safe to ship ahead of the `/
 # old app's 404 today and never reaches this file. This matters once that
 # catch-all changes — which sub-projects 2a-ii and 3 will do.
 #
-# The host's Apache version is not confirmed: staging/README.md records that it
-# 500s on <RequireAny>/Require expr, which are 2.4-only constructs — consistent
-# with 2.2, where a bare "Require all denied" would itself be a syntax error.
-# So keep both spellings guarded. This file ships to real servers
-# (tools/build.mjs -> dist/build/api-laravel/), so a syntax error here would
-# surface the moment sub-project 2a-ii starts dispatching traffic into it.
+# NOTE: this file does NOT currently reach any server. The deploy CLI treats
+# ".htaccess" as a protected basename at ANY depth (tools/deploy/preflight.mjs
+# PROTECTED, applied in local.mjs walkBuild and sync.mjs), so it is filtered out
+# of every upload even though tools/build.mjs copies it into dist/build/. The
+# boundary below is therefore live only in local Docker today. Making the
+# protected set root-relative is a prerequisite for sub-project 2a-ii — until
+# then, dispatching /api/* on a real server would expose .env and vendor/.
+#
+# The 2.2 spellings are belt-and-braces inherited from this file's original
+# version; the host is in fact 2.4 (staging/test/.htaccess ships an unguarded
+# "Require all denied" and TEST serves normally). The guard costs nothing and
+# the !mod_authz_core branch never executes there, so it stays.
 <IfModule mod_authz_core.c>
     Require all denied
 </IfModule>
@@ -334,12 +344,23 @@ In `api/public/.htaccess`, insert at the very top of the file, above the existin
 
 ```apache
 # Re-grant web access inside public/. The parent api/.htaccess denies the whole
-# Laravel tree (it sits inside the document root on this host — see there), and
-# Apache inherits authorization from every parent directory of the RESOLVED
-# file. Without this, every request the root .htaccess dispatches into
-# api-laravel/public/index.php would 403 before Laravel ever booted.
+# Laravel tree (it sits inside the document root on this host — see there).
+# Apache evaluates authorization against the RESOLVED file, walking its parent
+# directories; with AuthMerging at its default of Off, the innermost section's
+# Require directives REPLACE inherited ones rather than adding to them. That is
+# why this grant overrides the parent deny at all.
 #
-# Guarded for the same unconfirmed-Apache-version reason as api/.htaccess.
+# WARNING for sub-project 2a-ii: that same replacement also discards the staging
+# Basic Auth. TEST/QA carry "Require valid-user" at the document root
+# (staging/*/.htaccess); once /api/* is dispatched here on a real server, this
+# grant becomes the innermost section and the API would be reachable with no
+# authentication. 2a-ii must handle it — e.g. have tools/build-overlays.mjs emit
+# a per-env api-laravel/public/.htaccess carrying the auth block, the same
+# merge-a-block pattern it already uses for the document root.
+#
+# No effect locally: the Docker stack deliberately runs without Basic Auth.
+# "The root .htaccess" above means the local Docker overlay today; every
+# environment from 2a-ii onward.
 <IfModule mod_authz_core.c>
     Require all granted
 </IfModule>
@@ -1246,6 +1267,18 @@ git commit -m "docs(docker): document the single-origin six-service dev stack"
 ```
 
 ---
+
+## Prerequisites for sub-project 2a-ii
+
+Two defects found while implementing this plan. Neither has any effect today — no server dispatches into `api-laravel/`, and the old app's catch-all rewrites direct hits to a 404 — but both become live the moment 2a-ii turns on `/api/*` dispatch on a real server. Neither is fixed here.
+
+**1. The deploy CLI never uploads nested `.htaccess` or `robots.txt`.** `tools/deploy/preflight.mjs:16` protects those basenames *at any depth* (`local.mjs:24` matches `entry.name`; `sync.mjs:51,79` match `path.posix.basename(rel)`), though the intent — per CLAUDE.md — was the three server-owned files **at the site root**. So `api-laravel/.htaccess`, `api-laravel/public/.htaccess` and `api-laravel/public/robots.txt` are dropped from every upload, and because protected names are never deleted either, nothing signals it. The Laravel tree has no authorization boundary on any server despite one existing in the repo since `e904b92`; at cutover, `.env`, `vendor/`, `storage/` and `tests/` would sit unprotected in the document root.
+
+Fix: make the protected set root-relative — test the posix-normalized path relative to the deploy root rather than the basename, updating `local.test.mjs` / `sync.test.mjs` accordingly. **Do this on `feat/deploy-tooling-improvements`**, which rewrites these files across 35 unmerged commits; landing it elsewhere would conflict.
+
+**2. `api/public/.htaccess`'s grant defeats the staging Basic Auth.** Apache 2.4's `AuthMerging` defaults to `Off`, so the innermost section's `Require` directives replace inherited ones rather than accumulating. TEST/QA carry `Require valid-user` at the document root (`staging/*/.htaccess`). Once `/api/*` dispatches into `api-laravel/public/`, that file's `Require all granted` becomes innermost and overrides it — making the entire API publicly reachable on both staging sites, with no authentication and no crawler protection.
+
+Fix options: have `tools/build-overlays.mjs` emit a per-env `api-laravel/public/.htaccess` carrying the auth block (same merge-a-block pattern it already uses for the document root); or restructure so no section ever grants — drop the tree-wide deny and place guarded denies on `app/`, `bootstrap/`, `config/`, `database/`, `routes/`, `storage/`, `tests/`, `vendor/` instead, leaving `public/` to inherit the site's auth normally. The second is more robust against this whole class of merge surprise, but it is a redesign and needs verification against a real staging server. Note it depends on fix 1 to reach a server at all.
 
 ## Done when
 

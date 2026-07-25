@@ -193,9 +193,22 @@ discovered on TEST, over FTP:
   directive, the deny is inherited and every API request 403s.
   **`Require all granted` must be added to the `public/.htaccess`.**
 
-Both files are created now, in the tracked `api/` tree — `api/.htaccess`
-(deny-all, new) and `api/public/.htaccess` (amended). They only ever *restrict*
-access, so shipping them ahead of the cutover is safe.
+Both files live in the tracked `api/` tree — `api/.htaccess` (deny-all) and
+`api/public/.htaccess` (amended). They only ever *restrict* access, so having
+them in place ahead of the cutover is safe.
+
+**Correction, established during implementation:** `api/.htaccess` was not new —
+commit `e904b92` already added it — and neither file actually reaches a server.
+The deploy CLI protects the basenames `.htaccess` / `robots.txt` / `config.php` /
+`.htpasswd` **at any depth** (`tools/deploy/preflight.mjs:16`, applied by
+basename in `local.mjs:24` and `sync.mjs:51,79`), though the documented intent is
+the three server-owned files *at the site root*. So the Laravel tree has no
+authorization boundary on TEST, QA or PROD. Separately, Apache 2.4's
+`AuthMerging` defaults to `Off`, so `api/public/.htaccess`'s `Require all
+granted` will *replace* the staging `Require valid-user` rather than accumulate
+with it — exposing the whole API on TEST/QA once dispatch is on. Both are
+inert today and both are hard prerequisites for sub-project 2a-ii; see
+"Prerequisites for sub-project 2a-ii" in the implementation plan.
 
 **A note on the two `api` names.** The document root contains both `api/` (the
 old app's PHP endpoints, copied from `app/api/`) and `api-laravel/` (the Laravel
