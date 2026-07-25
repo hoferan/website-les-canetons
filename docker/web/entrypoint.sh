@@ -6,13 +6,12 @@ cd /var/www/html
 # The `db` service's healthcheck (mysqladmin ping) can report healthy against
 # MariaDB's temporary --skip-networking init server, over the unix socket,
 # before TCP is actually reachable and the schema is loaded — a reproducible
-# false positive. tools/migrate.php already retries its own DB connection
-# internally, but `artisan migrate` does not, and a premature failure under
-# `set -e` would otherwise exit this container outright (worse than the old
-# one-shot `api-migrate` service, which left `web` running). Retry each
-# migration command here as a second line of defense. A persistent failure
-# still exits non-zero (via `set -e`, since this function's own return is
-# checked) rather than falling through to Apache with an unmigrated database.
+# false positive. `artisan migrate` has no retry of its own, and a premature
+# failure under `set -e` would otherwise exit this container outright (worse
+# than the old one-shot `api-migrate` service, which left `web` running).
+# Retry it as a second line of defense. A persistent failure still exits
+# non-zero (via `set -e`, since this function's own return is checked)
+# rather than falling through to Apache with an unmigrated database.
 retry() {
     attempt=1
     max_attempts=30
@@ -34,19 +33,28 @@ retry() {
 # Laravel takes its create branch instead, and the adopt branches — the ones
 # that actually run on TEST/QA/PROD — are never exercised here. The old
 # compose ran its `migrate` service before `api-migrate` for exactly this
-# reason. tools/ and sql/migrations/ are mounted outside the document root
-# (/srv/..., not /var/www/html/...) so the docroot keeps matching dist/build/,
-# which ships neither directory.
-retry php /srv/tools/migrate.php /srv/sql/migrations
+# reason. tools/ is mounted outside the document root (/srv/tools, not
+# /var/www/html/...) because dist/build/ does not ship it; sql/migrations/ IS
+# shipped there (tools/build.mjs copies it in, and App\AutoMigrator resolves
+# it as dirname(__DIR__).'/sql/migrations', i.e. under the document root), so
+# it's mounted at /var/www/html/sql/migrations instead, matching production.
+#
+# NOT wrapped in `retry`, deliberately: tools/migrate.php (see its own header
+# comment) already retries its DB connection internally for exactly this
+# cold-MariaDB case, over the same TCP path this false positive affects — that
+# is the right layer for it, and wrapping it here would compound to up to
+# max_attempts^2 attempts. Don't "fix" this by making the two calls symmetric.
+php /srv/tools/migrate.php /var/www/html/sql/migrations
 
 # Laravel's own migrations. On a real server the deploy triggers these over HTTP
 # (POST /api/migrate); there is no deploy step locally, so run them before
-# Apache accepts its first request.
+# Apache accepts its first request. Laravel has no equivalent internal
+# connection retry, so this one genuinely needs the wrapper above.
 #
-# The old app needs no equivalent for ITS OWN migrations beyond the retry
+# The old app needs no equivalent for ITS OWN migrations beyond the command
 # above: config.docker.php sets auto_migrate => true, so App\AutoMigrator
 # re-applies sql/migrations/*.sql on the first request under a GET_LOCK — a
-# no-op here since the retry above already applied them, but left on so that
+# no-op here since that command already applied them, but left on so that
 # mechanism stays exercised exactly as production runs it. That is why the
 # former one-shot `migrate`/`api-migrate` compose services are gone rather
 # than folded in here unchanged.
