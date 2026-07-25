@@ -2279,6 +2279,18 @@ class SignupController extends Controller
      */
     private function passesProofOfWork(string $payload): bool
     {
+        // Fail closed on a non-shared cache store, for the same reason as the
+        // placeholder secret below: ChallengeGuard IS the replay protection,
+        // and the `array` store is per-process while `file` is per-server, so
+        // either silently reduces this to no protection at all — with every
+        // test still green. Verified in Task 6 that only a shared, durable
+        // store refuses a cross-process replay.
+        if (!in_array(config('cache.default'), ['database', 'redis', 'memcached'], true)) {
+            Log::error('Signup refused: cache store is not shared, replay guard would be ineffective');
+
+            return false;
+        }
+
         $secret = (string) config('app.altcha_secret');
         if ($secret === '' || $secret === 'CHANGE_ME') {
             return false;
