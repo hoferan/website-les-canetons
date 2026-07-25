@@ -32,6 +32,36 @@ A server folder is **two layers stacked in the same directory**:
    - `robots.txt` — test/qa `Disallow: /`; prod the real one (or none).
    - `config.php` — env key + DB creds (git-ignored, set by hand).
 
+Two further `.htaccess` files travel **with** the code artifact instead —
+tracked source, built into every `dist/build/`, not server-owned — because the
+FTP account is chrooted to the web root and the Laravel API project (`api/`)
+therefore sits physically *inside* the document root, unlike Laravel's normal
+deployment where everything but `public/` lives outside it:
+
+- `api/.htaccess` (ships as `api-laravel/.htaccess`) — `Require all denied`
+  over the whole Laravel tree, so `.env`, `vendor/` and `app/` are unreachable
+  even though they are physically web-accessible.
+- `api/public/.htaccess` (ships as `api-laravel/public/.htaccess`) —
+  `Require all granted`, re-granting access back for the one subdirectory
+  that's meant to be reachable (Apache evaluates authorization against the
+  resolved file's parent directories, and with `AuthMerging` at its default of
+  `Off` the innermost `Require` replaces rather than adds to the inherited
+  one).
+
+**Neither currently reaches any server.** `tools/deploy/preflight.mjs`
+protects the basenames `.htaccess` / `robots.txt` / `config.php` /
+`.htpasswd` **at any depth**, not just at the site root, so both files above
+are silently dropped from every upload even though `tools/build.mjs` copies
+them into `dist/build/api-laravel/`. Nothing signals this today: no server
+dispatches `/api/*` into `api-laravel/` yet, and the old app's
+front-controller catch-all rewrites a direct hit like
+`/api-laravel/.env` to its own 404 before authorization would even matter. The
+boundary is live only in the local Docker stack (see `## Local Development`
+in `CLAUDE.md`). Making the protected set root-relative — so it only excludes
+the three files actually at the deploy root — is recorded as a prerequisite
+for the sub-project that turns on real `/api/*` dispatch; see `api/.htaccess`'s
+own comments for the full reasoning.
+
 ## Deployment: build once, promote one artifact
 
 ```bash

@@ -32,12 +32,17 @@ return [
     'altcha' => [
         'hmac_secret' => 'dev-local-altcha-secret',
     ],
-    // On in dev too; the docker `migrate` service still applies dev migrations
-    // before web starts, so this is effectively a no-op there (app/sql/migrations
-    // is absent in the dev layout) — present so the config shape matches.
+    // On in dev, and now actually load-bearing: docker-compose.yml mounts
+    // sql/migrations into the document root, and the web container's
+    // entrypoint (docker/web/entrypoint.sh) already applies them before Apache
+    // starts. App\AutoMigrator still runs on the old app's first request
+    // exactly as in production — it just finds nothing pending, since the
+    // entrypoint got there first.
     'auto_migrate' => true,
-    // Unused locally (docker migrates via the `migrate` service, not HTTP), but
-    // present so the config shape matches config.example.php.
+    // Unused by the old app locally: /api/migrate is dispatched to Laravel
+    // (docker/web/api-dispatch.htaccess), which reads its own MIGRATE_TOKEN
+    // from docker/api/env.docker, not from this file. Present so the config
+    // shape matches config.example.php.
     'migrate' => [
         'token' => 'dev-local-unused',
     ],

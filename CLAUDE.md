@@ -285,35 +285,95 @@ Available skills:
 ## Local Development
 
 ```bash
-docker compose up -d --build   # old app: http://localhost:8090, Laravel API: http://localhost:8092, Adminer: http://localhost:8091
-docker compose down            # stop
+npm run dev        # generate the docker .htaccess overlay, then bring the stack up
+npm run smoke       # HTTP smoke checks against the running stack (8 checks)
+npm run dev:down    # stop
 ```
 
-The stack's one-shot `vendor` service installs PHP deps into a shared `vendor` volume before
-`web` starts (gated by `depends_on: service_completed_successfully`). It gives that vendor an
-autoload map for the container's flattened layout (`App\ -> src/`, classes at `/var/www/html/src`),
-which the repo-root `vendor/` (`App\ -> app/src/`) does not — see `docker/web/install-vendor.sh`.
-No host-side `vendor/` or manual composer step is needed; changing a dependency is picked up on the
-next `up`.
+**Never `docker compose up` directly.** `npm run dev` first runs
+`node tools/build-overlays.mjs docker`, which generates
+`dist/overlay/docker/.htaccess` (the Laravel dispatch block merged onto
+`app/.htaccess`). `docker-compose.yml` bind-mounts that one file into the
+`web` container; if it doesn't exist yet, Docker silently creates a
+**directory** in its place instead of failing, and Apache then serves the
+site with no `.htaccess` rules at all — no front controller, no dispatch,
+nothing.
 
-**Laravel API (`api/`) in Docker:** the `api` service (`docker/api/Dockerfile`,
-`php:8.4-cli` + `pdo_mysql`/`mbstring`) runs `php artisan serve` on
-**http://localhost:8092**, independent of the old app on :8090 — production
-dispatch (root `.htaccess` routing `/api/*` into Laravel on one origin) is a
-later sub-project. Its one-shot `api-vendor` service installs `api/`'s Composer
-deps into a separate `api_vendor` volume (no autoload rewrite needed — `api/`
-is mounted whole, so `vendor/` sits beside `app/` as `api/composer.json`
-expects), and `api-migrate` applies Laravel's migrations. The API shares the
-**same `lescanetons` database as the old app** (no separate DB): its guarded
+| URL | What |
+| --- | --- |
+| http://localhost:8090 | the site — **both** the old app and the Laravel API |
+| http://localhost:8091 | Adminer |
+| http://localhost:8025 | Mailpit |
+| `localhost:3307` | MariaDB |
+
+`:8092` is gone — there is no separate port for the Laravel API any more.
+
+**One origin, one web server, matching production.** The `web` container runs
+Apache with PHP as **FastCGI** (`php:8.4-fpm` + `mod_proxy_fcgi`), serving a
+document root shaped exactly like the deployed `dist/build/` artifact
+(`index.php`, `src/`, `pages/`, `partials/`, `templates/`, `assets/`, `api/`
+all bind-mounted from `app/` at the document root), with sources bind-mounted
+in so PHP edits are live with no rebuild. `/api/*` and `/sanctum/*` are
+dispatched by `.htaccess` into the Laravel app, bind-mounted from `api/` at
+`api-laravel/` (not `api/` — the document root already has an `api/`, the old
+app's own endpoints). There's also a `./tools:/srv/tools:ro` mount *outside*
+the document root: `dist/build/` never ships `tools/`, so the entrypoint's
+migration script lives there instead, reaching the old app's `App\Migrator`
+via a symlink baked into the image (`/srv/app/src -> /var/www/html/src`).
+
+The stack has six services; five stay running and one is a one-shot.
+`docker compose ps --services` lists `adminer`, `assets`, `db`, `mailpit`,
+`web`; `deps` installs both projects' Composer deps into the `vendor` and
+`api_vendor` volumes and then exits (`docker compose ps -a` shows it
+`Exited (0)`) — `web` waits on it via `service_completed_successfully`. No
+host-side `vendor/` and no manual composer step are needed; changing a
+dependency is picked up on the next `up`. `web` also waits on `db` being
+healthy — that healthcheck pings `-h 127.0.0.1`, not `localhost`, because the
+unix-socket path falsely reports healthy against MariaDB's temporary
+`--skip-networking` init server before TCP and the schema are actually ready
+— and on `assets`/`mailpit` having started.
+
+**Migrations run from the `web` entrypoint, in order.** It applies the old
+app's `sql/migrations/*.sql` first (`/srv/tools/migrate.php`, retried
+internally against a cold database), so that Laravel's later adopt-in-place
+migrations run against tables that already exist. Then it applies Laravel's
+own (`php api-laravel/artisan migrate --force`, wrapped in its own retry), then
+`chown`s Laravel's `storage/`/`bootstrap/cache` back to `www-data` (both
+`artisan` calls ran as root), then starts `php-fpm` and finally `exec`s Apache
+in the foreground. `App\AutoMigrator` (`auto_migrate => true` in
+`config/config.docker.php`) still runs on the old app's first request exactly
+as in production — it just finds nothing pending, since the entrypoint already
+applied everything.
+
+**Known limitation — `/api/*` is ahead of the code.** The local stack runs the
+*target* architecture: all of `/api/*` (and `/sanctum/*`) is dispatched to
+Laravel, which today implements only `login`, `logout`, `user` and `migrate`.
+So locally `/api/contact`, `/api/signups`, `/api/altcha`, `/api/events` and
+`/api/responses` return 404 (the old app never sees them any more), and
+logging in through the old UI fails CSRF (419) because that JS never calls
+`GET /sanctum/csrf-cookie` first. This is deliberate, not a bug: sub-project
+2a-ii restores contact/signups/altcha, 2b restores events/responses, and 3
+retires the `$_SESSION` pages. Public (non-API) pages are unaffected. See
+`docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md`.
+
+**Laravel API (`api/`) in Docker:** Laravel runs inside the same `web`
+container as the old app, under the same Apache and the same PHP-FPM pool,
+reached at `http://localhost:8090/api/*` and `/sanctum/*` — there is no
+separate service or port any more. Its configuration is a real mounted `.env`
+(`docker/api/env.docker` -> `api-laravel/.env`, read-only) rather than a
+compose `environment:` block — `web` has no `environment:` block at all,
+deliberately: Laravel's `Dotenv` never overwrites a variable already present
+in the process environment, so a compose key would silently shadow the
+corresponding `.env` line and turn it into dead config. It shares the **same
+`lescanetons` database as the old app** (no separate DB): its guarded
 migrations *adopt* the old app's existing tables in place (add `updated_at`,
 convert the `used_challenges` PK) and create Laravel's own tables (`sessions`,
-`cache`, `migrations`, …) alongside them — so `api-migrate` runs after the old
-app's `migrate` service, and never drops or reseeds anything. All of `api/`'s
-generated artifacts (`vendor/`, `storage/` caches, `bootstrap/cache`, `.env`)
-stay in the volume or gitignored paths — never the tracked tree. (The Laravel
-*test* suite still uses its own throwaway `laravel_api_test` database — see
-`phpunit.xml` — because `RefreshDatabase` drops every table, which must never
-touch a shared DB.)
+`cache`, `migrations`, …) alongside them — never dropping or reseeding
+anything. All of `api/`'s generated artifacts (`vendor/`, `storage/` caches,
+`bootstrap/cache`, `.env`) stay in the `api_vendor` volume or gitignored
+paths — never the tracked tree. (The Laravel *test* suite still uses its own
+throwaway `laravel_api_test` database — see `api/phpunit.xml` — because
+`RefreshDatabase` drops every table, which must never touch a shared DB.)
 
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)
