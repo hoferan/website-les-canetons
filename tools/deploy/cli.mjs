@@ -167,7 +167,10 @@ async function main() {
   try {
     // --- Build ------------------------------------------------------------
     ui.start('build');
-    await runBuild((text) => text.split(/\r?\n/).filter(Boolean).forEach((l) => ui.detail(l)));
+    await runBuild((text) => {
+      ui.progress('build', { note: 'building' }); // heartbeat for CI's quiet stretches
+      text.split(/\r?\n/).filter(Boolean).forEach((l) => ui.detail(l));
+    });
     if (!existsSync(LOCAL_ROOT)) {
       throw new Error(`build produced no ${LOCAL_ROOT}/`);
     }
@@ -267,6 +270,18 @@ async function main() {
         confirmed.set(rel, e);
       }
     }
+    // Stale files are still ON the server until the delete phase runs — keep
+    // them in every state write (checkpoints, --no-delete finalize) so an
+    // abort or a skipped deletion can't make the mirror forget them. Entries
+    // come from the old state when we have it; on bootstrap/--relist the LIST
+    // supplies at least the size.
+    const staleEntries = new Map();
+    for (const rel of stale) {
+      staleEntries.set(rel, remoteState?.files?.[rel] ?? { size: remoteSizes?.get(rel) });
+    }
+    for (const [rel, e] of staleEntries) {
+      confirmed.set(rel, e);
+    }
     let uploadedCount = 0;
     let uploadedBytes = 0;
     const uploadStart = Date.now();
@@ -309,17 +324,20 @@ async function main() {
     let removedDirs = 0;
     if (noDelete) {
       ui.skip('delete', `--no-delete — ${stale.length} stale file(s) left on the server`);
-    } else if (deletions.length === 0) {
+    } else if (deletions.length === 0 && !authoritative) {
       ui.done('delete', 'nothing stale');
     } else {
       ui.start('delete');
-      deletedFiles = await deleteFiles(deletions, remoteRoot, accessOpts, concurrency, (n) =>
-        ui.progress('delete', { done: n, total: deletions.length })
-      );
+      if (deletions.length > 0) {
+        deletedFiles = await deleteFiles(deletions, remoteRoot, accessOpts, concurrency, (n) =>
+          ui.progress('delete', { done: n, total: deletions.length })
+        );
+      }
       // Sweep directories left empty, deepest-first (children before parents —
       // FTP can only RMD an EMPTY dir, so an empty subtree collapses
       // inside-out). Authoritative runs know every real dir (empties
-      // included); the fast path derives candidates from the state file.
+      // included) and sweep even with nothing stale — e.g. dirs a previous
+      // abort left empty; the fast path derives candidates from the state file.
       const sweepDirs = authoritative ? remoteDirs : emptyDirsAfterDelete(deletions, Object.keys(remoteState.files));
       removedDirs = await sweepEmptyDirs(sweepDirs, remoteRoot, accessOpts, client, (attempted, removed) =>
         ui.progress('delete', { note: `sweeping dirs ${attempted}/${sweepDirs.length} (${removed} removed)` })
@@ -338,6 +356,13 @@ async function main() {
         result.mismatched.forEach((m) =>
           ui.info(`    TRUNCATED ${m.rel} (local ${humanBytes(m.local)}, remote ${humanBytes(m.remote)})`)
         );
+        // Un-confirm the failures and write that state back, so the promise
+        // "resume re-sends only the shortfall" holds even for files an
+        // earlier checkpoint already recorded as good.
+        for (const rel of [...result.missing, ...result.mismatched.map((m) => m.rel)]) {
+          confirmed.delete(rel);
+        }
+        await uploadState(client, remoteRoot, accessOpts, buildState(target, marker.shortCommit, confirmed, 'in-progress'));
         throw new Error(
           `verification failed — ${result.missing.length} missing, ${result.mismatched.length} truncated (listed above). ` +
             `State file left in-progress; re-run the deploy — resume re-sends only the shortfall.`
@@ -348,8 +373,17 @@ async function main() {
 
     // --- Finalize -----------------------------------------------------------------
     ui.start('finalize');
-    await uploadState(client, remoteRoot, accessOpts, buildState(target, marker.shortCommit, localEntries, 'complete'));
-    ui.done('finalize', `${STATE_FILE} @ ${marker.shortCommit} (${localEntries.size} files)`);
+    // The completed mirror = the local build — plus, when deletion was
+    // skipped (--no-delete), the stale files deliberately left on the server,
+    // so the next deploy still sees them.
+    const finalEntries = new Map(localEntries);
+    if (noDelete) {
+      for (const [rel, e] of staleEntries) {
+        finalEntries.set(rel, e);
+      }
+    }
+    await uploadState(client, remoteRoot, accessOpts, buildState(target, marker.shortCommit, finalEntries, 'complete'));
+    ui.done('finalize', `${STATE_FILE} @ ${marker.shortCommit} (${finalEntries.size} files)`);
 
     ui.summary(
       `${label} deploy done in ${fmtDuration(Date.now() - startedAt)} — ` +
