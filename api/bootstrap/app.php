@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\ApiError;
+use App\Http\Middleware\RequireCapability;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // group so requests from the stateful domains authenticate via the
         // session cookie.
         $middleware->statefulApi();
+
+        $middleware->alias([
+            'capability' => RequireCapability::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // This governs only Laravel's DEFAULT renderer — whether it falls back
