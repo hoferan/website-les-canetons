@@ -3586,6 +3586,12 @@ Expected: PASS.
 
 Not `npm run check` — it chains `test:php`, whose 31 integration tests error until Task 26 deletes them (see "Test commands" above). `npm run check` becomes a valid gate from Task 26 onward.
 
+- [ ] **Step 3b: Raise the CI coverage gap with the maintainer**
+
+**CI never runs the Laravel test suite.** It lints `api/` (from Task 2b onward) but executes no Laravel tests — `.github/workflows/ci.yml` runs only the old app's PHPUnit. By this checkpoint that is ~15 tasks of Laravel code with no CI coverage, and merging to `main` auto-deploys to TEST.
+
+This is a pre-existing gap, not caused by this plan, but Phase 2 is the wrong time to discover it. Decide before proceeding: add a CI job running the Laravel suite, or accept that TEST is the first place Laravel code is exercised outside a developer's machine. A CI job needs a MariaDB service container and the `laravel_api_test` database — the same shape `docker/db/init/00-databases.sql` now creates locally.
+
 - [ ] **Step 4: Confirm every endpoint is routed**
 
 Run: `docker compose exec web php api-laravel/artisan route:list --path=api`
