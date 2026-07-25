@@ -49,6 +49,7 @@ Two things that will otherwise waste your time:
 
 - **The `-w` flag is required.** `artisan test` shells out to `vendor/phpunit/phpunit/phpunit` relative to the *working directory*, so running it as `php api-laravel/artisan test` from `/var/www/html` fails with "Could not open input file".
 - **The old app's suite needs a double `--`.** The first is npm's, the second is Composer's `exec` separator. `npm run test:php -- --testsuite unit` silently passes the flag to Composer instead of PHPUnit and errors.
+- **In Git Bash, prefix docker commands with `MSYS_NO_PATHCONV=1`.** MSYS rewrites the `-w /var/www/html/api-laravel` argument into a Windows path and Docker rejects it with "Cwd must be an absolute path". PowerShell is unaffected.
 
 **Baseline as of the start of this work:** Laravel 32/32 passing. Old app 84 unit tests passing, and **31 integration tests erroring** with `Call to undefined function App\mysqli_report()` — the `composer:2` image has no mysqli extension. That is pre-existing and unrelated to this plan. Every one of those 31 tests is deleted by Tasks 25 and 26, so:
 
