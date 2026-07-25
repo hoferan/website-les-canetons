@@ -2,12 +2,16 @@
 
 use App\Http\Controllers\Api\AltchaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\MigrateController;
 use Illuminate\Support\Facades\Route;
 
 // Public: anonymous visitors filling the signup form need a challenge before
 // they can submit, so this is deliberately unauthenticated and uncapped.
 Route::get('/altcha', AltchaController::class);
+
+// Public: the contact form is open to anonymous visitors.
+Route::post('/contact', ContactController::class);
 
 Route::post('/login', [AuthController::class, 'login']);
 
