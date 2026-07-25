@@ -29,6 +29,28 @@ Read these before starting. Each has bitten someone already.
 5. **The Laravel test suite uses `laravel_api_test`** (`api/phpunit.xml`). `RefreshDatabase` drops every table, so it must never point at the shared `lescanetons` database.
 6. **A new JS or CSS entry file requires `docker compose restart assets`** before it appears in Vite's manifest.
 
+## Test commands
+
+Use these exact forms. All were verified against the running stack on 2026-07-25.
+
+| Purpose | Command |
+| --- | --- |
+| Laravel suite | `docker compose exec -w /var/www/html/api-laravel web php artisan test` |
+| One Laravel test | `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=NameOfTest` |
+| Old app unit suite | `npm run test:php -- -- --testsuite unit` |
+| Old app, one test | `npm run test:php -- -- --filter=NameOfTest` |
+
+Two things that will otherwise waste your time:
+
+- **The `-w` flag is required.** `artisan test` shells out to `vendor/phpunit/phpunit/phpunit` relative to the *working directory*, so running it as `php api-laravel/artisan test` from `/var/www/html` fails with "Could not open input file".
+- **The old app's suite needs a double `--`.** The first is npm's, the second is Composer's `exec` separator. `npm run test:php -- --testsuite unit` silently passes the flag to Composer instead of PHPUnit and errors.
+
+**Baseline as of the start of this work:** Laravel 32/32 passing. Old app 84 unit tests passing, and **31 integration tests erroring** with `Call to undefined function App\mysqli_report()` — the `composer:2` image has no mysqli extension. That is pre-existing and unrelated to this plan. Every one of those 31 tests is deleted by Tasks 25 and 26, so:
+
+- Before Task 26, gate on the **unit** suite and the individual lint scripts.
+- `npm run check` chains the full `test:php`, so it is red until Task 26 and only becomes a valid gate from there on.
+- Do **not** try to fix the integration tests. They are being deleted.
+
 ---
 
 ## File structure
@@ -101,8 +123,8 @@ Read these before starting. Each has bitten someone already.
 
 Everything in this phase is inert on servers: nothing dispatches `/api/*` yet. The Laravel suite must be green at the end of every task.
 
-**Run the suite with:** `docker compose exec web php api-laravel/artisan test`
-**Run one test with:** `docker compose exec web php api-laravel/artisan test --filter=test_name`
+**Run the suite with:** `docker compose exec -w /var/www/html/api-laravel web php artisan test`
+**Run one test with:** `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=test_name`
 
 ---
 
@@ -208,7 +230,7 @@ Why `assertExactJson`: the old contract has no extra keys, and `translateApiErro
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ApiErrorContractTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ApiErrorContractTest`
 Expected: FAIL — Laravel returns its native `{message, errors}` with status 422, not 400.
 
 - [ ] **Step 3: Write the renderer**
@@ -358,12 +380,12 @@ use Illuminate\Validation\ValidationException;
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ApiErrorContractTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ApiErrorContractTest`
 Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Run the whole suite**
 
-Run: `docker compose exec web php api-laravel/artisan test`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS. `AuthTest::test_current_user_endpoint_requires_auth` still asserts only a 401 status, so the new body does not break it.
 
 - [ ] **Step 7: Commit**
@@ -408,7 +430,7 @@ Add to `api/tests/Feature/AuthTest.php`:
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=test_failed_login_carries_the_translatable_error_code`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=test_failed_login_carries_the_translatable_error_code`
 Expected: FAIL — body is `{"error":"Invalid credentials"}`, missing `code`.
 
 - [ ] **Step 3: Fix the controller**
@@ -431,7 +453,7 @@ use App\Exceptions\ApiError;
 
 - [ ] **Step 4: Run the suite**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=AuthTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=AuthTest`
 Expected: PASS, 8 tests.
 
 - [ ] **Step 5: Commit**
@@ -510,7 +532,7 @@ class ModelsTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ModelsTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ModelsTest`
 Expected: FAIL — `Class "App\Models\Signup" not found`.
 
 - [ ] **Step 3: Write the models**
@@ -630,7 +652,7 @@ class Response extends Model
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ModelsTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ModelsTest`
 Expected: PASS, 2 tests.
 
 - [ ] **Step 5: Commit**
@@ -706,7 +728,7 @@ class RequireCapabilityTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=RequireCapabilityTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=RequireCapabilityTest`
 Expected: FAIL — `Target class [capability] does not exist`.
 
 - [ ] **Step 3: Write the middleware**
@@ -755,7 +777,7 @@ In `api/bootstrap/app.php`, inside the `withMiddleware` closure, after `$middlew
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=RequireCapabilityTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=RequireCapabilityTest`
 Expected: PASS, 3 tests.
 
 - [ ] **Step 6: Commit**
@@ -863,7 +885,7 @@ class AltchaTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=AltchaTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=AltchaTest`
 Expected: FAIL — `Class "App\Support\Altcha" not found`.
 
 - [ ] **Step 3: Copy the class**
@@ -876,7 +898,7 @@ Retain the full class docblock; it records why a signature is mandatory.
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=AltchaTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=AltchaTest`
 Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
@@ -946,7 +968,7 @@ class ChallengeGuardTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ChallengeGuardTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ChallengeGuardTest`
 Expected: FAIL — `Class "App\Support\ChallengeGuard" not found`.
 
 - [ ] **Step 3: Write the guard**
@@ -998,7 +1020,7 @@ The key is hashed so a cache-key length limit can never truncate two distinct si
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ChallengeGuardTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ChallengeGuardTest`
 Expected: PASS, 4 tests.
 
 - [ ] **Step 5: Commit**
@@ -1070,7 +1092,7 @@ class AltchaEndpointTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=AltchaEndpointTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=AltchaEndpointTest`
 Expected: FAIL — 404, the route does not exist.
 
 - [ ] **Step 3: Add the config key**
@@ -1131,7 +1153,7 @@ with `use App\Http\Controllers\Api\AltchaController;` at the top.
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=AltchaEndpointTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=AltchaEndpointTest`
 Expected: PASS, 4 tests.
 
 - [ ] **Step 7: Commit**
@@ -1228,7 +1250,7 @@ class ContactEndpointTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ContactEndpointTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ContactEndpointTest`
 Expected: FAIL — 404.
 
 - [ ] **Step 3: Write the FormRequest**
@@ -1304,7 +1326,7 @@ Route::post('/contact', ContactController::class);
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ContactEndpointTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ContactEndpointTest`
 Expected: PASS, 5 tests.
 
 - [ ] **Step 7: Commit**
@@ -1380,7 +1402,7 @@ class SignupConfirmationMailTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupConfirmationMailTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupConfirmationMailTest`
 Expected: FAIL — `Class "App\Mail\SignupConfirmation" not found`. (`Occasion` arrives in Task 10; if the runner complains about it first, do Task 10 then return.)
 
 - [ ] **Step 3: Write the Mailable**
@@ -1473,7 +1495,7 @@ A one-line passthrough: the body is already fully assembled plain text, and `{!!
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupConfirmationMailTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupConfirmationMailTest`
 Expected: PASS, 3 tests.
 
 - [ ] **Step 6: Commit**
@@ -1624,7 +1646,7 @@ class SignupStatsTest extends TestCase
 
 - [ ] **Step 2: Run them and confirm they fail**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter="OccasionTest|SignupStatsTest"`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter="OccasionTest|SignupStatsTest"`
 Expected: FAIL — both classes not found.
 
 - [ ] **Step 3: Write `Occasion`**
@@ -1838,7 +1860,7 @@ final class SignupStats
 
 - [ ] **Step 5: Run the tests and confirm they pass**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter="OccasionTest|SignupStatsTest"`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter="OccasionTest|SignupStatsTest"`
 Expected: PASS, 10 tests.
 
 - [ ] **Step 6: Commit**
@@ -2025,7 +2047,7 @@ class SignupStoreTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupStoreTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupStoreTest`
 Expected: FAIL — 404.
 
 - [ ] **Step 3: Write the FormRequest**
@@ -2201,12 +2223,12 @@ Route::post('/signups', [SignupController::class, 'store']);
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupStoreTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupStoreTest`
 Expected: PASS, 11 tests.
 
 - [ ] **Step 7: Run the whole suite**
 
-Run: `docker compose exec web php api-laravel/artisan test`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS — confirms the `ApiError` change in step 3 broke nothing.
 
 - [ ] **Step 8: Commit**
@@ -2307,7 +2329,7 @@ class SignupSummaryTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupSummaryTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupSummaryTest`
 Expected: FAIL — 404/405.
 
 - [ ] **Step 3: Add the spreadsheet dependency**
@@ -2384,7 +2406,7 @@ Route::middleware(['auth:sanctum', 'capability:view_summary'])
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=SignupSummaryTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SignupSummaryTest`
 Expected: PASS, 4 tests.
 
 - [ ] **Step 7: Commit**
@@ -2485,7 +2507,7 @@ class EventIndexTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=EventIndexTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=EventIndexTest`
 Expected: FAIL — 404.
 
 - [ ] **Step 3: Write the controller**
@@ -2539,7 +2561,7 @@ Route::get('/events', [EventController::class, 'index']);
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=EventIndexTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=EventIndexTest`
 Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Commit**
@@ -2674,7 +2696,7 @@ class EventWriteTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=EventWriteTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=EventWriteTest`
 Expected: FAIL — 405/404.
 
 - [ ] **Step 3: Write the FormRequest**
@@ -2790,7 +2812,7 @@ Route::middleware(['auth:sanctum', 'capability:manage_events'])->group(function 
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=EventWriteTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=EventWriteTest`
 Expected: PASS, 8 tests.
 
 - [ ] **Step 7: Commit**
@@ -2927,7 +2949,7 @@ class ResponseStoreTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ResponseStoreTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ResponseStoreTest`
 Expected: FAIL — 404.
 
 - [ ] **Step 3: Write the FormRequest**
@@ -3007,7 +3029,7 @@ Route::middleware(['auth:sanctum', 'capability:respond'])
 
 - [ ] **Step 6: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ResponseStoreTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ResponseStoreTest`
 Expected: PASS, 7 tests.
 
 - [ ] **Step 7: Commit**
@@ -3135,7 +3157,7 @@ class ResponseSummaryTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ResponseSummaryTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ResponseSummaryTest`
 Expected: FAIL — 405.
 
 - [ ] **Step 3: Add the controller method**
@@ -3197,7 +3219,7 @@ Route::middleware(['auth:sanctum', 'capability:view_summary'])
 
 - [ ] **Step 5: Run the test and confirm it passes**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ResponseSummaryTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ResponseSummaryTest`
 Expected: PASS, 6 tests.
 
 - [ ] **Step 6: Commit**
@@ -3240,7 +3262,7 @@ Add to `api/tests/Feature/MigrateTest.php`:
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=MigrateTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=MigrateTest`
 Expected: FAIL — the header is ignored, the query parameter is accepted.
 
 - [ ] **Step 3: Change the controller**
@@ -3257,7 +3279,7 @@ Replace the token read in `api/app/Http/Controllers/Api/MigrateController.php`:
 
 - [ ] **Step 4: Run the suite**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=MigrateTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=MigrateTest`
 Expected: PASS. Update or delete any existing test that asserted the body-parameter contract.
 
 - [ ] **Step 5: Commit**
@@ -3363,7 +3385,7 @@ class ApiErrorVocabularyTest extends TestCase
 
 - [ ] **Step 2: Run it**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ApiErrorVocabularyTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ApiErrorVocabularyTest`
 Expected: PASS, 3 tests. If a token is missing, add it to `app/assets/js/i18n.js` with a French translation rather than removing it from this test.
 
 - [ ] **Step 3: Commit**
@@ -3438,7 +3460,7 @@ git rm api/tests/Feature/UsedChallengesMigrationTest.php
 
 Run the suite first — `RefreshDatabase` migrates `laravel_api_test` from empty, which is exactly the fresh-database path:
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=ModelsTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ModelsTest`
 Expected: PASS.
 
 Then inspect the resulting schema:
@@ -3451,7 +3473,7 @@ If `signups.id` still reports `bigint`, the table survived from an earlier run �
 
 - [ ] **Step 5: Run the whole suite**
 
-Run: `docker compose exec web php api-laravel/artisan test`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS.
 
 - [ ] **Step 6: Commit**
@@ -3467,18 +3489,20 @@ git commit -m "feat(api): drop used_challenges and align the signups PK with pro
 
 - [ ] **Step 1: Full Laravel suite**
 
-Run: `docker compose exec web php api-laravel/artisan test`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS, no skips.
 
 - [ ] **Step 2: Old app suite still green**
 
-Run: `npm run test:php`
+Run: `npm run test:php -- -- --testsuite unit`
 Expected: PASS — Phase 1 touched nothing in `app/`.
 
 - [ ] **Step 3: Lint**
 
-Run: `npm run check`
+Run: `npm run lint:php && npm run lint:js && npm run lint:css && npm run format:check && npm run guard`
 Expected: PASS.
+
+Not `npm run check` — it chains `test:php`, whose 31 integration tests error until Task 26 deletes them (see "Test commands" above). `npm run check` becomes a valid gate from Task 26 onward.
 
 - [ ] **Step 4: Confirm every endpoint is routed**
 
@@ -3552,7 +3576,7 @@ class LegacySessionBridgeTest extends TestCase
 
 - [ ] **Step 2: Run it and confirm it fails**
 
-Run: `docker compose exec web php api-laravel/artisan test --filter=LegacySessionBridgeTest`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=LegacySessionBridgeTest`
 Expected: FAIL — `Class "App\Support\LegacySession" not found`.
 
 - [ ] **Step 3: Write the bridge**
@@ -3652,7 +3676,7 @@ Add `use App\Support\LegacySession;`.
 
 - [ ] **Step 5: Run the suite**
 
-Run: `docker compose exec web php api-laravel/artisan test`
+Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS. If any test errors on `session_start()`, the `headers_sent()` guard is missing.
 
 - [ ] **Step 6: Commit**
@@ -3778,8 +3802,8 @@ Check `vite.config.js`: if entries are listed explicitly, `api.js` needs no entr
 
 - [ ] **Step 5: Lint**
 
-Run: `npm run check`
-Expected: PASS.
+Run: `npm run lint:js && npm run lint:css && npm run format:check`
+Expected: PASS. (Not `npm run check` — see "Test commands" above.)
 
 - [ ] **Step 6: Commit**
 
@@ -3948,7 +3972,7 @@ Adapt `routeUris()` to whatever accessor the existing tests use for the route ta
 
 - [ ] **Step 3: Run it and confirm it fails**
 
-Run: `npm run test:php -- --filter=RoutesTest`
+Run: `npm run test:php -- -- --filter=RoutesTest`
 Expected: FAIL — the routes are still registered.
 
 - [ ] **Step 4: Remove the route generation**
@@ -3963,7 +3987,7 @@ git rm -r app/api
 
 - [ ] **Step 6: Run the suite**
 
-Run: `npm run test:php`
+Run: `npm run test:php -- -- --testsuite unit`
 Expected: PASS. Tests referencing the deleted handlers must be deleted, not weakened.
 
 - [ ] **Step 7: Commit**
@@ -4031,7 +4055,7 @@ Expected: no matches. `SignupRepository` still appearing is correct — it stays
 
 - [ ] **Step 6: Run the suite and lint**
 
-Run: `npm run test:php && npm run check`
+Run: `npm run test:php -- -- --testsuite unit`
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
@@ -4101,7 +4125,7 @@ Expected: every application table present, plus Laravel's `migrations`/`sessions
 
 - [ ] **Step 7: Run the suites**
 
-Run: `npm run test:php && docker compose exec web php api-laravel/artisan test`
+Run: `npm run test:php && docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS.
 
 - [ ] **Step 8: Commit**
@@ -4376,7 +4400,7 @@ git commit -m "docs: describe Laravel as the sole API and schema owner"
 
 - [ ] **Step 1: Both suites**
 
-Run: `npm run test:php && docker compose exec web php api-laravel/artisan test`
+Run: `npm run test:php && docker compose exec -w /var/www/html/api-laravel web php artisan test`
 Expected: PASS, no skips.
 
 - [ ] **Step 2: Lint everything**
