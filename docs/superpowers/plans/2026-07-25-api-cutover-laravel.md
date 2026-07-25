@@ -3393,6 +3393,31 @@ git commit -m "refactor(api): read the migrate token from the X-Migrate-Token he
 
 ---
 
+### Task 17b: The `/api/migrate` response contract
+
+**Found during Task 17, and more important than the token change was.** Switching to the header was necessary but not sufficient: the response *shape* also disagrees with the caller, and one half of the mismatch is dangerous.
+
+`tools/dbmigrate.mjs` expects:
+- `body.status === 'ok'` — anything else is reported as a failure
+- `body.applied[]` and `body.pending[]` — the migration names, for its output
+- a `?mode=dry-run|apply` query parameter it appends
+
+Laravel's `MigrateController` returns `{ok: true, output: "<raw artisan text>"}`, never sends `status`, and **ignores `mode` completely**.
+
+Two consequences:
+
+1. A **successful** migration is reported as `Migration apply FAILED`, because `status` is absent. Noisy but safe.
+2. **`npm run dbmigrate:<env> -- --dry-run` applies migrations for real.** The caller believes it is asking for a dry run; the endpoint runs `artisan migrate --force` regardless. That is a real hazard on QA or PROD, and it is the reason this cannot wait.
+
+**Fix:** make `MigrateController` honour the existing contract rather than changing the caller — CI secrets and the operator checklist already depend on the Node side. Specifically:
+- read `mode`; on `dry-run` use `artisan migrate --pretend` (or `migrate:status`) and apply nothing
+- return `status: 'ok'` on success, and a non-`ok` status on failure
+- return `applied[]` and `pending[]` as arrays of migration names, parsed from Artisan's output or read via the migrator, rather than one opaque `output` string
+
+Keep `output` as well if it is useful for debugging — the caller ignores extra keys.
+
+**Verify by running `npm run dbmigrate:test -- --dry-run` against the local stack and confirming it reports pending work without applying it**, then a real run. Do not point it at QA or PROD.
+
 ### Task 18: The i18n vocabulary guard
 
 Cheap insurance: a token the API emits but `i18n.js` lacks degrades silently to "Une erreur est survenue".
