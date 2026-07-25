@@ -3,9 +3,11 @@
 #
 # Local-dev only for now: tools/build-overlays.mjs merges this block onto
 # app/.htaccess to produce the local Docker document root's .htaccess. Shipping
-# it to a real server is sub-project 2a-ii's job, and only once Laravel actually
-# implements contact/signups/altcha — today it would 404 five live endpoints.
-# When that happens this block moves into app/.htaccess unchanged.
+# it to a real server is sub-project 2a-ii's job for the contact/signups/altcha
+# endpoints, and sub-project 2b's job for events/responses — today those five
+# live endpoints are still served by the old app, so dispatching them into
+# Laravel before it implements them would 404 all five. When each sub-project
+# lands, this block moves into app/.htaccess unchanged.
 #
 #   /api/*     -> the Laravel app in api-laravel/
 #   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
@@ -18,19 +20,27 @@
 # ---------------------------------------------------------------------------
 RewriteEngine on
 
-# Forward the Authorization header into the request environment BEFORE the
-# dispatch rules below terminate rewrite processing. Laravel ships this same
-# rule in its own public/.htaccess, but [END] means that file's rewrite rules
-# never run, so it has to happen here. CGI-family SAPIs — which is what this
-# host and now this container use — do not hand Authorization to PHP otherwise.
+# Forward the Authorization and X-XSRF-Token headers into the request
+# environment BEFORE the dispatch rules below terminate rewrite processing.
+# Laravel ships these same rules in its own public/.htaccess, but [END] means
+# that file's rewrite rules never run, so it has to happen here. CGI-family
+# SAPIs — which is what this host and now this container use — do not hand
+# these headers to PHP otherwise. X-XSRF-Token is the one cookie-based Sanctum
+# SPA CSRF actually depends on; GET /sanctum/csrf-cookie exists to seed it.
 RewriteCond %{HTTP:Authorization} .
 RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteCond %{HTTP:x-xsrf-token} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-# [END], not [L]. In per-directory context [L] only ends the current pass; the
-# whole ruleset then re-runs against the rewritten path. On that second pass
-# REDIRECT_STATUS is still empty and REQUEST_URI is still /api/..., so the
-# front-controller catch-all below would hijack the request to index.php and
-# the old app would answer every API call. [END] terminates rewrite processing
-# outright (Apache 2.3.9+).
+# [END], not [L]. In per-directory context, a substitution is handed back to
+# the URL-parsing engine as an internal redirect, and the whole ruleset runs
+# again against the new path — [L] only ends the CURRENT pass, not rewrite
+# processing overall. [END] stops that outright, so this dispatch is a single
+# unconditional hop. That is not what defeats the front-controller catch-all
+# below — REDIRECT_STATUS already does that on the second pass, per the
+# comment at app/.htaccess:16-22 — the value here is that correctness stops
+# depending on REDIRECT_STATUS semantics, or on Laravel's own
+# public/.htaccess re-rewriting the already-redirected request. Task 8's
+# smoke script verifies this empirically.
 RewriteRule ^api(/|$) api-laravel/public/index.php [END]
 RewriteRule ^sanctum(/|$) api-laravel/public/index.php [END]

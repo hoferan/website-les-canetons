@@ -1,13 +1,17 @@
-// Generates the per-environment "overlay" files — the handful of files that
-// differ between test / qa / prod and therefore must NOT travel with the
-// promoted code artifact (public/). Output goes to dist/overlay/<env>/, ready to
-// upload once per server (and again only when app/.htaccess or the auth block
-// changes).
+// Generates the overlay files that sit on top of the shared code artifact —
+// mostly the per-environment server files (test / qa / prod) that differ per
+// server and therefore must NOT travel with the promoted code artifact
+// (public/), plus one local-only target (docker). Output goes to
+// dist/overlay/<env>/; server overlays are ready to upload once per server
+// (and again only when app/.htaccess or the auth block changes).
 //
 //   test / qa : .htaccess = staging auth block + the current app/.htaccess
 //               front controller (auto-merged), staging robots.txt (noindex),
 //               and .htpasswd if one exists locally.
 //   prod      : plain app/.htaccess + the real app/robots.txt (no auth).
+//   docker    : .htaccess = Laravel API dispatch block + app/.htaccess; a
+//               local build artifact (feeds the local Docker document root),
+//               not a server overlay — never uploaded anywhere.
 //
 // config.php is deliberately NOT emitted — it is server-owned and set by hand.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -38,11 +42,26 @@ const targets = requested.length ? requested : ENVS;
 
 const unknown = targets.filter((e) => !ALL.includes(e));
 if (unknown.length) {
-  console.error(`Unknown environment(s): ${unknown.join(', ')}. Use: ${ALL.join(' | ')} | all`);
+  console.error(
+    `Unknown environment(s): ${unknown.join(', ')}. ` +
+      `Use: ${ENVS.join(' | ')} | all (servers), or ${LOCAL.join(' | ')} (local Docker document root)`
+  );
   process.exit(1);
 }
 
 const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
+
+/** Appends the built front controller, with its generated-from banner, after `block`. */
+function withFrontController(block) {
+  return (
+    `${block.trimEnd()}\n\n` +
+    '# ---------------------------------------------------------------------------\n' +
+    '# Front controller + cache policy (generated from app/.htaccess by\n' +
+    '# tools/build-overlays.mjs — do not edit here; edit app/.htaccess)\n' +
+    '# ---------------------------------------------------------------------------\n' +
+    `${frontController}\n`
+  );
+}
 
 /** test/qa .htaccess: auth overlay first, then the built front controller. */
 function mergedHtaccess(env) {
@@ -65,27 +84,12 @@ function mergedHtaccess(env) {
       );
     }
   }
-  return (
-    `${auth}\n\n` +
-    '# ---------------------------------------------------------------------------\n' +
-    '# Front controller + cache policy (generated from app/.htaccess by\n' +
-    '# tools/build-overlays.mjs — do not edit here; edit app/.htaccess)\n' +
-    '# ---------------------------------------------------------------------------\n' +
-    `${frontController}\n`
-  );
+  return withFrontController(auth);
 }
 
 /** docker .htaccess: Laravel API dispatch block first, then the front controller. */
 function dockerHtaccess() {
-  const dispatch = readFileSync('docker/web/api-dispatch.htaccess', 'utf8').trimEnd();
-  return (
-    `${dispatch}\n\n` +
-    '# ---------------------------------------------------------------------------\n' +
-    '# Front controller + cache policy (generated from app/.htaccess by\n' +
-    '# tools/build-overlays.mjs — do not edit here; edit app/.htaccess)\n' +
-    '# ---------------------------------------------------------------------------\n' +
-    `${frontController}\n`
-  );
+  return withFrontController(readFileSync('docker/web/api-dispatch.htaccess', 'utf8'));
 }
 
 for (const env of targets) {
@@ -93,7 +97,7 @@ for (const env of targets) {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
-  if (env === 'docker') {
+  if (LOCAL.includes(env)) {
     writeFileSync(`${outDir}/.htaccess`, dockerHtaccess());
   } else if (env === 'prod') {
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
