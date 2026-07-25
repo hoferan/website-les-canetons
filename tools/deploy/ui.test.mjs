@@ -118,3 +118,35 @@ test('skip and summary render', () => {
   assert.match(out, /TEST deploy done in 3\.0s/);
   ui.close();
 });
+
+test('fmtDuration: no "1m 60s" at rounding boundaries', () => {
+  assert.equal(fmtDuration(119500), '2m 0s');
+  assert.equal(fmtDuration(59999), '1m 0s');
+});
+
+test('TTY: step lines are truncated to the stream width (no wrap corruption)', () => {
+  const stream = fakeStream();
+  stream.columns = 30;
+  const ui = createUI({ stream, isTTY: true, now: () => 0 });
+  ui.plan([{ id: 'a', title: 'Upload' }]);
+  ui.start('a', 'x'.repeat(200));
+  const lines = stream.text().split('\n');
+  assert.ok(lines.every((l) => l.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').length < 30), 'every physical line fits');
+  ui.close();
+});
+
+test('done without start renders a zero duration, not epoch time', () => {
+  const stream = fakeStream();
+  const ui = createUI({ stream, isTTY: false, now: () => 5000 });
+  ui.plan([{ id: 'a', title: 'Verify' }]);
+  ui.done('a', 'skipped upload');
+  assert.match(stream.text(), /\(0\.0s\)/);
+  ui.close();
+});
+
+test('unknown step id throws a named error', () => {
+  const ui = createUI({ stream: fakeStream(), isTTY: false });
+  ui.plan([{ id: 'a', title: 'A' }]);
+  assert.throws(() => ui.start('typo'), /unknown step id "typo"/);
+  ui.close();
+});

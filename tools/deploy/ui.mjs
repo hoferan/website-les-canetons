@@ -11,9 +11,9 @@ export function humanBytes(n) {
 }
 
 export function fmtDuration(ms) {
-  if (ms >= 60000) {
-    const m = Math.floor(ms / 60000);
-    return `${m}m ${Math.round((ms - m * 60000) / 1000)}s`;
+  const s = Math.round(ms / 1000);
+  if (s >= 60) {
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
   }
   return `${(ms / 1000).toFixed(1)}s`;
 }
@@ -51,6 +51,14 @@ export function createUI({
 
   const write = (s) => stream.write(s);
 
+  const step = (id) => {
+    const s = byId.get(id);
+    if (!s) {
+      throw new Error(`ui: unknown step id "${id}"`);
+    }
+    return s;
+  };
+
   function stepLine(s) {
     let mid = s.note || '';
     if (s.status === 'active') {
@@ -79,7 +87,10 @@ export function createUI({
     if (drawn > 0) {
       write(`\x1b[${drawn}A\x1b[0J`); // cursor up over the block, clear to end
     }
-    const lines = steps.map(stepLine);
+    // Truncate to the terminal width so a long line can never wrap — `drawn`
+    // counts logical lines, and a wrapped row would corrupt the redraw.
+    const cols = stream.columns || 120;
+    const lines = steps.map(stepLine).map((l) => (l.length >= cols ? l.slice(0, cols - 1) : l));
     write(`${lines.join('\n')}\n`);
     drawn = lines.length;
   }
@@ -131,7 +142,7 @@ export function createUI({
       startTicker();
     },
     start(id, note) {
-      const s = byId.get(id);
+      const s = step(id);
       s.status = 'active';
       s.startedAt = now();
       if (note !== undefined) {
@@ -145,7 +156,7 @@ export function createUI({
       }
     },
     progress(id, p) {
-      const s = byId.get(id);
+      const s = step(id);
       s.progress = p;
       if (isTTY) {
         draw();
@@ -158,7 +169,10 @@ export function createUI({
       }
     },
     done(id, note) {
-      const s = byId.get(id);
+      const s = step(id);
+      if (s.status === 'pending') {
+        s.startedAt = now(); // done without start: render a zero duration, not epoch time
+      }
       s.status = 'done';
       s.endedAt = now();
       if (note !== undefined) {
@@ -175,7 +189,7 @@ export function createUI({
       }
     },
     skip(id, note) {
-      const s = byId.get(id);
+      const s = step(id);
       s.status = 'skip';
       if (note !== undefined) {
         s.note = note;
