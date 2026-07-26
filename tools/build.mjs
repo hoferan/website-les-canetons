@@ -40,6 +40,15 @@ rmrf('dist/build/assets/css');
 // pure, environment-agnostic artifact you can promote test -> qa -> prod unchanged.
 rmSync('dist/build/config.php', { force: true });
 
+// php-error.log is a developer's local PHP error log (git-ignored, but the
+// cpSync above copies app/ wholesale, so it lands in the artifact and gets
+// uploaded). It is never web-readable — the front-controller catch-all in
+// .htaccess rewrites any non-/assets/ path to index.php, which 404s it, the
+// same way it hides config.php and src/ — but shipping one developer's local
+// stack traces to every server is still noise that has no business in an
+// environment-agnostic artifact.
+rmSync('dist/build/php-error.log', { force: true });
+
 // Ship the template next to the real (never-uploaded) config.php so it's on
 // every server for reference — diff it against config.php by hand to see
 // what's missing. The deploy CLI (tools/deploy/) also uses it to fail the deploy
