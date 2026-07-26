@@ -3944,6 +3944,14 @@ import { apiFetch } from "./api.js";
 | `app/assets/js/inscriptions_utilisateurs.js` | 18 | `POST /api/responses` |
 | `app/assets/js/inscriptions_admin.js` | 40 | `GET /api/responses` |
 | `app/assets/js/sinscrire.js` | 6 | `GET /api/events` |
+| `app/assets/js/main.js` | 58 | `POST /api/logout` — **missing from the original list** |
+| `app/assets/js/admin.js` | 3 | `POST /api/logout` — **missing from the original list** |
+
+The two logout calls were found during implementation. Their failure mode is worse than the rest: both redirect in `.finally()`, so a 419 lands the user on `/` looking logged out while the server session is still alive. `grep` for a raw `fetch("/api/` afterwards to confirm none remain.
+
+`api.js` also needs adding to `JS_ENTRY_EXCLUDE` in `vite.config.js`, or it becomes its own entry chunk instead of a shared import.
+
+**The `XSRF-TOKEN` cookie value is URL-encoded and must be decoded** before going into the header. Verified: sending it raw returns 419, decoded returns 200.
 
 GET calls are converted too, so there is exactly one way to reach the API and no future writer copies a raw `fetch`.
 
