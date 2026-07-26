@@ -4324,8 +4324,10 @@ Delete `'auto_migrate'` and the whole `'migrate' => ['token' => ...]` block from
 
 - [ ] **Step 2: Verify the shape check sees the change**
 
-Run: `npm run deploy:test -- --dry-run`
+Run: `npm run deploy:test`
 Expected: **refusal (exit 2)** naming `auto_migrate` and `migrate.token` as keys the server has but the code no longer expects. That is the pre-flight working correctly.
+
+**Not `--dry-run`.** A dry run exits **0** by design and only *reports* the drift — CLAUDE.md says so explicitly. Verifying the brake with `--dry-run` is a check that always appears to pass. The real run is safe to use for this: the refusal is thrown at Preflight, before Scan and before anything mutating, so nothing is uploaded or deleted.
 
 - [ ] **Step 3: Record the operator step**
 
@@ -4646,8 +4648,12 @@ Expected: no old `api/`, Laravel's front controller present, no `sql/`, and the 
 
 - [ ] **Step 6: Dry-run the deploy**
 
-Run: `npm run deploy:test -- --dry-run`
-Expected: **refusal (exit 2)** on config-shape drift until TEST's `config.php` is trimmed per Task 27 — that is correct. After trimming it by hand, re-run and read the deletion list: it should show `api/*.php` and `sql/` being removed and `api-laravel/*` being added.
+Run: `npm run deploy:test`
+Expected: **refusal (exit 2)** on config-shape drift until TEST's `config.php` is trimmed per Task 27 — that is correct, and safe to run for real because the refusal is thrown at Preflight before anything mutating.
+
+Then trim TEST's `config.php` by hand and run `npm run deploy:test -- --dry-run` to read the plan: it should show `api/*.php` and `sql/` being removed and `api-laravel/*` being added.
+
+**Do not use `--dry-run` to check the refusal itself** — it exits 0 by design and only reports drift, so it would appear to pass whether the brake works or not.
 
 - [ ] **Step 7: Commit anything outstanding**
 
