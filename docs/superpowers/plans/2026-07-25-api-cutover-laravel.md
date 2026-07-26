@@ -4299,6 +4299,18 @@ git commit -m "refactor: retire the old SQL migration system; Laravel owns the s
 
 ---
 
+### Task 26b: Artifact hygiene
+
+Two items found in Task 25, both about what `npm run build` ships.
+
+**1. Drop the now-unused Composer dependencies.** The root `composer.json` still requires `phpmailer/phpmailer` and `shuchkin/simplexlsxgen`. `App\Mailer` is deleted and the xlsx export moved to Laravel (which has its own copy in `api/composer.json`), so neither has a single consumer left in the old app — yet both still install into `dist/build/vendor/` on every build.
+
+Grep the whole of `app/` and `tools/` to confirm zero consumers before removing, then rebuild and check the artifact shrank.
+
+**2. Stop shipping `app/php-error.log`.** `tools/build.mjs` copies `app/` wholesale, so a developer's local error log lands in `dist/build/` and is uploaded — it is gitignored but not build-excluded, and it is not in the deploy CLI's protected set either. It currently contains `EventRepository` stack traces.
+
+Note this is **not** currently web-readable: the front-controller catch-all rewrites any non-`/assets/` path to `index.php`, which 404s it. So the severity is "a developer's error log is sitting on the production server", not "it is publicly served" — verify that claim rather than taking it on trust, since it is the difference between hygiene and disclosure. Exclude it from the build either way; CI runners have no such file, so this only affects local `npm run deploy:<env>`.
+
 ### Task 27: Trim `config.example.php`
 
 **This changes the deploy contract.** The config-shape pre-flight reports drift in *both* directions, so removing keys here makes every deploy refuse until each server's `config.php` is hand-edited to match.
