@@ -129,6 +129,48 @@ return [
 A missing/unknown `env` is treated as `prod` (no ribbon), so prod stays clean
 even if the key is never added there.
 
+### Keeping `config.php` in shape with `config.example.php`
+
+Before uploading anything, the deploy CLI fetches the target's `config.php` and
+compares its key **shape** (never its values) against the `config.example.php`
+that ships with the artifact. Drift in **either** direction refuses the deploy
+with **exit 2** and names the offending key paths: a key the code now expects
+that the server is missing, *and* a key the server still has that the code no
+longer expects. `-- --dry-run` reports the same drift but does **not** refuse
+(exit 0) — only a real deploy stops.
+
+**Operator step (do this before the deploy that lands the Laravel `/api/*`
+cutover).** On **every** server — TEST, QA and PROD — hand-edit `config.php` and
+delete these two entries, including their comments:
+
+```php
+'auto_migrate' => true,          // delete — App\AutoMigrator no longer exists
+'migrate' => [                   // delete the whole block — Laravel's
+    'token' => '…',              // /api/migrate reads MIGRATE_TOKEN from
+],                               // api-laravel/.env instead
+```
+
+Until a server's `config.php` is trimmed, every deploy to it refuses with:
+
+```
+FAILED at Preflight: TEST's config.php has drifted from config.example.php
+  (0 missing, 2 extra keys — listed above).
+    config.php on TEST has EXTRA key:  auto_migrate
+    config.php on TEST has EXTRA key:  migrate.token
+```
+
+That refusal is the pre-flight working, not a bug. Nothing is uploaded and
+nothing is deleted — it stops before the scan.
+
+`'altcha' => ['hmac_secret' => …]` and the `'mail'` block **stay** in
+`config.php` for now: the pre-flight compares against `config.example.php`,
+which still declares them, so removing them from a server would trip the same
+brake in the other direction (`MISSING key`). Note that no PHP in the old app
+reads either one any more — `bootstrap.php` consumes only `env`, `features` and
+`db`; Altcha and mail moved to Laravel's `ALTCHA_HMAC_SECRET` / `MAIL_*`. Retiring
+those two blocks is its own coordinated change to `config.example.php` **plus**
+every server, not something to do piecemeal.
+
 ## What's tracked vs. not
 
 - **Tracked:** `.htaccess`, `robots.txt` — no secrets, safe to version.
@@ -232,20 +274,32 @@ deploy workflow:
 
 ## Database migrations & recovery
 
-Migrations apply automatically **server-side** on the first request after a
-deploy: `bootstrap.php` runs `App\AutoMigrator`, which applies any pending
-`sql/migrations/*.sql` under a single-flight `GET_LOCK`. (CI no longer triggers
-migrations — the runner can't reach the staging hosts.)
+**Laravel owns the schema.** The old app's `sql/migrations/*.sql` runner and
+`App\AutoMigrator` are gone — nothing migrates itself on the first request any
+more, so there is no self-healing pass and no fail-loud 503 loop to recover
+from. Migrations are Laravel's own, under `api/database/migrations/`, and they
+only run when something triggers them.
 
-**Fail-loud:** if a migration fails, the whole environment serves HTTP 503
-("Site en maintenance…") on every request until fixed — this is intentional, so
-a broken schema is never served.
+**Triggering them** is a deliberate step after each deploy, from an allowlisted
+machine (remote MySQL login is blocked, so they run server-side):
 
-**Recovery (per environment):**
+```bash
+npm run dbmigrate:<env> -- --dry-run   # lists pending, changes nothing
+npm run dbmigrate:<env>                # applies
+```
 
-1. In that server's `config.php`, set `'auto_migrate' => false` (stops the 503
-   loop; the site serves again against the current schema).
-2. From an allowlisted machine, inspect and apply manually:
-   `npm run dbmigrate:<env> -- --dry-run` then `npm run dbmigrate:<env>`
-   (or POST `/api/migrate`). Fix the offending migration if it errors.
-3. Once migrations are clean, set `'auto_migrate' => true` again.
+Both POST to `<SITE_URL>/api/migrate`, which Apache dispatches to Laravel's
+`MigrateController` — it runs `artisan migrate --force` and answers with the
+`applied[]` / `pending[]` migration names. A non-2xx response, or a `status`
+other than `ok`, exits non-zero (which is what gates the CI step).
+
+Its secret comes from **`api-laravel/.env`'s `MIGRATE_TOKEN`** on the server,
+not from `config.php`. `tools/dbmigrate.mjs` sends it in the `X-Migrate-Token`
+header and reads its own copy from `.env.<env>` on the machine you run it from;
+the two must match or the endpoint answers 403.
+
+**If a migration fails,** the site keeps serving against the current schema
+(nothing 503s), so there is no emergency switch to flip. Read the `error` and
+`output` keys in the response, fix the migration, redeploy, and re-run
+`dbmigrate:<env>`. This is why migrations must stay backward-compatible: the
+previously deployed code has to survive a half-applied schema.
