@@ -1,5 +1,72 @@
 RewriteEngine on
 
+# ---------------------------------------------------------------------------
+# Laravel API dispatch.
+#
+#   /api/*     -> the Laravel app in api-laravel/
+#   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
+#                 which is not under /api/.
+#
+# This block MUST stay above both the RedirectMatch 301 legacy-URL rule and
+# the front-controller catch-all below. The catch-all matches every path (^),
+# so if it ran first every /api/* and /sanctum/* request would be handed to
+# the old app's index.php and this dispatch would never happen at all.
+#
+# The document root holds BOTH api/ (the old app's own PHP endpoints) and
+# api-laravel/ (the Laravel project) — see tools/build.mjs, which picks the
+# api-laravel name so building Laravel cannot overwrite the old endpoints. The
+# URL path /api/* therefore dispatches into api-laravel/, not api/. That
+# hyphen is load-bearing: ^api(/|$) CANNOT match api-laravel/..., because the
+# hyphen defeats (/|$) — which is the only reason the substitution below does
+# not re-match itself and loop. Never rename that directory without first
+# adding a REDIRECT_STATUS guard to the two dispatch rules.
+# ---------------------------------------------------------------------------
+
+# Forward the Authorization and X-XSRF-Token headers into the request
+# environment BEFORE the dispatch rules below terminate the current rewrite
+# pass. Laravel ships these same rules in its own api/public/.htaccess, but
+# that file never reaches a server (the deploy CLI treats .htaccess as a
+# protected basename at any depth) and its rules would not run for a
+# dispatched request anyway, so it has to happen here. CGI-family SAPIs —
+# which is what this host and the local container both use — do not hand
+# Authorization to PHP otherwise. The X-XSRF-Token rule is the same
+# belt-and-braces Laravel ships; it is kept so this block is a faithful
+# stand-in for api/public/.htaccess, even though Apache already exports
+# arbitrary request headers as HTTP_* (X-XSRF-Token reaches PHP without this
+# rule) and the E= value this rule sets arrives on the dispatched request as
+# REDIRECT_HTTP_X_XSRF_TOKEN, which Symfony's ServerBag doesn't read (its
+# REDIRECT_ fallback exists only for REDIRECT_HTTP_AUTHORIZATION) — so the
+# rule is inert for X-XSRF-Token specifically; cookie-based Sanctum SPA CSRF
+# (which GET /sanctum/csrf-cookie exists to seed) works anyway, via the header
+# Apache regenerates natively.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteCond %{HTTP:x-xsrf-token} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+# [L], NOT the tidier END flag — do not "modernise" this back.
+#
+# In per-directory context a substitution is handed back to the URL-parsing
+# engine as an internal redirect and the whole ruleset runs again against the
+# new path, so [L] ends only the CURRENT pass, not rewrite processing overall;
+# the END flag stops that outright and would make this dispatch a single
+# unconditional hop. But that flag was added in Apache 2.3.9 and does not
+# exist in 2.2; this shared host's version is unresolved (staging/README.md
+# records that it 500s on <RequireAny>, which leans 2.2); an unknown
+# RewriteRule flag is a syntax error — a 500 on EVERY request to the whole
+# site, public pages included — and no <IfModule> can guard a RewriteRule
+# flag. [L] is valid on both 2.2 and 2.4, so it is the only safe choice.
+#
+# [L] is correct here, not merely safe, and was verified empirically (Laravel
+# still answers its own 401 with it): on the second pass the path is
+# api-laravel/public/index.php, which ^api(/|$) cannot match (see the hyphen
+# note above), and REDIRECT_STATUS is set by then, so the front-controller
+# catch-all below does not match either. Hence no rewrite loop. Depending on
+# REDIRECT_STATUS is not a new liability: the catch-all below already relies
+# on it on this FastCGI host.
+RewriteRule ^api(/|$) api-laravel/public/index.php [L]
+RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
+
 # Legacy URL redirect. Old .html pages were migrated to .php, so any request
 # for a .html file is permanently redirected (301) to the matching .php file.
 # This keeps old bookmarks, inbound links, and search-engine results working,
