@@ -1,6 +1,7 @@
 // tools/deploy/preflight.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { classify, classifyWithList } from './sync.mjs';
 import {
   PROTECTED,
   TARGETS,
@@ -10,9 +11,39 @@ import {
 } from './preflight.mjs';
 
 test('PROTECTED: server-owned files plus the tool-owned state file', () => {
-  for (const name of ['.htaccess', 'robots.txt', 'config.php', '.htpasswd', '.sync-state.json']) {
+  for (const name of ['.htaccess', 'robots.txt', 'config.php', '.htpasswd', '.env', '.sync-state.json']) {
     assert.ok(PROTECTED.has(name), `${name} must be protected`);
   }
+});
+
+// api-laravel/.env is Laravel's server-owned configuration (APP_KEY, DB
+// credentials, MIGRATE_TOKEN, ALTCHA_HMAC_SECRET). tools/build.mjs strips it
+// from the artifact, so it is never in localEntries — which makes it look
+// exactly like a stale remote file. A routine state-based deploy never sees it
+// (it isn't in the state file either), but --relist and the bootstrap deploy
+// classify from the server's real tree, and would delete it. Deleting it is
+// unrecoverable from the repo and takes the whole API down.
+test('PROTECTED: a --relist/bootstrap deploy never marks api-laravel/.env stale', () => {
+  const local = new Map([['index.php', { size: 1, hash: 'a' }]]);
+  const remoteSizes = new Map([
+    ['index.php', 1],
+    ['api-laravel/.env', 900],
+    ['api-laravel/.env.example', 900],
+    ['api-laravel/storage/logs/laravel.log', 42],
+  ]);
+  const { stale } = classifyWithList(local, remoteSizes, { 'index.php': { size: 1, hash: 'a' } }, PROTECTED);
+  assert.ok(!stale.includes('api-laravel/.env'), 'api-laravel/.env must never be deleted');
+  // Only the real file is spared — a differently-named neighbour still goes.
+  assert.deepEqual(stale, ['api-laravel/.env.example', 'api-laravel/storage/logs/laravel.log']);
+});
+
+test('PROTECTED: the fast-path diff also spares api-laravel/.env', () => {
+  const { stale } = classify(
+    new Map([['index.php', { size: 1, hash: 'a' }]]),
+    { 'index.php': { size: 1, hash: 'a' }, 'api-laravel/.env': { size: 900, hash: 'b' } },
+    PROTECTED
+  );
+  assert.deepEqual(stale, []);
 });
 
 test('TARGETS: exactly test/qa/prod', () => {

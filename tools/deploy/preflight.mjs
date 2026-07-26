@@ -12,8 +12,21 @@ import Engine from 'php-parser';
 import { STATE_FILE } from './state.mjs';
 
 // Files that live on the server and must never be uploaded or deleted (plus
-// the state file, which this tool owns and writes separately).
-export const PROTECTED = new Set(['.htaccess', 'robots.txt', 'config.php', '.htpasswd', STATE_FILE]);
+// the state file, which this tool owns and writes separately). Matched by
+// BASENAME at any depth (see sync.mjs), which is what protects the nested
+// api-laravel/.env — Laravel's server-owned config (APP_KEY, DB credentials,
+// MIGRATE_TOKEN, ALTCHA_HMAC_SECRET), the exact counterpart of config.php.
+// tools/build.mjs strips it from the artifact, so without this entry a
+// --relist or bootstrap deploy would classify it as a stale remote file and
+// delete the API's entire configuration.
+export const PROTECTED = new Set([
+  '.htaccess',
+  'robots.txt',
+  'config.php',
+  '.htpasswd',
+  '.env',
+  STATE_FILE,
+]);
 
 // FTP_DIR must name the target env as its own path/subdomain segment, so a
 // mistyped dir can never deploy to — or delete from! — the wrong environment.

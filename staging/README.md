@@ -25,12 +25,16 @@ A server folder is **two layers stacked in the same directory**:
    (`index.php`, `src/`, `pages/`, `api/`, `partials/`, `assets/`, `vendor/`).
    Environment-agnostic: the _same bytes_ on test, qa, and prod. It does **not**
    include `config.php`.
-2. **The three server-owned files** — different on every environment, so they
+2. **The four server-owned files** — different on every environment, so they
    are set once per server and never travel with a code promotion:
    - `.htaccess` — test/qa add HTTP Basic Auth + `noindex` on top of the
      front-controller rules; prod has the front-controller rules only.
    - `robots.txt` — test/qa `Disallow: /`; prod the real one (or none).
-   - `config.php` — env key + DB creds (git-ignored, set by hand).
+   - `config.php` — env key + DB creds for the old app (git-ignored, set by
+     hand).
+   - `api-laravel/.env` — the same thing for Laravel: `APP_KEY`, DB creds,
+     `MIGRATE_TOKEN`, `ALTCHA_HMAC_SECRET` (git-ignored, set by hand). See
+     [Laravel's server-side `.env`](#laravels-server-side-env) below.
 
 Two further `.htaccess` files travel **with** the code artifact instead —
 tracked source, built into every `dist/build/`, not server-owned — because the
@@ -50,9 +54,9 @@ deployment where everything but `public/` lives outside it:
 
 **Neither currently reaches any server.** `tools/deploy/preflight.mjs`
 protects the basenames `.htaccess` / `robots.txt` / `config.php` /
-`.htpasswd` **at any depth**, not just at the site root, so both files above
-are silently dropped from every upload even though `tools/build.mjs` copies
-them into `dist/build/api-laravel/`. Nothing signals this today: no server
+`.htpasswd` / `.env` **at any depth**, not just at the site root, so both files
+above are silently dropped from every upload even though `tools/build.mjs`
+copies them into `dist/build/api-laravel/`. Nothing signals this today: no server
 dispatches `/api/*` into `api-laravel/` yet, and — *precisely because the
 deny-all was never uploaded* — a direct hit like `/api-laravel/.env` falls
 through to the old app's front-controller catch-all and gets its 404.
@@ -69,6 +73,12 @@ live only in the local Docker stack (see `## Local Development` in `CLAUDE.md`).
 the three files actually at the deploy root — is recorded as a prerequisite
 for the sub-project that turns on real `/api/*` dispatch; see `api/.htaccess`'s
 own comments for the full reasoning.
+
+**If you do that rework, `.env` must not become root-relative with them.**
+`api-laravel/.env` is nested by definition, is deliberately absent from the
+artifact, and is unrecoverable from the repo — a root-relative protected set
+would let the next `--relist` deploy delete every server's API configuration.
+`.htaccess` is the opposite case: it *should* travel with the code at depth.
 
 ## Deployment: build once, promote one artifact
 
@@ -303,3 +313,66 @@ the two must match or the endpoint answers 403.
 `output` keys in the response, fix the migration, redeploy, and re-run
 `dbmigrate:<env>`. This is why migrations must stay backward-compatible: the
 previously deployed code has to survive a half-applied schema.
+
+## Laravel's server-side `.env`
+
+`api-laravel/.env` is to the Laravel API exactly what `config.php` is to the old
+app: **server-owned, hand-placed, never in the artifact, never uploaded, never
+deleted.** `tools/build.mjs` strips `.env` when it builds
+`dist/build/api-laravel/`, and `.env` is a protected basename in
+`tools/deploy/preflight.mjs`, so no deploy — including `--relist` and the
+bootstrap first deploy of a new environment — can touch it.
+
+Nothing recreates it. **A server without it has no Laravel configuration at
+all**, and the first request Apache dispatches into `api-laravel/` dies on
+"No application encryption key has been specified" — an opaque 500, because
+`APP_DEBUG` is off. So this must be done **before** the deploy that turns on
+`/api/*` dispatch, on TEST, QA and PROD alike.
+
+**Provisioning, per server (once):**
+
+1. Take `api/.env.example` from the repo — it documents every key the app
+   reads, derived from `api/config/*.php`, with the traps commented.
+2. Fill in every `CHANGE_ME`:
+   - `APP_ENV` — `test` / `qa` / `production`. Not cosmetic: `/api/migrate`
+     echoes it back and `dbmigrate:<env>` prints it, so a server left on
+     Laravel's default reports `environment: production` during a QA migration.
+   - `APP_DEBUG=false` — on **every** server, prod included.
+   - `APP_URL` — the site's public base URL.
+   - `DB_*` — copy from that server's `config.php`; Laravel shares the old
+     app's database, it does not get one of its own.
+   - `SANCTUM_STATEFUL_DOMAINS` — the site's hostname, no scheme. A mismatch
+     does not error; it just 401s cookie-authed `/api/*` calls.
+   - `CACHE_STORE=database` — **required.** The Altcha replay guard uses the
+     cache as a single-use store; `array` is per-process and `file` is
+     per-server, so either silently removes replay protection.
+     `SignupController` refuses outright on anything else, so a wrong value
+     turns every signup into a 403.
+   - `MAIL_*` — `MAIL_SCHEME=smtps` with `MAIL_PORT=465` (easy-hebergement's
+     ports are non-standard; unset, Symfony infers TLS from the port).
+   - `MIGRATE_TOKEN` — must equal the `MIGRATE_TOKEN` in the `.env.<env>` of
+     whatever runs `npm run dbmigrate:<env>`, and the env's CI secret.
+   - `ALTCHA_HMAC_SECRET` — **required**, one long random string per server.
+     Empty or `CHANGE_ME` makes `/api/altcha` answer 503 and every signup
+     answer 403 `captcha_failed`, which reads as a broken form rather than a
+     missing setting. Never the value in `docker/api/env.docker` — it is public,
+     so challenges signed with it are forgeable by anyone reading the repo.
+3. Generate a **fresh** `APP_KEY` on that server (never reuse another
+   environment's, never the public one in `docker/api/env.docker`):
+
+   ```bash
+   php api-laravel/artisan key:generate --show   # paste the whole base64:… string
+   ```
+
+4. Upload it as `<docroot>/api-laravel/.env` and make sure
+   `api-laravel/storage/` and `api-laravel/bootstrap/cache/` are writable by the
+   web user — Laravel writes logs, compiled views and the session/cache files
+   there.
+5. Verify: `npm run dbmigrate:<env> -- --dry-run`. A JSON body with the right
+   `environment` proves dispatch, boot, `.env` and the DB connection all work.
+   A 500 means `.env` is missing or wrong; a 403 with JSON means only the token
+   is wrong.
+
+**Adding a key later** is a manual step on every server, the same as
+`config.php`. There is no equivalent of the config-shape pre-flight for `.env` —
+a deploy will not warn you that a server is missing a newly required key.

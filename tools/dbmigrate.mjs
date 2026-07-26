@@ -81,8 +81,10 @@ try {
   console.error(`Response starts with: ${snippet}`);
   console.error(
     `\nLikely causes: HTTP ${res.status} 401 -> missing/wrong BASIC_AUTH_USER/BASIC_AUTH_PASS ` +
-      '(TEST/QA are behind Basic Auth); the site is erroring (check the page loads); migrate.token ' +
-      "not set in this env's config.php (the endpoint 404s when unconfigured); or SITE_URL is wrong."
+      '(TEST/QA are behind Basic Auth); HTTP 500 -> the server has no api-laravel/.env, so Laravel ' +
+      "cannot boot (copy api/.env.example there by hand — see staging/README.md); HTTP 404 -> the " +
+      "server's .htaccess does not dispatch /api/* into api-laravel/; or SITE_URL is wrong. A wrong " +
+      'MIGRATE_TOKEN does NOT land here — that answers 403 with JSON.'
   );
   process.exit(1);
 }
