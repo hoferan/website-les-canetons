@@ -1,4 +1,5 @@
 import { createIcons } from "lucide";
+import { apiFetch } from "./api.js";
 import { icons } from "./icons.js";
 import { translateApiError } from "./i18n.js";
 import { formatFrenchDate } from "./main.js";
@@ -52,7 +53,7 @@ function loadEvents() {
   // Effacer la liste actuelle
   eventsList.innerHTML = "";
 
-  fetch("/api/events", {
+  apiFetch("/api/events", {
     method: "GET",
   })
     .then((response) => response.json())
@@ -175,7 +176,7 @@ if (eventForm) {
 // success. Parse the JSON body regardless (it carries the server's error
 // code/fields on failure), then branch on response.ok.
 function saveEvent(method, event) {
-  return fetch("/api/events", {
+  return apiFetch("/api/events", {
     method: method,
     body: JSON.stringify(event),
     headers: {
@@ -309,7 +310,7 @@ function createDeleteElement(event) {
   deleteElement.innerHTML = '<i data-lucide="trash-2" class="icon-md icon-block"></i>';
   deleteElement.addEventListener("click", function () {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
-      fetch("/api/events?id=" + event.id, {
+      apiFetch("/api/events?id=" + event.id, {
         method: "DELETE",
       })
         .then(function (response) {

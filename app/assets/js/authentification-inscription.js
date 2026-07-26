@@ -1,4 +1,6 @@
 // using session.js
+import { apiFetch } from "./api.js";
+
 var urlParams = new URLSearchParams(window.location.search);
 // returnTo is a same-origin route slug (see main.js). Resolve it against our own
 // origin and keep only the path/query/hash of a same-origin result, so a crafted
@@ -22,7 +24,7 @@ document.getElementById("login-form").addEventListener("submit", function (event
   var username = document.getElementById("username").value;
   var password = document.getElementById("password").value;
 
-  fetch("/api/login", {
+  apiFetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: username, password: password }),

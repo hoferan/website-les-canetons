@@ -1,6 +1,8 @@
+import { apiFetch } from "./api.js";
+
 // Called from the inline onsubmit="logoutUser()" handler in admin.php.
 function logoutUser() {
-  fetch("/api/logout", { method: "POST" }).finally(function () {
+  apiFetch("/api/logout", { method: "POST" }).finally(function () {
     window.location.href = "/";
   });
 }
