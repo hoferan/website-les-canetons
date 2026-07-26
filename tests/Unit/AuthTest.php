@@ -30,11 +30,4 @@ final class AuthTest extends TestCase
         $this->assertFalse(Auth::roleCan('nope', 'respond'));
         $this->assertFalse(Auth::roleCan(null, 'respond'));
     }
-
-    public function testRolesWithCapability(): void
-    {
-        $this->assertSame(['user', 'moderator'], Auth::rolesWithCapability('respond'));
-        $this->assertSame(['admin'], Auth::rolesWithCapability('manage_events'));
-        $this->assertSame(['admin'], Auth::rolesWithCapability('view_summary'));
-    }
 }

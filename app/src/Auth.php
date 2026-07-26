@@ -2,10 +2,24 @@
 
 namespace App;
 
-use App\Http\JsonResponse;
-use App\Repositories\UserRepository;
-use mysqli_sql_exception;
-
+/**
+ * Session-reading capability checks for the old app's server-rendered pages.
+ *
+ * Login, logout and the JSON API guards have moved to Laravel (`api/`): the
+ * Sanctum-backed `POST /api/login` / `POST /api/logout` own authentication, and
+ * `App\Http\JsonResponse`-based `requireLogin()` / `requireCanX()` guards are
+ * gone along with the `app/api/*.php` handlers that were their only callers.
+ *
+ * The `$_SESSION['user']` array this class reads is therefore no longer written
+ * here — Laravel's `App\Support\LegacySession` bridge writes it on login and
+ * clears it on logout. This class only *reads* that session, so the remaining
+ * pages under `app/pages/` and `app/partials/` keep gating exactly as before.
+ *
+ * The CAPABILITIES matrix stays the source of truth for those pages;
+ * `app/assets/js/session.js` mirrors it on the client.
+ *
+ * Sub-project 3 retires this class together with the `$_SESSION` pages.
+ */
 final class Auth
 {
     // Capability matrix — the single source of truth for what each role may do.
@@ -21,18 +35,6 @@ final class Auth
     public static function roleCan(?string $role, string $capability): bool
     {
         return in_array($capability, self::CAPABILITIES[$role] ?? [], true);
-    }
-
-    /** Roles that hold $capability. Source of truth for role-based filtering. */
-    public static function rolesWithCapability(string $capability): array
-    {
-        $roles = [];
-        foreach (self::CAPABILITIES as $role => $caps) {
-            if (in_array($capability, $caps, true)) {
-                $roles[] = $role;
-            }
-        }
-        return $roles;
     }
 
     public static function canManageEvents(): bool
@@ -63,48 +65,6 @@ final class Auth
         session_start();
     }
 
-    /**
-     * Verify credentials server-side. On success, store identity in the session
-     * and return the role. Returns null on failure.
-     */
-    public static function attemptLogin(string $username, string $password): ?string
-    {
-        $repo = new UserRepository(Database::get());
-        $user = $repo->findByUsername($username);
-        if ($user === null) {
-            return null;
-        }
-
-        if (password_verify($password, $user['password'])) {
-            self::completeLogin($username, $user['role']);
-            return $user['role'];
-        }
-
-        // Legacy rows created before hashing was added store the password as
-        // plain text (never a hash — hashes always start with '$'). Accept once
-        // via a timing-safe compare, then upgrade the stored value so this
-        // branch is never taken again for that user.
-        if (!str_starts_with($user['password'], '$') && hash_equals($user['password'], $password)) {
-            try {
-                $repo->updatePassword((int) $user['id'], password_hash($password, PASSWORD_DEFAULT));
-            } catch (mysqli_sql_exception $e) {
-                // Best-effort upgrade: the password already verified, so a failed
-                // rehash write must not block this (already-authenticated) login.
-            }
-            self::completeLogin($username, $user['role']);
-            return $user['role'];
-        }
-
-        return null;
-    }
-
-    private static function completeLogin(string $username, string $role): void
-    {
-        self::startSession();
-        session_regenerate_id(true);
-        $_SESSION['user'] = ['username' => $username, 'role' => $role];
-    }
-
     public static function check(): bool
     {
         self::startSession();
@@ -120,43 +80,6 @@ final class Auth
     public static function role(): ?string
     {
         return self::user()['role'] ?? null;
-    }
-
-    public static function logout(): void
-    {
-        self::startSession();
-        $_SESSION = [];
-        session_destroy();
-    }
-
-    /** Guard for API endpoints: 401 if not logged in. */
-    public static function requireLogin(): void
-    {
-        if (!self::check()) {
-            JsonResponse::error(401, 'not_authenticated', 'Not authenticated');
-        }
-    }
-
-    /** Guard for API endpoints: 401 if not logged in, 403 if role lacks $capability. */
-    private static function requireCapability(string $capability): void
-    {
-        self::requireLogin();
-        if (!self::roleCan(self::role(), $capability)) {
-            JsonResponse::error(403, 'access_denied', 'Access denied');
-        }
-    }
-
-    public static function requireCanManageEvents(): void
-    {
-        self::requireCapability('manage_events');
-    }
-    public static function requireCanViewSummary(): void
-    {
-        self::requireCapability('view_summary');
-    }
-    public static function requireCanRespond(): void
-    {
-        self::requireCapability('respond');
     }
 
     /** Guard for pages: redirect to login if not logged in. */
