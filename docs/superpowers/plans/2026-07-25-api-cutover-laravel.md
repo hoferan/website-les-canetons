@@ -3647,6 +3647,23 @@ Expected: `login`, `logout`, `user`, `migrate`, `altcha`, `contact`, `signups` (
 
 ---
 
+### Task 20b: Run the Laravel suite in CI
+
+Decided at the Phase 1 checkpoint. 178 Laravel tests exist and none gate a merge, while merging to `main` auto-deploys TEST — and Phase 2 is the first change where a regression reaches a server automatically.
+
+**Files:** `.github/workflows/ci.yml`
+
+Requirements:
+
+- A job running `php artisan test` in `api/`, needing a **MariaDB 10.3 service container** (match production) with the `laravel_api_test` database and a user granted on it — the same shape `docker/db/init/00-databases.sql` creates locally.
+- The suite's config comes from `api/phpunit.xml`, which pins `DB_HOST=db`, `CACHE_STORE=database` and `SANCTUM_STATEFUL_DOMAINS=localhost`. **`DB_HOST=db` is the compose service name and will not resolve in CI** — override it for the CI environment rather than editing `phpunit.xml`, which local dev depends on.
+- `CACHE_STORE=database` is deliberate (the Altcha replay guard needs a shared store) and requires the `cache` table, which `RefreshDatabase` creates from Laravel's own migration. Confirm that works in CI rather than assuming.
+- Needs `composer install` for `api/` — the existing `php` job installs only the root project. Task 2b already added an `api` install step for Pint; reuse or extend it rather than duplicating.
+- Decide whether this is a **new parallel job** or extra steps on the existing `php` job, and say why. A separate job keeps it off `deploy-test`'s critical path if it can run concurrently; extra steps are simpler but serialise. Task 2b noted the `php` job is already ~40s slower from the api install.
+- The job must **fail the build** on a test failure, and must gate `deploy-test` the way the other checks do — check how `deploy-test`'s `needs:` is wired.
+
+Verify by reading the workflow's own logic carefully; you cannot execute GitHub Actions locally. State plainly which parts you verified and which are reasoned, and flag anything you are unsure will work on a runner.
+
 ## Phase 2 — The cutover
 
 After this phase the old `/api/*` handlers are gone and Apache routes `/api/*` into Laravel. Everything must land together: rolling back means redeploying the previous tag, which restores `app/.htaccess` and the handlers as a set.
@@ -4645,6 +4662,12 @@ In order. The first three are hand steps on each server and must precede the dep
    dispatch only `/api/migrate` first, migrate, then deploy the wildcard — which
    trades the combined-cutover decision for a shorter outage.
 6. **Verify TEST by hand** using the Task 31 step 4 checklist against `https://test.lescanetons.org`.
+
+   **Two session-bridge checks specific to this host, both cheap and both unverifiable locally:**
+
+   a. **Does the bridge work at all on this host?** Log in via `/api/login`, then load `/planning_repet` with the same cookie jar. The bridge only works because Laravel and the old app share one PHP-FPM pool, one `session.save_path` and one `session.cookie_path`. A per-directory `.user.ini` or a different FastCGI handler for `api-laravel/` on shared hosting would break it silently — login returns 200 and the members' pages still redirect. Nothing in the repo causes that; it is a host-config unknown, and this is the one-request check.
+
+   b. **Check `session.gc_maxlifetime`.** Laravel's session is 120 minutes with an explicit `Max-Age`; PHP's native session is a browser-session cookie reaped server-side by `gc_maxlifetime`, commonly 1440 seconds. If it is much shorter than 120 minutes, a member idle ~25 minutes finds the old pages logged out while the API still authenticates them. Not a new bug — the old app always had this — but the cutover makes the *mismatch* visible where there used to be one session. It disappears entirely with sub-project 3; if it bites before then, raising `gc_maxlifetime` is the lever.
 7. **Tag** via `tag-release.yml`, then dispatch `deploy-qa.yml`; verify; then `deploy-prod.yml`.
 8. **Rollback if needed:** redeploy the previous tag. `app/.htaccess` and the old handlers are restored as a set — never promote one without the other.
 
