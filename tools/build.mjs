@@ -33,12 +33,6 @@ cpSync('app', 'dist/build', { recursive: true });
 rmrf('dist/build/assets/js');
 rmrf('dist/build/assets/css');
 
-// Ship the numbered migrations so the server-side endpoint (dist/build/api/migrate.php)
-// can apply them. They live under dist/build/sql/migrations and are unreachable via
-// direct HTTP: the front-controller catch-all (app/.htaccess) rewrites any
-// non-/assets/ path to index.php, which 404s anything that isn't a route.
-cpSync('sql/migrations', 'dist/build/sql/migrations', { recursive: true });
-
 // config.php is environment-specific and server-owned (real DB creds + env key).
 // Never ship it in the deploy artifact: each server keeps its own, set once by
 // hand, and it's excluded from every upload/promotion. Dropping it here (a local

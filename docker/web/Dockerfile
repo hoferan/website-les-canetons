@@ -58,14 +58,6 @@ RUN printf 'ServerName localhost\nErrorLog /dev/stderr\n' > /etc/apache2/conf-av
 # Apache's CustomLog. A conf file sorting after "docker.conf" overrides it.
 RUN printf '[www]\naccess.log = /dev/null\n' > /usr/local/etc/php-fpm.d/zz-canetons-log.conf
 
-# tools/migrate.php does `require __DIR__ . '/../app/src/Migrator.php'`, so
-# with the tools/ mount at /srv/tools it looks for /srv/app/src/Migrator.php.
-# Point that at the copy already present in the document root (mounted at
-# /var/www/html/src, since ./app:/var/www/html flattens app/'s layout) rather
-# than bind-mounting app/src a second time. Dangling until Task 7's mount is
-# in place — that's expected in this bare image.
-RUN mkdir -p /srv/app && ln -s /var/www/html/src /srv/app/src
-
 COPY apache-canetons.conf /etc/apache2/sites-available/canetons.conf
 RUN a2ensite canetons
 
@@ -79,10 +71,10 @@ EXPOSE 80
 # (PID 1) stays up — while every request 503s, invisibly. Probe FPM's
 # listening socket directly instead of relying on Apache's liveness alone.
 #
-# --start-period=120s: measured worst case before php-fpm starts is ~95s (30s
-# in tools/migrate.php's own retry + up to 65s in the entrypoint's retry
-# around `artisan migrate`) — 120s leaves headroom so the container cannot
-# flip to unhealthy while still legitimately migrating.
+# --start-period=120s: worst case before php-fpm starts is up to 65s, spent in
+# the entrypoint's retry around `artisan migrate` (30 attempts, 2s apart) — 120s
+# leaves headroom so the container cannot flip to unhealthy while still
+# legitimately migrating.
 HEALTHCHECK --interval=15s --timeout=3s --start-period=120s \
   CMD php -r 'exit(@fsockopen("127.0.0.1",9000)?0:1);' || exit 1
 
