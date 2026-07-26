@@ -4687,6 +4687,16 @@ In order. The first three are hand steps on each server and must precede the dep
    before promoting. If it is not, the mitigation is a two-step deploy —
    dispatch only `/api/migrate` first, migrate, then deploy the wildcard — which
    trades the combined-cutover decision for a shorter outage.
+
+   **There is no longer a safety net if this step is skipped or fails.** The old
+   `App\AutoMigrator` applied pending migrations on the first request after a
+   deploy, and failed loudly with a 503 if it could not. Task 26 removed it, so
+   Laravel owns the schema and the deploy owns the trigger. The consequence: a
+   failed or forgotten `dbmigrate` now leaves the server quietly running against
+   an unmigrated schema instead of refusing to serve. **Check this step's exit
+   code every time** — it is the one part of the deploy that no longer
+   self-heals, and the local stack cannot surface the difference because its
+   entrypoint migrates at container start.
 6. **Verify TEST by hand** using the Task 31 step 4 checklist against `https://test.lescanetons.org`.
 
    **Two session-bridge checks specific to this host, both cheap and both unverifiable locally:**
