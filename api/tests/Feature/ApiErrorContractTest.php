@@ -73,6 +73,34 @@ class ApiErrorContractTest extends TestCase
         ]);
     }
 
+    /**
+     * Every other test here uses getJson()/postJson(), which set
+     * `Accept: application/json` — and that header is exactly what used to hide
+     * this. Without it, Laravel's default guest redirect (installed by
+     * ApplicationBuilder::withMiddleware() as
+     * `redirectGuestsTo(fn () => route('login'))`) ran inside the Authenticate
+     * middleware, BEFORE any exception renderer, and blew up with
+     * RouteNotFoundException: an API-only app defines no `login` route. On PROD,
+     * APP_DEBUG=false turns that into an opaque 500 for anyone who pastes an API
+     * URL into a browser. bootstrap/app.php overrides the redirect with
+     * `fn () => null`; this pins that the contract holds whatever the client asks
+     * for.
+     */
+    public function test_unauthenticated_request_without_a_json_accept_header_still_uses_the_contract(): void
+    {
+        $expected = ['error' => 'Not authenticated', 'code' => 'not_authenticated'];
+
+        // A browser's Accept header, i.e. the URL-pasted-into-the-address-bar case.
+        $this->get('/api/user', ['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
+            ->assertStatus(401)
+            ->assertExactJson($expected);
+
+        // And with no Accept header at all (curl's default).
+        $this->call('GET', '/api/user')
+            ->assertStatus(401)
+            ->assertExactJson($expected);
+    }
+
     public function test_authorization_failure_uses_the_legacy_contract(): void
     {
         Route::get('/api/_contract_probe_403', function () {

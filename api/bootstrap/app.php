@@ -26,6 +26,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // session cookie.
         $middleware->statefulApi();
 
+        // Laravel installs `redirectGuestsTo(fn () => route('login'))` by
+        // default (ApplicationBuilder::withMiddleware()), and the Authenticate
+        // middleware resolves it BEFORE throwing — before any exception
+        // renderer runs. An API-only app defines no `login` route, so a guest
+        // whose request does not expectsJson() got a RouteNotFoundException
+        // instead of a 401: an opaque 500 on PROD, where APP_DEBUG=false, for
+        // anyone who pastes an API URL into a browser. Returning null suppresses
+        // the redirect, so the AuthenticationException falls through to
+        // ApiError::unauthenticated() below whatever the client's Accept header
+        // says.
+        $middleware->redirectGuestsTo(fn () => null);
+
         $middleware->alias([
             'capability' => RequireCapability::class,
         ]);
