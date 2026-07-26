@@ -4529,7 +4529,13 @@ Keep the `json.ok === true` **and** `typeof json.output === 'string'` assertions
 
 `npm run smoke` is **6/8** as of Task 17b, and both failures are pre-existing rather than caused by this work: `/api/* reaches Laravel` and `old app /api/* shadowed`. They concern `/api/contact`, and they encode the old "known limitation" world where Laravel implemented none of these endpoints. Now that it implements all five, the assertions themselves are stale.
 
-Diagnose before rewriting — a smoke check that was asserting the wrong thing is worth understanding, since these two were the only guard on dispatch behaviour.
+Diagnosed during Tasks 23 and 24 — both confirmed pre-existing by stashing and re-running. Fix them as follows:
+
+- **Check 2, "`/api/*` reaches Laravel"** asserts `body.message === 'Unauthenticated.'`, Laravel's **native** shape. `ApiError::unauthenticated()` replaced that with `{error, code}` when the error contract landed, so it has been unpassable since Task 1. Rewrite it to assert the contract: `code === 'not_authenticated'`.
+
+- **Check 7, "the old app's `/api/*` endpoints are shadowed by Laravel", is now actively misleading and must be rewritten, not merely repaired.** It discriminates by HTTP **status** — old app 400, Laravel 404 — which stopped working the moment Laravel got a real `ContactController`. The port is deliberately byte-faithful, so Laravel now returns the same 400 with a byte-identical body. **The check therefore reports "the old app answered" when the handler is deleted, its route is gone, and `app/api/` no longer exists in the artifact.** A check that confidently asserts the opposite of the truth is worse than a missing one, and this is precisely the check someone would lean on during a cutover.
+
+  Status cannot be the discriminator any more. Pick something that genuinely distinguishes the two apps — the old app sets a `PHPSESSID` cookie and Laravel sends `Cache-Control: no-cache, private`, both observed during Task 24 — or assert positively that the Laravel route is the one serving it.
 
 - [ ] **Step 4: Run the smoke checks**
 
