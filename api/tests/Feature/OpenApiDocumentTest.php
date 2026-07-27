@@ -124,6 +124,26 @@ class OpenApiDocumentTest extends TestCase
         );
     }
 
+    /**
+     * SignupController::store() resolves its FormRequest via app() instead of
+     * injecting it — deliberately, so the honeypot runs before validation — which
+     * makes the body invisible to Scramble's inference. Attributes document it
+     * explicitly, and this test is what notices if they are removed or drift from
+     * SignupRequest::rules().
+     */
+    public function test_the_signup_body_is_documented(): void
+    {
+        $body = $this->document()['paths']['/signups']['post']['requestBody'] ?? null;
+        $this->assertNotNull($body, 'POST /signups documents no request body.');
+
+        $properties = $body['content']['application/json']['schema']['properties'];
+
+        foreach (['first_name', 'last_name', 'address', 'phone', 'email', 'table_name', 'menus'] as $field) {
+            $this->assertArrayHasKey($field, $properties, "The signup body is missing {$field}.");
+        }
+        $this->assertSame('array', $properties['menus']['type']);
+    }
+
     /** @return array<string,mixed> */
     private function document(): array
     {

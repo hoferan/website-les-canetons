@@ -11,6 +11,7 @@ use App\Support\Altcha;
 use App\Support\ChallengeGuard;
 use App\Support\Occasion;
 use App\Support\SignupStats;
+use Dedoc\Scramble\Attributes\BodyParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -111,6 +112,15 @@ class SignupController extends Controller
         );
     }
 
+    #[BodyParameter('first_name', description: 'Guest first name.', required: true)]
+    #[BodyParameter('last_name', description: 'Guest last name.', required: true)]
+    #[BodyParameter('address', description: 'Postal address.', required: true)]
+    #[BodyParameter('phone', description: 'Contact phone number.', required: true)]
+    #[BodyParameter('email', description: 'Confirmation is mailed here.', required: true)]
+    #[BodyParameter('table_name', description: 'Free-text table or group name.', required: true)]
+    #[BodyParameter('menus', description: 'One menu value per guest; see /config for the allowed values.', required: true, type: 'array')]
+    #[BodyParameter('altcha', description: 'Solved proof-of-work payload from GET /altcha.', required: true)]
+    #[BodyParameter('hp', description: 'Honeypot. A real client leaves this empty.', required: false)]
     public function store(Request $request): JsonResponse
     {
         // (1) Honeypot: a real form never fills this. Silently accept — same
