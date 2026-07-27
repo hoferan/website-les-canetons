@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError, customFetch, resetCsrfPriming } from "./http";
 
+// A Response body can only be read once, ever. Every fetch mock below is
+// built with mockImplementation (never mockResolvedValue) so each call to
+// fetch() gets a FRESH Response instance, matching how a real fetch() never
+// returns the same Response object twice. Sharing one instance across calls
+// would only work by the accident of which of those calls happen to read the
+// body — invisible when reading a single test in isolation, and one added
+// body read away from "Body is unusable: Body has already been read".
 const jsonResponse = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -11,7 +18,7 @@ afterEach(() => {
 
 describe("customFetch", () => {
   it("sends cookies, because Sanctum authenticates by session cookie", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })));
     vi.stubGlobal("fetch", fetchMock);
 
     await customFetch("/config", { method: "GET" });
@@ -21,7 +28,7 @@ describe("customFetch", () => {
   });
 
   it("prefixes the API base, so callers pass spec-relative paths", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({}));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({})));
     vi.stubGlobal("fetch", fetchMock);
 
     await customFetch("/config", { method: "GET" });
@@ -30,7 +37,7 @@ describe("customFetch", () => {
   });
 
   it("primes the CSRF cookie before the first mutating request", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })));
     vi.stubGlobal("fetch", fetchMock);
 
     await customFetch("/login", {
@@ -43,10 +50,6 @@ describe("customFetch", () => {
   });
 
   it("primes only once across several mutations", async () => {
-    // A fresh Response per call, unlike mockResolvedValue's single shared
-    // instance: this test's customFetch calls read the body twice (once per
-    // mutation), and a real fetch() never returns the same Response object
-    // for two different calls — a Response body can only be read once ever.
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ ok: true })));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -58,7 +61,7 @@ describe("customFetch", () => {
   });
 
   it("does not prime for reads", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([]));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(jsonResponse([])));
     vi.stubGlobal("fetch", fetchMock);
 
     await customFetch("/events", { method: "GET" });
@@ -69,14 +72,16 @@ describe("customFetch", () => {
   it("throws a typed ApiError carrying code and fields", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        jsonResponse(
-          {
-            error: "Invalid form submission",
-            code: "validation_failed",
-            fields: [{ field: "email", reason: "required" }],
-          },
-          400,
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          jsonResponse(
+            {
+              error: "Invalid form submission",
+              code: "validation_failed",
+              fields: [{ field: "email", reason: "required" }],
+            },
+            400,
+          ),
         ),
       ),
     );
@@ -95,7 +100,11 @@ describe("customFetch", () => {
   it("still throws an ApiError when the body is not the contract", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(new Response("<html>502</html>", { status: 502 })),
+      vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(new Response("<html>502</html>", { status: 502 })),
+        ),
     );
 
     const error = (await customFetch("/events", { method: "GET" }).catch(
