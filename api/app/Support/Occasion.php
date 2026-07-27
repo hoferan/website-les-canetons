@@ -14,9 +14,10 @@ namespace App\Support;
  * step — the copy, dates and prices are PLACEHOLDERS and will change, so a
  * change on either side has to be mirrored on the other.
  *
- * SignupRepository::MENU_INFO (per-menu description + price) is intentionally
- * not copied: it is only ever read by the old pages' form markup, never by an
- * API endpoint.
+ * SignupRepository::MENU_INFO (per-menu description + price) is now copied here
+ * because the SPA has no server-rendered markup and /api/config ships it to the
+ * front end — this class is the single source of truth for it, and it stays
+ * pinned to the old app's copy by OccasionDriftTest until that app is retired.
  */
 final class Occasion
 {
