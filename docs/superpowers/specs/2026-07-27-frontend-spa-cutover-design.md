@@ -474,9 +474,14 @@ promoted **together**:
 there is a site-wide 500 rather than a broken page. It is placed by hand, per
 server, and verified immediately by loading `/` and `/api/config`.
 
-Rollback is unchanged: redeploy an older tag. Note that an older tag also
-restores the old `.htaccess` expectations, so a rollback means restoring the
-previous `.htaccess` by hand too — worth rehearsing on TEST before PROD.
+Rollback is unchanged in mechanism — redeploy an older tag — but it acquires a
+manual step: an older tag expects the old `.htaccess`, so rolling back means
+restoring that file by hand as well. **This is rehearsed on TEST before PROD is
+promoted**, as a required step, not a documented intention: roll TEST back to a
+pre-cutover tag, restore its `.htaccess`, confirm the old site serves, then roll
+forward again. The exact sequence that worked is written into
+`staging/README.md`. A procedure first attempted during an outage is not a
+procedure.
 
 ## 14. Risks
 
@@ -492,7 +497,11 @@ previous `.htaccess` by hand too — worth rehearsing on TEST before PROD.
 
 ## 15. Work breakdown
 
-One PR, ordered so each commit is self-contained and reviewable:
+**One PR, reviewed commit by commit.** The commits below are ordered so each one
+is self-contained and independently reviewable, which is what makes a diff this
+large honestly reviewable: the reviewer walks the commits, not the combined
+diff. So no commit may leave the tree in a state that does not build, and none
+may mix a mechanical move with a behavioral change.
 
 1. Toolchain: TypeScript, React, Tailwind, Vitest, Playwright, `orval` config;
    `vite.config.ts` with `root: 'web'`.
