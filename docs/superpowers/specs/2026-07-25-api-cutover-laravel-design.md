@@ -348,8 +348,50 @@ migrations. Delete them, along with `App\Migrator`, `App\AutoMigrator`,
 the Docker entrypoint.
 
 Laravel becomes the single schema owner, so `POST /api/migrate` running
-`artisan migrate` is complete rather than partial, and nothing depends on
-`auto_migrate` any more.
+`artisan migrate` is complete rather than partial.
+
+> **CORRECTION — this section originally added "and nothing depends on
+> `auto_migrate` any more". That was wrong, and deleting `App\AutoMigrator` on
+> the strength of it was a mistake.**
+>
+> The rationale addressed schema *ownership* and never touched *triggering*.
+> `AutoMigrator` did not exist as a convenience: **the host firewalls the GitHub
+> runner's IP**, so CI can deploy over FTP but can never reach the site over HTTP
+> to call `/api/migrate`. Applying migrations on the request path — where the DB
+> connection is local and no inbound connection is needed — was the *only*
+> mechanism that could migrate a server after an automated deploy. Its own
+> docblock said so; the plan removed it anyway.
+>
+> Compounding it, `CLAUDE.md` claimed CI ran a migration step after the deploy.
+> No workflow has ever contained one, and none can. So with `AutoMigrator` gone,
+> a merge to `main` would auto-deploy TEST over FTP and then nothing would ever
+> migrate it.
+>
+> **Restored as `App\Http\Middleware\RunPendingMigrations`**, prepended to the
+> `api` *and* `web` middleware groups (the `web` group matters:
+> `/sanctum/csrf-cookie` lives there, `apiFetch` primes it before every mutating
+> call, and its `StartSession` reads a `sessions` table that a fresh server does
+> not have). Same design as the original — cheap pending-check on the hot path,
+> `GET_LOCK` single-flight, re-check under the lock, fail loud — with two
+> Laravel-specific constraints: a raw advisory lock rather than `Cache::lock()`
+> or `migrate --isolated`, both of which route through the database cache store
+> whose table is itself created by a migration; and treating a missing
+> `migrations` table as "everything pending" rather than letting it throw.
+> Gated by `AUTO_MIGRATE`, defaulting **on**, because a silently-disabled server
+> is the failure being fixed.
+>
+> **Accepted trade:** a migration that fails on a server now 503s every `/api/*`
+> request and retries on each one. That is louder than a stale schema, and on
+> shared hosting a slow failure can queue FPM workers on the lock. It is
+> identical to the behaviour that ran in production before, and the mitigation is
+> procedural: anything beyond a trivial migration goes through
+> `npm run dbmigrate:<env>` from a machine that can reach the site, because the
+> request path has no timeout and a long `ALTER` can hit `max_execution_time`
+> mid-run.
+>
+> **The lesson worth keeping:** the plan deleted a safety mechanism after reading
+> what it did, without establishing why it existed. The docblock explaining the
+> firewall was right there.
 
 **No pending-migration check is needed.** An earlier draft required confirming
 that every server had applied both SQL files first. It doesn't matter: Laravel's
