@@ -86,4 +86,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Token-gated (not session-gated): the deploy tooling calls this server-side
 // with the shared MIGRATE_TOKEN, so it must not require an authenticated user.
+// Excluded from the OpenAPI document: the generated TypeScript client is for the
+// browser, and nothing in the browser may trigger a migration.
 Route::post('/migrate', MigrateController::class);

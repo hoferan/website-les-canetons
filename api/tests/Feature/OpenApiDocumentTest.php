@@ -177,6 +177,21 @@ class OpenApiDocumentTest extends TestCase
         $this->assertSame('array', $properties['menus']['type']);
     }
 
+    /**
+     * The /migrate endpoint is token-gated deploy tooling called server-side by
+     * tools/dbmigrate.mjs with a shared secret. It must be excluded from the
+     * generated OpenAPI document because the browser client must never have
+     * access to a method that triggers database migrations.
+     */
+    public function test_the_migrate_route_is_not_documented(): void
+    {
+        $this->assertArrayNotHasKey(
+            '/migrate',
+            $this->document()['paths'],
+            'The token-gated deploy endpoint must not reach the generated browser client.'
+        );
+    }
+
     /** @return array<string,mixed> */
     private function document(): array
     {
