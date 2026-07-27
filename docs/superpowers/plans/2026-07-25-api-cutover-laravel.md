@@ -4678,6 +4678,16 @@ In order. The first three are hand steps on each server and must precede the dep
 
    **Nothing will catch this.** `config.php` has the AST-based shape pre-flight that refuses a deploy on key drift; the Laravel `.env` has no shape check at all, so the mismatch is silent. Check each server's `config.php` value before deploying and set the `.env` line to match. Making the two cross-checked — either by teaching the config-shape pre-flight about the pair, or by having one read the other — is the real fix and a good follow-up.
 3. **Trim each `config.php`** — remove `auto_migrate` and `migrate.token` (Task 27). Until this is done the deploy refuses with exit 2.
+
+3b. **Read `schema_migrations` on each server before deploying — the window closes at the deploy.** A migration on this branch drops that table (it was the old `App\Migrator`'s ledger; nothing reads it now). Afterwards its contents are unrecoverable. They are worth one look first:
+
+   ```sql
+   SELECT * FROM schema_migrations;
+   ```
+
+   Expect two rows, `001_create_signups` and `002_create_used_challenges`. If a server shows **fewer**, that server was sitting at a different migration point than the others — which is exactly the kind of drift worth knowing about before a cutover, and after the drop there is no evidence left to find it in.
+
+   Note also that this drop and the `used_challenges` drop land in the **same deploy**, so that deploy is the first proof the server's DB user actually holds `DROP`. If it doesn't, both fail together and every `/api/*` request 503s until it's resolved — the designed fail-loud behaviour, but worth expecting rather than discovering.
 4. **Merge to `main`** — auto-deploys TEST.
 5. **Run the migrations immediately:** `npm run dbmigrate:test`.
 
