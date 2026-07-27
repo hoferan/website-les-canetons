@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Support\Occasion;
 use Illuminate\Http\JsonResponse;
+use RuntimeException;
 
 /**
  * Runtime configuration for the SPA.
@@ -90,6 +91,13 @@ class ConfigController extends Controller
      * number — currency formatting stays server-side, beside the description it
      * belongs with.
      *
+     * Built with the Collection's map(), not the native array_map(): Scramble's
+     * static analysis can trace a Collection::map() closure's return type (as it
+     * already does for Event::toFrontendShape() in EventController), but not a
+     * plain array_map() callback — with array_map() the exported document showed
+     * `"menus": {"type": "array", "items": []}`, i.e. no item shape at all, which
+     * would make the generated TypeScript client type menus as `unknown[]`.
+     *
      * @return array<string,mixed>
      */
     private function occasion(): array
@@ -104,15 +112,41 @@ class ConfigController extends Controller
             'teaser' => $occasion['teaser'],
             'invitation' => $occasion['invitation'],
             'maxGuests' => Occasion::MAX_GUESTS,
-            'menus' => array_map(
-                static fn (string $value): array => [
-                    'value' => $value,
-                    'label' => Occasion::MENU_LABELS[$value],
-                    'description' => Occasion::MENU_INFO[$value]['description'] ?? '',
-                    'price' => Occasion::MENU_INFO[$value]['price'] ?? '',
-                ],
-                Occasion::MENU_VALUES
-            ),
+            'menus' => collect(Occasion::MENU_VALUES)
+                ->map(fn (string $value): array => $this->menuEntry($value))
+                ->all(),
+        ];
+    }
+
+    /**
+     * One occasion menu, flattened for the client.
+     *
+     * Deliberately NO `?? ''` fallback for the MENU_INFO lookup below.
+     * MENU_VALUES/MENU_LABELS and MENU_INFO are separately-maintained parallel
+     * constants (see Occasion's class docblock) that must stay in lockstep. A
+     * silent fallback would let a menu value added to MENU_VALUES without a
+     * matching MENU_INFO entry publish a menu card with a blank description and
+     * blank price on a public reservation form — with no test failing and
+     * nothing logged. An empty price on a public form is worse than a loud
+     * error, so a mismatch throws instead, naming the offending value.
+     *
+     * @return array{value:string,label:string,description:string,price:string}
+     */
+    private function menuEntry(string $value): array
+    {
+        if (! isset(Occasion::MENU_INFO[$value])) {
+            throw new RuntimeException(
+                "Occasion::MENU_INFO has no entry for menu value '{$value}' ".
+                '(present in MENU_VALUES/MENU_LABELS). The two constants have '.
+                'drifted out of lockstep.'
+            );
+        }
+
+        return [
+            'value' => $value,
+            'label' => Occasion::MENU_LABELS[$value],
+            'description' => Occasion::MENU_INFO[$value]['description'],
+            'price' => Occasion::MENU_INFO[$value]['price'],
         ];
     }
 }

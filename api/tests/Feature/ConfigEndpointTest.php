@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\ConfigController;
 use App\Support\Occasion;
+use ReflectionMethod;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -67,6 +70,30 @@ class ConfigEndpointTest extends TestCase
         $this->getJson('/api/config')->assertJsonPath('env', 'prod');
     }
 
+    /**
+     * `dev`->`dev` is otherwise only reached indirectly via the local->dev
+     * translation test above; pinned directly so ENV_MAP's own dev entry
+     * cannot silently drift (e.g. a typo like 'dev' => 'deb').
+     */
+    public function test_dev_is_mapped_to_dev(): void
+    {
+        config(['app.env' => 'dev']);
+
+        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+    }
+
+    /**
+     * qa is a real staging environment whose ribbon exists specifically to
+     * stop someone mistaking it for production — a typo in ENV_MAP's qa entry
+     * (e.g. 'qa' => 'q') would ship unnoticed without this.
+     */
+    public function test_qa_is_mapped_to_qa(): void
+    {
+        config(['app.env' => 'qa']);
+
+        $this->getJson('/api/config')->assertJsonPath('env', 'qa');
+    }
+
     public function test_the_occasion_is_absent_when_the_feature_is_off(): void
     {
         config(['app.souper_signup_enabled' => false]);
@@ -103,6 +130,50 @@ class ConfigEndpointTest extends TestCase
         $value = Occasion::MENU_VALUES[0];
         $response->assertJsonPath('occasion.menus.0.description', Occasion::MENU_INFO[$value]['description']);
         $response->assertJsonPath('occasion.menus.0.price', Occasion::MENU_INFO[$value]['price']);
+    }
+
+    /**
+     * Every menu the endpoint serves must carry a real description and price
+     * from the response itself, not just the first one (the previous test
+     * only pinned index 0). This is the "catch it from the outside" guard the
+     * loud-failure test below cannot provide by itself: it proves the CURRENT
+     * data is fully in lockstep, in addition to proving a future mismatch
+     * would throw.
+     */
+    public function test_every_menu_has_a_non_empty_description_and_price(): void
+    {
+        config(['app.souper_signup_enabled' => true]);
+
+        $menus = $this->getJson('/api/config')->json('occasion.menus');
+
+        $this->assertCount(count(Occasion::MENU_VALUES), $menus);
+        foreach ($menus as $menu) {
+            $this->assertNotSame('', $menu['description'], "Menu '{$menu['value']}' has a blank description.");
+            $this->assertNotSame('', $menu['price'], "Menu '{$menu['value']}' has a blank price.");
+        }
+    }
+
+    /**
+     * LOUD FAILURE GUARD. MENU_VALUES/MENU_LABELS and MENU_INFO are
+     * separately-maintained parallel constants (Occasion's own docblock says
+     * so) that must stay in lockstep. This cannot be provoked through the real
+     * constants — PHP class constants cannot be mutated at runtime — so this
+     * exercises ConfigController::menuEntry() directly via reflection with a
+     * menu value that exists in neither MENU_VALUES nor MENU_INFO, standing in
+     * for the two constants having drifted apart. Proves the guard throws
+     * rather than the old `?? ''` fallback silently shipping a blank
+     * description/price on a public reservation form.
+     */
+    public function test_a_menu_missing_from_menu_info_fails_loudly(): void
+    {
+        $controller = new ConfigController;
+        $method = new ReflectionMethod($controller, 'menuEntry');
+        $method->setAccessible(true);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/no-such-menu/');
+
+        $method->invoke($controller, 'no-such-menu');
     }
 
     /**
