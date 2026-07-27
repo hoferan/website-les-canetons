@@ -48,21 +48,42 @@ return Application::configure(basePath: dirname(__DIR__))
         // App\Http\Middleware\RunPendingMigrations for the full argument; it
         // restores what the old app's App\AutoMigrator did before the cutover.
         //
-        // FIRST IN THE GROUP, which is load-bearing and is why this call comes
+        // BOTH GROUPS, and `web` is not an afterthought. Laravel serves exactly
+        // two things here: routes/api.php on the `api` group, and Sanctum's
+        // GET /sanctum/csrf-cookie on the `web` group. app/assets/js/api.js
+        // primes that cookie route before EVERY mutating call, so on a
+        // never-migrated server the first Laravel request a real visitor makes
+        // — a login, a contact submit — is the `web` one. With
+        // SESSION_DRIVER=database, StartSession would read a `sessions` table
+        // that does not exist yet and 500 before the middleware that would have
+        // created it ever ran. Covering only `api` would have left the repair
+        // depending on some earlier page happening to fetch GET /api/events
+        // first, which is likely but not guaranteed.
+        //
+        // FIRST IN EACH GROUP, which is load-bearing and is why these calls come
         // AFTER statefulApi(). prependToGroup() array_unshifts, so the last
-        // prepend wins the front slot, ahead of
-        // EnsureFrontendRequestsAreStateful and therefore ahead of StartSession.
-        // With SESSION_DRIVER=database and CACHE_STORE=database, both of those
-        // read tables that a migration creates — on a never-migrated server they
-        // would 500 before the middleware that would have created them ever ran.
+        // prepend wins the front slot: on `api` that puts this ahead of
+        // EnsureFrontendRequestsAreStateful (and therefore ahead of the session
+        // pipeline it nests), on `web` ahead of EncryptCookies/StartSession.
         //
         // Router::gatherRouteMiddleware()'s priority sort (see the note below on
-        // EnsureSouperSignupEnabled) cannot displace it from index 0:
-        // SortedMiddleware only ever moves a priority-listed middleware to the
-        // index of a previously-seen priority-listed one, and index 0 is held
-        // here by a middleware that is not on that list. Pinned by
-        // AutoMigrateTest::test_the_middleware_runs_before_everything_else.
+        // EnsureSouperSignupEnabled) cannot displace it from index 0 in either
+        // group. SortedMiddleware only ever moves a priority-listed middleware
+        // to the index of a PREVIOUSLY SEEN priority-listed one, and index 0 is
+        // held here by a middleware that is not on that list — so $lastIndex is
+        // always >= 1 by the time any move can happen. Pinned by
+        // AutoMigrateTest's two placement tests, which assert the real gathered
+        // order rather than this reasoning.
+        //
+        // Running twice in one request is harmless and cannot happen anyway:
+        // SortedMiddleware::sortMiddleware() ends in Router::uniqueMiddleware(),
+        // and no route carries both groups. Even if one did, the second pass
+        // finds nothing pending and returns before touching the lock — and the
+        // first pass has already released it, since all the work happens BEFORE
+        // $next(), never around it. Pinned by
+        // test_traversing_both_groups_migrates_once_and_does_not_deadlock.
         $middleware->prependToGroup('api', RunPendingMigrations::class);
+        $middleware->prependToGroup('web', RunPendingMigrations::class);
 
         $middleware->alias([
             'capability' => RequireCapability::class,
@@ -148,9 +169,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // match, but keeping the specific-before-general order means the day
         // someone widens either one, the wrong one cannot silently win.
         //
-        // Only /api/* gets the JSON contract. /sanctum/csrf-cookie is not
-        // matched by is('api/*') and falls through to Laravel's default
-        // renderer, which is correct: nothing parses that route's body.
+        // Only /api/* gets the JSON contract. /sanctum/csrf-cookie now carries
+        // the middleware too, so it can raise this as well — it is not matched
+        // by is('api/*') and falls through to Laravel's default renderer (an
+        // HTML error page, since shouldRenderJsonWhen() above answers false for
+        // it). That is fine: nothing parses that route's body, only its status,
+        // and a 503 there stops the mutating request that was about to follow.
         $exceptions->render(fn (SchemaUnavailable $e, Request $request) => $request->is('api/*')
             ? ApiError::serviceUnavailable($e)
             : null);

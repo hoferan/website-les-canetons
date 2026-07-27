@@ -13,9 +13,13 @@ use Throwable;
 use UnexpectedValueException;
 
 /**
- * Applies pending migrations on the first API request after a deploy, guarded
- * by a MySQL advisory lock so concurrent PHP-FPM workers cannot double-apply or
- * race. Prepended to the `api` middleware group in bootstrap/app.php.
+ * Applies pending migrations on the first Laravel request after a deploy,
+ * guarded by a MySQL advisory lock so concurrent PHP-FPM workers cannot
+ * double-apply or race. Prepended to BOTH middleware groups in
+ * bootstrap/app.php — `api` for routes/api.php and `web` for Sanctum's
+ * GET /sanctum/csrf-cookie, which app/assets/js/api.js primes before every
+ * mutating call and which would otherwise 500 in StartSession on a
+ * never-migrated server. See that file for the ordering argument.
  *
  * WHY THIS EXISTS AT ALL — and it is not "convenience".
  *

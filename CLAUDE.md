@@ -151,6 +151,9 @@ events and view attendance summaries.
   runner (`App\Migrator`, and `App\AutoMigrator` on the first request) is gone,
   along with the `sql/` tree and the `auto_migrate` / `migrate.token` keys in
   `config.php`. Migrations are Laravel's own, under `api/database/migrations/`.
+  `AutoMigrator`'s *job*, though, is not gone — it moved to Laravel as
+  `App\Http\Middleware\RunPendingMigrations`; see below for why it has to
+  exist.
 
   After each deploy, `npm run dbmigrate:<env>` (`tools/dbmigrate.mjs`) POSTs to
   the token-gated endpoint `POST <SITE_URL>/api/migrate`, which Apache
@@ -162,31 +165,64 @@ events and view attendance summaries.
   anything that is not exactly `apply`) reports pending without touching the
   schema or the migrations table.
 
-  It is a **separate step run after** `deploy:<env>` — deliberately not chained
-  into it, so `deploy:<env> -- --dry-run` still reaches the deploy CLI
-  (tools/deploy/). In CI it's a step after the deploy step (skipped if the
-  deploy fails); locally run `npm run dbmigrate:<env>` after
-  `npm run deploy:<env>`. A non-2xx response, or a `status` other than `ok`,
-  exits non-zero and fails the CI job.
+  It is a **separate command run after** `deploy:<env>` — deliberately not
+  chained into it, so `deploy:<env> -- --dry-run` still reaches the deploy CLI
+  (tools/deploy/). A non-2xx response, or a `status` other than `ok`, exits
+  non-zero.
 
-  **There is no longer a self-healing fallback, and this is a real operational
-  change.** `App\AutoMigrator` used to apply anything pending on the first
-  request after a deploy, so a forgotten or failed `dbmigrate` corrected itself
-  (and, failing that, made the site 503 loudly). Nothing does that now: a
-  deploy whose migration step failed or never ran leaves that server serving
-  the new code against an **unmigrated schema**, silently, until someone
-  re-runs `npm run dbmigrate:<env>`. That is also why migrations must stay
-  idempotent *and* backward-compatible — the previously deployed code has to
-  survive a half-applied schema, and the newly deployed code has to survive an
-  unmigrated one.
+  **CI never runs it, and cannot.** No workflow calls `dbmigrate` — grep
+  `.github/workflows/` and there are no hits. That is a constraint, not an
+  oversight: **the host firewalls the GitHub runner's IP.** A runner can push a
+  deploy out over FTP (which is how every deploy works), but no inbound HTTP
+  request from a runner ever reaches the site, so it can never trigger
+  `/api/migrate`. `ci.yml`'s `deploy-test` job ends at `npm run deploy:test`,
+  and `_deploy.yml` is install / deploy / summary and nothing else.
+
+  **What actually migrates a deployed server:
+  `App\Http\Middleware\RunPendingMigrations`.** It is prepended to Laravel's
+  `api` *and* `web` middleware groups, so the first `/api/*` request — or the
+  first `GET /sanctum/csrf-cookie`, which `app/assets/js/api.js` primes before
+  every mutating call — applies whatever is pending, under a MySQL advisory
+  lock (`GET_LOCK('lescanetons_migrate')`) so concurrent PHP-FPM workers cannot
+  double-apply. A raw `GET_LOCK`, deliberately, not `Cache::lock()` or
+  `migrate --isolated`: both go through the `database` cache store, whose
+  `cache` table is itself created by a migration. Public pages are unaffected —
+  they are the old app and touch no Laravel table. This is the Laravel port of
+  what `App\AutoMigrator` did before the cutover, and it exists for exactly the
+  firewall reason above.
+
+  Gated by **`AUTO_MIGRATE`** in each server's `api-laravel/.env`, which
+  **defaults to `true`**: a server that never got the key must still self-heal,
+  since a silently-disabled one is the failure this prevents. Cost when nothing
+  is pending (i.e. every request but the first after a deploy): one scan of
+  `api/database/migrations/` plus two indexed queries, no lock.
+
+  **Still use `npm run dbmigrate:<env>` for any migration that is not
+  trivial.** The request-path runner has no timeout of its own — a long `ALTER`
+  holds a PHP-FPM worker for its full duration and will hit
+  `max_execution_time` mid-run on this shared host, leaving a half-applied
+  schema that the next request retries from where it stopped. The manual path
+  runs the same code but lets you dry-run first, read the real `output`, and
+  watch it finish. Run it by hand *before* the deploy that needs it.
+
+  **Failure mode, plainly: a migration that fails takes the whole API down.**
+  The middleware refuses to serve against a schema it cannot vouch for, so
+  every `/api/*` request answers **503 `service_unavailable`** (and
+  `/sanctum/csrf-cookie` 503s too), and the failing migration is retried on
+  every subsequent request. The emergency switch is `AUTO_MIGRATE=false` in
+  that server's `.env`, which serves requests again against the half-applied
+  schema until you fix it. This is why migrations must stay idempotent *and*
+  backward-compatible: the previously deployed code has to survive a
+  half-applied schema, the newly deployed code has to survive an unmigrated
+  one, and the failing migration will be retried from the top every request.
 
   Config: `MIGRATE_TOKEN` lives in each server's `api-laravel/.env` (**not**
   `config.php` any more), and must match the `MIGRATE_TOKEN` / `SITE_URL` in
-  the caller's `.env.<env>` or the env's CI secrets. On TEST/QA the whole site
-  is behind HTTP Basic Auth (this host 500s on a per-path `.htaccess`
-  exemption), so also set `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` — the trigger
-  sends them so it can reach `/api/migrate`; PROD has no Basic Auth. See
-  `staging/README.md`.
+  the caller's `.env.<env>`. There are no CI secrets for these — CI does not
+  call the endpoint. On TEST/QA the whole site is behind HTTP Basic Auth (this
+  host 500s on a per-path `.htaccess` exemption), so also set
+  `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` on the machine you run the trigger
+  from; PROD has no Basic Auth. See `staging/README.md`.
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
@@ -439,9 +475,13 @@ wrapped in a retry, because `artisan` has no connection retry of its own and
 the database may still be cold — before Apache accepts its first request. It
 then `chown`s Laravel's `storage/`/`bootstrap/cache` back to `www-data` (the
 `artisan` call ran as root), starts `php-fpm`, and finally `exec`s Apache in
-the foreground. On a real server there is no entrypoint: the deploy's
-`npm run dbmigrate:<env>` step triggers the same migrations over HTTP, and
-nothing runs them automatically (see Automated DB migrations above).
+the foreground. On a real server there is no entrypoint: the schema is applied
+by `App\Http\Middleware\RunPendingMigrations` on the first Laravel request
+after a deploy, or by `npm run dbmigrate:<env>` run by hand — never by CI,
+which the host's firewall keeps out (see **Automated DB migrations** above).
+Locally the middleware is live too (`AUTO_MIGRATE=true` in
+`docker/api/env.docker`); it just finds nothing pending, because the entrypoint
+already applied everything.
 
 **Laravel API (`api/`) in Docker:** Laravel runs inside the same `web`
 container as the old app, under the same Apache and the same PHP-FPM pool,

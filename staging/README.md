@@ -249,8 +249,9 @@ token. Nothing host-specific is committed.
   exemption (`<RequireAny>`/`Require expr`) was tried but this host **500s** on
   it, so instead the migration trigger (`tools/dbmigrate.mjs`) authenticates
   through Basic Auth: set `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` in `.env.<env>`
-  (and the env's CI secrets) to the same credentials as the `.htpasswd`. PROD has
-  no Basic Auth, so leave them blank there.
+  to the same credentials as the `.htpasswd`. PROD has no Basic Auth, so leave
+  them blank there. These are for the machine you run `dbmigrate:<env>` from —
+  not CI, which never reaches the site over HTTP at all.
 
 ## CI: decoupled tag-based promotion
 
@@ -299,14 +300,34 @@ deploy workflow:
 
 ## Database migrations & recovery
 
-**Laravel owns the schema.** The old app's `sql/migrations/*.sql` runner and
-`App\AutoMigrator` are gone — nothing migrates itself on the first request any
-more, so there is no self-healing pass and no fail-loud 503 loop to recover
-from. Migrations are Laravel's own, under `api/database/migrations/`, and they
-only run when something triggers them.
+**Laravel owns the schema.** Migrations are Laravel's own, under
+`api/database/migrations/`; the old app's `sql/migrations/*.sql` runner and
+`App\AutoMigrator` are gone. There are two ways they get applied, and it matters
+which one you are relying on.
 
-**Triggering them** is a deliberate step after each deploy, from an allowlisted
-machine (remote MySQL login is blocked, so they run server-side):
+**CI never migrates, and cannot.** No workflow runs `dbmigrate` — grep the seven
+files in `.github/workflows/` and you will not find it. This is not an omission
+to fix: **the host firewalls the GitHub runner's IP.** A runner can push a
+deploy out over FTP, which is how every deploy works, but it can never reach the
+site over HTTP to call `/api/migrate`. So a merge to `main` auto-deploys TEST and
+leaves the schema untouched.
+
+**1. Automatic, on the first request.**
+`App\Http\Middleware\RunPendingMigrations` sits at the front of Laravel's `api`
+and `web` middleware groups. If it finds pending migrations it takes a MySQL
+advisory lock (`GET_LOCK('lescanetons_migrate')`, so concurrent PHP-FPM workers
+cannot double-apply), runs `artisan migrate --force`, and releases it. This is
+what closes the gap the firewall opens, and it is the Laravel port of what
+`App\AutoMigrator` did for the old app. Gated by **`AUTO_MIGRATE`** in
+`api-laravel/.env`, which **defaults to `true`** — a server that never got the
+key still self-heals.
+
+It costs one directory scan and two indexed queries per request when there is
+nothing pending, which is every request but the first after a deploy.
+
+**2. Manual, and still the one to use for anything non-trivial.** From a machine
+that can actually reach the site (remote MySQL login is blocked, so this runs
+server-side either way):
 
 ```bash
 npm run dbmigrate:<env> -- --dry-run   # lists pending, changes nothing
@@ -316,18 +337,43 @@ npm run dbmigrate:<env>                # applies
 Both POST to `<SITE_URL>/api/migrate`, which Apache dispatches to Laravel's
 `MigrateController` — it runs `artisan migrate --force` and answers with the
 `applied[]` / `pending[]` migration names. A non-2xx response, or a `status`
-other than `ok`, exits non-zero (which is what gates the CI step).
+other than `ok`, exits non-zero.
+
+**Prefer this for any migration that is not trivial.** The request-path runner
+has no timeout of its own: a long `ALTER` holds a PHP-FPM worker for its full
+duration and will hit `max_execution_time` mid-run on this shared host, leaving
+a half-applied schema that the next request retries from wherever it stopped.
+`dbmigrate:<env>` runs the same code but lets you dry-run first, see the real
+`output`, and watch it finish. The rule of thumb: if you would not be comfortable
+with it running inside a page load, run it by hand **before** the deploy that
+needs it.
 
 Its secret comes from **`api-laravel/.env`'s `MIGRATE_TOKEN`** on the server,
 not from `config.php`. `tools/dbmigrate.mjs` sends it in the `X-Migrate-Token`
 header and reads its own copy from `.env.<env>` on the machine you run it from;
 the two must match or the endpoint answers 403.
 
-**If a migration fails,** the site keeps serving against the current schema
-(nothing 503s), so there is no emergency switch to flip. Read the `error` and
-`output` keys in the response, fix the migration, redeploy, and re-run
-`dbmigrate:<env>`. This is why migrations must stay backward-compatible: the
-previously deployed code has to survive a half-applied schema.
+**If a migration fails, the whole API stops.** The middleware refuses to serve
+against a schema it cannot vouch for, so every `/api/*` request answers **503**
+`service_unavailable` and `/sanctum/csrf-cookie` answers 503 too — and it retries
+the failing migration on the next request, and the next. Public pages are
+unaffected (they are the old app and touch no Laravel table), but nothing that
+talks to the API works.
+
+Recovering, in order:
+
+1. `npm run dbmigrate:<env> -- --dry-run` to see `error` and `output` — the same
+   run, with the diagnostics the 503 does not carry. Laravel's own
+   `api-laravel/storage/logs/laravel.log` has the stack trace.
+2. If you need the API back **before** you have a fix, set `AUTO_MIGRATE=false`
+   in that server's `api-laravel/.env`. That is the emergency switch: requests
+   are served again, against the half-applied schema, until you set it back.
+3. Fix the migration, deploy, re-run `dbmigrate:<env>`, then set `AUTO_MIGRATE`
+   back to `true`.
+
+This is why migrations must stay **idempotent and backward-compatible**: the
+previously deployed code has to survive a half-applied schema, and the failing
+migration will be retried — from the top — on every request until it succeeds.
 
 ## Laravel's server-side `.env`
 
@@ -366,7 +412,14 @@ all**, and the first request Apache dispatches into `api-laravel/` dies on
    - `MAIL_*` — `MAIL_SCHEME=smtps` with `MAIL_PORT=465` (easy-hebergement's
      ports are non-standard; unset, Symfony infers TLS from the port).
    - `MIGRATE_TOKEN` — must equal the `MIGRATE_TOKEN` in the `.env.<env>` of
-     whatever runs `npm run dbmigrate:<env>`, and the env's CI secret.
+     whatever machine runs `npm run dbmigrate:<env>`. There is no CI secret for
+     it: CI never calls this endpoint (the host firewalls the runner's IP), so
+     the only holder is you.
+   - `AUTO_MIGRATE` — leave it `true`, or leave it out entirely; the default is
+     `true`. It is what applies pending migrations on the first request after a
+     deploy, and CI cannot do it for you. `false` is an emergency switch for a
+     migration that is failing in a loop — see **Database migrations &
+     recovery** above.
    - `ALTCHA_HMAC_SECRET` — **required**, one long random string per server.
      Empty or `CHANGE_ME` makes `/api/altcha` answer 503 and every signup
      answer 403 `captcha_failed`, which reads as a broken form rather than a

@@ -7,6 +7,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\Events\MigrationsStarted;
 use Illuminate\Database\Events\NoPendingMigrations;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -180,6 +181,25 @@ class AutoMigrateTest extends TestCase
 
         self::assertSame(1, $this->migrationRuns, 'The second request re-ran `migrate` with nothing pending.');
         self::assertTrue($this->lockIsFree());
+    }
+
+    /**
+     * The route a real visitor actually reaches first on a fresh server.
+     * app/assets/js/api.js primes GET /sanctum/csrf-cookie before every mutating
+     * call, so a login or a contact submit starts here — on the `web` group,
+     * whose StartSession reads the `sessions` table that a migration creates.
+     * It must repair the schema and still answer normally.
+     */
+    public function test_the_sanctum_cookie_route_also_repairs_the_schema(): void
+    {
+        config(['app.auto_migrate' => true]);
+        $name = $this->writeProbeMigration();
+
+        $this->get('/sanctum/csrf-cookie')->assertNoContent();
+
+        self::assertSame(1, $this->migrationRuns);
+        self::assertTrue(Schema::hasTable(self::PROBE_TABLE), 'The `web` group did not repair the schema.');
+        self::assertSame(1, DB::table('migrations')->where('migration', $name)->count());
     }
 
     // ---------------------------------------------------------------- the toggle
@@ -423,16 +443,103 @@ class AutoMigrateTest extends TestCase
      */
     public function test_the_middleware_runs_before_everything_else_on_the_api_group(): void
     {
-        $group = app('router')->getMiddlewareGroups()['api'] ?? [];
+        $this->assertFirstInGroup('api');
+    }
 
-        self::assertNotEmpty($group, 'The `api` middleware group is empty; this assertion reads nothing.');
+    /**
+     * The same guarantee for the OTHER group Laravel serves. `web` carries
+     * exactly one route — Sanctum's GET /sanctum/csrf-cookie — and
+     * app/assets/js/api.js primes it before every mutating call, so on a fresh
+     * server it is the first Laravel request a real visitor makes. Its
+     * EncryptCookies/StartSession pair reads the `sessions` table, which is
+     * created by a migration.
+     */
+    public function test_the_middleware_runs_before_everything_else_on_the_web_group(): void
+    {
+        $this->assertFirstInGroup('web');
+    }
+
+    /**
+     * Group order is only half the story: Router::gatherRouteMiddleware() SORTS
+     * what it gathers, and StartSession is on the kernel's priority list while
+     * this middleware is not. So assert the ORDER THE PIPELINE ACTUALLY RUNS,
+     * for the real Sanctum route, rather than trusting the group array.
+     *
+     * StartSession specifically, because it is the one that reads `sessions`
+     * and therefore the one that 500s on a never-migrated server.
+     */
+    public function test_the_middleware_is_sorted_ahead_of_start_session_on_the_sanctum_route(): void
+    {
+        $router = app('router');
+
+        $route = collect($router->getRoutes()->getRoutes())
+            ->first(fn ($r) => $r->uri() === 'sanctum/csrf-cookie');
+
+        self::assertNotNull($route, 'Sanctum no longer registers /sanctum/csrf-cookie; this assertion reads nothing.');
+
+        $gathered = $router->gatherRouteMiddleware($route);
+
+        $mine = array_search(RunPendingMigrations::class, $gathered, true);
+        $session = array_search(StartSession::class, $gathered, true);
+
+        self::assertNotFalse($mine, 'RunPendingMigrations is not on /sanctum/csrf-cookie at all.');
+        self::assertNotFalse($session, 'StartSession is not on /sanctum/csrf-cookie; this assertion reads nothing.');
+        self::assertSame(0, $mine, 'RunPendingMigrations must be the very first middleware on this route.');
+        self::assertLessThan(
+            $session,
+            $mine,
+            "The priority sort hoisted StartSession above RunPendingMigrations. On a never-migrated\n"
+            ."server StartSession reads a `sessions` table the migration would have created.\n"
+            .'Sorted order is now: '.implode(', ', array_map('strval', $gathered))
+        );
+    }
+
+    /**
+     * The coordinator's question, answered by measurement rather than by
+     * reasoning about MySQL's lock semantics: a request that traverses BOTH
+     * groups must migrate once and must not hang.
+     *
+     * Two independent reasons it is safe, and this pins the observable result
+     * of both. SortedMiddleware::sortMiddleware() ends in
+     * Router::uniqueMiddleware(), so the duplicate is collapsed before the
+     * pipeline is built at all; and even un-deduplicated it would be harmless,
+     * because all the work happens BEFORE $next() — the lock is already
+     * released by the time an inner copy could run, and that copy finds nothing
+     * pending anyway. There is no path on which this middleware waits on a lock
+     * its own request is holding.
+     *
+     * No route in the app carries both groups today. This registers one so the
+     * property is pinned rather than merely currently-unreachable.
+     */
+    public function test_traversing_both_groups_migrates_once_and_does_not_deadlock(): void
+    {
+        config(['app.auto_migrate' => true]);
+        Route::middleware(['web', 'api'])
+            ->get('/api/auto-migrate-both-groups', fn () => response()->json(['ok' => true]));
+
+        $name = $this->writeProbeMigration();
+
+        $this->getJson('/api/auto-migrate-both-groups')
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        self::assertSame(1, $this->migrationRuns, 'The migration ran more than once in a single request.');
+        self::assertSame(1, DB::table('migrations')->where('migration', $name)->count());
+        self::assertTrue($this->lockIsFree(), 'The lock was left held after a two-group request.');
+    }
+
+    private function assertFirstInGroup(string $group): void
+    {
+        $middleware = app('router')->getMiddlewareGroups()[$group] ?? [];
+
+        self::assertNotEmpty($middleware, "The `{$group}` middleware group is empty; this assertion reads nothing.");
         self::assertSame(
             RunPendingMigrations::class,
-            $group[0],
-            "RunPendingMigrations is no longer first on the `api` group. Anything ahead of it runs\n"
+            $middleware[0],
+            "RunPendingMigrations is no longer first on the `{$group}` group. Anything ahead of it runs\n"
             .'against a schema that may not exist yet. Order comes from prependToGroup() being '
             ."called AFTER statefulApi() in bootstrap/app.php.\nGroup is now: "
-            .implode(', ', array_map('strval', $group))
+            .implode(', ', array_map('strval', $middleware))
         );
     }
 
