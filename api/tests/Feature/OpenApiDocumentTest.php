@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Illuminate\Support\Facades\Artisan;
+use Opis\JsonSchema\Errors\ErrorFormatter;
+use Opis\JsonSchema\Helper;
 use Opis\JsonSchema\Validator;
 use ReflectionClass;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -162,11 +164,12 @@ class OpenApiDocumentTest extends TestCase
 
     /**
      * Validate a real response body against its documented JSON Schema (2020-12,
-     * as used by OpenAPI 3.1). Both the data and the schema are passed to Opis as
-     * decoded objects rather than JSON strings — Validator::validate() treats a
-     * string schema as a URI first and only falls back to json_decode() when
-     * Uri::parse() fails, which is fragile; passing pre-decoded stdClass objects
-     * goes straight through its object branch instead.
+     * as used by OpenAPI 3.1). Both the data and the schema are converted to
+     * (nested) stdClass via Opis's own Helper::convertAssocArrayToObject() rather
+     * than a json_encode()/json_decode() round trip — no serialization step, and
+     * Validator::validate() would otherwise try to interpret a string schema as a
+     * URI before falling back to decoding it, which is fragile; a pre-converted
+     * object goes straight through its object branch instead.
      *
      * @param  array<string,mixed>  $response  the documented response object
      * @param  array<string,mixed>  $body  the body the API actually returned
@@ -175,16 +178,25 @@ class OpenApiDocumentTest extends TestCase
     {
         $validator = new Validator;
         $result = $validator->validate(
-            json_decode((string) json_encode($body), false, 512, JSON_THROW_ON_ERROR),
-            json_decode((string) json_encode($this->resolve($response)), false, 512, JSON_THROW_ON_ERROR)
+            Helper::convertAssocArrayToObject($body),
+            Helper::convertAssocArrayToObject($this->resolve($response))
         );
 
         if (! $result->isValid()) {
             $error = $result->error();
+
+            // DataInfo::path() is local to the failing subschema and, for a
+            // `required` failure specifically, is always empty — the missing
+            // property never appears in the data path at all. fullPath() walks
+            // to the document root instead, and ErrorFormatter interpolates
+            // the error's args() (e.g. `missing` for `required`) into its
+            // message template, so the failure names the actual culprit
+            // instead of printing a blank path.
             $this->fail(sprintf(
-                "The API's real response does not match its documented schema.\n  keyword: %s\n  path: %s\n  body: %s",
-                $error?->keyword() ?? 'unknown',
-                implode('/', $error?->data()->path() ?? []),
+                "The API's real response does not match its documented schema.\n  keyword: %s\n  path: %s\n  message: %s\n  body: %s",
+                $error->keyword(),
+                implode('/', $error->data()->fullPath()),
+                (new ErrorFormatter)->formatErrorMessage($error),
                 json_encode($body)
             ));
         }
