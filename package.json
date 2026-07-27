@@ -55,6 +55,7 @@
   },
   "lint-staged": {
     "app/**/*.php": "node tools/php-lint-file.mjs",
+    "api/**/*.php": "node tools/pint-file.mjs",
     "app/assets/js/**/*.js": [
       "eslint --fix",
       "prettier --write"
