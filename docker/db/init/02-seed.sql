@@ -34,7 +34,7 @@ INSERT INTO `users` (`id`, `username`, `password`, `role`, `instrument_id`) VALU
 (5, 'demo.admin',     '$2y$12$jtoJNlhLIkkgKj4R6MwQ9uLBp35BdlZ4/AGmtrC/arti.n8mqOfPS', 'admin',     8),
 (6, 'alex.muster',    '$2y$12$jtoJNlhLIkkgKj4R6MwQ9uLBp35BdlZ4/AGmtrC/arti.n8mqOfPS', 'user',      4),
 (7, 'sam.beispiel',   '$2y$12$jtoJNlhLIkkgKj4R6MwQ9uLBp35BdlZ4/AGmtrC/arti.n8mqOfPS', 'user',      7),
-(8, 'chris.exemple',  'demo', 'moderator', 8);
+(8, 'chris.exemple',  '$2y$12$jtoJNlhLIkkgKj4R6MwQ9uLBp35BdlZ4/AGmtrC/arti.n8mqOfPS', 'moderator', 8);
 
 INSERT INTO `events`
   (`id`, `date`, `title`, `start_time`, `end_time`, `location`, `attire`, `weekend`) VALUES

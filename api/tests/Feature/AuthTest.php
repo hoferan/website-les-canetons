@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -86,6 +87,35 @@ class AuthTest extends TestCase
             'error' => 'Incorrect username or password',
             'code' => 'invalid_credentials',
         ]);
+    }
+
+    /**
+     * A row whose password column never went through the out-of-band bcrypt
+     * conversion must fail login inside the error contract, not blow up:
+     * BcryptHasher::check() THROWS on a non-bcrypt value instead of returning
+     * false, which without the guard in AuthController::login() surfaces as an
+     * unhandled HTTP 500.
+     *
+     * The insert deliberately bypasses Eloquent — the User model's 'hashed'
+     * cast would hash this on the way in and there would be nothing to test.
+     */
+    public function test_login_with_a_non_bcrypt_stored_password_fails_with_the_contract_body(): void
+    {
+        DB::table('users')->insert([
+            'username' => 'legacy.user',
+            'password' => 'demo',
+            'role' => 'user',
+        ]);
+
+        $this->spaPostJson('/api/login', [
+            'username' => 'legacy.user',
+            'password' => 'demo',
+        ])->assertStatus(401)->assertExactJson([
+            'error' => 'Incorrect username or password',
+            'code' => 'invalid_credentials',
+        ]);
+
+        $this->assertGuest();
     }
 
     public function test_current_user_endpoint_returns_role_when_authenticated(): void

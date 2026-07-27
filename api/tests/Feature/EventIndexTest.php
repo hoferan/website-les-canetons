@@ -117,9 +117,27 @@ class EventIndexTest extends TestCase
         // Belt and braces: the other member's answer must not appear anywhere in
         // the payload, under any key — not merely be absent from `response`.
         $this->assertStringNotContainsString('participate', $response->getContent());
-        $this->assertStringNotContainsString((string) $other->id, (string) json_encode(
-            array_map(fn (array $e) => array_diff_key($e, ['id' => null]), $response->json())
-        ));
+
+        // Compared VALUE BY VALUE, not as a substring of the serialized
+        // payload. A user id is a small integer, and the payload is full of
+        // digits, so a substring search matches by luck: this asserted nothing
+        // at id 8 and failed spuriously at id 9, whose digit is in the date
+        // "2027-01-09". Which id a test gets depends on how many rows earlier
+        // tests inserted — RefreshDatabase's transaction rolls the rows back
+        // but AUTO_INCREMENT does not rewind — so adding a user anywhere in
+        // the suite could flip this either way.
+        foreach ($response->json() as $event) {
+            $values = array_map(
+                static fn ($v) => is_scalar($v) ? (string) $v : json_encode($v),
+                array_diff_key($event, ['id' => null])
+            );
+
+            $this->assertNotContains(
+                (string) $other->id,
+                $values,
+                "The other member's user id leaked into the events payload."
+            );
+        }
     }
 
     public function test_two_users_each_see_only_their_own_answer(): void
