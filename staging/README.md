@@ -21,10 +21,11 @@ of each staging deployment.
 
 A server folder is **two layers stacked in the same directory**:
 
-1. **The application payload** — the exact output of `npm run build`
-   (`index.php`, `src/`, `pages/`, `api/`, `partials/`, `assets/`, `vendor/`).
-   Environment-agnostic: the _same bytes_ on test, qa, and prod. It does **not**
-   include `config.php`.
+1. **The application payload** — the exact output of `npm run build`: the old
+   app at the root (`index.php`, `src/`, `pages/`, `partials/`, `templates/`,
+   `assets/`, `vendor/`) plus the whole Laravel project at `api-laravel/`.
+   Environment-agnostic: the _same bytes_ on test, qa, and prod. It includes
+   neither `config.php` nor `api-laravel/.env`.
 2. **The four server-owned files** — different on every environment, so they
    are set once per server and never travel with a code promotion:
    - `.htaccess` — test/qa add HTTP Basic Auth + `noindex` on top of the
@@ -52,26 +53,32 @@ deployment where everything but `public/` lives outside it:
   `Off` the innermost `Require` replaces rather than adds to the inherited
   one).
 
-**Neither currently reaches any server.** `tools/deploy/preflight.mjs`
-protects the basenames `.htaccess` / `robots.txt` / `config.php` /
-`.htpasswd` / `.env` **at any depth**, not just at the site root, so both files
-above are silently dropped from every upload even though `tools/build.mjs`
-copies them into `dist/build/api-laravel/`. Nothing signals this today: no server
-dispatches `/api/*` into `api-laravel/` yet, and — *precisely because the
-deny-all was never uploaded* — a direct hit like `/api-laravel/.env` falls
-through to the old app's front-controller catch-all and gets its 404.
+**Neither actually reaches any server, including after the `/api/*` cutover.**
+`tools/deploy/preflight.mjs` protects the basenames `.htaccess` / `robots.txt`
+/ `config.php` / `.htpasswd` / `.env` **at any depth**, not just at the site
+root, so both files above are silently dropped from every upload even though
+`tools/build.mjs` copies them into `dist/build/api-laravel/`. The cutover
+shipped without the protected-set rework that would fix it, on the judgement
+that the boundary is redundant on a server: the old app's front-controller
+catch-all matches every path except `/api/*` and `/sanctum/*` (which the
+dispatch block above it has already claimed), so a direct hit like
+`/api-laravel/.env` or `/api-laravel/vendor/autoload.php` is rewritten to
+`index.php`, matches no route, and 404s.
 
-That last point is worth stating carefully, because it is the reverse of what
-happens locally. Where `api/.htaccess` **is** present, authorization is
-evaluated during Apache's directory walk, before mod_rewrite's per-directory
-rules run in the fixup phase, so the catch-all never sees the request and it
-returns 403 instead (verified against the local stack; see the comments in
-`api/.htaccess`). On a server the file is absent, so there is no denial to
-evaluate and the catch-all does handle it. The 404 is therefore an accident of
-the missing file, not evidence that the boundary is redundant. The boundary is
-live only in the local Docker stack (see `## Local Development` in `CLAUDE.md`). Making the protected set root-relative — so it only excludes
-the three files actually at the deploy root — is recorded as a prerequisite
-for the sub-project that turns on real `/api/*` dispatch; see `api/.htaccess`'s
+**That is a single layer, and it is the app's, not Apache's.** Nothing else
+stands between a URL and Laravel's `.env` on a server. Anything that weakens
+the catch-all — adding a `!-f`/`!-d` guard, narrowing its pattern, an overlay
+edit — exposes the whole Laravel tree in the same change, with no error and no
+test failing. Treat `app/.htaccess`'s catch-all as a security control.
+
+The local stack is the reverse case, and its 403 is the stronger one. Where
+`api/.htaccess` **is** present, authorization is evaluated during Apache's
+directory walk, before mod_rewrite's per-directory rules run in the fixup
+phase, so the catch-all never sees the request (verified against the local
+stack; see the comments in `api/.htaccess`). `npm run smoke` asserts only "not
+exposed", not the exact status, so the same two checks pass under either
+mechanism. Making the protected set root-relative — so it only excludes the
+files actually at the deploy root — remains the real fix; see `api/.htaccess`'s
 own comments for the full reasoning.
 
 **If you do that rework, `.env` must not become root-relative with them.**
@@ -83,14 +90,18 @@ would let the next `--relist` deploy delete every server's API configuration.
 ## Deployment: build once, promote one artifact
 
 ```bash
-npm run build           # -> public/  (the code artifact; no config.php)
-npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the 3 server-owned files, per env)
+npm run build           # -> dist/build/  (the code artifact; no config.php, no api-laravel/.env)
+npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the generatable server-owned files, per env)
 ```
 
 1. **First-time per server:** upload that env's `dist/overlay/<env>/` files
-   (`.htaccess`, `robots.txt`, and for test/qa `.htpasswd`), and create
-   `config.php` by hand. Re-run `build:overlay` and re-upload only the
-   `.htaccess` when `app/.htaccess` or the auth block changes.
+   (`.htaccess`, `robots.txt`, and for test/qa `.htpasswd`), and create both
+   `config.php` and `api-laravel/.env` by hand (see
+   [Laravel's server-side `.env`](#laravels-server-side-env)). Re-run
+   `build:overlay` and re-upload only the `.htaccess` when `app/.htaccess` or
+   the auth block changes — and note that the `/api/*` dispatch block now lives
+   in `app/.htaccess`, so a server still running a pre-cutover overlay sends
+   every `/api/*` call to the old front controller, which 404s it.
 2. **Releasing (normal path — CI):** a merge to `main` auto-deploys to **TEST**.
    Once you've verified TEST, dispatch `Tag Release` (see "CI: decoupled
    tag-based promotion" below) to stamp that commit; then dispatch `Deploy QA`
@@ -105,9 +116,12 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the 3 server-owned f
    the plan), `-- --no-delete` (skip deletion once). Deletion of stale
    files/dirs is part of every deploy by default. WinSCP hand-copy remains
    available for recovery.
-3. **Always exclude the three server-owned files** from every upload/promotion
-   so you never overwrite a server's `.htaccess`/`robots.txt`/`config.php`.
-   WinSCP file mask: `| .htaccess; robots.txt; config.php`.
+3. **Always exclude the four server-owned files** from every upload/promotion
+   so you never overwrite a server's
+   `.htaccess`/`robots.txt`/`config.php`/`api-laravel/.env`. WinSCP file mask:
+   `| .htaccess; robots.txt; config.php; .env`. Of the four, `.env` is the one
+   with no recovery path — `config.php` at least has `config.example.php`
+   shipped beside it, and the two `.htaccess` files are tracked source.
 
 `build:overlay` merges the auth block onto the current built front controller
 automatically, so there's no hand-editing of `.htaccess` (which is how the

@@ -4,9 +4,10 @@
 #
 # php:8.4-fpm, not php:8.4-apache: production runs PHP as FastCGI, not mod_php.
 # Two workarounds in this codebase only take effect under a CGI-family SAPI —
-# app/.htaccess's REDIRECT_STATUS guard, and the Authorization-header
-# forwarding in docker/web/api-dispatch.htaccess — and are dead code under
-# mod_php, so a mod_php container cannot tell you whether they work.
+# the REDIRECT_STATUS guard on its front-controller catch-all, and the
+# Authorization-header forwarding in its /api/* dispatch block (both in
+# app/.htaccess) — and are dead code under mod_php, so a mod_php container
+# cannot tell you whether they work.
 FROM php:8.4-fpm
 
 # mysqli: the old app (App\Database). pdo_mysql + mbstring: Laravel, which

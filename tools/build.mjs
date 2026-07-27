@@ -19,7 +19,7 @@ const viteBin = path.join(path.dirname(require.resolve('vite/package.json')), 'b
 execFileSync(process.execPath, [viteBin, 'build'], { stdio: 'inherit' });
 
 // Recursive delete that tolerates Windows' intermittent ENOTEMPTY/EPERM when
-// removing large trees (e.g. dist/build/api/vendor's thousands of files): the
+// removing large trees (e.g. dist/build/api-laravel/vendor's thousands of files): the
 // OS can still hold handles briefly (AV scanners, Docker bind-mount, async
 // unlink), so Node's maxRetries backs off and retries instead of hard-failing.
 const rmrf = (p) => rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
@@ -119,14 +119,25 @@ console.log('Built dist/build/ — ready to FTP upload.');
 
 // --- Build the Laravel API project (api/) into dist/build/api-laravel/ ----
 //
-// Deliberately NOT dist/build/api/: that path already holds the OLD app's PHP
-// endpoints (app/api/login.php, events.php, …, copied by the app/ -> dist/build/
-// cpSync above), which src/routes.php requires and which are the live backend
-// on every server. Production dispatch of /api/* into Laravel is a later
-// sub-project (see CLAUDE.md) — until it's wired, Laravel must live BESIDE those
-// endpoints, not on top of them. Building to dist/build/api/ would wipe them from
-// the artifact, and the deploy's mirror deletion would then remove them from the server,
-// 500ing every /api/* call (missing require). Keep the two trees separate.
+// Deliberately NOT dist/build/api/. The name originally avoided a collision:
+// that path held the OLD app's PHP endpoints (app/api/login.php, events.php,
+// …), which Laravel had to live beside rather than on top of. Those are gone —
+// the cutover deleted app/api/ — so the collision no longer exists, but the
+// name is now load-bearing for a different and stronger reason and MUST NOT be
+// "tidied" back to api/.
+//
+// app/.htaccess dispatches /api/* with `RewriteRule ^api(/|$)
+// api-laravel/public/index.php [L]`. In per-directory context that
+// substitution re-enters the whole ruleset, so the rule must not match its own
+// output. It doesn't, purely because the hyphen defeats `(/|$)`:
+// `api-laravel/public/index.php` cannot match `^api(/|$)`. Rename this to
+// dist/build/api/ and the rule matches itself on every pass — Apache aborts at
+// "Request exceeded the limit of 10 internal redirects" and every /api/* call
+// 500s.
+//
+// So if this ever has to be renamed to something `^api(/|$)` can match, first
+// add a `RewriteCond %{ENV:REDIRECT_STATUS} ^$` guard to BOTH dispatch rules,
+// the way the front-controller catch-all below them already carries one.
 const laravelBuild = 'dist/build/api-laravel';
 console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
 rmrf(laravelBuild);

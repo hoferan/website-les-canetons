@@ -12,14 +12,14 @@ RewriteEngine on
 # so if it ran first every /api/* and /sanctum/* request would be handed to
 # the old app's index.php and this dispatch would never happen at all.
 #
-# The document root holds BOTH api/ (the old app's own PHP endpoints) and
-# api-laravel/ (the Laravel project) — see tools/build.mjs, which picks the
-# api-laravel name so building Laravel cannot overwrite the old endpoints. The
-# URL path /api/* therefore dispatches into api-laravel/, not api/. That
-# hyphen is load-bearing: ^api(/|$) CANNOT match api-laravel/..., because the
-# hyphen defeats (/|$) — which is the only reason the substitution below does
-# not re-match itself and loop. Never rename that directory without first
-# adding a REDIRECT_STATUS guard to the two dispatch rules.
+# The Laravel project sits at api-laravel/ in the document root — see
+# tools/build.mjs, which picks that name. (It originally avoided a collision
+# with the old app's own api/ endpoints; those are deleted, but the name is
+# now load-bearing for a stronger reason.) The URL path /api/* dispatches into
+# api-laravel/: ^api(/|$) CANNOT match api-laravel/..., because the hyphen
+# defeats (/|$) — which is the only reason the substitution below does not
+# re-match itself and loop. Never rename that directory without first adding a
+# REDIRECT_STATUS guard to the two dispatch rules.
 # ---------------------------------------------------------------------------
 
 # Forward the Authorization and X-XSRF-Token headers into the request
@@ -75,10 +75,14 @@ RedirectMatch 301 ^(.*)\.html$ $1.php
 
 # Front controller: every request is dispatched to index.php EXCEPT real
 # static assets (assets/css, assets/js, assets/img), which are served
-# directly — see src/routes.php. This also means pages/, api/, vendor/, and
-# config.php are never reachable as raw files: a direct hit on any of them
-# isn't a registered route, so the front controller answers with a plain 404
-# instead of executing or serving the file's contents.
+# directly — see src/routes.php. This also means pages/, src/, vendor/,
+# config.php and php-error.log are never reachable as raw files: a direct hit
+# on any of them isn't a registered route, so the front controller answers
+# with a plain 404 instead of executing or serving the file's contents. It
+# catches api-laravel/* too — every path except /api/* and /sanctum/*, which
+# the block above already claimed — so a direct hit on api-laravel/.env 404s
+# on a server even though the deny-all in api/.htaccess never gets uploaded
+# there (see staging/README.md).
 #
 # The REDIRECT_STATUS guard is essential on FastCGI hosts (e.g. easy-hebergement,
 # php-cgi/FPM): once Apache has internally rewritten a request to index.php it
@@ -86,7 +90,8 @@ RedirectMatch 301 ^(.*)\.html$ $1.php
 # `RewriteRule ^ index.php` re-matches the rewritten index.php and loops until
 # Apache aborts the request with 500 ("Request exceeded the limit of 10 internal
 # redirects"). We intentionally keep the catch-all (rather than a !-f/!-d guard)
-# so raw files under pages/, api/, src/, vendor/, and config.php stay unreachable.
+# so raw files under pages/, src/, vendor/, api-laravel/ and config.php stay
+# unreachable.
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.php [L]
