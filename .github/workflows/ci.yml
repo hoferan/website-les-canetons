@@ -27,6 +27,19 @@ jobs:
             | xargs -0 -n1 -P4 php -l
       - name: PHP_CodeSniffer (PSR-12)
         run: vendor/bin/phpcs
+      # phpcs.xml scopes only app/ (the old app), so the Laravel tree at api/
+      # gets its own formatter gate: Laravel Pint, pinned by api/composer.lock.
+      # Pint lives in api/vendor/, which the root install above does not
+      # provide, hence the second install. --no-scripts skips Laravel's
+      # post-autoload-dump `artisan package:discover`, which Pint doesn't need.
+      - name: Install Laravel API dev tools
+        run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
+      # Same check as `npm run lint:api`, invoked natively like the phpcs step
+      # above: CI calls the binaries directly, while the npm scripts are the
+      # local Docker-or-native wrapper (tools/pint.mjs).
+      - name: Laravel Pint (api/)
+        working-directory: api
+        run: vendor/bin/pint --test
 
   tests:
     runs-on: ubuntu-latest
@@ -93,6 +106,87 @@ jobs:
           detailed_summary: true
           include_passed: false
 
+  # The Laravel API at api/ has its own PHPUnit suite (api/phpunit.xml); the
+  # `tests` job above covers only the old app, against lescanetons_test. Kept a
+  # separate job rather than extra steps on `php` or `tests` so it runs
+  # concurrently: it needs its own database (laravel_api_test must stay
+  # dedicated — RefreshDatabase drops every table) and its own Composer
+  # install, and folding it into `php` would serialise install + DB startup +
+  # suite onto the lint job, lengthening deploy-test's critical path for no
+  # gain. `php` is already ~40s slower from the api install added for Pint.
+  tests-api:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        # 10.3 matches prod (10.3.8) and the local stack's `db` service, so the
+        # migrations run against the same engine everywhere. The image grants
+        # MARIADB_USER all rights on MARIADB_DATABASE — the whole of what
+        # docker/db/init/00-databases.sql does locally for this database. No
+        # seeding: RefreshDatabase builds the schema from Laravel's migrations,
+        # including the `cache` table that CACHE_STORE=database needs for the
+        # Altcha replay guard.
+        image: mariadb:10.3
+        env:
+          MARIADB_DATABASE: laravel_api_test
+          MARIADB_USER: canetons
+          MARIADB_PASSWORD: canetons
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          # Laravel talks to MariaDB over PDO, not mysqli (what the `tests` job
+          # needs for the old app). Every other extension the api/composer.lock
+          # tree requires is in setup-php's defaults.
+          extensions: pdo_mysql
+          tools: composer
+      # The api install is the slow part of this job and now happens in two
+      # jobs (here and `php`). Cache Composer's download cache, keyed by the
+      # lockfile; a miss just falls back to a full install. The root installs in
+      # `php`/`tests` are still uncached — worth doing, but that means editing
+      # existing jobs, so it is left as a separate change.
+      - name: Cache Composer downloads (api/)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-api-${{ hashFiles('api/composer.lock') }}
+          restore-keys: composer-api-
+      # Same install as the `php` job's Pint step. --no-scripts skips Laravel's
+      # `artisan package:discover`; PackageManifest rebuilds
+      # bootstrap/cache/packages.php lazily on first boot, so the suite is
+      # unaffected (verified locally by deleting the manifest and re-running).
+      - name: Install Laravel API dependencies
+        run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
+      - name: PHPUnit (api/)
+        working-directory: api
+        env:
+          # api/phpunit.xml pins DB_HOST=db, the compose service name, which
+          # does not resolve on a runner. PHPUnit's <env> entries default to
+          # force="false" and only putenv() when getenv() returns false
+          # (src/TextUI/Configuration/PhpHandler.php:140 in phpunit 12.5.31), so
+          # a variable already in the process environment wins. Overriding here
+          # leaves phpunit.xml correct for local dev, where the suite runs
+          # inside the web container. Service-container ports are published on
+          # the runner's loopback, so 127.0.0.1 — same as the `tests` job.
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          # No .env exists on a runner: api/.env is git-ignored and the local
+          # stack mounts docker/api/env.docker over it. Without APP_KEY the
+          # encrypter throws "No application encryption key has been specified"
+          # and every cookie/session test fails. Throwaway CI-only key, public
+          # on purpose exactly like the one in docker/api/env.docker — it signs
+          # nothing that outlives the job, and must never be used on a server.
+          APP_KEY: base64:oxt8P89lrI3WQgV89r3v9/9NNrgLipYqKNezzVvHmyk=
+        run: vendor/bin/phpunit
+
   assets:
     runs-on: ubuntu-latest
     steps:
@@ -142,7 +236,7 @@ jobs:
   # mirror's deletions are bounded by the mass-delete safety brake (exit 2).
   deploy-test:
     runs-on: ubuntu-latest
-    needs: [php, tests, assets, guard, build]
+    needs: [php, tests, tests-api, assets, guard, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment: test
     concurrency:

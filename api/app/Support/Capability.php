@@ -11,9 +11,9 @@ namespace App\Support;
 final class Capability
 {
     private const MATRIX = [
-        'user'      => ['respond'],
+        'user' => ['respond'],
         'moderator' => ['respond'],
-        'admin'     => ['manage_events', 'view_summary'],
+        'admin' => ['manage_events', 'view_summary'],
     ];
 
     public static function can(?string $role, string $capability): bool
@@ -30,6 +30,7 @@ final class Capability
                 $roles[] = $role;
             }
         }
+
         return $roles;
     }
 }

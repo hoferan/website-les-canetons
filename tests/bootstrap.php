@@ -1,8 +1,8 @@
 <?php
 
-// PHPUnit bootstrap: autoloads the same App\* classes bootstrap.php wires for
-// the app, minus Database::connect()/Auth::startSession() (tests that need
-// a DB connect explicitly via IntegrationTestCase, against a test database).
+// PHPUnit bootstrap: autoloads the same App\* classes the app's bootstrap.php
+// wires up, minus Database::connect()/Auth::startSession(). The old app's tests
+// are pure-logic unit tests; everything DB-backed now lives in the Laravel
+// suite (api/), which has its own bootstrap and its own throwaway database.
 
 require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/Integration/IntegrationTestCase.php';

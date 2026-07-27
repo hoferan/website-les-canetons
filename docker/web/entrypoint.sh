@@ -29,49 +29,18 @@ retry() {
     return 1
 }
 
-# The old app's SQL migrations, FIRST. Laravel's migrations adopt these tables
-# in place (add updated_at, convert the used_challenges PK); if they run
-# against a fresh database where signups/used_challenges do not exist yet,
-# Laravel takes its create branch instead, and the adopt branches — the ones
-# that actually run on TEST/QA/PROD — are never exercised here. The old
-# compose ran its `migrate` service before `api-migrate` for exactly this
-# reason. tools/ is mounted outside the document root (/srv/tools, not
-# /var/www/html/...) because dist/build/ does not ship it; sql/migrations/ IS
-# shipped there (tools/build.mjs copies it in, and App\AutoMigrator resolves
-# it as dirname(__DIR__).'/sql/migrations', i.e. under the document root), so
-# it's mounted at /var/www/html/sql/migrations instead, matching production.
+# Laravel owns the schema outright — it is the ONLY migration system left. The
+# old app's numbered sql/migrations/*.sql runner (tools/migrate.php ->
+# App\Migrator, plus App\AutoMigrator on the first request) is gone, so there is
+# nothing to apply ahead of this any more.
 #
-# NOT wrapped in `retry`, deliberately: tools/migrate.php (see its own header
-# comment) already retries its DB connection internally for exactly this
-# cold-MariaDB case, over the same TCP path this false positive affects — that
-# is the right layer for it, and wrapping it here would compound to up to
-# max_attempts^2 attempts. Don't "fix" this by making the two calls symmetric.
-#
-# DB_HOST/DB_USER/DB_PASS/DB_NAME are scoped to this command only, not
-# exported into the shell (and so not inherited by `artisan migrate` below).
-# Laravel's Dotenv::createImmutable never overwrites a variable already
-# present in the process environment, so an exported DB_HOST here would
-# silently win over api-laravel/.env's DB_HOST for every artisan/php-fpm
-# process this script spawns afterward — quietly defeating the whole point
-# of mounting a real .env for Laravel to read.
-DB_HOST=db DB_USER=root DB_PASS=root DB_NAME=lescanetons \
-    php /srv/tools/migrate.php /var/www/html/sql/migrations
-
-# Laravel's own migrations. On a real server the deploy triggers these over HTTP
-# (POST /api/migrate); there is no deploy step locally, so run them before
-# Apache accepts its first request. Laravel has no equivalent internal
-# connection retry, so this one genuinely needs the wrapper above.
-#
-# The old app needs no equivalent for ITS OWN migrations beyond the command
-# above: config.docker.php sets auto_migrate => true, so App\AutoMigrator
-# re-applies sql/migrations/*.sql on the first request under a GET_LOCK — a
-# no-op here since that command already applied them, but left on so that
-# mechanism stays exercised exactly as production runs it. That is why the
-# former one-shot `migrate`/`api-migrate` compose services are gone rather
-# than folded in here unchanged.
+# On a real server the deploy triggers these over HTTP (POST /api/migrate);
+# there is no deploy step locally, so run them before Apache accepts its first
+# request. Laravel has no internal connection retry of its own, so this
+# genuinely needs the wrapper above.
 retry php api-laravel/artisan migrate --force
 
-# Both artisan calls above ran as root (this entrypoint's own user); php-fpm
+# The artisan call above ran as root (this entrypoint's own user); php-fpm
 # serves every subsequent request as www-data. Without this, any log line
 # artisan wrote along the way (routine, and guaranteed at least once if the
 # retry above ever absorbed a transient failure) leaves storage/logs/*.log —

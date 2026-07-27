@@ -1,9 +1,12 @@
 <?php
 
 /**
- * Registers every route: clean page/API routes (thin require of the existing
- * page/endpoint file) plus 301-redirect routes for every old .php URL. The
- * single source of truth for the old->new URL mapping.
+ * Registers every route the old app serves: clean page routes (a thin require
+ * of the existing page file) plus 301-redirect routes for every old .php URL.
+ * The single source of truth for the old->new URL mapping.
+ *
+ * Pages only — /api/* belongs to the Laravel app in api-laravel/ and is
+ * dispatched there by Apache; see the note at the bottom of this file.
  */
 
 namespace App;
@@ -71,19 +74,7 @@ return function (RouteCollector $r): void {
         });
     }
 
-    $apiMethods = ['GET', 'POST', 'PUT', 'DELETE'];
-    $apis = ['contact', 'logout', 'events', 'login', 'responses', 'migrate'];
-    if (Features::enabled('souper_signup')) {
-        $apis[] = 'signups';
-        $apis[] = 'altcha';
-    }
-    foreach ($apis as $name) {
-        $r->addRoute($apiMethods, '/api/' . $name, function () use ($name): void {
-            require __DIR__ . '/../api/' . $name . '.php';
-        });
-        $r->addRoute($apiMethods, '/api/' . $name . '.php', function () use ($name): void {
-            header('Location: /api/' . $name, true, 301);
-            exit;
-        });
-    }
+    // No /api/* routes: Apache rewrites /api/* and /sanctum/* into
+    // api-laravel/ (see app/.htaccess) before the front controller runs, so
+    // the old app never sees them. RoutesTest pins that they stay absent.
 };

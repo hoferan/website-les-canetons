@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -19,7 +20,7 @@ class AuthTest extends TestCase
      * this mirrors exactly how the real front-end (same origin, different path)
      * reaches these routes in production.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     private function spaPostJson(string $uri, array $data = []): TestResponse
     {
@@ -68,6 +69,52 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(401);
+        $this->assertGuest();
+    }
+
+    public function test_failed_login_carries_the_translatable_error_code(): void
+    {
+        User::create([
+            'username' => 'demo.user',
+            'password' => 'secret123',
+            'role' => 'user',
+        ]);
+
+        $this->spaPostJson('/api/login', [
+            'username' => 'demo.user',
+            'password' => 'wrong',
+        ])->assertStatus(401)->assertExactJson([
+            'error' => 'Incorrect username or password',
+            'code' => 'invalid_credentials',
+        ]);
+    }
+
+    /**
+     * A row whose password column never went through the out-of-band bcrypt
+     * conversion must fail login inside the error contract, not blow up:
+     * BcryptHasher::check() THROWS on a non-bcrypt value instead of returning
+     * false, which without the guard in AuthController::login() surfaces as an
+     * unhandled HTTP 500.
+     *
+     * The insert deliberately bypasses Eloquent — the User model's 'hashed'
+     * cast would hash this on the way in and there would be nothing to test.
+     */
+    public function test_login_with_a_non_bcrypt_stored_password_fails_with_the_contract_body(): void
+    {
+        DB::table('users')->insert([
+            'username' => 'legacy.user',
+            'password' => 'demo',
+            'role' => 'user',
+        ]);
+
+        $this->spaPostJson('/api/login', [
+            'username' => 'legacy.user',
+            'password' => 'demo',
+        ])->assertStatus(401)->assertExactJson([
+            'error' => 'Incorrect username or password',
+            'code' => 'invalid_credentials',
+        ]);
+
         $this->assertGuest();
     }
 

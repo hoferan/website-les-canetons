@@ -6,55 +6,70 @@ import test from 'node:test';
 const run = (...args) =>
   execFileSync(process.execPath, ['tools/build-overlays.mjs', ...args], { encoding: 'utf8' });
 
-test('the docker target merges the dispatch block onto app/.htaccess', () => {
+test('the docker target is the plain front controller', () => {
   run('docker');
 
   const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
-  const dispatch = readFileSync('docker/web/api-dispatch.htaccess', 'utf8').trimEnd();
   const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
 
-  assert.ok(out.startsWith(dispatch), 'the dispatch block must come first');
-  assert.ok(out.endsWith(`${frontController}\n`), 'app/.htaccess must be appended verbatim');
+  // The Laravel dispatch block lives in app/.htaccess now, so there is nothing
+  // left to merge: the local Docker document root gets exactly what prod gets.
+  assert.equal(out, `${frontController}\n`);
 });
 
-test('the header-forwarding rules precede the first [END] rule, and both dispatch rules end in one', () => {
-  run('docker');
+test('app/.htaccess dispatches /api and /sanctum into Laravel with [L], never the END flag', () => {
+  const frontController = readFileSync('app/.htaccess', 'utf8');
 
-  const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
-  assert.match(out, /^RewriteRule \^api\(\/\|\$\) api-laravel\/public\/index\.php \[END\]$/m);
-  assert.match(out, /^RewriteRule \^sanctum\(\/\|\$\) api-laravel\/public\/index\.php \[END\]$/m);
+  assert.match(frontController, /^RewriteRule \^api\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
+  assert.match(frontController, /^RewriteRule \^sanctum\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
 
-  const authRule = out.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
-  const firstEndRule = out.match(/^RewriteRule .*\[END\]$/m);
-  assert.ok(authRule, 'the E=HTTP_AUTHORIZATION RewriteRule must be present');
-  assert.ok(firstEndRule, 'a RewriteRule ending in [END] must be present');
+  // The END flag is Apache 2.3.9+; an unknown RewriteRule flag is a syntax
+  // error, so on a 2.2 host it would 500 EVERY request to the whole site.
+  // Check directive LINES, not prose — the comment above those two rules
+  // deliberately explains why that flag is not used here.
+  const directives = frontController.split('\n').filter((line) => !line.trimStart().startsWith('#'));
   assert.ok(
-    authRule.index < firstEndRule.index,
-    'the Authorization forwarding rule must precede the first [END] rule'
+    !directives.some((line) => line.includes('[END]')),
+    'no directive may use the Apache 2.4-only [END] flag'
   );
 });
 
-test('header-forwarding rules run before the first [END], so a reorder cannot silently drop them', () => {
-  run('docker');
+test('the header-forwarding rules precede the dispatch rules in app/.htaccess', () => {
+  // If a reorder ever put the dispatch first, [L] would end the pass before
+  // Authorization was forwarded and every token-authenticated request would
+  // silently look anonymous. Match actual directive LINES, not prose — the
+  // explanatory comments mention these same names.
+  const frontController = readFileSync('app/.htaccess', 'utf8');
 
-  const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
-  // Match actual directive LINES, not prose — the explanatory comments above
-  // these rules mention "[END]", "E=HTTP_AUTHORIZATION", and
-  // "E=HTTP_X_XSRF_TOKEN" too.
-  const authRule = out.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
-  const xsrfRule = out.match(/^RewriteRule .*E=HTTP_X_XSRF_TOKEN.*$/m);
-  const firstEndRule = out.match(/^RewriteRule .*\[END\]$/m);
+  const authRule = frontController.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
+  const xsrfRule = frontController.match(/^RewriteRule .*E=HTTP_X_XSRF_TOKEN.*$/m);
+  const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
   assert.ok(authRule, 'the E=HTTP_AUTHORIZATION RewriteRule must be present');
   assert.ok(xsrfRule, 'the E=HTTP_X_XSRF_TOKEN RewriteRule must be present');
-  assert.ok(firstEndRule, 'a RewriteRule ending in [END] must be present');
+  assert.ok(firstDispatch, 'a dispatch RewriteRule into api-laravel/ must be present');
   assert.ok(
-    authRule.index < firstEndRule.index,
-    'the Authorization forwarding rule must precede the first [END] rule'
+    authRule.index < firstDispatch.index,
+    'the Authorization forwarding rule must precede the first dispatch rule'
   );
   assert.ok(
-    xsrfRule.index < firstEndRule.index,
-    'the X-XSRF-Token forwarding rule must precede the first [END] rule'
+    xsrfRule.index < firstDispatch.index,
+    'the X-XSRF-Token forwarding rule must precede the first dispatch rule'
   );
+});
+
+test('the dispatch rules precede the legacy-URL redirect and the front-controller catch-all', () => {
+  // The catch-all matches every path, so if it came first the dispatch would
+  // never run at all.
+  const frontController = readFileSync('app/.htaccess', 'utf8');
+
+  const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
+  const legacyRedirect = frontController.match(/^RedirectMatch 301 .*$/m);
+  const catchAll = frontController.match(/^RewriteRule \^ index\.php \[L\]$/m);
+  assert.ok(firstDispatch, 'a dispatch RewriteRule into api-laravel/ must be present');
+  assert.ok(legacyRedirect, 'the legacy .html -> .php RedirectMatch must be present');
+  assert.ok(catchAll, 'the front-controller catch-all must be present');
+  assert.ok(firstDispatch.index < legacyRedirect.index, 'dispatch must precede RedirectMatch 301');
+  assert.ok(firstDispatch.index < catchAll.index, 'dispatch must precede the catch-all');
 });
 
 test('docker is not part of the default (server) run', () => {

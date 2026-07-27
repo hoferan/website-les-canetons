@@ -22,7 +22,12 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
+        <!-- database, not array: App\Support\ChallengeGuard uses the cache as
+             the Altcha single-use replay guard, so its tests have to exercise a
+             shared, durable store the way production does. The array store is
+             per-process and would let a replay succeed. laravel_api_test is
+             dedicated, so the cache table here touches no real data. -->
+        <env name="CACHE_STORE" value="database"/>
         <!-- Tests run against a real MariaDB (matches prod): the migrations use
              MariaDB-specific features (enum, char, raw ALTER TABLE for the
              used_challenges PK swap) that SQLite can't reproduce. laravel_api_test
@@ -30,11 +35,44 @@
              canetons/canetons are the same synthetic local-dev credentials the
              project already commits in config/config.docker.php. -->
         <env name="DB_CONNECTION" value="mysql"/>
-        <env name="DB_HOST" value="127.0.0.1"/>
+        <!-- `db`, the compose service name: the suite runs INSIDE the web
+             container, where the database is not on loopback. 127.0.0.1 was
+             correct only for the retired two-container stack. -->
+        <env name="DB_HOST" value="db"/>
         <env name="DB_PORT" value="3306"/>
         <env name="DB_DATABASE" value="laravel_api_test"/>
         <env name="DB_USERNAME" value="canetons"/>
         <env name="DB_PASSWORD" value="canetons"/>
+        <!-- Sanctum only starts a session (which login/logout need) for requests
+             it recognises as coming from a stateful frontend, matching the
+             Origin host against this list. Tests send `Origin: http://localhost`
+             with no port, so pin the bare host here rather than inheriting
+             docker/api/env.docker's deliberately port-qualified
+             localhost:8090,127.0.0.1:8090 — which does not match and leaves the
+             request session-less (500: "Session store not set on request"). -->
+        <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
+        <!-- Off, matching config/app.php's default and the old app's
+             App\Features (a missing flag is a disabled flag). Pinned here
+             rather than left to the ambient environment because the suite runs
+             INSIDE the web container, where docker/api/env.docker is mounted as
+             api-laravel/.env with SOUPER_SIGNUP_ENABLED=true — inheriting that
+             would make the gate untestable locally while it still bit in CI.
+             The three classes that need the feature ON turn it on themselves
+             with config([...]); see SouperSignupFlagTest for the OFF path. -->
+        <env name="SOUPER_SIGNUP_ENABLED" value="false"/>
+        <!-- OFF here, though config/app.php defaults it ON — the suite must
+             never migrate implicitly. Two reasons, either sufficient:
+             MigrateTest deliberately leaves a probe migration PENDING to prove
+             `mode=dry-run` applies nothing, and RunPendingMigrations sitting in
+             front of that request would apply it first and make the assertion
+             fail; and more generally a test that silently repaired the schema
+             underneath itself would hide exactly the breakage a suite is for.
+             AutoMigrateTest turns it back on with config([...]) per test, the
+             same way SouperSignupFlagTest does. Pinned rather than left to the
+             ambient environment because the suite runs INSIDE the web
+             container, where docker/api/env.docker is mounted as
+             api-laravel/.env with AUTO_MIGRATE=true. -->
+        <env name="AUTO_MIGRATE" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

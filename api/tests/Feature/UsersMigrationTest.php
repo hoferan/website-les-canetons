@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -26,9 +28,9 @@ class UsersMigrationTest extends TestCase
 
     public function test_username_is_unique(): void
     {
-        \App\Models\User::create(['username' => 'dup', 'password' => 'x', 'role' => 'user']);
+        User::create(['username' => 'dup', 'password' => 'x', 'role' => 'user']);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
-        \App\Models\User::create(['username' => 'dup', 'password' => 'y', 'role' => 'user']);
+        $this->expectException(QueryException::class);
+        User::create(['username' => 'dup', 'password' => 'y', 'role' => 'user']);
     }
 }

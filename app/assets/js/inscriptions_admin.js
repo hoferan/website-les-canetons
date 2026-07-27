@@ -1,4 +1,6 @@
 // using session.js  (page access is enforced server-side: committee only)
+import { apiFetch } from "./api.js";
+
 document.addEventListener("DOMContentLoaded", function () {
   var urlParams = new URLSearchParams(window.location.search);
   var eventId = urlParams.get("id");
@@ -37,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  fetch("/api/responses?eventId=" + encodeURIComponent(eventId), { method: "GET" })
+  apiFetch("/api/responses?eventId=" + encodeURIComponent(eventId), { method: "GET" })
     .then((response) => response.json())
     .then((data) => {
       const instrumentNames = [

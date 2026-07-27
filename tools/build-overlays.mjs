@@ -9,9 +9,9 @@
 //               front controller (auto-merged), staging robots.txt (noindex),
 //               and .htpasswd if one exists locally.
 //   prod      : plain app/.htaccess + the real app/robots.txt (no auth).
-//   docker    : .htaccess = Laravel API dispatch block + app/.htaccess; a
-//               local build artifact (feeds the local Docker document root),
-//               not a server overlay — never uploaded anywhere.
+//   docker    : .htaccess = plain app/.htaccess, same as prod; a local build
+//               artifact (feeds the local Docker document root), not a server
+//               overlay — never uploaded anywhere.
 //
 // config.php is deliberately NOT emitted — it is server-owned and set by hand.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -25,12 +25,12 @@ import { loadDotEnv } from './dotenv.mjs';
 
 const ENVS = ['test', 'qa', 'prod'];
 // `docker` is not a server. It generates the local Docker document root's
-// .htaccess (Laravel API dispatch block + app/.htaccess) into
-// dist/overlay/docker/, which docker-compose.yml bind-mounts. It lives here
-// rather than in a tool of its own because it is the very same
-// merge-a-block-onto-app/.htaccess operation the staging auth overlay performs,
-// and because sub-project 2a-ii will promote that block into app/.htaccess —
-// at which point this target simply stops being needed.
+// .htaccess into dist/overlay/docker/, which docker-compose.yml bind-mounts.
+// It used to merge a Laravel API dispatch block onto app/.htaccess; that block
+// now lives in app/.htaccess itself, so this target emits the plain front
+// controller — exactly what prod gets. It stays because docker-compose.yml
+// mounts that path, and because generating it keeps the local document root a
+// faithful stand-in for a deployed one.
 //
 // It is never part of a default or `all` run: those emit server overlays you
 // upload, and this one is a local build artifact. Ask for it by name.
@@ -87,18 +87,16 @@ function mergedHtaccess(env) {
   return withFrontController(auth);
 }
 
-/** docker .htaccess: Laravel API dispatch block first, then the front controller. */
-function dockerHtaccess() {
-  return withFrontController(readFileSync('docker/web/api-dispatch.htaccess', 'utf8'));
-}
-
 for (const env of targets) {
   const outDir = `dist/overlay/${env}`;
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
 
   if (LOCAL.includes(env)) {
-    writeFileSync(`${outDir}/.htaccess`, dockerHtaccess());
+    // The Laravel dispatch block now lives in app/.htaccess itself, so the
+    // docker overlay is just the front controller — same as prod. No robots.txt:
+    // the local stack is not crawled.
+    writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
   } else if (env === 'prod') {
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);
     // Prod's public robots.txt is part of the site content (app/), if one

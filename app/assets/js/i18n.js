@@ -23,6 +23,7 @@ i18next.init({
           invalid_format: "n'est pas dans un format valide",
           invalid_type: "a un type invalide",
           invalid_value: "doit être l'une des valeurs suivantes : {{allowed}}",
+          invalid_number: "n'est pas un nombre valide",
         },
         fields: {
           date: "Date",
@@ -31,6 +32,7 @@ i18next.init({
           endTime: "Heure de fin",
           location: "Lieu",
           attire: "Tenue",
+          weekend: "Week-end",
           id: "Identifiant",
           lastName: "Nom",
           firstName: "Prénom",

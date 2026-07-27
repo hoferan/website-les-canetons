@@ -22,8 +22,8 @@ namespace App\Models;
 // (login/logout/user don't check it), so adding untested, unused wrappers
 // around App\Support\Capability would be scope creep. Sub-project 2b (events/
 // responses) adds them when it actually needs them.
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable
 {

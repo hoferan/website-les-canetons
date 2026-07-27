@@ -1,9 +1,10 @@
 import { Session } from "./session.js";
+import { apiFetch } from "./api.js";
 import { formatFrenchDate } from "./main.js";
 
 // Page access is enforced server-side.
 document.addEventListener("DOMContentLoaded", function () {
-  fetch("/api/events", { method: "GET" })
+  apiFetch("/api/events", { method: "GET" })
     .then(function (r) {
       return r.json();
     })

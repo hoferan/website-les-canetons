@@ -1,3 +1,5 @@
+import { apiFetch } from "./api.js";
+
 (function () {
   var MENUS = [
     ["meat", "Viande (standard)"],
@@ -70,7 +72,7 @@
   // Fetch a fresh challenge and brute-force the proof-of-work. Returns the
   // base64 solution payload, or null if it can't be solved.
   function solveAltcha() {
-    return fetch("/api/altcha", { headers: { Accept: "application/json" } })
+    return apiFetch("/api/altcha", { headers: { Accept: "application/json" } })
       .then(function (r) {
         if (!r.ok) {
           return null;
@@ -149,7 +151,7 @@
           hp: form.website.value,
           altcha: altcha,
         };
-        return fetch("/api/signups", {
+        return apiFetch("/api/signups", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

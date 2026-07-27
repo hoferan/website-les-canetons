@@ -22,26 +22,49 @@ events and view attendance summaries.
   mechanism both `head.php`/`footer.php` and `layout.html.twig` use, instead
   of hardcoding asset paths. `bulma`, `i18next`, and `lucide` are npm
   devDependencies bundled in at build time (not vendored static files).
-- **Third-party PHP libraries are Composer dependencies** (e.g. `nikic/fast-route`,
-  `phpmailer/phpmailer`, `shuchkin/simplexlsxgen`), installed into `app/vendor/`
-  (the Composer/Docker install target — never hand-edited or committed). Third-party
-  JS/CSS is npm-managed and bundled by Vite (see above) rather than vendored as
-  static files.
+- **Laravel 11 (`api/`)** owns the whole JSON API and the database schema. It is
+  a second, independent Composer project with its own `api/composer.json`,
+  `api/vendor/`, tests and migrations; it shares the old app's database rather
+  than getting one of its own. Deployed as `api-laravel/` inside the document
+  root (see the Build step).
+- **Third-party PHP libraries are Composer dependencies**, in two separate
+  projects. The root `composer.json` — the old app — now needs only
+  `nikic/fast-route` and `twig/twig`, installed into `app/vendor/` (the
+  Composer/Docker install target — never hand-edited or committed): mail
+  (`phpmailer`) and the xlsx export (`simplexlsxgen`) moved to Laravel with the
+  endpoints that used them, so those requirements were dropped. Laravel's own
+  dependencies live in `api/composer.json` / `api/vendor/`. Third-party JS/CSS
+  is npm-managed and bundled by Vite (see above) rather than vendored as static
+  files.
 - **Router:** `nikic/fast-route`, dispatched through a single front
-  controller (`app/index.php`). Clean URLs; old `.php` URLs 301-redirect.
-- **Apache** with `.htaccess` (front-controller rewrite + cache policy) on
-  `easy-hebergement.net` shared hosting. PHP runs as **FastCGI** there, so the
-  front-controller rule in `app/.htaccess` carries a `RewriteCond
+  controller (`app/index.php`) — **pages only**. Clean URLs; old `.php` URLs
+  301-redirect. `/api/*` never reaches it (see Apache, below).
+- **Apache** with `.htaccess` (API dispatch + front-controller rewrite + cache
+  policy) on `easy-hebergement.net` shared hosting. PHP runs as **FastCGI**
+  there, so the front-controller rule in `app/.htaccess` carries a `RewriteCond
   %{ENV:REDIRECT_STATUS} ^$` guard — without it the rewrite to `index.php`
-  re-matches itself and loops into a 500. Don't remove it.
-- **Build step:** `npm run build` assembles `app/` + a production-only
-  Composer `vendor/` into a generated `dist/build/` directory — the
-  environment-agnostic code artifact. It deliberately excludes `config.php`
-  (server-owned) but ships `config.example.php` next to it on every deploy —
-  the live template, for diffing against a server's real `config.php` by
-  hand. `dist/build/` is git-ignored and never hand-edited. `npm run build`
-  reuses a persistent Composer cache at `.composer-cache/` (git-ignored)
-  across builds.
+  re-matches itself and loops into a 500. Don't remove it. Above that rule sits
+  the dispatch block that sends `/api/*` and `/sanctum/*` into
+  `api-laravel/public/index.php`; it must stay first, because the
+  front-controller catch-all matches every path. That block uses `[L]`, not
+  `[END]` — the `END` flag is Apache 2.3.9+, this host's version is unresolved,
+  and an unknown `RewriteRule` flag 500s the whole site. `[L]` is safe on 2.2
+  and 2.4 and is correct here because the substituted path `api-laravel/...`
+  cannot re-match `^api(/|$)` (the hyphen defeats `(/|$)`). See that file's own
+  comments before touching any of it.
+- **Build step:** `npm run build` assembles two trees into `dist/build/` — the
+  environment-agnostic code artifact. `app/` + a production-only Composer
+  `vendor/` at the root, and `api/` + its own production-only `vendor/` at
+  `dist/build/api-laravel/`. It deliberately excludes both server-owned config
+  files — `config.php` and `api-laravel/.env` — but ships `config.example.php`
+  next to the former on every deploy, the live template for diffing against a
+  server's real `config.php` by hand. (There is no such template mechanism for
+  `.env`; `api/.env.example` is documentation only and is not compared against
+  anything.) It also strips the raw `assets/js`/`assets/css` sources superseded
+  by the Vite bundles, and any local `php-error.log` that the wholesale `app/`
+  copy would otherwise ship to every server. `dist/build/` is git-ignored and
+  never hand-edited. `npm run build` reuses a persistent Composer cache at
+  `.composer-cache/` (git-ignored) across builds.
 - **Deployment (auto TEST, tag-promoted TEST/QA/PROD):** a merge to `main`
   auto-deploys the built `dist/build/` to **TEST** via the `deploy-test` job in
   `.github/workflows/ci.yml`. **TEST**, **QA**, and **PROD** are also each
@@ -58,10 +81,13 @@ events and view attendance summaries.
   Deployments API, that its target commit was already successfully deployed to
   `qa` — refusing to proceed otherwise, even with `dry_run`. Rolling back is
   simply redeploying an older tag; there is no separate rollback mechanism.
-  Every upload still **excludes the three server-owned files**
-  (`.htaccess`, `robots.txt`, `config.php`). Those per-env files are placed once
-  per server: `npm run build:overlay` generates them into `dist/overlay/<env>/`;
-  `config.php` is always set by hand per server. See `staging/README.md`.
+  Every upload still **excludes the four server-owned files**
+  (`.htaccess`, `robots.txt`, `config.php`, `api-laravel/.env`). Those per-env
+  files are placed once per server: `npm run build:overlay` generates the first
+  two into `dist/overlay/<env>/`; `config.php` and `api-laravel/.env` are always
+  set by hand per server. Nothing recreates `api-laravel/.env`, and a server
+  without it 500s every `/api/*` request — so it must exist *before* the first
+  deploy that dispatches into Laravel. See `staging/README.md`.
 - **Automated deploy (`npm run deploy:<env>`):** `tools/deploy/cli.mjs` builds
   and then **mirrors** `dist/build/` to the target server over plain FTP (creds
   from a git-ignored `.env.<env>`, falling back to `.env`; see `.env.example`):
@@ -71,8 +97,13 @@ events and view attendance summaries.
   A **mass-delete safety brake** refuses the deploy (exit 2) when it would
   delete both >50 files and >20% of the remote tree — after checking the plan,
   override with `-- --force-delete`. Server-owned files (`.htaccess`,
-  `robots.txt`, `config.php`, `.htpasswd`) and the tool-owned
-  `.sync-state.json` are never uploaded and never deleted. Every bulk phase
+  `robots.txt`, `config.php`, `.htpasswd`, `.env`) and the tool-owned
+  `.sync-state.json` are never uploaded and never deleted — matched by
+  **basename at any depth**, which is what protects the nested
+  `api-laravel/.env` from being classified stale and deleted on a `--relist` or
+  bootstrap run. (The same rule means `api/.htaccess` and
+  `api/public/.htaccess` never reach a server either; see `staging/README.md`
+  for why that is currently harmless.) Every bulk phase
   (LIST/upload/delete/verify) fans out over `FTP_CONCURRENCY` connections
   (default 6, clamped 1-8) and every FTP op retries with exponential-backoff
   reconnect — the host is flaky under concurrency. Output is a live step list
@@ -115,22 +146,83 @@ events and view attendance summaries.
   fetched server config. It assumes `config.php` stays a literal array (as it
   always is); a dynamic construct throws a clear error instead of under-reporting
   keys.
-- **Automated DB migrations:** after each deploy, `npm run dbmigrate:<env>`
-  triggers the token-gated server-side endpoint `POST /api/migrate`
-  (`app/api/migrate.php` → `App\Migrator`), which applies `sql/migrations/*.sql`
-  using the server's `config.php` DB connection (remote DB login is blocked, so
-  migrations run server-side). It is a **separate step run after** `deploy:<env>`
-  — deliberately not chained into it, so `deploy:<env> -- --dry-run` still reaches
-  the deploy CLI (tools/deploy/). In CI it's a step after the deploy step (skipped if the deploy
-  fails); locally run `npm run dbmigrate:<env>` after `npm run deploy:<env>`. A
-  failed migration exits non-zero (fails the CI job). `dbmigrate:<env> -- --dry-run`
-  reports pending without applying. Requires a `migrate.token` in each server's
-  `config.php` and `MIGRATE_TOKEN` / `SITE_URL` in `.env.<env>` (or the env's CI
-  secrets). On TEST/QA the whole site is behind HTTP Basic Auth (this host 500s
-  on a per-path `.htaccess` exemption), so also set `BASIC_AUTH_USER` /
-  `BASIC_AUTH_PASS` — the trigger sends them so it can reach `/api/migrate`; PROD
-  has no Basic Auth. Migrations must be idempotent + backward-compatible (see
-  `sql/migrations/README.md`).
+- **Automated DB migrations:** **Laravel owns the schema outright** — it is the
+  only migration system left. The old app's numbered `sql/migrations/*.sql`
+  runner (`App\Migrator`, and `App\AutoMigrator` on the first request) is gone,
+  along with the `sql/` tree and the `auto_migrate` / `migrate.token` keys in
+  `config.php`. Migrations are Laravel's own, under `api/database/migrations/`.
+  `AutoMigrator`'s *job*, though, is not gone — it moved to Laravel as
+  `App\Http\Middleware\RunPendingMigrations`; see below for why it has to
+  exist.
+
+  After each deploy, `npm run dbmigrate:<env>` (`tools/dbmigrate.mjs`) POSTs to
+  the token-gated endpoint `POST <SITE_URL>/api/migrate`, which Apache
+  dispatches to Laravel's `MigrateController`; it runs `artisan migrate --force`
+  server-side (remote DB login is blocked) and answers with the `applied[]` /
+  `pending[]` migration names. The secret travels in the **`X-Migrate-Token`
+  header** — never a body field or query parameter, since Apache writes query
+  strings to its access log in plain text. `?mode=dry-run` (the default for
+  anything that is not exactly `apply`) reports pending without touching the
+  schema or the migrations table.
+
+  It is a **separate command run after** `deploy:<env>` — deliberately not
+  chained into it, so `deploy:<env> -- --dry-run` still reaches the deploy CLI
+  (tools/deploy/). A non-2xx response, or a `status` other than `ok`, exits
+  non-zero.
+
+  **CI never runs it, and cannot.** No workflow calls `dbmigrate` — grep
+  `.github/workflows/` and there are no hits. That is a constraint, not an
+  oversight: **the host firewalls the GitHub runner's IP.** A runner can push a
+  deploy out over FTP (which is how every deploy works), but no inbound HTTP
+  request from a runner ever reaches the site, so it can never trigger
+  `/api/migrate`. `ci.yml`'s `deploy-test` job ends at `npm run deploy:test`,
+  and `_deploy.yml` is install / deploy / summary and nothing else.
+
+  **What actually migrates a deployed server:
+  `App\Http\Middleware\RunPendingMigrations`.** It is prepended to Laravel's
+  `api` *and* `web` middleware groups, so the first `/api/*` request — or the
+  first `GET /sanctum/csrf-cookie`, which `app/assets/js/api.js` primes before
+  every mutating call — applies whatever is pending, under a MySQL advisory
+  lock (`GET_LOCK('lescanetons_migrate')`) so concurrent PHP-FPM workers cannot
+  double-apply. A raw `GET_LOCK`, deliberately, not `Cache::lock()` or
+  `migrate --isolated`: both go through the `database` cache store, whose
+  `cache` table is itself created by a migration. Public pages are unaffected —
+  they are the old app and touch no Laravel table. This is the Laravel port of
+  what `App\AutoMigrator` did before the cutover, and it exists for exactly the
+  firewall reason above.
+
+  Gated by **`AUTO_MIGRATE`** in each server's `api-laravel/.env`, which
+  **defaults to `true`**: a server that never got the key must still self-heal,
+  since a silently-disabled one is the failure this prevents. Cost when nothing
+  is pending (i.e. every request but the first after a deploy): one scan of
+  `api/database/migrations/` plus two indexed queries, no lock.
+
+  **Still use `npm run dbmigrate:<env>` for any migration that is not
+  trivial.** The request-path runner has no timeout of its own — a long `ALTER`
+  holds a PHP-FPM worker for its full duration and will hit
+  `max_execution_time` mid-run on this shared host, leaving a half-applied
+  schema that the next request retries from where it stopped. The manual path
+  runs the same code but lets you dry-run first, read the real `output`, and
+  watch it finish. Run it by hand *before* the deploy that needs it.
+
+  **Failure mode, plainly: a migration that fails takes the whole API down.**
+  The middleware refuses to serve against a schema it cannot vouch for, so
+  every `/api/*` request answers **503 `service_unavailable`** (and
+  `/sanctum/csrf-cookie` 503s too), and the failing migration is retried on
+  every subsequent request. The emergency switch is `AUTO_MIGRATE=false` in
+  that server's `.env`, which serves requests again against the half-applied
+  schema until you fix it. This is why migrations must stay idempotent *and*
+  backward-compatible: the previously deployed code has to survive a
+  half-applied schema, the newly deployed code has to survive an unmigrated
+  one, and the failing migration will be retried from the top every request.
+
+  Config: `MIGRATE_TOKEN` lives in each server's `api-laravel/.env` (**not**
+  `config.php` any more), and must match the `MIGRATE_TOKEN` / `SITE_URL` in
+  the caller's `.env.<env>`. There are no CI secrets for these — CI does not
+  call the endpoint. On TEST/QA the whole site is behind HTTP Basic Auth (this
+  host 500s on a per-path `.htaccess` exemption), so also set
+  `BASIC_AUTH_USER` / `BASIC_AUTH_PASS` on the machine you run the trigger
+  from; PROD has no Basic Auth. See `staging/README.md`.
 - **CI auto-deploy to TEST:** the `deploy-test` job in `.github/workflows/ci.yml`
   runs `npm run deploy:test` on every merge to `main`, after all other jobs pass.
   Requires four secrets — `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_DIR` —
@@ -200,22 +292,65 @@ Available skills:
   Never put dev-only files in `app/`. All tooling lives at the repo root
   (`composer.json`, `package.json`, `phpcs.xml`, `docker/`, `config/`, `tools/`,
   `.github/`).
-- **Entry point:** `app/index.php` is the single front controller. It requires
-  `app/src/bootstrap.php` (autoload + DB connect + session start), then
-  dispatches via `nikic/fast-route` using the route table in
+- **Two apps, one origin.** `app/` serves the server-rendered pages; `api/`
+  (Laravel) serves every `/api/*` and `/sanctum/*` request. Apache splits the
+  traffic before either app runs (see the dispatch block in `app/.htaccess`),
+  so neither ever sees the other's requests. Sub-project 3 will retire the
+  `$_SESSION`-gated pages in `app/pages/` in favour of an SPA on this API.
+- **Entry point (pages):** `app/index.php` is the single front controller. It
+  requires `app/src/bootstrap.php` (autoload + DB connect + session start),
+  then dispatches via `nikic/fast-route` using the route table in
   `app/src/routes.php`. Route handlers `require` the matching file under
-  `app/pages/` or `app/api/` — both blocked from direct web access by
-  `.htaccess`, reachable only through the router.
+  `app/pages/` — blocked from direct web access by `.htaccess`, reachable only
+  through the router. There are **no `/api/*` routes in that table**: Apache
+  has already rewritten those into `api-laravel/` by the time the front
+  controller runs, so adding one there would be dead code.
 - **PSR-4 autoloading:** `app/src/` classes are namespaced under `App\` and
   autoloaded via Composer (`composer.json`'s `autoload.psr-4`). No manual
   `require` needed once `vendor/autoload.php` has run (done once, in
   `bootstrap.php`).
-- **Auth:** `App\Auth` holds a capability matrix — `user`/`moderator` may
-  `respond`; `admin` may `manage_events` / `view_summary`. Not a hierarchy.
-  `assets/js/session.js` mirrors it on the client; the server session
+- **Auth:** the capability matrix is unchanged and is **not a hierarchy** —
+  `user`/`moderator` may `respond`; `admin` may `manage_events` /
+  `view_summary`, and therefore may *not* respond. It now exists twice, on
+  purpose: `App\Support\Capability` in Laravel (behind the `capability:` route
+  middleware) and `App\Auth` in the old app. **Laravel owns authentication** —
+  `POST /api/login` / `POST /api/logout` via Sanctum's stateful SPA cookie
+  flow. `App\Auth` no longer logs anyone in; it retains only the
+  session-*reading* page gate (`check()`, `role()`, `canX()`,
+  `requireLoginPage()`) that `app/pages/` and `app/partials/` still use.
+  `assets/js/session.js` mirrors the matrix on the client; the server session
   (`window.__sessionRole`) is source of truth.
-- **API:** `app/api/*.php` return JSON, reached via `/api/*` clean routes, and
-  guard with `Auth::require*`.
+- **`App\Support\LegacySession` is the bridge between them, and is written to
+  be deleted.** The old pages gate on PHP's native `$_SESSION['user']`, which
+  Laravel does not write, so on a successful login `AuthController` also writes
+  that array and on logout clears it. Two call sites, one class; it only works
+  because both apps share one PHP-FPM pool and therefore one `PHPSESSID`
+  cookie. Don't grow it into a shared session handler or a custom session
+  driver — sub-project 3 deletes the file and its two calls in a single commit.
+- **API:** Laravel, at `api/`. Routes in `api/routes/api.php` (each with a
+  comment saying why it is public or which capability gates it), controllers in
+  `api/app/Http/Controllers/Api/`, shared logic in `api/app/Support/`, guarded
+  by the `auth:sanctum` and `capability:` middleware. `auth:sanctum` is paired
+  with `capability:` wherever both apply so an anonymous caller gets 401 rather
+  than 403.
+- **The API error contract is `{error, code, fields[]}`**, rendered by
+  `App\Exceptions\ApiError`, which deliberately replaces Laravel's native
+  `{message, errors:{}}`. This is not cosmetic: `app/assets/js/i18n.js`'s
+  `translateApiError()` is the **only** place in the whole system where French
+  is computed, and it maps the machine tokens `code` and `fields[].reason` onto
+  French text. Laravel's native shape carries English prose instead, which that
+  layer cannot translate — so any new error must emit a token that exists as a
+  key in `i18n.js` (`api/tests/Feature/ApiErrorVocabularyTest.php` enforces
+  this). It is also what keeps API bodies English, per the Language section
+  below.
+- **Front-end:** every `/api/*` call goes through `apiFetch` in
+  `app/assets/js/api.js` — **never a raw `fetch("/api/…")`**. Sanctum's
+  stateful SPA mode puts `/api/*` behind the `web` middleware group, so any
+  same-origin browser request is CSRF-validated; `apiFetch` primes the
+  `XSRF-TOKEN` cookie once per page load (via `GET /sanctum/csrf-cookie`) and
+  replays it in the `X-XSRF-TOKEN` header. A raw `fetch` to a mutating endpoint
+  comes back `419 {"error":"Invalid session","code":"invalid_session"}` — the
+  public contact and signup forms included, not just the members' area.
 - **Config:** the real `app/config.php` is git-ignored. Create it locally with
   `cp config/config.example.php app/config.php`. For Docker, the stack mounts
   `config/config.docker.php` into the container instead. `npm run build` does
@@ -286,7 +421,7 @@ Available skills:
 
 ```bash
 npm run dev        # generate the docker .htaccess overlay, then bring the stack up
-npm run smoke       # HTTP smoke checks against the running stack (8 checks)
+npm run smoke       # HTTP smoke checks against the running stack (11 checks)
 npm run dev:down    # stop
 ```
 
@@ -314,15 +449,13 @@ directory.
 **One origin, one web server, matching production.** The `web` container runs
 Apache with PHP as **FastCGI** (`php:8.4-fpm` + `mod_proxy_fcgi`), serving a
 document root shaped exactly like the deployed `dist/build/` artifact
-(`index.php`, `src/`, `pages/`, `partials/`, `templates/`, `assets/`, `api/`
-all bind-mounted from `app/` at the document root), with sources bind-mounted
-in so PHP edits are live with no rebuild. `/api/*` and `/sanctum/*` are
-dispatched by `.htaccess` into the Laravel app, bind-mounted from `api/` at
-`api-laravel/` (not `api/` — the document root already has an `api/`, the old
-app's own endpoints). There's also a `./tools:/srv/tools:ro` mount *outside*
-the document root: `dist/build/` never ships `tools/`, so the entrypoint's
-migration script lives there instead, reaching the old app's `App\Migrator`
-via a symlink baked into the image (`/srv/app/src -> /var/www/html/src`).
+(`index.php`, `src/`, `pages/`, `partials/`, `templates/`, `assets/` all
+bind-mounted from `app/` at the document root), with sources bind-mounted in so
+PHP edits are live with no rebuild. `/api/*` and `/sanctum/*` are dispatched by
+`.htaccess` into the Laravel app, bind-mounted from `api/` at `api-laravel/`.
+The hyphen in that name is load-bearing rather than decorative — see the
+`app/.htaccess` note in the Tech Stack above and the rationale in
+`tools/build.mjs`.
 
 The stack has six services; five stay running and one is a one-shot.
 `docker compose ps --services` lists `adminer`, `assets`, `db`, `mailpit`,
@@ -336,28 +469,19 @@ unix-socket path falsely reports healthy against MariaDB's temporary
 `--skip-networking` init server before TCP and the schema are actually ready
 — and on `assets`/`mailpit` having started.
 
-**Migrations run from the `web` entrypoint, in order.** It applies the old
-app's `sql/migrations/*.sql` first (`/srv/tools/migrate.php`, retried
-internally against a cold database), so that Laravel's later adopt-in-place
-migrations run against tables that already exist. Then it applies Laravel's
-own (`php api-laravel/artisan migrate --force`, wrapped in its own retry), then
-`chown`s Laravel's `storage/`/`bootstrap/cache` back to `www-data` (both
-`artisan` calls ran as root), then starts `php-fpm` and finally `exec`s Apache
-in the foreground. `App\AutoMigrator` (`auto_migrate => true` in
-`config/config.docker.php`) still runs on the old app's first request exactly
-as in production — it just finds nothing pending, since the entrypoint already
-applied everything.
-
-**Known limitation — `/api/*` is ahead of the code.** The local stack runs the
-*target* architecture: all of `/api/*` (and `/sanctum/*`) is dispatched to
-Laravel, which today implements only `login`, `logout`, `user` and `migrate`.
-So locally `/api/contact`, `/api/signups`, `/api/altcha`, `/api/events` and
-`/api/responses` return 404 (the old app never sees them any more), and
-logging in through the old UI fails CSRF (419) because that JS never calls
-`GET /sanctum/csrf-cookie` first. This is deliberate, not a bug: sub-project
-2a-ii restores contact/signups/altcha, 2b restores events/responses, and 3
-retires the `$_SESSION` pages. Public (non-API) pages are unaffected. See
-`docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md`.
+**Migrations run from the `web` entrypoint.** Laravel's are the only ones
+left, so the entrypoint runs `php api-laravel/artisan migrate --force` —
+wrapped in a retry, because `artisan` has no connection retry of its own and
+the database may still be cold — before Apache accepts its first request. It
+then `chown`s Laravel's `storage/`/`bootstrap/cache` back to `www-data` (the
+`artisan` call ran as root), starts `php-fpm`, and finally `exec`s Apache in
+the foreground. On a real server there is no entrypoint: the schema is applied
+by `App\Http\Middleware\RunPendingMigrations` on the first Laravel request
+after a deploy, or by `npm run dbmigrate:<env>` run by hand — never by CI,
+which the host's firewall keeps out (see **Automated DB migrations** above).
+Locally the middleware is live too (`AUTO_MIGRATE=true` in
+`docker/api/env.docker`); it just finds nothing pending, because the entrypoint
+already applied everything.
 
 **Laravel API (`api/`) in Docker:** Laravel runs inside the same `web`
 container as the old app, under the same Apache and the same PHP-FPM pool,
@@ -368,11 +492,13 @@ compose `environment:` block — `web` has no `environment:` block at all,
 deliberately: Laravel's `Dotenv` never overwrites a variable already present
 in the process environment, so a compose key would silently shadow the
 corresponding `.env` line and turn it into dead config. It shares the **same
-`lescanetons` database as the old app** (no separate DB): its guarded
-migrations *adopt* the old app's existing tables in place (add `updated_at`,
-convert the `used_challenges` PK) and create Laravel's own tables (`sessions`,
-`cache`, `migrations`, …) alongside them — never dropping or reseeding
-anything. All of `api/`'s generated artifacts (`vendor/`, `storage/` caches,
+`lescanetons` database as the old app** (no separate DB), and now owns its
+schema outright. Its migrations are still written *guarded* — they adopt the
+tables `docker/db/init/01-schema.sql` seeds rather than assuming an empty
+database, and create Laravel's own (`sessions`, `cache`, `migrations`, …)
+alongside them — so re-running them on a live server never drops or reseeds
+data. Keep new ones that way; the same files run against TEST, QA and PROD.
+All of `api/`'s generated artifacts (`vendor/`, `storage/` caches,
 `bootstrap/cache`, `.env`) stay in the `api_vendor` volume or gitignored
 paths — never the tracked tree. (The Laravel *test* suite still uses its own
 throwaway `laravel_api_test` database — see `api/phpunit.xml` — because
@@ -392,9 +518,21 @@ wrappers in `tools/`. First-time setup: `npm install` then `npm run php:install`
 npm run php:install   # install PHP dev deps into vendor/ (Dockerized Composer; run once)
 npm run check         # all checks: php -l + phpcs (Docker), eslint, stylelint, prettier, secret guard
 npm run fix           # auto-fix: phpcbf (Docker) + eslint + stylelint + prettier
-npm run lint:php      # PHP only (php -l sweep + phpcs, Dockerized)
-npm run test:php      # PHPUnit (app/src/**): unit tests + DB-integration tests
+npm run lint:php      # old app only (php -l sweep + phpcs, Dockerized)
+npm run lint:api      # Laravel only (Pint, --test)
+npm run test:php      # old app's PHPUnit — tests/Unit against app/src/**
 ```
+
+**`npm run check` does not run the Laravel suite.** It needs a live database,
+so it runs inside the stack instead:
+
+```bash
+docker compose exec -w /var/www/html/api-laravel web php artisan test
+```
+
+That suite uses `RefreshDatabase` against its own throwaway `laravel_api_test`
+database (`api/phpunit.xml`) — never the shared `lescanetons`, which it would
+otherwise drop every table of.
 
 A Husky pre-commit hook runs `lint-staged` on staged files automatically
 (PHP hunks are linted through the same Docker wrappers).
@@ -417,10 +555,14 @@ the superpowers skill and stays fast.
 does the same, then starts `php -S 127.0.0.1:8090 -t app` (the Apache-container
 stand-in). The `tools/composer.mjs` and `tools/php-in-docker.mjs` wrappers fall
 back to the locally-installed `composer`/`php`, so `npm run lint:php`,
-`npm run fix`, and `npm run test:php` all work unchanged. `IntegrationTestCase`
-(in `tests/Integration/`) runs each test in a transaction rolled back in
-`tearDown()`, against `lescanetons_test`, so tests never touch dev data.
-Local Docker Compose dev is unaffected.
+`npm run fix`, and `npm run test:php` all work unchanged. The old app's suite
+is now `tests/Unit` only — its DB-integration tests moved to Laravel with the
+endpoints they covered, so nothing there needs a database. (`ensure-dev-stack`
+still creates a `lescanetons_test` database; it currently has no user.) Local
+Docker Compose dev is unaffected.
+
+**The Laravel suite does not run in a web session** — it needs the stack's
+`php artisan test`. Run it locally in Docker before claiming API work is done.
 
 For first-time setup in a web session, run `npm run websession:init` once — it
 chains `npm install`, `npm run php:install`, and `ensure-dev-stack` (installing
@@ -443,12 +585,12 @@ also safe to run in local Docker dev.
 
 - **Everything is written in English** — specs and plans (`docs/`), code, comments,
   DB table/column names, enum/stored values, identifiers, slugs, and file names.
-- **API JSON response bodies are English** — every `app/api/*.php` error response's
+- **API JSON response bodies are English** — every Laravel error response's
   `error` message, `code`, and `fields[].field`/`fields[].reason` are English
   identifiers/text (e.g. `{"error":"Invalid form submission","code":"validation_failed",
   "fields":[{"field":"date","reason":"required"}]}`). Nothing here is user-facing
   directly — translation to French happens exclusively at the JS display layer, via
-  `app/assets/js/i18n.js`'s `translateApiError()` (i18next). `app/api/migrate.php` is
+  `app/assets/js/i18n.js`'s `translateApiError()` (i18next). `POST /api/migrate` is
   the one exception: a token-gated deploy-tooling endpoint, never seen by an end user.
 - **French is used for ONE thing only: user-visible UI text** (HTML labels, page copy,
   buttons, on-screen event titles/descriptions) — rendered page-level text, not API
@@ -463,7 +605,12 @@ also safe to run in local Docker dev.
 - Match production versions (PHP 8.4, MariaDB 10.3).
 - Run `npm run check` before pushing.
 - Put new tooling/config at the repo root, never in `app/`.
-- Add new routes in one place: `app/src/routes.php`.
+- Add a new **page** route in `app/src/routes.php`, and a new **API** route in
+  `api/routes/api.php`. Never the other way round: an `/api/*` entry in the old
+  table is unreachable, since Apache dispatches those before the front
+  controller runs.
+- Call `/api/*` from the browser through `apiFetch` (`app/assets/js/api.js`),
+  never a bare `fetch`.
 
 ## Don'ts
 

@@ -19,7 +19,7 @@ const viteBin = path.join(path.dirname(require.resolve('vite/package.json')), 'b
 execFileSync(process.execPath, [viteBin, 'build'], { stdio: 'inherit' });
 
 // Recursive delete that tolerates Windows' intermittent ENOTEMPTY/EPERM when
-// removing large trees (e.g. dist/build/api/vendor's thousands of files): the
+// removing large trees (e.g. dist/build/api-laravel/vendor's thousands of files): the
 // OS can still hold handles briefly (AV scanners, Docker bind-mount, async
 // unlink), so Node's maxRetries backs off and retries instead of hard-failing.
 const rmrf = (p) => rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
@@ -33,18 +33,21 @@ cpSync('app', 'dist/build', { recursive: true });
 rmrf('dist/build/assets/js');
 rmrf('dist/build/assets/css');
 
-// Ship the numbered migrations so the server-side endpoint (dist/build/api/migrate.php)
-// can apply them. They live under dist/build/sql/migrations and are unreachable via
-// direct HTTP: the front-controller catch-all (app/.htaccess) rewrites any
-// non-/assets/ path to index.php, which 404s anything that isn't a route.
-cpSync('sql/migrations', 'dist/build/sql/migrations', { recursive: true });
-
 // config.php is environment-specific and server-owned (real DB creds + env key).
 // Never ship it in the deploy artifact: each server keeps its own, set once by
 // hand, and it's excluded from every upload/promotion. Dropping it here (a local
 // app/config.php gets copied by the recursive cpSync above) keeps dist/build/ a
 // pure, environment-agnostic artifact you can promote test -> qa -> prod unchanged.
 rmSync('dist/build/config.php', { force: true });
+
+// php-error.log is a developer's local PHP error log (git-ignored, but the
+// cpSync above copies app/ wholesale, so it lands in the artifact and gets
+// uploaded). It is never web-readable — the front-controller catch-all in
+// .htaccess rewrites any non-/assets/ path to index.php, which 404s it, the
+// same way it hides config.php and src/ — but shipping one developer's local
+// stack traces to every server is still noise that has no business in an
+// environment-agnostic artifact.
+rmSync('dist/build/php-error.log', { force: true });
 
 // Ship the template next to the real (never-uploaded) config.php so it's on
 // every server for reference — diff it against config.php by hand to see
@@ -116,21 +119,93 @@ console.log('Built dist/build/ — ready to FTP upload.');
 
 // --- Build the Laravel API project (api/) into dist/build/api-laravel/ ----
 //
-// Deliberately NOT dist/build/api/: that path already holds the OLD app's PHP
-// endpoints (app/api/login.php, events.php, …, copied by the app/ -> dist/build/
-// cpSync above), which src/routes.php requires and which are the live backend
-// on every server. Production dispatch of /api/* into Laravel is a later
-// sub-project (see CLAUDE.md) — until it's wired, Laravel must live BESIDE those
-// endpoints, not on top of them. Building to dist/build/api/ would wipe them from
-// the artifact, and the deploy's mirror deletion would then remove them from the server,
-// 500ing every /api/* call (missing require). Keep the two trees separate.
+// Deliberately NOT dist/build/api/. The name originally avoided a collision:
+// that path held the OLD app's PHP endpoints (app/api/login.php, events.php,
+// …), which Laravel had to live beside rather than on top of. Those are gone —
+// the cutover deleted app/api/ — so the collision no longer exists, but the
+// name is now load-bearing for a different and stronger reason and MUST NOT be
+// "tidied" back to api/.
+//
+// app/.htaccess dispatches /api/* with `RewriteRule ^api(/|$)
+// api-laravel/public/index.php [L]`. In per-directory context that
+// substitution re-enters the whole ruleset, so the rule must not match its own
+// output. It doesn't, purely because the hyphen defeats `(/|$)`:
+// `api-laravel/public/index.php` cannot match `^api(/|$)`. Rename this to
+// dist/build/api/ and the rule matches itself on every pass — Apache aborts at
+// "Request exceeded the limit of 10 internal redirects" and every /api/* call
+// 500s.
+//
+// So if this ever has to be renamed to something `^api(/|$)` can match, first
+// add a `RewriteCond %{ENV:REDIRECT_STATUS} ^$` guard to BOTH dispatch rules,
+// the way the front-controller catch-all below them already carries one.
 const laravelBuild = 'dist/build/api-laravel';
+
+// Paths that must not travel in the artifact, RELATIVE TO api/. Root-relative
+// on purpose, not basename-anywhere: every entry here is a thing Laravel puts
+// at a project's root by convention, and a basename match would also strip a
+// same-named file nested somewhere that meant it (an app/**/README.md, a
+// tests/ fixture directory under resources/).
+//
+// This is applied as a cpSync filter rather than as rmrf() calls after a
+// wholesale copy — the shape the old vendor/node_modules/.env lines used, now
+// folded in here. Three reasons: the bytes are never written in the first
+// place (this tree is copied on Windows too, where the file's own rmrf()
+// comment documents how deleting a just-written tree hits EPERM/ENOTEMPTY and
+// has to back off and retry); the whole rule is one list in one place instead
+// of a growing tail of deletes; and skipping a directory skips its subtree, so
+// tests/ costs one decision rather than a walk.
+const LARAVEL_BUILD_EXCLUDES = new Set([
+  // Reinstalled below, production-only (--no-dev). node_modules has no
+  // server-side role at all.
+  'vendor',
+  'node_modules',
+  // Server-owned, exactly like the old app's config.php: real DB creds and
+  // APP_KEY, set once per server by hand. .env.example is deliberately NOT
+  // here — it is the provisioning template, and shipping it next to the real
+  // file is the point (see staging/README.md).
+  '.env',
+  // The test suite and its config: 27 test classes that no server ever runs.
+  // Harmless (the front-controller catch-all 404s them) but ~200 KB of dead
+  // weight on every deploy over a flaky FTP link.
+  'tests',
+  'phpunit.xml',
+  // A gitignored local artifact whose bytes change on every local test run.
+  // Worse than dead weight: it re-uploads on every deploy, and it makes a
+  // locally-built artifact differ byte-for-byte from a CI-built one.
+  '.phpunit.result.cache',
+  // Repo/editor metadata. Nested .gitignore files are deliberately NOT matched
+  // by this root-relative set — the ones under storage/ and bootstrap/cache/
+  // are what makes those runtime-writable directories exist on a server at all
+  // (the deploy CLI prunes directories left empty).
+  '.editorconfig',
+  '.gitignore',
+  '.gitattributes',
+  // Laravel's stock skeleton docs, about the framework rather than this app.
+  'README.md',
+  'CHANGELOG.md',
+]);
+
+const laravelSrcRoot = path.resolve('api');
+
+// Compiled Blade views: same defect as .phpunit.result.cache above, found
+// while fixing it. Gitignored, written by whatever ran locally, ~180 KB of
+// churn per deploy — and Laravel recompiles them on demand anyway. The
+// directory itself must survive (its .gitignore is what creates it).
+const isCompiledView = (rel) =>
+  rel.startsWith('storage/framework/views/') && rel !== 'storage/framework/views/.gitignore';
+
+const includeInLaravelBuild = (src) => {
+  const rel = path.relative(laravelSrcRoot, path.resolve(src)).split('\\').join('/');
+
+  // The source root itself, which cpSync also passes through the filter.
+  if (rel === '') return true;
+
+  return !LARAVEL_BUILD_EXCLUDES.has(rel) && !isCompiledView(rel);
+};
+
 console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
 rmrf(laravelBuild);
-cpSync('api', laravelBuild, { recursive: true });
-rmrf(`${laravelBuild}/vendor`);
-rmrf(`${laravelBuild}/node_modules`);
-rmSync(`${laravelBuild}/.env`, { force: true });
+cpSync('api', laravelBuild, { recursive: true, filter: includeInLaravelBuild });
 
 execFileSync(
   'docker',

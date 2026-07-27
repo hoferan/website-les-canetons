@@ -1,6 +1,8 @@
 // using session.js  (page access is enforced server-side: admin only)
+import { apiFetch } from "./api.js";
+
 document.addEventListener("DOMContentLoaded", function () {
-  fetch("/api/signups", { method: "GET" })
+  apiFetch("/api/signups", { method: "GET" })
     .then(function (r) {
       if (!r.ok) {
         throw new Error("load-failed");

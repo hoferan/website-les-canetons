@@ -2,6 +2,7 @@
 // Auth is enforced server-side via the session cookie; everything here is
 // UI-only.
 import { createIcons } from "lucide";
+import { apiFetch } from "./api.js";
 import { icons } from "./icons.js";
 import { Session } from "./session.js";
 
@@ -55,7 +56,7 @@ function wireAuthControl(el) {
     el.textContent = "Déconnexion";
     el.addEventListener("click", function (e) {
       e.preventDefault();
-      fetch("/api/logout", { method: "POST" }).finally(function () {
+      apiFetch("/api/logout", { method: "POST" }).finally(function () {
         window.location.href = "/";
       });
     });

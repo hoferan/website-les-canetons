@@ -1,4 +1,6 @@
 // using session.js  (page access is enforced server-side)
+import { apiFetch } from "./api.js";
+
 document.addEventListener("DOMContentLoaded", function () {
   var participationSelect = document.getElementById("participant-participation");
   var submitButton = document.querySelector('button[type="submit"]');
@@ -15,7 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
     submitButton.disabled = true;
 
     // The server records the response for the logged-in user (username from session).
-    fetch("/api/responses", {
+    apiFetch("/api/responses", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId: eventId, participation: participation }),

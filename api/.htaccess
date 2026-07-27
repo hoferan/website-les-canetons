@@ -15,14 +15,33 @@
 #
 # Which makes the NOTE below the important one: this file reaches no server.
 #
-# NOTE: this file does NOT currently reach any server. The deploy CLI treats
-# ".htaccess" as a protected basename at ANY depth (the PROTECTED set in
-# tools/deploy/preflight.mjs, applied by walkBuild in local.mjs and by the
-# stale-file filters in sync.mjs), so it is filtered out of every upload even
-# though tools/build.mjs copies it into dist/build/. The boundary below is
-# therefore live only in the local Docker stack. Making the protected set
-# root-relative is a prerequisite for sub-project 2a-ii — until then,
-# dispatching /api/* on a real server would expose .env and vendor/.
+# NOTE: this file does NOT reach any server, including now that /api/* is
+# dispatched on real servers. The deploy CLI treats ".htaccess" as a protected
+# basename at ANY depth (the PROTECTED set in tools/deploy/preflight.mjs,
+# applied by walkBuild in local.mjs and by the stale-file filters in sync.mjs),
+# so it is filtered out of every upload even though tools/build.mjs copies it
+# into dist/build/. The boundary below is therefore live only in the local
+# Docker stack.
+#
+# On a server the same paths are protected by something else entirely: the
+# front-controller catch-all in app/.htaccess, which is deliberately NOT
+# guarded by !-f / !-d and so matches every path the /api/* and /sanctum/*
+# dispatch rules above it have not already claimed. A direct hit like
+# /api-laravel/.env or /api-laravel/vendor/autoload.php is rewritten to
+# index.php, matches no route, and 404s. So the cutover did not expose the
+# Laravel tree — but it did change what is holding it shut.
+#
+# That is a single layer, and it belongs to the APPLICATION, not to Apache.
+# Nothing else stands between a URL and Laravel's .env on a server. Anything
+# that weakens the catch-all — adding a !-f/!-d guard, narrowing its pattern,
+# an overlay edit — exposes the whole tree in the same commit, with no error
+# and no test failing. Treat app/.htaccess's catch-all as a security control.
+#
+# Making the protected set root-relative, so it only excludes the files
+# actually at the deploy root and this one travels with the code at depth,
+# remains the real fix. staging/README.md ("What actually lives on a staging
+# server") carries the deploy-side detail, including why .env must NOT become
+# root-relative along with it.
 #
 # Deliberately no line numbers here: this file outlives them. The dated
 # implementation plan carries the precise citations.
