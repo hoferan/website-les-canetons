@@ -28,7 +28,7 @@ final class ValidationExceptionResponse extends ExceptionToResponseExtension
             ->setDescription('Validation failed. See App\Exceptions\ApiError::validation().')
             ->setContent(
                 'application/json',
-                Schema::fromType(ErrorResponse::schema(['validation_failed'], withFields: true))
+                Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withFields: true))
             );
     }
 

@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\Scramble\AccessDeniedResponse;
+use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
 use App\Support\Scramble\ValidationExceptionResponse;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
@@ -161,7 +161,7 @@ return [
     'extensions' => [
         ValidationExceptionResponse::class,
         AuthenticationExceptionResponse::class,
-        AccessDeniedResponse::class,
+        AccessDeniedExceptionResponse::class,
     ],
 
     /*

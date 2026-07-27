@@ -23,7 +23,7 @@ final class AuthenticationExceptionResponse extends ExceptionToResponseExtension
     {
         return Response::make(401)
             ->setDescription('Not authenticated.')
-            ->setContent('application/json', Schema::fromType(ErrorResponse::schema(['not_authenticated'])));
+            ->setContent('application/json', Schema::fromType(ErrorResponseSchema::schema(['not_authenticated'])));
     }
 
     public function reference(ObjectType $type)

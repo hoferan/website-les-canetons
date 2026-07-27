@@ -13,7 +13,7 @@ use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
  * between statuses. ApiError is the authority on the shape; this only describes
  * it, and Tests\Feature\OpenApiDocumentTest pins the two together.
  */
-final class ErrorResponse
+final class ErrorResponseSchema
 {
     /** @param  string[]  $codes  the `code` values this status can carry */
     public static function schema(array $codes, bool $withFields = false): OpenApiTypes\ObjectType
@@ -39,6 +39,12 @@ final class ErrorResponse
                 ->additionalProperties(new OpenApiTypes\MixedType))
             ->setRequired(['field', 'reason']);
 
-        return $body->addProperty('fields', (new OpenApiTypes\ArrayType)->setItems($field));
+        // Unlike `params`, `fields` itself IS required here: ApiError::validation()
+        // always populates at least one entry (rule failures, or the closure-error
+        // fallback), so a real 400 body always carries it. Only this branch adds
+        // it to `required` — the 401/403 shape has no `fields` property at all.
+        return $body
+            ->addProperty('fields', (new OpenApiTypes\ArrayType)->setItems($field))
+            ->addRequired(['fields']);
     }
 }
