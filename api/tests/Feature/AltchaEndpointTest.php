@@ -6,6 +6,20 @@ use Tests\TestCase;
 
 class AltchaEndpointTest extends TestCase
 {
+    /**
+     * The route only exists while souper_signup is on, and the flag defaults
+     * OFF (config/app.php) — so every test below would 404 without this.
+     * Enabled here rather than defaulted on in phpunit.xml: the disabled path
+     * is a real behaviour, pinned in SouperSignupFlagTest, and a suite-wide
+     * default would be the one setting that hides it.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['app.souper_signup_enabled' => true]);
+    }
+
     public function test_it_issues_a_challenge(): void
     {
         config(['app.altcha_secret' => 'a-real-secret']);

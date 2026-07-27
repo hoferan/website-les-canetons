@@ -51,6 +51,15 @@
              localhost:8090,127.0.0.1:8090 — which does not match and leaves the
              request session-less (500: "Session store not set on request"). -->
         <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
+        <!-- Off, matching config/app.php's default and the old app's
+             App\Features (a missing flag is a disabled flag). Pinned here
+             rather than left to the ambient environment because the suite runs
+             INSIDE the web container, where docker/api/env.docker is mounted as
+             api-laravel/.env with SOUPER_SIGNUP_ENABLED=true — inheriting that
+             would make the gate untestable locally while it still bit in CI.
+             The three classes that need the feature ON turn it on themselves
+             with config([...]); see SouperSignupFlagTest for the OFF path. -->
+        <env name="SOUPER_SIGNUP_ENABLED" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

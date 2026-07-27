@@ -68,6 +68,24 @@ const mustBeLaravel = (res) => {
   return null;
 };
 
+/**
+ * One value out of docker/api/env.docker — the file the stack actually mounts
+ * as api-laravel/.env, so this is the same configuration Laravel booted with.
+ * Checks that read it assert the behaviour the stack IS configured for rather
+ * than hardcoding one branch, which is what lets a maintainer flip a setting
+ * there and still get a meaningful 11/11.
+ *
+ * Throws rather than returning a sentinel: an unreadable env.docker or a
+ * missing key is a broken stack, and each caller turns it into a failure
+ * string.
+ */
+const dockerApiEnv = (key) => {
+  const envPath = fileURLToPath(new URL('../docker/api/env.docker', import.meta.url));
+  const line = new RegExp(`^${key}=(.*)$`, 'm').exec(readFileSync(envPath, 'utf8'));
+  if (!line) throw new Error(`no ${key}= line in ${envPath}`);
+  return line[1].trim();
+};
+
 check('the old app is still served (front-controller catch-all intact)', async () => {
   const res = await request('/historique');
   if (res.status !== 200) return `expected 200, got ${res.status}`;
@@ -220,18 +238,39 @@ check('GET /api/events is public and served by Laravel', async () => {
   return Array.isArray(body) ? null : `expected a JSON array of events, got ${JSON.stringify(body)?.slice(0, 200)}`;
 });
 
-check('GET /api/signups requires authentication, in the error contract', async () => {
+check('GET /api/signups matches what docker/api/env.docker configures', async () => {
   // The opposite boundary from /api/events on the very same prefix: this one
   // lists every guest's name, address, phone and email, and is gated by
   // auth:sanctum + capability:view_summary. Anonymous must get the contract's
-  // 401 — never a 200, and never a 404 that would hide a broken gate behind a
-  // broken dispatch.
+  // 401 — never a 200.
+  //
+  // Unless the whole feature is off. SOUPER_SIGNUP_ENABLED gates the endpoint
+  // NAME, both verbs together (App\Http\Middleware\EnsureSouperSignupEnabled),
+  // so with it off the correct answer is a 404 that looks like an unrouted
+  // path — which is why this reads the flag instead of hardcoding 401. A 404 is
+  // only a broken dispatch under the enabled branch.
+  let enabled;
+  try {
+    enabled = dockerApiEnv('SOUPER_SIGNUP_ENABLED') === 'true';
+  } catch (error) {
+    return error.message;
+  }
+
   const res = await request('/api/signups', { headers: { Accept: 'application/json' } });
-  if (res.status === 404) return `got 404 — /api/* is not reaching Laravel: ${await detail(res)}`;
-  if (res.status === 200) return `got 200 — the summary is exposed to anonymous callers: ${await detail(res)}`;
-  if (res.status !== 401) return `expected 401 for an anonymous caller, got ${await detail(res)}`;
   const notLaravel = mustBeLaravel(res);
   if (notLaravel) return notLaravel;
+
+  if (!enabled) {
+    // Not a pass-by-default branch: 200 or 401 would both mean the gate is not
+    // holding, so assert the disabled contract exactly.
+    return res.status === 404
+      ? null
+      : `SOUPER_SIGNUP_ENABLED is off in docker/api/env.docker, so expected 404, got ${await detail(res)}`;
+  }
+
+  if (res.status === 404) return `got 404 despite SOUPER_SIGNUP_ENABLED=true — broken dispatch, or stale container config (recreate it, don't just restart): ${await detail(res)}`;
+  if (res.status === 200) return `got 200 — the summary is exposed to anonymous callers: ${await detail(res)}`;
+  if (res.status !== 401) return `expected 401 for an anonymous caller, got ${await detail(res)}`;
   const body = await res.json().catch(() => ({}));
   return body.code === 'not_authenticated'
     ? null
@@ -242,20 +281,34 @@ check('GET /api/altcha matches what docker/api/env.docker configures', async () 
   // AltchaController fails CLOSED with 503 on an empty secret or the literal
   // CHANGE_ME, so the correct outcome depends on the stack's own config — which
   // is why this reads it rather than hardcoding 200. Either way the point is
-  // the same: Laravel answered. A 404 is a broken dispatch under both branches.
-  const envPath = fileURLToPath(new URL('../docker/api/env.docker', import.meta.url));
+  // the same: Laravel answered.
+  //
+  // Two settings decide the answer now. SOUPER_SIGNUP_ENABLED gates the route's
+  // very existence, and it is checked FIRST because that is the order the
+  // middleware stack runs in: with the feature off there is no route to fail
+  // closed, so the secret is irrelevant and the correct answer is 404. Only
+  // under the enabled branch is a 404 a broken dispatch.
+  let enabled;
   let secret;
   try {
-    secret = /^ALTCHA_HMAC_SECRET=(.*)$/m.exec(readFileSync(envPath, 'utf8'))?.[1].trim() ?? '';
+    enabled = dockerApiEnv('SOUPER_SIGNUP_ENABLED') === 'true';
+    secret = dockerApiEnv('ALTCHA_HMAC_SECRET');
   } catch (error) {
-    return `could not read ${envPath}: ${error.message}`;
+    return error.message;
   }
   const configured = secret !== '' && secret !== 'CHANGE_ME';
 
   const res = await request('/api/altcha', { headers: { Accept: 'application/json' } });
-  if (res.status === 404) return `got 404 — /api/* is not reaching Laravel: ${await detail(res)}`;
   const notLaravel = mustBeLaravel(res);
   if (notLaravel) return notLaravel;
+
+  if (!enabled) {
+    return res.status === 404
+      ? null
+      : `SOUPER_SIGNUP_ENABLED is off in docker/api/env.docker, so expected 404, got ${await detail(res)}`;
+  }
+
+  if (res.status === 404) return `got 404 despite SOUPER_SIGNUP_ENABLED=true — broken dispatch, or stale container config (recreate it, don't just restart): ${await detail(res)}`;
   const body = await res.json().catch(() => ({}));
 
   if (!configured) {

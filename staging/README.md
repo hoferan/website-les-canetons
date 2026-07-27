@@ -34,7 +34,8 @@ A server folder is **two layers stacked in the same directory**:
    - `config.php` — env key + DB creds for the old app (git-ignored, set by
      hand).
    - `api-laravel/.env` — the same thing for Laravel: `APP_KEY`, DB creds,
-     `MIGRATE_TOKEN`, `ALTCHA_HMAC_SECRET` (git-ignored, set by hand). See
+     `MIGRATE_TOKEN`, `ALTCHA_HMAC_SECRET`, `SOUPER_SIGNUP_ENABLED`
+     (git-ignored, set by hand). See
      [Laravel's server-side `.env`](#laravels-server-side-env) below.
 
 Two further `.htaccess` files travel **with** the code artifact instead —
@@ -371,6 +372,17 @@ all**, and the first request Apache dispatches into `api-laravel/` dies on
      answer 403 `captcha_failed`, which reads as a broken form rather than a
      missing setting. Never the value in `docker/api/env.docker` — it is public,
      so challenges signed with it are forgeable by anyone reading the repo.
+   - `SOUPER_SIGNUP_ENABLED` — `false` unless the souper is being announced.
+     Gates `GET /api/altcha`, `POST /api/signups` and `GET /api/signups`; off,
+     all three 404 as if the routes did not exist. **One feature, two flags
+     that must agree**: this is only the API half, the UI half is
+     `['features']['souper_signup']` in the *same server's* `config.php`
+     (`App\Features`), which gates `/sinscrire`, the homepage block, the footer
+     link and the popup. Nothing cross-checks them. API on + UI off is the
+     dangerous pairing — no form anywhere, while `POST /api/signups` still
+     accepts anonymous writes for an unannounced event; UI on + API off is a
+     visible form whose every request 404s. Set both, to the same value, in the
+     same sitting, and flip both back when the souper is over.
 3. Generate a **fresh** `APP_KEY` on that server (never reuse another
    environment's, never the public one in `docker/api/env.docker`):
 

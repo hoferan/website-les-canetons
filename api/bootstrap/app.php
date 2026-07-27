@@ -1,8 +1,10 @@
 <?php
 
 use App\Exceptions\ApiError;
+use App\Http\Middleware\EnsureSouperSignupEnabled;
 use App\Http\Middleware\RequireCapability;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -40,7 +42,26 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'capability' => RequireCapability::class,
+            'feature.souper_signup' => EnsureSouperSignupEnabled::class,
         ]);
+
+        // Load-bearing, not tidiness. Router::gatherRouteMiddleware() SORTS a
+        // route's middleware by the kernel's priority list, and Authenticate is
+        // on that list while an app middleware is not — so it gets hoisted
+        // above `feature.souper_signup` however the route is written, and a
+        // guest hitting the gated GET /api/signups would get 401 (the summary
+        // exists, you're just not logged in) instead of the 404 the old app
+        // gave when the flag was off. The feature gate has to answer before
+        // authentication, because "this endpoint does not exist here" outranks
+        // "who are you". Pinned by SouperSignupFlagTest's guest test.
+        //
+        // The anchor is the CONTRACT, AuthenticatesRequests, because that is
+        // what the default list holds; SortedMiddleware matches Authenticate to
+        // it via is_subclass_of.
+        $middleware->prependToPriorityList(
+            AuthenticatesRequests::class,
+            EnsureSouperSignupEnabled::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // This governs only Laravel's DEFAULT renderer — whether it falls back

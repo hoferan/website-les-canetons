@@ -25,6 +25,20 @@ class SignupSummaryTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * GET /signups is gated by souper_signup too — the old route table gated
+     * the endpoint NAME, both verbs together — and the flag defaults OFF
+     * (config/app.php), so every test below would 404 without this. Enabled
+     * here rather than defaulted on in phpunit.xml; the disabled path is pinned
+     * in SouperSignupFlagTest.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['app.souper_signup_enabled' => true]);
+    }
+
     private function admin(): User
     {
         return User::create(['username' => 'demo.admin', 'password' => 'x', 'role' => 'admin']);

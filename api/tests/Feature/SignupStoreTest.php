@@ -44,7 +44,14 @@ class SignupStoreTest extends TestCase
     {
         parent::setUp();
 
-        config(['app.altcha_secret' => self::SECRET]);
+        // souper_signup defaults OFF (config/app.php), and the route only
+        // exists while it is on — without this every test below 404s. The
+        // disabled path is pinned in SouperSignupFlagTest instead of being
+        // defaulted away in phpunit.xml.
+        config([
+            'app.altcha_secret' => self::SECRET,
+            'app.souper_signup_enabled' => true,
+        ]);
     }
 
     /**
