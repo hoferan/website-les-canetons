@@ -176,7 +176,7 @@ if (eventForm) {
 // success. Parse the JSON body regardless (it carries the server's error
 // code/fields on failure), then branch on response.ok.
 function saveEvent(method, event) {
-  return apiFetch("/api/events", {
+  return apiFetch(method === "PUT" ? "/api/events/" + event.id : "/api/events", {
     method: method,
     body: JSON.stringify(event),
     headers: {
@@ -310,7 +310,7 @@ function createDeleteElement(event) {
   deleteElement.innerHTML = '<i data-lucide="trash-2" class="icon-md icon-block"></i>';
   deleteElement.addEventListener("click", function () {
     if (confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
-      apiFetch("/api/events?id=" + event.id, {
+      apiFetch("/api/events/" + event.id, {
         method: "DELETE",
       })
         .then(function (response) {

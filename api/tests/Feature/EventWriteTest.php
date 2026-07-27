@@ -9,7 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * POST / PUT / DELETE /api/events — the admin-only writes.
+ * POST /api/events, PUT/DELETE /api/events/{id} — the admin-only writes.
  *
  * The access rule is the exact opposite of the GET in EventIndexTest: reading
  * the planning is public, changing it needs `manage_events`, which `admin`
@@ -29,6 +29,18 @@ use Tests\TestCase;
  *      lookup. Silently defaulting would flip a weekend event to non-weekend;
  *   5. deleting an event takes its responses with it (FK ON DELETE CASCADE) and
  *      does not error.
+ *
+ * CONTRACT CHANGE (this class was updated alongside it): the id used to travel
+ * in the PUT body / DELETE query string, purely because that is what
+ * planning_repet.js sent. It is now a `/events/{id}` path parameter,
+ * constrained by `whereNumber()`, so a non-numeric id no longer reaches the
+ * controller at all — it is a 404 (a routing concern), not the old 400
+ * `validation_failed` (a validation concern). An id segment missing entirely
+ * (`/api/events` with PUT/DELETE) is a 405 Method Not Allowed rather than a
+ * 404, because that bare URI still matches the GET/POST routes registered at
+ * it — Laravel only 404s a URI matching no route at all. Several tests below
+ * were rewritten in place to pin the new shapes; nothing they used to cover
+ * was dropped, only reworded to match where the check now lives.
  */
 class EventWriteTest extends TestCase
 {
@@ -193,7 +205,7 @@ class EventWriteTest extends TestCase
         $event = $this->event();
 
         $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload(['id' => $event->id]))
+            ->putJson('/api/events/'.$event->id, $this->payload())
             ->assertOk()
             ->assertExactJson(['ok' => true]);
 
@@ -209,41 +221,58 @@ class EventWriteTest extends TestCase
         $this->assertDatabaseCount('events', 1);
     }
 
-    public function test_an_update_with_id_zero_is_rejected(): void
+    /**
+     * CONTRACT CHANGE: `whereNumber('id')` matches "0" just like any other
+     * digit string — it is a numeric-shape check, not a positivity check — so
+     * an update whose id happens to be 0 is no longer the old 400
+     * `invalid_value`. It is simply a well-formed id that matches no Event
+     * row, which is already a 200 {"ok":true} no-op for any nonexistent id
+     * (see EventController::update()'s docblock). Nothing is created or
+     * changed.
+     */
+    public function test_an_update_with_id_zero_is_a_noop_because_it_matches_no_event(): void
     {
         $event = $this->event();
 
         $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload(['id' => 0]))
-            ->assertStatus(400)
-            ->assertExactJson([
-                'error' => 'Invalid form submission',
-                'code' => 'validation_failed',
-                'fields' => [['field' => 'id', 'reason' => 'invalid_value']],
-            ]);
+            ->putJson('/api/events/0', $this->payload())
+            ->assertOk()
+            ->assertExactJson(['ok' => true]);
 
-        $this->assertSame('Repetition', $event->fresh()->title);
-    }
-
-    public function test_an_update_without_an_id_is_rejected(): void
-    {
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload())
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'id', 'reason' => 'invalid_value']);
+        $this->assertSame('Repetition', $event->fresh()->title, 'no event has id 0, so nothing should have changed');
+        $this->assertDatabaseCount('events', 1);
     }
 
     /**
-     * Field validation runs BEFORE the id check, exactly as in the legacy
-     * endpoint: a PUT that is bad in both ways reports the fields, not the id.
+     * CONTRACT CHANGE: the id is now a URL path parameter, not a body field.
+     * A PUT with no id segment at all is `/api/events`, which is a URI that
+     * DOES still match a route — GET and POST are both registered there — so
+     * this is a routing concern, but a 405 Method Not Allowed rather than a
+     * 404: Laravel only 404s a URI that matches no route at all, and 405s one
+     * that matches a route but not this HTTP verb. Either way it is no longer
+     * the old 400 `invalid_value`.
      */
-    public function test_field_errors_take_precedence_over_a_bad_id(): void
+    public function test_an_update_without_a_path_id_is_a_405_not_a_400(): void
     {
         $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', ['id' => 0])
+            ->putJson('/api/events', $this->payload())
+            ->assertStatus(405)
+            ->assertExactJson(['error' => 'Method not allowed', 'code' => 'method_not_allowed']);
+    }
+
+    /**
+     * Field validation (via EventRequest) still runs before the Event::find()
+     * lookup inside the controller — the same ordering the legacy endpoint
+     * had, now demonstrated against a numeric id that matches no event, since
+     * a MALFORMED id can no longer even reach the controller (see
+     * EventWriteTest's non-numeric-id tests below).
+     */
+    public function test_field_errors_are_still_reported_for_a_numeric_id_matching_no_event(): void
+    {
+        $this->actingAs($this->user('admin'))
+            ->putJson('/api/events/0', [])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'date', 'reason' => 'required'])
-            ->assertJsonMissing([['field' => 'id', 'reason' => 'invalid_value']]);
+            ->assertJsonPath('fields.0', ['field' => 'date', 'reason' => 'required']);
     }
 
     /**
@@ -255,10 +284,10 @@ class EventWriteTest extends TestCase
     public function test_an_update_omitting_weekend_preserves_the_stored_flag(): void
     {
         $event = $this->event(['weekend' => 1]);
-        $payload = $this->payload(['id' => $event->id]);
+        $payload = $this->payload();
         unset($payload['weekend']);
 
-        $this->actingAs($this->user('admin'))->putJson('/api/events', $payload)->assertOk();
+        $this->actingAs($this->user('admin'))->putJson('/api/events/'.$event->id, $payload)->assertOk();
 
         $this->assertSame(1, (int) $event->fresh()->weekend, 'the stored weekend flag was not preserved');
     }
@@ -271,7 +300,7 @@ class EventWriteTest extends TestCase
         $event = $this->event(['weekend' => 1]);
 
         $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload(['id' => $event->id, 'weekend' => false]))
+            ->putJson('/api/events/'.$event->id, $this->payload(['weekend' => false]))
             ->assertOk();
 
         $this->assertSame(0, (int) $event->fresh()->weekend);
@@ -282,7 +311,7 @@ class EventWriteTest extends TestCase
         $event = $this->event(['weekend' => 0]);
 
         $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload(['id' => $event->id, 'weekend' => true]))
+            ->putJson('/api/events/'.$event->id, $this->payload(['weekend' => true]))
             ->assertOk();
 
         $this->assertSame(1, (int) $event->fresh()->weekend);
@@ -293,7 +322,7 @@ class EventWriteTest extends TestCase
         $event = $this->event();
 
         $this->actingAs($this->user('user'))
-            ->putJson('/api/events', $this->payload(['id' => $event->id]))
+            ->putJson('/api/events/'.$event->id, $this->payload())
             ->assertStatus(403);
 
         $this->assertSame('Repetition', $event->fresh()->title);
@@ -305,50 +334,77 @@ class EventWriteTest extends TestCase
     {
         $event = $this->event();
 
-        // ?id= in the QUERY STRING — that is what planning_repet.js sends.
         $this->actingAs($this->user('admin'))
-            ->deleteJson('/api/events?id='.$event->id)
+            ->deleteJson('/api/events/'.$event->id)
             ->assertOk()
             ->assertExactJson(['ok' => true]);
 
         $this->assertDatabaseCount('events', 0);
     }
 
-    public function test_a_delete_without_an_id_is_rejected(): void
+    /**
+     * CONTRACT CHANGE: same as the PUT case above — `/api/events` with no id
+     * segment still matches the GET/POST route registered at that URI, so
+     * DELETE there is a 405 Method Not Allowed, not a 404 (Laravel 404s only
+     * a URI matching no route at all). Either way it is no longer the old
+     * 400 `required`.
+     */
+    public function test_a_delete_without_a_path_id_is_a_405_not_a_400(): void
     {
         $this->event();
 
         $this->actingAs($this->user('admin'))->deleteJson('/api/events')
-            ->assertStatus(400)
-            ->assertExactJson([
-                'error' => 'Invalid form submission',
-                'code' => 'validation_failed',
-                'fields' => [['field' => 'id', 'reason' => 'required']],
-            ]);
+            ->assertStatus(405)
+            ->assertExactJson(['error' => 'Method not allowed', 'code' => 'method_not_allowed']);
 
         $this->assertDatabaseCount('events', 1);
     }
 
-    public function test_a_delete_with_an_empty_id_is_rejected_as_required(): void
+    /**
+     * CONTRACT CHANGE: `whereNumber('id')` constrains the route itself, so a
+     * non-numeric id never reaches the controller at all — it is a 404,
+     * not the old `invalid_value` 400.
+     */
+    public function test_a_delete_with_a_non_numeric_id_is_a_404(): void
     {
-        $this->actingAs($this->user('admin'))->deleteJson('/api/events?id=')
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'id', 'reason' => 'required']);
+        $this->event();
+
+        $this->actingAs($this->user('admin'))->deleteJson('/api/events/abc')
+            ->assertStatus(404);
+
+        $this->assertDatabaseCount('events', 1);
     }
 
-    public function test_a_delete_with_a_non_positive_id_is_rejected_as_invalid(): void
+    /**
+     * CONTRACT CHANGE: as with update() above, `whereNumber` matches "0" — it
+     * is not a positivity check — so a delete whose id happens to be 0 is no
+     * longer the old 400 `invalid_value`. It reaches the controller as an
+     * ordinary numeric id that matches no event: a no-op delete of zero rows.
+     */
+    public function test_a_delete_with_id_zero_is_a_noop(): void
     {
-        // Present but unusable is a different reason token from absent, and
-        // i18n.js renders the two differently.
-        $admin = $this->user('admin');
+        $this->event();
 
-        $this->actingAs($admin)->deleteJson('/api/events?id=0')
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'id', 'reason' => 'invalid_value']);
+        $this->actingAs($this->user('admin'))->deleteJson('/api/events/0')
+            ->assertOk()
+            ->assertExactJson(['ok' => true]);
 
-        $this->actingAs($admin)->deleteJson('/api/events?id=-3')
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'id', 'reason' => 'invalid_value']);
+        $this->assertDatabaseCount('events', 1);
+    }
+
+    /**
+     * CONTRACT CHANGE: a negative id contains a `-`, outside `whereNumber`'s
+     * `[0-9]+` pattern, so it never matches the route at all — a 404, not the
+     * old `invalid_value` 400.
+     */
+    public function test_a_delete_with_a_negative_id_is_a_404(): void
+    {
+        $this->event();
+
+        $this->actingAs($this->user('admin'))->deleteJson('/api/events/-3')
+            ->assertStatus(404);
+
+        $this->assertDatabaseCount('events', 1);
     }
 
     public function test_a_user_role_may_not_delete_an_event(): void
@@ -356,7 +412,7 @@ class EventWriteTest extends TestCase
         $event = $this->event();
 
         $this->actingAs($this->user('user'))
-            ->deleteJson('/api/events?id='.$event->id)
+            ->deleteJson('/api/events/'.$event->id)
             ->assertStatus(403);
 
         $this->assertDatabaseCount('events', 1);
@@ -366,7 +422,7 @@ class EventWriteTest extends TestCase
     {
         $event = $this->event();
 
-        $this->deleteJson('/api/events?id='.$event->id)->assertStatus(401);
+        $this->deleteJson('/api/events/'.$event->id)->assertStatus(401);
 
         $this->assertDatabaseCount('events', 1);
     }
@@ -385,7 +441,7 @@ class EventWriteTest extends TestCase
         Response::create(['user_id' => $member->id, 'event_id' => $other->id, 'answer' => 'notparticipate']);
 
         $this->actingAs($this->user('admin'))
-            ->deleteJson('/api/events?id='.$event->id)
+            ->deleteJson('/api/events/'.$event->id)
             ->assertOk();
 
         $this->assertDatabaseMissing('responses', ['event_id' => $event->id]);

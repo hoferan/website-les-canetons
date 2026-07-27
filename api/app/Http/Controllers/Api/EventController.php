@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\EventRequest;
 use App\Models\Event;
@@ -15,12 +14,12 @@ use Illuminate\Http\Request;
  * A straight port of the legacy app/api/events.php, whose access rules are
  * deliberately asymmetric and are the whole point of this class:
  *
- *   GET    /api/events — PUBLIC. Anonymous visitors get the events with
- *                        `response: null`; a logged-in caller additionally gets
- *                        each event annotated with THEIR OWN answer.
- *   POST   /api/events — admin only (`manage_events`).
- *   PUT    /api/events — admin only (`manage_events`).
- *   DELETE /api/events — admin only (`manage_events`).
+ *   GET    /api/events        — PUBLIC. Anonymous visitors get the events with
+ *                               `response: null`; a logged-in caller additionally
+ *                               gets each event annotated with THEIR OWN answer.
+ *   POST   /api/events        — admin only (`manage_events`).
+ *   PUT    /api/events/{id}   — admin only (`manage_events`).
+ *   DELETE /api/events/{id}   — admin only (`manage_events`).
  *
  * The capability matrix is not a hierarchy: `user`/`moderator` hold `respond`
  * and must be refused by all three writes; `admin` holds `manage_events` and
@@ -113,12 +112,14 @@ class EventController extends Controller
     }
 
     /**
-     * PUT /api/events — admin only. The id travels in the BODY (planning_repet.js
-     * puts the whole event object there), unlike DELETE's query string.
+     * PUT /api/events/{id} — admin only. The id is a route parameter,
+     * constrained to digits by whereNumber() in routes/api.php, so it is
+     * always present and numeric by the time this method runs.
      *
-     * The EventRequest is injected, so field validation runs before the id check
-     * below — the legacy endpoint's order, and the reason a PUT that is bad in
-     * both ways reports the fields rather than the id.
+     * The EventRequest is injected, so field validation still runs before the
+     * Event::find() lookup below — the legacy endpoint's order, now simply a
+     * consequence of Laravel resolving the FormRequest before the controller
+     * body executes, rather than an explicit id check this method used to do.
      *
      * A well-formed id for an event that no longer exists is a 200 {"ok":true}
      * no-op, NOT a 404: the old `UPDATE ... WHERE id=?` matched no rows and
@@ -126,15 +127,8 @@ class EventController extends Controller
      * failure and shows a French error, so turning a stale list entry into a 404
      * would be a user-visible behaviour change, out of scope for this port.
      */
-    public function update(EventRequest $request): JsonResponse
+    public function update(EventRequest $request, int $id): JsonResponse
     {
-        $id = (int) $request->input('id', 0);
-        if ($id <= 0) {
-            return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'id', 'reason' => 'invalid_value'],
-            ]);
-        }
-
         $event = Event::find($id);
         if ($event === null) {
             return response()->json(['ok' => true]);
@@ -159,36 +153,17 @@ class EventController extends Controller
     }
 
     /**
-     * DELETE /api/events?id=N — admin only. The id is in the QUERY STRING here,
-     * because that is what planning_repet.js sends (`fetch("/api/events?id=" +
-     * event.id, { method: "DELETE" })`), with no body at all.
-     *
-     * Absent and unusable are two different reason tokens — i18n.js renders
-     * `required` and `invalid_value` differently — so they are reported apart.
+     * DELETE /api/events/{id} — admin only. The id is a route parameter,
+     * constrained to digits by whereNumber() in routes/api.php, so it is
+     * always present and numeric by the time this method runs — unlike the
+     * legacy query-string id, an absent or non-numeric one never reaches this
+     * method at all (the route itself 404s).
      *
      * The event's responses go with it via the FK's ON DELETE CASCADE; nothing
      * here deletes them explicitly.
      */
-    public function destroy(Request $request): JsonResponse
+    public function destroy(int $id): JsonResponse
     {
-        $raw = $request->query('id');
-        if ($raw === null || $raw === '') {
-            return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'id', 'reason' => 'required'],
-            ]);
-        }
-
-        // A plain (int) cast, as the old endpoint used: non-numeric text becomes
-        // 0 and is refused below. Deliberately not a stricter numeric check —
-        // this route is admin-only and tightening it is a behaviour change the
-        // port does not need.
-        $id = (int) $raw;
-        if ($id <= 0) {
-            return ApiError::json(400, 'validation_failed', 'Invalid form submission', [
-                ['field' => 'id', 'reason' => 'invalid_value'],
-            ]);
-        }
-
         Event::where('id', $id)->delete();
 
         return response()->json(['ok' => true]);

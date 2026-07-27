@@ -53,12 +53,20 @@ Route::get('/events', [EventController::class, 'index']);
 // capability matrix is not a hierarchy, so `user`/`moderator` (who may
 // `respond`) are refused here. auth:sanctum is paired with it so an anonymous
 // caller gets 401, not 403.
+//
+// The id is a `/events/{id}` path parameter on both writes below, constrained
+// to digits by whereNumber() so the OpenAPI generator can see it as a normal
+// path parameter and a generated TypeScript client gets a real way to say
+// which event to update. Previously PUT took the id in the request BODY and
+// DELETE took it from the QUERY STRING — two different shapes that only
+// existed because that is what planning_repet.js happened to send for each;
+// EventController::update()/destroy() no longer need to extract or validate
+// it themselves, since whereNumber() guarantees the controller only ever sees
+// a present, numeric id.
 Route::middleware(['auth:sanctum', 'capability:manage_events'])->group(function () {
     Route::post('/events', [EventController::class, 'store']);
-    Route::put('/events', [EventController::class, 'update']);
-    // No {id} path segment: the id arrives in the query string, which is what
-    // planning_repet.js sends. See EventController::destroy().
-    Route::delete('/events', [EventController::class, 'destroy']);
+    Route::put('/events/{id}', [EventController::class, 'update'])->whereNumber('id');
+    Route::delete('/events/{id}', [EventController::class, 'destroy'])->whereNumber('id');
 });
 
 // A member records THEIR OWN answer. `respond` is held by `user`/`moderator`

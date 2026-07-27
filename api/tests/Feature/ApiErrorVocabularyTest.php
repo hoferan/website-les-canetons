@@ -96,11 +96,19 @@ class ApiErrorVocabularyTest extends TestCase
         'event_not_found', 'service_unavailable', 'captcha_failed',
     ];
 
+    // 'id' used to belong here: EventController::update()/destroy() each had a
+    // `['field' => 'id', ...]` branch when the id travelled in the PUT body /
+    // DELETE query string. Both were deleted once the id became a
+    // whereNumber()-constrained /events/{id} route parameter — an absent or
+    // non-numeric id is now a 404/405 the router produces before the
+    // controller runs, never a `fields[].field === 'id'` validation error. The
+    // token genuinely can no longer be emitted, so it is intentionally absent
+    // below (see the caveat in normalise()'s failure message).
     private const MUST_INCLUDE_FIELDS = [
         'lastName', 'firstName', 'email', 'subject', 'message',
         'date', 'title', 'startTime', 'endTime', 'location', 'attire',
         'first_name', 'last_name', 'address', 'phone', 'table_name',
-        'eventId', 'participation', 'id',
+        'eventId', 'participation',
     ];
 
     /*
