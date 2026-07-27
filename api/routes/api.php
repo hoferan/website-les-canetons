@@ -2,12 +2,18 @@
 
 use App\Http\Controllers\Api\AltchaController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\ResponseController;
 use App\Http\Controllers\Api\SignupController;
 use Illuminate\Support\Facades\Route;
+
+// Public: the SPA fetches this before its first render, alongside GET /user, to
+// learn the environment (ribbon), the feature flags and the occasion copy. It
+// carries no secrets — see ConfigController and its leak-guard test.
+Route::get('/config', ConfigController::class);
 
 // Public: the contact form is open to anonymous visitors.
 Route::post('/contact', ContactController::class);
