@@ -1,5 +1,8 @@
 <?php
 
+use App\Support\Scramble\AccessDeniedResponse;
+use App\Support\Scramble\AuthenticationExceptionResponse;
+use App\Support\Scramble\ValidationExceptionResponse;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 
 return [
@@ -150,7 +153,16 @@ return [
         RestrictedDocsAccess::class,
     ],
 
-    'extensions' => [],
+    /*
+     * Custom exception documentation. Scramble's built-ins describe Laravel's
+     * default error shapes; this API replaces those with App\Exceptions\ApiError's
+     * contract, so the built-ins would document responses that never occur.
+     */
+    'extensions' => [
+        ValidationExceptionResponse::class,
+        AuthenticationExceptionResponse::class,
+        AccessDeniedResponse::class,
+    ],
 
     /*
      * Automatically document API security (OpenAPI `security` / `securitySchemes`) based on route
