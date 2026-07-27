@@ -169,6 +169,23 @@ final class ApiError
     }
 
     /**
+     * The schema is not known to be current, so the request was refused rather
+     * than served against a possibly half-applied database — see
+     * App\Http\Middleware\RunPendingMigrations.
+     *
+     * 503 and the EXISTING `service_unavailable` code, not a new one:
+     * AltchaController already emits that pair for its own fail-closed case,
+     * i18n.js already renders it as "Service indisponible", and that is exactly
+     * what this is from the visitor's side — a temporary refusal to serve, retry
+     * shortly. Minting a second code would have added French copy that says the
+     * same thing. $e is unused deliberately; see unauthenticated().
+     */
+    public static function serviceUnavailable(SchemaUnavailable $e): JsonResponse
+    {
+        return self::json(503, 'service_unavailable', 'Service unavailable');
+    }
+
+    /**
      * A CSRF/session-expiry 419. Typed on the base HttpException and discriminated
      * by status, NOT on Illuminate\Session\TokenMismatchException — see
      * bootstrap/app.php for why. $e is otherwise unused; see unauthenticated().

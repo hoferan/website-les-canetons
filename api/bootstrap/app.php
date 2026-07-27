@@ -1,8 +1,10 @@
 <?php
 
 use App\Exceptions\ApiError;
+use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\EnsureSouperSignupEnabled;
 use App\Http\Middleware\RequireCapability;
+use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
@@ -39,6 +41,28 @@ return Application::configure(basePath: dirname(__DIR__))
         // ApiError::unauthenticated() below whatever the client's Accept header
         // says.
         $middleware->redirectGuestsTo(fn () => null);
+
+        // Self-healing schema. The deploy host firewalls the GitHub runner's IP,
+        // so CI cannot call POST /api/migrate after an FTP deploy — the request
+        // path is a deployed server's only migration trigger. See
+        // App\Http\Middleware\RunPendingMigrations for the full argument; it
+        // restores what the old app's App\AutoMigrator did before the cutover.
+        //
+        // FIRST IN THE GROUP, which is load-bearing and is why this call comes
+        // AFTER statefulApi(). prependToGroup() array_unshifts, so the last
+        // prepend wins the front slot, ahead of
+        // EnsureFrontendRequestsAreStateful and therefore ahead of StartSession.
+        // With SESSION_DRIVER=database and CACHE_STORE=database, both of those
+        // read tables that a migration creates — on a never-migrated server they
+        // would 500 before the middleware that would have created them ever ran.
+        //
+        // Router::gatherRouteMiddleware()'s priority sort (see the note below on
+        // EnsureSouperSignupEnabled) cannot displace it from index 0:
+        // SortedMiddleware only ever moves a priority-listed middleware to the
+        // index of a previously-seen priority-listed one, and index 0 is held
+        // here by a middleware that is not on that list. Pinned by
+        // AutoMigrateTest::test_the_middleware_runs_before_everything_else.
+        $middleware->prependToGroup('api', RunPendingMigrations::class);
 
         $middleware->alias([
             'capability' => RequireCapability::class,
@@ -115,6 +139,20 @@ return Application::configure(basePath: dirname(__DIR__))
         // untouched, so it can be type-hinted directly.
         $exceptions->render(fn (MethodNotAllowedHttpException $e, Request $request) => $request->is('api/*')
             ? ApiError::methodNotAllowed($e)
+            : null);
+
+        // 503. App\Http\Middleware\RunPendingMigrations refused the request
+        // because the schema is not known to be current. Registered BEFORE the
+        // catch-all HttpException closure below — not that it has to be, since
+        // SchemaUnavailable is a plain RuntimeException that closure would never
+        // match, but keeping the specific-before-general order means the day
+        // someone widens either one, the wrong one cannot silently win.
+        //
+        // Only /api/* gets the JSON contract. /sanctum/csrf-cookie is not
+        // matched by is('api/*') and falls through to Laravel's default
+        // renderer, which is correct: nothing parses that route's body.
+        $exceptions->render(fn (SchemaUnavailable $e, Request $request) => $request->is('api/*')
+            ? ApiError::serviceUnavailable($e)
             : null);
 
         // 419/CSRF. Same prepareException() trap as the 403 above, but worse:

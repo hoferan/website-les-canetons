@@ -44,6 +44,22 @@ return [
     // feature until someone flips it by hand.
     'souper_signup_enabled' => (bool) env('SOUPER_SIGNUP_ENABLED', false),
 
+    // Whether App\Http\Middleware\RunPendingMigrations applies pending
+    // migrations on the first /api/* request after a deploy.
+    //
+    // ON by default, unlike souper_signup_enabled above, and the asymmetry is
+    // the point. The deploy host firewalls the GitHub runner's IP, so CI cannot
+    // reach the site to call POST /api/migrate; the request path is the only
+    // trigger a deployed server has. A server whose .env simply omits this key
+    // must therefore still self-heal — a silently-disabled one is exactly the
+    // failure the middleware exists to prevent, and it fails as a broken API
+    // rather than as a missing setting.
+    //
+    // Set AUTO_MIGRATE=false only to pin a server's schema deliberately (a
+    // rollback being investigated, a migration you intend to run by hand). It
+    // is pinned false in phpunit.xml so the suite never migrates implicitly.
+    'auto_migrate' => (bool) env('AUTO_MIGRATE', true),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

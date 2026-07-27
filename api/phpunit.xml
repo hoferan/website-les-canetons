@@ -60,6 +60,19 @@
              The three classes that need the feature ON turn it on themselves
              with config([...]); see SouperSignupFlagTest for the OFF path. -->
         <env name="SOUPER_SIGNUP_ENABLED" value="false"/>
+        <!-- OFF here, though config/app.php defaults it ON — the suite must
+             never migrate implicitly. Two reasons, either sufficient:
+             MigrateTest deliberately leaves a probe migration PENDING to prove
+             `mode=dry-run` applies nothing, and RunPendingMigrations sitting in
+             front of that request would apply it first and make the assertion
+             fail; and more generally a test that silently repaired the schema
+             underneath itself would hide exactly the breakage a suite is for.
+             AutoMigrateTest turns it back on with config([...]) per test, the
+             same way SouperSignupFlagTest does. Pinned rather than left to the
+             ambient environment because the suite runs INSIDE the web
+             container, where docker/api/env.docker is mounted as
+             api-laravel/.env with AUTO_MIGRATE=true. -->
+        <env name="AUTO_MIGRATE" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
