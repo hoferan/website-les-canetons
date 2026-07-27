@@ -25,6 +25,9 @@
     "lint:api": "node tools/pint.mjs --test",
     "fix:api": "node tools/pint.mjs",
     "openapi": "node tools/openapi.mjs",
+    "generate:api": "orval --config orval.config.ts",
+    "test:web": "vitest run",
+    "typecheck": "tsc --noEmit",
     "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
     "serve": "node tools/ensure-dev-stack.mjs && npm run build:assets && php -S 127.0.0.1:8090 -t app",
     "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\" \"app/assets/js/*.test.mjs\"",
@@ -40,6 +43,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@tanstack/react-query": "^5.101.4",
     "basic-ftp": "^6.0.1",
     "bulma": "^1.0.4",
     "eslint": "^9.9.0",
@@ -48,11 +52,14 @@
     "i18next": "^26.3.6",
     "lint-staged": "^15.2.0",
     "lucide": "^1.25.0",
+    "orval": "^8.23.0",
     "php-parser": "^3.7.0",
     "prettier": "^3.3.0",
     "stylelint": "^16.9.0",
     "stylelint-config-standard": "^36.0.0",
-    "vite": "^8.1.5"
+    "typescript": "^6.0.3",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   },
   "lint-staged": {
     "app/**/*.php": "node tools/php-lint-file.mjs",
