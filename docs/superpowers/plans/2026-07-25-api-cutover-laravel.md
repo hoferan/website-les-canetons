@@ -4673,6 +4673,10 @@ In order. The first three are hand steps on each server and must precede the dep
    `SELECT COUNT(*) FROM users WHERE password NOT LIKE '$%';`
    Must be 0. Run the one-time hashing script first if not. Do TEST too, before step 6 — otherwise the login check fails and looks like a dispatch fault.
 2. **Place `api-laravel/.env`** on each server from `api/.env.example` (Task 28).
+
+   **Including `SOUPER_SIGNUP_ENABLED`, and it must agree with that server's `config.php`.** The signup feature is now gated on both sides: `config.php`'s `souper_signup` hides the UI, and the new `.env` key gates the API routes. The key defaults to **false**, so any server whose `.env` omits it gets the API half off — and if that server's `config.php` has the UI half **on**, it will serve a visible signup form whose every request 404s.
+
+   **Nothing will catch this.** `config.php` has the AST-based shape pre-flight that refuses a deploy on key drift; the Laravel `.env` has no shape check at all, so the mismatch is silent. Check each server's `config.php` value before deploying and set the `.env` line to match. Making the two cross-checked — either by teaching the config-shape pre-flight about the pair, or by having one read the other — is the real fix and a good follow-up.
 3. **Trim each `config.php`** — remove `auto_migrate` and `migrate.token` (Task 27). Until this is done the deploy refuses with exit 2.
 4. **Merge to `main`** — auto-deploys TEST.
 5. **Run the migrations immediately:** `npm run dbmigrate:test`.
