@@ -33,7 +33,7 @@
 //
 // Usage: node tools/openapi.mjs
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { runInPhp } from "./php-in-docker.mjs";
 
 if (!existsSync("api/vendor/dedoc/scramble")) {
@@ -57,15 +57,33 @@ const steps = [
   // composer install above runs with --no-scripts, so this hasn't happened yet.
   `${env} php artisan package:discover --no-ansi`,
   // Fresh throwaway schema every run — never reuse a stale file across runs.
+  // This wipe-at-start is what guarantees a fresh schema even after a
+  // previous run crashed before reaching its own cleanup below.
   "rm -f /tmp/openapi-export.sqlite && touch /tmp/openapi-export.sqlite",
   `${env} php artisan migrate --force`,
   `${env} php artisan scramble:export`,
+  // Only the docker-run path auto-discards this file (container --rm); the
+  // local-php fallback (Claude Code web sessions) runs against the host's
+  // real /tmp, so clean up explicitly once the export has succeeded.
+  "rm -f /tmp/openapi-export.sqlite",
 ];
 
 try {
   runInPhp(`cd api && ${steps.join(" && ")}`);
 } catch {
   process.exit(1);
+}
+
+// scramble:export writes the file without a trailing newline, unlike every
+// other tracked JSON file in this repo (package.json, composer.json both end
+// in \n). Normalised here, at the source, so every regeneration — including
+// the CI drift check the next task adds — produces the same bytes a
+// contributor's editor would, instead of flagging a perpetual invisible-
+// character diff.
+const path = "api/openapi.json";
+const contents = readFileSync(path, "utf8");
+if (!contents.endsWith("\n")) {
+  writeFileSync(path, `${contents}\n`);
 }
 
 console.log("openapi: wrote api/openapi.json");
