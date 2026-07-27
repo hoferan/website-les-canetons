@@ -182,13 +182,26 @@ class OpenApiDocumentTest extends TestCase
      * tools/dbmigrate.mjs with a shared secret. It must be excluded from the
      * generated OpenAPI document because the browser client must never have
      * access to a method that triggers database migrations.
+     *
+     * A positive control (asserting a known route IS present) guards against a
+     * degenerate failure: a broken export that silently produces an empty or
+     * malformed paths object would pass an absence-only assertion. This ensures
+     * the document is well-formed and populated before we assert the exclusion.
      */
     public function test_the_migrate_route_is_not_documented(): void
     {
+        $paths = $this->document()['paths'];
+
         $this->assertArrayNotHasKey(
             '/migrate',
-            $this->document()['paths'],
+            $paths,
             'The token-gated deploy endpoint must not reach the generated browser client.'
+        );
+
+        $this->assertArrayHasKey(
+            '/events',
+            $paths,
+            'A known route must be present to ensure the document is well-formed.'
         );
     }
 
