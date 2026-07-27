@@ -21,8 +21,32 @@ use Illuminate\Http\JsonResponse;
  */
 class ConfigController extends Controller
 {
-    /** Non-prod environments, mirroring the old App\Env::RIBBONS. */
-    private const NON_PROD = ['dev', 'test', 'qa'];
+    /**
+     * Translates Laravel's APP_ENV vocabulary into the ribbon vocabulary the
+     * old App\Env (and this response) speaks.
+     *
+     * The two vocabularies differ for a real reason, not by accident: Laravel
+     * itself uses `local`/`production` by convention (and other code keys off
+     * that — e.g. Scramble's RestrictedDocsAccess middleware gates the API
+     * docs UI on app()->environment('local')), whereas the ribbon vocabulary
+     * (`dev`/`test`/`qa`, prod = no ribbon) came from the old App\Env and is
+     * what servers set APP_ENV to by hand on TEST/QA/PROD. So `local` (Docker
+     * dev) maps onto `dev` here rather than renaming APP_ENV to match — doing
+     * the latter would break the Laravel-idiomatic behaviour that depends on
+     * the literal string `local`.
+     *
+     * Anything not listed here (including Laravel's idiomatic `production`,
+     * listed explicitly so a future edit to this map cannot silently break it)
+     * falls through to the default branch below, which is 'prod'.
+     */
+    private const ENV_MAP = [
+        'local' => 'dev',
+        'dev' => 'dev',
+        'test' => 'test',
+        'qa' => 'qa',
+        'production' => 'prod',
+        'prod' => 'prod',
+    ];
 
     public function __invoke(): JsonResponse
     {
@@ -46,7 +70,7 @@ class ConfigController extends Controller
     }
 
     /**
-     * Anything that is not a known non-prod environment collapses to 'prod',
+     * Anything that is not a recognised entry in ENV_MAP collapses to 'prod',
      * copying App\Env's fail-safe: a missing or misspelled APP_ENV must never
      * paint a staging ribbon on the live site.
      */
@@ -54,7 +78,7 @@ class ConfigController extends Controller
     {
         $env = strtolower(trim((string) config('app.env')));
 
-        return in_array($env, self::NON_PROD, true) ? $env : 'prod';
+        return self::ENV_MAP[$env] ?? 'prod';
     }
 
     /**

@@ -38,6 +38,35 @@ class ConfigEndpointTest extends TestCase
         $this->getJson('/api/config')->assertJsonPath('env', 'prod');
     }
 
+    /**
+     * The regression this endpoint must not repeat: Docker dev sets
+     * APP_ENV=local (Laravel's own idiomatic value for local development —
+     * other code, e.g. Scramble's docs-UI gate, keys off that literal string,
+     * so renaming it to `dev` is not an option). Locally the OLD app's
+     * config.docker.php sets its own 'env' to 'dev' and shows a DEV ribbon, so
+     * this response must translate `local` onto `dev` too, or the SPA would
+     * show no ribbon at all in local development.
+     */
+    public function test_local_is_mapped_to_the_dev_ribbon(): void
+    {
+        config(['app.env' => 'local']);
+
+        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+    }
+
+    /**
+     * Laravel's idiomatic production value must land on 'prod' deliberately,
+     * not merely by falling through the same branch as a genuinely unknown
+     * value — pinning this stops a future edit to the translation map from
+     * silently breaking it.
+     */
+    public function test_production_is_mapped_to_prod(): void
+    {
+        config(['app.env' => 'production']);
+
+        $this->getJson('/api/config')->assertJsonPath('env', 'prod');
+    }
+
     public function test_the_occasion_is_absent_when_the_feature_is_off(): void
     {
         config(['app.souper_signup_enabled' => false]);
