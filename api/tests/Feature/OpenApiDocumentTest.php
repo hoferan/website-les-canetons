@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Illuminate\Support\Facades\Artisan;
+use Opis\JsonSchema\Validator;
 use ReflectionClass;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Tests\TestCase;
@@ -93,6 +94,34 @@ class OpenApiDocumentTest extends TestCase
         $this->assertSame(['access_denied'], $schema['properties']['code']['enum']);
     }
 
+    /**
+     * The document is only useful if it is TRUE. This drives a real request into
+     * a real error and validates the real body against the documented schema, so
+     * the extensions in App\Support\Scramble cannot drift away from
+     * App\Exceptions\ApiError without failing a build.
+     */
+    public function test_a_real_validation_failure_matches_its_documented_schema(): void
+    {
+        $response = $this->postJson('/api/contact', []);
+        $response->assertStatus(400);
+
+        $this->assertMatchesDocumentedSchema(
+            $this->document()['paths']['/contact']['post']['responses']['400'],
+            $response->json()
+        );
+    }
+
+    public function test_a_real_401_matches_its_documented_schema(): void
+    {
+        $response = $this->getJson('/api/user');
+        $response->assertStatus(401);
+
+        $this->assertMatchesDocumentedSchema(
+            $this->document()['paths']['/user']['get']['responses']['401'],
+            $response->json()
+        );
+    }
+
     /** @return array<string,mixed> */
     private function document(): array
     {
@@ -129,5 +158,37 @@ class OpenApiDocumentTest extends TestCase
         }
 
         return $response['content']['application/json']['schema'];
+    }
+
+    /**
+     * Validate a real response body against its documented JSON Schema (2020-12,
+     * as used by OpenAPI 3.1). Both the data and the schema are passed to Opis as
+     * decoded objects rather than JSON strings — Validator::validate() treats a
+     * string schema as a URI first and only falls back to json_decode() when
+     * Uri::parse() fails, which is fragile; passing pre-decoded stdClass objects
+     * goes straight through its object branch instead.
+     *
+     * @param  array<string,mixed>  $response  the documented response object
+     * @param  array<string,mixed>  $body  the body the API actually returned
+     */
+    private function assertMatchesDocumentedSchema(array $response, array $body): void
+    {
+        $validator = new Validator;
+        $result = $validator->validate(
+            json_decode((string) json_encode($body), false, 512, JSON_THROW_ON_ERROR),
+            json_decode((string) json_encode($this->resolve($response)), false, 512, JSON_THROW_ON_ERROR)
+        );
+
+        if (! $result->isValid()) {
+            $error = $result->error();
+            $this->fail(sprintf(
+                "The API's real response does not match its documented schema.\n  keyword: %s\n  path: %s\n  body: %s",
+                $error?->keyword() ?? 'unknown',
+                implode('/', $error?->data()->path() ?? []),
+                json_encode($body)
+            ));
+        }
+
+        $this->assertTrue(true);
     }
 }
