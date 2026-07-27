@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\SignupRequest;
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Illuminate\Support\Facades\Artisan;
@@ -127,9 +128,18 @@ class OpenApiDocumentTest extends TestCase
     /**
      * SignupController::store() resolves its FormRequest via app() instead of
      * injecting it — deliberately, so the honeypot runs before validation — which
-     * makes the body invisible to Scramble's inference. Attributes document it
-     * explicitly, and this test is what notices if they are removed or drift from
-     * SignupRequest::rules().
+     * makes the body invisible to Scramble's inference. BodyParameter attributes
+     * document it explicitly instead.
+     *
+     * The expected field set is derived from SignupRequest::rules() itself (the
+     * authority for the wire contract), plus the two fields that are part of the
+     * body but not Laravel-rule-validated: `menus` (validated by
+     * Occasion::normalizeMenus() in SignupRequest::after()) and `altcha` (read
+     * directly from the request in the controller). This is what makes the test
+     * notice drift in EITHER direction: a field added to rules() but never
+     * documented, or a documented field removed from rules() — not just its own
+     * hardcoded names being deleted. `hp` (the honeypot) is deliberately excluded
+     * from both sides: it is intentionally undocumented, not a documentation gap.
      */
     public function test_the_signup_body_is_documented(): void
     {
@@ -138,8 +148,31 @@ class OpenApiDocumentTest extends TestCase
 
         $properties = $body['content']['application/json']['schema']['properties'];
 
-        foreach (['first_name', 'last_name', 'address', 'phone', 'email', 'table_name', 'menus'] as $field) {
-            $this->assertArrayHasKey($field, $properties, "The signup body is missing {$field}.");
+        $expected = array_keys((new SignupRequest)->rules());
+        $expected[] = 'menus';
+        $expected[] = 'altcha';
+        sort($expected);
+
+        $documented = array_keys($properties);
+        sort($documented);
+
+        $this->assertSame(
+            $expected,
+            $documented,
+            sprintf(
+                "The documented signup body does not match SignupRequest::rules() (plus menus/altcha).\n".
+                "  missing from the document: %s\n".
+                '  documented but not expected: %s',
+                implode(', ', array_diff($expected, $documented)) ?: '(none)',
+                implode(', ', array_diff($documented, $expected)) ?: '(none)',
+            )
+        );
+
+        foreach ($expected as $field) {
+            if ($field === 'menus') {
+                continue;
+            }
+            $this->assertSame('string', $properties[$field]['type'], "{$field} should be documented as a string.");
         }
         $this->assertSame('array', $properties['menus']['type']);
     }
