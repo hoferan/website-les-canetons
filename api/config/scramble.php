@@ -27,8 +27,13 @@ return [
     'api_domain' => null,
 
     /*
-     * Exported to api/openapi.json (relative to the Laravel project root), which
-     * is committed and consumed by orval. See tools/openapi.mjs.
+     * Where scramble:export writes the document. Resolved against the WORKING
+     * DIRECTORY of the process running artisan (File::put is a bare
+     * file_put_contents), not against any project-root concept — so this lands
+     * at api/openapi.json because the exporter always runs from api/. See
+     * tools/openapi.mjs, which cd's there for exactly this reason.
+     *
+     * That file is committed and consumed by orval.
      */
     'export_path' => 'openapi.json',
 
