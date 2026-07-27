@@ -322,6 +322,18 @@ also reshaping the grant would deliver `public/.htaccess` to staging and open
 `signups` writes rows). Fixing that CLI bug is therefore explicitly out of
 scope here, and both files' comments are corrected to record this reasoning.
 
+**Follow-up, recorded at the end of implementation.** The consequence of shipping
+without that fix is that the Laravel tree on a server is protected by **exactly
+one layer, and it belongs to the application rather than to Apache**: the
+front-controller catch-all in `app/.htaccess`, which matches every path except
+`/api/*` and `/sanctum/*` and 404s `/api-laravel/.env`. That is genuinely
+sufficient today and was verified. But it means any future change that weakens
+the catch-all — adding a `!-f`/`!-d` guard, narrowing the pattern, editing the
+generated overlay — exposes the whole Laravel tree in the same commit, with
+nothing failing to signal it. The catch-all is now a security control and should
+be treated as one. Making the protected set root-relative (together with
+reshaping the grant, per above) is the real fix and should not be left to drift.
+
 Because no `Require` directive is added anywhere, the unresolved Apache version
 does not gate this sub-project. The existing `<IfModule>` guard pairs stay
 exactly as they are.
