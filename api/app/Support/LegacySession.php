@@ -26,9 +26,10 @@ use App\Models\User;
  * session handler or a custom Laravel session driver. When the old pages are
  * gone, delete this file and its two calls — that is the whole removal.
  *
- * The array shape written here and the session cookie flags set here must stay
- * byte-identical to App\Auth::completeLogin() / App\Auth::startSession() in the
- * old app. If they drift, the two halves fight over the same PHPSESSID cookie.
+ * The array shape written here and the session cookie flags set here are a
+ * contract with the old app, which is the only reader: App\Auth::user() returns
+ * this exact array, and App\Auth::startSession() sets these exact cookie params.
+ * If either side drifts, the two halves fight over the same PHPSESSID cookie.
  */
 final class LegacySession
 {
@@ -53,7 +54,7 @@ final class LegacySession
             return;
         }
 
-        // Mirrors App\Auth::completeLogin(): regenerate, then store identity.
+        // Regenerate first, then store the identity App\Auth::user() reads back.
         session_regenerate_id(true);
         $_SESSION['user'] = self::shapeFor($user);
     }
@@ -65,7 +66,7 @@ final class LegacySession
             return;
         }
 
-        // Mirrors App\Auth::logout().
+        // Clear the identity so App\Auth::check() reads the pages as logged out.
         $_SESSION = [];
         session_destroy();
     }

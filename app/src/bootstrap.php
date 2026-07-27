@@ -13,9 +13,11 @@ $config = require __DIR__ . '/../config.php';
 // Record the deployment environment (dev/test/qa/prod) for the env ribbon.
 // Absent/unknown collapses to prod (no ribbon) — see App\Env.
 Env::init($config['env'] ?? null);
-// On non-prod (test/qa/dev), route PHP errors and explicit error_log() calls
-// (e.g. the fail-safe signup-mail catch in api/signups.php) to a file at the
-// site root, so failures are retrievable over FTP on the shared host. The log
+// On non-prod (test/qa/dev), route this app's PHP errors and any explicit
+// error_log() calls to a file at the site root, so failures are retrievable
+// over FTP on the shared host. This covers the old app only: the API's
+// fail-safes (e.g. the signup-mail catch in Laravel's SignupController) log
+// through Laravel's own channel to api-laravel/storage/logs/ instead. The log
 // is not web-readable: the front controller rewrites every non-/assets/ request
 // to index.php, so a direct hit on /php-error.log 404s. PROD keeps the host's
 // default logging untouched.
