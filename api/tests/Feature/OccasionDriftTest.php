@@ -94,6 +94,11 @@ class OccasionDriftTest extends TestCase
             'MENU_LABELS drifted between SignupRepository and Occasion.'
         );
         $this->assertSame(
+            SignupRepository::MENU_INFO,
+            Occasion::MENU_INFO,
+            'MENU_INFO drifted between SignupRepository and Occasion.'
+        );
+        $this->assertSame(
             SignupRepository::MAX_GUESTS,
             Occasion::MAX_GUESTS,
             'MAX_GUESTS drifted between SignupRepository and Occasion.'

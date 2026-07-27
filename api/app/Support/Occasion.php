@@ -28,6 +28,30 @@ final class Occasion
         'vegetarian' => 'Végétarien',
     ];
 
+    /**
+     * Per-menu description and price, keyed by menu value.
+     *
+     * Previously excluded from this class because only the old pages' form
+     * markup read it. The SPA has no server-rendered markup, so /api/config
+     * ships it and this is now the single source of truth — SignupRepository's
+     * copy dies with the old app.
+     */
+    public const MENU_INFO = [
+        'meat' => [
+            'description' => 'Rôti de bœuf, sauce aux morilles, gratin dauphinois '
+                .'et légumes de saison.',
+            'price' => 'CHF 45.–',
+        ],
+        'child' => [
+            'description' => 'Émincé de poulet, frites maison et compote.',
+            'price' => 'CHF 20.–',
+        ],
+        'vegetarian' => [
+            'description' => 'Risotto aux champignons et légumes rôtis de saison.',
+            'price' => 'CHF 40.–',
+        ],
+    ];
+
     public const MAX_GUESTS = 30;
 
     public const ACTIVE = 'anniversary-supper';
