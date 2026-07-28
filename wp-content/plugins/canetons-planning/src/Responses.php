@@ -102,6 +102,29 @@ final class Responses {
 		return false !== $wpdb->query( $sql );
 	}
 
+	/**
+	 * Every answer for an event, as user_id => answer. One query for the whole
+	 * roster, so the summary (spec §1.3) is not an N+1.
+	 *
+	 * @return array<int, string>
+	 */
+	public static function answers_for_event( int $event_id ): array {
+		global $wpdb;
+		$table = self::table();
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT user_id, answer FROM {$table} WHERE event_id = %d", $event_id ),
+			ARRAY_A
+		);
+
+		$answers = array();
+		foreach ( (array) $rows as $row ) {
+			$answers[ (int) $row['user_id'] ] = (string) $row['answer'];
+		}
+
+		return $answers;
+	}
+
 	/** A member's own answer for an event, or null if they have not answered. */
 	public static function answer_for( int $user_id, int $event_id ): ?string {
 		global $wpdb;

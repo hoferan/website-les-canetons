@@ -82,3 +82,6 @@ add_action( 'save_post_' . EventType::POST_TYPE, [ EventMetaBox::class, 'save' ]
 add_action( 'admin_post_' . Rsvp::ACTION, [ Rsvp::class, 'handle' ] );
 add_action( 'deleted_user', [ Responses::class, 'delete_for_user' ] );
 add_action( 'before_delete_post', [ Responses::class, 'delete_for_event' ] );
+
+// Attendance summary (spec §1.3, §3.6): the view_summary-gated wp-admin page.
+add_action( 'admin_menu', [ SummaryPage::class, 'register' ] );
