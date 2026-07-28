@@ -1,0 +1,101 @@
+/*
+Theme Name: Les Canetons de Fribourg
+Description: Thème enfant de Twenty Twenty-Five pour la Guggenmusik Les Canetons de Fribourg. Le système de design (palette « Duck & Brass », typographie, espacements) vit dans theme.json ; ce fichier ne porte que le peu que theme.json ne peut exprimer.
+Author: Guggenmusik Les Canetons de Fribourg
+Template: twentytwentyfive
+Version: 0.1.0
+Requires at least: 6.9
+Requires PHP: 8.4
+Text Domain: canetons
+*/
+
+/*
+ * The design lives in theme.json (palette, typography, spacing). This is the
+ * single stylesheet, enqueued once in functions.php, for the handful of rules
+ * theme.json cannot express: the "card" group style used by the patterns, and
+ * the planning / RSVP surface rendered by the canetons-planning plugin.
+ *
+ * Colours are read from the CSS custom properties theme.json generates, so the
+ * palette stays defined in exactly one place.
+ */
+
+/* --- Card group style (register_block_style in functions.php) ------------- */
+.is-style-canetons-card {
+	background-color: var(--wp--preset--color--base-2);
+	border-top: 4px solid var(--wp--preset--color--primary);
+	border-radius: 12px;
+	padding: var(--wp--preset--spacing--40, 2rem);
+	box-shadow: 0 2px 10px rgb(14 77 92 / 8%);
+	height: 100%;
+}
+
+/* --- Planning list (plugin shortcode [canetons_planning]) ----------------- */
+.canetons-planning {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 1rem;
+}
+
+.canetons-planning__event {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.25rem 1rem;
+	background-color: var(--wp--preset--color--base-2);
+	border-left: 4px solid var(--wp--preset--color--secondary);
+	border-radius: 10px;
+	padding: 1rem 1.25rem;
+}
+
+.canetons-planning__title {
+	font-weight: 700;
+	color: var(--wp--preset--color--secondary);
+}
+
+.canetons-planning__date {
+	font-weight: 600;
+}
+
+.canetons-planning__time,
+.canetons-planning__location,
+.canetons-planning__attire {
+	color: var(--wp--preset--color--contrast);
+	opacity: 0.8;
+}
+
+.canetons-planning__empty {
+	font-style: italic;
+	opacity: 0.8;
+}
+
+/* --- RSVP controls (plugin) ----------------------------------------------- */
+.canetons-rsvp {
+	display: inline-flex;
+	gap: 0.5rem;
+	margin-left: auto;
+}
+
+.canetons-rsvp__button {
+	cursor: pointer;
+	border: 2px solid var(--wp--preset--color--secondary);
+	background-color: var(--wp--preset--color--base-2);
+	color: var(--wp--preset--color--secondary);
+	border-radius: 999px;
+	padding: 0.35rem 1rem;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.canetons-rsvp__button:hover {
+	background-color: var(--wp--preset--color--secondary);
+	color: var(--wp--preset--color--base);
+}
+
+/* The member's current answer. */
+.canetons-rsvp__button.is-current {
+	background-color: var(--wp--preset--color--primary);
+	border-color: var(--wp--preset--color--primary);
+	color: var(--wp--preset--color--contrast);
+}
