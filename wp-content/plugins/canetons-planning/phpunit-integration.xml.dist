@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit 9.6 schema, and pinned there because WordPress's test harness calls
+  PHPUnit APIs removed in 10 — see composer.json.
+
+  No <env> block, deliberately: the harness needs CONSTANTS, not environment
+  variables, so configuration lives in tests/wp-tests-config.php and is wired up
+  by tests/integration/bootstrap.php. That config points at the THROWAWAY
+  `wordpress_test` database — the harness drops every table in it.
+
+  Unlike the unit suite this does not set failOnWarning/failOnRisky: WordPress
+  core emits deprecations of its own that are not this plugin's to fix.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/integration/bootstrap.php"
+         cacheResultFile=".phpunit.cache/integration"
+         colors="true">
+    <testsuites>
+        <testsuite name="integration">
+            <directory>tests/integration</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

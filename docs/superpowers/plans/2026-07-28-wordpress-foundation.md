@@ -1060,8 +1060,28 @@ This is the suite that matters. Spec §9 puts capability enforcement here becaus
 it is a security boundary, and Plans 2–5 all depend on this harness existing.
 
 It runs in the `wp` container — which already has PHP 8.4 and `mysqli`, and is
-already on the compose network so `wp-db` resolves — using the same `exec -w`
-`exec -w` pattern. No separate runner service, no custom image.
+already on the compose network so `wp-db` resolves — via `exec -w`. No separate
+runner service, no custom image.
+
+**Two constraints discovered while building this, both now encoded:**
+
+1. **PHPUnit must be 9.x, not 10 or 11.** WordPress's harness
+   (`wp-phpunit/.../abstract-testcase.php`) calls
+   `PHPUnit\Util\Test::parseTestMethodAnnotations()`, which PHPUnit 10 removed;
+   on PHPUnit 11 every integration test errors with "undefined method". Worse,
+   `wp-phpunit` declares **no** PHPUnit constraint of its own, so Composer
+   installs an incompatible version without complaint. Pin
+   `phpunit/phpunit: ^9.6` with `yoast/phpunit-polyfills: ^2.0` — the pairing
+   WordPress core itself uses — and write both `phpunit-*.xml.dist` against the
+   **9.6 schema** (`cacheResultFile`, no `<source>` element; `cacheDirectory` and
+   `<source>` are 10+ only).
+2. **The harness needs constants, not environment variables.** `<env>` entries in
+   `phpunit.xml` do not satisfy it: it checks `defined()` and aborts with "The
+   following required constants are not defined: WP_TESTS_DOMAIN, WP_TESTS_EMAIL,
+   WP_TESTS_TITLE, WP_PHP_BINARY". Configuration therefore lives in
+   `tests/wp-tests-config.php`, located via the `WP_PHPUNIT__TESTS_CONFIG`
+   environment variable that `wp-phpunit`'s shipped shim reads — set from the
+   bootstrap off `__DIR__`, so no absolute path is hardcoded anywhere.
 
 **Files:**
 - Create: `wp-content/plugins/canetons-planning/phpunit-integration.xml.dist`

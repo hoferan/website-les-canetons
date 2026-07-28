@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PHPUnit 9.6 schema (cacheResultFile, no <source>). PHPUnit is pinned to 9.x
+  because WordPress's test harness does not support 10+ — see composer.json.
+-->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="tests/unit/bootstrap.php"
-         cacheDirectory=".phpunit.cache"
+         cacheResultFile=".phpunit.cache/unit"
          colors="true"
          failOnWarning="true"
-         failOnRisky="true">
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true">
     <testsuites>
         <testsuite name="unit">
             <directory>tests/unit</directory>
         </testsuite>
     </testsuites>
-    <source>
-        <include>
-            <directory>src</directory>
-        </include>
-    </source>
 </phpunit>
