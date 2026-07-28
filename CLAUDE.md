@@ -40,10 +40,11 @@ older specs describe an architecture that no longer exists.
   is the only substantial code in the project.
 - **One theme**, `canetons`: a child of Twenty Twenty-Five, with the design
   expressed in `theme.json` and block patterns rather than stylesheets.
-- **Five free third-party plugins** cover everything else — contact form
+- **Six free third-party plugins** cover everything else — contact form
   (Fluent Forms), roles and page gating (Members), SMTP (FluentSMTP), backups
-  (UpdraftPlus), login hardening (Limit Login Attempts Reloaded). Installed and
-  updated through wp-admin per environment, never deployed. See spec §4.
+  (UpdraftPlus), login hardening (Limit Login Attempts Reloaded), and front-end
+  dark mode (WP Dark Mode). Installed and updated through wp-admin per
+  environment, never deployed. See spec §4.
 - **No API, no SPA, no build step.** The site is server-rendered. Browser writes
   are ordinary form posts protected by WordPress nonces.
 

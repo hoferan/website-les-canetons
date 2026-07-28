@@ -29,8 +29,9 @@ for historical reference.
   summary, roles and capabilities. The only substantial code here.
 - **One theme** (`canetons`): child of Twenty Twenty-Five, design in
   `theme.json` and block patterns.
-- **Five free plugins** for everything else: Fluent Forms, Members, FluentSMTP,
-  UpdraftPlus, Limit Login Attempts Reloaded.
+- **Six free plugins** for everything else: Fluent Forms, Members, FluentSMTP,
+  UpdraftPlus, Limit Login Attempts Reloaded, and WP Dark Mode (front-end dark
+  mode).
 - No API, no SPA, no build step. Server-rendered, with WordPress nonces on writes.
 
 ## Local development

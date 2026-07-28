@@ -63,14 +63,15 @@ $WP option update blog_public 0 >/dev/null
 # PROD these are installed and updated through wp-admin — spec §4 is unchanged;
 # local is disposable, servers are not.
 #
-# Three of the five are deliberately absent locally:
+# Three of the six are deliberately absent locally:
 #   FluentSMTP            — docker/wp/mu-plugins/local-mail.php does this job,
 #                           and both hook phpmailer_init.
 #   UpdraftPlus           — purely operational; backs up nothing worth keeping
 #                           here, and adds cron noise.
 #   Limit Login Attempts  — would lock you out of your own dev site while
 #                           testing the login of spec §1.5.
-for plugin in fluentform members; do
+# WP Dark Mode IS installed locally: it is cosmetic front-end and wants seeing.
+for plugin in fluentform members wp-dark-mode; do
   if $WP plugin is-installed "$plugin" 2>/dev/null; then
     echo "plugin: $plugin already installed"
   else

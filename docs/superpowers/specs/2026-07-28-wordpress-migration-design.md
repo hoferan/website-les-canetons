@@ -298,10 +298,11 @@ part of a deploy (§10).
 | FluentSMTP | The host's SMTP ports are non-standard (465 for SSL, 4650 for STARTTLS — not 587), so `wp_mail`'s defaults do not work. |
 | UpdraftPlus | Scheduled off-site backups of database and uploads (§11). |
 | Limit Login Attempts Reloaded | `wp-login.php` is publicly reachable and members have weak, admin-set passwords. |
+| WP Dark Mode | A front-end dark-mode toggle. The one deliberate step past the five-plugin budget, at the site owner's request: theme.json cannot express a per-visitor `prefers-color-scheme` switch, and a `/styles` variation is admin-global rather than automatic. Front-end only; it touches none of the plugin's logic. If its upsell noise proves too heavy, the fallback is a hand-written `prefers-color-scheme` block in the theme's single `style.css`. |
 
 Because none of these is tracked in git (§10), nothing would otherwise record
 what runs alongside our code — a restore would recover the theme and plugin and
-leave the other five unknown. A generated manifest,
+leave the rest unknown. A generated manifest,
 `docs/wordpress-install-manifest.csv`, records core and plugin versions and is
 refreshed and committed after every update. It is deliberately a diffable text
 file rather than only a backup archive: "when did this plugin change, and did the
@@ -312,8 +313,10 @@ is reproducible after a reset. FluentSMTP is replaced locally by a small mounted
 mu-plugin routing mail to Mailpit (both hook `phpmailer_init`, so running both
 would mean debugging whichever won); UpdraftPlus and Limit Login Attempts
 Reloaded are skipped as purely operational — and the latter would lock a
-developer out of their own site while testing the login. Servers are unaffected:
-on TEST and PROD all five are installed and updated through wp-admin as above.
+developer out of their own site while testing the login. WP Dark Mode *is*
+installed locally, since it is cosmetic front-end and wants seeing. Servers are
+unaffected: on TEST and PROD all six are installed and updated through wp-admin
+as above.
 
 ## §5 Theme and design
 
@@ -566,7 +569,7 @@ adds some of it back.
 | --- | --- |
 | Content lives in a database on shared hosting, no longer in git | §11, configured before any content is entered |
 | WordPress on shared hosting carries a permanent update obligation that the current stack does not | §8 hardening, §11 update policy, minimal plugin count |
-| Members' synthetic `.invalid` addresses interact badly with a plugin that assumes real ones | Only five third-party plugins, none of which mails members; password reset disabled for member roles |
+| Members' synthetic `.invalid` addresses interact badly with a plugin that assumes real ones | Only six third-party plugins, none of which mails members; password reset disabled for member roles |
 | The design phase has no clear finish line and can absorb unbounded time | Settle palette, typography and layouts as a deliverable before theme work starts |
 | Custom plugin diverges from requirement 1.4's non-hierarchy under future edits | Negative capability cases are covered by integration tests (§9) |
 | Basic Auth on TEST obstructs `wp-admin` and `admin-ajax.php` | Accepted: this host 500s on per-path exemptions, so TEST is wholly behind Basic Auth |
