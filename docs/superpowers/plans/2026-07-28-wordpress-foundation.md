@@ -218,15 +218,49 @@ add_action(
 	'phpmailer_init',
 	static function ( $phpmailer ): void {
 		$phpmailer->isSMTP();
-		$phpmailer->Host       = 'wp-mailpit';
-		$phpmailer->Port       = 1025;
-		$phpmailer->SMTPAuth   = false;
-		// Mailpit speaks plain SMTP; PHPMailer would otherwise try STARTTLS
+		$phpmailer->Host     = 'wp-mailpit';
+		$phpmailer->Port     = 1025;
+		$phpmailer->SMTPAuth = false;
+		// Mailpit speaks plain SMTP; PHPMailer would otherwise attempt STARTTLS
 		// and fail the send.
 		$phpmailer->SMTPAutoTLS = false;
 	}
 );
+
+/**
+ * Override the default From address, which is invalid on this site.
+ *
+ * WordPress builds it as 'wordpress@' . <site host>. Locally that host is
+ * `localhost`, giving `wordpress@localhost` — and PHPMailer validates addresses
+ * with FILTER_VALIDATE_EMAIL, which REJECTS a domain with no dot. Every send
+ * then fails with "Invalid address (From)" and wp_mail() returns false.
+ *
+ * This is a local-only fault, which is why the fix lives here: TEST
+ * (test.lescanetons.org) and PROD (lescanetons.org) have dotted hosts, so their
+ * default From validates. On those servers the From address is FluentSMTP's
+ * concern and must be a real authenticated mailbox (spec §4).
+ *
+ * `.invalid` is reserved by RFC 2606, so it can never resolve or deliver to a
+ * real recipient — the same reasoning as the synthetic member addresses in
+ * spec §7.
+ */
+add_filter( 'wp_mail_from', static fn (): string => 'no-reply@lescanetons.invalid' );
+add_filter( 'wp_mail_from_name', static fn (): string => 'Les Canetons (local)' );
 ```
+
+**Windows note — this bites every command below.** In Git Bash, MSYS rewrites
+`/var/www/html` into `C:/Program Files/Git/var/www/html` before Docker sees it,
+and WP-CLI then reports "This does not seem to be a WordPress installation".
+Prefix the *docker* commands with `MSYS_NO_PATHCONV=1`:
+
+```bash
+MSYS_NO_PATHCONV=1 docker compose run --rm wp-cli wp --path=/var/www/html ...
+```
+
+Do **not** export it for the whole shell: it also stops `/dev/null` being
+translated, so `curl -o /dev/null` then fails with exit 23. Scope it to the
+docker invocations only. The `npm run wp:*` scripts are unaffected — npm runs
+them through `cmd.exe`, which has no such rewriting.
 
 - [ ] **Step 4: Write the compose file**
 
@@ -565,19 +599,39 @@ The repository does not vendor core or third-party plugins, so without this
 there is no record of what runs alongside your code.
 
 ```bash
-docker compose run --rm wp-cli \
+MSYS_NO_PATHCONV=1 docker compose run --rm wp-cli \
   wp --path=/var/www/html plugin list --fields=name,version,status --format=csv \
-  > docs/wordpress-install-manifest.csv
-docker compose run --rm wp-cli \
-  wp --path=/var/www/html core version --extra >> docs/wordpress-install-manifest.csv
+  2>/dev/null | tr -d '\r' | grep -v ",must-use$" > docs/wordpress-install-manifest.csv
+V=$(MSYS_NO_PATHCONV=1 docker compose run --rm wp-cli \
+  wp --path=/var/www/html core version 2>/dev/null | tr -d '\r')
+echo "wordpress-core,$V,core" >> docs/wordpress-install-manifest.csv
 ```
 
 Expected: a CSV listing `canetons-planning` (once Task 3 lands), `fluentform`,
-`members`, plus the core version block.
+`members`, the two WordPress-bundled plugins (`akismet`, `hello`), and a
+`wordpress-core` row.
 
-Regenerate and commit this after any core or plugin update. Unlike an
-UpdraftPlus archive it gives diffable history — "when did Fluent Forms change,
-and did the bug start then?" is a question a backup blob cannot answer.
+Three details, each the result of getting it wrong first:
+
+- **`core version`, not `core version --extra`.** The `--extra` output is
+  multi-line human-readable text and appending it produces a malformed CSV.
+- **`grep -v ",must-use$"`** drops `local-mail`, the mounted local-only
+  mu-plugin. It never runs on a server, so recording it would be misleading.
+- **`tr -d '\r'`** because WP-CLI emits CRLF here, which otherwise lands in the
+  committed file.
+
+**Known limitation — this manifest currently describes the LOCAL install, not a
+server.** Local deliberately installs only two of the five third-party plugins
+(see the setup script), so the file is not yet the record of server state the
+spec asks for. It becomes meaningful in Plan 7, which installs plugins on TEST
+and PROD through wp-admin; that plan must decide how to read versions back off a
+server with no SSH and no WP-CLI — most likely from wp-admin's Plugins screen by
+hand, since FTP alone cannot run WP-CLI. Until then, treat this file as a local
+snapshot.
+
+Regenerate and commit it after any core or plugin update. Unlike an UpdraftPlus
+archive it gives diffable history — "when did Fluent Forms change, and did the
+bug start then?" is a question a backup blob cannot answer.
 
 - [ ] **Step 8: Commit**
 

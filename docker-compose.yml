@@ -80,6 +80,10 @@ services:
       WORDPRESS_DB_NAME: wordpress
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress
+      # uid 33's home is / in this image, which WP-CLI cannot write, so every
+      # run warns and re-downloads instead of caching. Point HOME somewhere
+      # writable.
+      HOME: /tmp
     volumes:
       - wp_core:/var/www/html
       - ./wp-content/themes/canetons:/var/www/html/wp-content/themes/canetons

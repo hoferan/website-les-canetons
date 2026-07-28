@@ -34,3 +34,23 @@ add_action(
 		$phpmailer->SMTPAutoTLS = false;
 	}
 );
+
+/**
+ * Override the default From address, which is invalid on this site.
+ *
+ * WordPress builds it as 'wordpress@' . <site host>. Locally that host is
+ * `localhost`, giving `wordpress@localhost` — and PHPMailer validates addresses
+ * with FILTER_VALIDATE_EMAIL, which REJECTS a domain with no dot. Every send
+ * then fails with "Invalid address (From)" and wp_mail() returns false.
+ *
+ * This is a local-only fault, which is why the fix lives here: TEST
+ * (test.lescanetons.org) and PROD (lescanetons.org) have dotted hosts, so their
+ * default From validates. On those servers the From address is FluentSMTP's
+ * concern and must be a real authenticated mailbox (spec §4).
+ *
+ * `.invalid` is reserved by RFC 2606, so it can never resolve or deliver to a
+ * real recipient — the same reasoning as the synthetic member addresses in
+ * spec §7.
+ */
+add_filter( 'wp_mail_from', static fn (): string => 'no-reply@lescanetons.invalid' );
+add_filter( 'wp_mail_from_name', static fn (): string => 'Les Canetons (local)' );
