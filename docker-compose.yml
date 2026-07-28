@@ -1,0 +1,131 @@
+# The WordPress stack (spec §10) — the only one. The previous PHP and Laravel
+# stack was deleted from this branch and lives on archive/php-laravel-stack.
+#
+#   npm run wp:dev     # up
+#   npm run wp:setup   # install WordPress (idempotent)
+#
+# Ports are offset from the obvious defaults (8100 not 8080, 3308 not 3306) so
+# the stack does not collide with anything else already running on the machine —
+# a stray local MySQL on 3306 is common.
+services:
+  wp:
+    image: wordpress:6.9-php8.4-apache
+    ports:
+      - "8100:80"
+    environment:
+      WORDPRESS_DB_HOST: wp-db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        /* Pin the site URL rather than letting the database own it. Without
+           this, WordPress stores siteurl/home as rows, and reaching the site on
+           a different host or port — or importing a database from PROD —
+           produces redirect loops and broken asset URLs. */
+        define( 'WP_HOME', 'http://localhost:8100' );
+        define( 'WP_SITEURL', 'http://localhost:8100' );
+
+        /* Log to wp-content/debug.log instead of rendering warnings into the
+           middle of the page, which corrupts JSON and header output. */
+        define( 'WP_DEBUG_LOG', true );
+        define( 'WP_DEBUG_DISPLAY', false );
+
+        /* Serve unminified core JS/CSS so stack traces point somewhere useful. */
+        define( 'SCRIPT_DEBUG', true );
+
+        /* WordPress's recovery mode catches fatals, hides them behind a generic
+           page and emails the admin. Useful in production, actively harmful in
+           development — we want the fatal on screen. */
+        define( 'WP_DISABLE_FATAL_ERROR_HANDLER', true );
+
+        /* Hardening that must hold in every environment (spec §8). Set locally
+           too, so nobody develops against behaviour PROD will not allow. */
+        define( 'DISALLOW_FILE_EDIT', true );
+        define( 'WP_ENVIRONMENT_TYPE', 'local' );
+    volumes:
+      # Core in a named volume — server-owned everywhere, never tracked, never
+      # deployed.
+      - wp_core:/var/www/html
+      # The two artifact directories, at their real paths. Narrow mounts on
+      # purpose: mounting ./wp-content wholesale would hide core's bundled
+      # themes and every wp-admin-installed plugin, and would drop uploads/ into
+      # the repository.
+      - ./wp-content/themes/canetons:/var/www/html/wp-content/themes/canetons
+      - ./wp-content/plugins/canetons-planning:/var/www/html/wp-content/plugins/canetons-planning
+      # Local-only mail routing. Read-only: nothing should write here.
+      - ./docker/wp/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+    depends_on:
+      wp-db:
+        condition: service_healthy
+      wp-mailpit:
+        condition: service_started
+
+  # WP-CLI. Invoked as `run --rm`, so it needs no keep-alive entrypoint: the
+  # image's own entrypoint IS `wp`. It shares wp_core and the same bind mounts so
+  # it sees exactly the filesystem Apache does, and runs as uid 33 (www-data) to
+  # avoid leaving root-owned files in the volume that would then break Apache.
+  wp-cli:
+    image: wordpress:cli-php8.4
+    user: "33:33"
+    # Kept out of `up -d` by a profile. Two reasons: its entrypoint is `wp`, so
+    # starting it would just print help and exit; and its wp-setup.sh mount is a
+    # single FILE — if that file is missing when the container is created, Docker
+    # silently creates a DIRECTORY at that host path instead. `docker compose
+    # run` enables a service's own profiles automatically, so nothing else needs
+    # to pass --profile.
+    profiles: ["cli"]
+    environment:
+      WORDPRESS_DB_HOST: wp-db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp-content/themes/canetons:/var/www/html/wp-content/themes/canetons
+      - ./wp-content/plugins/canetons-planning:/var/www/html/wp-content/plugins/canetons-planning
+      - ./docker/wp/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      # The setup script only — wp-cli has no other business in the repo tree.
+      - ./tools/wp-setup.sh:/usr/local/bin/wp-setup:ro
+    depends_on:
+      wp-db:
+        condition: service_healthy
+
+  wp-db:
+    image: mariadb:10.3
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: root
+    ports:
+      - "3308:3306"
+    volumes:
+      - wp_db_data:/var/lib/mysql
+    # -h 127.0.0.1, NOT localhost. Against `localhost` mysqladmin uses the unix
+    # socket, which succeeds against MariaDB's temporary --skip-networking init
+    # server while TCP is still unreachable and the schema is unloaded — a
+    # reproducible false positive that releases dependents too early.
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Catches every outbound mail. Required, not optional: the contact form (spec
+  # §1.6) cannot otherwise be verified, because a failed send is silent.
+  wp-mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8026:8025"
+
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8101:8080"
+    depends_on:
+      - wp-db
+
+volumes:
+  wp_core:
+  wp_db_data:

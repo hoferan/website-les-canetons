@@ -1,0 +1,17 @@
+# Third-party plugins and themes are server-owned (spec §4) — installed and
+# updated through wp-admin, recorded in docs/wordpress-install-manifest.csv, and
+# never tracked. Default-deny, then whitelist ours.
+plugins/*
+!plugins/canetons-planning/
+themes/*
+!themes/canetons/
+
+# Written by WordPress at runtime, never ours.
+uploads/
+upgrade/
+cache/
+debug.log
+
+# Mounted from docker/wp/mu-plugins/ in local development; on a server this
+# directory does not exist at all.
+mu-plugins/
