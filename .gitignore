@@ -1,87 +1,55 @@
-# secrets & local-only
-config.php
+# Repository ignores for the WordPress rebuild.
+#
+# Scope note: this repository tracks ONLY our own theme and plugin. WordPress
+# core, third-party plugins, wp-config.php and uploads/ are server-owned and
+# never tracked — see
+# docs/superpowers/specs/2026-07-28-wordpress-migration-design.md §10. Which
+# versions run alongside our code is recorded in
+# docs/wordpress-install-manifest.csv.
+#
+# Rules scoped to wp-content/ and to the plugin live in their own nested
+# .gitignore files, so they travel with the directories they describe.
+
+# --- secrets and per-server configuration ----------------------------------
+# Deploy credentials, one file per environment.
 .env
 /.env.*
 !/.env.example
-.superpowers
-.tmp
-/public/
+
+# WordPress writes real database credentials and salts here.
+wp-config.php
 
 # HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible
-# offline; usernames exposed). The .htaccess that references them IS tracked.
-# See staging/README.md for how to (re)generate these.
+# offline, and they expose usernames). TEST sits behind Basic Auth (spec §8).
 .htpasswd
 
-# real prod data — never commit (use the synthetic Docker seed instead)
+# --- real data — never commit ----------------------------------------------
+# Includes the archived signups / contact_messages export (spec §7): real
+# member and guest personal data, kept outside the web root, never in git.
+*.sql
+*.sql.gz
 *.dump.sql
 prod-*.sql
 
-# dependencies (dev-only tooling; never deployed)
+# --- dependencies and caches (dev-only; never deployed) ---------------------
 /node_modules/
-/vendor/
-
-# Persistent Composer download cache reused across builds (tools/build.mjs)
-/.composer-cache/
-
-# Laravel API (api/) — dependencies & generated runtime artifacts. api/ ships
-# its own .gitignore too (Composer vendor/, .env, storage/framework caches,
-# bootstrap/cache, logs); these root-level entries are belt-and-suspenders so
-# nothing generated under api/ is ever tracked from the repo root.
-/api/vendor/
-/api/node_modules/
-/api/.env
-/api/public/build/
-/api/public/hot
-/api/storage/*.key
-/api/.phpunit.result.cache
-
-# Laravel scaffold files this API-only project does NOT use — `composer
-# create-project laravel/laravel` regenerates these, but they're dead weight
-# here (no Blade/Vite frontend; GitHub ignores nested workflow dirs; StyleCI
-# unused). Ignored so a future re-scaffold + `git add` can't re-track them.
-/api/package.json
-/api/package-lock.json
-/api/vite.config.js
-/api/.styleci.yml
-/api/.npmrc
-/api/.github/
-
-# empty mount-point stubs Docker creates when compose nests mounts inside the
-# ./app -> /var/www/html mount (docker-compose.yml): the `vendor` volume and
-# the Laravel tree at api-laravel/. Creating a nested mount point writes
-# through to the host side of the outer bind, so these
-# appear as untracked directories in app/. /app/vendor also covers the symlink
-# tools/ensure-dev-stack.sh creates for native (Docker-less) web sessions — no
-# trailing slash on these, so the pattern matches a symlink too. The same
-# nesting mounts docker/api/env.docker onto api-laravel/.env inside the
-# ./api -> api-laravel mount, which writes through to an empty (0-byte)
-# api/.env on the host — already covered by /api/.env above, but note that
-# stub will silently shadow a real .env for host-side `php artisan` use under
-# api/, since Laravel finds a (useless) .env already present instead of none.
-/app/vendor
-/app/api-laravel
-
-# runtime error log written by bootstrap.php on non-prod (dev/test/qa); a local
-# artifact inside the deployed app/ tree — never commit it.
-/app/php-error.log
-
-# generated FTP deploy artifact (npm run build); never hand-edit or commit
-/dist/build/
-
-# generated per-env overlay files (npm run build:overlay); never hand-edit or commit
-/dist/
-
-# generated Vite build output (npm run build / vite build); never hand-edit or commit
-/app/assets/dist/
-
-# linter / tool caches
-.php-cs-fixer.cache
+vendor/
 .phpcs.cache
 .phpunit.cache
 .phpunit.result.cache
 
-# OS / editor junk
+# --- local scratch ----------------------------------------------------------
+.superpowers
+.tmp
+
+# --- Claude Code ------------------------------------------------------------
+# per-machine Claude Code settings (the tracked .claude/settings.json holds the
+# team-wide hooks; this file is personal overrides only)
+/.claude/settings.local.json
+
+# --- OS / editor junk -------------------------------------------------------
 .DS_Store
 Thumbs.db
 desktop.ini
+*.swp
 .idea/

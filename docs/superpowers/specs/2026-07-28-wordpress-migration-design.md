@@ -10,23 +10,25 @@ architecture set out in `2026-07-23-laravel-api-foundation-design.md` and
 
 ## Context
 
-The site today is two PHP applications sharing one origin: a front-controller
-app in `app/` serving 19 server-rendered pages, and a Laravel API in `api/`
-owning every `/api/*` route and the database schema. Around them sits a large
-tooling estate — a Vite build with one entry per page, bespoke FTP deploy
-tooling with a sync-state manifest and a mass-delete brake, AST-based
+Until now the site was two PHP applications sharing one origin: a
+front-controller app in `app/` serving 19 server-rendered pages, and a Laravel
+API in `api/` owning every `/api/*` route and the database schema. Around them
+sat a large tooling estate — a Vite build with one entry per page, bespoke FTP
+deploy tooling with a sync-state manifest and a mass-delete brake, AST-based
 config-shape pre-flight checks, request-path auto-migration, an OpenAPI export
 and a generated TypeScript client, and three tag-promoted environments.
 
-That estate is production-grade and works. It is also far more machinery than a
-carnival brass band's website needs, and it can only be maintained by its
-author. The decision has been taken to rebuild on WordPress, minimising custom
-code, so that the committee can maintain content and a wider pool of people can
+That estate was production-grade and worked. It was also far more machinery than
+a carnival brass band's website needs, and it could only be maintained by its
+author. The decision was taken to rebuild on WordPress, minimising custom code,
+so that the committee can maintain content and a wider pool of people can
 maintain the site.
 
-**This is a greenfield rebuild.** No existing code is preserved — not the
-`app/` pages, not the Laravel API, not the deploy tooling, not the schema. Only
-*data* and *content* carry over (§7).
+**This is a greenfield rebuild, and the old stack has already been removed from
+this branch** — see §13. Nothing is preserved in the working tree: not the `app/`
+pages, not the Laravel API, not the deploy tooling, not the schema. All of it
+lives on the `archive/php-laravel-stack` branch, pushed to `origin`, which is
+also the rollback path (§12). Only *data* and *content* carry over (§7).
 
 A bare WordPress 6.9 install already exists on TEST at `/wp-test/`, with a
 hand-written `.htaccess` solving two host-specific problems (§12). Nothing has
@@ -64,9 +66,10 @@ rather than reproducing today's appearance.
 3. **The requirements inventory is the contract.** §1 is extracted from the
    current application and is what the rebuild is measured against. A
    requirement absent from §1 is out of scope.
-4. **The old app stays intact until cutover succeeds.** WordPress and the
-   existing application do not collide at the database level, so rollback is a
-   routing change (§12).
+4. **Rollback is redeploying the archive, not keeping two apps running.** The old
+   stack was deleted outright rather than carried alongside; it is preserved on
+   the `archive/php-laravel-stack` branch, and its database tables survive a
+   cutover untouched (§12).
 
 ## Decisions
 
@@ -127,9 +130,10 @@ Visible to holders of `view_summary` only, scoped to one event:
 - Instruments: Trompette, Trombone, Sousaphone, Cloches, Batterie, Lyre,
   Grosses-Caisse, Comité, Maquillage.
 
-Note: today this instrument list is hardcoded in
-[inscriptions_admin.js:52-62](../../../app/assets/js/inscriptions_admin.js#L52-L62),
-duplicating the `instruments` table. The rebuild has one source of truth.
+Note: in the old application this list was hardcoded in
+`app/assets/js/inscriptions_admin.js` (lines 52–62 on
+`archive/php-laravel-stack`), duplicating the `instruments` table. The rebuild has
+one source of truth.
 
 ### 1.4 Capability matrix
 
@@ -446,21 +450,32 @@ Because content lives in the database (§6), backups stop being optional.
 
 ## §12 Cutover and rollback
 
-WordPress uses the `qsjd_` table prefix and the existing application's tables
-have distinct names, so **the two applications do not collide** — whether they
-share one database (see §7's prerequisite) or sit in two. Either way the old
-application stays complete and functional throughout, which is what makes
-rollback cheap.
+**Cutover is a hard switch.** The old application's files are removed from the
+document root and replaced by WordPress, rather than left running alongside it.
+This was a deliberate simplification: keeping both would have bought an instant
+routing-level revert that a band website does not need, at the cost of every plan
+carrying a coexistence constraint.
 
-Cutover is a routing change in the document root's `.htaccess`. Rollback is
-restoring the previous one. The old application's files and tables stay in place
-for one month after cutover, then are removed.
+What makes it safe is that **rollback does not depend on the old files still being
+there**:
+
+- The old stack is preserved in full on the `archive/php-laravel-stack` branch,
+  pushed to `origin`. Rolling back means redeploying it — minutes over FTP, not
+  seconds, which is the trade accepted here.
+- **The old data is never touched.** WordPress uses the `qsjd_` table prefix and
+  the old application's tables have distinct names, so a cutover cannot alter or
+  drop them, whether the two share one database (§7's prerequisite) or sit in
+  two.
+- A full backup is taken immediately before cutover (§11).
+
+The old tables stay in place for one month after cutover, then are dropped once
+the WordPress data is confirmed good.
 
 Two non-stock rules must carry into the root `.htaccess`, both solving
 host-specific problems already diagnosed in the working `.htaccess` of the
-existing `/wp-test/` install. That file is the reference implementation and
-lives only on the server and in a local scratch copy under `.tmp/` — it is not
-tracked, so both rules are restated here in full:
+existing `/wp-test/` install. That file is the reference implementation and lives
+only on the server and in a local scratch copy under `.tmp/` — it is not tracked,
+so both rules are restated here in full:
 
 1. **The directory-request rewrite.** This host answers a bare directory request
    with an external 301 appending `index.php`; WordPress's
@@ -474,20 +489,41 @@ tracked, so both rules are restated here in full:
 Related finding, worth fixing while the two applications coexist: the tracked
 `app/.htaccess` front-controller catch-all does **not** exclude `/wp-test`,
 though the WordPress `.htaccess` comment asserts it does. Neither
-[app/.htaccess](../../../app/.htaccess) nor `staging/test/.htaccess` mentions
+`app/.htaccess` nor `staging/test/.htaccess` (both on
+`archive/php-laravel-stack`) mentions
 `wp`. The subtree survives only because its own file turns the rewrite engine
 on, so per-directory rules stop being inherited. If that file is ever lost,
 WordPress URLs reach the old front controller instead of 404ing.
 
-## §13 What is deleted
+## §13 What was deleted
 
-At cutover, and not before: `app/`, `api/`, `web/`, `tools/`, `staging/`, the
-Vite build, the Composer projects, the GitHub Actions deploy and promotion
-workflows, `docker-compose.yml` and the `docker/` tree, and the root
-`composer.json` / `package.json` toolchain. Replaced by a WordPress install, one
-theme, one plugin, and an FTP script.
+**Done, at the start rather than at cutover.** The original plan kept the old
+stack in the working tree until cutover succeeded; that was dropped in favour of
+a clean tree, because the coexistence it bought is not needed (§12) and every
+plan would otherwise have carried the constraint.
 
-`docs/superpowers/` is kept as the project's design history.
+Removed from this branch: `app/`, `api/`, `web/`, `tools/`, `staging/`, `config/`,
+`docker/`, `tests/`, the Vite build, both Composer projects, the GitHub Actions
+build/deploy/promotion workflows, the old `docker-compose.yml`, and the root
+JS/PHP toolchain (`eslint`, `stylelint`, `prettier`, husky, lint-staged,
+`phpcs.xml`, `phpunit.xml`, `orval.config.ts`, `tsconfig.json`,
+`vitest.config.ts`). All of it is preserved on `archive/php-laravel-stack`.
+
+Kept:
+
+- `docs/superpowers/` — the project's design history, including the retired
+  stack's.
+- `.github/workflows/pr-title.yml` plus the issue and PR templates. The
+  Conventional Commits check is still correct; CI for the WordPress build is
+  Plan 8's job.
+- `.claude/` — agent tooling, not application code.
+- `.env.test` / `.env.qa` / `.env.prod`, git-ignored. They hold the live FTP
+  credentials the WordPress deploy will reuse; deleting them would destroy
+  working secrets.
+
+Deliberately not replaced yet: PHP linting. WordPress Coding Standards belongs
+with the plugin's own Composer dev dependencies, so the old root `phpcs.xml` went
+rather than being adapted.
 
 ## §14 Effort
 

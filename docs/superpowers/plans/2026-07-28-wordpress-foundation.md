@@ -7,11 +7,12 @@ versions, with an empty-but-activating `canetons-planning` plugin and two workin
 test harnesses, so that every later plan has somewhere to build and something to
 test against.
 
-**Architecture:** A second Docker Compose stack (`docker-compose.wp.yml`) runs
-WordPress 6.9 on PHP 8.4 against MariaDB 10.3, alongside — not replacing — the
-existing stack, which stays functional until cutover. WordPress core lives in a
-named volume; only the two directories that form the deploy artifact are
-bind-mounted from the tracked tree, at the same paths they occupy on the server.
+**Architecture:** One Docker Compose stack (`docker-compose.yml`) runs WordPress
+6.9 on PHP 8.4 against MariaDB 10.3. It is the only stack — the previous PHP and
+Laravel stack has been deleted from this branch and lives on
+`archive/php-laravel-stack`. WordPress core lives in a named volume; only the two
+directories that form the deploy artifact are bind-mounted from the tracked tree,
+at the same paths they occupy on the server.
 
 **Tech Stack:** WordPress 6.9, PHP 8.4, MariaDB 10.3, Docker Compose, WP-CLI,
 Mailpit, PHPUnit 11, `wp-phpunit/wp-phpunit`, `yoast/phpunit-polyfills`.
@@ -79,17 +80,13 @@ Six decisions worth stating, because each has a wrong-looking alternative:
    or importing a database from PROD — produces redirect loops and broken assets.
    This is the single most common WordPress-in-Docker failure and pinning removes
    it entirely.
-4. **Configuration comes from `WORDPRESS_*` environment variables**, unlike the
-   Laravel stack next door which deliberately mounts a real `.env`. That
-   rationale does not transfer: it exists because Laravel's `Dotenv` refuses to
-   overwrite a variable already in the process environment, so a compose key
-   would silently shadow a `.env` line. WordPress's official image has the
-   opposite design — it *generates* `wp-config.php` from those variables — so
-   environment variables are the idiomatic path here.
-5. **Tests run inside the `wp` container**, via `exec -w`, matching how the
-   existing stack runs Laravel's suite. The official image already has PHP 8.4
-   and `mysqli` (WordPress requires it), so no separate runner service or custom
-   Dockerfile is needed.
+4. **Configuration comes from `WORDPRESS_*` environment variables.** The
+   official image *generates* `wp-config.php` from them, so this is the idiomatic
+   path — no mounted config file, and no `wp-config.php` in the tracked tree to
+   leak credentials from.
+5. **Tests run inside the `wp` container**, via `exec -w`. The official image
+   already has PHP 8.4 and `mysqli` (WordPress requires it), so no separate
+   runner service or custom Dockerfile is needed.
 6. **WP-CLI runs as `run --rm`, not a long-lived sidecar.** Its image's entry
    point is `wp` itself, which exits immediately, so keeping it running would
    need a `tail -f` hack for no benefit.
@@ -100,7 +97,7 @@ Six decisions worth stating, because each has a wrong-looking alternative:
 
 | Path | Responsibility |
 | --- | --- |
-| `docker-compose.wp.yml` | The WordPress stack. Separate from `docker-compose.yml` so the existing stack keeps working until cutover. |
+| `docker-compose.yml` | The WordPress stack — the only one. |
 | `docker/wp/mu-plugins/local-mail.php` | Routes `wp_mail` to Mailpit. Mounted, never deployed — local only. |
 | `wp-content/.gitignore` | Default-deny for plugins and themes, with our two whitelisted. |
 | `wp-content/plugins/canetons-planning/canetons-planning.php` | Plugin bootstrap: header, constants, autoloader, hook wiring. Nothing else. |
@@ -119,9 +116,10 @@ Six decisions worth stating, because each has a wrong-looking alternative:
 
 ## Task 0: Verify the database topology
 
-The spec records this as a blocking prerequisite (§7). It gates Plan 8 entirely —
-both the data import and the coexistence-based rollback story depend on the
-answer.
+The spec records this as a blocking prerequisite (§7). It gates Plan 8's data
+import: whether the migration command can read the old tables on WordPress's own
+connection, or needs a second one. It also confirms that the old data survives
+cutover untouched, which is what makes the hard switch safe.
 
 **This task requires FTP access to TEST and is done by hand, not by an agent.**
 
@@ -145,7 +143,8 @@ TEST's WordPress `wp-config.php` declares `DB_NAME = lescanetoqg5` on
 Replace §7's prerequisite paragraph with the confirmed answer, one of:
 
 - **Same database** — the migration command reads the old tables on WordPress's
-  own `$wpdb` connection, and §12's coexistence rollback holds as written.
+  own `$wpdb` connection. Confirm the old tables' names do not collide with the
+  `qsjd_` prefix, so a cutover cannot touch them.
 - **Different databases** — the migration command needs a second connection
   configured from the old `config.php`, and §12 should say the two installs sit
   in separate databases and therefore cannot collide at all (a stronger
@@ -163,7 +162,7 @@ git commit -m "docs: confirm the database topology for the WordPress migration"
 ## Task 1: The WordPress Docker stack
 
 **Files:**
-- Create: `docker-compose.wp.yml`
+- Create: `docker-compose.yml`
 - Create: `docker/wp/mu-plugins/local-mail.php`
 - Create: `wp-content/.gitignore`
 - Create: `wp-content/themes/canetons/.gitkeep`
@@ -226,20 +225,18 @@ add_action(
 
 - [ ] **Step 4: Write the compose file**
 
-Create `docker-compose.wp.yml`:
+Create `docker-compose.yml`:
 
 ```yaml
-# The WordPress stack (spec §10). Deliberately a SECOND compose file rather than
-# edits to docker-compose.yml: the existing app stays functional until cutover
-# succeeds (spec §12), so both stacks must be able to run at once — and neither
-# may claim the other's ports or volumes.
+# The WordPress stack (spec §10) — the only one. The previous PHP and Laravel
+# stack was deleted from this branch and lives on archive/php-laravel-stack.
 #
 #   npm run wp:dev     # up
 #   npm run wp:setup   # install WordPress (idempotent)
 #
-# Every port is offset from the existing stack on purpose:
-#   8100 vs 8090 (web), 8101 vs 8091 (adminer),
-#   8026 vs 8025 (mailpit), 3308 vs 3307 (db).
+# Ports are offset from the obvious defaults (8100 not 8080, 3308 not 3306) so
+# the stack does not collide with anything else already running on the machine —
+# a stray local MySQL on 3306 is common.
 services:
   wp:
     image: wordpress:6.9-php8.4-apache
@@ -386,7 +383,7 @@ mu-plugins/
 
 - [ ] **Step 6: Bring the stack up**
 
-Run: `docker compose -f docker-compose.wp.yml up -d`
+Run: `docker compose up -d`
 
 Expected: `wp-db`, `wp-mailpit`, `adminer` and `wp` start. `wp-cli` does **not**
 — it is a `run --rm` service and correctly stays down.
@@ -398,12 +395,12 @@ Run: `curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost:
 Expected: `302 http://localhost:8100/wp-admin/install.php` — an uninstalled
 WordPress redirecting to its installer. A `500` means the database credentials or
 the healthcheck gate are wrong; check
-`docker compose -f docker-compose.wp.yml logs wp`.
+`docker compose logs wp`.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add docker-compose.wp.yml docker/wp/ wp-content/
+git add docker-compose.yml docker/wp/ wp-content/
 git commit -m "build(wp): add the WordPress development stack"
 ```
 
@@ -521,7 +518,7 @@ git update-index --add --chmod=+x tools/wp-setup.sh
 - [ ] **Step 3: Run it**
 
 ```bash
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp-setup
+docker compose run --rm wp-cli wp-setup
 ```
 
 Expected output ends with:
@@ -533,7 +530,7 @@ setup: mail at http://localhost:8026
 
 - [ ] **Step 4: Verify idempotency**
 
-Run: `docker compose -f docker-compose.wp.yml run --rm wp-cli wp-setup`
+Run: `docker compose run --rm wp-cli wp-setup`
 
 Expected: `core: already installed`, `locale: already fr_FR`,
 `permalinks: already pretty`, and both plugins reported already installed. No
@@ -548,14 +545,14 @@ Expected: `200`. An installed WordPress no longer redirects to the installer.
 - [ ] **Step 6: Verify mail reaches Mailpit**
 
 ```bash
-docker compose -f docker-compose.wp.yml run --rm wp-cli \
+docker compose run --rm wp-cli \
   wp --path=/var/www/html eval 'wp_mail("test@lescanetons.invalid","Ping","Body");'
 curl -s http://localhost:8026/api/v1/messages | head -c 200
 ```
 
 Expected: the JSON response reports at least one message with subject `Ping`. An
 empty list means the mu-plugin is not loading — confirm the mount with
-`docker compose -f docker-compose.wp.yml exec wp ls /var/www/html/wp-content/mu-plugins`.
+`docker compose exec wp ls /var/www/html/wp-content/mu-plugins`.
 
 - [ ] **Step 7: Generate the install manifest**
 
@@ -563,10 +560,10 @@ The repository does not vendor core or third-party plugins, so without this
 there is no record of what runs alongside your code.
 
 ```bash
-docker compose -f docker-compose.wp.yml run --rm wp-cli \
+docker compose run --rm wp-cli \
   wp --path=/var/www/html plugin list --fields=name,version,status --format=csv \
   > docs/wordpress-install-manifest.csv
-docker compose -f docker-compose.wp.yml run --rm wp-cli \
+docker compose run --rm wp-cli \
   wp --path=/var/www/html core version --extra >> docs/wordpress-install-manifest.csv
 ```
 
@@ -707,8 +704,8 @@ rm wp-content/plugins/canetons-planning/.gitkeep
 - [ ] **Step 4: Activate the plugin and verify**
 
 ```bash
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html plugin activate canetons-planning
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html plugin list --status=active --field=name
+docker compose run --rm wp-cli wp --path=/var/www/html plugin activate canetons-planning
+docker compose run --rm wp-cli wp --path=/var/www/html plugin list --status=active --field=name
 ```
 
 Expected: `Plugin 'canetons-planning' activated.` then `canetons-planning` among
@@ -717,7 +714,7 @@ wrong.
 
 - [ ] **Step 5: Verify activation recorded the schema version**
 
-Run: `docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html option get canetons_planning_schema_version`
+Run: `docker compose run --rm wp-cli wp --path=/var/www/html option get canetons_planning_schema_version`
 
 Expected: `0`
 
@@ -895,7 +892,7 @@ Expected: PHPUnit, `wp-phpunit` and the polyfills land in `vendor/`.
 - [ ] **Step 7: Run the suite to verify it FAILS**
 
 ```bash
-docker compose -f docker-compose.wp.yml exec \
+docker compose exec \
   -w /var/www/html/wp-content/plugins/canetons-planning \
   wp ./vendor/bin/phpunit -c phpunit-unit.xml.dist
 ```
@@ -946,7 +943,7 @@ final class Schema {
 - [ ] **Step 9: Run the suite to verify it PASSES**
 
 ```bash
-docker compose -f docker-compose.wp.yml exec \
+docker compose exec \
   -w /var/www/html/wp-content/plugins/canetons-planning \
   wp ./vendor/bin/phpunit -c phpunit-unit.xml.dist
 ```
@@ -982,9 +979,9 @@ In `wp-content/plugins/canetons-planning/src/Activator.php`, replace the
 - [ ] **Step 11: Verify the plugin still activates**
 
 ```bash
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html plugin deactivate canetons-planning
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html plugin activate canetons-planning
-docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html option get canetons_planning_schema_version
+docker compose run --rm wp-cli wp --path=/var/www/html plugin deactivate canetons-planning
+docker compose run --rm wp-cli wp --path=/var/www/html plugin activate canetons-planning
+docker compose run --rm wp-cli wp --path=/var/www/html option get canetons_planning_schema_version
 ```
 
 Expected: deactivates, re-activates with no fatal, and still prints `0`.
@@ -1005,7 +1002,7 @@ it is a security boundary, and Plans 2–5 all depend on this harness existing.
 
 It runs in the `wp` container — which already has PHP 8.4 and `mysqli`, and is
 already on the compose network so `wp-db` resolves — using the same `exec -w`
-pattern the existing stack uses for Laravel's suite. No separate runner service.
+`exec -w` pattern. No separate runner service, no custom image.
 
 **Files:**
 - Create: `wp-content/plugins/canetons-planning/phpunit-integration.xml.dist`
@@ -1018,14 +1015,14 @@ WordPress's test harness **drops every table on every run**, so it must never
 point at the development database.
 
 ```bash
-docker compose -f docker-compose.wp.yml exec -T wp-db \
+docker compose exec -T wp-db \
   mysql -uroot -proot -e "CREATE DATABASE IF NOT EXISTS wordpress_test; GRANT ALL ON wordpress_test.* TO 'wordpress'@'%';"
 ```
 
 Verify:
 
 ```bash
-docker compose -f docker-compose.wp.yml exec -T wp-db \
+docker compose exec -T wp-db \
   mysql -uroot -proot -e "SHOW DATABASES LIKE 'wordpress%';"
 ```
 
@@ -1158,7 +1155,7 @@ final class PluginLoadsTest extends WP_UnitTestCase {
 - [ ] **Step 5: Run the integration suite**
 
 ```bash
-docker compose -f docker-compose.wp.yml exec \
+docker compose exec \
   -w /var/www/html/wp-content/plugins/canetons-planning \
   wp ./vendor/bin/phpunit -c phpunit-integration.xml.dist
 ```
@@ -1191,14 +1188,14 @@ Nobody should need to remember the compose invocations above.
 Add to `package.json`'s `scripts`, leaving existing entries untouched:
 
 ```json
-    "wp:dev": "docker compose -f docker-compose.wp.yml up -d",
-    "wp:down": "docker compose -f docker-compose.wp.yml down",
-    "wp:reset": "docker compose -f docker-compose.wp.yml down -v",
-    "wp:setup": "docker compose -f docker-compose.wp.yml run --rm wp-cli wp-setup",
-    "wp:cli": "docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html",
-    "wp:manifest": "docker compose -f docker-compose.wp.yml run --rm wp-cli wp --path=/var/www/html plugin list --fields=name,version,status --format=csv > docs/wordpress-install-manifest.csv",
-    "wp:test:unit": "docker compose -f docker-compose.wp.yml exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-unit.xml.dist",
-    "wp:test:integration": "docker compose -f docker-compose.wp.yml exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-integration.xml.dist",
+    "wp:dev": "docker compose up -d",
+    "wp:down": "docker compose down",
+    "wp:reset": "docker compose down -v",
+    "wp:setup": "docker compose run --rm wp-cli wp-setup",
+    "wp:cli": "docker compose run --rm wp-cli wp --path=/var/www/html",
+    "wp:manifest": "docker compose run --rm wp-cli wp --path=/var/www/html plugin list --fields=name,version,status --format=csv > docs/wordpress-install-manifest.csv",
+    "wp:test:unit": "docker compose exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-unit.xml.dist",
+    "wp:test:integration": "docker compose exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-integration.xml.dist",
     "wp:test": "npm run wp:test:unit && npm run wp:test:integration"
 ```
 
@@ -1220,8 +1217,8 @@ development section:
 ````markdown
 ## WordPress stack (the rebuild)
 
-The WordPress rebuild runs in its own Compose stack, alongside the existing one —
-see `docs/superpowers/specs/2026-07-28-wordpress-migration-design.md`.
+Requires Docker only — there are no npm dependencies to install. See
+`docs/superpowers/specs/2026-07-28-wordpress-migration-design.md`.
 
 ```bash
 npm run wp:dev       # start the stack
@@ -1240,8 +1237,8 @@ npm run wp:reset     # stop AND destroy the database and core volume
 | http://localhost:8026 | Mailpit — all outbound mail lands here |
 | `localhost:3308` | MariaDB |
 
-Every port is offset from the existing stack (8090/8091/8025/3307) so both can
-run at once.
+Ports are offset from the obvious defaults so the stack does not collide with
+anything else already running on the machine.
 
 **What is tracked.** `wp-content/themes/canetons/` and
 `wp-content/plugins/canetons-planning/` — at the same paths they occupy on the
@@ -1272,8 +1269,9 @@ git commit -m "docs(wp): document the WordPress development stack"
 - [ ] `wp_mail()` reaches Mailpit at http://localhost:8026.
 - [ ] `npm run wp:reset && npm run wp:dev && npm run wp:setup` fully recovers.
 - [ ] `docs/wordpress-install-manifest.csv` is committed and current.
-- [ ] The existing stack still works: `npm run dev` then `npm run smoke` passes
-      its 11 checks. Nothing here may break it.
+- [ ] `git status` is clean apart from intended changes — in particular no
+      `wp-config.php`, no third-party plugin, and no `vendor/` has become
+      tracked.
 - [ ] Task 0's database-topology finding is recorded in the spec.
 
 ---
