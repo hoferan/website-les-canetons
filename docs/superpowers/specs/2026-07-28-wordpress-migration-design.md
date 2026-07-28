@@ -347,14 +347,28 @@ from it.
 
 ## §7 Data migration
 
-**Prerequisite — verify the database topology.** WordPress's `wp-config.php` on
-TEST names database `lescanetoqg5` with table prefix `qsjd_`. The old
-application's database name lives in its server-owned, git-ignored `config.php`
-and has **not** been confirmed to be the same database. Two things depend on the
-answer and neither should be built before it is checked: the migration command
-below (whether it can read the old tables on one connection, or needs a second),
-and the coexistence-based rollback in §12 (which requires one database, or else
-two installs that simply do not interfere). Check this first.
+**Database topology — confirmed 2026-07-28.** WordPress and the old application
+use **separate databases**, not one shared database with a table prefix
+separating them. Read from each environment's server-owned `config.php` over FTP:
+
+| Environment | Old application | WordPress |
+| --- | --- | --- |
+| TEST | `lescanetoqg3` | `lescanetoqg5` (prefix `qsjd_`) |
+| PROD | `lescanetoqg2` | **not yet created** |
+
+This host provisions several databases per account, so the earlier assumption
+that shared hosting implies one database was wrong. Three consequences:
+
+1. **The migration command needs two connections** — WordPress's own `$wpdb` for
+   writing, plus a second connection built from the old `config.php`'s `db`
+   credentials for reading. A cross-database query is not an option: each
+   database has its own user, with no grant on the other.
+2. **§12's isolation guarantee is stronger than it was drafted.** Cutover cannot
+   touch the old data at all, because the old data is in a different database —
+   this no longer rests on table names merely being distinct.
+3. **A WordPress database must be created on PROD before cutover**, through the
+   hosting control panel. TEST's `lescanetoqg5` has no PROD counterpart yet, and
+   nothing in this plan creates one.
 
 Carried over:
 
@@ -378,9 +392,10 @@ can never resolve, so no mail can escape to a real recipient. Password reset is
 disabled for the three `canetons_*` roles, keeping passwords admin-managed as
 requirement 1.5 specifies.
 
-Migration runs as a one-off WP-CLI command shipped in the plugin and removed
-once cutover is complete, reading the old tables directly. Whether that is one
-connection or two depends on the prerequisite above.
+Migration runs as a one-off WP-CLI command shipped in the plugin and removed once
+cutover is complete. It opens a second connection to the old database using the
+credentials in that environment's old `config.php`, reads there and writes through
+WordPress — see the topology note above for why one connection cannot serve both.
 
 ## §8 Security
 
@@ -462,10 +477,10 @@ there**:
 - The old stack is preserved in full on the `archive/php-laravel-stack` branch,
   pushed to `origin`. Rolling back means redeploying it — minutes over FTP, not
   seconds, which is the trade accepted here.
-- **The old data is never touched.** WordPress uses the `qsjd_` table prefix and
-  the old application's tables have distinct names, so a cutover cannot alter or
-  drop them, whether the two share one database (§7's prerequisite) or sit in
-  two.
+- **The old data is never touched** — it is in a *different database* (§7:
+  `lescanetoqg2` on PROD, versus a WordPress database yet to be created). Cutover
+  replaces files in the document root and cannot reach it. Distinct table names
+  and the `qsjd_` prefix are a second, redundant layer rather than the guarantee.
 - A full backup is taken immediately before cutover (§11).
 
 The old tables stay in place for one month after cutover, then are dropped once

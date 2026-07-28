@@ -35,7 +35,7 @@ each plan independently reviewable and each one delivers working software.
 | 5 | Attendance summary | Spec §3.6, §1.3 — counters, roster table, instrument counts | 4 |
 | 6 | Design direction and theme | Spec §5 — `theme.json`, templates, block patterns | — (parallel) |
 | 7 | Third-party plugins and content | Spec §4, §6 — contact form, SMTP, backups, nine pages | 6 |
-| 8 | Data migration, deploy, cutover | Spec §7, §10, §11, §12 | 5, 7, and Task 0 below |
+| 8 | Data migration, deploy, cutover | Spec §7, §10, §11, §12 | 5, 7 (Task 0 below is done) |
 
 Plan 6 is independent of 1–5 and can run in parallel.
 
@@ -114,48 +114,48 @@ Six decisions worth stating, because each has a wrong-looking alternative:
 
 ---
 
-## Task 0: Verify the database topology
+## Task 0: Verify the database topology — DONE (2026-07-28)
 
-The spec records this as a blocking prerequisite (§7). It gates Plan 8's data
-import: whether the migration command can read the old tables on WordPress's own
-connection, or needs a second one. It also confirms that the old data survives
-cutover untouched, which is what makes the hard switch safe.
+- [x] **Step 1: Read the old application's database name on each environment**
 
-**This task requires FTP access to TEST and is done by hand, not by an agent.**
+Fetched each environment's server-owned `config.php` over FTP with credentials
+from `.tmp/env/.env.<env>` (git-ignored). Only the `env` and `db.name` keys were
+read — that file also holds the live database password, SMTP password and Altcha
+secret, so it must never be printed or committed in full.
 
-**Files:**
-- Modify: `docs/superpowers/specs/2026-07-28-wordpress-migration-design.md` (§7)
+- [x] **Step 2: Compare against WordPress's**
 
-- [ ] **Step 1: Read the old application's database name on TEST**
+**They are separate databases.**
 
-Fetch TEST's server-owned `config.php` over FTP (it is git-ignored and never
-deployed, so it exists only on the server) and read `db.name` under the `'db'`
-key.
+| Environment | Old application | WordPress |
+| --- | --- | --- |
+| TEST | `lescanetoqg3` | `lescanetoqg5` (prefix `qsjd_`) |
+| PROD | `lescanetoqg2` | not yet created |
 
-- [ ] **Step 2: Compare against WordPress's**
+- [x] **Step 3: Record the finding in the spec**
 
-TEST's WordPress `wp-config.php` declares `DB_NAME = lescanetoqg5` on
-`sql1.cluster1.easy-hebergement.net`, with `$table_prefix = 'qsjd_'`. Compare
-`DB_NAME` against Step 1's value.
+Recorded in §7, with §12's isolation guarantee strengthened accordingly. The
+earlier assumption that shared hosting implies one shared database was wrong;
+this host provisions several per account.
 
-- [ ] **Step 3: Record the finding in the spec**
+### What this changed
 
-Replace §7's prerequisite paragraph with the confirmed answer, one of:
+1. **Plan 8's migration command needs two connections** — WordPress's `$wpdb` to
+   write, and a second built from the old `config.php` to read. Each database has
+   its own user with no grant on the other, so a cross-database query cannot work.
+2. **A WordPress database must be created on PROD before cutover**, by hand in the
+   hosting control panel. Nothing in these plans creates one, and PROD has no
+   counterpart to TEST's `lescanetoqg5`.
+3. **Isolation is now structural, not conventional.** Cutover cannot reach the old
+   data because it lives in a different database — the `qsjd_` prefix and distinct
+   table names are a redundant second layer rather than the guarantee.
 
-- **Same database** — the migration command reads the old tables on WordPress's
-  own `$wpdb` connection. Confirm the old tables' names do not collide with the
-  `qsjd_` prefix, so a cutover cannot touch them.
-- **Different databases** — the migration command needs a second connection
-  configured from the old `config.php`, and §12 should say the two installs sit
-  in separate databases and therefore cannot collide at all (a stronger
-  guarantee, not a weaker one).
+### Open question for cutover
 
-- [ ] **Step 4: Commit**
-
-```bash
-git add docs/superpowers/specs/2026-07-28-wordpress-migration-design.md
-git commit -m "docs: confirm the database topology for the WordPress migration"
-```
+PROD's `FTP_DIR` is `/public_html/staging/prod.lescanetons.org`. Confirm that this
+directory really is what the public domain serves before any hard switch — the
+`staging/` parent reads oddly for a live site, and a hard switch against the wrong
+document root is the one mistake here with no cheap undo.
 
 ---
 
@@ -1272,7 +1272,7 @@ git commit -m "docs(wp): document the WordPress development stack"
 - [ ] `git status` is clean apart from intended changes — in particular no
       `wp-config.php`, no third-party plugin, and no `vendor/` has become
       tracked.
-- [ ] Task 0's database-topology finding is recorded in the spec.
+- [x] Task 0's database-topology finding is recorded in the spec.
 
 ---
 
