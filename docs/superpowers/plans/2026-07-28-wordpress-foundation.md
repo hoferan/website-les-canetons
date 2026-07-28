@@ -150,12 +150,17 @@ this host provisions several per account.
    data because it lives in a different database — the `qsjd_` prefix and distinct
    table names are a redundant second layer rather than the guarantee.
 
-### Open question for cutover
+### Document roots — confirmed correct
 
-PROD's `FTP_DIR` is `/public_html/staging/prod.lescanetons.org`. Confirm that this
-directory really is what the public domain serves before any hard switch — the
-`staging/` parent reads oddly for a live site, and a hard switch against the wrong
-document root is the one mistake here with no cheap undo.
+PROD's `FTP_DIR` is `/public_html/staging/prod.lescanetons.org` and TEST's is the
+`test.` equivalent. The `staging/` parent reads oddly for a live site but is
+correct: it is simply how this account's FTP tree is laid out, and the public
+domain does serve that directory. Confirmed by the site owner, 2026-07-28.
+
+These may later be moved up to the FTP root. That is a **one-value change per
+environment** — `FTP_DIR` in `.env.<env>` — and nothing else may hardcode a
+document-root path. Plan 8's deploy script must read it from there rather than
+embedding it, precisely so this relocation stays a config edit.
 
 ---
 
