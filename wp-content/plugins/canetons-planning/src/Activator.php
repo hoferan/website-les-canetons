@@ -31,9 +31,10 @@ final class Activator {
 			return;
 		}
 
-		// Later plans add the responses table here, ahead of the write below.
-		// Each must be idempotent, because WordPress fires this hook on every
-		// re-activation.
+		// Schema changes go here, ahead of the version write, and must each be
+		// idempotent: WordPress fires this hook on every re-activation, and the
+		// version is only recorded once they all succeed.
+		Responses::create_table();
 
 		update_option( self::SCHEMA_OPTION, SCHEMA_VERSION, false );
 	}

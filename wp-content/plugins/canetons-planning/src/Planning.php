@@ -91,7 +91,11 @@ final class Planning {
 			$parts[] = '<span class="canetons-planning__attire">' . esc_html( 'Tenue : ' . $attire ) . '</span>';
 		}
 
-		return '<li class="canetons-planning__event">' . implode( ' ', $parts ) . '</li>';
+		// RSVP controls for a member who may respond; empty for everyone else
+		// (anonymous visitors, Direction, administrators). Already escaped.
+		$rsvp = Rsvp::controls( $post->ID );
+
+		return '<li class="canetons-planning__event">' . implode( ' ', $parts ) . $rsvp . '</li>';
 	}
 
 	/**

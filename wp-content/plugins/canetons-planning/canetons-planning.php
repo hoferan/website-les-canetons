@@ -30,9 +30,9 @@ const VERSION = '0.1.0';
  *
  * Deliberately separate from VERSION: most releases touch no tables, and
  * conflating the two would run a needless upgrade path on every release.
- * Currently 0 — this plugin owns no tables yet; Plan 4 creates the first.
+ * 1 — the canetons_responses table (spec §3.2), created on activation.
  */
-const SCHEMA_VERSION = '0';
+const SCHEMA_VERSION = '1';
 
 const PLUGIN_FILE = __FILE__;
 
@@ -76,3 +76,9 @@ add_action( 'init', [ EventType::class, 'register' ] );
 add_action( 'init', [ Planning::class, 'register' ] );
 add_action( 'add_meta_boxes', [ EventMetaBox::class, 'register' ] );
 add_action( 'save_post_' . EventType::POST_TYPE, [ EventMetaBox::class, 'save' ], 10, 2 );
+
+// Responses and member RSVP (spec §3.2, §1.2): the write handler, and cleanup
+// of a member's or an event's responses when that user or post is deleted.
+add_action( 'admin_post_' . Rsvp::ACTION, [ Rsvp::class, 'handle' ] );
+add_action( 'deleted_user', [ Responses::class, 'delete_for_user' ] );
+add_action( 'before_delete_post', [ Responses::class, 'delete_for_event' ] );
