@@ -109,3 +109,32 @@ scheduled off-site backups are mandatory, not optional.
 TEST and PROD, both on `easy-hebergement.net` shared hosting (FTP only, no SSH).
 TEST is entirely behind HTTP Basic Auth. Cutover to PROD is a hard switch;
 rollback is redeploying the archive branch.
+
+## Deploy
+
+The deploy artifact is the two tracked directories, mirrored over FTP to the
+environment's document root — nothing else is touched.
+
+```bash
+npm run wp:deploy:test              # mirror theme + plugin to TEST
+npm run wp:deploy:prod              # ...to PROD (asks to confirm a backup first)
+sh tools/wp-deploy.sh test --dry-run  # preview without writing
+```
+
+Requires `lftp`, and a git-ignored `.env.<env>` defining `FTP_HOST`, `FTP_USER`,
+`FTP_PASSWORD` and `FTP_DIR` (the document root — read from there so relocating
+the site is a one-value change). The plugin is deployed source-only: `vendor/`,
+`tests/`, `composer.*` and the phpunit configs are excluded.
+
+## Data migration
+
+A one-off WP-CLI command, shipped in the plugin and removed after cutover, carries
+members and events from the old application's separate database (spec §7):
+
+```bash
+npm run wp:cli canetons migrate -- --old-config=/path/to/old/config.php --dry-run
+```
+
+It reads the old database over a second connection and writes through WordPress;
+it is idempotent (each migrated row records its old id) and does not migrate
+passwords — every member gets a random password, reset out of band.

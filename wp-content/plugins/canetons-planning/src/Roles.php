@@ -129,4 +129,21 @@ final class Roles {
 			}
 		}
 	}
+
+	/**
+	 * Deny self-service password reset for the three custom roles (spec §7,
+	 * requirement 1.5). Members have synthetic `.invalid` addresses that cannot
+	 * receive a reset link, and their passwords are admin-managed by design.
+	 * Hooked on `allow_password_reset`.
+	 *
+	 * @param bool $allow
+	 * @return bool
+	 */
+	public static function deny_password_reset( bool $allow, int $user_id ): bool {
+		$user = get_userdata( $user_id );
+		if ( $user && array_intersect( array_keys( self::definitions() ), (array) $user->roles ) ) {
+			return false;
+		}
+		return $allow;
+	}
 }

@@ -17,6 +17,8 @@
     "wp:test:integration": "node tools/phpunit.mjs integration",
     "wp:test": "npm run wp:test:unit && npm run wp:test:integration",
     "wp:websession:init": "node tools/websession-init.mjs",
+    "wp:deploy:test": "sh tools/wp-deploy.sh test",
+    "wp:deploy:prod": "sh tools/wp-deploy.sh prod",
     "wp:check-session": "node -e \"process.exit(process.platform==='win32'?(console.log('Linux/web-session only: bash tools/check-web-session.sh'),1):0)\" && bash tools/check-web-session.sh"
   }
 }

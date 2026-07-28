@@ -85,3 +85,13 @@ add_action( 'before_delete_post', [ Responses::class, 'delete_for_event' ] );
 
 // Attendance summary (spec §1.3, §3.6): the view_summary-gated wp-admin page.
 add_action( 'admin_menu', [ SummaryPage::class, 'register' ] );
+
+// Members' passwords are admin-managed (spec §7, requirement 1.5): no
+// self-service reset for the three custom roles.
+add_filter( 'allow_password_reset', [ Roles::class, 'deny_password_reset' ], 10, 2 );
+
+// One-off data migration (spec §7), shipped in the plugin and removed after
+// cutover. Registered only under WP-CLI.
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	WP_CLI::add_command( 'canetons migrate', new Cli\Migrate() );
+}
