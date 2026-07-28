@@ -70,6 +70,22 @@ Running the raw `docker compose` commands by hand in Git Bash on Windows needs
 WP-CLI reports "not a WordPress installation". The `npm run` scripts are
 unaffected — npm runs them through `cmd.exe`.
 
+### Without Docker (Claude Code web sessions)
+
+Web sessions have no running Docker daemon, and starting one there gets you no
+bridge networking — so `docker compose up` cannot work
+(`anthropics/claude-code#29515`). Start with:
+
+```bash
+bash tools/check-web-session.sh   # reports what this session can actually do
+```
+
+`npm run wp:test:unit` and `npm run wp:install` fall back to native PHP and
+Composer automatically. **`npm run wp:test:integration` has no fallback and fails
+loudly** — it needs real WordPress and MariaDB, and it is where capability
+enforcement is verified, so a skipped run must never resemble a passing one.
+Editing code, plans and docs works anywhere.
+
 ## What is tracked
 
 `wp-content/themes/canetons/` and `wp-content/plugins/canetons-planning/` — at

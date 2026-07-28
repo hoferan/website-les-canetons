@@ -96,9 +96,40 @@ wrapper, so a clone needs only Docker. Nothing to `npm install`.
 | http://localhost:8026 | Mailpit — all outbound mail lands here |
 | `localhost:3308` | MariaDB |
 
-Tests run inside the `wp` container via `exec -w`; the official WordPress image
-already has PHP 8.4 and `mysqli`, so there is no separate runner. The unit suite
-loads no WordPress at all, which is what keeps the interesting logic pure.
+Tests run inside the `wp` container; the official WordPress image already has PHP
+8.4 and `mysqli`, so there is no separate runner. The unit suite loads no
+WordPress at all, which is what keeps the interesting logic pure.
+
+### Claude Code web sessions (no Docker)
+
+Web sessions have **no running Docker daemon**. `dockerd` is present but stopped,
+and starting it needs `--storage-driver=vfs --iptables=false` on an old kernel —
+with **no bridge networking**, so `docker compose up` cannot work there at all:
+our services resolve each other by name and map ports, both of which need a
+user-defined bridge. See `anthropics/claude-code#29515`.
+
+Run `bash tools/check-web-session.sh` first. It reports whether `dockerd` starts,
+whether bridge networking exists, and the native PHP version, then prints what
+this session can actually do.
+
+What works where:
+
+| | Docker session | Web session |
+| --- | --- | --- |
+| Edit code, plans, docs; git | yes | yes |
+| `npm run wp:test:unit` | yes | yes, with native PHP 8.4+ |
+| `npm run wp:test:integration` | yes | **no** |
+| Browse the site | yes | no |
+
+`npm run wp:test:unit` falls back to native PHP automatically
+(`tools/phpunit.mjs`), and `npm run wp:install` falls back to a native `composer`
+(`tools/composer.mjs`).
+
+**The integration suite has no fallback, deliberately.** It boots real WordPress
+against real MariaDB, and it is where capability enforcement is tested — a
+security boundary. It fails loudly rather than skipping, because a test that
+never ran must never look like a passing one. Verify plugin work in a Docker
+session before calling it done.
 
 ## Environments
 

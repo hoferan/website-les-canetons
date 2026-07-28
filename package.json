@@ -12,8 +12,10 @@
     "wp:setup": "docker compose run --rm wp-cli wp-setup",
     "wp:cli": "docker compose run --rm wp-cli wp --path=/var/www/html",
     "wp:manifest": "docker compose run --rm wp-cli wp --path=/var/www/html plugin list --fields=name,version,status --format=csv > docs/wordpress-install-manifest.csv",
-    "wp:test:unit": "docker compose exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-unit.xml.dist",
-    "wp:test:integration": "docker compose exec -w /var/www/html/wp-content/plugins/canetons-planning wp ./vendor/bin/phpunit -c phpunit-integration.xml.dist",
-    "wp:test": "npm run wp:test:unit && npm run wp:test:integration"
+    "wp:install": "node tools/composer.mjs install",
+    "wp:test:unit": "node tools/phpunit.mjs unit",
+    "wp:test:integration": "node tools/phpunit.mjs integration",
+    "wp:test": "npm run wp:test:unit && npm run wp:test:integration",
+    "wp:check-session": "node -e \"process.exit(process.platform==='win32'?(console.log('Linux/web-session only: bash tools/check-web-session.sh'),1):0)\" && bash tools/check-web-session.sh"
   }
 }
