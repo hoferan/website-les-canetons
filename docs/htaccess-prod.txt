@@ -1,0 +1,62 @@
+# .htaccess for the PROD document root — Les Canetons de Fribourg (WordPress).
+#
+# This is a REFERENCE draft, not a tracked, deployed file: the real .htaccess is
+# server-owned and uploaded by hand at cutover. Copy this to the document root as
+# `.htaccess`.
+#
+# ┌─ RECONCILE FIRST ───────────────────────────────────────────────────────┐
+# │ The two host-specific rules below are RECONSTRUCTED from spec §12's       │
+# │ description. The working /wp-test/ .htaccess is the real reference        │
+# │ implementation; it lives only on the server and in a local .tmp/ scratch  │
+# │ copy (untracked). Diff this against that file before deploying and prefer │
+# │ the real rules where they differ.                                         │
+# └──────────────────────────────────────────────────────────────────────────┘
+#
+# The two host fixes sit ABOVE the WordPress block on purpose: saving permalinks
+# in wp-admin rewrites only the "# BEGIN/END WordPress" block, so anything above
+# it survives.
+
+# BEGIN canetons host fixes
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+
+	# 1. Directory-request redirect loop (spec §12).
+	#    This host answers a bare directory request with an EXTERNAL 301 that
+	#    appends index.php; WordPress's redirect_canonical() then strips it back
+	#    off, and the two redirect at each other forever. Stop mod_dir issuing
+	#    that external redirect and serve the directory's own index internally,
+	#    in the fixup phase — [L] only, NEVER [R].
+	DirectorySlash Off
+	RewriteCond %{REQUEST_FILENAME} -d
+	RewriteCond %{REQUEST_FILENAME}/index.php -f
+	RewriteRule ^(.*)$ $1/index.php [L]
+</IfModule>
+
+# 2. Cache-header override (spec §12).
+#    Undo the host's default one-year `immutable` policy for the assets
+#    WordPress versions with a ?ver= query string rather than a content hash:
+#    `immutable` would pin stale CSS/JS in browsers indefinitely, because the
+#    URL path never changes — only the query string does. Serve them
+#    revalidatable instead.
+<IfModule mod_headers.c>
+	<FilesMatch "\.(css|js)$">
+		Header set Cache-Control "public, max-age=3600, must-revalidate"
+	</FilesMatch>
+</IfModule>
+# END canetons host fixes
+
+# BEGIN WordPress
+# The stock WordPress block. RewriteBase is / because WordPress now lives at the
+# document root — the /wp-test/ install's `RewriteBase /wp-test/` special case is
+# retired at cutover (Plan 8a). wp-admin regenerates this block when permalinks
+# are saved; keep the host fixes above it.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress
