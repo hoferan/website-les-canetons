@@ -344,6 +344,14 @@ Content is authored **directly in PROD** (§Decisions). TEST content will
 therefore diverge from PROD; that is accepted, because TEST exists to verify
 theme and plugin changes, not content.
 
+> **Amended.** The "authored directly in PROD" decision is superseded for the
+> initial build by
+> `docs/superpowers/specs/2026-07-28-content-propagation-and-mcp-authoring-design.md`,
+> which builds the content once locally and propagates it to TEST then PROD via a
+> migration plugin (optionally creating pages with Claude over a WordPress MCP).
+> The rest of this section — patterns, the multimedia outbound link, and the
+> database as the content source of truth — still holds.
+
 The consequence is significant and drives §11: **the database becomes the
 source of truth for content**, where today content is in git and recoverable
 from it.
