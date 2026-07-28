@@ -59,3 +59,13 @@ spl_autoload_register(
 );
 
 register_activation_hook( __FILE__, [ Activator::class, 'activate' ] );
+register_deactivation_hook( __FILE__, [ Roles::class, 'unregister' ] );
+
+// Member sections (spec §3.3): register the user meta and its administrator-only
+// profile control. register_meta() belongs on `init`; the profile hooks fire
+// only on the user-edit screen, so registering them unconditionally is cheap.
+add_action( 'init', [ Instruments::class, 'register_meta' ] );
+add_action( 'show_user_profile', [ Profile::class, 'render_field' ] );
+add_action( 'edit_user_profile', [ Profile::class, 'render_field' ] );
+add_action( 'personal_options_update', [ Profile::class, 'save_field' ] );
+add_action( 'edit_user_profile_update', [ Profile::class, 'save_field' ] );
