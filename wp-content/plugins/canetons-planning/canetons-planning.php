@@ -69,3 +69,10 @@ add_action( 'show_user_profile', [ Profile::class, 'render_field' ] );
 add_action( 'edit_user_profile', [ Profile::class, 'render_field' ] );
 add_action( 'personal_options_update', [ Profile::class, 'save_field' ] );
 add_action( 'edit_user_profile_update', [ Profile::class, 'save_field' ] );
+
+// Events (spec §3.1): the custom post type and its meta and admin list, the
+// event meta box, and the public planning list shortcode.
+add_action( 'init', [ EventType::class, 'register' ] );
+add_action( 'init', [ Planning::class, 'register' ] );
+add_action( 'add_meta_boxes', [ EventMetaBox::class, 'register' ] );
+add_action( 'save_post_' . EventType::POST_TYPE, [ EventMetaBox::class, 'save' ], 10, 2 );
