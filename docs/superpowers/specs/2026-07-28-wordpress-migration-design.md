@@ -1,0 +1,511 @@
+# Design — WordPress rebuild (greenfield)
+
+**Date:** 2026-07-28
+**Supersedes:** every design in this directory that describes the PHP/Laravel
+architecture. In particular it abandons
+`docs/superpowers/specs/2026-07-27-frontend-spa-cutover-design.md` (the React
+SPA cutover, never implemented beyond its generated API client) and retires the
+architecture set out in `2026-07-23-laravel-api-foundation-design.md` and
+`2026-07-25-api-cutover-laravel-design.md`.
+
+## Context
+
+The site today is two PHP applications sharing one origin: a front-controller
+app in `app/` serving 19 server-rendered pages, and a Laravel API in `api/`
+owning every `/api/*` route and the database schema. Around them sits a large
+tooling estate — a Vite build with one entry per page, bespoke FTP deploy
+tooling with a sync-state manifest and a mass-delete brake, AST-based
+config-shape pre-flight checks, request-path auto-migration, an OpenAPI export
+and a generated TypeScript client, and three tag-promoted environments.
+
+That estate is production-grade and works. It is also far more machinery than a
+carnival brass band's website needs, and it can only be maintained by its
+author. The decision has been taken to rebuild on WordPress, minimising custom
+code, so that the committee can maintain content and a wider pool of people can
+maintain the site.
+
+**This is a greenfield rebuild.** No existing code is preserved — not the
+`app/` pages, not the Laravel API, not the deploy tooling, not the schema. Only
+*data* and *content* carry over (§7).
+
+A bare WordPress 6.9 install already exists on TEST at `/wp-test/`, with a
+hand-written `.htaccess` solving two host-specific problems (§12). Nothing has
+been built on it: stock themes only, no custom plugin, no uploads.
+
+## Goals
+
+Rebuild the public site and the members' area as a single WordPress
+installation, with off-the-shelf plugins covering everything except one focused
+custom plugin for event planning and attendance. Deliver a fresh visual design
+rather than reproducing today's appearance.
+
+## Non-goals
+
+- **No souper signup.** The public dinner-reservation form, its menu
+  configuration, the Altcha proof-of-work challenge, the honeypot, the
+  confirmation email and the xlsx guest-list export are all out of scope. The
+  feature is flag-gated off by default on every server today.
+- **No historical signup or contact-message import.** Those tables are archived
+  as an SQL dump and not migrated (§7).
+- **No visual parity.** The old design is explicitly not a target (§5).
+- **No QA environment.** TEST and PROD only (§10).
+- **No REST API and no SPA.** The site is server-rendered. Nothing external
+  consumes it.
+- **No French/English translation layer.** The site is French-only (§2).
+- **No rebuild of the deploy tooling.** The artifact is two directories (§10).
+
+## Guiding principles
+
+1. **Off-the-shelf unless proven insufficient.** Custom code is confined to one
+   plugin, and only for requirements that no free plugin satisfies.
+2. **WordPress conventions over ported patterns.** Capabilities, nonces, custom
+   post types and the options API replace the equivalents built by hand today.
+   Nothing is carried forward because it exists.
+3. **The requirements inventory is the contract.** §1 is extracted from the
+   current application and is what the rebuild is measured against. A
+   requirement absent from §1 is out of scope.
+4. **The old app stays intact until cutover succeeds.** WordPress and the
+   existing application do not collide at the database level, so rollback is a
+   routing change (§12).
+
+## Decisions
+
+| Decision | Chosen | Rejected alternative |
+| --- | --- | --- |
+| Platform | WordPress 6.9, single install | Keep Laravel + build the React SPA |
+| Events / RSVP | One custom plugin owning events, responses and summaries | Free events plugin + custom RSVP on top; pure off-the-shelf |
+| Design | Fresh design, deliberately better | Visual parity via ported CSS; stock theme with light branding |
+| Theme | Child theme of Twenty Twenty-Five | Standalone block theme; classic theme |
+| Plugin budget | Free / open-source only | Paid plugins where they save days |
+| Environments | TEST + PROD, same shared host | PROD only; add QA; managed WordPress hosting |
+| Content authoring | Directly in PROD wp-admin | Author on TEST and promote content |
+| Data carried over | Member accounts, events, page content and media | Also signups and contact messages; nothing at all |
+| Event data model | Custom post type + post meta | Custom table; stock events plugin's CPT |
+| Response data model | Custom table with a unique constraint | Post meta; user meta; a taxonomy |
+| Roster ("Convoqués") | Derived from the `canetons_respond` capability | A stored member list or a dedicated taxonomy |
+
+## §1 Requirements inventory
+
+Extracted from the current application. This is the acceptance criteria for the
+rebuild.
+
+### 1.1 Events
+
+- Fields: date, title, start time, end time, location, attire (optional), and a
+  `weekend` boolean.
+- A `weekend` event displays as a two-day range (its date through the following
+  day); a normal event displays as a single date.
+- Dates render in French; times render as `HH:MM`.
+- The events list is sorted by date ascending.
+- **The events list is readable without logging in.** Both `planning_repet.js`
+  and `sinscrire.js` fetch it before authentication today.
+- Holders of `manage_events` may create, edit and delete events. Nobody else
+  may.
+
+### 1.2 Responses
+
+- An answer is exactly one of `participate` or `notparticipate`.
+- **One response per member per event.** Answering again updates the existing
+  answer rather than adding a second.
+- Only holders of `respond` may write a response. Holders of `manage_events` /
+  `view_summary` may not — see 1.4.
+- **A member may only read and write their own response.** No request parameter
+  names another user; the acting user comes from the session. This closes a
+  previously-fixed IDOR and must stay closed.
+- A logged-in member sees their own current answer alongside each event.
+
+### 1.3 Attendance summary
+
+Visible to holders of `view_summary` only, scoped to one event:
+
+- Four counters: **Convoqués** (roster size), **Participe**, **Ne participe
+  pas**, **Pas de réponse**. The last is roster size minus the other two.
+- A roster table listing every member with their username, instrument, and
+  answer rendered as `Participe` / `Ne participe pas` / `Pas de réponse`.
+- **Participant counts per instrument**, counting only `participate` answers,
+  with instruments ordered alphabetically.
+- Instruments: Trompette, Trombone, Sousaphone, Cloches, Batterie, Lyre,
+  Grosses-Caisse, Comité, Maquillage.
+
+Note: today this instrument list is hardcoded in
+[inscriptions_admin.js:52-62](../../../app/assets/js/inscriptions_admin.js#L52-L62),
+duplicating the `instruments` table. The rebuild has one source of truth.
+
+### 1.4 Capability matrix
+
+**Not a hierarchy.** This is deliberate: the Team Direction organises events but
+does not play in them, so excluding them from `respond` is what makes the "Pas
+de réponse" count meaningful.
+
+| Role | `respond` | `manage_events` | `view_summary` |
+| --- | --- | --- | --- |
+| user | yes | no | no |
+| moderator | yes | no | no |
+| admin | **no** | yes | yes |
+
+### 1.5 Members
+
+- Identified by username; usernames are unique.
+- **No email address.** Members are children (roughly 6–16) who often have
+  none.
+- Passwords are hashed and admin-managed. There is no self-service reset.
+- Each member optionally belongs to one instrument section.
+
+### 1.6 Contact form
+
+- Fields: last name, first name, email, subject (optional), message.
+- Submissions are stored and emailed to the committee.
+- Open to anonymous visitors.
+
+### 1.7 Public pages
+
+Nine informational pages: accueil, canetons, historique, commencement,
+moniteurs, comité / team direction, cd, multimedia, sponsors. Plus the contact
+page and a login entry point. The multimedia page links out to an externally
+hosted gallery rather than holding media itself.
+
+## §2 Architecture
+
+One WordPress installation at the document root. Four parts:
+
+| Part | Responsibility | Custom |
+| --- | --- | --- |
+| `canetons` theme | Visual design, templates, block patterns | Configuration + minimal CSS |
+| `canetons-planning` plugin | Events, responses, roster summary, roles, instruments | **Yes — the only substantial code** |
+| Third-party plugins | Contact form, role management and page gating, SMTP, backups, login hardening | No |
+| Content | Nine pages authored in the block editor | No |
+
+Site language is `fr_FR`. Because the site is French-only and server-rendered,
+the entire translation layer disappears: no `translateApiError`, no
+machine-token API error contract, no i18next. User-visible strings are French
+literals in the templates and plugin; code, comments, identifiers and database
+names stay English, per the project's language convention.
+
+There is no API. Browser writes are ordinary form posts to `admin-post.php`,
+protected by WordPress nonces — which replaces Sanctum's stateful cookie flow,
+the CSRF token priming, and the `apiFetch` wrapper wholesale.
+
+## §3 The `canetons-planning` plugin
+
+### 3.1 Events — custom post type
+
+`canetons_event`, registered with `show_ui: true` and `public: false`.
+
+This is where the leverage is: WordPress supplies the list screen, create,
+edit, delete, sorting and per-capability permissions for free. The only custom
+admin UI is a single meta box.
+
+- Post title holds the event title.
+- Post meta holds `date`, `start_time`, `end_time`, `location`, `attire`,
+  `weekend`. Each registered with an explicit sanitize callback and
+  `show_in_rest: false`.
+- `date` lives in meta rather than `post_date` so that ordering and querying are
+  explicit and the editor can set it freely.
+- `map_meta_cap` maps the post type's capabilities onto `canetons_manage_events`.
+- The `weekend` boolean is kept as a boolean and rendered as a two-day range.
+  It is not modelled as a start/end date pair.
+
+### 3.2 Responses — custom table
+
+`{$wpdb->prefix}canetons_responses`:
+
+| Column | Type |
+| --- | --- |
+| `id` | bigint unsigned, auto-increment, primary key |
+| `user_id` | bigint unsigned |
+| `event_id` | bigint unsigned |
+| `answer` | enum(`participate`, `notparticipate`) |
+| `created_at` | timestamp, default current |
+| `updated_at` | timestamp, nullable |
+
+with `UNIQUE KEY (user_id, event_id)`.
+
+A real table rather than post or user meta, for two reasons: the unique
+constraint makes requirement 1.2's "answering again updates" correct by
+construction rather than by application logic, and the summary is an aggregate
+join that meta tables serve badly.
+
+Created by `dbDelta()` on activation, guarded by a schema-version option so
+re-activation is a no-op. Rows are removed when their user or event is deleted,
+via WordPress's `deleted_user` and `before_delete_post` hooks — MySQL foreign
+keys are not used, because WordPress core does not use them and shared-hosting
+MariaDB configurations vary.
+
+### 3.3 Instruments
+
+User meta `canetons_instrument`, holding one value from a list defined once in
+PHP and exposed through a filter. Set by an administrator on the user profile
+screen. Requirement 1.3's instrument list is that list — one source of truth,
+replacing today's duplication between the `instruments` table and the JS.
+
+### 3.4 Roles and capabilities
+
+Registered on plugin activation:
+
+| Role | `canetons_respond` | `canetons_manage_events` | `canetons_view_summary` |
+| --- | --- | --- | --- |
+| `canetons_member` | yes | no | no |
+| `canetons_moderator` | yes | no | no |
+| `canetons_direction` | **no** | yes | yes |
+| `administrator` (core) | **no** | yes | yes |
+
+All four also hold core `read`.
+
+WordPress does not implicitly grant custom capabilities to administrators, so
+requirement 1.4's non-hierarchy holds by default rather than needing to be
+defended. `administrator` is granted the two management capabilities explicitly
+so that site maintenance works, and is deliberately *not* granted
+`canetons_respond`.
+
+### 3.5 Surfaces
+
+**Planning (front end).** A block rendering upcoming events. Anonymous visitors
+see the list (requirement 1.1). A member holding `canetons_respond`
+additionally sees their own current answer and two buttons. Submitting posts to
+`admin-post.php` with a nonce; the acting user comes from the session and no
+field names a user (requirement 1.2).
+
+**Événements (wp-admin).** The custom post type's own screens, plus the meta
+box from §3.1. No custom list table.
+
+**Résumé des inscriptions (wp-admin).** A submenu page, gated on
+`canetons_view_summary`, taking an event as its parameter and rendering the four
+counters, the roster table and the per-instrument counts of requirement 1.3.
+
+### 3.6 The roster is derived, not stored
+
+"Convoqués" is every user holding `canetons_respond`. Nothing stores a member
+list.
+
+This falls out of §3.4 and gives two things for free: Direction and
+administrators are excluded automatically, which is what makes "Pas de réponse"
+meaningful; and adding a member requires creating exactly one WordPress user,
+with no second list to keep in step.
+
+## §4 Third-party plugins
+
+All free, all installed and updated through wp-admin per environment — never
+part of a deploy (§10).
+
+| Plugin | Why |
+| --- | --- |
+| Fluent Forms | Contact form. Chosen over Contact Form 7 because entry storage, a honeypot and email notifications are built in rather than needing add-ons. Covers requirement 1.6 with no code. |
+| Members | UI over roles and capabilities, and per-page restriction for the members-only planning page. The plugin registers roles in code (§3.4); this makes them inspectable and adjustable. |
+| FluentSMTP | The host's SMTP ports are non-standard (465 for SSL, 4650 for STARTTLS — not 587), so `wp_mail`'s defaults do not work. |
+| UpdraftPlus | Scheduled off-site backups of database and uploads (§11). |
+| Limit Login Attempts Reloaded | `wp-login.php` is publicly reachable and members have weak, admin-set passwords. |
+
+## §5 Theme and design
+
+A child theme of Twenty Twenty-Five named `canetons`. Chosen over a standalone
+block theme because it inherits maintained templates and needs only the
+overrides we actually want; chosen over configuring Twenty Twenty-Five directly
+so that customisations survive parent updates.
+
+The design lives in `theme.json` — colour palette, typography, spacing scale —
+rather than in stylesheets. Recurring layouts become block patterns: the
+sponsor grid, the committee cards, the instrument-section cards. Custom CSS is
+permitted only where `theme.json` cannot express something.
+
+A design phase precedes theme work and settles palette, typography and page
+layouts. Today's appearance is not a reference (§Non-goals); the ~2,200 lines of
+Bulma-based CSS are not ported.
+
+## §6 Content
+
+The nine pages of requirement 1.7 are authored as WordPress pages in the block
+editor, using the patterns from §5. The multimedia page keeps its outbound link
+to the external gallery.
+
+Content is authored **directly in PROD** (§Decisions). TEST content will
+therefore diverge from PROD; that is accepted, because TEST exists to verify
+theme and plugin changes, not content.
+
+The consequence is significant and drives §11: **the database becomes the
+source of truth for content**, where today content is in git and recoverable
+from it.
+
+## §7 Data migration
+
+**Prerequisite — verify the database topology.** WordPress's `wp-config.php` on
+TEST names database `lescanetoqg5` with table prefix `qsjd_`. The old
+application's database name lives in its server-owned, git-ignored `config.php`
+and has **not** been confirmed to be the same database. Two things depend on the
+answer and neither should be built before it is checked: the migration command
+below (whether it can read the old tables on one connection, or needs a second),
+and the coexistence-based rollback in §12 (which requires one database, or else
+two installs that simply do not interfere). Check this first.
+
+Carried over:
+
+- **Member accounts** — username and role become a WordPress user, plus their
+  instrument as user meta. Roles map `user` → `canetons_member`, `moderator` →
+  `canetons_moderator`, `admin` → `canetons_direction` (§3.4). Passwords are
+  **not** migrated: every member receives a new admin-set password
+  communicated out of band. (Even where bcrypt hashes might validate, mixing
+  hash provenance across a platform change is not worth the ambiguity.)
+- **Events** — past and upcoming, as `canetons_event` posts with meta.
+- **Page content and media** — French copy, photographs and sponsor logos,
+  re-entered and re-uploaded.
+
+Not carried over: souper signups and contact messages. Both tables are exported
+to a dated SQL dump kept outside the web root as an archive.
+
+Members have no email address (requirement 1.5), but WordPress's user admin
+requires one. The import assigns synthetic addresses of the form
+`<username>@membres.lescanetons.invalid`. `.invalid` is reserved by RFC 2606 and
+can never resolve, so no mail can escape to a real recipient. Password reset is
+disabled for the three `canetons_*` roles, keeping passwords admin-managed as
+requirement 1.5 specifies.
+
+Migration runs as a one-off WP-CLI command shipped in the plugin and removed
+once cutover is complete, reading the old tables directly. Whether that is one
+connection or two depends on the prerequisite above.
+
+## §8 Security
+
+- **Capability checks on every write**, server-side, in the plugin. Requirement
+  1.2's own-response-only rule is enforced by taking the user from the session
+  and accepting no user-identifying input.
+- **WordPress nonces** on every state-changing request.
+- **Members-only gating** on the planning page via the Members plugin, with the
+  plugin's own capability checks as the actual enforcement — page restriction is
+  presentation.
+- **Hardening:** disable the theme/plugin file editor (`DISALLOW_FILE_EDIT`),
+  disable XML-RPC, close comments and trackbacks across all post types (the site
+  has no use for them), and enable core minor auto-updates.
+- **Output escaping** on everything rendered, matching the care taken today
+  where event data goes through `textContent` and never `innerHTML`.
+- TEST stays behind HTTP Basic Auth. Note that this affects `wp-admin` and
+  `admin-ajax.php` on TEST, and that this host returns 500 on a per-path
+  `.htaccess` exemption — so TEST is entirely behind Basic Auth or not at all.
+
+## §9 Testing
+
+Proportionate to one plugin. The current 6,000-line suite guarded an API
+contract that ceases to exist.
+
+- **Unit tests** (plain PHPUnit, no WordPress bootstrap) over the pure logic:
+  summary aggregation, per-instrument counting, and the weekend date-range
+  formatting. These hold the arithmetic of requirement 1.3.
+- **Integration tests** (WordPress's PHPUnit harness, in Docker) over two
+  things: response upsert idempotency (requirement 1.2), and capability
+  enforcement across all three surfaces of §3.5 including the negative cases —
+  that `canetons_direction` cannot respond and that `canetons_member` cannot
+  reach the summary. This is a security boundary and gets real coverage.
+- **A manual smoke checklist** for theme, content, contact form and login.
+  These are configuration; automated tests would buy little.
+
+## §10 Local development, environments and deploy
+
+**Local:** Docker Compose running WordPress on PHP 8.4 with MariaDB 10.3,
+matching production versions.
+
+**TEST:** the existing `/wp-test/` install, for verifying theme and plugin
+changes before PROD.
+
+**PROD:** the document root, from cutover onwards.
+
+**The deploy artifact is two directories:** `wp-content/themes/canetons/` and
+`wp-content/plugins/canetons-planning/`. WordPress core, third-party plugins,
+uploads and `wp-config.php` are server-owned — installed and updated through
+wp-admin, never written or deleted by a deploy.
+
+The deploy is a small FTP upload script for those two directories. It
+deliberately does **not** reproduce the current tooling's sync-state manifest,
+mass-delete brake, config-shape pre-flight check or parallel connection pool: at
+two directories with no server-owned files inside them, that machinery has
+nothing to protect against.
+
+## §11 Backups and maintenance
+
+Because content lives in the database (§6), backups stop being optional.
+
+- UpdraftPlus scheduled to off-site storage: database daily, uploads weekly.
+  **Configured before any content is entered.**
+- A manual backup precedes every PROD theme or plugin deploy, and every
+  third-party plugin update.
+- Core minor releases auto-update. Major releases and plugin updates are applied
+  on TEST first, then PROD.
+
+## §12 Cutover and rollback
+
+WordPress uses the `qsjd_` table prefix and the existing application's tables
+have distinct names, so **the two applications do not collide** — whether they
+share one database (see §7's prerequisite) or sit in two. Either way the old
+application stays complete and functional throughout, which is what makes
+rollback cheap.
+
+Cutover is a routing change in the document root's `.htaccess`. Rollback is
+restoring the previous one. The old application's files and tables stay in place
+for one month after cutover, then are removed.
+
+Two non-stock rules must carry into the root `.htaccess`, both solving
+host-specific problems already diagnosed in the working `.htaccess` of the
+existing `/wp-test/` install. That file is the reference implementation and
+lives only on the server and in a local scratch copy under `.tmp/` — it is not
+tracked, so both rules are restated here in full:
+
+1. **The directory-request rewrite.** This host answers a bare directory request
+   with an external 301 appending `index.php`; WordPress's
+   `redirect_canonical()` strips it back off, and the two redirect at each other
+   forever. An internal rewrite in the fixup phase avoids it. `[L]` only, never
+   `[R]`.
+2. **The cache-header override**, undoing immutable asset caching. WordPress
+   versions assets with a `?ver=` query string rather than a content hash, so a
+   one-year `immutable` policy would pin them indefinitely.
+
+Related finding, worth fixing while the two applications coexist: the tracked
+`app/.htaccess` front-controller catch-all does **not** exclude `/wp-test`,
+though the WordPress `.htaccess` comment asserts it does. Neither
+[app/.htaccess](../../../app/.htaccess) nor `staging/test/.htaccess` mentions
+`wp`. The subtree survives only because its own file turns the rewrite engine
+on, so per-directory rules stop being inherited. If that file is ever lost,
+WordPress URLs reach the old front controller instead of 404ing.
+
+## §13 What is deleted
+
+At cutover, and not before: `app/`, `api/`, `web/`, `tools/`, `staging/`, the
+Vite build, the Composer projects, the GitHub Actions deploy and promotion
+workflows, `docker-compose.yml` and the `docker/` tree, and the root
+`composer.json` / `package.json` toolchain. Replaced by a WordPress install, one
+theme, one plugin, and an FTP script.
+
+`docs/superpowers/` is kept as the project's design history.
+
+## §14 Effort
+
+| Phase | Days |
+| --- | --- |
+| Design direction — palette, typography, page layouts | 3–5 |
+| Theme: `theme.json`, templates, block patterns | 4–6 |
+| Content entry: nine pages, images, sponsor logos | 3–4 |
+| Contact form and SMTP configuration | 1 |
+| `canetons-planning` plugin | 8–12 |
+| Data import: members and events | 2–3 |
+| Environments, deploy script, backups, hardening | 3–4 |
+| Tests and smoke checklist | 3–4 |
+| Cutover and buffer | 2–3 |
+| **Total** | **29–42 days** |
+
+Roughly six to eight and a half weeks for one developer. Lower than the 38–57
+days first estimated for a WordPress migration, because the souper signup left
+scope and greenfield removed the schema-adoption work; the fresh-design phase
+adds some of it back.
+
+## §15 Risks
+
+| Risk | Mitigation |
+| --- | --- |
+| Content lives in a database on shared hosting, no longer in git | §11, configured before any content is entered |
+| WordPress on shared hosting carries a permanent update obligation that the current stack does not | §8 hardening, §11 update policy, minimal plugin count |
+| Members' synthetic `.invalid` addresses interact badly with a plugin that assumes real ones | Only five third-party plugins, none of which mails members; password reset disabled for member roles |
+| The design phase has no clear finish line and can absorb unbounded time | Settle palette, typography and layouts as a deliverable before theme work starts |
+| Custom plugin diverges from requirement 1.4's non-hierarchy under future edits | Negative capability cases are covered by integration tests (§9) |
+| Basic Auth on TEST obstructs `wp-admin` and `admin-ajax.php` | Accepted: this host 500s on per-path exemptions, so TEST is wholly behind Basic Auth |
+
+## §16 Open question
+
+The design direction itself — palette, typography, page layouts — is
+deliberately unsettled here and is the first phase's deliverable. Everything
+else in this document is decided.
