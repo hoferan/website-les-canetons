@@ -79,5 +79,16 @@ for plugin in fluentform members; do
   fi
 done
 
+# --- our own plugin --------------------------------------------------------
+# Bind-mounted, so the files are always present — but a reset drops the database
+# and with it the active-plugins option, so it needs re-activating. Without this
+# `wp:reset` does not fully recover.
+if $WP plugin is-active canetons-planning 2>/dev/null; then
+  echo "plugin: canetons-planning already active"
+else
+  echo "plugin: activating canetons-planning"
+  $WP plugin activate canetons-planning
+fi
+
 echo "setup: done — http://localhost:8100/wp-admin (admin / admin)"
 echo "setup: mail at http://localhost:8026"

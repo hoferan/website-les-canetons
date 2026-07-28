@@ -37,8 +37,6 @@ for historical reference.
 
 Requires Docker only — there are no npm dependencies to install.
 
-> These commands arrive with Plan 1 Task 1 and do not work yet.
-
 ```bash
 npm run wp:dev       # start the stack
 npm run wp:setup     # install WordPress (idempotent; run after wp:dev)
@@ -51,10 +49,26 @@ npm run wp:reset     # stop AND destroy the database and core volume
 
 | URL | What |
 | --- | --- |
-| http://localhost:8100 | the WordPress site |
+| http://localhost:8100 | the WordPress site (`admin` / `admin`) |
 | http://localhost:8101 | Adminer |
 | http://localhost:8026 | Mailpit — all outbound mail lands here |
 | `localhost:3308` | MariaDB |
+
+Two suites: `wp:test:unit` loads no WordPress at all (fast, and it forces the
+interesting logic to stay pure), while `wp:test:integration` boots a real
+WordPress against a throwaway `wordpress_test` database — the harness drops
+every table in it, which is exactly why it is never pointed at the development
+one.
+
+**PHPUnit is pinned to 9.x deliberately.** WordPress's test harness calls
+PHPUnit APIs that version 10 removed, and it declares no constraint of its own,
+so Composer will silently install an incompatible release if the pin is
+loosened. See the plugin's `composer.json`.
+
+Running the raw `docker compose` commands by hand in Git Bash on Windows needs
+`MSYS_NO_PATHCONV=1`, or `/var/www/html` is rewritten to a Windows path and
+WP-CLI reports "not a WordPress installation". The `npm run` scripts are
+unaffected — npm runs them through `cmd.exe`.
 
 ## What is tracked
 

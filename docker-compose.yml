@@ -106,6 +106,9 @@ services:
       - "3308:3306"
     volumes:
       - wp_db_data:/var/lib/mysql
+      # Creates the throwaway wordpress_test database on first init, so a fresh
+      # clone can run the integration suite without a manual step.
+      - ./docker/wp/db-init:/docker-entrypoint-initdb.d:ro
     # -h 127.0.0.1, NOT localhost. Against `localhost` mysqladmin uses the unix
     # socket, which succeeds against MariaDB's temporary --skip-networking init
     # server while TCP is still unreachable and the schema is unloaded — a
