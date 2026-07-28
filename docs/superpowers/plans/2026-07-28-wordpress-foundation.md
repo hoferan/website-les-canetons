@@ -23,21 +23,40 @@ Mailpit, PHPUnit 11, `wp-phpunit/wp-phpunit`, `yoast/phpunit-polyfills`.
 
 ## Plan roadmap
 
-This plan is **Plan 1 of 8**. The spec is 29–42 days of work; splitting it keeps
+This plan is **Plan 1 of 9**. The spec is 29–42 days of work; splitting it keeps
 each plan independently reviewable and each one delivers working software.
+
+**The near-term goal is a working TEST site.** PROD comes after, once TEST has
+been seen and accepted. That splits the original Plan 8 in two: getting TEST
+running needs deploy and data migration, but *not* the PROD cutover.
 
 | # | Plan | Delivers | Blocked by |
 | --- | --- | --- | --- |
-| **1** | **WordPress foundation (this plan)** | Local stack, plugin skeleton, both test harnesses | — |
+| **1** | **WordPress foundation (this plan)** | ✅ **Done** — local stack, plugin skeleton, both test harnesses | — |
 | 2 | Roles, capabilities, instruments | Spec §3.3, §3.4 — the capability matrix with negative tests | 1 |
 | 3 | Events custom post type | Spec §3.1 — CPT, meta box, public planning list | 2 |
 | 4 | Responses and member RSVP | Spec §3.2, §3.5 — responses table, member planning surface | 3 |
 | 5 | Attendance summary | Spec §3.6, §1.3 — counters, roster table, instrument counts | 4 |
 | 6 | Design direction and theme | Spec §5 — `theme.json`, templates, block patterns | — (parallel) |
 | 7 | Third-party plugins and content | Spec §4, §6 — contact form, SMTP, backups, nine pages | 6 |
-| 8 | Data migration, deploy, cutover | Spec §7, §10, §11, §12 | 5, 7 (Task 0 below is done) |
+| **8a** | **TEST running** — deploy + data migration | Spec §7, §10, §11 — WordPress at TEST's document root, theme and plugin deployed, members and events imported, backups configured | 5, 7 |
+| 8b | PROD cutover | Spec §12 — create PROD's WordPress database, hard switch, retire the old app | 8a, plus TEST accepted |
 
 Plan 6 is independent of 1–5 and can run in parallel.
+
+**What 8a has to settle, recorded now so it is not rediscovered:**
+
+- WordPress on TEST currently lives at `/wp-test/`, but TEST's document root is
+  `/public_html/staging/test.lescanetons.org`. 8a installs WordPress *at that
+  root* and retires the `/wp-test/` subdirectory — the site owner's stated
+  intent, and it removes the `RewriteBase /wp-test/` special case.
+- **TEST's WordPress database (`lescanetoqg5`) holds a bare install.** A dump
+  taken 2026-07-28 contains only the 12 stock `qsjd_*` tables, one INSERT into
+  `qsjd_posts` (the default Hello world / Sample Page / Privacy Policy), and no
+  real uploads — its 1.6 MB is almost entirely `qsjd_options`. **Nothing on TEST
+  needs preserving**, so 8a may reinstall freely.
+- The old TEST application's data stays in `lescanetoqg3`, a different database
+  (§7), so none of this can touch it.
 
 ---
 
