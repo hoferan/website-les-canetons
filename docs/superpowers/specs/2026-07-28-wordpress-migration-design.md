@@ -295,6 +295,22 @@ part of a deploy (§10).
 | UpdraftPlus | Scheduled off-site backups of database and uploads (§11). |
 | Limit Login Attempts Reloaded | `wp-login.php` is publicly reachable and members have weak, admin-set passwords. |
 
+Because none of these is tracked in git (§10), nothing would otherwise record
+what runs alongside our code — a restore would recover the theme and plugin and
+leave the other five unknown. A generated manifest,
+`docs/wordpress-install-manifest.csv`, records core and plugin versions and is
+refreshed and committed after every update. It is deliberately a diffable text
+file rather than only a backup archive: "when did this plugin change, and did the
+bug start then?" is a question a binary backup cannot answer.
+
+**Local development installs only a subset, by script**, so a developer's stack
+is reproducible after a reset. FluentSMTP is replaced locally by a small mounted
+mu-plugin routing mail to Mailpit (both hook `phpmailer_init`, so running both
+would mean debugging whichever won); UpdraftPlus and Limit Login Attempts
+Reloaded are skipped as purely operational — and the latter would lock a
+developer out of their own site while testing the login. Servers are unaffected:
+on TEST and PROD all five are installed and updated through wp-admin as above.
+
 ## §5 Theme and design
 
 A child theme of Twenty Twenty-Five named `canetons`. Chosen over a standalone
