@@ -56,7 +56,14 @@ function run(command, argv, options) {
   process.exit(r.status ?? 1);
 }
 
-if (dockerAvailable()) {
+// In a Claude Code web session, prefer native Composer even when a daemon is
+// up. dockerd can be started there (tools/check-web-session.sh does it as a
+// side effect), which makes dockerAvailable() true — but that daemon has no
+// usable bridge networking (#29515), so the composer:2 container cannot reach
+// Packagist and the install hangs. Native has no such problem.
+const webSession = process.env.CLAUDE_CODE_REMOTE === 'true';
+
+if (!webSession && dockerAvailable()) {
   console.log('[composer] via the composer:2 image');
   run('docker', [
     'run',
@@ -74,7 +81,11 @@ if (dockerAvailable()) {
 }
 
 if (commandExists('composer')) {
-  console.log('[composer] natively (no Docker daemon)');
+  console.log(
+    webSession
+      ? '[composer] natively (web session — Docker networking unusable)'
+      : '[composer] natively (no Docker daemon)'
+  );
   run('composer', [...args, '--no-interaction'], { cwd: PLUGIN_HOST });
 }
 

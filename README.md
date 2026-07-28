@@ -77,14 +77,17 @@ bridge networking — so `docker compose up` cannot work
 (`anthropics/claude-code#29515`). Start with:
 
 ```bash
-bash tools/check-web-session.sh   # reports what this session can actually do
+npm run wp:websession:init        # one-step setup: deps + unit suite green
+bash tools/check-web-session.sh   # (optional) full report of what this session can do
 ```
 
-`npm run wp:test:unit` and `npm run wp:install` fall back to native PHP and
-Composer automatically. **`npm run wp:test:integration` has no fallback and fails
-loudly** — it needs real WordPress and MariaDB, and it is where capability
-enforcement is verified, so a skipped run must never resemble a passing one.
-Editing code, plans and docs works anywhere.
+`wp:websession:init` is idempotent: it checks native PHP/Composer, installs the
+plugin's dev dependencies, and runs the unit suite to confirm you are ready for
+unit TDD. `npm run wp:test:unit` and `npm run wp:install` also fall back to
+native PHP and Composer automatically. **`npm run wp:test:integration` has no
+fallback and fails loudly** — it needs real WordPress and MariaDB, and it is
+where capability enforcement is verified, so a skipped run must never resemble a
+passing one. Editing code, plans and docs works anywhere.
 
 ## What is tracked
 
