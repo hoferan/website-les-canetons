@@ -400,12 +400,28 @@ services:
     ports:
       - "8026:8025"
 
-  adminer:
-    image: adminer:latest
+  # Database UI, logged in automatically — opening the port lands straight on the
+  # database with no form. PMA_USER/PMA_PASSWORD are a documented feature of this
+  # image, which is why phpMyAdmin is here rather than Adminer: Adminer's own
+  # image prefills only the server field, and going further would mean
+  # maintaining a bespoke plugin against its PHP API.
+  #
+  # Safe only because these are throwaway local credentials, hardcoded in this
+  # file and used by nothing else. Never do this for a real environment.
+  phpmyadmin:
+    image: phpmyadmin:latest
     ports:
-      - "8101:8080"
+      - "8101:80"
+    environment:
+      PMA_HOST: wp-db
+      PMA_USER: root
+      PMA_PASSWORD: root
+      # root, not `wordpress`: it is the only login that can see both the
+      # development and the wordpress_test databases at once.
+      UPLOAD_LIMIT: 64M
     depends_on:
-      - wp-db
+      wp-db:
+        condition: service_healthy
 
 volumes:
   wp_core:
@@ -443,7 +459,7 @@ mu-plugins/
 
 Run: `docker compose up -d`
 
-Expected: `wp-db`, `wp-mailpit`, `adminer` and `wp` start. `wp-cli` does **not**
+Expected: `wp-db`, `wp-mailpit`, `phpmyadmin` and `wp` start. `wp-cli` does **not**
 — it is a `run --rm` service and correctly stays down.
 
 - [ ] **Step 7: Verify WordPress answers**
@@ -1331,7 +1347,7 @@ npm run wp:reset     # stop AND destroy the database and core volume
 | URL | What |
 | --- | --- |
 | http://localhost:8100 | the WordPress site (`admin` / `admin`) |
-| http://localhost:8101 | Adminer |
+| http://localhost:8101 | phpMyAdmin — logged in automatically, no form |
 | http://localhost:8026 | Mailpit — all outbound mail lands here |
 | `localhost:3308` | MariaDB |
 

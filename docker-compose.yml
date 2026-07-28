@@ -126,12 +126,28 @@ services:
     ports:
       - "8026:8025"
 
-  adminer:
-    image: adminer:latest
+  # Database UI, logged in automatically — opening the port lands straight on the
+  # database with no form. PMA_USER/PMA_PASSWORD are a documented feature of this
+  # image, which is why phpMyAdmin is here rather than Adminer: Adminer's own
+  # image prefills only the server field, and going further would mean
+  # maintaining a bespoke plugin against its PHP API.
+  #
+  # Safe only because these are throwaway local credentials, hardcoded in this
+  # file and used by nothing else. Never do this for a real environment.
+  phpmyadmin:
+    image: phpmyadmin:latest
     ports:
-      - "8101:8080"
+      - "8101:80"
+    environment:
+      PMA_HOST: wp-db
+      PMA_USER: root
+      PMA_PASSWORD: root
+      # root, not `wordpress`: it is the only login that can see both the
+      # development and the wordpress_test databases at once.
+      UPLOAD_LIMIT: 64M
     depends_on:
-      - wp-db
+      wp-db:
+        condition: service_healthy
 
 volumes:
   wp_core:

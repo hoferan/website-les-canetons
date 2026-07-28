@@ -50,7 +50,7 @@ npm run wp:reset     # stop AND destroy the database and core volume
 | URL | What |
 | --- | --- |
 | http://localhost:8100 | the WordPress site (`admin` / `admin`) |
-| http://localhost:8101 | Adminer |
+| http://localhost:8101 | phpMyAdmin — logged in automatically, no form |
 | http://localhost:8026 | Mailpit — all outbound mail lands here |
 | `localhost:3308` | MariaDB |
 
