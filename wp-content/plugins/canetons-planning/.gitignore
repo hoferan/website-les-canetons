@@ -1,0 +1,9 @@
+# Composer dev dependencies (PHPUnit and the WordPress test library). The plugin
+# has NO runtime dependencies, so this is development-only and never part of the
+# deploy artifact.
+#
+# composer.lock is deliberately NOT ignored: tracking it pins the test toolchain
+# so every machine runs the same PHPUnit. It is excluded from the deploy by
+# Plan 8, alongside composer.json and tests/.
+/vendor/
+/.phpunit.cache/

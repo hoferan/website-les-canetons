@@ -1,0 +1,19 @@
+{
+    "name": "canetons/planning",
+    "description": "Event planning and attendance for Guggenmusik Les Canetons de Fribourg.",
+    "type": "wordpress-plugin",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.4"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5",
+        "wp-phpunit/wp-phpunit": "^6.9",
+        "yoast/phpunit-polyfills": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Canetons\\Planning\\": "src/"
+        }
+    }
+}
