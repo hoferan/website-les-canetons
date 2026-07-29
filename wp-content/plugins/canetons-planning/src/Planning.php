@@ -83,7 +83,13 @@ final class Planning {
 	 */
 	private static function event_values( WP_Post $post ): array {
 		return array(
-			'title'      => (string) get_the_title( $post ),
+			// The RAW title, entity-decoded. get_the_title() would run wptexturize
+			// (turning `&` into `&#038;`) and prepend protected_title_format — both
+			// are display concerns, and a JSON-LD consumer does not HTML-decode, so
+			// either would put a literally wrong name in machine-readable output.
+			// Decoding is safe because schema_script()'s JSON_HEX_* flags neutralise
+			// whatever it yields; the two defences compose rather than conflict.
+			'title'      => html_entity_decode( $post->post_title, ENT_QUOTES, 'UTF-8' ),
 			'start_date' => (string) get_post_meta( $post->ID, EventType::META_START_DATE, true ),
 			'start_time' => (string) get_post_meta( $post->ID, EventType::META_START_TIME, true ),
 			'end_date'   => (string) get_post_meta( $post->ID, EventType::META_END_DATE, true ),
@@ -108,7 +114,7 @@ final class Planning {
 			$events,
 			$page_url,
 			array(
-				'name' => (string) get_bloginfo( 'name' ),
+				'name' => html_entity_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES, 'UTF-8' ),
 				'url'  => home_url( '/' ),
 			),
 			(string) wp_timezone_string()

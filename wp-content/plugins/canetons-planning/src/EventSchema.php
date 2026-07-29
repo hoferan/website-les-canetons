@@ -40,7 +40,8 @@ final class EventSchema {
 			return null;
 		}
 
-		$start = self::iso( $start_date, (string) ( $event['start_time'] ?? '' ), $timezone );
+		$start_time = (string) ( $event['start_time'] ?? '' );
+		$start      = self::iso( $start_date, $start_time, $timezone );
 
 		$node = array(
 			'@type'               => 'Event',
@@ -56,17 +57,27 @@ final class EventSchema {
 			),
 		);
 
-		// Emitted only when the end is genuinely later than the start. Comparing
-		// the FORMATTED values would not do: a date-only end and a datetime start
-		// always differ as strings, so an event at 20:00 with no end time would
-		// claim to end at midnight the same day — twenty hours before it began.
 		$end_date = trim( (string) ( $event['end_date'] ?? '' ) );
 		if ( '' === $end_date || ! self::is_date( $end_date ) ) {
 			$end_date = $start_date;
 		}
+
 		$end_time = (string) ( $event['end_time'] ?? '' );
 
-		$starts_at = self::moment( $start_date, (string) ( $event['start_time'] ?? '' ), $timezone );
+		// The end is expressed at the START's granularity. Without this, an event
+		// with an end time but no start time emits a date-only startDate beside a
+		// timed endDate: mixed granularity, and worse, an end time the rendered list
+		// never shows — Planning::format_time_range() prints nothing when the start
+		// time is absent. Structured data must not claim more than the page does.
+		if ( '' === EventDates::format_time( $start_time ) ) {
+			$end_time = '';
+		}
+
+		// Emitted only when the end is genuinely later than the start. Comparing
+		// the FORMATTED values would not do: a date-only end and a datetime start
+		// always differ as strings, so an event at 20:00 with no end time would
+		// claim to end at midnight the same day — twenty hours before it began.
+		$starts_at = self::moment( $start_date, $start_time, $timezone );
 		$ends_at   = self::moment( $end_date, $end_time, $timezone );
 
 		if ( $ends_at > $starts_at ) {

@@ -140,8 +140,8 @@ final class PlanningListTest extends WP_UnitTestCase {
 	 * single-site an administrator DOES hold it, so an administrator-authored title
 	 * is what actually reaches our encoder — and what this test must therefore use.
 	 *
-	 * Creating the event as anyone else would make this pass vacuously: the payload
-	 * would be gone before the code under test ever saw it.
+	 * Creating the event as anyone else would make this test prove nothing, because
+	 * the payload would be stripped before the code under test ever saw it.
 	 */
 	public function test_a_title_cannot_break_out_of_the_script_block(): void {
 		wp_set_current_user( self::factory()->user->create( array( 'role' => 'administrator' ) ) );
@@ -151,9 +151,13 @@ final class PlanningListTest extends WP_UnitTestCase {
 
 		$html = do_shortcode( '[canetons_planning]' );
 
-		preg_match( '#<script type="application/ld\+json">(.*?)</script>#s', $html, $m );
-		$this->assertStringNotContainsString( '</script>', (string) $m[1], 'the payload must not contain a literal closing tag' );
+		// Asserted against the WHOLE output, not the captured group: the capture
+		// regex is non-greedy, so a group-scoped check for `</script>` could never
+		// fail and would only look like a test. One closing tag is expected — the
+		// JSON-LD block's own.
+		$this->assertSame( 1, substr_count( $html, '</script>' ), 'the title must not have closed the block early' );
 
+		preg_match( '#<script type="application/ld\+json">(.*?)</script>#s', $html, $m );
 		$decoded = json_decode( (string) $m[1], true );
 		$this->assertSame( $title, $decoded['@graph'][0]['name'], 'escaping must not corrupt the value' );
 	}
@@ -184,7 +188,8 @@ final class PlanningListTest extends WP_UnitTestCase {
 	}
 
 	public function test_the_date_format_is_filterable(): void {
-		$this->make_event( 'Concert', '2026-08-22', '2026-08-22' );
+		$start = $this->days_from_now( 7 );
+		$this->make_event( 'Concert', $start, $start );
 
 		add_filter(
 			'canetons_planning_date_format',
@@ -195,6 +200,22 @@ final class PlanningListTest extends WP_UnitTestCase {
 			)
 		);
 
-		$this->assertStringContainsString( '22.08.2026', do_shortcode( '[canetons_planning]' ) );
+		// Derived, never hardcoded: a fixed date here would silently start failing
+		// once it fell into the past, since the list only shows upcoming events.
+		$expected = (string) wp_date( 'd.m.Y', (int) strtotime( $start . ' 12:00' ) );
+
+		$this->assertStringContainsString( $expected, do_shortcode( '[canetons_planning]' ) );
+	}
+
+	/**
+	 * A JSON-LD consumer does not HTML-decode, so an entity in `name` is simply a
+	 * wrong name. `&` is not exotic here: "Concert & Bal", "Canetons & Friends".
+	 */
+	public function test_html_entities_do_not_leak_into_the_schema_name(): void {
+		$this->make_event( 'Cortège & Bal', $this->days_from_now( 7 ) );
+
+		$schema = $this->schema_from( do_shortcode( '[canetons_planning]' ) );
+
+		$this->assertSame( 'Cortège & Bal', $schema['@graph'][0]['name'] );
 	}
 }

@@ -193,4 +193,41 @@ final class EventSchemaTest extends TestCase {
 			'an empty document must be distinguishable, so the caller can emit no script at all'
 		);
 	}
+
+	/**
+	 * The meta box offers Début and Fin times independently, so an end time with no
+	 * start time is reachable. A timed end beside a date-only start would both mix
+	 * granularity and assert an end the rendered list does not show.
+	 */
+	public function test_an_end_time_without_a_start_time_is_not_emitted(): void {
+		$node = EventSchema::event_node(
+			$this->event( array( 'start_time' => '', 'end_time' => '22:00' ) ),
+			self::PAGE,
+			self::ORGANIZER,
+			self::TZ
+		);
+
+		$this->assertSame( '2026-08-22', $node['startDate'] );
+		$this->assertArrayNotHasKey( 'endDate', $node );
+	}
+
+	/** A date-only start still gets a date-only end when the span really is longer. */
+	public function test_a_date_only_multi_day_event_keeps_a_date_only_end(): void {
+		$node = EventSchema::event_node(
+			$this->event( array( 'start_time' => '', 'end_date' => '2026-08-23', 'end_time' => '22:00' ) ),
+			self::PAGE,
+			self::ORGANIZER,
+			self::TZ
+		);
+
+		$this->assertSame( '2026-08-22', $node['startDate'] );
+		$this->assertSame( '2026-08-23', $node['endDate'] );
+	}
+
+	/** wp_timezone_string() returns a raw offset when only gmt_offset is set. */
+	public function test_a_raw_utc_offset_is_accepted_as_a_timezone(): void {
+		$node = EventSchema::event_node( $this->event(), self::PAGE, self::ORGANIZER, '+01:00' );
+
+		$this->assertSame( '2026-08-22T20:00:00+01:00', $node['startDate'] );
+	}
 }
