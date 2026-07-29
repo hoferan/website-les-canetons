@@ -328,6 +328,48 @@ add_filter(
 );
 
 /**
+ * German labels for the planning list on the /de/ tree.
+ *
+ * The plugin is French-only by design and stays that way: it exposes these three
+ * filters with French defaults, and the bilingual layer — this theme — supplies
+ * German where the tree is German. That keeps the "no translation layer"
+ * principle intact, with no gettext and no .po files for three strings.
+ *
+ * Dates are numeric on the German side rather than "Samstag 22. August 2026",
+ * because full German month names would need switch_to_locale() around the
+ * render, which changes every translated string in that scope — disproportionate
+ * for one line of output.
+ */
+add_filter(
+	'canetons_planning_empty_text',
+	static function ( string $text ): string {
+		return 'de' === canetons_current_language() ? 'Keine bevorstehenden Termine.' : $text;
+	}
+);
+
+add_filter(
+	'canetons_planning_attire_label',
+	static function ( string $label ): string {
+		return 'de' === canetons_current_language() ? 'Kleidung: ' : $label;
+	}
+);
+
+add_filter(
+	'canetons_planning_date_format',
+	static function ( array $formats ): array {
+		if ( 'de' !== canetons_current_language() ) {
+			return $formats;
+		}
+
+		return array(
+			'single'      => 'd.m.Y',
+			'range_start' => 'd.m.',
+			'range_end'   => 'd.m.Y',
+		);
+	}
+);
+
+/**
  * Optional: send the bare site root to the default language tree, so both
  * languages live symmetrically under /fr/ and /de/. Return '' from the
  * `canetons_root_redirect` filter to disable, or a different URL to retarget.
