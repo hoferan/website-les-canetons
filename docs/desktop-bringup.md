@@ -70,16 +70,40 @@ Related docs: `README.md` (commands), `docs/cutover.md` (PROD cutover),
       `makeup=Maquillage`. Matching tolerates case/space/hyphen/accents but not
       singular↔plural — flag any that differ from the old `instruments.name`.
 
-## Phase 4 — Build the content once
+## Phase 4 — Build the content once (bilingual fr-CH + de-CH)
 
-- [ ] Author the **nine pages** locally (accueil, canetons, historique,
-      commencement, moniteurs, comité/team direction, cd, multimédia, sponsors)
-      plus contact and login, using the theme's patterns, with real French copy
+Public pages are bilingual via two manual page trees, `/fr/*` and `/de/*` — no
+multilingual plugin (see
+`docs/superpowers/specs/2026-07-28-bilingual-public-content-design.md`). The
+members' area and the plugin stay French.
+
+- [ ] Create the two tree roots: a page **`fr`** (slug `fr`) and a page **`de`**
+      (slug `de`).
+- [ ] Author the **nine pages** as children of `fr` (accueil, canetons,
+      historique, commencement, moniteurs, comité/team direction, cd, multimédia,
+      sponsors) → `/fr/accueil/` … using the theme's patterns, real French copy
       and images. The multimédia page links out to the external gallery.
+- [ ] Author the **German twins** as children of `de` → `/de/aktuell/` … For a
+      precise switcher target, set the `_canetons_lang_alt` custom field on a page
+      to its counterpart's URL.
 - [ ] **Content only:** do not create real members, and do not run `migrate`
       locally — the export must carry pages and media, not accounts or events.
 - [ ] (Optional) drive page creation with a WordPress MCP, per the
       content-propagation spec.
+
+### Verify the bilingual theme helpers
+
+- [ ] Set the site language to **French (fr_FR)** in Settings → General (there is
+      no official `fr_CH`), and install **`de_CH`** for German admins.
+- [ ] View a `/de/*` page and confirm the source shows `<html lang="de-CH">`; a
+      `/fr/*` page shows `lang="fr-CH"`.
+- [ ] Place `[canetons_language_switcher]` in the header (or a menu/pattern) and
+      confirm it links across trees; the current language shows as inactive.
+- [ ] Visit the bare `/` and confirm it redirects to `/fr/` (disable/retarget via
+      the `canetons_root_redirect` filter if you don't want this).
+- [ ] Build **two menus** (one per language) and assign them.
+- [ ] In a second admin user's profile, set the admin language to **de-CH** (or
+      **en-US**) and confirm wp-admin switches for that user only.
 
 ## Phase 5 — Seed TEST
 
