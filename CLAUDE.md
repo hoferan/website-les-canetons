@@ -185,10 +185,18 @@ workflows went with the old stack. CI for the WordPress build is Plan 8's job.
 ## Language
 
 - **Everything is written in English** — specs and plans, code, comments,
-  identifiers, database table and column names, enum values, slugs, and file
-  names.
+  identifiers, database table and column names, enum values, **code** slugs, and
+  file names. Code slugs means the ones that are identifiers: roles
+  (`canetons_member`), capabilities (`canetons_manage_events`), instruments
+  (`trumpet`), block patterns (`canetons/committee-cards`), post types, meta keys.
 - **French is used for ONE thing only: user-visible UI text** — page copy,
   labels, buttons, admin-screen headings, on-screen event titles.
+- **A public page's URL slug is content, not an identifier**, so it is localised
+  along with the page: `/fr/accueil/` and `/de/aktuell/`, per the
+  bilingual-public-content design. A visitor reads the URL — it appears in search
+  results and gets shared — and every multilingual WordPress plugin translates
+  slugs for that reason. English-canonical paths (`/fr/history/`, `/de/history/`)
+  are an application-routing habit and read as a mistake in both languages.
 - WordPress runs in the `fr_FR` locale, so core and plugin UI is French already.
   Our own user-visible strings are written as French literals directly, with
   English code and comments around them. There is deliberately **no translation
