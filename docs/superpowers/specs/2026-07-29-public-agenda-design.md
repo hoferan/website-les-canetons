@@ -143,10 +143,31 @@ are translations of one page rather than two competing events.
 Encoding is `wp_json_encode( $data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT )`.
 The flags are load-bearing, not decoration: PHP does **not** escape `<` and `>` by
 default, so an event title containing `</script>` would otherwise close the block
-and everything after it would be parsed as HTML. Event titles are authored by the
-Team Direction — semi-trusted, but "semi" is the point, and a stray `<` in a title
-should never be able to change the shape of the page. `JSON_HEX_TAG` renders it
+and everything after it would be parsed as HTML. `JSON_HEX_TAG` renders it
 `<`, which is still valid JSON-LD.
+
+**Who can actually author such a title** was established during implementation and
+is narrower than first assumed. WordPress hooks `wp_filter_kses` onto
+`title_save_pre` for any user without `unfiltered_html`, so the tags are stripped
+before the post is saved. Verified on the install:
+
+| Role | `unfiltered_html` |
+| --- | --- |
+| `administrator` | **yes** |
+| `canetons_direction` | no |
+| `canetons_moderator` | no |
+| `canetons_member` | no |
+
+So the Team Direction *cannot* store a `<script>` in an event title — core removes
+it upstream — and the escaping exists for **administrator**-authored titles, which
+do reach the encoder raw. It is defence for one role rather than three, which is
+still reason enough to keep it.
+
+This has a sharp consequence for the test. Asserting only that the payload holds no
+literal `</script>` would pass **vacuously** for any non-administrator author,
+because the payload never contained the tag. The test therefore creates its event
+as an administrator, and also asserts the decoded `name` still equals the original
+title — that second assertion is what makes a vacuum visible.
 
 ### 5. Testing
 
@@ -165,10 +186,12 @@ should never be able to change the shape of the page. `JSON_HEX_TAG` renders it
 - a past event contributes no node;
 - the emitted block is valid JSON (decoded and asserted, not pattern-matched);
 - nothing is emitted when there are no upcoming events;
-- **an event titled `Bal </script><script>alert(1)</script>` does not close the
-  block** — the encoded output contains no literal `</script>`, and the JSON still
-  decodes to a node whose `name` is the original title. This is the escaping
-  property above, asserted rather than assumed.
+- **an event titled `Bal </script><script>alert(1)</script>`, authored by an
+  administrator, does not close the block** — the encoded output contains no literal
+  `</script>`, and the JSON still decodes to a node whose `name` is the original
+  title. Authored by an administrator specifically: any other role's title is
+  kses-stripped before saving, which would make the assertion pass without the
+  attack ever reaching the encoder.
 
 **HTTP**, after implementation: both `/fr/agenda/` and `/de/termine/` return 200,
 the JSON parses, and the German page shows the German labels while the French one
