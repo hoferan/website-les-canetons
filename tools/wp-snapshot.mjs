@@ -28,12 +28,36 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 const SNAPSHOT_DIR = path.join(process.cwd(), '.snapshots');
 const DB_FILE = 'database.sql';
 const UPLOADS_FILE = 'uploads.tar';
+const MANIFEST_FILE = 'manifest.txt';
+
+/**
+ * The site locale the spec requires (there is no official fr_CH, so fr_FR it is).
+ *
+ * This is checked on every snapshot and restore because the locale has twice
+ * silently reverted to an empty value, and a snapshot faithfully captured the
+ * empty value and then re-applied it on restore. The Phase 5 seed carries content
+ * to TEST the same way, so a wrong locale here is a wrong locale there.
+ *
+ * A mismatch WARNS and still proceeds. Refusing to take a snapshot would be the
+ * wrong trade: a backup you declined to make is worse than a backup with a known
+ * flaw recorded next to it.
+ */
+const EXPECTED_LOCALE = 'fr_FR';
 
 // Paths inside the Linux containers, so forward slashes regardless of host OS.
 const WP_CONTENT = '/var/www/html/wp-content';
@@ -73,10 +97,61 @@ function docker(args, { stdin = 'inherit', stdout = 'inherit' } = {}) {
   return r.status ?? 1;
 }
 
+/** Run a docker command and return its trimmed stdout, or '' on failure. */
+function dockerCapture(args) {
+  const r = spawnSync('docker', args, { encoding: 'utf8' });
+  if (r.error || r.status !== 0 || typeof r.stdout !== 'string') {
+    return '';
+  }
+  return r.stdout.trim();
+}
+
+/** The site's configured locale. Empty string means WordPress falls back to en_US. */
+function siteLocale() {
+  return dockerCapture([
+    'compose', 'run', '--rm', 'wp-cli',
+    'wp', '--path=/var/www/html', 'option', 'get', 'WPLANG',
+  ]);
+}
+
+/**
+ * Warn when the locale is not the one the site is supposed to run in. Returns the
+ * locale so the caller can record it.
+ */
+function checkLocale(locale, context) {
+  if (locale === EXPECTED_LOCALE) {
+    return;
+  }
+
+  const shown = '' === locale ? "'' (WordPress falls back to en_US)" : `'${locale}'`;
+  console.warn(
+    `\n[snapshot] WARNING: the site locale is ${shown}, expected '${EXPECTED_LOCALE}'.\n` +
+      `[snapshot] ${context}\n` +
+      `[snapshot] Fix it with:  npm run wp:setup\n`
+  );
+}
+
 function humanSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * The locale a snapshot recorded, or null when it predates the manifest — a
+ * snapshot taken before this check existed cannot be assumed good.
+ */
+function snapshotLocale(dir) {
+  const manifest = path.join(dir, MANIFEST_FILE);
+  if (!existsSync(manifest)) {
+    return null;
+  }
+
+  const line = readFileSync(manifest, 'utf8')
+    .split('\n')
+    .find((l) => l.startsWith('locale='));
+
+  return undefined === line ? null : line.slice('locale='.length).trim();
 }
 
 /** Snapshot names sort chronologically because the stamp is ISO-derived. */
@@ -154,8 +229,20 @@ function save() {
     console.log(`[snapshot] uploads   ${humanSize(statSync(upPath).size)}`);
   }
 
+  // --- manifest -------------------------------------------------------------
+  // Recorded so `list` can show it and a future reader can tell whether a given
+  // snapshot predates or postdates a locale problem, without loading it.
+  const locale = siteLocale();
+  writeFileSync(
+    path.join(target, MANIFEST_FILE),
+    [`locale=${locale}`, `expected_locale=${EXPECTED_LOCALE}`, `stamp=${stamp}`].join('\n') + '\n'
+  );
+  console.log(`[snapshot] locale    ${'' === locale ? '(empty)' : locale}`);
+
   console.log(`[snapshot] saved as ${stamp}`);
   console.log(`[snapshot] restore with:  npm run wp:restore ${stamp}`);
+
+  checkLocale(locale, 'This snapshot has captured that, and restoring it will put it back.');
 }
 
 function list() {
@@ -174,7 +261,14 @@ function list() {
         parts.push(`${file} ${humanSize(statSync(full).size)}`);
       }
     }
-    console.log(`  ${name}   ${parts.join(', ')}`);
+
+    // Flag a snapshot whose locale is wrong: restoring it would reintroduce the
+    // fault, and it must never be the one seeded to TEST.
+    const locale = snapshotLocale(dir);
+    const flag =
+      null === locale ? 'locale unknown' : locale === EXPECTED_LOCALE ? locale : `locale ${'' === locale ? '(empty)' : locale} <-- WRONG`;
+
+    console.log(`  ${name}   ${parts.join(', ')}, ${flag}`);
   }
 }
 
@@ -233,6 +327,11 @@ function restore(name) {
     }
     console.log('[restore] uploads restored');
   }
+
+  // Checked AFTER restoring, against the live site rather than the manifest: what
+  // matters is the locale you are left with, and this is the exact path by which a
+  // wrong one came back once already.
+  checkLocale( siteLocale(), 'The restored snapshot carried that locale.' );
 
   console.log('[restore] done — http://localhost:8100');
 }
