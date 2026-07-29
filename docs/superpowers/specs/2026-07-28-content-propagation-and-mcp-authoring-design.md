@@ -14,8 +14,15 @@ authored up to three times.
 
 The site owner does not want to author the same pages three times. This design
 replaces that with **author once, then propagate**: build the full site locally,
-then move the *content* to TEST and later PROD as a repeatable import, rather than
-retyping it.
+then move the *content* to TEST and later PROD as a **one-time seed import**,
+rather than retyping it.
+
+**This is a one-way seed, not a sync.** The whole-site import is destructive — it
+replaces the target's database. It runs onto a *fresh* TEST, and onto PROD *once,
+at cutover, before PROD carries any real data*. After cutover, PROD's content is
+edited in place and **never re-imported** — a second whole-site import onto a live
+PROD would destroy its real members, RSVPs, events and edits. See Non-goals and
+the Risks table.
 
 This changes only *where content originates* and *how it travels*. It does not
 change the migration design's data model, plugin, theme, environments, or the
@@ -25,8 +32,9 @@ application's database.
 ## Goals
 
 1. Author the nine pages and their media **once**, locally.
-2. Propagate that content to TEST, verify, then to PROD, as a repeatable step —
-   no retyping, no per-environment re-authoring.
+2. Seed that content into a fresh TEST, verify, then into PROD once at cutover —
+   no retyping, no per-environment re-authoring. This is a one-time seed per
+   environment, not an ongoing sync.
 3. **Optionally** automate the mechanical creation of pages with Claude over a
    WordPress MCP server, so that "build the nine pages" becomes "generate them
    from supplied copy and the theme's patterns."
@@ -39,7 +47,15 @@ application's database.
   not be conflated.
 - **Not cloning per-environment configuration.** FluentSMTP's mailbox,
   UpdraftPlus's destination and Limit Login Attempts' state are per environment
-  and are never propagated from local.
+  and are never propagated from local — they are re-applied on the target after
+  the import.
+- **Not preserving the target's own accounts.** The whole-site import overwrites
+  the target's `wp_users`/`wp_usermeta`, so the target's WordPress **admin
+  account becomes the local one**. This is why the import runs onto a *fresh*
+  target, before its real admin and members exist, and why the member/event
+  migration (§7) runs **after** the content import, not before — see the workflow.
+- **Not a repeatable sync onto a live site.** The import is destructive and is
+  performed once per environment. After cutover, PROD content is edited in place.
 - **Not keeping the migration tooling installed.** The migration plugin and, if
   used, the WordPress MCP plugin are transient — installed to seed, removed after.
 
@@ -64,10 +80,10 @@ application's database.
 | Propagation mechanism | **A migration plugin** (All-in-One WP Migration, or Duplicator) — one archive, imported via wp-admin | Raw DB dump/import; WXR export/import alone |
 | Media | **Bundled in the migration archive** | Manual re-upload; FTP-copying `wp-content/uploads/` separately |
 | URL rewrite | **Done by the migration plugin's importer** (serialization-safe) | Manual SQL `REPLACE`; Better Search Replace by hand |
-| Per-environment plugin config | **Re-applied on each target after import** | Cloned from local (would overwrite real mailbox/backup settings) |
-| Member/event data | **Unchanged** — `wp canetons migrate` per environment (§7) | Carried in the content clone |
+| Per-environment config **and accounts** | **Re-applied / recreated on the target after import** (SMTP, backups, and the environment's real admin account) | Cloned from local (overwrites real settings and the admin login) |
+| Member/event data | **Unchanged** — `wp canetons migrate` per environment (§7), run **after** the content import | Carried in the content clone |
 | Page creation (authoring) | Manual in the block editor, **optionally automated via WordPress MCP + Claude** | — |
-| Local table prefix | Set local to **`qsjd_`** to match the servers | Leave local at the default `wp_` |
+| Local table prefix | **Optional** `qsjd_` parity — cosmetic for the plugin path, load-bearing only for a raw-DB move | Leave local at the default `wp_` |
 
 ### Why a migration plugin over raw DB or WXR
 
@@ -87,27 +103,43 @@ application's database.
 
 ## Workflow
 
-1. **Build locally.** Bring up the stack (`npm run wp:dev && npm run wp:setup`),
-   deploy the theme and plugin, and author the nine pages using the theme's block
-   patterns (committee cards, sponsor grid, instrument sections), uploading images
-   into the local Media Library. This is the one-and-only authoring pass —
-   optionally automated (see below).
+The ordering is load-bearing: the import overwrites the whole database, so it goes
+onto a **fresh** target, *before* that environment's real admin, members, events
+and per-environment config exist, and everything environment-specific is applied
+**after**.
+
+1. **Build locally — content only.** Bring up the stack
+   (`npm run wp:dev && npm run wp:setup`), deploy the theme and plugin, and author
+   the nine pages using the theme's block patterns (committee cards, sponsor grid,
+   instrument sections), uploading images into the local Media Library. **Do not
+   create real members, and do not run `wp canetons migrate` locally** — the
+   archive must carry pages and media only, never members or events (those come
+   from the old database, per environment). This is the one-and-only authoring
+   pass — optionally automated (see below).
 2. **Export.** With the migration plugin, export the whole site to a single
    archive.
-3. **Import on TEST** through wp-admin; the importer rewrites `localhost:8100` →
-   the TEST URL and restores media.
-4. **Re-apply TEST's per-environment config:** FluentSMTP mailbox, UpdraftPlus
-   destination, Limit Login Attempts. Run `wp canetons migrate` against TEST for
-   members and events. Verify (smoke checklist, spec §9).
-5. **Import on PROD** from the *same* archive; rewrite URLs to the PROD URL.
-6. **Re-apply PROD's per-environment config** and run `wp canetons migrate`
-   against PROD. Follow the cutover checklist (`docs/cutover.md`).
+3. **Import onto a fresh TEST** through wp-admin; the importer rewrites
+   `localhost:8100` → the TEST URL and restores media. Because this overwrites the
+   users table, **do it before TEST has any real accounts**.
+4. **Re-establish TEST after import**, in this order: recreate/confirm the TEST
+   admin account (the import replaced it with the local one); re-apply the
+   per-environment config (FluentSMTP mailbox, UpdraftPlus destination, Limit
+   Login Attempts) — and **confirm the backup destination now, before real
+   content edits**, satisfying §11's "backups before content" rule; then run
+   `wp canetons migrate` against TEST for members and events. Verify (smoke
+   checklist, spec §9).
+5. **Import onto PROD once, at cutover**, from the *same* archive, before PROD
+   carries any real data; rewrite URLs to the PROD URL.
+6. **Re-establish PROD after import** in the same order as step 4 — admin account,
+   per-environment config with backups confirmed before content, then
+   `wp canetons migrate` — following the cutover checklist (`docs/cutover.md`).
 7. **Remove the transient tooling** (migration plugin; MCP plugin if used) and
    refresh `docs/wordpress-install-manifest.csv`.
 
-After this, TEST and PROD diverge as PROD receives real edits — accepted, exactly
-as the migration design already anticipated (§6). PROD's database remains the
-source of truth for content thereafter (§11 backups unchanged).
+After cutover, TEST and PROD diverge as PROD receives real edits — accepted,
+exactly as the migration design anticipated (§6). PROD's database is the source of
+truth for content thereafter (§11 backups unchanged), and **the whole-site import
+is never repeated onto it** — later fixes are edited directly in PROD.
 
 ## Optional: MCP-assisted page creation
 
@@ -180,8 +212,10 @@ applied on a fresh local database.
 
 | Risk | Mitigation |
 | --- | --- |
-| A whole-site import overwrites a target's per-environment plugin config | Re-apply FluentSMTP/UpdraftPlus/Limit Login config after each import; it is a listed step |
+| The import overwrites the target's `wp_users`, replacing its admin account with the local one | Import onto a *fresh* target before real accounts exist; recreate/confirm the environment admin immediately after import (workflow step 4/6). Keep a note of the local admin credentials so the post-import login is known |
+| A second whole-site import onto a live PROD destroys real members, RSVPs, events and content edits | The import is a **one-time seed per environment**, stated in Context, Goals and Non-goals; after cutover PROD content is edited in place, never re-imported |
+| A whole-site import overwrites a target's per-environment plugin config, including the backup destination — violating §11's "backups before content" | Re-apply config immediately after import and **confirm the backup destination before any real content edits** (workflow step 4/6), which restores the §11 ordering |
 | `localhost` URLs leak into imported content | Use the migration plugin's URL rewrite, then grep the rendered pages for `localhost` during verification |
 | The MCP plugin is left installed on a live server | It is local-only and removed after seeding; the manifest refresh would surface it |
-| Content clone and member/event migration are conflated | They travel by separate, documented paths; the content archive carries no members or events worth keeping |
+| The content archive carries stray local members/events that collide with `wp canetons migrate` | The local build is **content only** — no members created, migration not run locally (workflow step 1) — so the archive carries no accounts or events to collide |
 | Free migration-plugin import size limit exceeded | A band site's media is small; if hit, use the plugin's chunked import or Duplicator |

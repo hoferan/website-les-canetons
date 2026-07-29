@@ -9,10 +9,11 @@
  * management capability is mapped onto `canetons_manage_events`, so only the
  * Team Direction and administrators may write events — requirement 1.1.
  *
- * Event fields live in post meta rather than core columns: `date` in meta (not
- * `post_date`) so ordering and querying are explicit and an editor can set it
- * freely, and `weekend` as a boolean rendered as a two-day range rather than a
- * stored end date.
+ * An event carries a start date/time and an end date/time in post meta (spec
+ * §3.1, as amended: an explicit end replaces the earlier `weekend` boolean, so a
+ * span of any length is expressible and an in-progress multi-day event stays
+ * visible). Dates live in meta rather than `post_date` so ordering and querying
+ * are explicit and an editor can set them freely.
  */
 
 declare( strict_types=1 );
@@ -27,12 +28,12 @@ final class EventType {
 	// Post-meta keys. Underscore-prefixed so they are "protected" meta: hidden
 	// from the generic Custom Fields box and not writable through REST without
 	// the auth callback below. The plugin's own meta box is the only editor.
-	public const META_DATE       = '_canetons_event_date';
+	public const META_START_DATE = '_canetons_event_start_date';
 	public const META_START_TIME = '_canetons_event_start_time';
+	public const META_END_DATE   = '_canetons_event_end_date';
 	public const META_END_TIME   = '_canetons_event_end_time';
 	public const META_LOCATION   = '_canetons_event_location';
 	public const META_ATTIRE     = '_canetons_event_attire';
-	public const META_WEEKEND    = '_canetons_event_weekend';
 
 	/**
 	 * Register the post type, its meta, and the admin list customisations.
@@ -44,7 +45,7 @@ final class EventType {
 		register_post_type(
 			self::POST_TYPE,
 			array(
-				'labels'          => array(
+				'labels'       => array(
 					'name'               => 'Événements',
 					'singular_name'      => 'Événement',
 					'add_new'            => 'Ajouter',
@@ -58,21 +59,21 @@ final class EventType {
 					'all_items'          => 'Tous les événements',
 					'menu_name'          => 'Événements',
 				),
-				'public'          => false,
-				'show_ui'         => true,
-				'show_in_menu'    => true,
-				'show_in_rest'    => false,
-				'has_archive'     => false,
-				'rewrite'         => false,
-				'query_var'       => false,
-				'menu_icon'       => 'dashicons-calendar-alt',
-				'supports'        => array( 'title' ),
-				'map_meta_cap'    => true,
+				'public'       => false,
+				'show_ui'      => true,
+				'show_in_menu' => true,
+				'show_in_rest' => false,
+				'has_archive'  => false,
+				'rewrite'      => false,
+				'query_var'    => false,
+				'menu_icon'    => 'dashicons-calendar-alt',
+				'supports'     => array( 'title' ),
+				'map_meta_cap' => true,
 				// Every management capability funnels to canetons_manage_events
 				// (requirement 1.1). `read` is intentionally left at the core
 				// default so published events stay readable — the public list is
 				// anonymous (spec §1.1) and queries them directly.
-				'capabilities'    => array(
+				'capabilities' => array(
 					'edit_post'           => $manage,
 					'read_post'           => $manage,
 					'delete_post'         => $manage,
@@ -103,15 +104,16 @@ final class EventType {
 	public static function register_meta(): void {
 		$auth = static fn (): bool => current_user_can( Roles::CAP_MANAGE_EVENTS );
 
-		$string_fields = array(
-			self::META_DATE       => array( self::class, 'sanitize_date' ),
+		$fields = array(
+			self::META_START_DATE => array( self::class, 'sanitize_date' ),
 			self::META_START_TIME => array( self::class, 'sanitize_time' ),
+			self::META_END_DATE   => array( self::class, 'sanitize_date' ),
 			self::META_END_TIME   => array( self::class, 'sanitize_time' ),
 			self::META_LOCATION   => 'sanitize_text_field',
 			self::META_ATTIRE     => 'sanitize_text_field',
 		);
 
-		foreach ( $string_fields as $key => $sanitize ) {
+		foreach ( $fields as $key => $sanitize ) {
 			register_post_meta(
 				self::POST_TYPE,
 				$key,
@@ -125,19 +127,6 @@ final class EventType {
 				)
 			);
 		}
-
-		register_post_meta(
-			self::POST_TYPE,
-			self::META_WEEKEND,
-			array(
-				'type'              => 'boolean',
-				'single'            => true,
-				'default'           => false,
-				'show_in_rest'      => false,
-				'sanitize_callback' => array( self::class, 'sanitize_weekend' ),
-				'auth_callback'     => $auth,
-			)
-		);
 	}
 
 	// --- sanitizers ---------------------------------------------------------
@@ -150,7 +139,7 @@ final class EventType {
 		}
 
 		try {
-			EventDates::range( $value, false );
+			EventDates::parse_date( $value );
 			return $value;
 		} catch ( \InvalidArgumentException ) {
 			return '';
@@ -160,11 +149,6 @@ final class EventType {
 	/** A valid time normalised to HH:MM, or the empty string. */
 	public static function sanitize_time( $value ): string {
 		return is_string( $value ) ? EventDates::format_time( trim( $value ) ) : '';
-	}
-
-	/** '1' when checked, '0' otherwise — stored as a stable string. */
-	public static function sanitize_weekend( $value ): string {
-		return ( '1' === (string) $value || 1 === $value || true === $value ) ? '1' : '0';
 	}
 
 	// --- admin list ---------------------------------------------------------
@@ -186,16 +170,21 @@ final class EventType {
 		return $out;
 	}
 
-	/** Render the Date column for one row. */
+	/** Render the Date column for one row: the start date, and the end when later. */
 	public static function render_column( string $column, int $post_id ): void {
 		if ( 'canetons_event_date' !== $column ) {
 			return;
 		}
-		echo esc_html( (string) get_post_meta( $post_id, self::META_DATE, true ) );
+
+		$start = (string) get_post_meta( $post_id, self::META_START_DATE, true );
+		$end   = (string) get_post_meta( $post_id, self::META_END_DATE, true );
+
+		$text = ( '' !== $end && $end > $start ) ? "{$start} → {$end}" : $start;
+		echo esc_html( $text );
 	}
 
 	/**
-	 * Make the Date column sortable by the date meta.
+	 * Make the Date column sortable by the start-date meta.
 	 *
 	 * @param array<string, string> $columns
 	 * @return array<string, string>
@@ -206,9 +195,9 @@ final class EventType {
 	}
 
 	/**
-	 * Default the admin list to date ascending (requirement 1.1), and honour a
-	 * click on the sortable Date column. Only touches this post type's own admin
-	 * query.
+	 * Default the admin list to start-date ascending (requirement 1.1), and
+	 * honour a click on the sortable Date column. Only touches this post type's
+	 * own admin query.
 	 */
 	public static function default_admin_order( WP_Query $query ): void {
 		if ( ! is_admin() || ! $query->is_main_query() ) {
@@ -220,7 +209,7 @@ final class EventType {
 
 		$orderby = $query->get( 'orderby' );
 		if ( '' === $orderby || 'canetons_event_date' === $orderby ) {
-			$query->set( 'meta_key', self::META_DATE );
+			$query->set( 'meta_key', self::META_START_DATE );
 			$query->set( 'orderby', 'meta_value' );
 			if ( '' === $query->get( 'order' ) ) {
 				$query->set( 'order', 'ASC' );

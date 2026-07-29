@@ -30,28 +30,44 @@ Work top to bottom. Do not start Phase D until TEST has been seen and accepted.
 
 ## B. Stand up WordPress on PROD (Plan 7, authored directly in PROD)
 
+**Content is seeded by import, not hand-authored here** — the nine pages and
+media are built once locally and imported, per
+`docs/superpowers/specs/2026-07-28-content-propagation-and-mcp-authoring-design.md`.
+The import overwrites the database (including users), so its ordering matters: it
+runs onto a **fresh** PROD, *before* PROD has any real accounts or content, and
+per-environment config is applied **after**.
+
 - [ ] Install WordPress core at the PROD document root, locale **fr_FR**,
       permalinks **`/%postname%/`**, timezone **Europe/Zurich**.
-- [ ] **Configure UpdraftPlus off-site backups BEFORE entering any content**
-      (spec §11): database daily, uploads weekly. Content lives in the database
-      now, so this is mandatory, not optional.
+- [ ] **Import the content archive** built locally (migration plugin), onto this
+      fresh PROD, rewriting URLs to the PROD URL. The archive carries pages and
+      media only — no members or events.
+- [ ] **Recreate/confirm the PROD admin account** — the import replaced the users
+      table with the local site's, so the only login now is the local admin.
+      Restore the real PROD admin before continuing.
+- [ ] **Deploy theme + plugin:** `npm run wp:deploy:prod` (confirms a backup),
+      then activate the `canetons` theme and the `canetons-planning` plugin.
 - [ ] Install and activate the six third-party plugins via wp-admin: Fluent
       Forms, Members, FluentSMTP, UpdraftPlus, Limit Login Attempts Reloaded,
       WP Dark Mode (spec §4). Then `npm run wp:manifest` and commit the refreshed
       `docs/wordpress-install-manifest.csv`.
-- [ ] **Deploy theme + plugin:** `npm run wp:deploy:prod` (confirms a backup),
-      then activate the `canetons` theme and the `canetons-planning` plugin.
+- [ ] **Configure UpdraftPlus off-site backups now — after the import, before any
+      real content edits** (spec §11): database daily, uploads weekly. The import
+      overwrote the backup config, so re-confirm the destination here; the "before
+      content" invariant holds because no live editing has happened yet.
 - [ ] Configure **FluentSMTP** with a real authenticated mailbox (ports 465 SSL /
       4650 STARTTLS — not 587). Send a test mail and confirm delivery.
-- [ ] Build the **contact form** (Fluent Forms) — last name, first name, email,
-      subject (optional), message — with committee notification.
-- [ ] **Members plugin:** restrict the members-only planning page; confirm the
-      `canetons_*` roles look right (the plugin registers them on activation).
-- [ ] Author the **nine pages** (accueil, canetons, historique, commencement,
-      moniteurs, comité/team direction, cd, multimédia, sponsors) plus contact
-      and the login entry point, using the theme's block patterns. Set the front
-      page and menus. The multimédia page links out to the external gallery.
-- [ ] Place the `[canetons_planning]` list on the members' planning page.
+- [ ] Verify the **contact form** (Fluent Forms) came across in the import — last
+      name, first name, email, subject (optional), message — with committee
+      notification; rebuild it if the form did not travel.
+- [ ] **Members plugin:** confirm the members-only planning page restriction and
+      that the `canetons_*` roles look right (the plugin registers them on
+      activation).
+- [ ] Verify the **nine pages** (accueil, canetons, historique, commencement,
+      moniteurs, comité/team direction, cd, multimédia, sponsors), the contact and
+      login pages, the front page and menus all imported correctly and render with
+      no `localhost` leaks. The multimédia page links out to the external gallery.
+- [ ] Confirm the `[canetons_planning]` list is on the members' planning page.
 
 ## C. Migrate data (spec §7)
 

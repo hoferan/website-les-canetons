@@ -94,12 +94,20 @@ rebuild.
 
 ### 1.1 Events
 
-- Fields: date, title, start time, end time, location, attire (optional), and a
-  `weekend` boolean.
-- A `weekend` event displays as a two-day range (its date through the following
-  day); a normal event displays as a single date.
+- Fields: title, **start date/time and end date/time**, location, and attire
+  (optional). *(Amended — see the note below; originally a single date plus a
+  `weekend` boolean.)*
+- A multi-day event displays as a date range; a single-day event as one date.
 - Dates render in French; times render as `HH:MM`.
-- The events list is sorted by date ascending.
+- The events list is sorted by start date ascending, and an event stays listed
+  until its **end** date has passed, so an in-progress multi-day event remains
+  visible.
+
+> **Amended.** The event data model is an explicit **start date/time + end
+> date/time** rather than a single date with a `weekend` boolean. It expresses a
+> span of any length (not only a two-day weekend) and keeps an in-progress
+> multi-day event on the public list. A single-day event has its end equal to its
+> start. See §3.1.
 - **The events list is readable without logging in.** Both `planning_repet.js`
   and `sinscrire.js` fetch it before authentication today.
 - Holders of `manage_events` may create, edit and delete events. Nobody else
@@ -200,14 +208,21 @@ edit, delete, sorting and per-capability permissions for free. The only custom
 admin UI is a single meta box.
 
 - Post title holds the event title.
-- Post meta holds `date`, `start_time`, `end_time`, `location`, `attire`,
-  `weekend`. Each registered with an explicit sanitize callback and
-  `show_in_rest: false`.
-- `date` lives in meta rather than `post_date` so that ordering and querying are
-  explicit and the editor can set it freely.
+- Post meta holds `start_date`, `start_time`, `end_date`, `end_time`,
+  `location`, `attire`. Each registered with an explicit sanitize callback and
+  `show_in_rest: false`. *(Amended — see below.)*
+- Dates live in meta rather than `post_date` so that ordering and querying are
+  explicit and the editor can set them freely.
 - `map_meta_cap` maps the post type's capabilities onto `canetons_manage_events`.
-- The `weekend` boolean is kept as a boolean and rendered as a two-day range.
-  It is not modelled as a start/end date pair.
+
+> **Amended.** The event is modelled as an explicit **start date/time and end
+> date/time**, replacing the earlier single `date` + `weekend` boolean. This
+> reverses the original decision *not* to use a start/end pair: it expresses
+> spans of any length, and querying on the end date keeps an in-progress
+> multi-day event visible on the public list (the `weekend` model dropped it on
+> its second day, because that day was past the single stored date). An empty end
+> date defaults to the start date (a single-day event). The old app's `weekend`
+> flag is carried over by the migration as `end_date = start_date + 1 day`.
 
 ### 3.2 Responses — custom table
 

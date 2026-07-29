@@ -65,10 +65,4 @@ final class EventTypeTest extends WP_UnitTestCase {
 		$this->assertSame( '09:05', EventType::sanitize_time( '9:05' ) );
 		$this->assertSame( '', EventType::sanitize_time( '99:99' ) );
 	}
-
-	public function test_weekend_is_stored_as_a_stable_flag(): void {
-		$this->assertSame( '1', EventType::sanitize_weekend( '1' ) );
-		$this->assertSame( '0', EventType::sanitize_weekend( '0' ) );
-		$this->assertSame( '0', EventType::sanitize_weekend( '' ) );
-	}
 }

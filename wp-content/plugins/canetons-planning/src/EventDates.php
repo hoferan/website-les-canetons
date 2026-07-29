@@ -2,10 +2,15 @@
 /**
  * Event date and time arithmetic (spec §1.1).
  *
- * Pure by design — no WordPress, no timezone database — so the weekend two-day
- * range and the time normalisation are unit-testable in isolation (spec §9).
- * Turning these calendar values into French text is a rendering concern and
- * lives at the display layer ({@see Planning}), which applies the site locale.
+ * Pure by design — no WordPress, no timezone database — so date validation, the
+ * multi-day test and time normalisation are unit-testable in isolation (spec §9).
+ * Turning these values into French text is a rendering concern and lives at the
+ * display layer ({@see Planning}), which applies the site locale.
+ *
+ * An event is modelled as a start date/time and an end date/time (spec §3.1, as
+ * amended): a single-day event has the same start and end date, and a multi-day
+ * event — a carnival weekend, say — has a later end date. This replaces the
+ * earlier `weekend` boolean, which could only express a two-day span.
  */
 
 declare( strict_types=1 );
@@ -17,30 +22,38 @@ use InvalidArgumentException;
 
 final class EventDates {
 	/**
-	 * The event's calendar span.
+	 * Parse a `Y-m-d` string into a date, rejecting anything that is not a real
+	 * calendar date.
 	 *
-	 * A normal event is a single day, so `end` is null. A weekend event runs
-	 * from its date through the following day (spec §1.1) — modelled here as a
-	 * derived +1 day rather than a stored end date, matching the spec's decision
-	 * to keep `weekend` a boolean.
-	 *
-	 * @return array{start: DateTimeImmutable, end: DateTimeImmutable|null}
 	 * @throws InvalidArgumentException when $date is not a real Y-m-d date.
 	 */
-	public static function range( string $date, bool $weekend ): array {
-		$start = DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
+	public static function parse_date( string $date ): DateTimeImmutable {
+		$parsed = DateTimeImmutable::createFromFormat( '!Y-m-d', $date );
 
-		// createFromFormat is lenient about overflow (e.g. 2025-13-40 rolls
-		// forward), so round-trip the value to reject anything that was not
-		// already a real calendar date.
-		if ( false === $start || $start->format( 'Y-m-d' ) !== $date ) {
+		// createFromFormat is lenient about overflow (2025-13-40 rolls forward),
+		// so round-trip the value to reject anything that was not a real date.
+		if ( false === $parsed || $parsed->format( 'Y-m-d' ) !== $date ) {
 			throw new InvalidArgumentException( "Not a valid Y-m-d date: {$date}" );
 		}
 
-		return array(
-			'start' => $start,
-			'end'   => $weekend ? $start->modify( '+1 day' ) : null,
-		);
+		return $parsed;
+	}
+
+	/**
+	 * Whether an event spans more than one day. Both dates must be valid Y-m-d;
+	 * an empty or absent end date means a single-day event. An end date before
+	 * the start is treated as single-day (not multi-day) — the display and query
+	 * layers fall back to the start.
+	 */
+	public static function is_multi_day( string $start_date, string $end_date ): bool {
+		if ( '' === $end_date ) {
+			return false;
+		}
+
+		$start = self::parse_date( $start_date );
+		$end   = self::parse_date( $end_date );
+
+		return $end > $start;
 	}
 
 	/**

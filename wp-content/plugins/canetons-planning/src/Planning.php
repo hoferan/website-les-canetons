@@ -2,9 +2,11 @@
 /**
  * The public planning list (spec §1.1, §3.5).
  *
- * Renders upcoming events, sorted by date ascending, readable by anonymous
- * visitors — the events list is public (requirement 1.1). Plan 4 extends the
- * same surface with a member's own answer and RSVP buttons.
+ * Renders upcoming events, sorted by start date ascending, readable by anonymous
+ * visitors — the events list is public (requirement 1.1). An event stays listed
+ * until its END date has passed, so a multi-day event remains visible while it is
+ * in progress. Plan 4 extends the same surface with a member's own answer and
+ * RSVP buttons.
  *
  * Exposed as the `[canetons_planning]` shortcode. The spec names this surface a
  * "block"; it is a server-rendered shortcode here to avoid a JavaScript build
@@ -12,7 +14,7 @@
  * belongs with the theme work (spec §5), where an editor build context exists.
  *
  * Rendering is the one place event dates become French text: {@see EventDates}
- * computes the calendar span purely, and wp_date() applies the fr_FR locale.
+ * validates them purely, and wp_date() applies the fr_FR locale.
  */
 
 declare( strict_types=1 );
@@ -36,12 +38,14 @@ final class Planning {
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
 				'no_found_rows'  => true,
-				'meta_key'       => EventType::META_DATE,
+				'meta_key'       => EventType::META_START_DATE,
 				'orderby'        => 'meta_value',
 				'order'          => 'ASC',
+				// Keep an event until its end date has passed, so an in-progress
+				// multi-day event stays listed on its later days.
 				'meta_query'     => array(
 					array(
-						'key'     => EventType::META_DATE,
+						'key'     => EventType::META_END_DATE,
 						'value'   => current_time( 'Y-m-d' ),
 						'compare' => '>=',
 						'type'    => 'DATE',
@@ -65,12 +69,12 @@ final class Planning {
 
 	/** Render one event as a list item. All output is escaped. */
 	private static function render_event( WP_Post $post ): string {
-		$date    = (string) get_post_meta( $post->ID, EventType::META_DATE, true );
-		$weekend = '1' === (string) get_post_meta( $post->ID, EventType::META_WEEKEND, true );
+		$start_date = (string) get_post_meta( $post->ID, EventType::META_START_DATE, true );
+		$end_date   = (string) get_post_meta( $post->ID, EventType::META_END_DATE, true );
 
 		$parts = array(
 			'<span class="canetons-planning__title">' . esc_html( get_the_title( $post ) ) . '</span>',
-			'<span class="canetons-planning__date">' . esc_html( self::format_date( $date, $weekend ) ) . '</span>',
+			'<span class="canetons-planning__date">' . esc_html( self::format_date( $start_date, $end_date ) ) . '</span>',
 		);
 
 		$time = self::format_time_range(
@@ -99,24 +103,25 @@ final class Planning {
 	}
 
 	/**
-	 * French date, single day or two-day range. Anchored at noon so the site
-	 * timezone can never shift a date-only value onto the wrong calendar day.
-	 * Returns the raw string; the caller escapes it.
+	 * French date, single day or a range. Anchored at noon so the site timezone
+	 * can never shift a date-only value onto the wrong calendar day. Returns the
+	 * raw string; the caller escapes it.
 	 */
-	private static function format_date( string $date, bool $weekend ): string {
+	private static function format_date( string $start_date, string $end_date ): string {
 		try {
-			$range = EventDates::range( $date, $weekend );
+			$multi_day = EventDates::is_multi_day( $start_date, $end_date );
+			$start     = EventDates::parse_date( $start_date );
 		} catch ( \InvalidArgumentException ) {
 			return '';
 		}
 
-		$start_ts = $range['start']->getTimestamp() + 12 * HOUR_IN_SECONDS;
+		$start_ts = $start->getTimestamp() + 12 * HOUR_IN_SECONDS;
 
-		if ( null === $range['end'] ) {
+		if ( ! $multi_day ) {
 			return (string) wp_date( 'l j F Y', $start_ts );
 		}
 
-		$end_ts = $range['end']->getTimestamp() + 12 * HOUR_IN_SECONDS;
+		$end_ts = EventDates::parse_date( $end_date )->getTimestamp() + 12 * HOUR_IN_SECONDS;
 		return wp_date( 'l j F', $start_ts ) . ' – ' . wp_date( 'l j F Y', $end_ts );
 	}
 

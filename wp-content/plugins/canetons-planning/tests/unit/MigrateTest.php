@@ -33,6 +33,14 @@ final class MigrateTest extends TestCase {
 		$this->assertSame( 'bass_drum', Migrate::instrument_slug_for( 'Grosses-Caisse' ) );
 	}
 
+	public function test_instrument_matching_is_tolerant(): void {
+		// Case, surrounding/repeated whitespace, hyphens and accents do not
+		// prevent a match.
+		$this->assertSame( 'trumpet', Migrate::instrument_slug_for( '  TROMPETTE ' ) );
+		$this->assertSame( 'committee', Migrate::instrument_slug_for( 'comite' ) );
+		$this->assertSame( 'bass_drum', Migrate::instrument_slug_for( 'grosses caisse' ) );
+	}
+
 	public function test_an_unknown_or_empty_instrument_maps_to_nothing(): void {
 		$this->assertSame( '', Migrate::instrument_slug_for( 'Saxophone' ) );
 		$this->assertSame( '', Migrate::instrument_slug_for( '' ) );
@@ -44,5 +52,11 @@ final class MigrateTest extends TestCase {
 		$this->assertSame( 'jeanpaul@membres.lescanetons.invalid', Migrate::email_for( 'jean paul' ) );
 		// A username with nothing usable still yields a valid, deliverable-proof address.
 		$this->assertSame( 'membre@membres.lescanetons.invalid', Migrate::email_for( 'é!' ) );
+	}
+
+	public function test_a_suffix_disambiguates_colliding_addresses(): void {
+		$this->assertSame( 'lucas@membres.lescanetons.invalid', Migrate::email_for( 'lucas', 1 ) );
+		$this->assertSame( 'lucas-2@membres.lescanetons.invalid', Migrate::email_for( 'lucas', 2 ) );
+		$this->assertSame( 'membre-3@membres.lescanetons.invalid', Migrate::email_for( 'é!', 3 ) );
 	}
 }

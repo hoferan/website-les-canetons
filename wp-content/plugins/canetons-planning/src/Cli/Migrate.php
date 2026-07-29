@@ -27,6 +27,7 @@ use Canetons\Planning\Instruments;
 use Canetons\Planning\Roles;
 use WP_CLI;
 use mysqli;
+use mysqli_result;
 
 final class Migrate {
 	/** Meta key linking a migrated user or post back to its old row id. */
@@ -48,28 +49,61 @@ final class Migrate {
 
 	/**
 	 * Old French instrument name to our slug, or '' when it does not match a
-	 * known section. Instruments::all() is the single source of truth, so the
-	 * mapping is just its label => slug inverse.
+	 * known section. Instruments::all() is the single source of truth; matching
+	 * is tolerant of case, surrounding and repeated whitespace, hyphens and
+	 * accents, so a minor spelling difference between the old data and our labels
+	 * still maps. It does NOT bridge genuinely different words (singular vs
+	 * plural, say) — the labels themselves must match the old section names for
+	 * those.
 	 */
 	public static function instrument_slug_for( string $name ): string {
-		$name = trim( $name );
-		if ( '' === $name ) {
+		$normalised = self::normalise_label( $name );
+		if ( '' === $normalised ) {
 			return '';
 		}
 
-		$by_label = array_flip( Instruments::all() );
-		return $by_label[ $name ] ?? '';
+		foreach ( Instruments::all() as $slug => $label ) {
+			if ( self::normalise_label( $label ) === $normalised ) {
+				return $slug;
+			}
+		}
+
+		return '';
+	}
+
+	/** Lower-case, accent-folded, punctuation-stripped form for tolerant matching. */
+	private static function normalise_label( string $value ): string {
+		$value = trim( $value );
+		if ( '' === $value ) {
+			return '';
+		}
+
+		$value = function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+
+		$from  = array( 'à', 'â', 'ä', 'é', 'è', 'ê', 'ë', 'ï', 'î', 'ô', 'ö', 'ù', 'û', 'ü', 'ç' );
+		$to    = array( 'a', 'a', 'a', 'e', 'e', 'e', 'e', 'i', 'i', 'o', 'o', 'u', 'u', 'u', 'c' );
+		$value = str_replace( $from, $to, $value );
+
+		$value = (string) preg_replace( '/[^a-z0-9 ]+/', ' ', $value );
+		$value = (string) preg_replace( '/\s+/', ' ', $value );
+
+		return trim( $value );
 	}
 
 	/**
 	 * The synthetic address for a member (spec §7). Members have no email, but
 	 * WordPress requires one; `.invalid` (RFC 2606) can never deliver. Pure — the
-	 * local part is reduced to a safe, lower-case token without WordPress.
+	 * local part is reduced to a safe, lower-case token without WordPress. The
+	 * $suffix disambiguates two usernames that reduce to the same local part, so
+	 * neither member is dropped for a duplicate address.
 	 */
-	public static function email_for( string $username ): string {
+	public static function email_for( string $username, int $suffix = 1 ): string {
 		$local = strtolower( (string) preg_replace( '/[^A-Za-z0-9._-]/', '', $username ) );
 		if ( '' === $local ) {
 			$local = 'membre';
+		}
+		if ( $suffix > 1 ) {
+			$local .= '-' . $suffix;
 		}
 
 		return $local . '@membres.lescanetons.invalid';
@@ -132,15 +166,15 @@ final class Migrate {
 		WP_CLI::log( '== Members ==' );
 
 		$instruments = array();
-		$result      = $old->query( 'SELECT id, name FROM instruments' );
-		while ( $result && ( $row = $result->fetch_assoc() ) ) {
+		$result      = $this->query( $old, 'SELECT id, name FROM instruments' );
+		while ( ( $row = $result->fetch_assoc() ) ) {
 			$instruments[ (int) $row['id'] ] = (string) $row['name'];
 		}
 
 		$created = 0;
 		$skipped = 0;
-		$result  = $old->query( 'SELECT id, username, role, instrument_id FROM users' );
-		while ( $result && ( $row = $result->fetch_assoc() ) ) {
+		$result  = $this->query( $old, 'SELECT id, username, role, instrument_id FROM users' );
+		while ( ( $row = $result->fetch_assoc() ) ) {
 			$old_id   = (int) $row['id'];
 			$username = (string) $row['username'];
 
@@ -164,7 +198,7 @@ final class Migrate {
 				array(
 					'user_login' => $username,
 					'user_pass'  => wp_generate_password( 24, true, true ),
-					'user_email' => self::email_for( $username ),
+					'user_email' => $this->unique_email( $username ),
 					'role'       => $role,
 				)
 			);
@@ -183,6 +217,15 @@ final class Migrate {
 		}
 
 		WP_CLI::log( "  members: {$created} created, {$skipped} skipped" );
+	}
+
+	/** The first synthetic address for a username that no existing user holds. */
+	private function unique_email( string $username ): string {
+		$suffix = 1;
+		while ( email_exists( self::email_for( $username, $suffix ) ) ) {
+			++$suffix;
+		}
+		return self::email_for( $username, $suffix );
 	}
 
 	private function already_migrated_user( int $old_id ): bool {
@@ -204,10 +247,11 @@ final class Migrate {
 
 		$created = 0;
 		$skipped = 0;
-		$result  = $old->query(
+		$result  = $this->query(
+			$old,
 			'SELECT id, date, title, start_time, end_time, location, attire, weekend FROM events'
 		);
-		while ( $result && ( $row = $result->fetch_assoc() ) ) {
+		while ( ( $row = $result->fetch_assoc() ) ) {
 			$old_id = (int) $row['id'];
 
 			if ( $this->already_migrated_event( $old_id ) ) {
@@ -236,12 +280,21 @@ final class Migrate {
 				continue;
 			}
 
-			update_post_meta( $post_id, EventType::META_DATE, EventType::sanitize_date( (string) $row['date'] ) );
+			// The old model had a single date plus a `weekend` flag; the new one
+			// has explicit start and end dates. A weekend event's end is the day
+			// after its date; a normal event ends the same day.
+			$start_date = EventType::sanitize_date( (string) $row['date'] );
+			$end_date   = $start_date;
+			if ( 1 === (int) $row['weekend'] && '' !== $start_date ) {
+				$end_date = EventDates::parse_date( $start_date )->modify( '+1 day' )->format( 'Y-m-d' );
+			}
+
+			update_post_meta( $post_id, EventType::META_START_DATE, $start_date );
+			update_post_meta( $post_id, EventType::META_END_DATE, $end_date );
 			update_post_meta( $post_id, EventType::META_START_TIME, EventType::sanitize_time( (string) $row['start_time'] ) );
 			update_post_meta( $post_id, EventType::META_END_TIME, EventType::sanitize_time( (string) $row['end_time'] ) );
 			update_post_meta( $post_id, EventType::META_LOCATION, sanitize_text_field( (string) $row['location'] ) );
 			update_post_meta( $post_id, EventType::META_ATTIRE, sanitize_text_field( (string) ( $row['attire'] ?? '' ) ) );
-			update_post_meta( $post_id, EventType::META_WEEKEND, EventType::sanitize_weekend( $row['weekend'] ) );
 			update_post_meta( $post_id, self::MIGRATED_FROM, $old_id );
 			++$created;
 		}
@@ -268,6 +321,9 @@ final class Migrate {
 	private function connect( array $assoc_args ): mysqli {
 		$creds = $this->credentials( $assoc_args );
 
+		// Report OFF (not strict): a strict global mode would also make
+		// WordPress's own $wpdb throw during the writes below. Query failures are
+		// caught explicitly in query() instead.
 		mysqli_report( MYSQLI_REPORT_OFF );
 		$old = @mysqli_connect( $creds['host'], $creds['user'], $creds['password'], $creds['name'] );
 
@@ -277,6 +333,19 @@ final class Migrate {
 
 		$old->set_charset( 'utf8mb4' );
 		return $old;
+	}
+
+	/**
+	 * Run a read query, failing loudly on error rather than treating a failed
+	 * query as an empty result set — a wrong table, missing grant or renamed
+	 * column must stop the migration, not silently migrate nothing.
+	 */
+	private function query( mysqli $old, string $sql ): mysqli_result {
+		$result = $old->query( $sql );
+		if ( ! $result instanceof mysqli_result ) {
+			WP_CLI::error( 'Old-database query failed: ' . $old->error . "\n  " . $sql );
+		}
+		return $result;
 	}
 
 	/**

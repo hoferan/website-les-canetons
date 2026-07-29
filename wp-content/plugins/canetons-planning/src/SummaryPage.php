@@ -68,7 +68,7 @@ final class SummaryPage {
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
 				'no_found_rows'  => true,
-				'meta_key'       => EventType::META_DATE,
+				'meta_key'       => EventType::META_START_DATE,
 				'orderby'        => 'meta_value',
 				'order'          => 'ASC',
 			)

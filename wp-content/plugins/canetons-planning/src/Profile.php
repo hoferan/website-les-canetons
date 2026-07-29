@@ -22,12 +22,14 @@ final class Profile {
 	 * Render the section <select> on the profile screen. Hooked on
 	 * `show_user_profile` and `edit_user_profile`.
 	 *
-	 * Shown only to someone who may edit this user — the same capability the save
-	 * side enforces — so a member cannot see (or, below, set) the field on their
-	 * own profile.
+	 * Gated on `edit_users` (the plural primitive: managing OTHER users), not
+	 * `edit_user`. WordPress grants every role `edit_user` on ITSELF, so an
+	 * `edit_user` check would let a member set their own section — defeating the
+	 * "administrator-managed" rule of spec §3.3 and skewing the per-instrument
+	 * counts. `edit_users` is held only by user administrators.
 	 */
 	public static function render_field( WP_User $user ): void {
-		if ( ! current_user_can( 'edit_user', $user->ID ) ) {
+		if ( ! current_user_can( 'edit_users' ) ) {
 			return;
 		}
 
@@ -65,13 +67,13 @@ final class Profile {
 	 * `edit_user_profile_update`.
 	 *
 	 * The capability check and the value sanitization are the security boundary:
-	 * only someone who may edit the user may change it, and the stored value can
-	 * only ever be a known slug or the empty string ({@see Instruments::sanitize}
-	 * runs here and again through register_meta()). An empty value deletes the
-	 * meta rather than storing "".
+	 * only a user administrator (`edit_users`, not the self-granted `edit_user`)
+	 * may change it, and the stored value can only ever be a known slug or the
+	 * empty string ({@see Instruments::sanitize} runs here and again through
+	 * register_meta()). An empty value deletes the meta rather than storing "".
 	 */
 	public static function save_field( int $user_id ): void {
-		if ( ! current_user_can( 'edit_user', $user_id ) ) {
+		if ( ! current_user_can( 'edit_users' ) ) {
 			return;
 		}
 
