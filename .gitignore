@@ -42,6 +42,12 @@ vendor/
 .superpowers
 .tmp
 
+# Local database + uploads snapshots (npm run wp:snapshot). Content is not
+# tracked (spec §10), so these are the only local copy while page copy is being
+# authored — and they hold whatever the local database contains, which is real
+# data if a `canetons migrate` run preceded the snapshot.
+/.snapshots/
+
 # --- Claude Code ------------------------------------------------------------
 # per-machine Claude Code settings (the tracked .claude/settings.json holds the
 # team-wide hooks; this file is personal overrides only)

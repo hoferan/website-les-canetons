@@ -90,31 +90,119 @@ function canetons_default_language(): string {
 }
 
 /**
+ * The language tree one specific post sits in, or '' when it sits in neither.
+ *
+ * Strict on purpose, unlike {@see canetons_current_language()}: it does NOT fall
+ * back to the default language. A page outside both trees — the Privacy Policy
+ * draft, say — has no counterpart, and must not be advertised as a translation of
+ * one.
+ */
+function canetons_post_tree_language( WP_Post $post ): string {
+	$languages = canetons_languages();
+
+	$ancestors = get_post_ancestors( $post );
+	$top_id    = empty( $ancestors ) ? $post->ID : (int) end( $ancestors );
+	$top       = get_post( $top_id );
+
+	return ( $top instanceof WP_Post && isset( $languages[ $top->post_name ] ) )
+		? $top->post_name
+		: '';
+}
+
+/**
  * The language of the current request: the slug of the queried page's top-level
  * ancestor when that is a language tree, else the first URL segment, else the
  * default.
  */
 function canetons_current_language(): string {
-	$languages = canetons_languages();
-
 	$queried = get_queried_object();
 	if ( $queried instanceof WP_Post ) {
-		$ancestors = get_post_ancestors( $queried );
-		$top_id    = empty( $ancestors ) ? $queried->ID : (int) end( $ancestors );
-		$top       = get_post( $top_id );
-		if ( $top instanceof WP_Post && isset( $languages[ $top->post_name ] ) ) {
-			return $top->post_name;
+		$tree = canetons_post_tree_language( $queried );
+		if ( '' !== $tree ) {
+			return $tree;
 		}
 	}
 
-	$path    = trim( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ), '/' );
-	$segment = strtok( $path, '/' );
+	$languages = canetons_languages();
+	$path      = trim( (string) wp_parse_url( $_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH ), '/' );
+	$segment   = strtok( $path, '/' );
 	if ( false !== $segment && isset( $languages[ $segment ] ) ) {
 		return $segment;
 	}
 
 	return canetons_default_language();
 }
+
+/**
+ * Advertise the two trees as translations of one another, with hreflang.
+ *
+ * The bilingual design shipped without these and listed them as a possible later
+ * addition; the data has since arrived, because every scaffolded page carries its
+ * counterpart's URL in `_canetons_lang_alt`. Emitting them needs no plugin and
+ * introduces no second source of truth. Without them the two trees look to a
+ * search engine like unrelated pages that happen to duplicate each other.
+ *
+ * The set is self-referential — each page advertises itself as well as its
+ * counterpart — which is what search engines expect; a set that omits the current
+ * page is ignored. `x-default` points at the default tree, matching the root
+ * redirect. Using the single `_canetons_lang_alt` value for "the other language"
+ * assumes exactly two trees, which the design states outright.
+ */
+add_action(
+	'wp_head',
+	static function (): void {
+		if ( ! is_singular() ) {
+			return;
+		}
+
+		$queried = get_queried_object();
+		if ( ! $queried instanceof WP_Post ) {
+			return;
+		}
+
+		$language = canetons_post_tree_language( $queried );
+		if ( '' === $language ) {
+			return;
+		}
+
+		$languages = canetons_languages();
+		$override  = (string) get_post_meta( $queried->ID, '_canetons_lang_alt', true );
+
+		$urls = array( $language => (string) get_permalink( $queried ) );
+
+		foreach ( $languages as $slug => $tag ) {
+			if ( $slug === $language ) {
+				continue;
+			}
+
+			if ( '' !== $override ) {
+				$urls[ $slug ] = $override;
+				continue;
+			}
+
+			$landing       = get_page_by_path( $slug );
+			$urls[ $slug ] = $landing
+				? (string) get_permalink( $landing )
+				: home_url( '/' . $slug . '/' );
+		}
+
+		foreach ( $urls as $slug => $url ) {
+			printf(
+				'<link rel="alternate" hreflang="%s" href="%s" />' . "\n",
+				esc_attr( $languages[ $slug ] ),
+				esc_url( $url )
+			);
+		}
+
+		$default = canetons_default_language();
+		if ( isset( $urls[ $default ] ) ) {
+			printf(
+				'<link rel="alternate" hreflang="x-default" href="%s" />' . "\n",
+				esc_url( $urls[ $default ] )
+			);
+		}
+	}
+);
 
 /** Emit the correct <html lang="..."> for the current tree (accessibility + SEO). */
 add_filter(
