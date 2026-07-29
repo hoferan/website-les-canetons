@@ -90,10 +90,11 @@ strings.
 
 ### 3. Structured data
 
-`Planning::render()` appends one `<script type="application/ld+json">` holding an
-array of `Event` nodes, one per event already rendered. Emitting from the
-shortcode means the markup is correct wherever the shortcode is placed and can
-never describe a different set of events than the visible list.
+`Planning::render()` appends one `<script type="application/ld+json">` holding a
+single JSON-LD document: `@context` at the top level and one `Event` node per
+rendered event inside an `@graph`. Emitting from the shortcode means the markup is
+correct wherever the shortcode is placed and can never describe a different set of
+events than the visible list.
 
 Per event:
 
@@ -102,7 +103,7 @@ Per event:
 | `@type` | `Event` | |
 | `name` | post title | |
 | `startDate` | start date + start time | ISO 8601 with the Europe/Zurich offset; **date-only** when no time is set |
-| `endDate` | end date + end time | omitted when it would equal `startDate` |
+| `endDate` | end date + end time | omitted unless **strictly later** than `startDate`, and expressed at the start's granularity — see below |
 | `location` | location meta | a `Place` with `name` only |
 | `organizer` | fixed | `Organization`, the band, `url` = `home_url()` |
 | `url` | the current page's permalink | see the constraint below |
@@ -112,6 +113,33 @@ Per event:
 Fields deliberately absent: `image`, `offers`, `performer`, `description`. None
 exists as event data today, and inventing them would put unverifiable claims in
 machine-readable form.
+
+#### The endDate rule, as implemented
+
+Two refinements came out of implementation, both narrower than the table above
+first suggested:
+
+- **Strictly later, compared as moments — not as formatted strings.** A date-only
+  end and a datetime start always differ *as strings*, so a string comparison made
+  an event at 20:00 with no end time claim to end at midnight the same day, twenty
+  hours before it began.
+- **The end is expressed at the start's granularity.** An end time with no start
+  time otherwise produced a date-only `startDate` beside a timed `endDate`: mixed
+  granularity, and an end time the rendered list never shows, since the list prints
+  no time at all when the start time is absent. Structured data must not claim more
+  than the page does.
+
+Both are reachable through the meta box, which offers Début and Fin times
+independently.
+
+#### Names are entity-decoded
+
+The `name` fields carry the **raw** authored title and site name, HTML-entity
+decoded. `get_the_title()` would run `wptexturize()` — turning `&` into `&#038;` —
+and prepend `protected_title_format`; both are display concerns, and since a
+JSON-LD consumer does not HTML-decode, either would put a literally wrong name in
+machine-readable output. Decoding is safe precisely because the `JSON_HEX_*` flags
+neutralise whatever it yields: the two defences compose rather than conflict.
 
 #### Two constraints, recorded rather than discovered later
 

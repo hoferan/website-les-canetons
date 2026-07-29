@@ -34,7 +34,7 @@ Note: `npm run wp:test:unit` and `wp:test:integration` do **not** forward `--fil
 - Create: `wp-content/plugins/canetons-planning/src/EventSchema.php`
 - Test: `wp-content/plugins/canetons-planning/tests/unit/EventSchemaTest.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `wp-content/plugins/canetons-planning/tests/unit/EventSchemaTest.php`:
 
@@ -209,12 +209,12 @@ final class EventSchemaTest extends TestCase {
 }
 ```
 
-- [ ] **Step 2: Run the unit suite to verify it fails**
+- [x] **Step 2: Run the unit suite to verify it fails**
 
 Run: `npm run wp:test:unit`
 Expected: FAIL — `Error: Class "Canetons\Planning\EventSchema" not found`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `wp-content/plugins/canetons-planning/src/EventSchema.php`:
 
@@ -356,12 +356,12 @@ final class EventSchema {
 }
 ```
 
-- [ ] **Step 4: Run the unit suite to verify it passes**
+- [x] **Step 4: Run the unit suite to verify it passes**
 
 Run: `npm run wp:test:unit`
 Expected: PASS — the previous 45 tests plus 12 new ones, all green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add wp-content/plugins/canetons-planning/src/EventSchema.php wp-content/plugins/canetons-planning/tests/unit/EventSchemaTest.php
@@ -376,7 +376,7 @@ git commit -m "feat(wp): add the pure Event JSON-LD builder"
 - Modify: `wp-content/plugins/canetons-planning/src/Planning.php`
 - Test: `wp-content/plugins/canetons-planning/tests/integration/PlanningListTest.php`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append these methods inside the existing `PlanningListTest` class, before its closing brace:
 
@@ -446,12 +446,12 @@ Append these methods inside the existing `PlanningListTest` class, before its cl
 	}
 ```
 
-- [ ] **Step 2: Run the integration suite to verify it fails**
+- [x] **Step 2: Run the integration suite to verify it fails**
 
 Run: `npm run wp:test:integration`
 Expected: FAIL — four failures, each on "the planning list should emit a JSON-LD block" or the `assertStringNotContainsString` for the empty case passing trivially. The first three fail because no block exists yet.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `wp-content/plugins/canetons-planning/src/Planning.php`, replace the whole `render()` method with:
 
@@ -569,12 +569,12 @@ In `wp-content/plugins/canetons-planning/src/Planning.php`, replace the whole `r
 	}
 ```
 
-- [ ] **Step 4: Run the integration suite to verify it passes**
+- [x] **Step 4: Run the integration suite to verify it passes**
 
 Run: `npm run wp:test:integration`
 Expected: PASS — the previous 42 tests plus 4 new ones.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add wp-content/plugins/canetons-planning/src/Planning.php wp-content/plugins/canetons-planning/tests/integration/PlanningListTest.php
@@ -591,7 +591,7 @@ git commit -m "feat(wp): emit Event JSON-LD from the planning shortcode"
 
 The empty-state filter landed in Task 2 because that code path was rewritten there. This task adds the attire label and the date formats.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append inside `PlanningListTest`, before its closing brace:
 
@@ -639,12 +639,12 @@ Append inside `PlanningListTest`, before its closing brace:
 
 Note: the date-format test pins a fixed date in 2026 rather than a relative one, so the assertion is about formatting and not about today. That date is in the future relative to the project's timeline; if it ever falls into the past, change both the event date and the expected string together.
 
-- [ ] **Step 2: Run the integration suite to verify it fails**
+- [x] **Step 2: Run the integration suite to verify it fails**
 
 Run: `npm run wp:test:integration`
 Expected: FAIL — `test_the_attire_label_is_filterable` finds "Tenue" still present, and `test_the_date_format_is_filterable` does not find `22.08.2026`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 In `src/Planning.php`, replace the attire block inside `render_event()`. Find:
 
@@ -709,12 +709,12 @@ Then replace the whole `format_date()` method with:
 	}
 ```
 
-- [ ] **Step 4: Run both suites to verify they pass**
+- [x] **Step 4: Run both suites to verify they pass**
 
 Run: `npm run wp:test`
 Expected: PASS — unit 57, integration 50.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add wp-content/plugins/canetons-planning/src/Planning.php wp-content/plugins/canetons-planning/tests/integration/PlanningListTest.php
@@ -728,7 +728,7 @@ git commit -m "feat(wp): make the planning list's three French strings filterabl
 **Files:**
 - Modify: `wp-content/themes/canetons/functions.php`
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 There is no test step here: the theme is not covered by either suite (the plugin's integration suite loads the plugin, not the theme), and this is verified over HTTP in Task 6. Append to `wp-content/themes/canetons/functions.php`:
 
@@ -775,7 +775,7 @@ add_filter(
 );
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add wp-content/themes/canetons/functions.php
@@ -791,7 +791,7 @@ git commit -m "feat(theme): German planning labels on the /de/ tree"
 
 The pages must exist in every environment. Locally, run the command below; on TEST and PROD they arrive with the one-time seed import, per the content-propagation design.
 
-- [ ] **Step 1: Create both pages, linked as twins, and add them to the menus**
+- [x] **Step 1: Create both pages, linked as twins, and add them to the menus**
 
 Create the file below with your editor at
 `wp-content/plugins/canetons-planning/agenda-pages.php`. That location is not
@@ -871,7 +871,7 @@ foreach ( $menus as $lang => $title ) {
 }
 ```
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
 ```bash
 npm run wp:cli eval-file /var/www/html/wp-content/plugins/canetons-planning/agenda-pages.php
@@ -879,7 +879,7 @@ npm run wp:cli eval-file /var/www/html/wp-content/plugins/canetons-planning/agen
 
 Expected output: `page fr/agenda => N`, `page de/termine => N`, `twin links set`, then `Menu FR updated` and `Menu DE updated`. Re-running is safe — pages are matched by path and each menu is skipped if it already links its agenda.
 
-- [ ] **Step 3: Delete the scratch file**
+- [x] **Step 3: Delete the scratch file**
 
 ```bash
 rm wp-content/plugins/canetons-planning/agenda-pages.php
@@ -888,7 +888,7 @@ git status --porcelain
 
 Expected: `git status` shows nothing — the file is gone and nothing else changed, because pages are database content.
 
-- [ ] **Step 4: Verify both pages serve**
+- [x] **Step 4: Verify both pages serve**
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8100/fr/agenda/
@@ -897,7 +897,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8100/de/termine/
 
 Expected: `200` from each. The JSON-LD block is checked in Task 6, once an event exists — with no upcoming events there is correctly no block at all.
 
-- [ ] **Step 5: Take a snapshot, since this is content**
+- [x] **Step 5: Take a snapshot, since this is content**
 
 ```bash
 npm run wp:snapshot
@@ -912,7 +912,7 @@ The two pages exist only in the database. A `npm run wp:reset` would destroy the
 **Files:**
 - None. Verification only.
 
-- [ ] **Step 1: Create one upcoming event to have something to render**
+- [x] **Step 1: Create one upcoming event to have something to render**
 
 ```bash
 npm run wp:cli post create -- --post_type=canetons_event --post_title="Concert de gala" --post_status=publish --porcelain
@@ -929,7 +929,7 @@ npm run wp:cli post meta update -- <ID> _canetons_event_location Fribourg
 npm run wp:cli post meta update -- <ID> _canetons_event_attire Costume
 ```
 
-- [ ] **Step 2: Check the French agenda**
+- [x] **Step 2: Check the French agenda**
 
 ```bash
 curl -s http://localhost:8100/fr/agenda/ | grep -o 'Tenue : Costume'
@@ -938,7 +938,7 @@ curl -s http://localhost:8100/fr/agenda/ | grep -o 'samedi 5 décembre 2026'
 
 Expected: both strings found — French label, French date.
 
-- [ ] **Step 3: Check the German agenda**
+- [x] **Step 3: Check the German agenda**
 
 ```bash
 curl -s http://localhost:8100/de/termine/ | grep -o 'Kleidung: Costume'
@@ -948,7 +948,7 @@ curl -s http://localhost:8100/de/termine/ | grep -c 'Tenue'
 
 Expected: the German label and the numeric date found; the `Tenue` count is `0`.
 
-- [ ] **Step 4: Check the structured data is valid and points at the right page**
+- [x] **Step 4: Check the structured data is valid and points at the right page**
 
 ```bash
 curl -s http://localhost:8100/fr/agenda/ \
@@ -958,7 +958,7 @@ curl -s http://localhost:8100/fr/agenda/ \
 
 Expected: valid JSON printing, `"url": "http://localhost:8100/fr/agenda/"`, `"startDate": "2026-12-05T20:00:00+01:00"` (December is CET, so `+01:00`), and a `Place` named `Fribourg`.
 
-- [ ] **Step 5: Delete the test event**
+- [x] **Step 5: Delete the test event**
 
 ```bash
 npm run wp:cli post delete -- <ID> --force
@@ -966,7 +966,7 @@ npm run wp:cli post delete -- <ID> --force
 
 The Phase 5 export must carry pages and media, never events.
 
-- [ ] **Step 6: Run both suites once more**
+- [x] **Step 6: Run both suites once more**
 
 Run: `npm run wp:test`
 Expected: PASS, unit 57 and integration 50.
@@ -980,7 +980,7 @@ Expected: PASS, unit 57 and integration 50.
 - Modify: `docs/cutover.md:66`
 - Modify: `docs/desktop-bringup.md:82`
 
-- [ ] **Step 1: Amend §1.7**
+- [x] **Step 1: Amend §1.7**
 
 In `docs/superpowers/specs/2026-07-28-wordpress-migration-design.md`, find:
 
@@ -1000,13 +1000,13 @@ page and a login entry point. The agenda was added by
 requirement 1.1 already made readable without logging in.
 ```
 
-- [ ] **Step 2: Amend the two checklists**
+- [x] **Step 2: Amend the two checklists**
 
 In `docs/cutover.md`, change `Verify the **nine pages** (accueil, canetons,` to `Verify the **ten pages** (accueil, agenda, canetons,`.
 
 In `docs/desktop-bringup.md`, change `Author the **nine pages** as children of `fr` (accueil, canetons,` to `Author the **ten pages** as children of `fr` (accueil, agenda, canetons,`.
 
-- [ ] **Step 3: Confirm nothing still says nine**
+- [x] **Step 3: Confirm nothing still says nine**
 
 ```bash
 grep -rn "nine pages\|nine informational" docs/ CLAUDE.md
@@ -1014,7 +1014,7 @@ grep -rn "nine pages\|nine informational" docs/ CLAUDE.md
 
 Expected: no output.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/
