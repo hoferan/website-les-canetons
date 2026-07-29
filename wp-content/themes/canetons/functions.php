@@ -169,6 +169,77 @@ function canetons_language_switcher(): string {
 add_shortcode( 'canetons_language_switcher', static fn (): string => canetons_language_switcher() );
 
 /**
+ * The wp_navigation menu title per language tree. Filterable, so renaming a menu
+ * in wp-admin needs no theme edit.
+ *
+ * @return array<string, string>
+ */
+function canetons_language_menus(): array {
+	return (array) apply_filters(
+		'canetons_language_menus',
+		array(
+			'fr' => 'Menu FR',
+			'de' => 'Menu DE',
+		)
+	);
+}
+
+/** The wp_navigation post id for a language tree, or 0 when it has no menu. */
+function canetons_language_menu_id( string $language ): int {
+	$titles = canetons_language_menus();
+	if ( ! isset( $titles[ $language ] ) ) {
+		return 0;
+	}
+
+	$found = get_posts(
+		array(
+			'post_type'      => 'wp_navigation',
+			'post_status'    => 'publish',
+			'title'          => $titles[ $language ],
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'no_found_rows'  => true,
+		)
+	);
+
+	return empty( $found ) ? 0 : (int) $found[0];
+}
+
+/**
+ * Give each language tree its own header navigation.
+ *
+ * WordPress has no per-language menu — supplying one is a large part of what a
+ * multilingual plugin is for — and a block theme's header carries a single
+ * core/navigation block with no `ref`. Core then resolves it through
+ * WP_Navigation_Fallback, which returns the most recently MODIFIED wp_navigation
+ * post, so both trees render whichever menu happened to be saved last. Deriving
+ * the menu from the current tree instead is what makes the header bilingual
+ * without a plugin and without overriding the inherited header.
+ *
+ * Only an unresolved navigation is touched. A block carrying an explicit `ref`
+ * was deliberately pinned to one menu, and a block with inner blocks holds its
+ * own links, so both are left exactly as authored.
+ */
+add_filter(
+	'render_block_data',
+	static function ( array $parsed ): array {
+		if ( 'core/navigation' !== ( $parsed['blockName'] ?? '' ) ) {
+			return $parsed;
+		}
+		if ( ! empty( $parsed['attrs']['ref'] ) || ! empty( $parsed['innerBlocks'] ) ) {
+			return $parsed;
+		}
+
+		$menu_id = canetons_language_menu_id( canetons_current_language() );
+		if ( $menu_id > 0 ) {
+			$parsed['attrs']['ref'] = $menu_id;
+		}
+
+		return $parsed;
+	}
+);
+
+/**
  * Optional: send the bare site root to the default language tree, so both
  * languages live symmetrically under /fr/ and /de/. Return '' from the
  * `canetons_root_redirect` filter to disable, or a different URL to retarget.
