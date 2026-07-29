@@ -29,10 +29,22 @@ final class ResponsesTableTest extends WP_UnitTestCase {
 		return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table}" );
 	}
 
+	/**
+	 * SHOW TABLES cannot answer this question here: the WordPress test harness
+	 * filters `query` to rewrite CREATE TABLE into CREATE TEMPORARY TABLE, and
+	 * MariaDB omits temporary tables from both SHOW TABLES and information_schema
+	 * while still reading and writing them normally. SHOW COLUMNS does see them,
+	 * and asserting the column set is the stronger check in any case — it pins the
+	 * schema of spec §3.2, not merely the table's existence.
+	 */
 	public function test_the_table_exists_after_creation(): void {
 		global $wpdb;
 		$table = Responses::table();
-		$this->assertSame( $table, $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) );
+
+		$this->assertSame(
+			array( 'id', 'user_id', 'event_id', 'answer', 'created_at', 'updated_at' ),
+			$wpdb->get_col( "SHOW COLUMNS FROM {$table}" )
+		);
 	}
 
 	public function test_answering_again_updates_rather_than_inserts(): void {

@@ -31,6 +31,23 @@ final class EventTypeTest extends WP_UnitTestCase {
 		$this->assertTrue( $object->show_ui );
 	}
 
+	/**
+	 * Guards the root cause directly: listing the meta caps edit_post/read_post/
+	 * delete_post in the post type's `capabilities` makes core register
+	 * canetons_manage_events as a meta cap aliasing delete_post, after which every
+	 * check of it resolves to do_not_allow for every user. Assert on the global
+	 * core builds, so the mistake fails here rather than as a puzzling permission
+	 * denial in wp-admin.
+	 */
+	public function test_the_manage_cap_is_not_itself_a_meta_capability(): void {
+		global $post_type_meta_caps;
+
+		$this->assertArrayNotHasKey(
+			Roles::CAP_MANAGE_EVENTS,
+			(array) $post_type_meta_caps
+		);
+	}
+
 	public function test_only_manage_events_holders_hold_the_type_edit_cap(): void {
 		// The post type maps its `edit_posts` cap onto canetons_manage_events;
 		// check the mapped cap, not the literal `edit_posts` primitive (which no

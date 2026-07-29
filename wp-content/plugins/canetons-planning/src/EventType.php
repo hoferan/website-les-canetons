@@ -73,17 +73,34 @@ final class EventType {
 				// (requirement 1.1). `read` is intentionally left at the core
 				// default so published events stay readable — the public list is
 				// anonymous (spec §1.1) and queries them directly.
+				//
+				// PRIMITIVE capabilities only. The meta caps `edit_post`,
+				// `read_post` and `delete_post` must NOT be listed: core inverts
+				// this array into the global $post_type_meta_caps as
+				// custom => core, so pointing several meta caps at one custom name
+				// registers that name as a meta cap itself (last one wins,
+				// `delete_post`). Every canetons_manage_events check would then be
+				// remapped to `delete_post` with no post and return do_not_allow —
+				// unsatisfiable for everyone, administrators included. With
+				// map_meta_cap on, core derives the meta caps from the primitives
+				// below, which is what actually enforces requirement 1.1.
+				//
+				// The published/private variants are load-bearing, not padding:
+				// map_meta_cap() checks edit_published_posts for a published event
+				// and edit_private_posts for a private one, so omitting them would
+				// leave the Team Direction unable to edit its own published events.
 				'capabilities' => array(
-					'edit_post'           => $manage,
-					'read_post'           => $manage,
-					'delete_post'         => $manage,
-					'edit_posts'          => $manage,
-					'edit_others_posts'   => $manage,
-					'delete_posts'        => $manage,
-					'delete_others_posts' => $manage,
-					'publish_posts'       => $manage,
-					'read_private_posts'  => $manage,
-					'create_posts'        => $manage,
+					'edit_posts'              => $manage,
+					'edit_others_posts'       => $manage,
+					'edit_published_posts'    => $manage,
+					'edit_private_posts'      => $manage,
+					'delete_posts'            => $manage,
+					'delete_others_posts'     => $manage,
+					'delete_published_posts'  => $manage,
+					'delete_private_posts'    => $manage,
+					'publish_posts'           => $manage,
+					'read_private_posts'      => $manage,
+					'create_posts'            => $manage,
 				),
 			)
 		);
