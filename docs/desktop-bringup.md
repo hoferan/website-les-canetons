@@ -34,7 +34,7 @@ Related docs: `README.md` (commands), `docs/cutover.md` (PROD cutover),
 - [ ] `npm run wp:cli theme activate canetons` (setup activates the plugin, not
       the theme).
 - [ ] At `http://localhost:8100` / `/wp-admin` (admin / admin): the theme renders
-      in **Duck & Brass**, and the three patterns (committee cards, sponsor grid,
+      in **Duck & Brass**, and the three patterns (comité sections, sponsor links,
       instrument sections) appear in the editor inserter.
 - [ ] Create an **Événement** — the meta box shows start date/time **and** end
       date/time (no weekend checkbox). A multi-day event stays on the list until

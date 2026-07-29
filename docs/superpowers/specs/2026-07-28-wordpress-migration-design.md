@@ -176,6 +176,24 @@ moniteurs, comité / team direction, cd, multimedia, sponsors. Plus the contact
 page and a login entry point. The multimedia page links out to an externally
 hosted gallery rather than holding media itself.
 
+Three of those pages have a specific shape, verified against the live site on
+2026-07-29 (an earlier revision of this section described them wrongly, and the
+theme's block patterns inherited the error):
+
+- **sponsors** is "Sponsors et Liens Amis" — three categorised lists of **text
+  links**: Les Carnavals, Les Guggens, Les Amis. There are **no sponsor logos**.
+- **comité / team direction** is three sections — Le comité, Direction musicale,
+  Le parrain et la marraine — each one **group photo** plus a text list of
+  function and name. Not one card per person.
+- **canetons** is a vertical run of sections — Nos Canetons, La Direction
+  Musicale, and one per instrument group — each a **section photo** plus the
+  members' names. Not a card grid.
+
+The shared shape is heading → photo → text list. Section headings on the canetons
+page are page copy ("Nos Trompettes") and are deliberately not the plugin's
+instrument labels ("Trompette"), which are the taxonomy behind the attendance
+summary and the migration's matching.
+
 ## §2 Architecture
 
 One WordPress installation at the document root. Four parts:
@@ -349,9 +367,11 @@ overrides we actually want; chosen over configuring Twenty Twenty-Five directly
 so that customisations survive parent updates.
 
 The design lives in `theme.json` — colour palette, typography, spacing scale —
-rather than in stylesheets. Recurring layouts become block patterns: the
-sponsor grid, the committee cards, the instrument-section cards. Custom CSS is
-permitted only where `theme.json` cannot express something.
+rather than in stylesheets. Recurring layouts become block patterns: the sponsor
+link lists, the committee sections, the instrument sections — all three following
+the heading → photo → text list shape of §1.7, not the card grids an earlier
+revision of this design assumed. Custom CSS is permitted only where `theme.json`
+cannot express something.
 
 A design phase precedes theme work and settles palette, typography and page
 layouts. Today's appearance is not a reference (§Non-goals); the ~2,200 lines of
@@ -413,8 +433,8 @@ Carried over:
   communicated out of band. (Even where bcrypt hashes might validate, mixing
   hash provenance across a platform change is not worth the ambiguity.)
 - **Events** — past and upcoming, as `canetons_event` posts with meta.
-- **Page content and media** — French copy, photographs and sponsor logos,
-  re-entered and re-uploaded.
+- **Page content and media** — French copy, the section and committee photographs
+  of §1.7, and the sponsor/friend link lists, re-entered and re-uploaded.
 
 Not carried over: souper signups and contact messages. Both tables are exported
 to a dated SQL dump kept outside the web root as an archive.
@@ -580,7 +600,7 @@ rather than being adapted.
 | --- | --- |
 | Design direction — palette, typography, page layouts | 3–5 |
 | Theme: `theme.json`, templates, block patterns | 4–6 |
-| Content entry: nine pages, images, sponsor logos | 3–4 |
+| Content entry: nine pages, photographs, sponsor/friend links | 3–4 |
 | Contact form and SMTP configuration | 1 |
 | `canetons-planning` plugin | 8–12 |
 | Data import: members and events | 2–3 |
