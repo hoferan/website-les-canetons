@@ -121,10 +121,16 @@ final class Migrate {
 	 * from it. Explicit --old-db-* options override individual values.
 	 *
 	 * [--old-db-host=<host>]
+	 * : Old-database host, when not using --old-config. Default: localhost.
+	 *
 	 * [--old-db-name=<name>]
+	 * : Old-database name, when not using --old-config.
+	 *
 	 * [--old-db-user=<user>]
+	 * : Old-database user, when not using --old-config.
+	 *
 	 * [--old-db-pass=<password>]
-	 * : Old-database connection, when not using --old-config.
+	 * : Old-database password, when not using --old-config.
 	 *
 	 * [--only=<parts>]
 	 * : Comma-separated subset of `members,events`. Default: both.
