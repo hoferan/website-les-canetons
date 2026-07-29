@@ -193,6 +193,14 @@ machine-token API error contract, no i18next. User-visible strings are French
 literals in the templates and plugin; code, comments, identifiers and database
 names stay English, per the project's language convention.
 
+> **Amended.** The *public* pages are bilingual (fr-CH + de-CH) via two manual
+> page trees — see
+> `docs/superpowers/specs/2026-07-28-bilingual-public-content-design.md`. The
+> code principle here is unchanged: the plugin and members' area stay French with
+> no gettext layer; the bilingual-ness lives entirely in hand-authored content.
+> wp-admin uses WordPress's native per-user language (de-CH, fr-CH via fr_FR,
+> en-US).
+
 There is no API. Browser writes are ordinary form posts to `admin-post.php`,
 protected by WordPress nonces — which replaces Sanctum's stateful cookie flow,
 the CSRF token priming, and the `apiFetch` wrapper wholesale.
