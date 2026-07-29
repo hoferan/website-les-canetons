@@ -66,7 +66,10 @@ final class EventSchema {
 		}
 		$end_time = (string) ( $event['end_time'] ?? '' );
 
-		if ( self::moment( $end_date, $end_time, $timezone ) > self::moment( $start_date, (string) ( $event['start_time'] ?? '' ), $timezone ) ) {
+		$starts_at = self::moment( $start_date, (string) ( $event['start_time'] ?? '' ), $timezone );
+		$ends_at   = self::moment( $end_date, $end_time, $timezone );
+
+		if ( $ends_at > $starts_at ) {
 			$node['endDate'] = self::iso( $end_date, $end_time, $timezone );
 		}
 
