@@ -171,10 +171,14 @@ de réponse" count meaningful.
 
 ### 1.7 Public pages
 
-Nine informational pages: accueil, canetons, historique, commencement,
+Ten informational pages: accueil, agenda, canetons, historique, commencement,
 moniteurs, comité / team direction, cd, multimedia, sponsors. Plus the contact
 page and a login entry point. The multimedia page links out to an externally
 hosted gallery rather than holding media itself.
+
+The agenda was added by `2026-07-29-public-agenda-design.md`. It renders the public
+event list, which requirement 1.1 already made readable without logging in — the
+list existed, it simply had nowhere to live.
 
 Three of those pages have a specific shape, verified against the live site on
 2026-07-29 (an earlier revision of this section described them wrongly, and the
@@ -379,7 +383,7 @@ Bulma-based CSS are not ported.
 
 ## §6 Content
 
-The nine pages of requirement 1.7 are authored as WordPress pages in the block
+The ten pages of requirement 1.7 are authored as WordPress pages in the block
 editor, using the patterns from §5. The multimedia page keeps its outbound link
 to the external gallery.
 
@@ -600,7 +604,7 @@ rather than being adapted.
 | --- | --- |
 | Design direction — palette, typography, page layouts | 3–5 |
 | Theme: `theme.json`, templates, block patterns | 4–6 |
-| Content entry: nine pages, photographs, sponsor/friend links | 3–4 |
+| Content entry: ten pages, photographs, sponsor/friend links | 3–4 |
 | Contact form and SMTP configuration | 1 |
 | `canetons-planning` plugin | 8–12 |
 | Data import: members and events | 2–3 |

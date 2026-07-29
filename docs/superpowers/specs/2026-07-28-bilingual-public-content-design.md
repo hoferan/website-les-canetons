@@ -111,7 +111,7 @@ spec §2's "no translation layer" holds.
 
 | Risk | Mitigation |
 | --- | --- |
-| A page is edited in one language and its twin forgotten | Inherent to manual bilingual content; the switcher's per-page override makes twins easy to find, and the pair is small (nine pages) |
+| A page is edited in one language and its twin forgotten | Inherent to manual bilingual content; the switcher's per-page override makes twins easy to find, and the pair is small (ten pages) |
 | German visitors see French planning/RSVP text | By design the members' area is French; if a German members' area is ever needed, that is the point to reconsider a plugin |
 | Search engines treat the trees as unrelated/duplicate | Per-page `lang` is correct; add `hreflang` cross-links later if SEO matters |
 | The root redirect interferes with a chosen static front page | It fires only on the bare front page and is disabled by returning '' from `canetons_root_redirect` |

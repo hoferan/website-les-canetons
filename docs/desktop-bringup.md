@@ -79,7 +79,7 @@ members' area and the plugin stay French.
 
 - [ ] Create the two tree roots: a page **`fr`** (slug `fr`) and a page **`de`**
       (slug `de`).
-- [ ] Author the **nine pages** as children of `fr` (accueil, canetons,
+- [ ] Author the **ten pages** as children of `fr` (accueil, agenda, canetons,
       historique, commencement, moniteurs, comité/team direction, cd, multimédia,
       sponsors) → `/fr/accueil/` … using the theme's patterns, real French copy
       and images. The multimédia page links out to the external gallery.

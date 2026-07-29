@@ -11,7 +11,7 @@ Work top to bottom. Do not start Phase D until TEST has been seen and accepted.
 
 ## A. Prerequisites (days before)
 
-- [ ] **TEST is accepted** — theme, the nine pages, contact form, login and the
+- [ ] **TEST is accepted** — theme, the ten pages, contact form, login and the
       planning/summary flows have been reviewed on TEST and signed off.
 - [ ] **All plugin integration tests pass on Docker** — `npm run wp:test` is
       green (5 suites: capabilities, events, responses/RSVP, roster, plugin-loads).
@@ -30,7 +30,7 @@ Work top to bottom. Do not start Phase D until TEST has been seen and accepted.
 
 ## B. Stand up WordPress on PROD (Plan 7, authored directly in PROD)
 
-**Content is seeded by import, not hand-authored here** — the nine pages and
+**Content is seeded by import, not hand-authored here** — the ten pages and
 media are built once locally and imported, per
 `docs/superpowers/specs/2026-07-28-content-propagation-and-mcp-authoring-design.md`.
 The import overwrites the database (including users), so its ordering matters: it
@@ -63,7 +63,7 @@ per-environment config is applied **after**.
 - [ ] **Members plugin:** confirm the members-only planning page restriction and
       that the `canetons_*` roles look right (the plugin registers them on
       activation).
-- [ ] Verify the **nine pages** (accueil, canetons, historique, commencement,
+- [ ] Verify the **ten pages** (accueil, agenda, canetons, historique, commencement,
       moniteurs, comité/team direction, cd, multimédia, sponsors), the contact and
       login pages, the front page and menus all imported correctly and render with
       no `localhost` leaks. The multimédia page links out to the external gallery.
@@ -94,7 +94,7 @@ per-environment config is applied **after**.
       block sits **below** the host fixes in `.htaccess`.
 - [ ] Set **`blog_public` = 1** so search engines may index (it was 0 pre-launch).
 - [ ] **Smoke test on PROD** (spec §9 manual checklist):
-  - [ ] Home and each of the nine pages render, styled, no redirect loop.
+  - [ ] Home and each of the ten pages render, styled, no redirect loop.
   - [ ] Contact form submits and the committee receives the mail.
   - [ ] `wp-login.php` works; Limit Login Attempts is active.
   - [ ] Planning list shows upcoming events **while logged out**.

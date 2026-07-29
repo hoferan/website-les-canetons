@@ -9,7 +9,7 @@ for the initial build. Everything else in the migration design stands.
 
 The migration design (§6) decided the nine public pages would be authored
 **directly in PROD**, in the block editor. The consequence is that TEST, PROD
-and any local build each get their content entered by hand — the same nine pages
+and any local build each get their content entered by hand — the same ten pages
 authored up to three times.
 
 The site owner does not want to author the same pages three times. This design
@@ -31,12 +31,12 @@ application's database.
 
 ## Goals
 
-1. Author the nine pages and their media **once**, locally.
+1. Author the ten pages and their media **once**, locally.
 2. Seed that content into a fresh TEST, verify, then into PROD once at cutover —
    no retyping, no per-environment re-authoring. This is a one-time seed per
    environment, not an ongoing sync.
 3. **Optionally** automate the mechanical creation of pages with Claude over a
-   WordPress MCP server, so that "build the nine pages" becomes "generate them
+   WordPress MCP server, so that "build the ten pages" becomes "generate them
    from supplied copy and the theme's patterns."
 
 ## Non-goals
@@ -110,7 +110,7 @@ and per-environment config exist, and everything environment-specific is applied
 
 1. **Build locally — content only.** Bring up the stack
    (`npm run wp:dev && npm run wp:setup`), deploy the theme and plugin, and author
-   the nine pages using the theme's block patterns (committee cards, sponsor grid,
+   the ten pages using the theme's block patterns (comité sections, sponsor links,
    instrument sections), uploading images into the local Media Library. **Do not
    create real members, and do not run `wp canetons migrate` locally** — the
    archive must carry pages and media only, never members or events (those come
@@ -144,7 +144,7 @@ is never repeated onto it** — later fixes are edited directly in PROD.
 ## Optional: MCP-assisted page creation
 
 The authoring pass in step 1 can be automated with **Claude driving a WordPress
-MCP server**, turning "build nine pages by hand" into "generate them from supplied
+MCP server**, turning "build ten pages by hand" into "generate them from supplied
 copy and the theme's patterns."
 
 **How it works.** Install a WordPress MCP plugin (e.g. Automattic's
@@ -201,7 +201,7 @@ applied on a fresh local database.
 
 ## Testing and verification
 
-- After the TEST import: the nine pages render styled; internal links and image
+- After the TEST import: the ten pages render styled; internal links and image
   `src`s point at the TEST URL (no `localhost` leaks); the Media Library shows the
   images; menus and the front page are set.
 - The migration plugin's own import log reports the URL rewrite count.
