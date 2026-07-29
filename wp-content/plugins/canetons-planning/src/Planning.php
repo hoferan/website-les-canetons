@@ -30,8 +30,13 @@ final class Planning {
 		add_shortcode( 'canetons_planning', array( self::class, 'render' ) );
 	}
 
-	/** Query upcoming events and render the list. */
+	/** Query upcoming events and render the list, plus its structured data. */
 	public static function render(): string {
+		// Captured before the loop: wp_reset_postdata() below restores the global
+		// post, and the page URL must be the page carrying the shortcode, not the
+		// last event rendered.
+		$page_url = self::current_page_url();
+
 		$query = new WP_Query(
 			array(
 				'post_type'      => EventType::POST_TYPE,
@@ -55,16 +60,88 @@ final class Planning {
 		);
 
 		if ( ! $query->have_posts() ) {
-			return '<p class="canetons-planning__empty">Aucun événement à venir.</p>';
+			$empty = (string) apply_filters( 'canetons_planning_empty_text', 'Aucun événement à venir.' );
+			return '<p class="canetons-planning__empty">' . esc_html( $empty ) . '</p>';
 		}
 
-		$items = '';
+		$items  = '';
+		$events = array();
 		foreach ( $query->posts as $post ) {
-			$items .= self::render_event( $post );
+			$items   .= self::render_event( $post );
+			$events[] = self::event_values( $post );
 		}
 		wp_reset_postdata();
 
-		return '<ul class="canetons-planning">' . $items . '</ul>';
+		return '<ul class="canetons-planning">' . $items . '</ul>' . self::schema_script( $events, $page_url );
+	}
+
+	/**
+	 * The plain values one event contributes to the structured data. Kept separate
+	 * from render_event() so the builder receives data, never markup.
+	 *
+	 * @return array<string, string>
+	 */
+	private static function event_values( WP_Post $post ): array {
+		return array(
+			'title'      => (string) get_the_title( $post ),
+			'start_date' => (string) get_post_meta( $post->ID, EventType::META_START_DATE, true ),
+			'start_time' => (string) get_post_meta( $post->ID, EventType::META_START_TIME, true ),
+			'end_date'   => (string) get_post_meta( $post->ID, EventType::META_END_DATE, true ),
+			'end_time'   => (string) get_post_meta( $post->ID, EventType::META_END_TIME, true ),
+			'location'   => (string) get_post_meta( $post->ID, EventType::META_LOCATION, true ),
+		);
+	}
+
+	/**
+	 * The JSON-LD block, or '' when no event could be described.
+	 *
+	 * The JSON_HEX_* flags are load-bearing. PHP does not escape `<` or `>` by
+	 * default, so a title containing `</script>` would close this block and
+	 * everything after it would be parsed as HTML. Only `unfiltered_html` holders
+	 * can store such a title — WordPress kses-filters titles for everyone else, so
+	 * the Team Direction cannot — but an administrator can, and that is enough.
+	 *
+	 * @param array<int, array<string, string>> $events
+	 */
+	private static function schema_script( array $events, string $page_url ): string {
+		$document = EventSchema::build(
+			$events,
+			$page_url,
+			array(
+				'name' => (string) get_bloginfo( 'name' ),
+				'url'  => home_url( '/' ),
+			),
+			(string) wp_timezone_string()
+		);
+
+		if ( empty( $document ) ) {
+			return '';
+		}
+
+		$json = wp_json_encode(
+			$document,
+			JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+		);
+
+		if ( false === $json ) {
+			return '';
+		}
+
+		return '<script type="application/ld+json">' . $json . '</script>';
+	}
+
+	/**
+	 * The permalink of the page being viewed, for Event.url. Events have no URL of
+	 * their own (spec §3.1 makes the post type non-public), so the listing page is
+	 * the only honest answer.
+	 */
+	private static function current_page_url(): string {
+		$queried = get_queried_object();
+		if ( $queried instanceof WP_Post ) {
+			return (string) get_permalink( $queried );
+		}
+
+		return home_url( '/' );
 	}
 
 	/** Render one event as a list item. All output is escaped. */
