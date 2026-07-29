@@ -157,4 +157,44 @@ final class PlanningListTest extends WP_UnitTestCase {
 		$decoded = json_decode( (string) $m[1], true );
 		$this->assertSame( $title, $decoded['@graph'][0]['name'], 'escaping must not corrupt the value' );
 	}
+
+	public function test_the_empty_state_text_is_filterable(): void {
+		add_filter( 'canetons_planning_empty_text', static fn (): string => 'Keine bevorstehenden Termine.' );
+
+		$this->assertStringContainsString( 'Keine bevorstehenden Termine.', do_shortcode( '[canetons_planning]' ) );
+	}
+
+	public function test_the_attire_label_is_filterable(): void {
+		$id = $this->make_event( 'Concert', $this->days_from_now( 7 ) );
+		update_post_meta( $id, EventType::META_ATTIRE, 'Costume' );
+
+		add_filter( 'canetons_planning_attire_label', static fn (): string => 'Kleidung: ' );
+
+		$html = do_shortcode( '[canetons_planning]' );
+
+		$this->assertStringContainsString( 'Kleidung: Costume', $html );
+		$this->assertStringNotContainsString( 'Tenue', $html );
+	}
+
+	public function test_the_attire_label_defaults_to_french(): void {
+		$id = $this->make_event( 'Concert', $this->days_from_now( 7 ) );
+		update_post_meta( $id, EventType::META_ATTIRE, 'Costume' );
+
+		$this->assertStringContainsString( 'Tenue : Costume', do_shortcode( '[canetons_planning]' ) );
+	}
+
+	public function test_the_date_format_is_filterable(): void {
+		$this->make_event( 'Concert', '2026-08-22', '2026-08-22' );
+
+		add_filter(
+			'canetons_planning_date_format',
+			static fn (): array => array(
+				'single'      => 'd.m.Y',
+				'range_start' => 'd.m.',
+				'range_end'   => 'd.m.Y',
+			)
+		);
+
+		$this->assertStringContainsString( '22.08.2026', do_shortcode( '[canetons_planning]' ) );
+	}
 }

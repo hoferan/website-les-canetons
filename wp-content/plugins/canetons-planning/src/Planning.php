@@ -169,7 +169,10 @@ final class Planning {
 
 		$attire = (string) get_post_meta( $post->ID, EventType::META_ATTIRE, true );
 		if ( '' !== $attire ) {
-			$parts[] = '<span class="canetons-planning__attire">' . esc_html( 'Tenue : ' . $attire ) . '</span>';
+			// Filterable so the theme can supply German on /de/*; the plugin itself
+			// stays French, per the bilingual design.
+			$label   = (string) apply_filters( 'canetons_planning_attire_label', 'Tenue : ' );
+			$parts[] = '<span class="canetons-planning__attire">' . esc_html( $label . $attire ) . '</span>';
 		}
 
 		// RSVP controls for a member who may respond; empty for everyone else
@@ -180,11 +183,23 @@ final class Planning {
 	}
 
 	/**
-	 * French date, single day or a range. Anchored at noon so the site timezone
-	 * can never shift a date-only value onto the wrong calendar day. Returns the
-	 * raw string; the caller escapes it.
+	 * The event's date as display text, single day or a range. Anchored at noon so
+	 * the site timezone can never shift a date-only value onto the wrong calendar
+	 * day. Returns the raw string; the caller escapes it.
+	 *
+	 * The formats are filterable so the German tree can use numeric dates without
+	 * switching locale mid-request — three strings do not justify that machinery.
 	 */
 	private static function format_date( string $start_date, string $end_date ): string {
+		$formats = (array) apply_filters(
+			'canetons_planning_date_format',
+			array(
+				'single'      => 'l j F Y',
+				'range_start' => 'l j F',
+				'range_end'   => 'l j F Y',
+			)
+		);
+
 		try {
 			$multi_day = EventDates::is_multi_day( $start_date, $end_date );
 			$start     = EventDates::parse_date( $start_date );
@@ -195,11 +210,14 @@ final class Planning {
 		$start_ts = $start->getTimestamp() + 12 * HOUR_IN_SECONDS;
 
 		if ( ! $multi_day ) {
-			return (string) wp_date( 'l j F Y', $start_ts );
+			return (string) wp_date( (string) ( $formats['single'] ?? 'l j F Y' ), $start_ts );
 		}
 
 		$end_ts = EventDates::parse_date( $end_date )->getTimestamp() + 12 * HOUR_IN_SECONDS;
-		return wp_date( 'l j F', $start_ts ) . ' – ' . wp_date( 'l j F Y', $end_ts );
+
+		return wp_date( (string) ( $formats['range_start'] ?? 'l j F' ), $start_ts )
+			. ' – '
+			. wp_date( (string) ( $formats['range_end'] ?? 'l j F Y' ), $end_ts );
 	}
 
 	/** "HH:MM – HH:MM", or just the start, or "" when neither is set. */
