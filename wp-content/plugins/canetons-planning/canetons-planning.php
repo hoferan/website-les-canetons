@@ -17,6 +17,12 @@ declare( strict_types=1 );
 
 namespace Canetons\Planning;
 
+// WP_CLI is a global class, and unqualified class names resolve against the
+// current namespace with no fallback to global — unlike the constant of the same
+// name tested below, which does fall back. Without this import, `WP_CLI::` here
+// would mean `Canetons\Planning\WP_CLI` and fatal on every WP-CLI invocation.
+use WP_CLI;
+
 // Direct access executes this file outside WordPress, with no functions defined
 // and no security context. Every entry point guards for it.
 if ( ! defined( 'ABSPATH' ) ) {
