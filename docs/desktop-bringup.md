@@ -107,9 +107,23 @@ members' area and the plugin stay French.
 
 ## Phase 5 — Seed TEST
 
+- [ ] **Locale check before exporting:** `bash tools/verify/locale.sh` must show
+      `fr_FR` for both `WPLANG_option` and `get_locale`. The locale has twice
+      silently reverted to `en_US` (see `docs/continue-here.md`); an archive
+      exported in that state faithfully reproduces the bug on TEST. `npm run
+      wp:setup` fixes the drift — and read `wp-content/wplang-trace.log` first,
+      while the cause is fresh.
 - [ ] Install a migration plugin (All-in-One WP Migration) locally and **export**
-      the site to one archive.
+      the site to one archive. In Advanced options, **exclude must-use plugins**:
+      the local stack mounts `docker/wp/mu-plugins/` — Mailpit mail rerouting and
+      the locale tracer — and neither belongs on TEST. The mail router in
+      particular would silently swallow TEST's outbound mail.
 - [ ] Import onto a **fresh TEST** (overwrites its database, including users).
+- [ ] **Locale check after the import.** TEST has no WP-CLI, so check in the
+      browser: Réglages → Général must show **Français** as the site language,
+      and an event date on `/fr/agenda/` must render in French ("samedi 5
+      décembre 2026"), not English. The French tree is the canary — German dates
+      are numeric and look fine either way.
 - [ ] Recreate/confirm the **TEST admin account** (the import replaced it with the
       local one).
 - [ ] `npm run wp:deploy:test` — mirror theme + plugin.

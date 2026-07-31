@@ -41,16 +41,21 @@ Phases 1–4 of `docs/desktop-bringup.md` are done. Beyond that checklist:
 
 ## Open decisions, in priority order
 
-1. **The contact form emails nobody.** It renders and stores submissions, but has
-   **no email notification** — neither does Fluent Forms' own bundled demo form,
-   whose settings it was cloned from. Configure it in Fluent Forms → Settings →
-   Email Notifications. Until then, messages collect in wp-admin unseen, and
-   requirement 1.6 is not really met.
+1. ~~The contact form emails nobody.~~ **Closed 2026-07-30.** The "Contact
+   Canetons" form (id 3) now has a Fluent Forms email notification: to
+   `comite@lescanetons.org`, Reply-To set to the visitor's email, French subject
+   and body via `{all_data}`. Verified end-to-end: a front-end submission landed
+   in Mailpit with the right recipient, Reply-To and all fields. **This lives in
+   the database only** (`fluentform_form_meta`, form 3, key `notifications`) —
+   it travels with a DB snapshot/seed, not with a deploy. Snapshot
+   `2026-07-30T07-24-06-880` captures it. The test submission was deleted so no
+   fake entry pollutes a TEST seed.
 2. **Who currently directs the band?** The live site contradicts itself and all
    three versions were ported as-is. `historique` says Delphine Maillard and Laura
    Mantel passed the baton to **Lilou Keller and Anaïs Meuwly**; `/fr/canetons/`
    says "Laura et Delphine"; the comité lists Laura Mantel as Responsable Team
-   Direction. One of these is stale.
+   Direction. One of these is stale. **Status 2026-07-30: deliberately left
+   as-is** — André isn't sure either and will check with the band.
 3. **Personal contact details.** Deliberately NOT ported, and flagged with a TODO
    in the copy naming what the old site published: the comité's email and phone,
    and two mobile numbers on `/fr/commencement/`. The organisational address
@@ -91,8 +96,15 @@ than the behaviour claimed. If you add a check, make it fail first on purpose.
 
 ## Next steps
 
-1. Close the five open decisions above (1 and 2 are the blocking ones).
+1. Close the remaining open decisions above (2 is blocking, pending word from
+   the band; 1 is done).
 2. Upload photographs; correct the German.
-3. Then Phase 5 of `docs/desktop-bringup.md` — seed TEST. Add a **locale check
-   after the import**, which the checklist does not yet have.
+3. Then Phase 5 of `docs/desktop-bringup.md` — seed TEST. The checklist now has
+   the **locale checks** (before export, after import) and **excludes the local
+   mu-plugins** (Mailpit rerouting, locale tracer) from the export archive.
+   Two gaps on this desktop, found 2026-07-31, block the `wp:deploy:test` step:
+   **`.env.test` does not exist here** (no `.env.*` at all — restore the FTP
+   credentials from wherever the old machine's copy lives, or from the
+   easy-hebergement panel), and **`lftp` is not installed** (Git Bash has none;
+   install it in WSL and deploy from there, or pick another route).
 4. Then `docs/cutover.md` for PROD.
