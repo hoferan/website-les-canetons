@@ -102,11 +102,10 @@ than the behaviour claimed. If you add a check, make it fail first on purpose.
 3. Then Phase 5 of `docs/desktop-bringup.md` — seed TEST. The checklist now has
    the **locale checks** (before export, after import) and **excludes the local
    mu-plugins** (Mailpit rerouting, locale tracer) from the export archive.
-   One gap on this desktop, found 2026-07-31, blocks the `wp:deploy:test` step:
-   **`lftp` is not installed** (Git Bash has none; install it in WSL and deploy
-   from there, or pick another route). The `.env.*` files ARE present and
-   complete — an earlier session note claiming `.env.test` was missing was a
-   false reading. They keep the old stack's `FTP_PASS` name on purpose
-   (rollback tooling reads it); `wp-deploy.sh` accepts it as a fallback for
-   `FTP_PASSWORD`.
+   Nothing blocks `wp:deploy:test` on this desktop anymore: `wp-deploy.sh` runs
+   lftp in a throwaway Alpine container when no native lftp exists, so Docker
+   is enough. The `.env.*` files ARE present and complete — an earlier session
+   note claiming `.env.test` was missing was a false reading. They keep the old
+   stack's `FTP_PASS` name on purpose (rollback tooling reads it);
+   `wp-deploy.sh` accepts it as a fallback for `FTP_PASSWORD`.
 4. Then `docs/cutover.md` for PROD.

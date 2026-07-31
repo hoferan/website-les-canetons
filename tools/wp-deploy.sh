@@ -64,10 +64,39 @@ FTP_PASSWORD="${FTP_PASSWORD:-${FTP_PASS:-}}"
 FTP_TLS="${FTP_TLS:-true}"
 FTP_SSL_VERIFY="${FTP_SSL_VERIFY:-yes}"
 
-if ! command -v lftp >/dev/null 2>&1; then
-	echo "lftp not found. Install it (apt-get install lftp / brew install lftp)." >&2
+# lftp does the transfer. A native install is used when present; otherwise it
+# runs in a throwaway official-Alpine container, so a machine with only Docker
+# (the stack's one prerequisite) can deploy too. Deliberately NOT a third-party
+# lftp image: the FTP credentials pass through this container, so it must be
+# built from a base we trust. `apk add` costs a few seconds per deploy; the
+# credentials travel via environment, not the command line, so they never show
+# up in the host process list.
+if command -v lftp >/dev/null 2>&1; then
+	LFTP_RUNNER="native"
+elif command -v docker >/dev/null 2>&1; then
+	LFTP_RUNNER="docker"
+else
+	echo "Neither lftp nor docker found. Install one (apt-get install lftp / brew install lftp / Docker Desktop)." >&2
 	exit 1
 fi
+
+run_lftp() {
+	if [ "$LFTP_RUNNER" = "native" ]; then
+		lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST"
+	else
+		# MSYS_NO_PATHCONV stops Git Bash mangling the container-side mount
+		# path; it is ignored everywhere else. The mount is read-only and
+		# covers only wp-content — the container has no business seeing
+		# .env.* or the rest of the repo.
+		export FTP_USER FTP_PASSWORD FTP_HOST
+		MSYS_NO_PATHCONV=1 docker run --rm -i \
+			-e FTP_USER -e FTP_PASSWORD -e FTP_HOST \
+			-v "$PWD/wp-content:/repo/wp-content:ro" \
+			-w /repo \
+			alpine:3.22 \
+			sh -c 'apk add --no-cache lftp >/dev/null && exec lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST"'
+	fi
+}
 
 REMOTE_THEME="$FTP_DIR/wp-content/themes/canetons"
 REMOTE_PLUGIN="$FTP_DIR/wp-content/plugins/canetons-planning"
@@ -87,7 +116,7 @@ fi
 # The plugin is deployed as SOURCE ONLY — never its dev-only files (Plan 1 note):
 # vendor/, tests/, composer.*, phpunit-*.xml.dist, .gitignore, .phpunit.cache/.
 # The theme has no such files and is mirrored whole.
-lftp -u "$FTP_USER,$FTP_PASSWORD" "ftp://$FTP_HOST" <<LFTP
+run_lftp <<LFTP
 set ftp:ssl-force $FTP_TLS
 set ftp:ssl-protect-data $FTP_TLS
 set ssl:verify-certificate $FTP_SSL_VERIFY

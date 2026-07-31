@@ -25,8 +25,10 @@ Work top to bottom. Do not start Phase D until TEST has been seen and accepted.
       credentials, table prefix `qsjd_`, `WP_HOME`/`WP_SITEURL` = the PROD URL,
       fresh salts, and the hardening constants of spec §8 (`DISALLOW_FILE_EDIT`,
       `WP_ENVIRONMENT_TYPE` = `production`, disable the file editor).
-- [ ] **`lftp` installed** locally and `.env.prod` present with `FTP_HOST`,
-      `FTP_USER`, `FTP_PASSWORD`, `FTP_DIR` (PROD document root).
+- [ ] **`lftp` or Docker available** (`wp-deploy.sh` falls back to running lftp
+      in an Alpine container) and `.env.prod` present with `FTP_HOST`,
+      `FTP_USER`, `FTP_PASSWORD` (the kept old-stack name `FTP_PASS` also
+      works), `FTP_DIR` (PROD document root).
 
 ## B. Stand up WordPress on PROD (Plan 7, authored directly in PROD)
 
