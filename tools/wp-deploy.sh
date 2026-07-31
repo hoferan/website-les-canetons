@@ -14,7 +14,9 @@
 # Credentials come from the git-ignored .env.<env>, which must define:
 #   FTP_HOST         the FTP hostname
 #   FTP_USER         the FTP username
-#   FTP_PASSWORD     the FTP password
+#   FTP_PASSWORD     the FTP password (FTP_PASS also accepted — the kept old-stack
+#                    env files use that name, and renaming it inside them would
+#                    break rollback via archive/php-laravel-stack)
 #   FTP_DIR          the document root (e.g. /public_html/staging/test.lescanetons.org)
 # Optional:
 #   FTP_TLS          "true" (default) forces FTPS; set "false" for plain FTP
@@ -56,7 +58,8 @@ fi
 
 : "${FTP_HOST:?set FTP_HOST in $ENV_FILE}"
 : "${FTP_USER:?set FTP_USER in $ENV_FILE}"
-: "${FTP_PASSWORD:?set FTP_PASSWORD in $ENV_FILE}"
+FTP_PASSWORD="${FTP_PASSWORD:-${FTP_PASS:-}}"
+: "${FTP_PASSWORD:?set FTP_PASSWORD (or FTP_PASS) in $ENV_FILE}"
 : "${FTP_DIR:?set FTP_DIR in $ENV_FILE (the document root)}"
 FTP_TLS="${FTP_TLS:-true}"
 FTP_SSL_VERIFY="${FTP_SSL_VERIFY:-yes}"
