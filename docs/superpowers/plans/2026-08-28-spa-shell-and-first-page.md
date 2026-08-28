@@ -1983,6 +1983,20 @@ Sixteen routes are still placeholders. `main` stays at `ffedf84` and TEST keeps 
 
 ## Notes for whoever executes this
 
+- **The dev server in the `assets` container needs two env vars**, both set in
+  docker-compose.yml and both discovered the hard way. `VITE_API_PROXY_TARGET`
+  must be `http://web`: inside that container `localhost:8090` is the container
+  itself, so the proxy answers 502 for every API call and the SPA looks broken
+  with no clue why. `VITE_USE_POLLING=1` is needed because bind-mount
+  filesystem events do not reach the container on Docker Desktop — without it
+  an edit never triggers HMR and the page keeps serving the previous version,
+  which reads as "my change did nothing".
+- **Name any list the page renders** (`aria-label`). The layout's nav is also a
+  list, so an unscoped `getByRole("listitem")` counts nav items too — four
+  events came back as seventeen rows.
+- **Text split across a `<strong>` label defeats `getByText`.** Assert on the
+  row's `textContent`, and remember JSX keeps the space after `</strong>`.
+
 - **The double `.data` is real.** `query.data.data` — TanStack Query's, then orval's envelope. Do not hide it behind a wrapper hook; hiding which is which is how the Task 1 defect went unnoticed.
 - **Narrow errors with `instanceof ApiError`.** The generated `TError` is the declared error model, but the mutator always throws `ApiError`.
 - **Never `fetch("/api/…")` directly** — CSRF priming lives in the mutator.

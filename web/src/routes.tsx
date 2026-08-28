@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
+import { PlanningRepet } from "./pages/PlanningRepet";
 import { useSession } from "./session/SessionProvider";
 
 /**
@@ -43,7 +44,7 @@ export function AppRoutes() {
           path="/inscriptions_utilisateurs"
           element={<Placeholder title="Mes inscriptions" />}
         />
-        <Route path="/planning_repet" element={<Placeholder title="Planning et répétitions" />} />
+        <Route path="/planning_repet" element={<PlanningRepet />} />
         <Route path="/admin" element={<Placeholder title="Administration" />} />
         <Route path="/inscriptions_admin" element={<Placeholder title="Inscriptions (admin)" />} />
 

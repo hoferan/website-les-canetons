@@ -26,6 +26,18 @@ import { defineConfig } from "vite";
  * SANCTUM_STATEFUL_DOMAINS, so rewriting it to the target would defeat the
  * entry we just added for :5173.
  */
+/**
+ * Where the dev server forwards /api and /sanctum.
+ *
+ * Defaults to the published port, which is right when `npm run dev:web` runs on
+ * the host. Inside the compose stack the dev server runs in the `assets`
+ * container, where localhost is that container and not the site — so
+ * docker-compose.yml sets this to the `web` service by name. Without it the
+ * proxy answers 502 for every API call and the SPA looks broken with no clue
+ * why.
+ */
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8090";
+
 export default defineConfig({
   root: "web",
   base: "/",
@@ -37,8 +49,15 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": { target: "http://localhost:8090", changeOrigin: false },
-      "/sanctum": { target: "http://localhost:8090", changeOrigin: false },
+      "/api": { target: apiProxyTarget, changeOrigin: false },
+      "/sanctum": { target: apiProxyTarget, changeOrigin: false },
     },
+    // Filesystem events do not cross a Docker Desktop bind mount reliably on
+    // Windows or macOS, so the dev server inside the `assets` container simply
+    // never notices an edit — the page keeps serving the previous version and
+    // the only fix looks like "restart the container", which nobody guesses.
+    // Polling is the standard workaround; it costs CPU, so it is opt-in and
+    // docker-compose.yml turns it on for that container alone.
+    watch: process.env.VITE_USE_POLLING === "1" ? { usePolling: true, interval: 300 } : undefined,
   },
 });

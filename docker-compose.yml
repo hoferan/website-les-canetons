@@ -29,6 +29,15 @@ services:
     working_dir: /repo
     ports:
       - "5173:5173"
+    environment:
+      # vite.config.ts defaults this to localhost:8090, which is right on the
+      # host but wrong here: inside this container localhost is this container.
+      # `web` is the compose service name, port 80 inside the network.
+      VITE_API_PROXY_TARGET: http://web
+      # Bind-mount filesystem events do not reach this container on Docker
+      # Desktop, so without polling an edit on the host never triggers HMR and
+      # the dev server serves the previous version until it is restarted.
+      VITE_USE_POLLING: "1"
     volumes:
       - .:/repo
       - node_modules:/repo/node_modules
