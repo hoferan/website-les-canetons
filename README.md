@@ -18,7 +18,7 @@ and views attendance summaries.
 - **MariaDB 10.3** via `mysqli`.
 - **Vanilla JS + CSS** (no bundler yet), served by **Apache** with `.htaccess`.
 - Hosted on `easy-hebergement.net` shared hosting. `npm run build` assembles the
-  deploy artifact into `public/`; merges to `main` auto-deploy it to **TEST**
+  deploy artifact into `dist/build/`; merges to `main` auto-deploy it to **TEST**
   via CI, while **QA** and **PROD** are promoted independently via tag-based
   `workflow_dispatch` workflows (see "Deployment" below).
 
@@ -28,9 +28,9 @@ Requires **Docker** and **Node** (PHP/Composer are not needed locally — the PH
 tooling runs in containers).
 
 ```bash
-npm install          # dev tooling
-npm run php:install  # PHP dev deps into vendor/ (Dockerized Composer; run once)
-npm run dev          # generate the docker .htaccess overlay, then bring the stack up
+npm install     # everything; there is no separate PHP install step
+npm run dev     # generate the docker .htaccess overlay, then bring the stack up
+npm run dev:web # Vite dev server on :5173 — where you actually work
 ```
 
 **Never `docker compose up` directly** — the stack needs a generated overlay file in
@@ -38,9 +38,13 @@ place first, which `npm run dev` handles for you (see [CLAUDE.md](CLAUDE.md) for
 
 | URL | What |
 | --- | --- |
-| http://localhost:8090 | the site — both the old app and the Laravel API |
+| http://localhost:5173 | Vite dev server (HMR), proxying `/api` to :8090 |
+| http://localhost:8090 | Apache serving the **built** artifact — parity checks |
 | http://localhost:8091 | Adminer (DB UI) |
 | http://localhost:8025 | Mailpit (catches outgoing mail) |
+
+The :8090 stack serves whatever `npm run build` last produced; it does not pick
+up source edits. That is the point — it is the parity check.
 
 Seeded test logins (synthetic data, all passwords `demo`):
 
@@ -51,30 +55,37 @@ Seeded test logins (synthetic data, all passwords `demo`):
 | `demo.user`      | user (respond)                        |
 
 ```bash
-npm run smoke     # HTTP smoke checks against the running stack (8 checks)
+npm run smoke     # HTTP smoke checks against the built artifact (13 checks)
 npm run dev:down  # stop
 ```
 
 ## Project structure
 
 ```
-app/           Tracked source — pages/, api/, assets/, partials/, src/ (App\* classes), .htaccess
-public/        Generated FTP deploy payload (npm run build). Git-ignored; never hand-edited.
-config/        Config templates (config.example.php) + local Docker config (config.docker.php)
-docker/        Local dev stack (web Dockerfile, DB schema + synthetic seed)
-tools/         Cross-platform dev scripts (Dockerized PHP/Composer, build, secret guard)
-docs/          Design specs and implementation plans
-.github/       CI workflow, PR & issue templates
+web/           React + TypeScript SPA (Vite, Tailwind). The public site and members' area.
+api/            Laravel 11 — the whole JSON API and the database schema. Its own Composer project.
+dist/build/     Generated FTP deploy payload (npm run build). Git-ignored; never hand-edited.
+config/htaccess/ The site .htaccess template, merged per environment by tools/build-overlays.mjs
+docker/         Local dev stack (web Dockerfile, DB schema + synthetic seed)
+tools/          Cross-platform dev scripts (build, deploy, secret guard)
+docs/           Design specs and implementation plans
+.github/        CI workflows, PR & issue templates
 ```
 
-`app/` is the source you edit. `public/` is what actually gets deployed — always
-rebuild it (`npm run build`) before an FTP upload.
+`web/` and `api/` are the source you edit. `dist/build/` is what gets deployed —
+always rebuild it (`npm run build`) before an FTP upload.
 
 ## Development
 
 ```bash
-npm run check   # all checks: php -l + phpcs (PSR-12, Dockerized), eslint, stylelint, prettier, secret guard
+npm run check   # typecheck, Pint, both test suites, eslint, stylelint, prettier, secret guard
 npm run fix     # auto-fix
+```
+
+`npm run check` does not run the Laravel suite — it needs a live database:
+
+```bash
+docker compose exec -w /var/www/html/api-laravel web php artisan test
 ```
 
 A Husky pre-commit hook lints staged files automatically. See **[CLAUDE.md](CLAUDE.md)**
@@ -82,14 +93,11 @@ for architecture details and conventions.
 
 ## Configuration
 
-The real `app/config.php` holds DB credentials and is **git-ignored**. Create it
-locally with:
-
-```bash
-cp config/config.example.php app/config.php
-```
-
-Local Docker uses `config/config.docker.php` automatically (mounted into the container).
+Laravel's `api/.env` holds the DB credentials, `APP_KEY` and the migrate token,
+and is **git-ignored**. Local Docker mounts `docker/api/env.docker` in its place
+automatically, so there is nothing to create for local dev. Each server's copy
+is placed **by hand, once** — see [staging/README.md](staging/README.md); a
+server without it 500s every `/api/*` request.
 
 ## Deployment
 
@@ -108,7 +116,7 @@ approvals in that same run:
   commit, ref, and time — e.g. `https://<prod-host>/deployment.json` — so you can
   always see what is live where. Per-env status is also on the badges above.
 
-The server-owned files (`.htaccess`, `robots.txt`, `config.php`) are never
+The server-owned files (`.htaccess`, `robots.txt`, `api-laravel/.env`) are never
 uploaded, so promotion never touches a server's config. For the full server
 layout, the access-control overlay, and manual/WinSCP fallbacks, see
 [staging/README.md](staging/README.md).
@@ -116,5 +124,5 @@ layout, the access-control overlay, and manual/WinSCP fallbacks, see
 To build the artifact locally without deploying:
 
 ```bash
-npm run build   # -> public/ (regenerated fresh; never edit by hand)
+npm run build   # -> dist/build/ (regenerated fresh; never edit by hand)
 ```
