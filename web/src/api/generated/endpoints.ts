@@ -33,6 +33,7 @@ import type {
   Contact200,
   ContactRequest,
   EventDestroy200,
+  EventIndex200Item,
   EventRequest,
   EventStore201,
   EventUpdate200,
@@ -676,7 +677,7 @@ export const useContact = <TError = ValidationExceptionResponse, TContext = unkn
 };
 
 export type eventIndexResponse200 = {
-  data: string[];
+  data: EventIndex200Item[];
   status: 200;
 };
 

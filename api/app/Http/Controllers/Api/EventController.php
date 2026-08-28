@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\EventRequest;
 use App\Models\Event;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -72,6 +73,20 @@ class EventController extends Controller
      * bootstrap/app.php) and its failure mode is a caller seeing no answers, not
      * someone else's.
      */
+    /*
+     * The shape is spelled out here because Scramble cannot infer it: this
+     * method maps a Collection through Event::toFrontendShape(), and without
+     * this attribute the OpenAPI document described the response as an array of
+     * STRING — which the generated TypeScript client faithfully repeated,
+     * leaving the SPA's main endpoint untyped.
+     *
+     * It is a LITERAL and not Event's @phpstan-type EventShape alias: Scramble
+     * resolves `list<EventShape>` to a bare object with no properties, so the
+     * alias buys nothing here. That leaves the shape written twice — and
+     * EventShapeContractTest fails if the two ever disagree, so this is
+     * duplication a test catches rather than a comment asks you to remember.
+     */
+    #[ApiResponse(status: 200, type: 'list<array{id: int, date: string, title: string, startTime: string, endTime: string, location: string, attire: string|null, weekend: int, response: string|null}>')]
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()?->id;

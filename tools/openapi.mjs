@@ -48,7 +48,16 @@ if (!existsSync("api/vendor/dedoc/scramble")) {
   execFileSync(process.execPath, ["tools/composer.mjs", ...install], { stdio: "inherit" });
 }
 
+// APP_NAME is pinned for the same reason as everything else here: determinism.
+// config/scramble.php leaves `info.title` null, so Scramble falls back to
+// config('app.name') — which comes from api/.env, a file that exists inside the
+// dev container and on a provisioned web session but NOT on a CI runner or a
+// fresh clone. Unpinned, the same commit exports "Les Canetons API" on one
+// machine and Laravel's default "Laravel" on another, and the openapi-drift job
+// fails for whoever regenerated it somewhere else. The value matches
+// api/.env.example and docker/api/env.docker.
 const env =
+  'APP_NAME="Les Canetons API" ' +
   "APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= " +
   "APP_ENV=production DB_CONNECTION=sqlite DB_DATABASE=/tmp/openapi-export.sqlite";
 

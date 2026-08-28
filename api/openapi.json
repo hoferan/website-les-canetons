@@ -405,7 +405,53 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "type": "string"
+                                        "type": "object",
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer"
+                                            },
+                                            "date": {
+                                                "type": "string"
+                                            },
+                                            "title": {
+                                                "type": "string"
+                                            },
+                                            "startTime": {
+                                                "type": "string"
+                                            },
+                                            "endTime": {
+                                                "type": "string"
+                                            },
+                                            "location": {
+                                                "type": "string"
+                                            },
+                                            "attire": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            },
+                                            "weekend": {
+                                                "type": "integer"
+                                            },
+                                            "response": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "id",
+                                            "date",
+                                            "title",
+                                            "startTime",
+                                            "endTime",
+                                            "location",
+                                            "attire",
+                                            "weekend",
+                                            "response"
+                                        ]
                                     }
                                 }
                             }

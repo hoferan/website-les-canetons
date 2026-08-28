@@ -21,6 +21,7 @@ export * from "./config200OccasionMenusItem";
 export * from "./contact200";
 export * from "./contactRequest";
 export * from "./eventDestroy200";
+export * from "./eventIndex200Item";
 export * from "./eventRequest";
 export * from "./eventStore201";
 export * from "./eventUpdate200";
