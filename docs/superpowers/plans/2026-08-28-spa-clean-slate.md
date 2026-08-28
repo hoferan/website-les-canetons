@@ -584,7 +584,8 @@ Also update the file's header comment, which says overlays are regenerated "when
 npm run build:overlay && node tools/build-overlays.mjs docker
 diff -r /tmp/overlay-baseline dist/overlay
 ```
-Expected: no output. Any difference here is a mistake in Step 3, not an improvement.
+
+Expected: `prod/` and `docker/` byte-identical (they carry the plain template, no banner), and in `test/` and `qa/` **exactly two changed lines** — the generated-from banner that Step 3 rewrote. Any change to an Apache directive is a mistake in Step 3, not an improvement.
 
 - [ ] **Step 5: Confirm the stack still starts**
 

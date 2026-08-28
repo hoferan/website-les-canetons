@@ -1,0 +1,119 @@
+RewriteEngine on
+
+# ---------------------------------------------------------------------------
+# Laravel API dispatch.
+#
+#   /api/*     -> the Laravel app in api-laravel/
+#   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
+#                 which is not under /api/.
+#
+# This block MUST stay above both the RedirectMatch 301 legacy-URL rule and
+# the front-controller catch-all below. The catch-all matches every path (^),
+# so if it ran first every /api/* and /sanctum/* request would be handed to
+# the old app's index.php and this dispatch would never happen at all.
+#
+# The Laravel project sits at api-laravel/ in the document root — see
+# tools/build.mjs, which picks that name. (It originally avoided a collision
+# with the old app's own api/ endpoints; those are deleted, but the name is
+# now load-bearing for a stronger reason.) The URL path /api/* dispatches into
+# api-laravel/: ^api(/|$) CANNOT match api-laravel/..., because the hyphen
+# defeats (/|$) — which is the only reason the substitution below does not
+# re-match itself and loop. Never rename that directory without first adding a
+# REDIRECT_STATUS guard to the two dispatch rules.
+# ---------------------------------------------------------------------------
+
+# Forward the Authorization and X-XSRF-Token headers into the request
+# environment BEFORE the dispatch rules below terminate the current rewrite
+# pass. Laravel ships these same rules in its own api/public/.htaccess, but
+# that file never reaches a server (the deploy CLI treats .htaccess as a
+# protected basename at any depth) and its rules would not run for a
+# dispatched request anyway, so it has to happen here. CGI-family SAPIs —
+# which is what this host and the local container both use — do not hand
+# Authorization to PHP otherwise. The X-XSRF-Token rule is the same
+# belt-and-braces Laravel ships; it is kept so this block is a faithful
+# stand-in for api/public/.htaccess, even though Apache already exports
+# arbitrary request headers as HTTP_* (X-XSRF-Token reaches PHP without this
+# rule) and the E= value this rule sets arrives on the dispatched request as
+# REDIRECT_HTTP_X_XSRF_TOKEN, which Symfony's ServerBag doesn't read (its
+# REDIRECT_ fallback exists only for REDIRECT_HTTP_AUTHORIZATION) — so the
+# rule is inert for X-XSRF-Token specifically; cookie-based Sanctum SPA CSRF
+# (which GET /sanctum/csrf-cookie exists to seed) works anyway, via the header
+# Apache regenerates natively.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteCond %{HTTP:x-xsrf-token} .
+RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+# [L], NOT the tidier END flag — do not "modernise" this back.
+#
+# In per-directory context a substitution is handed back to the URL-parsing
+# engine as an internal redirect and the whole ruleset runs again against the
+# new path, so [L] ends only the CURRENT pass, not rewrite processing overall;
+# the END flag stops that outright and would make this dispatch a single
+# unconditional hop. But that flag was added in Apache 2.3.9 and does not
+# exist in 2.2; this shared host's version is unresolved (staging/README.md
+# records that it 500s on <RequireAny>, which leans 2.2); an unknown
+# RewriteRule flag is a syntax error — a 500 on EVERY request to the whole
+# site, public pages included — and no <IfModule> can guard a RewriteRule
+# flag. [L] is valid on both 2.2 and 2.4, so it is the only safe choice.
+#
+# [L] is correct here, not merely safe, and was verified empirically (Laravel
+# still answers its own 401 with it): on the second pass the path is
+# api-laravel/public/index.php, which ^api(/|$) cannot match (see the hyphen
+# note above), and REDIRECT_STATUS is set by then, so the front-controller
+# catch-all below does not match either. Hence no rewrite loop. Depending on
+# REDIRECT_STATUS is not a new liability: the catch-all below already relies
+# on it on this FastCGI host.
+RewriteRule ^api(/|$) api-laravel/public/index.php [L]
+RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
+
+# Legacy URL redirect. Old .html pages were migrated to .php, so any request
+# for a .html file is permanently redirected (301) to the matching .php file.
+# This keeps old bookmarks, inbound links, and search-engine results working,
+# and tells search engines to update their index to the new .php URL.
+RedirectMatch 301 ^(.*)\.html$ $1.php
+
+# Front controller: every request is dispatched to index.php EXCEPT real
+# static assets (assets/css, assets/js, assets/img), which are served
+# directly — see src/routes.php. This also means pages/, src/, vendor/,
+# config.php and php-error.log are never reachable as raw files: a direct hit
+# on any of them isn't a registered route, so the front controller answers
+# with a plain 404 instead of executing or serving the file's contents. It
+# catches api-laravel/* too — every path except /api/* and /sanctum/*, which
+# the block above already claimed — so a direct hit on api-laravel/.env 404s
+# on a server even though the deny-all in api/.htaccess never gets uploaded
+# there (see staging/README.md).
+#
+# The REDIRECT_STATUS guard is essential on FastCGI hosts (e.g. easy-hebergement,
+# php-cgi/FPM): once Apache has internally rewritten a request to index.php it
+# sets REDIRECT_STATUS, so the rule does NOT match a second time. Without it,
+# `RewriteRule ^ index.php` re-matches the rewritten index.php and loops until
+# Apache aborts the request with 500 ("Request exceeded the limit of 10 internal
+# redirects"). We intentionally keep the catch-all (rather than a !-f/!-d guard)
+# so raw files under pages/, src/, vendor/, api-laravel/ and config.php stay
+# unreachable.
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteRule ^ index.php [L]
+
+# Cache policy for this site.
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "public, max-age=0, must-revalidate"
+  </FilesMatch>
+  # Vite's build output (see App\Assets) is content-hashed: a given
+  # filename's bytes never change, only the filename does when the
+  # content does. Safe to cache indefinitely instead of revalidating.
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# Images change rarely; let them cache for a day to stay fast. Bump the file
+# name (or clear this rule) if you ever need an image to update immediately.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  <FilesMatch "\.(jpg|jpeg|png|gif|svg|ico|webp)$">
+    ExpiresDefault "access plus 1 day"
+  </FilesMatch>
+</IfModule>
