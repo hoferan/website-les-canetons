@@ -8,6 +8,7 @@
     "build": "node tools/build.mjs",
     "build:web": "vite build",
     "dev:web": "vite",
+    "dev:mock": "vite --mode mock",
     "build:overlay": "node tools/build-overlays.mjs",
     "dev": "node tools/build-overlays.mjs docker && docker compose up -d --build",
     "dev:down": "docker compose down",
@@ -41,11 +42,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@faker-js/faker": "^10.6.0",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-query": "^5.101.4",
     "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
@@ -58,10 +62,13 @@
     "i18next": "^26.3.6",
     "jsdom": "^26.1.0",
     "lint-staged": "^15.2.0",
+    "lucide-react": "^1.35.0",
+    "msw": "^2.15.0",
     "orval": "^8.23.0",
     "prettier": "^3.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.3",
     "stylelint": "^16.9.0",
     "stylelint-config-standard": "^36.0.0",
     "tailwindcss": "^4.3.3",
@@ -79,6 +86,11 @@
     "web/**/*.css": [
       "stylelint --fix",
       "prettier --write"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "web\\public"
     ]
   }
 }

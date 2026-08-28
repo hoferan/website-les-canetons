@@ -49,6 +49,7 @@ import type {
 } from "./model";
 
 import { customFetch } from "../http";
+
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {

@@ -16,10 +16,24 @@ export default defineConfig({
     output: {
       target: "web/src/api/generated/endpoints.ts",
       schemas: "web/src/api/generated/model",
+      // split, so the MSW handlers land in endpoints.msw.ts instead of inside
+      // endpoints.ts. In single mode they share the file, which puts
+      // `import { http } from "msw"` at the top of the module the whole
+      // application imports — relying on tree-shaking to keep a development-only
+      // mocking library out of the production bundle. Splitting makes it
+      // structural instead of hopeful.
+      mode: "split",
       client: "react-query",
       httpClient: "fetch",
       clean: true,
       formatter: "prettier",
+      // MSW handlers, generated from the same document as the client, so the
+      // mocked backend cannot describe a contract the API does not have. They
+      // are the FALLBACK layer: web/src/mocks/handlers.ts puts hand-written
+      // handlers in front of them for the four endpoints where the content, not
+      // just the shape, has to be plausible.
+      // orval 8.23 takes a `generators` array here, not a bare `type`.
+      mock: { generators: [{ type: "msw" }] },
       override: {
         mutator: {
           path: "web/src/api/http.ts",
