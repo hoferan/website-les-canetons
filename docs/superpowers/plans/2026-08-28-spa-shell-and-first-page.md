@@ -1079,6 +1079,7 @@ table's order — reproduce it exactly.
 `web/src/components/Layout.tsx`:
 
 ```tsx
+import { ExternalLink, Menu } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -1140,7 +1141,7 @@ export function Layout() {
             onClick={() => setOpen((wasOpen) => !wasOpen)}
             className="m-2 md:hidden"
           >
-            ☰
+            <Menu className="h-6 w-6" />
           </button>
 
           <ul
@@ -1166,7 +1167,7 @@ export function Layout() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Galerie ↗
+                Galerie <ExternalLink className="inline h-4 w-4 align-middle" />
               </a>
             </li>
             <li>
@@ -1198,9 +1199,30 @@ export function Layout() {
 }
 ```
 
-The Lucide hamburger and external-link icons are replaced by text glyphs for
-now: `lucide-react` is not installed, and adding an icon library is its own
-decision rather than a detail of this task. Note it as a follow-up.
+**Icons come from `lucide-react`** — the same icon set the old site used, as
+React components instead of `<i data-lucide>` placeholders converted by a
+`createIcons()` pass. Install it in Step 0 of this task:
+
+```bash
+npm install --save-dev lucide-react@^1.35
+```
+
+Import each icon by name; tree-shaking keeps only what is used, so there is no
+central icon registry to maintain (the old `assets/js/icons.js` existed only
+because the vanilla library needed one):
+
+```tsx
+import { ExternalLink, Menu } from "lucide-react";
+```
+
+and in the markup, `<Menu className="h-6 w-6" />` for the hamburger,
+`<ExternalLink className="inline h-4 w-4 align-middle" />` after the Galerie
+label. Sizes are Tailwind utilities now rather than the old `icon-md`/`icon-sm`
+classes; keep to `h-4 w-4` for an icon inline in text and `h-6 w-6` for one that
+is the whole control, which is what those two classes meant.
+
+Do not set `fill` or `stroke`: Lucide icons are stroke-only and inherit
+`currentColor`, so colour them on the parent as before.
 
 - [ ] **Step 3a: Wrap the routes in the layout**
 
