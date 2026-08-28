@@ -587,6 +587,13 @@ diff -r /tmp/overlay-baseline dist/overlay
 
 Expected: `prod/` and `docker/` byte-identical (they carry the plain template, no banner), and in `test/` and `qa/` **exactly two changed lines** — the generated-from banner that Step 3 rewrote. Any change to an Apache directive is a mistake in Step 3, not an improvement.
 
+- [ ] **Step 4a: Repoint the overlay tests, which read the template directly**
+
+`tools/build-overlays.test.mjs` calls `readFileSync('app/.htaccess')` in four places and asserts the dispatch rules, the `[L]` flag and the rule ordering. Change all four to `config/htaccess/site.htaccess` and update the three test names that say `app/.htaccess`.
+
+Run: `npm run test:js`
+Expected: all tests pass. **Do not skip this** — `npm run build:overlay` and `npm run smoke` both pass with these tests broken, so the move looks complete when it is not.
+
 - [ ] **Step 5: Confirm the stack still starts**
 
 Run: `npm run dev && npm run smoke`

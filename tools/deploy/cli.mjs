@@ -20,7 +20,7 @@ import { parseConcurrency, classify, classifyWithList, brakeTrips, emptyDirsAfte
 import { withRetry, listRemote, uploadFiles, deleteFiles, sweepEmptyDirs, verifyUploaded } from './ftp.mjs';
 import { STATE_FILE, buildState, downloadState, uploadState } from './state.mjs';
 import { walkBuild, fingerprint, writeDeploymentMarker } from './local.mjs';
-import { PROTECTED, TARGETS, checkTargetDir, checkConfigShape } from './preflight.mjs';
+import { PROTECTED, TARGETS, checkTargetDir, checkEnvShape } from './preflight.mjs';
 
 const LOCAL_ROOT = 'dist/build';
 
@@ -181,20 +181,20 @@ async function main() {
     ui.start('preflight');
     await client.access(accessOpts);
     await client.ensureDir(remoteRoot);
-    const shape = await checkConfigShape(client, remoteRoot);
+    const shape = await checkEnvShape(client, remoteRoot);
     if (shape.skipped) {
-      ui.done('preflight', `guards OK · config.php not fetchable — check skipped (${shape.reason})`);
+      ui.done('preflight', `guards OK · api-laravel/.env not fetchable — check skipped (${shape.reason})`);
     } else if (shape.ok) {
-      ui.done('preflight', 'guards OK · config shape OK');
+      ui.done('preflight', 'guards OK · .env shape OK');
     } else {
-      shape.missing.forEach((k) => ui.info(`    config.php on ${label} is MISSING key: ${k}`));
-      shape.extra.forEach((k) => ui.info(`    config.php on ${label} has EXTRA key:  ${k}`));
+      shape.missing.forEach((k) => ui.info(`    api-laravel/.env on ${label} is MISSING key: ${k}`));
+      shape.extra.forEach((k) => ui.info(`    api-laravel/.env on ${label} has EXTRA key:  ${k}`));
       if (dryRun) {
-        ui.done('preflight', `config shape MISMATCH (${shape.missing.length} missing, ${shape.extra.length} extra) — dry-run reports only`);
+        ui.done('preflight', `.env shape MISMATCH (${shape.missing.length} missing, ${shape.extra.length} extra) — dry-run reports only`);
       } else {
         throw new Refusal(
-          `${label}'s config.php has drifted from config.example.php (${shape.missing.length} missing, ${shape.extra.length} extra keys — listed above).`,
-          'Fix config.php by hand on the server, then re-run the deploy.'
+          `${label}'s api-laravel/.env has drifted from api/.env.example (${shape.missing.length} missing, ${shape.extra.length} extra keys — listed above).`,
+          'Fix api-laravel/.env by hand on the server, then re-run the deploy.'
         );
       }
     }

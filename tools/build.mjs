@@ -52,7 +52,7 @@ rmSync('dist/build/php-error.log', { force: true });
 // Ship the template next to the real (never-uploaded) config.php so it's on
 // every server for reference — diff it against config.php by hand to see
 // what's missing. The deploy CLI (tools/deploy/) also uses it to fail the deploy
-// if config.php's shape has drifted (see checkConfigShape there).
+// if api-laravel/.env's key shape has drifted (see checkEnvShape there).
 cpSync('config/config.example.php', 'dist/build/config.example.php');
 
 execFileSync(

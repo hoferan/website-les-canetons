@@ -10,15 +10,15 @@ test('the docker target is the plain front controller', () => {
   run('docker');
 
   const out = readFileSync('dist/overlay/docker/.htaccess', 'utf8');
-  const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8').trimEnd();
 
-  // The Laravel dispatch block lives in app/.htaccess now, so there is nothing
+  // The Laravel dispatch block lives in the template now, so there is nothing
   // left to merge: the local Docker document root gets exactly what prod gets.
   assert.equal(out, `${frontController}\n`);
 });
 
-test('app/.htaccess dispatches /api and /sanctum into Laravel with [L], never the END flag', () => {
-  const frontController = readFileSync('app/.htaccess', 'utf8');
+test('the site .htaccess template dispatches /api and /sanctum into Laravel with [L], never the END flag', () => {
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
   assert.match(frontController, /^RewriteRule \^api\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
   assert.match(frontController, /^RewriteRule \^sanctum\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
@@ -34,12 +34,12 @@ test('app/.htaccess dispatches /api and /sanctum into Laravel with [L], never th
   );
 });
 
-test('the header-forwarding rules precede the dispatch rules in app/.htaccess', () => {
+test('the header-forwarding rules precede the dispatch rules in the template', () => {
   // If a reorder ever put the dispatch first, [L] would end the pass before
   // Authorization was forwarded and every token-authenticated request would
   // silently look anonymous. Match actual directive LINES, not prose — the
   // explanatory comments mention these same names.
-  const frontController = readFileSync('app/.htaccess', 'utf8');
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
   const authRule = frontController.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
   const xsrfRule = frontController.match(/^RewriteRule .*E=HTTP_X_XSRF_TOKEN.*$/m);
@@ -60,7 +60,7 @@ test('the header-forwarding rules precede the dispatch rules in app/.htaccess', 
 test('the dispatch rules precede the legacy-URL redirect and the front-controller catch-all', () => {
   // The catch-all matches every path, so if it came first the dispatch would
   // never run at all.
-  const frontController = readFileSync('app/.htaccess', 'utf8');
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
   const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
   const legacyRedirect = frontController.match(/^RedirectMatch 301 .*$/m);
