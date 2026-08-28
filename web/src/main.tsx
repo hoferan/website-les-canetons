@@ -1,7 +1,9 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
+import { SessionProvider } from "./session/SessionProvider";
 import "./styles.css";
 
 // The mocked backend, opt in per run with `npm run dev:mock`. Guarded on
@@ -22,8 +24,23 @@ if (!root) {
   throw new Error("web/index.html is missing #root — the shell cannot mount.");
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // The API is same-origin and cheap, but a members' page left open in a
+      // background tab would otherwise refetch everything on every focus.
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <App />
+      </SessionProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );
