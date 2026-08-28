@@ -115,4 +115,40 @@ describe("customFetch", () => {
     expect(error.status).toBe(502);
     expect(error.code).toBe("unknown_error");
   });
+
+  // These two pin the ONE thing none of the tests above checked: what a
+  // successful call actually returns. orval's generated signatures all declare
+  // the { data, status, headers } envelope, so returning the bare body
+  // type-checked at every call site and was undefined at runtime.
+  it("returns orval's { data, status, headers } envelope, which every generated type declares", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(() => Promise.resolve(jsonResponse([{ id: 1, title: "Répétition" }]))),
+    );
+
+    const result = await customFetch<{ data: unknown; status: number; headers: Headers }>(
+      "/events",
+      { method: "GET" },
+    );
+
+    expect(result.status).toBe(200);
+    expect(result.data).toEqual([{ id: 1, title: "Répétition" }]);
+    expect(result.headers).toBeInstanceOf(Headers);
+  });
+
+  it("carries a null body inside the envelope on 204, not a bare undefined", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(new Response(null, { status: 204 }))),
+    );
+
+    const result = await customFetch<{ data: unknown; status: number }>("/logout", {
+      method: "POST",
+    });
+
+    expect(result.status).toBe(204);
+    expect(result.data).toBeNull();
+  });
 });

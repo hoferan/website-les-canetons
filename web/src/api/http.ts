@@ -9,6 +9,11 @@
  *    credentials: 'include'.
  *  - Sanctum rejects a mutating request with 419 unless the XSRF cookie has been
  *    seeded by GET /sanctum/csrf-cookie first. That path is NOT under /api.
+ *  - A successful call returns orval's ENVELOPE, { data, status, headers } —
+ *    not the parsed body. Every generated signature declares that shape, so
+ *    returning the body alone type-checks everywhere and is undefined at
+ *    runtime. Call sites read `.data`; through a TanStack Query hook that
+ *    reads `query.data.data`, the outer one being Query's own.
  *  - Errors use this API's own contract, {error, code, fields[]}, not Laravel's
  *    {message, errors}. `code` and `fields[].reason` are stable machine tokens
  *    the display layer translates into French; they are never shown raw.
@@ -87,11 +92,18 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
     throw await toApiError(response);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
+  // orval's `httpClient: 'fetch'` contract is that a mutator returns the
+  // ENVELOPE, not the bare body: every generated signature declares it, e.g.
+  // `eventIndexResponse = { data: …; status: 200 } & { headers: Headers }`.
+  // Returning the parsed body alone therefore type-checks at every call site
+  // and is `undefined` at runtime — a whole page's data silently missing, with
+  // no compiler error anywhere. Do not "simplify" this back.
+  //
+  // 204 carries `data: null` rather than being absent, so a caller can read
+  // `.data` unconditionally.
+  const data = response.status === 204 ? null : await response.json();
 
-  return (await response.json()) as T;
+  return { data, status: response.status, headers: response.headers } as T;
 }
 
 async function toApiError(response: Response): Promise<ApiError> {
