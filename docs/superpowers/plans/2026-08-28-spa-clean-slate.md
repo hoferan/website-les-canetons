@@ -503,10 +503,19 @@ Expected before Steps 1–2: FAIL, `Cannot find module './index'`. After: PASS, 
 In `api/tests/Feature/ApiErrorVocabularyTest.php`, replace the two-entry candidate path list (around lines 42–58) with the single path, keeping the surrounding docblock but rewriting it to explain the new location:
 
 ```php
-        $path = __DIR__.'/../../../web/src/i18n/fr.ts';
+    private const I18N_PATHS = [
+        __DIR__.'/../../../web/src/i18n/fr.ts',
+        '/srv/web/src/i18n/fr.ts',
+    ];
 ```
 
-The two old candidates existed because the old app shipped `assets/js/` at the document root as well as at `app/assets/js/`. The SPA ships only built bundles, so the vocabulary source exists in exactly one place and only ever at development time — one path is correct.
+**Two paths are still needed, for a new reason.** The first covers a checkout and CI. The second covers the dev container: the suite runs with `-w /var/www/html/api-laravel`, and after the cutover the document root is the *built* artifact — hashed bundles, no source — so `../../../web/src/...` resolves to nothing there. Add a read-only mount of the tracked tree, outside the document root, to `docker-compose.yml`'s `web` service:
+
+```yaml
+      - ./web:/srv/web:ro
+```
+
+Mounting it under `/var/www/html` instead would put source in the document root for no reason. Verified: the guard's brace-walker parses the `.ts` module unchanged — 3 tests, 33 assertions.
 
 Then update the four user-facing strings that name the old file so a failure points at the right one: the `assertVocabularyCovered()` message beginning `app/assets/js/i18n.js is missing French copy`, the `i18nKeys()` failure beginning `i18n.js has no`, and the `@param` docblock reading `the i18n.js section`.
 

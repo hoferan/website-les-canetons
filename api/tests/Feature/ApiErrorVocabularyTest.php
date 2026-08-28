@@ -9,7 +9,7 @@ use ReflectionClass;
 
 /**
  * Vocabulary guard: every machine token the API can emit must have French copy
- * in app/assets/js/i18n.js.
+ * in web/src/i18n/fr.ts.
  *
  * WHY THIS EXISTS. translateApiError() in that file is the ONLY place French is
  * computed in the whole system. It looks up three vocabularies — `code` under
@@ -39,18 +39,22 @@ use ReflectionClass;
 class ApiErrorVocabularyTest extends TestCase
 {
     /**
-     * Candidate locations of i18n.js, relative to this file, because the two
-     * layouts differ: the repository tree has it at <root>/app/assets/js/, while
-     * the web container's document root puts it at /var/www/html/assets/js/ with
-     * this suite mounted alongside at /var/www/html/api-laravel/. The suite runs
-     * with a -w of the latter, so neither cwd nor an absolute path would do.
+     * Candidate locations of the vocabulary, because the two layouts differ.
+     *
+     * In the repository tree — a developer's checkout and CI — it sits at
+     * <root>/web/src/i18n/fr.ts, three levels up from this file. In the dev
+     * container the document root is the BUILT artifact, which contains only
+     * hashed bundles, so the source is not reachable from api-laravel/ at all;
+     * docker-compose.yml mounts the tracked web/ read-only at /srv/web purely
+     * so this guard can still read it. The suite runs with a -w of
+     * /var/www/html/api-laravel, so neither cwd nor one absolute path would do.
      *
      * (api/app/ needs no such list: this file sits inside api/, so ../../app is
      * the same relative path in both layouts.)
      */
     private const I18N_PATHS = [
-        __DIR__.'/../../../app/assets/js/i18n.js',
-        __DIR__.'/../../../assets/js/i18n.js',
+        __DIR__.'/../../../web/src/i18n/fr.ts',
+        '/srv/web/src/i18n/fr.ts',
     ];
 
     /** The Laravel app tree scanned for hand-rolled token literals. */
@@ -143,7 +147,7 @@ class ApiErrorVocabularyTest extends TestCase
 
     /**
      * @param  string  $label  human name of the token category, for the message
-     * @param  string  $section  the i18n.js section the tokens are looked up in
+     * @param  string  $section  the fr.ts section the tokens are looked up in
      * @param  list<string>  $tokens
      */
     private function assertVocabularyCovered(string $label, string $section, array $tokens): void
@@ -153,8 +157,8 @@ class ApiErrorVocabularyTest extends TestCase
         $missing = array_values(array_diff($tokens, $existing));
 
         self::assertSame([], $missing, sprintf(
-            "app/assets/js/i18n.js is missing French copy for %d %s token(s) the API can emit:\n  - %s\n\n"
-            ."Each belongs under the `%s:` section of the resources.fr.translation object.\n"
+            "web/src/i18n/fr.ts is missing French copy for %d %s token(s) the API can emit:\n  - %s\n\n"
+            ."Each belongs under the `%s:` section of the exported `fr` object.\n"
             .'Without it translateApiError() degrades silently — a missing code or reason '
             ."becomes the generic \"Une erreur est survenue\", a missing field name puts the raw\n"
             .'English identifier on a French screen.',
@@ -302,10 +306,10 @@ class ApiErrorVocabularyTest extends TestCase
         return $tokens;
     }
 
-    // ------------------------------------------------------------- i18n.js read
+    // -------------------------------------------------------------- fr.ts read
 
     /**
-     * The keys defined under one flat section of i18n.js's
+     * The keys defined under one flat section of fr.ts's
      * resources.fr.translation object.
      *
      * @return list<string>
@@ -314,14 +318,14 @@ class ApiErrorVocabularyTest extends TestCase
     {
         $source = $this->blankNonCode($this->i18nSource());
 
-        // Keys are matched as BARE identifiers, which is how i18n.js writes them.
+        // Keys are matched as BARE identifiers, which is how fr.ts writes them.
         // Quoting one would hide it from this reader — but blanking is
         // length-preserving and only ever removes keys, so the failure direction
         // is a loud "missing French copy for X", never a silent pass.
         $anchor = preg_quote($section, '/');
         if (! preg_match('/(?:^|[{,])\s*'.$anchor.'\s*:\s*\{/', $source, $m, PREG_OFFSET_CAPTURE)) {
             self::fail(
-                "i18n.js has no `{$section}:` section, so the API's tokens for it cannot be checked at all. "
+                "fr.ts has no `{$section}:` section, so the API's tokens for it cannot be checked at all. "
                 .'If the section was renamed, update this test to match.'
             );
         }
@@ -343,12 +347,12 @@ class ApiErrorVocabularyTest extends TestCase
                 }
             }
         }
-        self::assertNotNull($end, "Unbalanced braces while reading i18n.js's `{$section}:` section.");
+        self::assertNotNull($end, "Unbalanced braces while reading fr.ts's `{$section}:` section.");
 
         $block = substr($source, $open, $end - $open + 1);
         preg_match_all('/(?:^|[{,])\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/', $block, $keys);
 
-        self::assertNotEmpty($keys[1], "i18n.js's `{$section}:` section parsed as empty; this reader is broken.");
+        self::assertNotEmpty($keys[1], "fr.ts's `{$section}:` section parsed as empty; this reader is broken.");
 
         return array_values(array_unique($keys[1]));
     }
@@ -365,7 +369,7 @@ class ApiErrorVocabularyTest extends TestCase
         // reports green while checking nothing, which is worse than not having it
         // — the untranslated-token bugs it exists to catch are themselves silent.
         self::fail(
-            "Cannot find app/assets/js/i18n.js, so the API's error vocabulary is unchecked. "
+            "Cannot find web/src/i18n/fr.ts, so the API's error vocabulary is unchecked. "
             ."Looked for:\n  - ".implode("\n  - ", self::I18N_PATHS)
             ."\nIf the file moved, add its new location to ApiErrorVocabularyTest::I18N_PATHS."
         );
