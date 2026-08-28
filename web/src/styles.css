@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* The band's colours, taken from app/assets/css/main.css so the palette does
+   not drift during the port. --color-* is Tailwind 4's theme namespace:
+   --color-canetons-red gives you bg-canetons-red, text-canetons-red, and so on. */
+@theme {
+  --color-canetons-red: #e0201a;
+}

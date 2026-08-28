@@ -8,8 +8,8 @@
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true
   },
-  "include": ["web/src", "orval.config.ts"]
+  "include": ["web/src", "web/e2e", "orval.config.ts", "playwright.config.ts"]
 }

@@ -12,7 +12,7 @@ import { defineConfig } from "vitest/config";
 // config likely becomes the project's only one.
 export default defineConfig({
   test: {
-    include: ["web/src/**/*.test.ts"],
-    environment: "node",
+    include: ["web/src/**/*.test.{ts,tsx}"],
+    environment: "jsdom",
   },
 });
