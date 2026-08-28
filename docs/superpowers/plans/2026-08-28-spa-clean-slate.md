@@ -12,6 +12,8 @@
 
 ---
 
+> **Status: complete, 2026-08-28.** Executed inline on `feat/spa-cutover`, commits `71dad82`..`a262733`. Deviations found while running it are recorded in the steps themselves. Plan 2 (shell and first page) is next.
+
 ## Plan roadmap
 
 This plan is **Plan 1 of 2**.
@@ -51,7 +53,7 @@ Purely additive: `app/` and its build keep working. The one change to existing b
 - Create: `vite.config.ts`, `web/index.html`, `web/src/main.tsx`, `web/src/App.tsx`, `web/src/App.test.tsx`, `web/src/styles.css`
 - Modify: `package.json`, `vitest.config.ts`, `eslint.config.js`
 
-- [ ] **Step 1: Install the dependencies**
+- [x] **Step 1: Install the dependencies**
 
 ```bash
 npm install --save-dev react@^19.2.8 react-dom@^19.2.8 @types/react@^19 @types/react-dom@^19 \
@@ -60,7 +62,7 @@ npm install --save-dev react@^19.2.8 react-dom@^19.2.8 @types/react@^19 @types/r
   @playwright/test@^1.62 typescript-eslint@^8 eslint-plugin-react-hooks@^5
 ```
 
-- [ ] **Step 2: Create `vite.config.ts`**
+- [x] **Step 2: Create `vite.config.ts`**
 
 ```ts
 import tailwindcss from "@tailwindcss/vite";
@@ -95,7 +97,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Create `web/index.html`**
+- [x] **Step 3: Create `web/index.html`**
 
 Icons and images still live under `app/` at this point; Task 6 moves them and adds their links here.
 
@@ -118,7 +120,7 @@ Icons and images still live under `app/` at this point; Task 6 moves them and ad
 </html>
 ```
 
-- [ ] **Step 4: Create `web/src/styles.css`**
+- [x] **Step 4: Create `web/src/styles.css`**
 
 Tailwind 4 is CSS-first — there is no `tailwind.config.ts`. Design tokens go in `@theme`.
 
@@ -133,7 +135,7 @@ Tailwind 4 is CSS-first — there is no `tailwind.config.ts`. Design tokens go i
 }
 ```
 
-- [ ] **Step 5: Create `web/src/App.tsx`**
+- [x] **Step 5: Create `web/src/App.tsx`**
 
 Deliberately trivial. Plan 2 replaces this with the boot gate and the router.
 
@@ -143,7 +145,7 @@ export default function App() {
 }
 ```
 
-- [ ] **Step 6: Create `web/src/main.tsx`**
+- [x] **Step 6: Create `web/src/main.tsx`**
 
 ```tsx
 import { StrictMode } from "react";
@@ -164,7 +166,7 @@ createRoot(root).render(
 );
 ```
 
-- [ ] **Step 7: Point Vitest at the DOM and at `.tsx` files**
+- [x] **Step 7: Point Vitest at the DOM and at `.tsx` files**
 
 Replace the `test` block in `vitest.config.ts` (keep the file's existing explanatory comment, and update its last paragraph to say Task 6 deletes `vite.config.js`):
 
@@ -177,7 +179,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 8: Write the failing test**
+- [x] **Step 8: Write the failing test**
 
 Create `web/src/App.test.tsx`:
 
@@ -193,17 +195,17 @@ test("the shell renders the band's name", () => {
 });
 ```
 
-- [ ] **Step 9: Run the test to verify it fails**
+- [x] **Step 9: Run the test to verify it fails**
 
 Run: `npm run test:web`
 Expected: FAIL — `Cannot find module './App'` if Step 5 was skipped, otherwise it passes. If it passes immediately that is fine here: the test's job is to prove React, JSX, jsdom and Testing Library are wired, not to drive a design.
 
-- [ ] **Step 10: Run the test to verify it passes**
+- [x] **Step 10: Run the test to verify it passes**
 
 Run: `npm run test:web`
 Expected: PASS, 1 test.
 
-- [ ] **Step 11: Make both Vite configs explicit and add the SPA scripts**
+- [x] **Step 11: Make both Vite configs explicit and add the SPA scripts**
 
 In `package.json`, change `build:assets` and add three scripts:
 
@@ -214,7 +216,7 @@ In `package.json`, change `build:assets` and add three scripts:
 "test:e2e": "playwright test",
 ```
 
-- [ ] **Step 11a: Create `playwright.config.ts`**
+- [x] **Step 11a: Create `playwright.config.ts`**
 
 ```ts
 import { defineConfig } from "@playwright/test";
@@ -235,7 +237,7 @@ export default defineConfig({
 
 Vitest only collects `web/src/**/*.test.{ts,tsx}`, so `web/e2e/` cannot collide with it.
 
-- [ ] **Step 11b: Create `web/e2e/shell.spec.ts`**
+- [x] **Step 11b: Create `web/e2e/shell.spec.ts`**
 
 ```ts
 import { expect, test } from "@playwright/test";
@@ -246,7 +248,7 @@ test("the shell mounts in a real browser", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 11c: Install the browser and run it**
+- [x] **Step 11c: Install the browser and run it**
 
 ```bash
 npx playwright install chromium
@@ -254,7 +256,7 @@ npm run test:e2e
 ```
 Expected: 1 passed.
 
-- [ ] **Step 12: Teach ESLint about `web/`**
+- [x] **Step 12: Teach ESLint about `web/`**
 
 Append to the array in `eslint.config.js`:
 
@@ -296,7 +298,7 @@ import tseslint from 'typescript-eslint';
 
 Also register the TypeScript plugin so the `@typescript-eslint/` rule resolves — add `plugins: { '@typescript-eslint': tseslint.plugin, 'react-hooks': reactHooks },` in the same block.
 
-- [ ] **Step 12a: Bring the new files under tsc and git-ignore Playwright's output**
+- [x] **Step 12a: Bring the new files under tsc and git-ignore Playwright's output**
 
 `tsconfig.json` covers only `web/src`, so the E2E spec and the Playwright config would go unchecked:
 
@@ -316,7 +318,7 @@ Add to `.gitignore`:
 /blob-report/
 ```
 
-- [ ] **Step 13: Verify the SPA builds and nothing else regressed**
+- [x] **Step 13: Verify the SPA builds and nothing else regressed**
 
 ```bash
 npm run build:web
@@ -326,7 +328,7 @@ npx eslint web/src
 ```
 Expected: `build:web` writes `dist/build/index.html` and `dist/build/assets/*`; `build:assets` still writes `app/assets/dist/`; typecheck and ESLint clean.
 
-- [ ] **Step 14: Commit**
+- [x] **Step 14: Commit**
 
 ```bash
 git add vite.config.ts vitest.config.ts eslint.config.js package.json package-lock.json web/
@@ -347,7 +349,7 @@ This is forced into Plan 1, not Plan 2: `api/tests/Feature/ApiErrorVocabularyTes
 - Create: `web/src/i18n/fr.ts`, `web/src/i18n/index.ts`, `web/src/i18n/index.test.ts`
 - Modify: `api/tests/Feature/ApiErrorVocabularyTest.php`
 
-- [ ] **Step 1: Create `web/src/i18n/fr.ts`**
+- [x] **Step 1: Create `web/src/i18n/fr.ts`**
 
 The vocabulary from `app/assets/js/i18n.js`, unchanged in content. Keep every key a **bare identifier** and keep the object free of TypeScript-only syntax (no `as const`, no annotations inside the literal): `ApiErrorVocabularyTest` finds sections with `/(?:^|[{,])\s*<section>\s*:\s*\{/` and then brace-walks, so a quoted key would hide a token from the guard and TS syntax could confuse the walk.
 
@@ -400,7 +402,7 @@ export const fr = {
 };
 ```
 
-- [ ] **Step 2: Create `web/src/i18n/index.ts`**
+- [x] **Step 2: Create `web/src/i18n/index.ts`**
 
 A typed port of `translateApiError`, taking the `ApiError` that `web/src/api/http.ts` already throws rather than a raw body.
 
@@ -447,7 +449,7 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
 }
 ```
 
-- [ ] **Step 3: Write the failing test**
+- [x] **Step 3: Write the failing test**
 
 Create `web/src/i18n/index.test.ts`:
 
@@ -493,12 +495,12 @@ test("an unknown field name keeps the raw field but still falls back on the reas
 });
 ```
 
-- [ ] **Step 4: Run the test to verify it fails, then passes**
+- [x] **Step 4: Run the test to verify it fails, then passes**
 
 Run: `npm run test:web`
 Expected before Steps 1–2: FAIL, `Cannot find module './index'`. After: PASS, 6 tests total (5 here plus Task 1's).
 
-- [ ] **Step 5: Repoint the Laravel vocabulary test**
+- [x] **Step 5: Repoint the Laravel vocabulary test**
 
 In `api/tests/Feature/ApiErrorVocabularyTest.php`, replace the two-entry candidate path list (around lines 42–58) with the single path, keeping the surrounding docblock but rewriting it to explain the new location:
 
@@ -519,12 +521,12 @@ Mounting it under `/var/www/html` instead would put source in the document root 
 
 Then update the four user-facing strings that name the old file so a failure points at the right one: the `assertVocabularyCovered()` message beginning `app/assets/js/i18n.js is missing French copy`, the `i18nKeys()` failure beginning `i18n.js has no`, and the `@param` docblock reading `the i18n.js section`.
 
-- [ ] **Step 6: Run the Laravel suite**
+- [x] **Step 6: Run the Laravel suite**
 
 Run: `docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=ApiErrorVocabularyTest`
 Expected: 3 passing tests. A failure naming missing tokens means Step 1 dropped a key — compare against `app/assets/js/i18n.js`, which still exists at this point.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add web/src/i18n api/tests/Feature/ApiErrorVocabularyTest.php
@@ -545,21 +547,21 @@ A pure move plus a repoint. The generated output must be byte-identical, which t
 - Move: `app/.htaccess` → `config/htaccess/site.htaccess`
 - Modify: `tools/build-overlays.mjs`
 
-- [ ] **Step 1: Capture the current output as a baseline**
+- [x] **Step 1: Capture the current output as a baseline**
 
 ```bash
 npm run build:overlay && node tools/build-overlays.mjs docker
 cp -r dist/overlay /tmp/overlay-baseline
 ```
 
-- [ ] **Step 2: Move the file**
+- [x] **Step 2: Move the file**
 
 ```bash
 mkdir -p config/htaccess
 git mv app/.htaccess config/htaccess/site.htaccess
 ```
 
-- [ ] **Step 3: Repoint `tools/build-overlays.mjs`**
+- [x] **Step 3: Repoint `tools/build-overlays.mjs`**
 
 Two literals change. Line 51:
 
@@ -578,7 +580,7 @@ The `app/robots.txt` reference in the `prod` branch stays as it is for now — T
 
 Also update the file's header comment, which says overlays are regenerated "when `app/.htaccess` or the auth block changes".
 
-- [ ] **Step 4: Prove the output is unchanged**
+- [x] **Step 4: Prove the output is unchanged**
 
 ```bash
 npm run build:overlay && node tools/build-overlays.mjs docker
@@ -587,19 +589,19 @@ diff -r /tmp/overlay-baseline dist/overlay
 
 Expected: `prod/` and `docker/` byte-identical (they carry the plain template, no banner), and in `test/` and `qa/` **exactly two changed lines** — the generated-from banner that Step 3 rewrote. Any change to an Apache directive is a mistake in Step 3, not an improvement.
 
-- [ ] **Step 4a: Repoint the overlay tests, which read the template directly**
+- [x] **Step 4a: Repoint the overlay tests, which read the template directly**
 
 `tools/build-overlays.test.mjs` calls `readFileSync('app/.htaccess')` in four places and asserts the dispatch rules, the `[L]` flag and the rule ordering. Change all four to `config/htaccess/site.htaccess` and update the three test names that say `app/.htaccess`.
 
 Run: `npm run test:js`
 Expected: all tests pass. **Do not skip this** — `npm run build:overlay` and `npm run smoke` both pass with these tests broken, so the move looks complete when it is not.
 
-- [ ] **Step 5: Confirm the stack still starts**
+- [x] **Step 5: Confirm the stack still starts**
 
 Run: `npm run dev && npm run smoke`
 Expected: 11/11 checks pass. This proves the docker overlay still generates correctly — a missing or stale `dist/overlay/docker/.htaccess` takes the `web` container down outright rather than degrading.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A config/htaccess tools/build-overlays.mjs
@@ -620,7 +622,7 @@ The pre-flight parses each server's `config.php` into an AST and diffs its key s
 - Modify: `tools/deploy/preflight.mjs`
 - Test: `tools/deploy/preflight.test.mjs`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tools/deploy/preflight.test.mjs` (create it if absent, following the `node --test` style already used by the other `tools/deploy/*.test.mjs` files):
 
@@ -657,12 +659,12 @@ test('an identical key set is not drift', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `node --test tools/deploy/preflight.test.mjs`
 Expected: FAIL — `envKeys` and `compareEnvShape` are not exported.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `tools/deploy/preflight.mjs`, delete `configKeyPathsFromSource`, `configKeyPaths`, `compareConfigShape` and `checkConfigShape` along with the `php-parser` import, and add:
 
@@ -720,23 +722,23 @@ export async function checkEnvShape(client, remoteRoot) {
 
 This keeps `checkConfigShape`'s exact download mechanism (`client.downloadTo` into a `mkdtempSync` directory) and its exact return shape, including the `skipped`/`reason` pair the caller already branches on — so `cli.mjs` needs a renamed import and new message text, nothing structural. Keep the existing `mkdtempSync`, `tmpdir`, `path`, `readFileSync` and `rmSync` imports; drop only the `php-parser` one.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `node --test tools/deploy/preflight.test.mjs`
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Update the caller**
+- [x] **Step 5: Update the caller**
 
 In `tools/deploy/cli.mjs`, change the `checkConfigShape` import and call site to `checkEnvShape`, and update the message it prints on drift to name `api-laravel/.env` and `api/.env.example` instead of `config.php` and `config.example.php`.
 
-- [ ] **Step 6: Prove it against a real server**
+- [x] **Step 6: Prove it against a real server**
 
 ```bash
 FTP_PASS="$(grep -oP '(?<=^FTP_PASSWORD=).*' .env.test)" npm run deploy:test -- --dry-run
 ```
 Expected: the pre-flight step reports either no drift or a named key list, and the run changes nothing. Note the `FTP_PASS` prefix: the `.env.*` files use `FTP_PASSWORD` on purpose and the CLI reads `FTP_PASS`; do not "fix" the env files.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tools/deploy/preflight.mjs tools/deploy/preflight.test.mjs tools/deploy/cli.mjs
@@ -756,7 +758,7 @@ actually configures the API. Values are still never read or logged."
 **Files:**
 - Modify: `tools/ensure-dev-stack.sh`
 
-- [ ] **Step 1: Replace the `config.php` heredoc**
+- [x] **Step 1: Replace the `config.php` heredoc**
 
 At `tools/ensure-dev-stack.sh:87`, replace the `if [ ! -f "$PROJECT_DIR/app/config.php" ]` block and its heredoc with:
 
@@ -770,16 +772,16 @@ if [ ! -f "$PROJECT_DIR/api/.env" ]; then
 fi
 ```
 
-- [ ] **Step 2: Update the script's header comment**
+- [x] **Step 2: Update the script's header comment**
 
 Line 7 says the stack leaves "`app/config.php` pointing at it". Change it to `api/.env` so the file describes what it does.
 
-- [ ] **Step 3: Verify the script still parses**
+- [x] **Step 3: Verify the script still parses**
 
 Run: `bash -n tools/ensure-dev-stack.sh`
 Expected: no output (exit 0). The script's body only runs inside a Docker-less web session, so a syntax check is the verification available on a Docker host; the real exercise happens the next time a web session runs `npm run test:php`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tools/ensure-dev-stack.sh
@@ -797,7 +799,7 @@ One commit. Every deletion lands with the rewiring it forces: a bare deletion co
 - Modify: `package.json`, `tools/build.mjs`, `docker-compose.yml`, `config/htaccess/site.htaccess`, `api/app/Http/Controllers/Api/AuthController.php`, `tools/phpunit-summary.mjs`, `.github/workflows/ci.yml`, `web/index.html`
 - Move: `app/assets/img` → `web/public/assets/img`, `app/assets/icons` → `web/public/assets/icons`
 
-- [ ] **Step 1: Move the static assets, keeping their URLs**
+- [x] **Step 1: Move the static assets, keeping their URLs**
 
 ```bash
 mkdir -p web/public/assets
@@ -807,7 +809,7 @@ git mv app/assets/icons web/public/assets/icons
 
 Vite copies `public/` verbatim, so these keep resolving at `/assets/img/*` and `/assets/icons/*` — which is what keeps the `.htaccess` `!^/assets/` bypass and its cache headers working untouched.
 
-- [ ] **Step 2: Add the icon and manifest links to `web/index.html`**
+- [x] **Step 2: Add the icon and manifest links to `web/index.html`**
 
 Insert into `<head>`, after the `<title>`:
 
@@ -823,7 +825,7 @@ Insert into `<head>`, after the `<title>`:
 
 `crossorigin="use-credentials"` is load-bearing: without it the manifest fetch fails behind TEST/QA Basic Auth. That was a previously fixed bug — do not drop it.
 
-- [ ] **Step 3: Delete the old front end and its Composer project**
+- [x] **Step 3: Delete the old front end and its Composer project**
 
 ```bash
 git rm -r --quiet app composer.json composer.lock phpcs.xml phpunit.xml tests \
@@ -834,7 +836,7 @@ rm -rf vendor
 
 `tools/composer.mjs`, `tools/php-in-docker.mjs`, `tools/pint.mjs` and `tools/pint-file.mjs` stay — `api/` still needs them.
 
-- [ ] **Step 4: Delete the session bridge**
+- [x] **Step 4: Delete the session bridge**
 
 ```bash
 git rm --quiet api/app/Support/LegacySession.php
@@ -842,7 +844,7 @@ git rm --quiet api/app/Support/LegacySession.php
 
 In `api/app/Http/Controllers/Api/AuthController.php` remove the `use App\Support\LegacySession;` import (line 8), the `LegacySession::write($user);` call and its two-line comment (lines 73–75), and `LegacySession::forget();` (line 87). Nothing replaces them: the pages that read `$_SESSION` no longer exist.
 
-- [ ] **Step 5: Rewrite the scripts in `package.json`**
+- [x] **Step 5: Rewrite the scripts in `package.json`**
 
 Replace the `scripts` block's front-end and PHP entries with:
 
@@ -899,7 +901,7 @@ Finally remove `bulma`, `lucide` and `php-parser` from `devDependencies` — Bul
 Two other files name the config that is being deleted and would break silently:
 in `playwright.config.ts` the `webServer.command` becomes `npx vite --port 5173`, and `vitest.config.ts`'s explanatory comment about two configs is now stale — replace it with a one-liner saying this is the project's only Vitest config.
 
-- [ ] **Step 6: Rewrite `tools/build.mjs`'s first half**
+- [x] **Step 6: Rewrite `tools/build.mjs`'s first half**
 
 Replace everything from the Vite invocation down to the `console.log('Built dist/build/ …')` line — the `cpSync('app', 'dist/build')`, the `assets/js`/`assets/css` strip, the `config.php` and `php-error.log` removals, the `config.example.php` copy and both Composer `docker run` calls — with:
 
@@ -924,7 +926,7 @@ rmSync('dist/build/mockServiceWorker.js', { force: true });
 
 Keep the `rmrf` helper and its Windows-retry comment, and keep everything from `const laravelBuild = 'dist/build/api-laravel';` onward exactly as it is. Move the `rmrf('dist/build')` call so it runs *before* Vite, as shown — Vite's `emptyOutDir` handles the directory itself, but the explicit remove keeps the artifact free of files from a previous build that Vite would not know about.
 
-- [ ] **Step 7: Rework `docker-compose.yml`**
+- [x] **Step 7: Rework `docker-compose.yml`**
 
 In the `web` service, delete the `./app:/var/www/html`, `./config/config.docker.php:/var/www/html/config.php` and `vendor:/var/www/html/vendor:ro` mounts, and delete the `vendor` volume from the top-level `volumes:` block. Keep the `.htaccess` overlay mount, `./api:/var/www/html/api-laravel`, `./docker/api/env.docker` and `api_vendor`. Add the built SPA:
 
@@ -965,7 +967,7 @@ In `vite.config.ts`, add the proxy so the browser sees one origin at `:5173`:
 
 Finally, in `docker/web/Dockerfile` remove the `/srv/app/src -> /var/www/html/src` symlink line: it existed so the entrypoint could reach the old app's migrator, which is gone.
 
-- [ ] **Step 8: Apply the three `.htaccess` changes**
+- [x] **Step 8: Apply the three `.htaccess` changes**
 
 In `config/htaccess/site.htaccess`:
 
@@ -993,11 +995,11 @@ Update that rule's comment: it still describes `index.php` and the old app's `sr
 
 The cache block needs no change: `<FilesMatch "\.html$">` already sets `max-age=0, must-revalidate`, which is correct for `index.html`, and `.css|.js` are already `immutable`, correct for content-hashed output.
 
-- [ ] **Step 9: Leave `tools/phpunit-summary.mjs` alone**
+- [x] **Step 9: Leave `tools/phpunit-summary.mjs` alone**
 
 Checked during plan review: it takes the JUnit path as `process.argv[2]` (`tools/phpunit-summary.mjs:7`), so it is already path-agnostic and needs no edit. Only the CI step that invokes it changes, in Step 10 — the spec's "repointed at `api/`'s suite" is about the caller, not the tool.
 
-- [ ] **Step 10: Rewire CI**
+- [x] **Step 10: Rewire CI**
 
 In `.github/workflows/ci.yml`:
 - In the `php` job: delete the "Install PHP dev tools", "PHP syntax check (php -l)" and "PHP_CodeSniffer (PSR-12)" steps, keeping "Install Laravel API dev tools" and "Laravel Pint (api/)". Rename the job key from `php` to `lint-api` and its `name:` to match, and update any `needs:` that referenced `php` — `build` and `deploy-test` both do.
@@ -1006,7 +1008,7 @@ In `.github/workflows/ci.yml`:
 - In the `assets` job, add two steps after "JS unit tests": `npm run typecheck` and `npm run test:web`. The four existing lint/format steps keep their script names — the scripts changed, not the job.
 - Leave `guard` and `build` otherwise alone.
 
-- [ ] **Step 11: Regenerate the overlays and rebuild**
+- [x] **Step 11: Regenerate the overlays and rebuild**
 
 ```bash
 npm run build:overlay && node tools/build-overlays.mjs docker
@@ -1014,7 +1016,7 @@ npm run build
 ```
 Expected: `dist/build/` contains `index.html`, `assets/`, and `api-laravel/` — and **no** `pages/`, `src/`, `partials/`, `templates/`, `config.php`, `config.example.php` or `vendor/` at the root.
 
-- [ ] **Step 12: Verify the artifact's shape explicitly**
+- [x] **Step 12: Verify the artifact's shape explicitly**
 
 ```bash
 ls dist/build
@@ -1023,7 +1025,7 @@ test ! -e dist/build/mockServiceWorker.js && echo "worker stripped"
 ```
 Expected: `OK` and `worker stripped`.
 
-- [ ] **Step 13: Bring the stack up and check by hand**
+- [x] **Step 13: Bring the stack up and check by hand**
 
 ```bash
 npm run dev
@@ -1034,7 +1036,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8090/api-laravel/.env
 ```
 Expected: `200`, `200` (the shell, served for an unknown route — soft 404 by design), a JSON array, and `403` or `404` for the `.env` probe. **A `500` on the first two means the `.htaccess` fallback is looping** — re-read Step 8 before changing anything else.
 
-- [ ] **Step 14: Run everything**
+- [x] **Step 14: Run everything**
 
 ```bash
 npm run check
@@ -1042,7 +1044,7 @@ docker compose exec -w /var/www/html/api-laravel web php artisan test
 ```
 Expected: `check` green; 235 Laravel tests passing, minus any that covered `LegacySession` — delete those, they test deleted code.
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add -A
@@ -1073,7 +1075,7 @@ Nine of the eleven checks assert API behaviour and survive untouched. Two assert
 **Files:**
 - Modify: `tools/smoke-docker.mjs`
 
-- [ ] **Step 1: Replace the front-end check**
+- [x] **Step 1: Replace the front-end check**
 
 Replace the check at line 89, `'the old app is still served (front-controller catch-all intact)'`, with:
 
@@ -1089,7 +1091,7 @@ check('the SPA shell is served for a page URL (fallback intact)', async () => {
 
 A `500` here is the rewrite loop described in Task 6 Step 8, not a missing file.
 
-- [ ] **Step 2: Repoint the cache-policy check**
+- [x] **Step 2: Repoint the cache-policy check**
 
 The check at line 336 asserts the immutable cache header on a file under `/assets/dist/`, which no longer exists. Replace its body with:
 
@@ -1109,7 +1111,7 @@ check('hashed bundles are served with the immutable cache policy', async () => {
 
 Add `import { readFileSync } from 'node:fs';` at the top of the file. The explicit `assert.ok` on the match means a build-output change surfaces as "no hashed bundle found" rather than a confusing header assertion against `undefined`.
 
-- [ ] **Step 3: Add a check that the shell is not cached**
+- [x] **Step 3: Add a check that the shell is not cached**
 
 `index.html` must revalidate or clients pin a stale bundle graph forever:
 
@@ -1121,12 +1123,12 @@ check('the shell is served must-revalidate, so a deploy is picked up', async () 
 });
 ```
 
-- [ ] **Step 4: Run it**
+- [x] **Step 4: Run it**
 
 Run: `npm run smoke`
 Expected: 12/12 checks pass against http://localhost:8090.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/smoke-docker.mjs
@@ -1144,15 +1146,15 @@ the SPA build, and a new check pins index.html to must-revalidate."
 **Files:**
 - Modify: `CLAUDE.md`, `README.md`, `staging/README.md`
 
-- [ ] **Step 1: Update `CLAUDE.md`**
+- [x] **Step 1: Update `CLAUDE.md`**
 
 It describes the two-app architecture throughout. Rewrite the Tech Stack, Architecture, Local Development and Development Commands sections to describe `api/` + `web/`: no `app/`, no front controller, no `nikic/fast-route`, no root Composer project, no `config.php`, no Bulma or Lucide, no per-page Vite entries. Keep every note about the host that still applies — the `.htaccess` dispatch block and its `[L]` rationale, `RunPendingMigrations` and why CI cannot migrate, and the deploy CLI's brake and protected basenames. Add: the two dev modes, the `web/` layout, and the build-order warning in `tools/build.mjs`.
 
-- [ ] **Step 2: Update `README.md` and `staging/README.md`**
+- [x] **Step 2: Update `README.md` and `staging/README.md`**
 
 `README.md`'s setup instructions reference `php:install` and `config.php`. `staging/README.md` describes the deployed tree — replace the old app's directories with `index.html` + `assets/`, and note that `config.php` is now a dead file on each server that should be deleted by hand once, since the deploy CLI's protected basenames mean it will never be removed automatically.
 
-- [ ] **Step 3: Remove the WordPress remnants**
+- [x] **Step 3: Remove the WordPress remnants**
 
 ```bash
 rm -rf .tmp/wp-test
@@ -1161,7 +1163,7 @@ git push origin --delete archive/php-laravel-stack
 
 The branch is `feat/frontend-spa-cutover` plus exactly three WordPress documentation commits, so nothing unique is lost. `feat/wordpress-migration` and its Docker volumes are already gone.
 
-- [ ] **Step 4: Full verification**
+- [x] **Step 4: Full verification**
 
 ```bash
 npm run check
@@ -1172,21 +1174,21 @@ git status --short
 ```
 Expected: `check` green; the artifact built; 12/12 smoke; the Laravel suite green; a clean working tree.
 
-- [ ] **Step 5: Confirm what the repository now contains**
+- [x] **Step 5: Confirm what the repository now contains**
 
 ```bash
 ls
 ```
 Expected: `api`, `web`, `tools`, `docs`, `config`, `docker`, `staging`, `.github`, and the root config files — **no** `app`, `composer.json`, `composer.lock`, `phpcs.xml`, `phpunit.xml`, `tests`, `vendor` or `vite.config.js`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
 git commit -m "docs: describe the SPA architecture and drop the WordPress remnants"
 ```
 
-- [ ] **Step 7: Do not merge**
+- [x] **Step 7: Do not merge**
 
 Stop here. `main` stays at `ffedf84` and TEST keeps serving today's site until Plan 2 and the remaining page ports are done — merging now auto-deploys a blank shell to TEST. See spec §9.
 
