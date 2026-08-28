@@ -7,10 +7,10 @@ RewriteEngine on
 #   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
 #                 which is not under /api/.
 #
-# This block MUST stay above both the RedirectMatch 301 legacy-URL rule and
-# the front-controller catch-all below. The catch-all matches every path (^),
+# This block MUST stay above both the RedirectMatch 301 legacy-URL rules and
+# the SPA fallback below. That fallback matches every path (^),
 # so if it ran first every /api/* and /sanctum/* request would be handed to
-# the old app's index.php and this dispatch would never happen at all.
+# the SPA shell and this dispatch would never happen at all.
 #
 # The Laravel project sits at api-laravel/ in the document root — see
 # tools/build.mjs, which picks that name. (It originally avoided a collision
@@ -60,48 +60,75 @@ RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 # [L] is correct here, not merely safe, and was verified empirically (Laravel
 # still answers its own 401 with it): on the second pass the path is
 # api-laravel/public/index.php, which ^api(/|$) cannot match (see the hyphen
-# note above), and REDIRECT_STATUS is set by then, so the front-controller
-# catch-all below does not match either. Hence no rewrite loop. Depending on
-# REDIRECT_STATUS is not a new liability: the catch-all below already relies
-# on it on this FastCGI host.
+# note above), and REDIRECT_STATUS is set by then, so the SPA fallback below
+# does not match either. Hence no rewrite loop. Depending on REDIRECT_STATUS is
+# not a new liability: the fallback below already relies on it on this FastCGI
+# host.
 RewriteRule ^api(/|$) api-laravel/public/index.php [L]
 RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 
-# Legacy URL redirect. Old .html pages were migrated to .php, so any request
-# for a .html file is permanently redirected (301) to the matching .php file.
-# This keeps old bookmarks, inbound links, and search-engine results working,
-# and tells search engines to update their index to the new .php URL.
-RedirectMatch 301 ^(.*)\.html$ $1.php
-
-# Front controller: every request is dispatched to index.php EXCEPT real
-# static assets (assets/css, assets/js, assets/img), which are served
-# directly — see src/routes.php. This also means pages/, src/, vendor/,
-# config.php and php-error.log are never reachable as raw files: a direct hit
-# on any of them isn't a registered route, so the front controller answers
-# with a plain 404 instead of executing or serving the file's contents. It
-# catches api-laravel/* too — every path except /api/* and /sanctum/*, which
-# the block above already claimed — so a direct hit on api-laravel/.env 404s
-# on a server even though the deny-all in api/.htaccess never gets uploaded
-# there (see staging/README.md).
+# Legacy URL 301s. These used to be generated in app/src/routes.php, which is
+# gone with the old front end — this is a move, not new behaviour. Both the old
+# .php URLs and the older .html ones redirect to today's clean URLs, so existing
+# bookmarks, inbound links and search results keep working.
 #
-# The REDIRECT_STATUS guard is essential on FastCGI hosts (e.g. easy-hebergement,
-# php-cgi/FPM): once Apache has internally rewritten a request to index.php it
-# sets REDIRECT_STATUS, so the rule does NOT match a second time. Without it,
-# `RewriteRule ^ index.php` re-matches the rewritten index.php and loops until
-# Apache aborts the request with 500 ("Request exceeded the limit of 10 internal
-# redirects"). We intentionally keep the catch-all (rather than a !-f/!-d guard)
-# so raw files under pages/, src/, vendor/, api-laravel/ and config.php stay
-# unreachable.
+# /index.html is deliberately matched by NONE of these, and that is
+# load-bearing. The fallback below rewrites every unmatched path to index.html,
+# and in per-directory context that internal redirect re-enters the ruleset.
+# A rule that 301'd /index.html to / would then rewrite to index.html again,
+# 301 again, and loop — on every page of the site. Hence the negative lookahead
+# in the second rule, and why the first names index.php but not index.html.
+#
+# The api-laravel/ exclusion on the .php rule is load-bearing too, for the same
+# reason and a worse failure. The dispatch above rewrites /api/* to
+# api-laravel/public/index.php, and that substitution re-enters the ruleset,
+# where mod_alias sees a URL ending in .php — so without the exclusion EVERY
+# /api/* and /sanctum/* request 301s to /api-laravel/public/index instead of
+# reaching Laravel. Observed, not theorised: the whole API answered 301 until
+# this was added.
+#
+# These must stay ABOVE the fallback and BELOW the /api dispatch above.
+RedirectMatch 301 ^/(?:index\.php|accueil\.(?:php|html))$ /
+RedirectMatch 301 ^/(?!index\.html$)(.*)\.html$ /$1
+RedirectMatch 301 ^/(?!api-laravel/)(.*)\.php$ /$1
+
+# SPA fallback: every request is served the shell, index.html, EXCEPT real
+# static assets under /assets/ (the hashed bundles Vite emits, plus img/ and
+# icons/ copied verbatim), which are served directly. React Router then decides
+# what to render from the URL — see web/src/routes.tsx.
+#
+# An unknown URL therefore answers 200 with the SPA's own 404 view rather than a
+# real 404. Accepted deliberately: the alternative is enumerating every route
+# here, where it would drift from the router.
+#
+# This also means api-laravel/* is never reachable as raw files — every path
+# except /api/* and /sanctum/*, which the dispatch block above already claimed —
+# so a direct hit on api-laravel/.env gets the shell rather than the file, even
+# though the deny-all in api/.htaccess never gets uploaded to a server (see
+# staging/README.md). Same for the now-dead config.php still sitting on each
+# server.
+#
+# Two properties are load-bearing and must survive any edit:
+#
+#  1. The REDIRECT_STATUS guard is essential on FastCGI hosts (e.g.
+#     easy-hebergement, php-cgi/FPM): once Apache has internally rewritten a
+#     request to index.html it sets REDIRECT_STATUS, so the rule does NOT match
+#     a second time. Without it the rewrite re-matches its own output and loops
+#     until Apache aborts with 500 ("Request exceeded the limit of 10 internal
+#     redirects") — on EVERY url of the site, not just one page.
+#  2. It stays a CATCH-ALL rather than an !-f/!-d guard. That is precisely what
+#     keeps api-laravel/.env, api-laravel/vendor/ and config.php unreachable: a
+#     !-f guard would serve them, because they exist.
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{ENV:REDIRECT_STATUS} ^$
-RewriteRule ^ index.php [L]
+RewriteRule ^ index.html [L]
 
 # Cache policy for this site.
 <IfModule mod_headers.c>
   <FilesMatch "\.html$">
     Header set Cache-Control "public, max-age=0, must-revalidate"
   </FilesMatch>
-  # Vite's build output (see App\Assets) is content-hashed: a given
+  # Vite's build output is content-hashed: a given
   # filename's bytes never change, only the filename does when the
   # content does. Safe to cache indefinitely instead of revalidating.
   <FilesMatch "\.(css|js)$">

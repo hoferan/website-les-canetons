@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\LegacySession;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -69,11 +68,6 @@ class AuthController extends Controller
         /** @var User $user */
         $user = Auth::user();
 
-        // TEMPORARY (sub-project 3 deletes these two lines): also log the user
-        // in to PHP's native session, which the old app's server-rendered
-        // members' pages still gate on. See App\Support\LegacySession.
-        LegacySession::write($user);
-
         return response()->json(['role' => $user->role]);
     }
 
@@ -82,9 +76,6 @@ class AuthController extends Controller
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
-        // TEMPORARY (sub-project 3 deletes this line): see ::login() above.
-        LegacySession::forget();
 
         return response()->json(['ok' => true]);
     }

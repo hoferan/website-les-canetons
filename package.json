@@ -5,12 +5,9 @@
   "description": "Dev tooling for the Les Canetons de Fribourg website.",
   "type": "module",
   "scripts": {
-    "php:install": "node tools/composer.mjs install --no-interaction",
     "build": "node tools/build.mjs",
-    "build:assets": "vite build --config vite.config.js",
-    "build:web": "vite build --config vite.config.ts",
-    "dev:web": "vite --config vite.config.ts",
-    "test:e2e": "playwright test",
+    "build:web": "vite build",
+    "dev:web": "vite",
     "build:overlay": "node tools/build-overlays.mjs",
     "dev": "node tools/build-overlays.mjs docker && docker compose up -d --build",
     "dev:down": "docker compose down",
@@ -23,25 +20,23 @@
     "dbmigrate:test": "node tools/dbmigrate.mjs test",
     "dbmigrate:qa": "node tools/dbmigrate.mjs qa",
     "dbmigrate:prod": "node tools/dbmigrate.mjs prod",
-    "websession:init": "npm install && npm run php:install && node tools/ensure-dev-stack.mjs",
-    "lint:php": "node tools/php-lint.mjs",
+    "websession:init": "npm install && node tools/ensure-dev-stack.mjs",
     "lint:api": "node tools/pint.mjs --test",
     "fix:api": "node tools/pint.mjs",
     "openapi": "node tools/openapi.mjs",
     "generate:api": "orval --config orval.config.ts",
-    "test:web": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:php": "node tools/ensure-dev-stack.mjs && node tools/composer.mjs exec phpunit",
-    "serve": "node tools/ensure-dev-stack.mjs && npm run build:assets && php -S 127.0.0.1:8090 -t app",
-    "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\" \"app/assets/js/*.test.mjs\"",
+    "test:web": "vitest run",
+    "test:e2e": "playwright test",
+    "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\"",
     "smoke": "node tools/smoke-docker.mjs",
-    "lint:js": "eslint app/assets/js",
-    "lint:css": "stylelint \"app/assets/css/**/*.css\"",
-    "format:check": "prettier --check \"app/assets/**/*.{js,css}\"",
-    "format:write": "prettier --write \"app/assets/**/*.{js,css}\"",
+    "lint:js": "eslint web",
+    "lint:css": "stylelint \"web/src/**/*.css\"",
+    "format:check": "prettier --check \"web/**/*.{ts,tsx,css,html}\"",
+    "format:write": "prettier --write \"web/**/*.{ts,tsx,css,html}\"",
     "guard": "node tools/secret-guard.mjs",
-    "check": "npm run build:assets && npm run lint:php && npm run lint:api && npm run typecheck && npm run test:php && npm run test:js && npm run test:web && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
-    "fix": "node tools/php-fix.mjs && npm run fix:api && eslint app/assets/js --fix && stylelint \"app/assets/css/**/*.css\" --fix && npm run format:write",
+    "check": "npm run lint:api && npm run typecheck && npm run test:js && npm run test:web && npm run lint:js && npm run lint:css && npm run format:check && npm run guard",
+    "fix": "npm run fix:api && eslint web --fix && stylelint \"web/src/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -56,7 +51,6 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^5.2.0",
     "basic-ftp": "^6.0.1",
-    "bulma": "^1.0.4",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.9.0",
@@ -64,9 +58,7 @@
     "i18next": "^26.3.6",
     "jsdom": "^26.1.0",
     "lint-staged": "^15.2.0",
-    "lucide": "^1.25.0",
     "orval": "^8.23.0",
-    "php-parser": "^3.7.0",
     "prettier": "^3.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -79,13 +71,12 @@
     "vitest": "^4.1.10"
   },
   "lint-staged": {
-    "app/**/*.php": "node tools/php-lint-file.mjs",
     "api/**/*.php": "node tools/pint-file.mjs",
-    "app/assets/js/**/*.js": [
+    "web/**/*.{ts,tsx}": [
       "eslint --fix",
       "prettier --write"
     ],
-    "app/assets/css/**/*.css": [
+    "web/**/*.css": [
       "stylelint --fix",
       "prettier --write"
     ]
