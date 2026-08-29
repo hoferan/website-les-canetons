@@ -1,7 +1,13 @@
 import { HttpResponse, http } from "msw";
 
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
-import type { ContactRequest } from "../api/generated/model";
+import type {
+  Altcha200,
+  Config200Occasion,
+  ContactRequest,
+  SignupIndex200One,
+  SignupIndex200OneTablesItem,
+} from "../api/generated/model";
 
 /**
  * The mocked backend, so the SPA can be developed and tested with no Docker.
@@ -101,141 +107,6 @@ const RESPONSE_ROWS: MockResponseRow[] = [
   { username: "sans.instrument", instrument: null, response: "participate" },
 ];
 
-/**
- * The mocked session, persisted per tab.
- *
- * MSW's handlers run in the PAGE, not in the service worker, so module state
- * dies with every reload — and a mocked login therefore did not survive one,
- * while a real Sanctum session, being a cookie, does. That is mock drift from
- * the contract, not a harmless simplification: it made "log in, refresh, still
- * an admin" behave differently in the mocked app than against the real API.
- *
- * sessionStorage is the closest analogue available: scoped to one tab, gone
- * when the tab is, invisible to any other test or window. Reads and writes are
- * wrapped because it throws outright in a few contexts (a browser set to block
- * site data), where forgetting the session is the right fallback.
- */
-const SESSION_KEY = "msw:user";
-
-function readSession(): MockUser | null {
-  try {
-    const stored = globalThis.sessionStorage?.getItem(SESSION_KEY);
-    return stored ? (JSON.parse(stored) as MockUser) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeSession(user: MockUser | null): void {
-  try {
-    if (user) {
-      globalThis.sessionStorage?.setItem(SESSION_KEY, JSON.stringify(user));
-    } else {
-      globalThis.sessionStorage?.removeItem(SESSION_KEY);
-    }
-  } catch {
-    // Nothing to do: the session simply does not outlive this page.
-  }
-}
-
-let currentUser: MockUser | null = readSession();
-let events: MockEvent[] = structuredClone(SEED);
-
-function setCurrentUser(user: MockUser | null): void {
-  currentUser = user;
-  writeSession(user);
-}
-
-/** Test seam: start a test from a known session. */
-export function setMockUser(username: keyof typeof USERS | null): void {
-  setCurrentUser(username ? (USERS[username] ?? null) : null);
-}
-
-/** Test seam: both mock stores are module state, so every test must reset them. */
-export function resetMockState(): void {
-  setCurrentUser(null);
-  events = structuredClone(SEED);
-  signups = structuredClone(SEED_SIGNUPS);
-}
-
-const unauthenticated = () =>
-  HttpResponse.json(
-    { error: "Not authenticated", code: "not_authenticated", fields: [] },
-    { status: 401 },
-  );
-
-/** Tied to the model, not retyped as a bare string[]: a field rename in
- * ContactRequest is a compile error here rather than a mock silently 422ing on
- * a field the API no longer has. */
-const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
-
-/**
- * The occasion, mirroring App\Support\Occasion exactly.
- *
- * It has to be exact: orval types every one of these as a STRING LITERAL
- * (Scramble read them off the PHP constants), so a paraphrase does not
- * compile. Copy from api/app/Support/Occasion.php when the real copy changes.
- */
-const OCCASION = {
-  title: "Souper des 25 ans des Canetons",
-  subtitle: "Sortie du nouveau costume · Soirée guggen",
-  date: "2027-11-13",
-  dateDisplay: "13 novembre 2027",
-  teaser:
-    "Fêtez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soirée guggen.",
-  invitation: "Amis et familles, réservez votre place et votre menu.",
-  maxGuests: 30,
-  menus: [
-    {
-      value: "meat",
-      label: "Viande",
-      description: "Rôti de bœuf, sauce aux morilles, gratin dauphinois et légumes de saison.",
-      price: "CHF 45.–",
-    },
-    {
-      value: "child",
-      label: "Enfant",
-      description: "Émincé de poulet, frites maison et compote.",
-      price: "CHF 20.–",
-    },
-    {
-      value: "vegetarian",
-      label: "Végétarien",
-      description: "Risotto aux champignons et légumes rôtis de saison.",
-      price: "CHF 40.–",
-    },
-  ],
-} as const;
-
-/**
- * A REAL challenge, not a stub: `challenge` is the actual SHA-256 of
- * `salt + ANSWER`, so web/src/api/altcha.ts solves it exactly as it solves the
- * server's. A stub would make every mocked submission fail at the captcha and
- * read as a bug in the page.
- *
- * ANSWER is small so a test costs four digests. `maxnumber` stays 50000
- * because orval types it as that literal — it is only the upper bound, and the
- * solver returns at the first match.
- */
-const ALTCHA_SALT = "mock-salt";
-const ALTCHA_ANSWER = 3;
-
-async function mockChallenge() {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(ALTCHA_SALT + ALTCHA_ANSWER),
-  );
-  return {
-    algorithm: "SHA-256" as const,
-    challenge: [...new Uint8Array(digest)]
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join(""),
-    maxnumber: 50000 as const,
-    salt: ALTCHA_SALT,
-    signature: "mock-signature",
-  };
-}
-
 type MockSignup = {
   first_name: string;
   last_name: string;
@@ -290,7 +161,154 @@ const SEED_SIGNUPS: MockSignup[] = [
   },
 ];
 
+/**
+ * The mocked session, persisted per tab.
+ *
+ * MSW's handlers run in the PAGE, not in the service worker, so module state
+ * dies with every reload — and a mocked login therefore did not survive one,
+ * while a real Sanctum session, being a cookie, does. That is mock drift from
+ * the contract, not a harmless simplification: it made "log in, refresh, still
+ * an admin" behave differently in the mocked app than against the real API.
+ *
+ * sessionStorage is the closest analogue available: scoped to one tab, gone
+ * when the tab is, invisible to any other test or window. Reads and writes are
+ * wrapped because it throws outright in a few contexts (a browser set to block
+ * site data), where forgetting the session is the right fallback.
+ */
+const SESSION_KEY = "msw:user";
+
+function readSession(): MockUser | null {
+  try {
+    const stored = globalThis.sessionStorage?.getItem(SESSION_KEY);
+    return stored ? (JSON.parse(stored) as MockUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(user: MockUser | null): void {
+  try {
+    if (user) {
+      globalThis.sessionStorage?.setItem(SESSION_KEY, JSON.stringify(user));
+    } else {
+      globalThis.sessionStorage?.removeItem(SESSION_KEY);
+    }
+  } catch {
+    // Nothing to do: the session simply does not outlive this page.
+  }
+}
+
+let currentUser: MockUser | null = readSession();
+let events: MockEvent[] = structuredClone(SEED);
 let signups: MockSignup[] = structuredClone(SEED_SIGNUPS);
+
+function setCurrentUser(user: MockUser | null): void {
+  currentUser = user;
+  writeSession(user);
+}
+
+/** Test seam: start a test from a known session. */
+export function setMockUser(username: keyof typeof USERS | null): void {
+  setCurrentUser(username ? (USERS[username] ?? null) : null);
+}
+
+/** Test seam: every mock store is module state, so every test must reset them all. */
+export function resetMockState(): void {
+  setCurrentUser(null);
+  events = structuredClone(SEED);
+  signups = structuredClone(SEED_SIGNUPS);
+}
+
+const unauthenticated = () =>
+  HttpResponse.json(
+    { error: "Not authenticated", code: "not_authenticated", fields: [] },
+    { status: 401 },
+  );
+
+/** Tied to the model, not retyped as a bare string[]: a field rename in
+ * ContactRequest is a compile error here rather than a mock silently rejecting
+ * a field the API no longer has. */
+const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
+
+/**
+ * The occasion, mirroring App\Support\Occasion exactly.
+ *
+ * It has to be exact, and the annotation is what makes that true rather than
+ * aspirational: orval types every one of these as a STRING LITERAL (Scramble
+ * read them off the PHP constants), so a paraphrase is a compile error here.
+ * Without the annotation it would not be — HttpResponse.json() accepts
+ * anything. Copy from api/app/Support/Occasion.php when the real copy changes.
+ */
+const OCCASION: NonNullable<Config200Occasion> = {
+  title: "Souper des 25 ans des Canetons",
+  subtitle: "Sortie du nouveau costume · Soirée guggen",
+  date: "2027-11-13",
+  dateDisplay: "13 novembre 2027",
+  teaser:
+    "Fêtez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soirée guggen.",
+  invitation: "Amis et familles, réservez votre place et votre menu.",
+  maxGuests: 30,
+  menus: [
+    {
+      value: "meat",
+      label: "Viande",
+      description: "Rôti de bœuf, sauce aux morilles, gratin dauphinois et légumes de saison.",
+      price: "CHF 45.–",
+    },
+    {
+      value: "child",
+      label: "Enfant",
+      description: "Émincé de poulet, frites maison et compote.",
+      price: "CHF 20.–",
+    },
+    {
+      value: "vegetarian",
+      label: "Végétarien",
+      description: "Risotto aux champignons et légumes rôtis de saison.",
+      price: "CHF 40.–",
+    },
+  ],
+};
+
+/**
+ * A REAL challenge, not a stub: `challenge` is the actual SHA-256 of
+ * `salt + ANSWER`, so web/src/api/altcha.ts solves it exactly as it solves the
+ * server's. A stub would make every mocked submission fail at the captcha and
+ * read as a bug in the page.
+ *
+ * ANSWER is small so a test costs four digests. `maxnumber` stays 50000
+ * because orval types it as that literal — it is only the upper bound, and the
+ * solver returns at the first match.
+ */
+const ALTCHA_SALT = "mock-salt";
+const ALTCHA_ANSWER = 3;
+
+async function mockChallenge(): Promise<Altcha200> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(ALTCHA_SALT + ALTCHA_ANSWER),
+  );
+  return {
+    algorithm: "SHA-256",
+    challenge: [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join(""),
+    maxnumber: 50000,
+    salt: ALTCHA_SALT,
+    signature: "mock-signature",
+  };
+}
+
+/** The `altcha` half of ChallengeGuard: does this payload really solve ours? */
+function solvesMockChallenge(payload: string | undefined): boolean {
+  if (!payload) return false;
+  try {
+    const solution = JSON.parse(atob(payload)) as { salt?: string; number?: number };
+    return solution.salt === ALTCHA_SALT && solution.number === ALTCHA_ANSWER;
+  } catch {
+    return false;
+  }
+}
 
 const MENU_VALUES = ["meat", "child", "vegetarian"] as const;
 
@@ -304,17 +322,12 @@ const MENU_VALUES = ["meat", "child", "vegetarian"] as const;
  * disagrees with the real one about row order — the kind of divergence that
  * lets a suite go green against a lie.
  */
-function computeSummary(unsorted: MockSignup[]) {
+function computeSummary(unsorted: MockSignup[]): SignupIndex200One {
   const rows = [...unsorted].sort((a, b) => a.table_name.localeCompare(b.table_name));
   const zero = () => ({ meat: 0, child: 0, vegetarian: 0 });
   const menuTotals = zero();
   let totalPersons = 0;
-  const tables: {
-    name: string;
-    personCount: number;
-    menuCounts: ReturnType<typeof zero>;
-    signups: unknown[];
-  }[] = [];
+  const tables: SignupIndex200OneTablesItem[] = [];
 
   for (const row of rows) {
     const counts = zero();
@@ -391,7 +404,11 @@ const overrides = [
           code: "validation_failed",
           fields: missing.map((field) => ({ field, reason: "required" })),
         },
-        { status: 422 },
+        // 400, NOT Laravel's default 422: ApiError::validation() ends
+        // `self::json(400, 'validation_failed', ...)` for every validation
+        // failure in this API, and OpenApiDocumentTest pins it
+        // ("422 is Laravel's default shape; this API does not use it").
+        { status: 400 },
       );
     }
     return HttpResponse.json({ ok: true });
@@ -521,41 +538,82 @@ const overrides = [
       "email",
       "table_name",
     ];
-    // Typed explicitly, because `params` appears only on some entries — an
-    // array inferred from the `required` map below would be {field, reason}
-    // and reject the too_long push.
-    const fields: { field: string; reason: string; params?: Record<string, unknown> }[] = required
-      .filter((field) => String(body[field] ?? "").trim() === "")
-      .map((field) => ({ field, reason: "required" }));
 
-    // Laravel's max:255 (max:64 on phone), reported the same way here.
+    // ONE loop, one entry per field, in `required` order — because that is what
+    // the real API does. ApiError::validation() walks the validator's failed
+    // rules and reports the FIRST failure per field, in SignupRequest::rules()
+    // order, and SignupStoreTest pins the resulting fields[] with assertSame.
+    // Two passes (every `required`, then every `too_long`) would report
+    // {first_name: 300 chars, last_name: ""} in the opposite order to the API.
+    //
+    // The within-field order mirrors rules() too: `required` before `max`
+    // before `email`, so an empty field reports `required` and an over-long
+    // address reports `too_long` rather than `invalid_format`.
     //
     // `params.max` is NOT optional: web/src/i18n/fr.ts renders too_long as
     // "est trop long (maximum {{max}} caractères)", and i18next prints a
     // missing interpolation value LITERALLY — a mock without it puts a raw
     // {{max}} on screen, and the test asserting the French string fails in a
-    // way that looks like a translation bug.
+    // way that looks like a translation bug. Hence the explicit type: `params`
+    // is on some entries only, so an inferred array would reject the push.
+    const fields: { field: string; reason: string; params?: Record<string, unknown> }[] = [];
+
     for (const field of required) {
       const value = String(body[field] ?? "");
+      // Laravel's max:255, and max:64 on phone.
       const limit = field === "phone" ? 64 : 255;
-      if (value.length > limit) {
+      if (value.trim() === "") {
+        fields.push({ field, reason: "required" });
+      } else if (value.length > limit) {
         fields.push({ field, reason: "too_long", params: { max: limit } });
+      } else if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        // SignupRequest has `email` after `max:255`, and ApiError maps that
+        // rule to `invalid_format`. Without this the mock stored "nope" on a
+        // 201 while the real API answered 400 — reachable by typing into the
+        // form, not just from a hand-crafted request. The pattern is
+        // deliberately loose: it stands in for Laravel's `email`, and a mock
+        // that rejected MORE than the API would be its own kind of lie.
+        fields.push({ field, reason: "invalid_format" });
       }
     }
 
+    // Mirrors Occasion::normalizeMenus(), which rejects on VALUE as well as on
+    // count and is the only thing validating `menus` server-side. Checking the
+    // count alone let an out-of-vocabulary menu through, and computeSummary
+    // then counted it into an absent key and returned NaN totals.
+    //
+    // `invalid_format` for all three rejections, matching SignupRequest's
+    // after() hook: it is the paramless token, and a closure-added error has
+    // nowhere to carry params for i18next to interpolate.
+    // A non-array normalises to [], which then fails the count check below —
+    // exactly as normalizeMenus() returns null for a non-array.
     const menus = Array.isArray(body.menus) ? body.menus : [];
-    if (menus.length < 1 || menus.length > OCCASION.maxGuests) {
+    const menusValid =
+      menus.length >= 1 &&
+      menus.length <= OCCASION.maxGuests &&
+      menus.every((menu) => (MENU_VALUES as readonly string[]).includes(menu));
+    if (!menusValid) {
       fields.push({ field: "menus", reason: "invalid_format" });
     }
 
     if (fields.length > 0) {
       return HttpResponse.json(
         { error: "Invalid form submission", code: "validation_failed", fields },
-        { status: 422 },
+        // 400, not 422 — see the contact handler above.
+        { status: 400 },
       );
     }
 
-    if (!body.altcha) {
+    // A truthy string was not enough: it accepted any junk the form happened to
+    // send, so a solver bug passed here and 403'd against the real API. This
+    // checks the payload really solves THIS mock's challenge.
+    //
+    // Single use is deliberately NOT mocked. App\Support\ChallengeGuard
+    // consumes a signature once, so a replay 403s against the real API and
+    // succeeds here. Mocking that would need per-challenge server state for no
+    // test that wants it — the form fetches a fresh challenge on every submit.
+    // Noted rather than fixed, because the gap is real.
+    if (!solvesMockChallenge(body.altcha)) {
       return HttpResponse.json(
         { error: "Anti-bot verification failed", code: "captcha_failed", fields: [] },
         { status: 403 },

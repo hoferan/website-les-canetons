@@ -176,7 +176,7 @@ test("a validation error renders in French against the offending field", async (
           code: "validation_failed",
           fields: [{ field: "startTime", reason: "required" }],
         },
-        { status: 422 },
+        { status: 400 },
       ),
     ),
   );
@@ -199,7 +199,7 @@ test("a rejected submission keeps what the admin typed", async () => {
     http.post("/api/events", () =>
       HttpResponse.json(
         { error: "Invalid form submission", code: "validation_failed", fields: [] },
-        { status: 422 },
+        { status: 400 },
       ),
     ),
   );
