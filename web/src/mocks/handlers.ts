@@ -79,6 +79,28 @@ const SEED: MockEvent[] = [
   },
 ];
 
+type MockResponseRow = {
+  username: string;
+  instrument: string | null;
+  response: string | null;
+};
+
+/**
+ * One row per user, whether or not they answered — that is what the real
+ * endpoint returns (a LEFT JOIN from users), and it is what lets the summary
+ * count "En attente" and derive the register list without a hardcoded array.
+ *
+ * Deliberately covers all three states and a user with no instrument, because
+ * every assertion about this page is about counts.
+ */
+const RESPONSE_ROWS: MockResponseRow[] = [
+  { username: "demo.user", instrument: "Trompette", response: "participate" },
+  { username: "demo.moderator", instrument: "Trompette", response: "notparticipate" },
+  { username: "anna.batterie", instrument: "Batterie", response: "participate" },
+  { username: "luc.trombone", instrument: "Trombone", response: null },
+  { username: "sans.instrument", instrument: null, response: "participate" },
+];
+
 /**
  * The mocked session, persisted per tab.
  *
@@ -233,6 +255,55 @@ const overrides = [
     if (currentUser.role !== "admin") return forbidden();
     events = events.filter((event) => event.id !== Number(params.id));
     return HttpResponse.json({ ok: true });
+  }),
+
+  // Hand-written: the generated handler returns faker data, and every
+  // assertion about the summary is about specific counts. Mirrors the real
+  // endpoint's authorisation — view_summary is admin-only — so a non-admin
+  // gets the same 403 here as it would there.
+  http.get("/api/responses", ({ request }) => {
+    if (!currentUser) return unauthenticated();
+    if (currentUser.role !== "admin") return forbidden();
+
+    const eventId = new URL(request.url).searchParams.get("eventId");
+    if (!eventId) {
+      return HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: [{ field: "eventId", reason: "required" }],
+        },
+        { status: 400 },
+      );
+    }
+    if (!/^\d+$/.test(eventId) || Number(eventId) <= 0) {
+      return HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: [{ field: "eventId", reason: "invalid_number" }],
+        },
+        { status: 400 },
+      );
+    }
+
+    return HttpResponse.json(RESPONSE_ROWS);
+  }),
+
+  // Records the answer on the mocked event, so a test can respond and then see
+  // "Choix enregistré" on the list. The generated handler always succeeds and
+  // remembers nothing, which would make that flow untestable.
+  http.post("/api/responses", async ({ request }) => {
+    if (!currentUser) return unauthenticated();
+    // `respond` is user and moderator — NOT admin. The Team Direction
+    // organises events; it does not vote in them.
+    if (currentUser.role === "admin") return forbidden();
+
+    const body = (await request.json()) as { eventId?: number; participation?: string };
+    events = events.map((event) =>
+      event.id === body.eventId ? { ...event, response: body.participation ?? null } : event,
+    );
+    return HttpResponse.json({ ok: true }, { status: 201 });
   }),
 ];
 
