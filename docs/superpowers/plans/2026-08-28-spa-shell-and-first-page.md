@@ -12,6 +12,8 @@
 
 ---
 
+
+> **Status, 2026-08-29: Tasks 1-8 complete, Tasks 9-10 remaining.** Executed inline on `feat/spa-cutover`, commits `847e524`..`267b0e7`. Deviations found while running it are recorded in the steps themselves and in the notes at the end. See `docs/continue-here.md` before picking this up.
 ## Plan roadmap
 
 This plan is **Plan 2 of 2**. Plan 1 (`2026-08-28-spa-clean-slate.md`) is complete.
@@ -53,7 +55,7 @@ Both were found while writing this plan, in code already committed. Neither is c
 - Modify: `web/src/api/http.ts`
 - Test: `web/src/api/http.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `web/src/api/http.test.ts`:
 
@@ -87,12 +89,12 @@ test("a 204 carries a null body inside the envelope, not a bare undefined", asyn
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `npm run test:web`
 Expected: FAIL — `result.status` is `undefined`, because the current mutator returns the parsed body itself.
 
-- [ ] **Step 3: Wrap the return**
+- [x] **Step 3: Wrap the return**
 
 In `web/src/api/http.ts`, replace the tail of `customFetch`:
 
@@ -114,12 +116,12 @@ In `web/src/api/http.ts`, replace the tail of `customFetch`:
 
 and update the function's docblock to record the envelope as part of the contract.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `npm run test:web`
 Expected: PASS — 15 tests (13 from Plan 1 plus these 2).
 
-- [ ] **Step 5: Prove the types now line up**
+- [x] **Step 5: Prove the types now line up**
 
 Create `web/src/api/contract.test.ts`:
 
@@ -141,7 +143,7 @@ test("the generated response type carries data, status and headers", () => {
 Run: `npm run test:web && npm run typecheck`
 Expected: both pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add web/src/api
@@ -160,7 +162,7 @@ request shape or error handling, none the value of a successful call."
 - Modify: `api/app/Models/Event.php`
 - Regenerate: `api/openapi.json`, `web/src/api/generated/`
 
-- [ ] **Step 1: Add the array shape Scramble can read**
+- [x] **Step 1: Add the array shape Scramble can read**
 
 In `api/app/Models/Event.php`, give `toFrontendShape()` a precise `@return`:
 
@@ -183,7 +185,7 @@ In `api/app/Models/Event.php`, give `toFrontendShape()` a precise `@return`:
 
 Keep the existing docblock prose above it — the camelCase warning and the IDOR note both still apply.
 
-- [ ] **Step 2: Regenerate and inspect**
+- [x] **Step 2: Regenerate and inspect**
 
 ```bash
 npm run openapi
@@ -199,12 +201,12 @@ use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 
 and describe the 200 on `EventController::index()`. Do not hand-edit `api/openapi.json` — CI regenerates and diffs it.
 
-- [ ] **Step 3: Regenerate the client**
+- [x] **Step 3: Regenerate the client**
 
 Run: `npm run generate:api`
 Expected: `web/src/api/generated/model/` gains an events item type, and `eventIndexResponse200.data` is an array of that type rather than `string[]`.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 npm run typecheck
@@ -213,7 +215,7 @@ docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=E
 ```
 Expected: all pass. The docblock changes no behaviour, so the Laravel suite must be unaffected.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/app/Models/Event.php api/openapi.json web/src/api/generated
@@ -234,7 +236,7 @@ have the same problem and are left for the plans that need them."
 - Modify: `orval.config.ts`, `package.json`, `web/src/main.tsx`, `.gitignore`
 - Create: `web/src/mocks/handlers.ts`, `web/src/mocks/browser.ts`, `web/src/mocks/node.ts`, `web/public/mockServiceWorker.js` (generated)
 
-- [ ] **Step 1: Turn on orval's MSW generation**
+- [x] **Step 1: Turn on orval's MSW generation**
 
 In `orval.config.ts`, inside the `canetons` entry alongside `output.target`:
 
@@ -248,7 +250,7 @@ In `orval.config.ts`, inside the `canetons` entry alongside `output.target`:
       },
 ```
 
-- [ ] **Step 2: Regenerate and see what appeared**
+- [x] **Step 2: Regenerate and see what appeared**
 
 ```bash
 npm run generate:api
@@ -257,7 +259,7 @@ grep -oE "export const get[A-Za-z]+Mock(Handler)?" web/src/api/generated/endpoin
 ```
 Expected: a new `endpoints.msw.ts` exporting `getCanetonsMock()` (every handler) plus one `getXMockHandler` per operation.
 
-- [ ] **Step 3: Install the service worker**
+- [x] **Step 3: Install the service worker**
 
 ```bash
 npx msw init web/public --save
@@ -265,7 +267,7 @@ npx msw init web/public --save
 
 This writes `web/public/mockServiceWorker.js`. `tools/build.mjs` already strips it from `dist/build/` (added in Plan 1), so it cannot reach a server. Add it to `.gitignore`? **No** — commit it. MSW's worker must match the installed MSW version, and `msw init` is a manual step someone will forget; committing it makes a fresh clone work.
 
-- [ ] **Step 4: Write the realistic overrides**
+- [x] **Step 4: Write the realistic overrides**
 
 Create `web/src/mocks/handlers.ts`:
 
@@ -420,7 +422,7 @@ const overrides = [
 export const handlers = [...overrides, ...getCanetonsMock()];
 ```
 
-- [ ] **Step 5: Wire the worker and the test server**
+- [x] **Step 5: Wire the worker and the test server**
 
 Create `web/src/mocks/browser.ts`:
 
@@ -442,7 +444,7 @@ import { handlers } from "./handlers";
 export const server = setupServer(...handlers);
 ```
 
-- [ ] **Step 6: Start the worker in development only**
+- [x] **Step 6: Start the worker in development only**
 
 At the top of `web/src/main.tsx`, before the render:
 
@@ -479,7 +481,7 @@ should get a working `dev:mock`. Check `.gitignore` does not exclude it: the
 existing `.env*` rules are written for the repo root, so confirm with
 `git check-ignore -v web/.env.mock` and add a negation if it is caught.
 
-- [ ] **Step 7: Point Vitest at the mock server**
+- [x] **Step 7: Point Vitest at the mock server**
 
 Create `web/src/setupTests.ts`:
 
@@ -506,7 +508,7 @@ and register it in `vitest.config.ts`:
     setupFiles: ["web/src/setupTests.ts"],
 ```
 
-- [ ] **Step 8: Verify the mocks answer**
+- [x] **Step 8: Verify the mocks answer**
 
 ```bash
 npm run test:web
@@ -514,7 +516,7 @@ npm run dev:mock
 ```
 Then load http://localhost:5173 and confirm in the browser console that MSW logs `[MSW] Mocking enabled.` — with no Docker running.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add orval.config.ts package.json vitest.config.ts web/
@@ -533,7 +535,7 @@ real rather than through a dev-only role switcher."
 **Files:**
 - Create: `web/src/session/SessionProvider.tsx`, `web/src/session/capabilities.ts`, `web/src/session/SessionProvider.test.tsx`
 
-- [ ] **Step 1: Mirror the capability matrix**
+- [x] **Step 1: Mirror the capability matrix**
 
 Create `web/src/session/capabilities.ts`:
 
@@ -562,7 +564,7 @@ export function can(role: string | null | undefined, capability: Capability): bo
 }
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `web/src/session/SessionProvider.test.tsx`:
 
@@ -625,12 +627,12 @@ and import it in `web/src/setupTests.ts`:
 import "@testing-library/jest-dom/vitest";
 ```
 
-- [ ] **Step 3: Run them to verify they fail**
+- [x] **Step 3: Run them to verify they fail**
 
 Run: `npm run test:web`
 Expected: FAIL — `Cannot find module './SessionProvider'`.
 
-- [ ] **Step 4: Implement the provider**
+- [x] **Step 4: Implement the provider**
 
 Create `web/src/session/SessionProvider.tsx`:
 
@@ -713,12 +715,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
 Note `config.data.data` and `user.data?.data` — the outer `.data` is TanStack Query's, the inner one is the orval envelope from Task 1. That double `.data` is ugly but it is the contract; do not paper over it with a wrapper hook that hides which is which.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `npm run test:web`
 Expected: PASS, 3 new tests.
 
-- [ ] **Step 5a: Extract the test harness the next four tasks all need**
+- [x] **Step 5a: Extract the test harness the next four tasks all need**
 
 Create `web/src/test/renderWithSession.tsx`, and rewrite Step 2's tests to use it:
 
@@ -760,7 +762,7 @@ export async function renderWithSession(ui: ReactNode, { route = "/" } = {}) {
 export { waitForElementToBeRemoved };
 ```
 
-- [ ] **Step 6: Mount it in `main.tsx`**
+- [x] **Step 6: Mount it in `main.tsx`**
 
 ```tsx
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -789,7 +791,7 @@ createRoot(root).render(
 );
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add web/src/session web/src/main.tsx web/src/setupTests.ts package.json package-lock.json
@@ -808,13 +810,13 @@ meaning anonymous. The capability matrix mirrors Laravel's and is UX only."
 - Create: `web/src/routes.tsx`, `web/src/pages/Placeholder.tsx`, `web/src/pages/NotFound.tsx`
 - Modify: `web/src/App.tsx`, `package.json`
 
-- [ ] **Step 1: Install React Router**
+- [x] **Step 1: Install React Router**
 
 ```bash
 npm install --save-dev react-router-dom@^7
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `web/src/routes.test.tsx`:
 
@@ -849,12 +851,12 @@ test("an unknown URL renders the 404 view rather than nothing", () => {
 });
 ```
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `npm run test:web`
 Expected: FAIL — `Cannot find module './routes'`.
 
-- [ ] **Step 4: Create the placeholder and 404 pages**
+- [x] **Step 4: Create the placeholder and 404 pages**
 
 `web/src/pages/Placeholder.tsx`:
 
@@ -900,7 +902,7 @@ export function NotFound() {
 }
 ```
 
-- [ ] **Step 5: Create the route table**
+- [x] **Step 5: Create the route table**
 
 `web/src/routes.tsx` — every URL from the deleted `app/src/routes.php`, unchanged:
 
@@ -963,7 +965,7 @@ export function AppRoutes() {
 }
 ```
 
-- [ ] **Step 6: Mount the router**
+- [x] **Step 6: Mount the router**
 
 Replace `web/src/App.tsx`:
 
@@ -983,12 +985,12 @@ export default function App() {
 
 `web/src/App.test.tsx` from Plan 1 asserts a heading that no longer exists — replace its body with a check that the router mounts and renders the home route.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 Run: `npm run test:web && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add web/src package.json package-lock.json
@@ -1007,7 +1009,7 @@ obvious. Unknown URLs get the 404 view — a soft 404 by design."
 - Create: `web/src/components/Layout.tsx`, `web/src/components/EnvRibbon.tsx`, `web/src/components/Layout.test.tsx`
 - Modify: `web/src/App.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `web/src/components/Layout.test.tsx`:
 
@@ -1043,7 +1045,7 @@ test("an unknown env is treated as prod and shows nothing", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails, then implement the ribbon**
+- [x] **Step 2: Run it to verify it fails, then implement the ribbon**
 
 `web/src/components/EnvRibbon.tsx`:
 
@@ -1069,7 +1071,7 @@ export function EnvRibbon({ env }: { env: string }) {
 }
 ```
 
-- [ ] **Step 3: Build the layout**
+- [x] **Step 3: Build the layout**
 
 The nav's links and their **order** are taken verbatim from the deleted
 `app/partials/navigation.php` (`git show dcd7862^:app/partials/navigation.php`
@@ -1224,7 +1226,7 @@ is the whole control, which is what those two classes meant.
 Do not set `fill` or `stroke`: Lucide icons are stroke-only and inherit
 `currentColor`, so colour them on the parent as before.
 
-- [ ] **Step 3a: Wrap the routes in the layout**
+- [x] **Step 3a: Wrap the routes in the layout**
 
 In `web/src/routes.tsx`, nest every existing `<Route>` inside a layout route:
 
@@ -1238,11 +1240,11 @@ In `web/src/routes.tsx`, nest every existing `<Route>` inside a layout route:
     </Routes>
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `npm run test:web && npm run dev:mock`, then click every nav link and confirm each renders its placeholder and the ribbon says DEV.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web/src
@@ -1259,7 +1261,7 @@ clean by default rather than by configuration, as App\\Env did."
 **Files:**
 - Create: `web/src/components/guards.tsx`, `web/src/components/guards.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 The negative cases are the point: the matrix is not a hierarchy, so an admin must be refused `respond`.
 
@@ -1318,7 +1320,7 @@ import { QueryClient } from "@tanstack/react-query";
 
 is **not** needed — the harness owns the client.
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 ```tsx
 import type { ReactNode } from "react";
@@ -1356,7 +1358,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `npm run test:web`
 Expected: PASS, 5 new tests including both negative cases.
@@ -1380,7 +1382,7 @@ must be refused `respond` and a user refused `manage_events`."
 Parity reference: `git show dcd7862^:app/assets/js/planning_repet.js` and
 `git show dcd7862^:app/assets/css/planning_repet.css`.
 
-- [ ] **Step 1: French dates, with tests first**
+- [x] **Step 1: French dates, with tests first**
 
 `web/src/lib/date.test.ts`:
 
@@ -1439,7 +1441,7 @@ export function formatEventDateRange(iso: string): string {
 }
 ```
 
-- [ ] **Step 2: Write the failing page test**
+- [x] **Step 2: Write the failing page test**
 
 ```tsx
 import { screen, within } from "@testing-library/react";
@@ -1482,7 +1484,7 @@ test("an anonymous visitor sees no admin controls", async () => {
 });
 ```
 
-- [ ] **Step 3: Run it to verify it fails, then implement the list**
+- [x] **Step 3: Run it to verify it fails, then implement the list**
 
 ```tsx
 import { useEventIndex } from "../api/generated/endpoints";
@@ -1550,13 +1552,13 @@ function EventActions(_props: { event: unknown }) {
 
 The API already orders by date, so there is no client-side sort. The old page re-sorted defensively; that is dropped deliberately, and the first test pins the order so a change in the API's ordering fails here.
 
-- [ ] **Step 4: Route it and verify**
+- [x] **Step 4: Route it and verify**
 
 Replace the `/planning_repet` placeholder in `web/src/routes.tsx` with `<PlanningRepet />`.
 
 Run: `npm run test:web && npm run dev:mock`, then load http://localhost:5173/planning_repet.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add web/src
