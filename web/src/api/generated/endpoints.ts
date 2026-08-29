@@ -43,6 +43,7 @@ import type {
   ResponseRequest,
   ResponseStore201,
   ResponseStore404,
+  SignupIndex200One,
   SignupStore201,
   SignupStore403,
   SignupStoreBody,
@@ -1346,6 +1347,23 @@ export const getResponseIndexUrl = (params?: ResponseIndexParams) => {
 };
 
 /**
+ * A member who has NOT answered is still listed, with response: null —
+ * inscriptions_admin.js derives both "Convoqués" and "Pas de réponse" from
+ * the length of this list, so an omitted row would silently shrink the roll
+ * call instead of showing up as a pending answer.
+ *
+ * Deliberately NOT a 404 for an unknown eventId: the legacy GET never
+ * checked the event's existence (only the POST did) and its LEFT JOIN simply
+ * matched nothing, so an unknown id lists everyone as unanswered. Changing
+ * that would be a user-visible behaviour change, out of scope for this port.
+ *
+ * Validation is hand-rolled rather than a FormRequest because the two
+ * failures the legacy endpoint distinguished — absent vs unusable — map onto
+ * different reason tokens, and because ?eventId= arrives in the query string
+ * of a GET.
+ *
+ * THE 200 SHAPE IS DECLARED BELOW because Scramble cannot infer it.
+ *
  * index() builds its payload with a Collection::map, and Scramble gives up
  * on that — it emitted `string[]`, which type-checked at every call site
  * and was wrong about every field. GET /api/events had the identical
@@ -1357,7 +1375,8 @@ export const getResponseIndexUrl = (params?: ResponseIndexParams) => {
  * here and in summary()'s @return — and ResponseShapeContractTest fails if
  * the two ever disagree, so it is duplication a test catches rather than a
  * comment asking you to remember.
- * @summary The 200 shape, declared because Scramble cannot infer it
+ * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
+event: [{username, instrument, response}, ...]
  */
 export const responseIndex = async (
   params?: ResponseIndexParams,
@@ -1450,7 +1469,8 @@ export function useResponseIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary The 200 shape, declared because Scramble cannot infer it
+ * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
+event: [{username, instrument, response}, ...]
  */
 
 export function useResponseIndex<
@@ -1569,7 +1589,7 @@ export const useSignupStore = <TError = SignupStore403, TContext = unknown>(
 };
 
 export type signupIndexResponse200ApplicationJson = {
-  data: string;
+  data: SignupIndex200One;
   status: 200;
 };
 
@@ -1603,6 +1623,10 @@ export const getSignupIndexUrl = () => {
  * Admin-only (`view_summary`), enforced by the route's middleware.
  * Deliberately parameterless apart from `format`: the old endpoint had no
  * paging, filtering or sorting and signups_admin.js expects the whole set.
+ *
+ * The 200 shape is declared in the #[Response] attribute below because
+ * Scramble cannot infer it through SignupStats::compute() — it emitted a
+ * bare string. SignupShapeContractTest fails if the two disagree.
  * @summary GET /api/signups — the admin summary, or ?format=xlsx for the export
  */
 export const signupIndex = async (

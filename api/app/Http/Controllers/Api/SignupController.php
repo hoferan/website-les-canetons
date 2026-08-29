@@ -12,6 +12,7 @@ use App\Support\ChallengeGuard;
 use App\Support\Occasion;
 use App\Support\SignupStats;
 use Dedoc\Scramble\Attributes\BodyParameter;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -48,7 +49,12 @@ class SignupController extends Controller
      * Admin-only (`view_summary`), enforced by the route's middleware.
      * Deliberately parameterless apart from `format`: the old endpoint had no
      * paging, filtering or sorting and signups_admin.js expects the whole set.
+     *
+     * The 200 shape is declared in the #[Response] attribute below because
+     * Scramble cannot infer it through SignupStats::compute() — it emitted a
+     * bare string. SignupShapeContractTest fails if the two disagree.
      */
+    #[ApiResponse(status: 200, type: 'array{totalPersons: int, totalTables: int, menuTotals: array{meat: int, child: int, vegetarian: int}, tables: list<array{name: string, personCount: int, menuCounts: array{meat: int, child: int, vegetarian: int}, signups: list<array{first_name: string, last_name: string, address: string, phone: string, email: string, personCount: int, menuCounts: array{meat: int, child: int, vegetarian: int}}>}>, occasion: array{title: string, subtitle: string, date: string, date_display: string, teaser: string, invitation: string}}')]
     public function index(Request $request): JsonResponse|StreamedResponse
     {
         // ORDER BY table_name, id — the old query's ordering, and load-bearing:

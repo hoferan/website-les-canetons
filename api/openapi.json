@@ -676,8 +676,8 @@
             },
             "get": {
                 "operationId": "response.index",
-                "description": "index() builds its payload with a Collection::map, and Scramble gives up\non that \u2014 it emitted `string[]`, which type-checked at every call site\nand was wrong about every field. GET /api/events had the identical\nproblem and this is the identical fix.\n\nA LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a\nproperty-less object, which is how the events endpoint ended up as\n`string[]` in the first place. That means the shape is written twice \u2014\nhere and in summary()'s @return \u2014 and ResponseShapeContractTest fails if\nthe two ever disagree, so it is duplication a test catches rather than a\ncomment asking you to remember.",
-                "summary": "The 200 shape, declared because Scramble cannot infer it",
+                "description": "A member who has NOT answered is still listed, with response: null \u2014\ninscriptions_admin.js derives both \"Convoqu\u00e9s\" and \"Pas de r\u00e9ponse\" from\nthe length of this list, so an omitted row would silently shrink the roll\ncall instead of showing up as a pending answer.\n\nDeliberately NOT a 404 for an unknown eventId: the legacy GET never\nchecked the event's existence (only the POST did) and its LEFT JOIN simply\nmatched nothing, so an unknown id lists everyone as unanswered. Changing\nthat would be a user-visible behaviour change, out of scope for this port.\n\nValidation is hand-rolled rather than a FormRequest because the two\nfailures the legacy endpoint distinguished \u2014 absent vs unusable \u2014 map onto\ndifferent reason tokens, and because ?eventId= arrives in the query string\nof a GET.\n\nTHE 200 SHAPE IS DECLARED BELOW because Scramble cannot infer it.\n\nindex() builds its payload with a Collection::map, and Scramble gives up\non that \u2014 it emitted `string[]`, which type-checked at every call site\nand was wrong about every field. GET /api/events had the identical\nproblem and this is the identical fix.\n\nA LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a\nproperty-less object, which is how the events endpoint ended up as\n`string[]` in the first place. That means the shape is written twice \u2014\nhere and in summary()'s @return \u2014 and ResponseShapeContractTest fails if\nthe two ever disagree, so it is duplication a test catches rather than a\ncomment asking you to remember.",
+                "summary": "GET /api/responses?eventId=N \u2014 the admin's attendance summary for one\nevent: [{username, instrument, response}, ...]",
                 "tags": [
                     "Response"
                 ],
@@ -874,7 +874,7 @@
             },
             "get": {
                 "operationId": "signup.index",
-                "description": "Admin-only (`view_summary`), enforced by the route's middleware.\nDeliberately parameterless apart from `format`: the old endpoint had no\npaging, filtering or sorting and signups_admin.js expects the whole set.",
+                "description": "Admin-only (`view_summary`), enforced by the route's middleware.\nDeliberately parameterless apart from `format`: the old endpoint had no\npaging, filtering or sorting and signups_admin.js expects the whole set.\n\nThe 200 shape is declared in the #[Response] attribute below because\nScramble cannot infer it through SignupStats::compute() \u2014 it emitted a\nbare string. SignupShapeContractTest fails if the two disagree.",
                 "summary": "GET /api/signups \u2014 the admin summary, or ?format=xlsx for the export",
                 "tags": [
                     "Signup"
@@ -885,7 +885,165 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "object",
+                                    "properties": {
+                                        "totalPersons": {
+                                            "type": "integer"
+                                        },
+                                        "totalTables": {
+                                            "type": "integer"
+                                        },
+                                        "menuTotals": {
+                                            "type": "object",
+                                            "properties": {
+                                                "meat": {
+                                                    "type": "integer"
+                                                },
+                                                "child": {
+                                                    "type": "integer"
+                                                },
+                                                "vegetarian": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "meat",
+                                                "child",
+                                                "vegetarian"
+                                            ]
+                                        },
+                                        "tables": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "name": {
+                                                        "type": "string"
+                                                    },
+                                                    "personCount": {
+                                                        "type": "integer"
+                                                    },
+                                                    "menuCounts": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "meat": {
+                                                                "type": "integer"
+                                                            },
+                                                            "child": {
+                                                                "type": "integer"
+                                                            },
+                                                            "vegetarian": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "meat",
+                                                            "child",
+                                                            "vegetarian"
+                                                        ]
+                                                    },
+                                                    "signups": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "first_name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "last_name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "address": {
+                                                                    "type": "string"
+                                                                },
+                                                                "phone": {
+                                                                    "type": "string"
+                                                                },
+                                                                "email": {
+                                                                    "type": "string"
+                                                                },
+                                                                "personCount": {
+                                                                    "type": "integer"
+                                                                },
+                                                                "menuCounts": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "meat": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "child": {
+                                                                            "type": "integer"
+                                                                        },
+                                                                        "vegetarian": {
+                                                                            "type": "integer"
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "meat",
+                                                                        "child",
+                                                                        "vegetarian"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "first_name",
+                                                                "last_name",
+                                                                "address",
+                                                                "phone",
+                                                                "email",
+                                                                "personCount",
+                                                                "menuCounts"
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "required": [
+                                                    "name",
+                                                    "personCount",
+                                                    "menuCounts",
+                                                    "signups"
+                                                ]
+                                            }
+                                        },
+                                        "occasion": {
+                                            "type": "object",
+                                            "properties": {
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "subtitle": {
+                                                    "type": "string"
+                                                },
+                                                "date": {
+                                                    "type": "string"
+                                                },
+                                                "date_display": {
+                                                    "type": "string"
+                                                },
+                                                "teaser": {
+                                                    "type": "string"
+                                                },
+                                                "invitation": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "title",
+                                                "subtitle",
+                                                "date",
+                                                "date_display",
+                                                "teaser",
+                                                "invitation"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "totalPersons",
+                                        "totalTables",
+                                        "menuTotals",
+                                        "tables",
+                                        "occasion"
+                                    ]
                                 }
                             },
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {

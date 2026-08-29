@@ -22,6 +22,7 @@ import type {
   EventUpdate200,
   ResponseIndex200Item,
   ResponseStore201,
+  SignupIndex200One,
   SignupStore201,
 } from "./model";
 
@@ -143,8 +144,57 @@ export const getSignupStoreResponseMock = (
   overrideResponse: Partial<Extract<SignupStore201, object>> = {},
 ): SignupStore201 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getSignupIndexResponseMock = (): string =>
-  faker.helpers.arrayElement([faker.word.sample(), faker.word.sample()]);
+export const getSignupIndexResponseMock = (
+  overrideResponse: Partial<Extract<SignupIndex200One | string, object>> = {},
+): SignupIndex200One | string =>
+  faker.helpers.arrayElement([
+    {
+      totalPersons: faker.number.int(),
+      totalTables: faker.number.int(),
+      menuTotals: {
+        meat: faker.number.int(),
+        child: faker.number.int(),
+        vegetarian: faker.number.int(),
+      },
+      tables: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          personCount: faker.number.int(),
+          menuCounts: {
+            meat: faker.number.int(),
+            child: faker.number.int(),
+            vegetarian: faker.number.int(),
+          },
+          signups: Array.from(
+            { length: faker.number.int({ min: 1, max: 10 }) },
+            (_, i) => i + 1,
+          ).map(() => ({
+            first_name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+            last_name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+            address: faker.string.alpha({ length: { min: 10, max: 20 } }),
+            phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+            email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+            personCount: faker.number.int(),
+            menuCounts: {
+              meat: faker.number.int(),
+              child: faker.number.int(),
+              vegetarian: faker.number.int(),
+            },
+          })),
+        }),
+      ),
+      occasion: {
+        title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        subtitle: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        date: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        date_display: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        teaser: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        invitation: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      ...overrideResponse,
+    },
+    faker.word.sample(),
+  ]);
 
 export const getAltchaMockHandler = (
   overrideResponse?:
@@ -452,7 +502,11 @@ export const getSignupStoreMockHandler = (
 
 export const getSignupIndexMockHandler = (
   overrideResponse?:
-    string | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<string> | string),
+    | SignupIndex200One
+    | string
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<SignupIndex200One | string> | SignupIndex200One | string),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
