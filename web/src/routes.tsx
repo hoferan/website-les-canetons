@@ -19,6 +19,7 @@ import { Multimedia } from "./pages/Multimedia";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
 import { PlanningRepet } from "./pages/PlanningRepet";
+import { SignupThanks } from "./pages/SignupThanks";
 import { Sinscrire } from "./pages/Sinscrire";
 import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
@@ -93,7 +94,7 @@ export function AppRoutes() {
         {config.features.souper_signup ? (
           <>
             <Route path="/signup" element={<Placeholder title="S’inscrire au souper" />} />
-            <Route path="/signup_thanks" element={<Placeholder title="Merci" />} />
+            <Route path="/signup_thanks" element={<SignupThanks />} />
             <Route path="/signups_admin" element={<Placeholder title="Souper (admin)" />} />
           </>
         ) : null}
