@@ -69,11 +69,35 @@ smoke. It was verified against the REAL Laravel API on the dev stack, not only
 against the mocks — create, edit and delete each persist across a reload, and an
 over-long title comes back as “Titre est trop long (maximum 255 caractères)”.
 
-**Next: the sixteen routes that are still `Placeholder`.** Each needs porting
-before the branch can merge; the parity reference is
-`git show dcd7862^:app/pages/<page>.php` and the live site. Two of them,
-`/inscriptions_admin` and `/signups_admin`, must also fix the response types
-noted below — do that in the plan that builds them.
+**Sub-project B — auth and contact — is done too**, on 2026-08-29:
+`/authentification_inscription` (login *and* logout, which the SPA had no way
+to do before), `/contact` and `/confirmation`. Verified against the real
+Laravel API in 21 checks: all three seeded accounts log in through the form and
+survive a reload, only `demo.admin` sees the admin form, a contact message
+reaches `contact_messages`, and an over-long subject comes back as
+“Sujet est trop long (maximum 255 caractères)” against the offending input.
+
+**Thirteen routes are still `Placeholder`** (sixteen counting the three
+flag-gated souper ones). The remaining work was decomposed on 2026-08-29 into
+four sub-projects, each getting its own spec, plan and implementation cycle —
+see `docs/superpowers/specs/2026-08-29-auth-and-contact-design.md` for the
+table. B is done; **A, C and D remain**:
+
+| | Routes | Blocked on |
+| --- | --- | --- |
+| A. Content pages | accueil, historique, canetons, cd, commencement, moniteurs, sponsors, multimedia, comite_teamdirection | nothing — no API at all, pure markup and images |
+| C. Members' area | sinscrire, inscriptions_utilisateurs, admin, inscriptions_admin | the broken `GET /api/responses` type |
+| D. Souper | signup, signup_thanks, signups_admin | the broken `GET /api/signups` type |
+
+The parity reference is `git show dcd7862^:app/pages/<page>.php` and the live
+site. **A is the obvious next one** — no API, no blockers, and it settles the
+content-page conventions the others reuse.
+
+**One gap C must close:** no route is wrapped in `RequireAuth` or
+`RequireCapability` yet — `grep RequireAuth web/src/routes.tsx` returns nothing.
+The guards are unit-tested and they do carry the attempted path into router
+state, but nothing exercises the bounce end to end because there is no gated
+URL to bounce from. C wires the first ones.
 
 ## Two contract defects that were fixed — do not reintroduce them
 
@@ -150,6 +174,30 @@ redirect-loops. Both have regression tests; the first also has a smoke check.
 registers. It is in `web/src/setupTests.ts`. Without it renders accumulate and
 the next test fails with "Found multiple elements", which reads like a component
 bug and is not one.
+
+**Playwright's `getByLabel` is a case-insensitive SUBSTRING match; Testing
+Library's is exact.** The same label works unqualified in a Vitest test and
+fails strict mode in an e2e one: `getByLabel("Nom:")` also matches `"Prénom:"`,
+because "nom:" is its tail. Every contact-form locator in `web/e2e/auth.spec.ts`
+passes `{ exact: true }`, including the four that do not collide today — one
+added field is all it takes, and the failure reads as a bug in the page.
+
+**Nothing in Playwright's non-waiting API waits for the boot gate.**
+`isVisible()` and `count()` return immediately, and `SessionProvider` renders
+`null` until `GET /api/config` and `GET /api/user` resolve — so a check fired
+straight after `page.reload()` or `page.goto()` reports "logged out" for a
+perfectly good session, and "no admin form" for an admin. Worse, it reports the
+*right* answer for the wrong reason on the negative cases, which is how a
+verification script passes while proving nothing. Wait on a condition
+(`.waitFor()`), and on the negative cases wait for the page's own content first.
+
+**A refactor with full coverage can leave nothing pinning the new behaviour.**
+When the form error region moved from inserted-on-error to always-resident,
+every one of the 128 tests still passed against *both* shapes — `findByRole`
+retries until the element appears, so it cannot tell them apart. Two tests were
+added specifically to fail on the old shape. When you change a pattern, revert
+your change and confirm something goes red; if nothing does, the change is
+undefended.
 
 **Playwright runs on 5174, and must.** The dev stack's `assets` container
 publishes an *unmocked* Vite on 5173, and `reuseExistingServer` cannot tell it
