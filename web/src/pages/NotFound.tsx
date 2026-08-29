@@ -10,8 +10,8 @@ import { Link } from "react-router-dom";
 export function NotFound() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-16 text-center">
-      <p className="text-6xl font-bold text-canetons-red">404</p>
-      <h1 className="mt-4 text-2xl font-bold">Page introuvable</h1>
+      <p className="font-display text-7xl text-danger">404</p>
+      <h1 className="mt-4 font-display text-3xl">Page introuvable</h1>
       <p className="mt-4 text-gray-600">
         Oups&nbsp;! La page que vous recherchez n’existe pas ou a été déplacée.
       </p>

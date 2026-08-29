@@ -123,8 +123,12 @@ export function EventForm({
   };
 
   return (
-    <form ref={form} onSubmit={submit} className="mt-8 space-y-3 rounded border p-4">
-      <h2 className="text-lg font-bold">
+    <form
+      ref={form}
+      onSubmit={submit}
+      className="mt-8 space-y-4 rounded-lg border border-line bg-panel p-5"
+    >
+      <h2 className="font-display text-xl">
         {editing ? "Modifier l’événement" : "Ajouter un événement"}
       </h2>
 
@@ -164,7 +168,7 @@ export function EventForm({
         <button
           type="submit"
           aria-disabled={pending}
-          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
           {editing ? "Modifier" : "Ajouter"}
         </button>
@@ -176,7 +180,7 @@ export function EventForm({
             type="button"
             onClick={onDone}
             disabled={pending}
-            className="rounded border px-3 py-1"
+            className="rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
           >
             Annuler
           </button>

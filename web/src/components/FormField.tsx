@@ -16,9 +16,7 @@ import type { TranslatedError } from "../i18n";
  */
 export function FormError({ error }: { error: TranslatedError | null }) {
   return (
-    <div role="alert">
-      {error ? <p className="mt-4 text-canetons-red">{error.message}</p> : null}
-    </div>
+    <div role="alert">{error ? <p className="mt-4 text-danger">{error.message}</p> : null}</div>
   );
 }
 
@@ -70,7 +68,9 @@ export function FormField({
     value,
     "aria-invalid": problem ? true : undefined,
     "aria-describedby": problem ? errorId : undefined,
-    className: `rounded border p-1 ${problem ? "border-canetons-red" : ""}`,
+    className: `w-full rounded border bg-panel px-3 py-2 text-ink outline-none focus:border-violet focus:ring-2 focus:ring-violet/30 ${
+      problem ? "border-danger" : "border-line"
+    }`,
   };
 
   return (
@@ -82,7 +82,7 @@ export function FormField({
         <input {...shared} type={type} onChange={(event) => onChange(event.target.value)} />
       )}
       {problem ? (
-        <span id={errorId} className="block text-sm text-canetons-red">
+        <span id={errorId} className="block text-sm text-danger">
           {problem}
         </span>
       ) : null}

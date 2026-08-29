@@ -37,7 +37,7 @@ export function EventActions({
         type="button"
         aria-label={`Modifier ${event.title}`}
         onClick={() => onEdit(event)}
-        className="flex items-center gap-1 rounded border px-2 py-1 text-sm"
+        className="flex items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet"
       >
         <Pencil aria-hidden="true" className="size-4" />
         Modifier
@@ -56,7 +56,7 @@ export function EventActions({
             destroy.mutate({ id: event.id });
           }
         }}
-        className="flex items-center gap-1 rounded border px-2 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        className="flex items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         <Trash2 aria-hidden="true" className="size-4" />
         Supprimer

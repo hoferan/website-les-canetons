@@ -35,8 +35,8 @@ export function PlanningRepet() {
 
   return (
     <section className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold">Planning des prestations et des répétitions</h1>
-      <h2 className="text-lg text-gray-600">sous réserve de modifications</h2>
+      <h1 className="font-display text-4xl">Planning des prestations et des répétitions</h1>
+      <h2 className="text-lg text-ink-muted">sous réserve de modifications</h2>
 
       {/* Named, so it can be distinguished from the navigation's own list —
           both are `listitem`s to a screen reader and to a test, and "17 rows"
@@ -47,28 +47,33 @@ export function PlanningRepet() {
             pins the order, so a change in the API's ordering fails there
             instead of being silently papered over here. */}
         {events.data.data.map((event) => (
-          <li key={event.id} className="relative rounded border p-4">
+          <li
+            key={event.id}
+            className="relative rounded-lg border border-line bg-panel p-5 shadow-sm"
+          >
             <p className="font-bold">
               {event.weekend ? formatEventDateRange(event.date) : formatEventDate(event.date)}
             </p>
             <p>
-              <strong>Titre :</strong> {event.title}
+              <strong className="text-ink-muted font-semibold">Titre :</strong> {event.title}
             </p>
             <p>
-              <strong>Heure de début :</strong> {formatTime(event.startTime)}
+              <strong className="text-ink-muted font-semibold">Heure de début :</strong>{" "}
+              {formatTime(event.startTime)}
             </p>
             <p>
-              <strong>Heure de fin :</strong> {formatTime(event.endTime)}
+              <strong className="text-ink-muted font-semibold">Heure de fin :</strong>{" "}
+              {formatTime(event.endTime)}
             </p>
             <p>
-              <strong>Lieu :</strong> {event.location}
+              <strong className="text-ink-muted font-semibold">Lieu :</strong> {event.location}
             </p>
             {/* Omitted entirely when there is no dress code, as the old page
                 did — a rehearsal with no tenue is legitimate, and an empty
                 "Tenue :" line reads like missing data. */}
             {event.attire ? (
               <p>
-                <strong>Tenue :</strong> {event.attire}
+                <strong className="text-ink-muted font-semibold">Tenue :</strong> {event.attire}
               </p>
             ) : null}
 

@@ -20,7 +20,7 @@ export function Login() {
   const { user } = useSession();
   return (
     <section className="mx-auto max-w-md px-4 py-8">
-      <h2 className="text-2xl font-bold">Authentification</h2>
+      <h2 className="font-display text-3xl">Authentification</h2>
       {user ? <LoggedIn username={user.username} /> : <LoginForm />}
     </section>
   );
@@ -116,7 +116,7 @@ function LoginForm() {
         <button
           type="submit"
           aria-disabled={login.isPending}
-          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
           Se connecter
         </button>
@@ -172,7 +172,7 @@ function LoggedIn({ username }: { username: string }) {
           logout.mutate();
         }}
         aria-disabled={logout.isPending}
-        className="mt-4 rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        className="mt-4 rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         Se déconnecter
       </button>

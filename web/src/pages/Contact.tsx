@@ -61,13 +61,13 @@ export function Contact() {
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8">
-      <h2 className="text-2xl font-bold">Contact</h2>
+      <h2 className="font-display text-3xl">Contact</h2>
 
       <FormError error={error} />
 
       {/* The values are NOT cleared on failure: a rejected message must not
           make someone retype it. Same rule as the event form. */}
-      <form onSubmit={submit} className="mt-4 space-y-3">
+      <form onSubmit={submit} className="mt-4 space-y-3 rounded-lg border border-line bg-panel p-5">
         {FIELDS.map((field) => (
           <FormField
             key={field.name}
@@ -93,7 +93,7 @@ export function Contact() {
         <button
           type="submit"
           aria-disabled={send.isPending}
-          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
           Envoyer
         </button>

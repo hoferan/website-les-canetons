@@ -8,7 +8,7 @@
 export function Placeholder({ title }: { title: string }) {
   return (
     <section className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-canetons-red">{title}</h1>
+      <h1 className="font-display text-3xl">{title}</h1>
       <p className="mt-4 text-gray-600">Cette page n’a pas encore été reprise.</p>
     </section>
   );
