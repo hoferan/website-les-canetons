@@ -63,6 +63,37 @@ test("an admin reads the summary from the home page", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Exporter en Excel/ })).toBeVisible();
 });
 
+// A LAYOUT test, which is why it is here and not in Vitest: jsdom has no layout
+// engine, so the whole class of defect below is invisible to the 196 unit tests.
+// The six-column table was `w-full` inside an overflow-x container, i.e.
+// width:100% OF THAT CONTAINER — so it never scrolled, it squeezed: at 390px
+// every phone number stacked five lines deep and the Total column still hung
+// past the edge. Both assertions are symptoms, not the fix: a page that scrolls
+// sideways, and a cell tall enough to have wrapped.
+test("the summary table scrolls inside its own panel on a phone", async ({ page }) => {
+  // Logged in at the default width FIRST: below the nav's breakpoint the
+  // username link lives inside the collapsed menu, so the helper's own
+  // visibility check would fail for a reason that has nothing to do with tables.
+  await login(page, "demo.admin");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/signups_admin");
+  await expect(page.getByRole("table", { name: "Inscriptions" })).toBeVisible();
+
+  // The ROW, not the phone cell: cells stretch to the row, so the cell's own
+  // height only ever reports the tallest column. A contact row is a name over
+  // an address over padding — about 70px. The squeezed version stacked the
+  // phone number over five lines and stood at ~130.
+  const row = page.getByRole("row", { name: /Ada Lovelace/ });
+  const box = await row.boundingBox();
+  expect(box?.height ?? 0).toBeLessThan(95);
+
+  // The page body itself must never move sideways, whatever the table does.
+  const pageScrollsSideways = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(pageScrollsSideways).toBe(false);
+});
+
 // The guard is UX only — Laravel's capability:view_summary is the enforcement —
 // but a member seeing an admin page that then 403s is a bug report either way.
 test("a member without view_summary is refused in place", async ({ page }) => {

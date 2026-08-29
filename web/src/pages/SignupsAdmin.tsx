@@ -100,8 +100,26 @@ export function SignupsAdmin() {
         ))}
       </ul>
 
-      <div className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel">
-        <table className="w-full text-left" aria-label="Inscriptions">
+      {/* The table below carries `min-w-160` as well as `w-full`, and that is
+          the whole reason this panel works. `w-full` inside an overflow-x
+          container is width:100% OF THAT CONTAINER, so a six-column table never
+          scrolls — it SQUEEZES: at 390px every phone number broke across five
+          lines, every address across four, and the Total column still hung 47px
+          past the edge behind a scrollbar too short to read as one. The
+          min-width is what gives the container something to scroll; above 40rem
+          `w-full` still wins and nothing changes.
+
+          tabIndex and role go on the SCROLLER, not the table: a container that
+          scrolls has to be reachable by keyboard. Its label is deliberately not
+          the table's own ("Inscriptions"), so a query for one never matches the
+          other. */}
+      <div
+        role="region"
+        aria-label="Tableau des inscriptions"
+        tabIndex={0}
+        className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel focus-visible:outline-2 focus-visible:outline-violet"
+      >
+        <table className="w-full min-w-160 text-left" aria-label="Inscriptions">
           <thead>
             <tr className="border-b border-line">
               <th className="p-3 font-semibold text-ink-muted">Table / Contact</th>
@@ -141,7 +159,11 @@ export function SignupsAdmin() {
                     </strong>
                     <span className="block text-sm text-ink-muted">{signup.address}</span>
                   </td>
-                  <td className="p-3">{signup.phone}</td>
+                  {/* nowrap: a phone number has one shape and reading it costs
+                      nothing when it is on one line and everything when the
+                      column is narrow enough to stack it digit-group per
+                      line. */}
+                  <td className="p-3 whitespace-nowrap">{signup.phone}</td>
                   <Num value={signup.menuCounts.meat} />
                   <Num value={signup.menuCounts.child} />
                   <Num value={signup.menuCounts.vegetarian} />
