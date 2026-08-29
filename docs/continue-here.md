@@ -99,8 +99,25 @@ table. B is done; **A, C and D remain**:
 | D. Souper | signup, signup_thanks, signups_admin | the broken `GET /api/signups` type |
 
 The parity reference is `git show dcd7862^:app/pages/<page>.php` and the live
-site. **A is the obvious next one** — no API, no blockers, and it settles the
-content-page conventions the others reuse.
+site.
+
+**A was split, and A1 — the visual foundation — is done** (2026-08-29). The site
+now has a design: the *Scène* direction, chosen from three mocked-up options
+(https://claude.ai/code/artifact/ec2ff76f-b64a-4fd0-a5ed-89c5ab2c5a3b). Near-black
+chrome, light page body, violet as the interface accent, Lilita One and Karla
+self-hosted through Fontsource. The four already-ported pages are on it, and the
+image directory went from **44.5 MB to 6.1 MB**.
+
+**A2 — the nine content pages — is next**, and now lands on a system rather than
+on nothing: `docs/superpowers/specs/2026-08-29-visual-foundation-design.md`
+records the palette and the reasoning.
+
+**Read that spec before touching the palette.** The old per-page CSS looks like
+a decade of drift — magenta headings on one page, two blues on another — and it
+is not. The band is a youth Guggenmusik that performs in **UV costumes at
+night**; those colours came from the band's own look. Neon on black IS the
+identity, and a tasteful white site would look like a different band. Open
+`web/public/assets/img/canetons.jpg` before deciding otherwise.
 
 **One gap C must close:** no route is wrapped in `RequireAuth` or
 `RequireCapability` yet — `grep RequireAuth web/src/routes.tsx` returns nothing.
@@ -183,6 +200,30 @@ redirect-loops. Both have regression tests; the first also has a smoke check.
 registers. It is in `web/src/setupTests.ts`. Without it renders accumulate and
 the next test fails with "Found multiple elements", which reads like a component
 bug and is not one.
+
+**Adding an npm dependency silently unstyles :5173 until the `assets` container
+is restarted.** That service keeps `node_modules` in a named volume and installs
+with `npm ci` at start, so a package installed on the host is simply absent
+inside it. Tailwind's Vite plugin then fails to generate any CSS — the page
+renders with structure but no colours, no fonts, no chrome — and the ONLY signal
+is one line in `docker compose logs assets`:
+`Can't resolve '@fontsource-variable/karla'`. Nothing in the browser, the tests
+or the terminal says a word. `docker compose restart assets` fixes it in about
+four seconds.
+
+**`NavLink` ignores an `aria-current` you pass it.** It gates its own
+`aria-current` on an internally-computed `isActive` that matches `to` literally
+against the URL — which knows nothing about `ACTIVE_ALIASES` in `Layout.tsx`, so
+on `/inscriptions_admin` the "Inscriptions" item was never marked current no
+matter what was passed. The nav items are plain `Link`s now, with `aria-current`
+and `className` both driven by the same `active` expression.
+
+**A design change is only checkable by looking at it.** Two defects survived a
+fully green `npm run check`, 132 unit tests, 11 e2e tests and a clean build: the
+footer floated halfway up short pages (the old `main.css` sticky-footer pattern
+was never ported, and it was invisible while the footer had no background), and
+the env ribbon sat mostly outside the viewport. Screenshot the routes — driving
+Playwright and reading the PNGs works well — rather than trusting the suite.
 
 **Playwright's `getByLabel` is a case-insensitive SUBSTRING match; Testing
 Library's is exact.** The same label works unqualified in a Vitest test and
