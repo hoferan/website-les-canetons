@@ -22,10 +22,19 @@ pushing as you go — nothing else backs this work up.
 
 ## Branch and merge policy
 
-Work on `feat/spa-cutover`. **Do not merge to `main`.** A merge auto-deploys
-TEST via `ci.yml`'s `deploy-test` job, and sixteen of the seventeen routes are
-still placeholders — TEST would serve a shell of empty pages. It merges once,
-as the cutover, after every page is ported.
+Work on `feat/spa-cutover`. **Do not merge to `main` yet** — but the merge IS
+the plan, and André confirmed it on 2026-08-29: *"merge to main at the end if
+the full page is migrated."*
+
+**The condition is precise: no route may still render `Placeholder`.** Today
+thirteen do (sixteen counting the flag-gated souper three). A merge auto-deploys
+TEST via `ci.yml`'s `deploy-test` job, so merging early puts a shell of empty
+pages on TEST — which is the whole reason for the wait, not squeamishness about
+merging.
+
+So: one merge, at the end, as the cutover. `grep -c "Placeholder" web/src/routes.tsx`
+reaching zero is the green light. Confirm with André before actually merging —
+that deploy is the moment the site changes hands from the PHP app to the SPA.
 
 `main` stays at `ffedf84`. `feat/frontend-spa-cutover` is this branch's parent
 and is not being developed. `origin/archive/php-laravel-stack` was deleted; the
