@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
@@ -24,6 +24,13 @@ afterEach(() => {
   // state. Forget the second and a test that logs in leaks into the next one.
   server.resetHandlers();
   resetMockState();
+
+  // Spies on globals — window.confirm and window.alert, which the event
+  // controls use — otherwise survive the test that installed them, and so do
+  // their call counts. A later test asserting toHaveBeenCalledTimes(1) then
+  // counts an earlier test's calls and fails only when the whole file runs,
+  // passing in isolation. That reads as flakiness and is not.
+  vi.restoreAllMocks();
 });
 
 afterAll(() => server.close());

@@ -114,6 +114,44 @@ test("deleting an event removes it from the list", async () => {
   await waitFor(async () => expect(await rows()).toHaveLength(2));
 });
 
+// The delete button is aria-disabled rather than disabled, so it stays
+// focusable AND stays clickable — which makes the handler's early return the
+// only thing preventing a second confirm prompt over an in-flight delete.
+// Nothing else in the suite exercises that button's pending state.
+test("a delete in flight marks the button unavailable and refuses a second click", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.delete("/api/events/:id", async () => {
+      await held;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  await renderWithSession(<PlanningRepet />);
+  const remove = await screen.findByRole("button", { name: "Supprimer Concert d'automne" });
+  await user.click(remove);
+
+  await waitFor(() => expect(remove).toHaveAttribute("aria-disabled", "true"));
+  expect(confirm).toHaveBeenCalledTimes(1);
+
+  // Clickable, because aria-disabled does not block the event — the guard does.
+  await user.click(remove);
+  expect(confirm).toHaveBeenCalledTimes(1);
+
+  // Released, the button becomes available again. The row itself does not
+  // vanish here: this override replaces the mock's real DELETE, which is what
+  // removes it from the store — the test above covers that half.
+  release();
+  await waitFor(() => expect(remove).not.toHaveAttribute("aria-disabled", "true"));
+});
+
 test("declining the delete confirmation leaves the list alone", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");

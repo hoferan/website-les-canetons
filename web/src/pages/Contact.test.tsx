@@ -36,10 +36,21 @@ async function fillValidMessage(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Contenu du message:"), "Bonjour les canetons !");
 }
 
+// Order, not just presence. The old page's field sequence is the thing a
+// returning member's muscle memory knows, and reordering FIELDS in Contact.tsx
+// used to leave every test in this file green.
 test("the five old fields are present, in the old order", async () => {
   await renderWithSession(app, { route: "/contact" });
   expect(await screen.findByRole("heading", { name: "Contact" })).toBeInTheDocument();
+
+  const labels = screen
+    .getAllByText(/^(Nom:|Prénom:|E-mail:|Sujet:|Contenu du message:)$/)
+    .map((node) => node.textContent);
+  expect(labels).toEqual(["Nom:", "Prénom:", "E-mail:", "Sujet:", "Contenu du message:"]);
+
+  // Only the last one is a textarea; the rest are inputs.
   expect(screen.getByLabelText("Contenu du message:").tagName).toBe("TEXTAREA");
+  expect(screen.getByLabelText("Sujet:").tagName).toBe("INPUT");
 });
 
 // The old markup left `subject` optional while the API always required it, so a
