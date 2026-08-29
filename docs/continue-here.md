@@ -12,7 +12,59 @@ here:
 | Architecture, host constraints, commands | `CLAUDE.md` |
 | Why the SPA is shaped the way it is | `docs/superpowers/specs/2026-07-27-frontend-spa-cutover-design.md` |
 | What changed since (hard cutover, mocks) | `docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md` |
-| The work itself, step by step | `docs/superpowers/plans/2026-08-28-spa-clean-slate.md` (done) and `…-spa-shell-and-first-page.md` (done) |
+| The work itself, step by step | every plan in `docs/superpowers/plans/` dated 2026-08-28 or 2026-08-29 — **all seven are done** |
+| The design decisions behind them | every spec in `docs/superpowers/specs/` dated 2026-08-29 |
+
+## START HERE: what to do next
+
+**One sub-project remains — D, the souper.** Three routes, all flag-gated:
+`/signup`, `/signup_thanks`, `/signups_admin`. Then the cutover merges.
+
+```bash
+grep -c "<Placeholder" web/src/routes.tsx   # 3 today. 0 is the green light.
+```
+
+The path is the same one the last four sub-projects used, and it worked:
+
+1. **Brainstorm** it (the `brainstorming` skill) — the decisions are listed under
+   "The souper CTA is waiting for D" below, plus whatever reading
+   `git show dcd7862^:app/pages/signup.php` turns up.
+2. **Write a spec** to `docs/superpowers/specs/`, get it approved.
+3. **Write a plan** to `docs/superpowers/plans/`, self-review it against the spec.
+4. **Execute** with `subagent-driven-development` — a subagent per task, and
+   review between tasks. Point subagents at the plan file's line range rather
+   than re-emitting French copy through another layer; that is how accents drift.
+5. **Look at the rendered pages.** Every sub-project so far has shipped defects
+   that a fully green suite could not see. Drive Playwright, screenshot, read the
+   PNGs.
+6. **Verify against the real API**, not only the mocks.
+
+**D must also fix `GET /api/signups`**, still typed `string`, exactly as C fixed
+`GET /api/responses`: a literal `#[Response]` attribute on the controller plus a
+shape contract test. Copy `api/tests/Feature/ResponseShapeContractTest.php`.
+
+After D: `grep -c "<Placeholder"` hits 0, and **André has approved merging to
+`main` at that point** — confirm with him first, because that merge auto-deploys
+TEST and is the moment the live site changes hands from the PHP app to the SPA.
+
+## The numbers that mean "green"
+
+Recorded 2026-08-29, at commit `f3e40ce`. If a fresh checkout does not match
+these, something moved before you started.
+
+| Command | Expect |
+| --- | --- |
+| `npm run check` | exit 0 |
+| `npx vitest run` | **160** tests, 24 files |
+| `npm run test:e2e` | **14** passed |
+| `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
+| `npm run smoke` | 13/13 |
+| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **233** passed |
+| `du -sh web/public/assets/img/` | ~6.1 MB (it was 44.5 MB before 2026-08-29) |
+
+`npm run check` does **not** build and does **not** run the Laravel suite. Run
+both separately. In Git Bash prefix the `docker compose exec` with
+`MSYS_NO_PATHCONV=1`; PowerShell is fine as-is.
 
 ## The branch is pushed
 
@@ -194,11 +246,16 @@ data layer silently wrong.
    property-less object. That leaves the shape written twice, and
    `EventShapeContractTest` fails if they diverge.
 
-**Still broken, deliberately left:** `GET /api/responses` is `array of string`
-and `GET /api/signups` is `string`. Fix each in the plan that builds
-`/inscriptions_admin` and `/signups_admin`. **`openapi-drift` will not flag
-them** — it checks the committed document matches what Scramble emits, not that
-the shape is right.
+3. **`GET /api/responses` was typed `string[]` too**, for the identical reason,
+   and was fixed the identical way on 2026-08-29 —
+   `api/tests/Feature/ResponseShapeContractTest.php` is the guard. It differs
+   from `EventShapeContractTest` in needing a database: the event shape has a
+   seam (`Event::toFrontendShape()`) callable on an unsaved model, and the
+   response shape does not, so it asks the endpoint instead.
+
+**Still broken, deliberately left: `GET /api/signups` is `string`.** Fix it in
+D, the same way. **`openapi-drift` will not flag it** — it checks the committed
+document matches what Scramble emits, not that the shape is right.
 
 ## Traps worth knowing before you touch anything
 
