@@ -1,6 +1,6 @@
 import { ExternalLink, Menu } from "lucide-react";
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
@@ -43,41 +43,55 @@ export function Layout() {
     <>
       <EnvRibbon env={config.env} />
 
-      <header>
-        <div className="flex items-center gap-4 px-4 py-3">
+      <header className="bg-stage text-white">
+        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-4">
           <img
             src="/assets/img/Les_Canetons_Fribourg_logo_2.jpg"
             alt="Logo"
-            className="h-16 w-auto"
+            className="h-16 w-auto rounded"
           />
-          <h1 className="text-xl font-bold">Guggenmusik Les Canetons de Fribourg</h1>
+          <h1 className="font-display text-2xl leading-none">
+            Les <span className="text-pink">Canetons</span> de Fribourg
+          </h1>
         </div>
 
-        <nav>
+        <nav className="border-t border-white/10 bg-panel text-ink">
           <button
             type="button"
             aria-label="Menu de navigation"
             aria-expanded={open}
             aria-controls="nav-menu"
             onClick={() => setOpen((wasOpen) => !wasOpen)}
-            className="m-2 md:hidden"
+            className="m-2 rounded p-1 text-ink md:hidden"
           >
             <Menu className="h-6 w-6" />
           </button>
 
           <ul
             id="nav-menu"
-            className={`${open ? "block" : "hidden"} px-4 pb-3 md:flex md:flex-wrap md:gap-4`}
+            className={`${open ? "block" : "hidden"} mx-auto max-w-5xl px-4 pb-3 text-sm md:flex md:flex-wrap md:items-center md:gap-5 md:py-2`}
           >
             {NAV.map((item) => (
               <li key={item.to}>
-                <NavLink
+                {/*
+                  Link, not NavLink: NavLink's own aria-current is gated by its
+                  internal isActive, which matches `to` literally against the
+                  URL and has no idea about ACTIVE_ALIASES below. Link leaves
+                  aria-current and className to us, so the alias page and the
+                  real page agree.
+                */}
+                <Link
                   to={item.to}
                   onClick={() => setOpen(false)}
-                  className={active === item.to ? "font-bold underline" : undefined}
+                  aria-current={active === item.to ? "page" : undefined}
+                  className={
+                    active === item.to
+                      ? "border-b-2 border-violet py-1 font-semibold text-violet"
+                      : "py-1 text-ink-muted hover:text-ink"
+                  }
                 >
                   {item.label}
-                </NavLink>
+                </Link>
               </li>
             ))}
 
@@ -87,23 +101,33 @@ export function Layout() {
                 href="https://www.flickr.com/photos/201962767@N02/collections"
                 target="_blank"
                 rel="noreferrer"
+                className="py-1 text-ink-muted hover:text-ink"
               >
                 Galerie <ExternalLink className="inline h-4 w-4 align-middle" />
               </a>
             </li>
 
             <li>
-              <NavLink
+              <Link
                 to="/multimedia"
                 onClick={() => setOpen(false)}
-                className={active === "/multimedia" ? "font-bold underline" : undefined}
+                aria-current={active === "/multimedia" ? "page" : undefined}
+                className={
+                  active === "/multimedia"
+                    ? "border-b-2 border-violet py-1 font-semibold text-violet"
+                    : "py-1 text-ink-muted hover:text-ink"
+                }
               >
                 Multimédia
-              </NavLink>
+              </Link>
             </li>
 
             <li className="nav-auth">
-              <NavLink to="/authentification_inscription" onClick={() => setOpen(false)}>
+              <NavLink
+                to="/authentification_inscription"
+                onClick={() => setOpen(false)}
+                className="py-1 font-semibold text-ink-muted hover:text-ink"
+              >
                 {user ? user.username : "Connexion"}
               </NavLink>
             </li>
@@ -115,8 +139,8 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="mt-12 border-t py-6 text-center text-sm text-gray-600">
-        <p>
+      <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
+        <p className="mx-auto max-w-5xl px-4">
           © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
         </p>
       </footer>

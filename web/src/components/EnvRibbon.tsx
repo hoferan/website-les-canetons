@@ -14,7 +14,7 @@ export function EnvRibbon({ env }: { env: string }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed right-0 top-0 z-50 origin-top-right translate-x-1/4 translate-y-8 rotate-45 bg-canetons-red px-12 py-1 text-center text-sm font-bold tracking-wider text-white shadow"
+      className="pointer-events-none fixed right-0 top-0 z-50 origin-top-right translate-x-1/4 translate-y-8 rotate-45 bg-danger px-12 py-1 text-center text-sm font-bold tracking-wider text-white shadow"
     >
       {env.toUpperCase()}
     </div>

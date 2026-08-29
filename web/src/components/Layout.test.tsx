@@ -68,7 +68,13 @@ test("the auth link shows the username once logged in", async () => {
 
 test("the inscription sub-pages highlight the Inscriptions item, as the old nav did", async () => {
   await renderWithSession(<AppRoutes />, { route: "/inscriptions_admin" });
-  expect(screen.getByRole("link", { name: "Inscriptions" })).toHaveClass("font-bold");
+  // aria-current, not a class: this is the accessible expression of "you are
+  // here", it is what a screen reader announces, and it does not have to be
+  // rewritten the next time the active item's styling changes.
+  expect(screen.getByRole("link", { name: "Inscriptions" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("the hamburger toggles the menu and reports its state", async () => {
