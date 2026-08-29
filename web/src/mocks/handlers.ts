@@ -155,6 +155,7 @@ export function setMockUser(username: keyof typeof USERS | null): void {
 export function resetMockState(): void {
   setCurrentUser(null);
   events = structuredClone(SEED);
+  signups = structuredClone(SEED_SIGNUPS);
 }
 
 const unauthenticated = () =>
@@ -168,6 +169,186 @@ const unauthenticated = () =>
  * a field the API no longer has. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
 
+/**
+ * The occasion, mirroring App\Support\Occasion exactly.
+ *
+ * It has to be exact: orval types every one of these as a STRING LITERAL
+ * (Scramble read them off the PHP constants), so a paraphrase does not
+ * compile. Copy from api/app/Support/Occasion.php when the real copy changes.
+ */
+const OCCASION = {
+  title: "Souper des 25 ans des Canetons",
+  subtitle: "Sortie du nouveau costume · Soirée guggen",
+  date: "2027-11-13",
+  dateDisplay: "13 novembre 2027",
+  teaser:
+    "Fêtez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soirée guggen.",
+  invitation: "Amis et familles, réservez votre place et votre menu.",
+  maxGuests: 30,
+  menus: [
+    {
+      value: "meat",
+      label: "Viande",
+      description: "Rôti de bœuf, sauce aux morilles, gratin dauphinois et légumes de saison.",
+      price: "CHF 45.–",
+    },
+    {
+      value: "child",
+      label: "Enfant",
+      description: "Émincé de poulet, frites maison et compote.",
+      price: "CHF 20.–",
+    },
+    {
+      value: "vegetarian",
+      label: "Végétarien",
+      description: "Risotto aux champignons et légumes rôtis de saison.",
+      price: "CHF 40.–",
+    },
+  ],
+} as const;
+
+/**
+ * A REAL challenge, not a stub: `challenge` is the actual SHA-256 of
+ * `salt + ANSWER`, so web/src/api/altcha.ts solves it exactly as it solves the
+ * server's. A stub would make every mocked submission fail at the captcha and
+ * read as a bug in the page.
+ *
+ * ANSWER is small so a test costs four digests. `maxnumber` stays 50000
+ * because orval types it as that literal — it is only the upper bound, and the
+ * solver returns at the first match.
+ */
+const ALTCHA_SALT = "mock-salt";
+const ALTCHA_ANSWER = 3;
+
+async function mockChallenge() {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(ALTCHA_SALT + ALTCHA_ANSWER),
+  );
+  return {
+    algorithm: "SHA-256" as const,
+    challenge: [...new Uint8Array(digest)]
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join(""),
+    maxnumber: 50000 as const,
+    salt: ALTCHA_SALT,
+    signature: "mock-signature",
+  };
+}
+
+type MockSignup = {
+  first_name: string;
+  last_name: string;
+  address: string;
+  phone: string;
+  email: string;
+  table_name: string;
+  menus: string[];
+};
+
+/**
+ * Three tables, one of them holding two reservations, and at least one zero in
+ * every column — the admin page renders a zero as "–" and groups by table, and
+ * neither is visible in a fixture where every cell is populated.
+ */
+const SEED_SIGNUPS: MockSignup[] = [
+  {
+    first_name: "Ada",
+    last_name: "Lovelace",
+    address: "Rue du Test 1, 1700 Fribourg",
+    phone: "+41 79 000 00 01",
+    email: "ada@example.com",
+    table_name: "Famille Lovelace",
+    menus: ["meat", "vegetarian"],
+  },
+  {
+    first_name: "Alan",
+    last_name: "Turing",
+    address: "Rue du Test 2, 1700 Fribourg",
+    phone: "+41 79 000 00 02",
+    email: "alan@example.com",
+    table_name: "Famille Lovelace",
+    menus: ["meat"],
+  },
+  {
+    first_name: "Grace",
+    last_name: "Hopper",
+    address: "Rue du Test 3, 1700 Fribourg",
+    phone: "+41 79 000 00 03",
+    email: "grace@example.com",
+    table_name: "Amis du kiosque",
+    menus: ["child", "vegetarian"],
+  },
+  {
+    first_name: "Edsger",
+    last_name: "Dijkstra",
+    address: "Rue du Test 4, 1700 Fribourg",
+    phone: "+41 79 000 00 04",
+    email: "edsger@example.com",
+    table_name: "Table du comité",
+    menus: ["meat"],
+  },
+];
+
+let signups: MockSignup[] = structuredClone(SEED_SIGNUPS);
+
+const MENU_VALUES = ["meat", "child", "vegetarian"] as const;
+
+/** Mirrors App\Support\SignupStats::compute(), including first-seen grouping. */
+function computeSummary(rows: MockSignup[]) {
+  const zero = () => ({ meat: 0, child: 0, vegetarian: 0 });
+  const menuTotals = zero();
+  let totalPersons = 0;
+  const tables: {
+    name: string;
+    personCount: number;
+    menuCounts: ReturnType<typeof zero>;
+    signups: unknown[];
+  }[] = [];
+
+  for (const row of rows) {
+    const counts = zero();
+    for (const menu of row.menus) {
+      counts[menu as (typeof MENU_VALUES)[number]]++;
+      menuTotals[menu as (typeof MENU_VALUES)[number]]++;
+      totalPersons++;
+    }
+    let table = tables.find((entry) => entry.name === row.table_name);
+    if (!table) {
+      table = { name: row.table_name, personCount: 0, menuCounts: zero(), signups: [] };
+      tables.push(table);
+    }
+    table.personCount += row.menus.length;
+    for (const value of MENU_VALUES) table.menuCounts[value] += counts[value];
+    table.signups.push({
+      first_name: row.first_name,
+      last_name: row.last_name,
+      address: row.address,
+      phone: row.phone,
+      email: row.email,
+      personCount: row.menus.length,
+      menuCounts: counts,
+    });
+  }
+
+  return {
+    totalPersons,
+    totalTables: tables.length,
+    menuTotals,
+    tables,
+    // snake_case date_display, as the real endpoint returns it — /api/config
+    // camelCases the same field. Known asymmetry; see the design doc.
+    occasion: {
+      title: OCCASION.title,
+      subtitle: OCCASION.subtitle,
+      date: OCCASION.date,
+      date_display: OCCASION.dateDisplay,
+      teaser: OCCASION.teaser,
+      invitation: OCCASION.invitation,
+    },
+  };
+}
+
 const overrides = [
   // NOT in the OpenAPI document — it is Sanctum's own route, outside /api — so
   // orval generates no handler for it. But http.ts primes it before every
@@ -177,7 +358,7 @@ const overrides = [
   http.get("/sanctum/csrf-cookie", () => new HttpResponse(null, { status: 204 })),
 
   http.get("/api/config", () =>
-    HttpResponse.json({ env: "dev", features: { souper_signup: false }, occasion: null }),
+    HttpResponse.json({ env: "dev", features: { souper_signup: true }, occasion: OCCASION }),
   ),
 
   http.get("/api/user", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
@@ -304,6 +485,90 @@ const overrides = [
       event.id === body.eventId ? { ...event, response: body.participation ?? null } : event,
     );
     return HttpResponse.json({ ok: true }, { status: 201 });
+  }),
+
+  http.get("/api/altcha", async () => HttpResponse.json(await mockChallenge())),
+
+  // Hand-written because the generated handler always succeeds. The four
+  // properties pinned here are the real endpoint's, IN ITS ORDER:
+  // honeypot first (a trapped bot gets a plain 201 and learns nothing), then
+  // validation, then the captcha, then the write.
+  http.post("/api/signups", async ({ request }) => {
+    const body = (await request.json()) as Partial<MockSignup> & {
+      hp?: string;
+      altcha?: string;
+    };
+
+    if ((body.hp ?? "").trim() !== "") {
+      return HttpResponse.json({ ok: true }, { status: 201 });
+    }
+
+    const required: (keyof MockSignup)[] = [
+      "first_name",
+      "last_name",
+      "address",
+      "phone",
+      "email",
+      "table_name",
+    ];
+    // Typed explicitly, because `params` appears only on some entries — an
+    // array inferred from the `required` map below would be {field, reason}
+    // and reject the too_long push.
+    const fields: { field: string; reason: string; params?: Record<string, unknown> }[] = required
+      .filter((field) => String(body[field] ?? "").trim() === "")
+      .map((field) => ({ field, reason: "required" }));
+
+    // Laravel's max:255 (max:64 on phone), reported the same way here.
+    //
+    // `params.max` is NOT optional: web/src/i18n/fr.ts renders too_long as
+    // "est trop long (maximum {{max}} caractères)", and i18next prints a
+    // missing interpolation value LITERALLY — a mock without it puts a raw
+    // {{max}} on screen, and the test asserting the French string fails in a
+    // way that looks like a translation bug.
+    for (const field of required) {
+      const value = String(body[field] ?? "");
+      const limit = field === "phone" ? 64 : 255;
+      if (value.length > limit) {
+        fields.push({ field, reason: "too_long", params: { max: limit } });
+      }
+    }
+
+    const menus = Array.isArray(body.menus) ? body.menus : [];
+    if (menus.length < 1 || menus.length > OCCASION.maxGuests) {
+      fields.push({ field: "menus", reason: "invalid_format" });
+    }
+
+    if (fields.length > 0) {
+      return HttpResponse.json(
+        { error: "Invalid form submission", code: "validation_failed", fields },
+        { status: 422 },
+      );
+    }
+
+    if (!body.altcha) {
+      return HttpResponse.json(
+        { error: "Anti-bot verification failed", code: "captcha_failed", fields: [] },
+        { status: 403 },
+      );
+    }
+
+    signups = [...signups, { ...(body as MockSignup) }];
+    return HttpResponse.json({ ok: true }, { status: 201 });
+  }),
+
+  // view_summary is admin-only, mirrored here so the guards behave the same in
+  // the mocked app as against the real API.
+  http.get("/api/signups", ({ request }) => {
+    if (!currentUser) return unauthenticated();
+    if (currentUser.role !== "admin") return forbidden();
+    if (new URL(request.url).searchParams.get("format") === "xlsx") {
+      return new HttpResponse("mock-xlsx", {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+      });
+    }
+    return HttpResponse.json(computeSummary(signups));
   }),
 ];
 

@@ -1,6 +1,16 @@
 import { expect, test } from "vitest";
 
-import { authUser, config, contact, eventIndex, eventStore } from "../api/generated/endpoints";
+import { solveChallenge } from "../api/altcha";
+import {
+  altcha,
+  authUser,
+  config,
+  contact,
+  eventIndex,
+  eventStore,
+  signupIndex,
+} from "../api/generated/endpoints";
+import type { Altcha200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { setMockUser } from "./handlers";
 
@@ -15,7 +25,7 @@ test("GET /config answers with the shape the boot gate reads", async () => {
   const result = await config();
   expect(result.status).toBe(200);
   expect(result.data.env).toBe("dev");
-  expect(result.data.features).toEqual({ souper_signup: false });
+  expect(result.data.features).toEqual({ souper_signup: true });
 });
 
 test("GET /user is 401 for an anonymous caller, which is a normal answer", async () => {
@@ -112,4 +122,44 @@ test("an anonymous caller creating an event gets 401, not 403", async () => {
 test("mock state is reset between tests", async () => {
   const result = await eventIndex();
   expect(result.data).toHaveLength(3);
+});
+
+type SignupSummary = {
+  totalPersons: number;
+  totalTables: number;
+  menuTotals: { meat: number; child: number; vegetarian: number };
+};
+
+test("the souper feature is on, with its occasion copy", async () => {
+  const result = await config();
+
+  expect(result.data.features).toEqual({ souper_signup: true });
+  expect(result.data.occasion?.title).toBe("Souper des 25 ans des Canetons");
+  expect(result.data.occasion?.maxGuests).toBe(30);
+  expect(result.data.occasion?.menus.map((menu) => menu.value)).toEqual([
+    "meat",
+    "child",
+    "vegetarian",
+  ]);
+});
+
+// The solver is the real one, so a stub challenge would make the mocked form
+// permanently unsubmittable — and the failure would look like a bug in the page.
+test("the mocked challenge is really solvable", async () => {
+  const challenge = await altcha();
+
+  const payload = JSON.parse(atob(await solveChallenge(challenge.data as Altcha200)));
+
+  expect(payload.salt).toBe((challenge.data as Altcha200).salt);
+});
+
+test("the mocked summary groups by table", async () => {
+  setMockUser("demo.admin");
+  const result = await signupIndex();
+
+  expect(result.status).toBe(200);
+  const summary = result.data as SignupSummary;
+  expect(summary.totalPersons).toBe(6);
+  expect(summary.totalTables).toBe(3);
+  expect(summary.menuTotals).toEqual({ meat: 3, child: 1, vegetarian: 2 });
 });
