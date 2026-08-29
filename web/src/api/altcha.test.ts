@@ -1,0 +1,70 @@
+// @vitest-environment node
+import { expect, test } from "vitest";
+
+import { solveChallenge } from "./altcha";
+import type { Altcha200 } from "./generated/model";
+
+/**
+ * Runs under `node`, not jsdom: the solver needs a real WebCrypto SubtleCrypto,
+ * and jsdom does not ship one. Node 18+ exposes `crypto.subtle` globally, so
+ * this file needs no polyfill — but it MUST keep the pragma on line 1.
+ */
+
+const encoder = new TextEncoder();
+
+/** The same digest the server computes, so a fixture is a real challenge. */
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(input));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function challengeFor(answer: number): Promise<Altcha200> {
+  const salt = "salt-for-the-test";
+  return {
+    algorithm: "SHA-256",
+    challenge: await sha256Hex(salt + answer),
+    maxnumber: 50000,
+    salt,
+    signature: "a-signature-the-server-checks",
+  };
+}
+
+test("it finds the number the challenge was built from", async () => {
+  const challenge = await challengeFor(7);
+
+  const solution = solveChallenge(challenge);
+
+  expect(JSON.parse(atob(await solution))).toEqual({
+    algorithm: "SHA-256",
+    challenge: challenge.challenge,
+    number: 7,
+    salt: challenge.salt,
+    signature: challenge.signature,
+  });
+});
+
+// Zero is a real answer and a falsy one. A solver written with `if (n)` or
+// `found || fallback` gets every other case right and this one wrong.
+test("zero is a valid answer", async () => {
+  const solution = await solveChallenge(await challengeFor(0));
+  expect(JSON.parse(atob(solution)).number).toBe(0);
+});
+
+// Fail CLOSED, matching the server: an unverifiable challenge is a refusal,
+// never a pass. A solver that resolved with an empty payload here would send a
+// blank `altcha` and read as a server-side captcha bug.
+test("an unsolvable challenge rejects rather than resolving with nothing", async () => {
+  const challenge = await challengeFor(3);
+
+  await expect(solveChallenge({ ...challenge, challenge: "0".repeat(64) })).rejects.toThrow(
+    /pas pu|could not|unsolved/i,
+  );
+});
+
+test("a malformed challenge rejects", async () => {
+  const challenge = await challengeFor(3);
+
+  await expect(
+    solveChallenge({ ...challenge, salt: undefined as unknown as string }),
+  ).rejects.toThrow();
+});
