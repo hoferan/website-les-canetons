@@ -18,7 +18,12 @@ import { useSession } from "../session/SessionProvider";
  */
 export function Login() {
   const { user } = useSession();
-  return user ? <LoggedIn username={user.username} /> : <LoginForm />;
+  return (
+    <section className="mx-auto max-w-md px-4 py-8">
+      <h2 className="text-2xl font-bold">Authentification</h2>
+      {user ? <LoggedIn username={user.username} /> : <LoginForm />}
+    </section>
+  );
 }
 
 function LoginForm() {
@@ -41,16 +46,21 @@ function LoginForm() {
 
   const login = useAuthLogin({
     mutation: {
+      // Only the session key is invalidated here. Everything else is
+      // staleTime: 0 (see main.tsx) and refetches on mount, so a page cached
+      // while anonymous corrects itself on the next render rather than needing
+      // an invalidation here. getConfigQueryKey() specifically: ConfigController
+      // never touches Auth, so /api/config does not vary by user.
+      //
+      // `onSuccess` is awaited INSIDE the mutation's try block, so anything
+      // that throws in here turns a successful login into the failure UI while
+      // the user is actually logged in. Keep it to calls that cannot reject.
       onSuccess: async () => {
-        clear();
         // THE load-bearing line. SessionProvider holds GET /api/user at
         // staleTime: Infinity, so invalidating this key is the only thing that
         // makes the new session visible. The old page reloaded the document
         // instead; a SPA that did the same would throw away the router and the
         // whole Query cache to learn one fact.
-        //
-        // getConfigQueryKey() is deliberately NOT invalidated: ConfigController
-        // never touches Auth, so /api/config does not vary by user.
         //
         // Awaited, so the navigation lands on a page that already knows who is
         // logged in rather than one that renders anonymous and then corrects
@@ -64,14 +74,17 @@ function LoginForm() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    // Explicit, not implied by the disabled button: Enter in a field submits
+    // the form through the DEFAULT button, so the disabled attribute only
+    // happens to cover that case. A form that grows another button before the
+    // submit would lose the protection silently.
+    if (login.isPending) return;
     clear();
     login.mutate({ data: { username, password } });
   };
 
   return (
-    <section className="mx-auto max-w-md px-4 py-8">
-      <h2 className="text-2xl font-bold">Authentification</h2>
-
+    <>
       {/* Inline, not the old alert(). A modal browser dialog is unstyled,
           dismissible only by acknowledgement, and on mobile reads as a warning
           about the browser rather than about the form. */}
@@ -105,18 +118,15 @@ function LoginForm() {
           Se connecter
         </button>
       </form>
-    </section>
+    </>
   );
 }
 
 // Replaced in the next task with the real logout control.
 function LoggedIn({ username }: { username: string }) {
   return (
-    <section className="mx-auto max-w-md px-4 py-8">
-      <h2 className="text-2xl font-bold">Authentification</h2>
-      <p className="mt-4">
-        Connecté en tant que <strong>{username}</strong>
-      </p>
-    </section>
+    <p className="mt-4">
+      Connecté en tant que <strong>{username}</strong>
+    </p>
   );
 }

@@ -75,6 +75,33 @@ test("a bad password shows the French message and does NOT navigate", async () =
   expect(screen.getByRole("button", { name: "Se connecter" })).toBeEnabled();
 });
 
+// The 401 path carries no fields — per-field auth errors would enable
+// username enumeration. But AuthController validates the request first, and
+// that path does, so the wiring has to be pinned or a typo in the field name
+// renders nothing and passes every other test.
+test("a field error from the API lands on the offending input", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.post("/api/login", () =>
+      HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: [{ field: "password", reason: "required" }],
+        },
+        { status: 400 },
+      ),
+    ),
+  );
+
+  await renderWithSession(app, { route: "/authentification_inscription" });
+  await signIn(user, "demo.admin");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs.");
+  expect(screen.getByText("Mot de passe est requis")).toBeInTheDocument();
+  expect(screen.getByLabelText("Mot de passe :")).toHaveAttribute("aria-invalid", "true");
+});
+
 test("the submit button is disabled while the request is in flight", async () => {
   const user = userEvent.setup();
   let release!: () => void;
