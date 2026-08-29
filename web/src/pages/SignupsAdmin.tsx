@@ -78,7 +78,7 @@ export function SignupsAdmin() {
           href="/api/signups?format=xlsx"
           className="rounded border border-line px-3 py-2 hover:border-violet hover:text-violet"
         >
-          ⬇ Exporter en Excel
+          <span aria-hidden="true">⬇</span> Exporter en Excel
         </a>
       </div>
 
@@ -126,11 +126,15 @@ export function SignupsAdmin() {
                 <Num value={table.menuCounts.vegetarian} />
                 <Num value={table.personCount} total />
               </tr>,
-              ...table.signups.map((signup) => (
-                <tr
-                  key={`${table.name}-${signup.email}-${signup.phone}`}
-                  className="border-b border-line"
-                >
+              /* Keyed by POSITION, not by contact details. A signup carries no
+                 id — the payload has none, `signups` has no unique index on
+                 email, and store() does not dedupe — so two reservations from
+                 one household at one table (a parent booking again to add a
+                 grandparent) collide on any natural key built from email and
+                 phone. This list is read-only and never reorders, so the index
+                 is both stable and safe here. */
+              ...table.signups.map((signup, position) => (
+                <tr key={`${table.name}-${position}`} className="border-b border-line">
                   <td className="p-3">
                     <strong>
                       {signup.first_name} {signup.last_name}

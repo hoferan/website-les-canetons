@@ -387,6 +387,15 @@ docker compose exec -w /var/www/html/api-laravel web php artisan test
 In Git Bash, prefix that with `MSYS_NO_PATHCONV=1` or the `-w` argument is
 rewritten to a Windows path and Docker rejects it. PowerShell is unaffected.
 
+**Run the web suite from PowerShell, not Git Bash.** Git Bash reports the cwd
+with a **lowercase** drive letter (`c:\Workspace\...`); PowerShell reports
+`C:\`. Vitest 4 keys module resolution off that path, so from Git Bash it can
+load two instances of `vitest` and every test file fails to collect with
+**"Vitest failed to find the runner"**, pointing at `web/src/setupTests.ts`. It
+looks like 29 red files and a catastrophic regression; it is neither, and the
+identical command from PowerShell is green. It is intermittent, which makes it
+worse — it has already sent two separate sessions hunting a phantom.
+
 `npm run check` deliberately does **not** build: `build:web` empties
 `dist/build/`, which would delete `api-laravel/` out from under a running stack.
 CI's `build` job covers the artifact.
