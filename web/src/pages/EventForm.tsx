@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { getEventIndexQueryKey, useEventStore, useEventUpdate } from "../api/generated/endpoints";
 import type { EventIndex200Item, EventRequest } from "../api/generated/model";
-import { ApiError } from "../api/http";
-import { translateApiError, type TranslatedError } from "../i18n";
+import { useApiFormError } from "../api/useApiFormError";
+import { FormField } from "../components/FormField";
 
 /** What the form edits: the request body the API accepts, plus the id it acts on. */
 export type EditableEvent = EventRequest & { id: number };
@@ -77,7 +77,9 @@ export function EventForm({
   // submission leaves `editing` alone, so the admin's typing survives it, which
   // is the old page's behaviour and deliberate.
   const [values, setValues] = useState<EventRequest>(() => (editing ? { ...editing } : EMPTY));
-  const [error, setError] = useState<TranslatedError | null>(null);
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(
+    "L’enregistrement a échoué. Veuillez réessayer.",
+  );
   const form = useRef<HTMLFormElement>(null);
   const queryClient = useQueryClient();
 
@@ -95,42 +97,26 @@ export function EventForm({
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
 
-  /**
-   * The generated hooks type TError as the DECLARED error models, but what the
-   * mutator actually throws is always an ApiError. Narrow with instanceof —
-   * never trust the declared type here.
-   */
-  const onError = (thrown: unknown) => {
-    setError(
-      thrown instanceof ApiError
-        ? translateApiError(thrown)
-        : { message: "L’enregistrement a échoué. Veuillez réessayer.", fields: [] },
-    );
-  };
-
   const onSuccess = () => {
-    setError(null);
+    clear();
     setValues(EMPTY);
     onDone();
     void refresh();
   };
 
-  const create = useEventStore({ mutation: { onSuccess, onError } });
-  const update = useEventUpdate({ mutation: { onSuccess, onError } });
+  const create = useEventStore({ mutation: { onSuccess, onError: setFromThrown } });
+  const update = useEventUpdate({ mutation: { onSuccess, onError: setFromThrown } });
   const pending = create.isPending || update.isPending;
 
   const submit = (submitEvent: FormEvent) => {
     submitEvent.preventDefault();
-    setError(null);
+    clear();
     if (editing) {
       update.mutate({ id: editing.id, data: values });
     } else {
       create.mutate({ data: values });
     }
   };
-
-  const messageFor = (field: string) =>
-    error?.fields.find((entry) => entry.field === field)?.message;
 
   return (
     <form ref={form} onSubmit={submit} className="mt-8 space-y-3 rounded border p-4">
@@ -144,31 +130,18 @@ export function EventForm({
         </p>
       ) : null}
 
-      {FIELDS.map((field) => {
-        const problem = messageFor(field.name);
-        return (
-          <div key={field.name} className="flex flex-col gap-1">
-            <label htmlFor={`event-${field.name}`}>{field.label}</label>
-            <input
-              id={`event-${field.name}`}
-              type={field.type}
-              required={field.required}
-              aria-invalid={problem ? true : undefined}
-              aria-describedby={problem ? `event-${field.name}-error` : undefined}
-              value={values[field.name] ?? ""}
-              onChange={(changeEvent) =>
-                setValues((previous) => ({ ...previous, [field.name]: changeEvent.target.value }))
-              }
-              className={`rounded border p-1 ${problem ? "border-canetons-red" : ""}`}
-            />
-            {problem ? (
-              <span id={`event-${field.name}-error`} className="block text-sm text-canetons-red">
-                {problem}
-              </span>
-            ) : null}
-          </div>
-        );
-      })}
+      {FIELDS.map((field) => (
+        <FormField
+          key={field.name}
+          id={`event-${field.name}`}
+          label={field.label}
+          type={field.type}
+          required={field.required}
+          problem={messageFor(field.name)}
+          value={values[field.name] ?? ""}
+          onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+        />
+      ))}
 
       <div className="flex items-center gap-2">
         <input
