@@ -5,6 +5,7 @@ import { Route, Routes } from "react-router-dom";
 import { expect, test } from "vitest";
 
 import { server } from "../mocks/node";
+import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
 import { Login } from "./Login";
 
@@ -120,4 +121,50 @@ test("the submit button is disabled while the request is in flight", async () =>
   const submit = screen.getByRole("button", { name: "Se connecter" });
   await waitFor(() => expect(submit).toBeDisabled());
   release();
+});
+
+test("an authenticated visitor gets the logout view, not the form", async () => {
+  setMockUser("demo.moderator");
+  await renderWithSession(app, { route: "/authentification_inscription" });
+  expect(await screen.findByText(/Connecté en tant que/)).toHaveTextContent("demo.moderator");
+  expect(screen.queryByLabelText("Identifiant :")).toBeNull();
+});
+
+test("logging out clears the session and returns to the home page", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  await renderWithSession(app, { route: "/authentification_inscription" });
+  await user.click(await screen.findByRole("button", { name: "Se déconnecter" }));
+  expect(await screen.findByText("Accueil")).toBeInTheDocument();
+});
+
+test("a returnTo in router state is honoured", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(app, {
+    route: "/authentification_inscription",
+    state: { from: "/planning_repet" },
+  });
+  await signIn(user, "demo.admin");
+  expect(await screen.findByText("Planning")).toBeInTheDocument();
+});
+
+test("a legacy ?returnTo= query is honoured", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(app, {
+    route: "/authentification_inscription?returnTo=%2Fplanning_repet",
+  });
+  await signIn(user, "demo.admin");
+  expect(await screen.findByText("Planning")).toBeInTheDocument();
+});
+
+// The whole point of safeReturnTo, asserted through the page rather than only
+// as a unit: a hostile destination must land on the home page.
+test("a hostile returnTo falls back to the home page", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(app, {
+    route: "/authentification_inscription",
+    state: { from: "//evil.com" },
+  });
+  await signIn(user, "demo.admin");
+  expect(await screen.findByText("Accueil")).toBeInTheDocument();
 });

@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
-import { getAuthUserQueryKey, useAuthLogin } from "../api/generated/endpoints";
+import { getAuthUserQueryKey, useAuthLogin, useAuthLogout } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormField } from "../components/FormField";
 import { safeReturnTo } from "../lib/returnTo";
@@ -122,11 +122,60 @@ function LoginForm() {
   );
 }
 
-// Replaced in the next task with the real logout control.
+/**
+ * The account view: who you are, and the only way to stop being them.
+ *
+ * The old site's logout lived on /admin, which is not ported yet — and even
+ * once it is, a member who is not an admin never sees that page, so this stays.
+ */
 function LoggedIn({ username }: { username: string }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { error, setFromThrown } = useApiFormError("La déconnexion a échoué. Veuillez réessayer.");
+
+  const logout = useAuthLogout({
+    mutation: {
+      onSuccess: async () => {
+        // Same reason as the login side: the session query is cached forever,
+        // so it has to be invalidated or the app keeps showing the old user.
+        // The refetch answers 401, which SessionProvider reads as "anonymous"
+        // — that is a normal answer there, not a failure.
+        await queryClient.invalidateQueries({ queryKey: getAuthUserQueryKey() });
+        navigate("/", { replace: true });
+      },
+      onError: setFromThrown,
+    },
+  });
+
+  // No <section> or <h2> here: Task 5 hoisted the route's wrapper and heading
+  // into `Login`, so both branches render only their own body. Putting them
+  // back would duplicate chrome that has to be edited in lockstep forever.
   return (
-    <p className="mt-4">
-      Connecté en tant que <strong>{username}</strong>
-    </p>
+    <>
+      <p className="mt-4">
+        Connecté en tant que <strong>{username}</strong>
+      </p>
+
+      {error ? (
+        <p role="alert" className="mt-4 text-canetons-red">
+          {error.message}
+        </p>
+      ) : null}
+
+      {/* Guarded by the early return as well as the attribute — see the login
+          side. `logout.mutate()` takes no argument: the generated hook types
+          its variables as `void`. */}
+      <button
+        type="button"
+        onClick={() => {
+          if (logout.isPending) return;
+          logout.mutate();
+        }}
+        disabled={logout.isPending}
+        className="mt-4 rounded border px-3 py-1"
+      >
+        Se déconnecter
+      </button>
+    </>
   );
 }
