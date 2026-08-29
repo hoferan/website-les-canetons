@@ -31,44 +31,26 @@ test("an unknown URL renders the SPA's 404 view", async ({ page }) => {
 });
 
 /**
- * Logs in the way web/src/api/http.ts does — prime the CSRF cookie, replay the
- * token — because there is no login PAGE yet: /authentification_inscription is
- * still a placeholder. When it is ported this helper is replaced by filling
- * that form, and these tests should not need to change otherwise.
+ * Logs in through the real form, which is the point: this used to POST to
+ * /api/login from page.evaluate because /authentification_inscription was a
+ * placeholder.
  *
- * It waits for the page's own data first. `page.goto` resolves on `load`, but
- * main.tsx starts MSW behind a top-level await, so a request fired the instant
- * goto returns can beat the service worker and go out to Vite's proxy — where
- * it reaches whatever is on :8090, or nothing, and comes back 500. Rendered
- * rows prove the worker is answering.
+ * It waits for the navigation's own username to appear rather than for the
+ * request to return. The nav item is proof the SESSION is live, not merely that
+ * the endpoint answered — which is exactly the failure mode of forgetting to
+ * invalidate the session query.
  */
 async function login(page: import("@playwright/test").Page, username: string) {
-  await events(page).first().waitFor();
-  const status = await page.evaluate(async (user) => {
-    await fetch("/sanctum/csrf-cookie", { credentials: "include" });
-    const token = document.cookie
-      .split("; ")
-      .find((cookie) => cookie.startsWith("XSRF-TOKEN="))
-      ?.split("=")[1];
-    const response = await fetch("/api/login", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-XSRF-TOKEN": decodeURIComponent(token ?? ""),
-      },
-      body: JSON.stringify({ username: user, password: "demo" }),
-    });
-    return response.status;
-  }, username);
-  expect(status).toBe(200);
-  await page.reload();
+  await page.goto("/authentification_inscription");
+  await page.getByLabel("Identifiant :").fill(username);
+  await page.getByLabel("Mot de passe :").fill("demo");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("link", { name: username })).toBeVisible();
 }
 
 test("an admin can add an event", async ({ page }) => {
-  await page.goto("/planning_repet");
   await login(page, "demo.admin");
+  await page.goto("/planning_repet");
 
   await page.getByLabel("Date :").fill("2026-12-05");
   await page.getByLabel("Titre :").fill("Cortège");
@@ -82,8 +64,8 @@ test("an admin can add an event", async ({ page }) => {
 });
 
 test("opening the edit form never paints it empty", async ({ page }) => {
-  await page.goto("/planning_repet");
   await login(page, "demo.admin");
+  await page.goto("/planning_repet");
   await page.getByLabel("Date :").waitFor();
 
   // Samples every animation frame for ~1.5s after the click and keeps each
