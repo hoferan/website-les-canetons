@@ -163,3 +163,19 @@ test("the mocked summary groups by table", async () => {
   expect(summary.totalTables).toBe(3);
   expect(summary.menuTotals).toEqual({ meat: 3, child: 1, vegetarian: 2 });
 });
+
+// The real SignupController::index() orders `table_name, id` BEFORE
+// SignupStats::compute() groups first-seen, so the API's tables come out
+// alphabetical. The mock must agree: a mock that returns a different order
+// than the endpoint it stands in for lets a green suite certify a lie.
+test("the mocked summary orders tables as the real endpoint does", async () => {
+  setMockUser("demo.admin");
+  const result = await signupIndex();
+
+  const summary = result.data as SignupSummary & { tables: { name: string }[] };
+  expect(summary.tables.map((table) => table.name)).toEqual([
+    "Amis du kiosque",
+    "Famille Lovelace",
+    "Table du comité",
+  ]);
+});

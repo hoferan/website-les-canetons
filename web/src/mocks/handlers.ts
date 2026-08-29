@@ -294,8 +294,18 @@ let signups: MockSignup[] = structuredClone(SEED_SIGNUPS);
 
 const MENU_VALUES = ["meat", "child", "vegetarian"] as const;
 
-/** Mirrors App\Support\SignupStats::compute(), including first-seen grouping. */
-function computeSummary(rows: MockSignup[]) {
+/**
+ * Mirrors App\Support\SignupStats::compute(), including first-seen grouping.
+ *
+ * The SORT is not part of compute() and is not decoration: the real
+ * SignupController::index() orders `table_name, id` BEFORE calling compute(),
+ * so first-seen order there IS alphabetical order. Without sorting here the
+ * mock returns tables in seed-insertion order, and the mocked API quietly
+ * disagrees with the real one about row order — the kind of divergence that
+ * lets a suite go green against a lie.
+ */
+function computeSummary(unsorted: MockSignup[]) {
+  const rows = [...unsorted].sort((a, b) => a.table_name.localeCompare(b.table_name));
   const zero = () => ({ meat: 0, child: 0, vegetarian: 0 });
   const menuTotals = zero();
   let totalPersons = 0;
