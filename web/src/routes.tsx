@@ -17,10 +17,10 @@ import { Login } from "./pages/Login";
 import { Moniteurs } from "./pages/Moniteurs";
 import { Multimedia } from "./pages/Multimedia";
 import { NotFound } from "./pages/NotFound";
-import { Placeholder } from "./pages/Placeholder";
 import { PlanningRepet } from "./pages/PlanningRepet";
 import { Signup } from "./pages/Signup";
 import { SignupThanks } from "./pages/SignupThanks";
+import { SignupsAdmin } from "./pages/SignupsAdmin";
 import { Sinscrire } from "./pages/Sinscrire";
 import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
@@ -96,7 +96,14 @@ export function AppRoutes() {
           <>
             <Route path="/signup" element={<Signup />} />
             <Route path="/signup_thanks" element={<SignupThanks />} />
-            <Route path="/signups_admin" element={<Placeholder title="Souper (admin)" />} />
+            <Route
+              path="/signups_admin"
+              element={
+                <RequireCapability capability="view_summary">
+                  <SignupsAdmin />
+                </RequireCapability>
+              }
+            />
           </>
         ) : null}
 
