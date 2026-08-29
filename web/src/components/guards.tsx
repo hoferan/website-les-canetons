@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import type { Capability } from "../session/capabilities";
 import { useSession } from "../session/SessionProvider";
@@ -17,9 +17,24 @@ import { useSession } from "../session/SessionProvider";
  * are already past reads as "your session expired" and invites them to log in
  * again, repeatedly, at something they will never be allowed to see.
  */
+
+/**
+ * Where the visitor was trying to go, as a path the login route can navigate
+ * back to. Router STATE, not a query parameter: it never appears in a URL, so
+ * nobody can craft it, and the old page's open-redirect guard is unnecessary
+ * here. `safeReturnTo` still normalises it on the way out — see lib/returnTo.
+ */
+function useAttemptedPath(): string {
+  const location = useLocation();
+  return `${location.pathname}${location.search}`;
+}
+
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { user } = useSession();
-  if (!user) return <Navigate to="/authentification_inscription" replace />;
+  const from = useAttemptedPath();
+  if (!user) {
+    return <Navigate to="/authentification_inscription" state={{ from }} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -31,8 +46,11 @@ export function RequireCapability({
   children: ReactNode;
 }) {
   const { user, can } = useSession();
+  const from = useAttemptedPath();
 
-  if (!user) return <Navigate to="/authentification_inscription" replace />;
+  if (!user) {
+    return <Navigate to="/authentification_inscription" state={{ from }} replace />;
+  }
   if (!can(capability)) return <p role="alert">Accès refusé.</p>;
 
   return <>{children}</>;
