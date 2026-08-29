@@ -80,5 +80,8 @@ test("the souper routes exist when the feature is on", async () => {
   );
 
   await renderWithSession(<AppRoutes />, { route: "/signup" });
-  expect(await screen.findByRole("heading", { name: "S’inscrire au souper" })).toBeInTheDocument();
+  // The heading is the occasion's own title, read from the config override
+  // above — /signup is no longer a Placeholder. That the fixture's copy reaches
+  // the page is the point: it proves the route resolved to the real form.
+  expect(await screen.findByRole("heading", { name: OCCASION_FIXTURE.title })).toBeInTheDocument();
 });
