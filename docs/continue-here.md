@@ -12,59 +12,52 @@ here:
 | Architecture, host constraints, commands | `CLAUDE.md` |
 | Why the SPA is shaped the way it is | `docs/superpowers/specs/2026-07-27-frontend-spa-cutover-design.md` |
 | What changed since (hard cutover, mocks) | `docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md` |
-| The work itself, step by step | every plan in `docs/superpowers/plans/` dated 2026-08-28 or 2026-08-29 — **all seven are done** |
+| The work itself, step by step | every plan in `docs/superpowers/plans/` dated 2026-08-28 or 2026-08-29 — **all of them are done** |
 | The design decisions behind them | every spec in `docs/superpowers/specs/` dated 2026-08-29 |
 
 ## START HERE: what to do next
 
-**One sub-project remains — D, the souper.** Three routes, all flag-gated:
-`/signup`, `/signup_thanks`, `/signups_admin`. Then the cutover merges.
+**The cutover is complete.** No route renders `Placeholder`. Every path in
+`web/src/routes.tsx` is a real page, `web/src/pages/Placeholder.tsx` has been
+deleted, and the whole suite is green.
 
 ```bash
-grep -c "<Placeholder" web/src/routes.tsx   # 3 today. 0 is the green light.
+grep -c "Placeholder" web/src/routes.tsx   # 0 — the green light
 ```
 
-The path is the same one the last four sub-projects used, and it worked:
+**The one remaining action is confirming the merge to `main` with André.** That
+is a conversation, not a command. Merging auto-deploys TEST via `ci.yml`'s
+`deploy-test` job, and that deploy is the moment the live site changes hands
+from the PHP app to the SPA. André approved the merge in principle on
+2026-08-29 — *"merge to main at the end if the full page is migrated"* — on the
+precise condition that no route may still render `Placeholder`. That condition
+is now met. Confirm anyway before pressing it: the approval was given against a
+condition, and someone should see the condition met before the site turns over.
 
-1. **Brainstorm** it (the `brainstorming` skill) — the decisions are listed under
-   "The souper CTA is waiting for D" below, plus whatever reading
-   `git show dcd7862^:app/pages/signup.php` turns up.
-2. **Write a spec** to `docs/superpowers/specs/`, get it approved.
-3. **Write a plan** to `docs/superpowers/plans/`, self-review it against the spec.
-4. **Execute** with `subagent-driven-development` — a subagent per task, and
-   review between tasks. Point subagents at the plan file's line range rather
-   than re-emitting French copy through another layer; that is how accents drift.
-5. **Look at the rendered pages.** Every sub-project so far has shipped defects
-   that a fully green suite could not see. Drive Playwright, screenshot, read the
-   PNGs.
-6. **Verify against the real API**, not only the mocks.
-
-**D must also fix `GET /api/signups`**, still typed `string`, exactly as C fixed
-`GET /api/responses`: a literal `#[Response]` attribute on the controller plus a
-shape contract test. Copy `api/tests/Feature/ResponseShapeContractTest.php`.
-
-After D: `grep -c "<Placeholder"` hits 0, and **André has approved merging to
-`main` at that point** — confirm with him first, because that merge auto-deploys
-TEST and is the moment the live site changes hands from the PHP app to the SPA.
+Everything below is context for after that, or for whoever inherits this.
 
 ## The numbers that mean "green"
 
-Recorded 2026-08-29, at commit `f3e40ce`. If a fresh checkout does not match
-these, something moved before you started.
+Recorded 2026-08-29, at commit `793e98c`, with the dev stack up. If a fresh
+checkout does not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **160** tests, 24 files |
-| `npm run test:e2e` | **14** passed |
+| `npx vitest run` | **196** tests, 29 files |
+| `npm run test:e2e` | **18** passed |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
-| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **233** passed |
+| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **234** passed (718 assertions) |
 | `du -sh web/public/assets/img/` | ~6.1 MB (it was 44.5 MB before 2026-08-29) |
 
 `npm run check` does **not** build and does **not** run the Laravel suite. Run
 both separately. In Git Bash prefix the `docker compose exec` with
 `MSYS_NO_PATHCONV=1`; PowerShell is fine as-is.
+
+**Run the JS suites from PowerShell, not Git Bash** — see the trap below. From
+Git Bash all 29 test files fail to collect at once, which looks exactly like a
+catastrophic regression and is not one.
 
 ## The branch is pushed
 
@@ -74,19 +67,8 @@ pushing as you go — nothing else backs this work up.
 
 ## Branch and merge policy
 
-Work on `feat/spa-cutover`. **Do not merge to `main` yet** — but the merge IS
-the plan, and André confirmed it on 2026-08-29: *"merge to main at the end if
-the full page is migrated."*
-
-**The condition is precise: no route may still render `Placeholder`.** Today
-thirteen do (sixteen counting the flag-gated souper three). A merge auto-deploys
-TEST via `ci.yml`'s `deploy-test` job, so merging early puts a shell of empty
-pages on TEST — which is the whole reason for the wait, not squeamishness about
-merging.
-
-So: one merge, at the end, as the cutover. `grep -c "Placeholder" web/src/routes.tsx`
-reaching zero is the green light. Confirm with André before actually merging —
-that deploy is the moment the site changes hands from the PHP app to the SPA.
+Work is on `feat/spa-cutover`. The merge to `main` is now the plan's last step,
+and it is deliberately a human decision (see START HERE).
 
 `main` stays at `ffedf84`. `feat/frontend-spa-cutover` is this branch's parent
 and is not being developed. `origin/archive/php-laravel-stack` was deleted; the
@@ -116,8 +98,14 @@ Consequences worth knowing before any deploy:
 - `robots.txt` and `deployment.json` are unreachable over HTTP on every
   environment — the fallback catch-all serves the shell for them. That is by
   design (it is what hides `api-laravel/.env`), not a regression.
+- The souper feature is flag-gated per server. A server with
+  `souper_signup` off genuinely has no `/signup`, `/signup_thanks` or
+  `/signups_admin` — the route table registers them conditionally off
+  `GET /api/config`, and Laravel 404s the endpoints — so a disabled feature is
+  indistinguishable from an absent one, which is the behaviour the old route
+  table had.
 
-## What is done, and what is next
+## What is done
 
 Plan 1 (clean slate) is complete: no `app/`, no root Composer project, the tree
 is `api/ + web/ + tools/ + docs/`, and `npm run build` emits `index.html` +
@@ -130,65 +118,67 @@ smoke. It was verified against the REAL Laravel API on the dev stack, not only
 against the mocks — create, edit and delete each persist across a reload, and an
 over-long title comes back as “Titre est trop long (maximum 255 caractères)”.
 
-**Sub-project B — auth and contact — is done too**, on 2026-08-29:
-`/authentification_inscription` (login *and* logout, which the SPA had no way
-to do before), `/contact` and `/confirmation`. Verified against the real
-Laravel API in 21 checks: all three seeded accounts log in through the form and
-survive a reload, only `demo.admin` sees the admin form, a contact message
-reaches `contact_messages`, and an over-long subject comes back as
-“Sujet est trop long (maximum 255 caractères)” against the offending input.
+The remaining work was decomposed on 2026-08-29 into four sub-projects, each
+getting its own spec, plan and implementation cycle — see
+`docs/superpowers/specs/2026-08-29-auth-and-contact-design.md` for the table.
+**All four are done:**
 
-**Thirteen routes are still `Placeholder`** (sixteen counting the three
-flag-gated souper ones). The remaining work was decomposed on 2026-08-29 into
-four sub-projects, each getting its own spec, plan and implementation cycle —
-see `docs/superpowers/specs/2026-08-29-auth-and-contact-design.md` for the
-table. B is done; **A, C and D remain**:
-
-| | Routes | Blocked on |
+| | Routes | Status |
 | --- | --- | --- |
-| A. Content pages | accueil, historique, canetons, cd, commencement, moniteurs, sponsors, multimedia, comite_teamdirection | nothing — no API at all, pure markup and images |
-| C. Members' area | sinscrire, inscriptions_utilisateurs, admin, inscriptions_admin | the broken `GET /api/responses` type |
-| D. Souper | signup, signup_thanks, signups_admin | the broken `GET /api/signups` type |
+| A. Content pages | accueil, historique, canetons, cd, commencement, moniteurs, sponsors, multimedia, comite_teamdirection | **done** — split into A1 (the visual foundation) and A2 (the nine pages) |
+| B. Auth and contact | authentification_inscription, contact, confirmation | **done** |
+| C. Members' area | sinscrire, inscriptions_utilisateurs, admin, inscriptions_admin | **done** |
+| D. Souper | signup, signup_thanks, signups_admin | **done** — the last one |
 
 The parity reference is `git show dcd7862^:app/pages/<page>.php` and the live
 site.
 
-**A was split, and A1 — the visual foundation — is done** (2026-08-29). The site
-now has a design: the *Scène* direction, chosen from three mocked-up options
-(https://claude.ai/code/artifact/ec2ff76f-b64a-4fd0-a5ed-89c5ab2c5a3b). Near-black
-chrome, light page body, violet as the interface accent, Lilita One and Karla
-self-hosted through Fontsource. The four already-ported pages are on it, and the
-image directory went from **44.5 MB to 6.1 MB**.
+**B — auth and contact** landed `/authentification_inscription` (login *and*
+logout, which the SPA had no way to do before), `/contact` and `/confirmation`.
+Verified against the real Laravel API in 21 checks: all three seeded accounts log
+in through the form and survive a reload, only `demo.admin` sees the admin form,
+a contact message reaches `contact_messages`, and an over-long subject comes back
+as “Sujet est trop long (maximum 255 caractères)” against the offending input.
 
-**A2 (the nine content pages) and C (the members' area) are done too**
-(2026-08-29). **Only THREE routes remain on `Placeholder`** — `/signup`,
-`/signup_thanks` and `/signups_admin`, the flag-gated souper feature, which is
-sub-project **D** and the last one.
+**A1 gave the site a design**: the *Scène* direction, chosen from three mocked-up
+options (https://claude.ai/code/artifact/ec2ff76f-b64a-4fd0-a5ed-89c5ab2c5a3b).
+Near-black chrome, light page body, violet as the interface accent, Lilita One
+and Karla self-hosted through Fontsource. The image directory went from **44.5 MB
+to 6.1 MB** at the same time.
 
-`grep -c "<Placeholder" web/src/routes.tsx` returning **0** is the green light
-for the merge to `main`. It currently returns 3.
+**C — the members' area** carried two things worth knowing about:
 
-C also carried two fixes worth knowing about:
-
-- **`GET /api/responses` was typed `string[]` and is not.** Scramble cannot
-  infer through the `Collection::map` that builds it — the same failure that
-  made `GET /api/events` a `string[]`. Fixed with a literal `#[Response]`
-  attribute plus `api/tests/Feature/ResponseShapeContractTest.php`, which fails
-  if the attribute and the endpoint disagree. **`GET /api/signups` is still
-  `string` and is D's to fix the same way.**
-- **The register counts on the summary are derived from the response**, not from
+- The register counts on the summary are **derived from the response**, not from
   the hardcoded array of nine French instrument names the old page carried. The
   endpoint returns every user with their instrument, so the list falls out of
   the data and cannot drift from the `instruments` table.
+- `/admin` is a **hub** now — links to the planning page and the summaries —
+  rather than the old two buttons, both of which had become redundant. That was
+  an approved design change, not a port.
 
-`/admin` is a hub now — links to the planning page and the summaries — rather
-than the old two buttons, both of which had become redundant. That was an
-approved design change, not a port.
+C also wired the first `RequireAuth` / `RequireCapability` guards; before it,
+`grep RequireAuth web/src/routes.tsx` returned nothing and nothing exercised the
+bounce end to end because there was no gated URL to bounce from.
+
+**D — the souper** built the three flag-gated routes and the `/accueil`
+call-to-action together, because the CTA's two buttons link to `/signup` and
+`/signups_admin`. `GET /api/config` already returned `occasion` with every field
+the CTA needs (`title`, `subtitle`, `dateDisplay`, `teaser`, `invitation`), so
+the pages read the copy from the session rather than fetching anything extra.
+The CTA splits on the `view_summary` capability, **not** on being logged in — a
+`user` sees the same public half an anonymous visitor sees.
+
+**Read the palette spec before touching the colours.** The old per-page CSS looks
+like a decade of drift — magenta headings on one page, two blues on another —
+and it is not. The band is a youth Guggenmusik that performs in **UV costumes at
+night**; those colours came from the band's own look. Neon on black IS the
+identity, and a tasteful white site would look like a different band. Open
+`web/public/assets/img/canetons.jpg` before deciding otherwise.
 
 ### Open content questions — for the band, not for code
 
 Three things the port reproduced faithfully rather than deciding. None is a bug;
-all three need someone who knows the band to answer.
+all three need someone who knows the band to answer. **All three are still open.**
 
 1. **Who directs the band?** `/historique` says Delphine Maillard and Laura
    Mantel *"passent à présent le flambeau"* to Lilou Keller and Anaïs Meuwly,
@@ -205,32 +195,10 @@ all three need someone who knows the band to answer.
    `/moniteurs` does not. Both spellings are in the old PHP; both were carried
    across.
 
-### The souper CTA is waiting for D
+## Three contract defects that were fixed — do not reintroduce them
 
-`/accueil` shipped with only its static half. The old page had a flag-gated
-call-to-action for the souper, and **`GET /api/config` already returns
-`occasion` with every field it needs** — `title`, `subtitle`, `dateDisplay`,
-`teaser`, `invitation`. It was deferred only because its two buttons link to
-`/signup` and `/signups_admin`, which are still placeholders. D builds the CTA
-and its destinations together.
-
-**Read that spec before touching the palette.** The old per-page CSS looks like
-a decade of drift — magenta headings on one page, two blues on another — and it
-is not. The band is a youth Guggenmusik that performs in **UV costumes at
-night**; those colours came from the band's own look. Neon on black IS the
-identity, and a tasteful white site would look like a different band. Open
-`web/public/assets/img/canetons.jpg` before deciding otherwise.
-
-**One gap C must close:** no route is wrapped in `RequireAuth` or
-`RequireCapability` yet — `grep RequireAuth web/src/routes.tsx` returns nothing.
-The guards are unit-tested and they do carry the attempted path into router
-state, but nothing exercises the bounce end to end because there is no gated
-URL to bounce from. C wires the first ones.
-
-## Two contract defects that were fixed — do not reintroduce them
-
-Both were in committed code, neither was caught by any test, and both made the
-data layer silently wrong.
+All were in committed code, none was caught by any test, and each made the data
+layer silently wrong. **There are no known outstanding ones.**
 
 1. **The mutator must return orval's `{ data, status, headers }` envelope.**
    Every generated signature declares it, so returning the bare body
@@ -245,19 +213,104 @@ data layer silently wrong.
    be a **literal** — Scramble resolves a `@phpstan-type` alias to a
    property-less object. That leaves the shape written twice, and
    `EventShapeContractTest` fails if they diverge.
-
 3. **`GET /api/responses` was typed `string[]` too**, for the identical reason,
    and was fixed the identical way on 2026-08-29 —
    `api/tests/Feature/ResponseShapeContractTest.php` is the guard. It differs
    from `EventShapeContractTest` in needing a database: the event shape has a
    seam (`Event::toFrontendShape()`) callable on an unsaved model, and the
    response shape does not, so it asks the endpoint instead.
+4. **`GET /api/signups` was typed `string`** — the whole summary, a bare string —
+   for the third instance of the same failure, this time through both
+   `Collection::map` and `SignupStats::compute()`. Fixed in D, the same way, and
+   guarded by `api/tests/Feature/SignupShapeContractTest.php`.
 
-**Still broken, deliberately left: `GET /api/signups` is `string`.** Fix it in
-D, the same way. **`openapi-drift` will not flag it** — it checks the committed
-document matches what Scramble emits, not that the shape is right.
+   That test differs from its two siblings in **walking the shape recursively**:
+   it compares key sets at every level, not just the top. That is not
+   thoroughness for its own sake — the flat version was written first, and it
+   accepted a nested `occasion: string` that the recursive one caught. It also
+   asserts specifically on the `application/json` branch of the 200, because
+   `index()` returns `JsonResponse|StreamedResponse` (`?format=xlsx` streams a
+   spreadsheet) and the spreadsheet content type is legitimately a string; an
+   assertion that took whichever branch came first would pass on the xlsx one
+   and prove nothing about the JSON the SPA parses.
+
+**`openapi-drift` would not have flagged any of these** — it checks the
+committed document matches what Scramble emits, not that the shape is right.
+
+## Decisions the souper took that the code cannot explain
+
+- **The table-name datalist was dropped on purpose.** The old public form
+  server-rendered a `<datalist>` of every existing table name to anonymous
+  visitors — and the field's own label is *"nom de famille ou nom de table"*, so
+  the page published the surnames of everyone who had already reserved, to
+  anyone who opened it. The free-text field and its reworded hint are the
+  replacement. The accepted cost is real and should be stated plainly: a typo
+  splits a family across two tables and nothing warns them. The admin summary
+  groups by exact string, so it is at least *visible* there and fixable in the
+  database.
+- **Per-person menu rows were kept over a quantity stepper.** A stepper would
+  produce an identical payload — the API only ever counts `menus[]`, and their
+  order is never read — and is fewer clicks for a table of eight. It was
+  rejected anyway, as a visible change to a page returning visitors have already
+  used. This is a port, and the stepper is a redesign.
+- **The mocked backend answers 400, not 422.** `ApiError::validation()` returns
+  **400**, and `OpenApiDocumentTest` explicitly pins that 422 is never used
+  anywhere in the API. The MSW handlers had been wrong about this for `/contact`
+  since before the souper existed; both it and the new signup handler are
+  correct now. A mock that answers the wrong status trains the SPA against an
+  API that does not exist.
+
+## Lessons from D that are not in any file
+
+- **A green suite still cannot see layout.** `/signups_admin` at 390px had
+  `w-full` on the table inside its `overflow-x-auto` wrapper, so the table
+  *squeezed* instead of scrolling: phone numbers stacked five lines deep and the
+  Total column hung off the edge. Every automated check passed — including the
+  one asserting the page body does not scroll sideways, which was true and
+  irrelevant. It was found by screenshotting the page and looking at it. There
+  is now an e2e test pinning that the table scrolls inside its own panel.
+- **The honeypot's transmission is pinned by a unit test, not by e2e**, and it
+  has to be. A trapped submission returns a plain `201 {"ok":true}` — byte for
+  byte what a real success returns, deliberately, so a bot learns nothing —
+  which means Playwright can observe no difference at all. Only the request body
+  differs. The test asserts on what is submitted, not on what is rendered; a
+  rendering test would have passed against a honeypot that was never sent.
+
+## Verified against the real API — 2026-08-29
+
+D was verified against the real Laravel API on the dev stack, not only the
+mocks. Nine checks, all passing:
+
+1. a reservation submitted through `/signup` reaches the `signups` table with
+   `occasion: anniversary-supper`;
+2. an over-long first name comes back as
+   **“Prénom est trop long (maximum 255 caractères)”**, rendered against its own
+   input;
+3. a malformed address comes back as
+   **“E-mail n'est pas dans un format valide”**, likewise against its own input;
+4. the admin summary at `/signups_admin` counts the new reservation;
+5. the export link downloads a real `.xlsx`;
+6. that file carries the formula-injection guard — the leading `+` of a phone
+   number is quoted;
+7. `demo.user` is refused **in place** at `/signups_admin`, and
+   `GET /api/signups` is never issued at all — the guard refuses before the
+   query mounts, so the refusal is not merely cosmetic;
+8. the confirmation mail arrives in Mailpit;
+9. a honeypot submission returns 201 while storing no row and sending no mail.
+
+**The dev `signups` table now holds one legitimate row** from that verification
+(id 1, `anniversary-supper`). Do not assume a clean slate; the Laravel suite is
+unaffected, since it uses the throwaway `laravel_api_test` database.
 
 ## Traps worth knowing before you touch anything
+
+**Run the JS suites from PowerShell, not Git Bash.** Git Bash reports the cwd
+with a **lowercase** drive letter (`c:\Workspace\...`) where PowerShell reports
+`C:\`. Vitest 4 keys module resolution off that path, and from Git Bash it fails
+to collect **every single test file** with *"Vitest failed to find the runner"*,
+pointing at `web/src/setupTests.ts`. It presents as 29 red files and a
+catastrophic regression, and it is a shell difference. This has cost two
+debugging sessions; it is now also in `CLAUDE.md`.
 
 **The `assets` container needs two env vars, both set in `docker-compose.yml`.**
 `VITE_API_PROXY_TARGET=http://web`, because inside that container
@@ -312,8 +365,15 @@ bug and is not one.
 that bites.** `respond` belongs to user and moderator; `admin` holds
 `manage_events` and `view_summary` instead. **An admin cannot respond** — on
 `/sinscrire` a member sees "S'inscrire" and an admin sees "Résumé", different
-buttons on the same row. Every intuition about roles says otherwise, and the
-SPA's guards are UX only, so a mistake will not surface as a 403.
+buttons on the same row. The `/accueil` souper CTA splits the same way, on
+`view_summary` rather than on being logged in. Every intuition about roles says
+otherwise, and the SPA's guards are UX only, so a mistake will not surface as a
+403.
+
+**`Config200Occasion` types every field as a string LITERAL** — `title:
+"Souper des 25 ans des Canetons"`, `maxGuests: 30`, and so on, because Scramble
+read them off `App\Support\Occasion`'s constants. Any mock or fixture typed as
+`Config200` must use those exact strings or it will not compile.
 
 **MSW's mocked session lives in `sessionStorage`, which pages in one Playwright
 context share.** A script that logs in as one user and then another in the same
@@ -352,19 +412,23 @@ on `/inscriptions_admin` the "Inscriptions" item was never marked current no
 matter what was passed. The nav items are plain `Link`s now, with `aria-current`
 and `className` both driven by the same `active` expression.
 
-**A design change is only checkable by looking at it.** Two defects survived a
-fully green `npm run check`, 132 unit tests, 11 e2e tests and a clean build: the
-footer floated halfway up short pages (the old `main.css` sticky-footer pattern
-was never ported, and it was invisible while the footer had no background), and
-the env ribbon sat mostly outside the viewport. Screenshot the routes — driving
-Playwright and reading the PNGs works well — rather than trusting the suite.
+**A design change is only checkable by looking at it.** This has now bitten
+three times. Two defects survived a fully green `npm run check`, 132 unit tests,
+11 e2e tests and a clean build: the footer floated halfway up short pages (the
+old `main.css` sticky-footer pattern was never ported, and it was invisible
+while the footer had no background), and the env ribbon sat mostly outside the
+viewport. The third was the squeezed admin table described above. Screenshot the
+routes — driving Playwright and reading the PNGs works well — rather than
+trusting the suite.
 
 **Playwright's `getByLabel` is a case-insensitive SUBSTRING match; Testing
 Library's is exact.** The same label works unqualified in a Vitest test and
 fails strict mode in an e2e one: `getByLabel("Nom:")` also matches `"Prénom:"`,
-because "nom:" is its tail. Every contact-form locator in `web/e2e/auth.spec.ts`
-passes `{ exact: true }`, including the four that do not collide today — one
-added field is all it takes, and the failure reads as a bug in the page.
+because "nom:" is its tail. The souper form makes this worse still — it has
+"Nom", "Prénom" *and* "Nom de table" on one page. Every locator in
+`web/e2e/auth.spec.ts` and `web/e2e/souper.spec.ts` passes `{ exact: true }`,
+including the ones that do not collide today — one added field is all it takes,
+and the failure reads as a bug in the page.
 
 **Nothing in Playwright's non-waiting API waits for the boot gate.**
 `isVisible()` and `count()` return immediately, and `SessionProvider` renders
