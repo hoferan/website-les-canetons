@@ -108,9 +108,39 @@ chrome, light page body, violet as the interface accent, Lilita One and Karla
 self-hosted through Fontsource. The four already-ported pages are on it, and the
 image directory went from **44.5 MB to 6.1 MB**.
 
-**A2 — the nine content pages — is next**, and now lands on a system rather than
-on nothing: `docs/superpowers/specs/2026-08-29-visual-foundation-design.md`
-records the palette and the reasoning.
+**A2 — the nine content pages — is done too** (2026-08-29). Every public page
+is ported. **Seven routes remain on `Placeholder`**: C's four (`sinscrire`,
+`inscriptions_utilisateurs`, `admin`, `inscriptions_admin`) and D's three
+flag-gated souper routes.
+
+### Open content questions — for the band, not for code
+
+Three things the port reproduced faithfully rather than deciding. None is a bug;
+all three need someone who knows the band to answer.
+
+1. **Who directs the band?** `/historique` says Delphine Maillard and Laura
+   Mantel *"passent à présent le flambeau"* to Lilou Keller and Anaïs Meuwly,
+   while `/comite_teamdirection` still lists Laura Mantel as Responsable Team
+   Direction and the Direction musicale as *"Laura Mantel et Delphine
+   Maillard"*. The live site has contradicted itself for a while; both pages
+   were ported as they read.
+2. **`comite.jpg` is not a photograph of the committee.** It is a stock picture
+   of actual ducklings, sitting under the heading "Le comité". Its alt text now
+   describes the ducklings, because telling a screen-reader user there is a
+   photo of the committee when there is not is worse than being vague. If a real
+   committee photograph exists, dropping it in fixes both.
+3. **"Marc-Jérôme" or "Marc-Jérome"?** `/canetons` has the circumflex,
+   `/moniteurs` does not. Both spellings are in the old PHP; both were carried
+   across.
+
+### The souper CTA is waiting for D
+
+`/accueil` shipped with only its static half. The old page had a flag-gated
+call-to-action for the souper, and **`GET /api/config` already returns
+`occasion` with every field it needs** — `title`, `subtitle`, `dateDisplay`,
+`teaser`, `invitation`. It was deferred only because its two buttons link to
+`/signup` and `/signups_admin`, which are still placeholders. D builds the CTA
+and its destinations together.
 
 **Read that spec before touching the palette.** The old per-page CSS looks like
 a decade of drift — magenta headings on one page, two blues on another — and it
@@ -200,6 +230,19 @@ redirect-loops. Both have regression tests; the first also has a smoke check.
 registers. It is in `web/src/setupTests.ts`. Without it renders accumulate and
 the next test fails with "Found multiple elements", which reads like a component
 bug and is not one.
+
+**An accessible name keeps `&nbsp;` as a literal U+00A0.** It is not collapsed
+to an ordinary space, and the two are indistinguishable by eye. A test asserting
+on a heading that contains one — `/cd`, `/commencement` — needs the real
+character. The plan for those pages originally claimed the opposite and was
+wrong twice over: its prose said "already contains the real character" while its
+own code fence held an ASCII space. Both implementers caught it by rendering the
+component and reading the codepoints instead of trusting the document.
+
+**Every route had two `<h1>`s until 2026-08-29** — the header's brand and the
+page's own title. The brand is a `<p>` now. If you add a page, its title is the
+document's single `h1`; a script that walks every route and counts them is three
+lines of Playwright and worth re-running after any layout change.
 
 **Adding an npm dependency silently unstyles :5173 until the `assets` container
 is restarted.** That service keeps `node_modules` in a named volume and installs
