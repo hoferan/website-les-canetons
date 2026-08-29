@@ -80,7 +80,12 @@ export function PlanningRepet() {
       </ul>
 
       {can("manage_events") ? (
-        <EventForm editing={editing} onDone={() => setEditing(null)} />
+        // Keyed on the event being edited, so React remounts the form whenever
+        // the target changes and it seeds its fields during that render. The
+        // alternative — one long-lived form copying the prop into state in an
+        // effect — paints an empty form for a frame every time "Modifier" is
+        // clicked. See EventForm's own comment, and the e2e test that pins it.
+        <EventForm key={editing?.id ?? "new"} editing={editing} onDone={() => setEditing(null)} />
       ) : null}
     </section>
   );

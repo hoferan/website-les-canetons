@@ -78,17 +78,59 @@ const SEED: MockEvent[] = [
   },
 ];
 
-let currentUser: MockUser | null = null;
+/**
+ * The mocked session, persisted per tab.
+ *
+ * MSW's handlers run in the PAGE, not in the service worker, so module state
+ * dies with every reload — and a mocked login therefore did not survive one,
+ * while a real Sanctum session, being a cookie, does. That is mock drift from
+ * the contract, not a harmless simplification: it made "log in, refresh, still
+ * an admin" behave differently in the mocked app than against the real API.
+ *
+ * sessionStorage is the closest analogue available: scoped to one tab, gone
+ * when the tab is, invisible to any other test or window. Reads and writes are
+ * wrapped because it throws outright in a few contexts (a browser set to block
+ * site data), where forgetting the session is the right fallback.
+ */
+const SESSION_KEY = "msw:user";
+
+function readSession(): MockUser | null {
+  try {
+    const stored = globalThis.sessionStorage?.getItem(SESSION_KEY);
+    return stored ? (JSON.parse(stored) as MockUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(user: MockUser | null): void {
+  try {
+    if (user) {
+      globalThis.sessionStorage?.setItem(SESSION_KEY, JSON.stringify(user));
+    } else {
+      globalThis.sessionStorage?.removeItem(SESSION_KEY);
+    }
+  } catch {
+    // Nothing to do: the session simply does not outlive this page.
+  }
+}
+
+let currentUser: MockUser | null = readSession();
 let events: MockEvent[] = structuredClone(SEED);
+
+function setCurrentUser(user: MockUser | null): void {
+  currentUser = user;
+  writeSession(user);
+}
 
 /** Test seam: start a test from a known session. */
 export function setMockUser(username: keyof typeof USERS | null): void {
-  currentUser = username ? (USERS[username] ?? null) : null;
+  setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
 /** Test seam: both mock stores are module state, so every test must reset them. */
 export function resetMockState(): void {
-  currentUser = null;
+  setCurrentUser(null);
   events = structuredClone(SEED);
 }
 
@@ -121,12 +163,12 @@ const overrides = [
         { status: 401 },
       );
     }
-    currentUser = user;
+    setCurrentUser(user);
     return HttpResponse.json({ role: user.role });
   }),
 
   http.post("/api/logout", () => {
-    currentUser = null;
+    setCurrentUser(null);
     return HttpResponse.json({ ok: true });
   }),
 

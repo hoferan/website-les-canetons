@@ -65,21 +65,30 @@ export function EventForm({
   editing: EditableEvent | null;
   onDone: () => void;
 }) {
-  const [values, setValues] = useState<EventRequest>(EMPTY);
+  // Seeded from `editing` DURING RENDER, never copied into state by an effect.
+  //
+  // The caller keys this component on the event being edited, so switching
+  // events (or back to "create") remounts it and this initialiser runs again —
+  // which is what guarantees the values and the mode always agree in the same
+  // commit. Copying them in a useEffect instead paints one frame of an empty
+  // form under a "Modifier" button, and web/e2e/planning.spec.ts fails on it.
+  //
+  // Resetting on a KEY CHANGE and not on every render is the point: a rejected
+  // submission leaves `editing` alone, so the admin's typing survives it, which
+  // is the old page's behaviour and deliberate.
+  const [values, setValues] = useState<EventRequest>(() => (editing ? { ...editing } : EMPTY));
   const [error, setError] = useState<TranslatedError | null>(null);
   const form = useRef<HTMLFormElement>(null);
   const queryClient = useQueryClient();
 
-  // Fill the form when the list asks to edit an event, and clear it when the
-  // edit is finished or cancelled. The form sits below a list that can run to a
-  // full season, so bring it into view too — the old page did, and without it
-  // clicking "Modifier" on a late event looks like nothing happened.
+  // The form sits below a list that can run to a full season, so bring it into
+  // view when it opens for editing — the old page did, and without it clicking
+  // "Modifier" on a late event looks like nothing happened. On mount only:
+  // `editing` cannot change without the key remounting this component.
   useEffect(() => {
-    setValues(editing ? { ...editing } : EMPTY);
-    setError(null);
     if (editing) {
-      // Optional call, not a guard for tidiness: jsdom does not implement
-      // scrollIntoView at all, so an unconditional call fails every test.
+      // Optional call, not tidiness: jsdom does not implement scrollIntoView at
+      // all, so an unconditional call fails every test that opens the form.
       form.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     }
   }, [editing]);
