@@ -1081,9 +1081,11 @@ function LoggedIn({ username }: { username: string }) {
     },
   });
 
+  // No <section> or <h2> here: Task 5 hoisted the route's wrapper and heading
+  // into `Login`, so both branches render only their own body. Putting them
+  // back would duplicate chrome that has to be edited in lockstep forever.
   return (
-    <section className="mx-auto max-w-md px-4 py-8">
-      <h2 className="text-2xl font-bold">Authentification</h2>
+    <>
       <p className="mt-4">
         Connecté en tant que <strong>{username}</strong>
       </p>
@@ -1094,18 +1096,28 @@ function LoggedIn({ username }: { username: string }) {
         </p>
       ) : null}
 
+      {/* Guarded by the early return as well as the attribute — see the login
+          side. `logout.mutate()` takes no argument: the generated hook types
+          its variables as `void`. */}
       <button
         type="button"
-        onClick={() => logout.mutate()}
+        onClick={() => {
+          if (logout.isPending) return;
+          logout.mutate();
+        }}
         disabled={logout.isPending}
         className="mt-4 rounded border px-3 py-1"
       >
         Se déconnecter
       </button>
-    </section>
+    </>
   );
 }
 ```
+
+> **Note for Task 9a:** the `role="alert"` above and the `disabled` on that
+> button are the house pattern as it stands today. Task 9a changes both across
+> every form at once — write them this way here, and do not fix them early.
 
 `returnTo` needs no new code — Task 5 already reads router state and the query parameter through `safeReturnTo`. If those three tests still fail after this step, the bug is in that expression, not here.
 
@@ -1606,6 +1618,110 @@ Delete the test rows you created:
 ```bash
 docker compose exec db mariadb -ulescanetons -plescanetons lescanetons \
   -e "DELETE FROM contact_messages WHERE email = 'donald@example.com';"
+```
+
+---
+
+## Task 9a: The alert pattern, fixed once across every form
+
+Raised by the code-quality review of Task 5. **Both findings are in this plan's own supplied code, and both already exist in `EventForm.tsx` from before this plan.** They are here rather than inside Task 5 because they are a house-pattern change across files that already have passing tests — doing them per-form would mean doing them five times and reviewing them five times.
+
+Do this task only after Task 8, so every form that will exist is in the tree and gets the same treatment in one pass.
+
+**Files:**
+- Modify: `web/src/pages/Login.tsx`, `web/src/pages/Contact.tsx`, `web/src/pages/EventForm.tsx`
+- Modify: whichever tests assert on `role="alert"` — at minimum `web/src/pages/EventForm.test.tsx`, `web/src/pages/Login.test.tsx`, `web/src/pages/Contact.test.tsx`, `web/src/pages/PlanningRepet.test.tsx`
+
+### Finding 1: the live region is inserted, not resident
+
+Every form renders its error like this:
+
+```tsx
+{error ? (
+  <p role="alert" className="mt-4 text-canetons-red">
+    {error.message}
+  </p>
+) : null}
+```
+
+ARIA requires a live region to be **in the accessibility tree before its content changes** for the change to be announced. `role="alert"` is the special case most browser/AT pairs announce on insertion — NVDA with Firefox or Chrome, JAWS with Chrome — but VoiceOver with Safari frequently misses a freshly-inserted alert, and any engine can miss one when the insertion lands in the same commit as other DOM churn. Which is exactly what happens here: the alert appears in the same React commit that re-enables the submit button.
+
+Keep the region resident and change only its children:
+
+```tsx
+<div role="alert">
+  {error ? <p className="mt-4 text-canetons-red">{error.message}</p> : null}
+</div>
+```
+
+**This breaks existing tests, and that is the work.** `findByRole("alert")` currently waits for the element to appear; against a resident region it resolves immediately with an empty div, so `expect(await screen.findByRole("alert")).toHaveTextContent(...)` asserts against empty content and fails. Every such assertion becomes:
+
+```tsx
+await waitFor(() =>
+  expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+);
+```
+
+and any `expect(screen.queryByRole("alert")).toBeNull()` becomes an assertion that the region is *empty*, not absent:
+
+```tsx
+expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+```
+
+Find them all with `grep -rn 'role="alert"\|ByRole("alert")' web/src`. Note `web/src/components/guards.tsx` and `web/src/session/SessionProvider.tsx` also use `role="alert"`, but for content that is present from first render rather than appearing later — leave both alone, and say so in the commit message so the inconsistency reads as deliberate.
+
+### Finding 2: disabling the focused button drops focus to `<body>`
+
+```tsx
+<button type="submit" disabled={pending}>
+```
+
+The user activates the button, so focus is on it. React commits `disabled`. Chrome and Firefox blur a newly-disabled focused element to `document.body`. The request fails, the button re-enables — and focus is gone. Combined with finding 1, a failed submission can produce **no** perceptible feedback for a keyboard or screen-reader user.
+
+Use `aria-disabled` instead, which keeps the control focusable and in the tab order while announcing as unavailable:
+
+```tsx
+<button type="submit" aria-disabled={pending} className="... aria-disabled:opacity-50 aria-disabled:cursor-not-allowed">
+```
+
+The actual guard is then the early return in the submit handler, which Task 5 already added to `Login.tsx`:
+
+```tsx
+if (pending) return;
+```
+
+Add the same guard to `EventForm.tsx` and `Contact.tsx` in this task — with `aria-disabled` the button is still clickable, so the guard stops being belt-and-braces and becomes the only thing preventing a double submit.
+
+Tests asserting `toBeDisabled()` / `toBeEnabled()` must become assertions on the attribute:
+
+```tsx
+await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
+```
+
+`web/src/pages/EventForm.test.tsx` and `web/src/pages/Login.test.tsx` each have one such test.
+
+- [ ] **Step 1:** `grep -rn 'role="alert"\|ByRole("alert")\|toBeDisabled\|toBeEnabled\|disabled={' web/src` and list every site. Decide per site whether it is a form error (change it) or always-present content / a non-submit control (leave it).
+- [ ] **Step 2:** Change the tests first and watch them fail. This is a refactor with existing coverage, so the tests are the specification.
+- [ ] **Step 3:** Change the three components.
+- [ ] **Step 4:** `npx vitest run && npm run typecheck && npm run lint:js && npm run test:e2e`. The e2e run matters here: `web/e2e/planning.spec.ts` samples frames around the submit button, and `web/e2e/auth.spec.ts` fills forms.
+- [ ] **Step 5:** Commit:
+
+```bash
+git add web/src
+git commit -m "fix(web): announce form errors reliably, and stop disabling the focused button
+
+role=\"alert\" on an element inserted into the DOM is announced by most
+browser/AT pairs and missed by some — reliably so when the insertion shares a
+commit with other churn, which is exactly when a form error appears. The region
+is resident now and only its contents change.
+
+Disabling a focused button drops focus to <body>, so a failed submission could
+leave a keyboard user with no feedback and no place in the document. aria-disabled
+keeps the control focusable; the submit handler's early return is the real guard.
+
+guards.tsx and SessionProvider.tsx keep their inserted role=\"alert\" — their
+content is present from first render, which is the case the insertion problem
+does not apply to."
 ```
 
 ---
