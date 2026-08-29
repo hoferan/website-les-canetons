@@ -1,0 +1,96 @@
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { useContact } from "../api/generated/endpoints";
+import type { ContactRequest } from "../api/generated/model";
+import { useApiFormError } from "../api/useApiFormError";
+import { FormField } from "../components/FormField";
+
+const EMPTY: ContactRequest = {
+  lastName: "",
+  firstName: "",
+  email: "",
+  subject: "",
+  message: "",
+};
+
+/**
+ * Field order and labels are the old page's, colons and all — including the
+ * missing space before them, which the planning page does have. That
+ * inconsistency is in the live site and is not being tidied here.
+ *
+ * `subject` is `required`, which the old markup was NOT even though
+ * ContactRequest has always required it. A blank subject used to pass the
+ * browser, make a round trip, be rejected, and surface as a generic
+ * "Échec de l'envoi du formulaire" alert that named no field. Deliberate fix.
+ */
+const FIELDS: {
+  name: keyof ContactRequest;
+  label: string;
+  type?: string;
+  as?: "input" | "textarea";
+  autoComplete?: string;
+}[] = [
+  { name: "lastName", label: "Nom:", autoComplete: "family-name" },
+  { name: "firstName", label: "Prénom:", autoComplete: "given-name" },
+  { name: "email", label: "E-mail:", type: "email", autoComplete: "email" },
+  { name: "subject", label: "Sujet:" },
+  { name: "message", label: "Contenu du message:", as: "textarea" },
+];
+
+export function Contact() {
+  const [values, setValues] = useState<ContactRequest>(EMPTY);
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(
+    "L’envoi du formulaire a échoué. Veuillez réessayer.",
+  );
+  const navigate = useNavigate();
+
+  const send = useContact({
+    mutation: {
+      // Pushed, not replaced: the old page assigned window.location.href, so
+      // Back returned to the form. Keep that.
+      onSuccess: () => navigate("/confirmation"),
+      onError: setFromThrown,
+    },
+  });
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    clear();
+    send.mutate({ data: values });
+  };
+
+  return (
+    <section className="mx-auto max-w-2xl px-4 py-8">
+      <h2 className="text-2xl font-bold">Contact</h2>
+
+      {error ? (
+        <p role="alert" className="mt-4 text-canetons-red">
+          {error.message}
+        </p>
+      ) : null}
+
+      {/* The values are NOT cleared on failure: a rejected message must not
+          make someone retype it. Same rule as the event form. */}
+      <form onSubmit={submit} className="mt-4 space-y-3">
+        {FIELDS.map((field) => (
+          <FormField
+            key={field.name}
+            id={`contact-${field.name}`}
+            label={field.label}
+            type={field.type}
+            as={field.as}
+            required
+            autoComplete={field.autoComplete}
+            problem={messageFor(field.name)}
+            value={values[field.name]}
+            onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+          />
+        ))}
+        <button type="submit" disabled={send.isPending} className="rounded border px-3 py-1">
+          Envoyer
+        </button>
+      </form>
+    </section>
+  );
+}

@@ -154,6 +154,29 @@ const overrides = [
 
   http.get("/api/user", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
+  // Hand-written because the generated handler always succeeds, and the whole
+  // point of a contact form is what it does when it does not. The required set
+  // mirrors api/app/Http/Requests/ContactRequest.php exactly — including
+  // `subject`, which the OLD HTML form did not mark required even though the
+  // API always has.
+  http.post("/api/contact", async ({ request }) => {
+    const body = (await request.json()) as Record<string, string | undefined>;
+    const missing = ["lastName", "firstName", "email", "subject", "message"].filter(
+      (field) => !body[field],
+    );
+    if (missing.length > 0) {
+      return HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: missing.map((field) => ({ field, reason: "required" })),
+        },
+        { status: 422 },
+      );
+    }
+    return HttpResponse.json({ ok: true });
+  }),
+
   http.post("/api/login", async ({ request }) => {
     const body = (await request.json()) as { username?: string; password?: string };
     const user = body.username ? USERS[body.username] : undefined;
