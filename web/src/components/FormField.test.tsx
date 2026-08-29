@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
 import { FormField } from "./FormField";
@@ -6,10 +7,23 @@ import { FormField } from "./FormField";
 const noop = () => {};
 
 test("renders a labelled input wired to its own id", () => {
-  render(<FormField id="demo-name" label="Nom :" value="Canard" onChange={noop} />);
+  render(
+    <FormField
+      id="demo-name"
+      label="Nom :"
+      value="Canard"
+      onChange={noop}
+      type="password"
+      required
+      autoComplete="username"
+    />,
+  );
   const input = screen.getByLabelText("Nom :");
   expect(input).toHaveValue("Canard");
   expect(input).toHaveAttribute("id", "demo-name");
+  expect(input).toBeRequired();
+  expect(input).toHaveAttribute("type", "password");
+  expect(input).toHaveAttribute("autocomplete", "username");
 });
 
 test("renders a textarea when asked for one", () => {
@@ -39,9 +53,9 @@ test("no problem means no aria-invalid and no message", () => {
 });
 
 test("onChange receives the value, not the event", async () => {
+  const user = userEvent.setup();
   const seen: string[] = [];
   render(<FormField id="demo-name" label="Nom :" value="" onChange={(v) => seen.push(v)} />);
-  const { default: userEvent } = await import("@testing-library/user-event");
-  await userEvent.type(screen.getByLabelText("Nom :"), "ab");
+  await user.type(screen.getByLabelText("Nom :"), "ab");
   expect(seen).toEqual(["a", "b"]);
 });

@@ -13,6 +13,9 @@
  * Checkboxes are not handled: their value is a boolean, their label sits after
  * the control rather than before it, and there is exactly one in the whole app.
  * The event form writes that one out by hand.
+ *
+ * `type` applies to the input only — a textarea has none, and passing one
+ * alongside `as="textarea"` type-checks but is silently ignored.
  */
 export function FormField({
   id,
@@ -44,7 +47,7 @@ export function FormField({
     "aria-invalid": problem ? true : undefined,
     "aria-describedby": problem ? errorId : undefined,
     className: `rounded border p-1 ${problem ? "border-canetons-red" : ""}`,
-  } as const;
+  };
 
   return (
     <div className="flex flex-col gap-1">

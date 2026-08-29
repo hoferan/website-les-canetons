@@ -172,6 +172,23 @@ test("a rejected submission keeps what the admin typed", async () => {
   expect(screen.getByLabelText("Titre :")).toHaveValue("Cortège");
 });
 
+// The fallback branch: not every failure is an ApiError. A network drop makes
+// fetch itself reject, and the form still has to say something in French
+// rather than fall through to an empty alert or an English message.
+test("a network failure falls back to a French message", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  server.use(http.post("/api/events", () => HttpResponse.error()));
+
+  await renderWithSession(<PlanningRepet />);
+  await fillValidEvent(user);
+  await user.click(screen.getByRole("button", { name: "Ajouter" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "L’enregistrement a échoué. Veuillez réessayer.",
+  );
+});
+
 test("the submit button is disabled while the request is in flight", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");
