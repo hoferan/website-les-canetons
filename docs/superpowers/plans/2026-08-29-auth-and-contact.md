@@ -1646,13 +1646,34 @@ Every form renders its error like this:
 
 ARIA requires a live region to be **in the accessibility tree before its content changes** for the change to be announced. `role="alert"` is the special case most browser/AT pairs announce on insertion — NVDA with Firefox or Chrome, JAWS with Chrome — but VoiceOver with Safari frequently misses a freshly-inserted alert, and any engine can miss one when the insertion lands in the same commit as other DOM churn. Which is exactly what happens here: the alert appears in the same React commit that re-enables the submit button.
 
-Keep the region resident and change only its children:
+Keep the region resident and change only its children — and **extract it while
+you are there**, because there are four byte-identical copies of that block
+(`Contact.tsx`, `EventForm.tsx`, and twice in `Login.tsx`). Hand-editing four
+copies into a fifth shape is how the fifth one ends up different. Add to
+`web/src/components/FormField.tsx`, beside the field it pairs with:
 
 ```tsx
-<div role="alert">
-  {error ? <p className="mt-4 text-canetons-red">{error.message}</p> : null}
-</div>
+/**
+ * The form-wide error, in a live region that is ALWAYS in the tree.
+ *
+ * A `role="alert"` element inserted into the DOM is announced by most
+ * browser/AT pairs and missed by some — reliably missed when the insertion
+ * shares a commit with other churn, which is exactly when a form error appears.
+ * Rendering the region unconditionally and changing only its contents is the
+ * shape that announces everywhere.
+ */
+export function FormError({ error }: { error: TranslatedError | null }) {
+  return (
+    <div role="alert">
+      {error ? <p className="mt-4 text-canetons-red">{error.message}</p> : null}
+    </div>
+  );
+}
 ```
+
+Each form then renders `<FormError error={error} />` in place of its own block.
+That is one place to change if the pattern ever needs revisiting, instead of
+four.
 
 **This breaks existing tests, and that is the work.** `findByRole("alert")` currently waits for the element to appear; against a resident region it resolves immediately with an empty div, so `expect(await screen.findByRole("alert")).toHaveTextContent(...)` asserts against empty content and fails. Every such assertion becomes:
 
