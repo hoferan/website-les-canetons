@@ -12,7 +12,7 @@ here:
 | Architecture, host constraints, commands | `CLAUDE.md` |
 | Why the SPA is shaped the way it is | `docs/superpowers/specs/2026-07-27-frontend-spa-cutover-design.md` |
 | What changed since (hard cutover, mocks) | `docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md` |
-| The work itself, step by step | `docs/superpowers/plans/2026-08-28-spa-clean-slate.md` (done) and `…-spa-shell-and-first-page.md` (Tasks 1-8 done) |
+| The work itself, step by step | `docs/superpowers/plans/2026-08-28-spa-clean-slate.md` (done) and `…-spa-shell-and-first-page.md` (done) |
 
 ## FIRST: this branch has never been pushed
 
@@ -69,17 +69,18 @@ Plan 1 (clean slate) is complete: no `app/`, no root Composer project, the tree
 is `api/ + web/ + tools/ + docs/`, and `npm run build` emits `index.html` +
 `assets/` + `api-laravel/`.
 
-Plan 2 is at **Tasks 1-8 of 10**. Remaining:
+Plan 2 (shell and first page) is complete as well, all ten tasks. `/planning_repet`
+is fully ported: the public list, the admin create/edit/delete form, French field
+errors against the offending inputs, and both a unit suite and a Playwright
+smoke. It was verified against the REAL Laravel API on the dev stack, not only
+against the mocks — create, edit and delete each persist across a reload, and an
+over-long title comes back as “Titre est trop long (maximum 255 caractères)”.
 
-- **Task 9 — the admin form on `/planning_repet`**: create, edit, delete, with
-  French field errors rendered against the offending inputs. The plan carries
-  full code for `EventForm.tsx` and `EventActions.tsx`; `PlanningRepet.tsx`
-  currently has a stub `EventActions` at the bottom of the file to delete.
-- **Task 10 — Playwright smoke + verification**, including a pass against the
-  real API, not only the mocks.
-
-After Plan 2, sixteen routes remain placeholders. Each needs porting before the
-branch can merge.
+**Next: the sixteen routes that are still `Placeholder`.** Each needs porting
+before the branch can merge; the parity reference is
+`git show dcd7862^:app/pages/<page>.php` and the live site. Two of them,
+`/inscriptions_admin` and `/signups_admin`, must also fix the response types
+noted below — do that in the plan that builds them.
 
 ## Two contract defects that were fixed — do not reintroduce them
 
@@ -156,6 +157,29 @@ redirect-loops. Both have regression tests; the first also has a smoke check.
 registers. It is in `web/src/setupTests.ts`. Without it renders accumulate and
 the next test fails with "Found multiple elements", which reads like a component
 bug and is not one.
+
+**Playwright runs on 5174, and must.** The dev stack's `assets` container
+publishes an *unmocked* Vite on 5173, and `reuseExistingServer` cannot tell it
+apart from the harness's own `--mode mock` server: with the stack up, Playwright
+silently adopts it and the whole suite runs against the real API and the real
+database. It fails on a seeded row count, which reads as a broken assertion
+rather than "you are testing the wrong server". Do not move the harness back
+onto 5173 to "match dev".
+
+**MSW's handlers run in the PAGE, not in the service worker.** So their module
+state dies on every reload — which meant a mocked login did not survive a
+refresh, while a real Sanctum cookie does. The session is kept in
+`sessionStorage` now to close that gap. Any new mock state that should outlive a
+reload needs the same treatment; anything that should not, must not get it.
+
+**Never copy a prop into form state with a `useEffect`.** `EventForm` did, and
+React committed and painted the render that switched the form to edit mode a
+frame before the effect filled the inputs — an empty form flash on every
+"Modifier". Seed the state during render and let a `key` on the caller reset it.
+jsdom cannot catch this class of bug at all: Testing Library wraps every
+interaction in `act()`, which flushes effects before any assertion runs, so the
+window does not exist there. `web/e2e/planning.spec.ts` samples animation frames
+for it instead.
 
 **Name any list a page renders.** The layout's nav is a list too, so an unscoped
 `getByRole("listitem")` counts nav items — four events came back as seventeen
