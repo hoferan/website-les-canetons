@@ -77,6 +77,25 @@ test("the inscription sub-pages highlight the Inscriptions item, as the old nav 
   );
 });
 
+// The ORDINARY case, which the alias test above does not cover. These items are
+// plain Links rather than NavLinks — NavLink gates its own aria-current on an
+// internal literal match that knows nothing about ACTIVE_ALIASES — so "you are
+// here" is entirely our own expression now, and nothing else pins it.
+test("the item for the page you are on is the current one, and only it", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/planning_repet" });
+
+  expect(screen.getByRole("link", { name: "Planning et répétitions" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  const current = screen
+    .getAllByRole("link")
+    .filter((link) => link.getAttribute("aria-current") === "page")
+    .map((link) => link.textContent);
+  expect(current).toEqual(["Planning et répétitions"]);
+});
+
 test("the hamburger toggles the menu and reports its state", async () => {
   await renderWithSession(<AppRoutes />, { route: "/" });
 
