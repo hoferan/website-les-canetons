@@ -7,8 +7,14 @@ import { AppRoutes } from "./routes";
 import { renderWithSession } from "./test/renderWithSession";
 
 test.each([
-  ["/", "Accueil"],
-  ["/historique", "Historique"],
+  ["/", "Bienvenue sur notre site"],
+  ["/historique", "L’Histoire des Canetons"],
+  // The accessible name preserves &nbsp; as an actual U+00A0, not a normal
+  // space — verified against the rendered DOM. Do not "fix" this by removing
+  // the &nbsp; from Cd.tsx; it is there for correct French typography.
+  ["/cd", "2022 - Les Canetons ont 20 ans !!!"],
+  ["/sponsors", "Sponsors et Liens Amis"],
+  ["/multimedia", "France 3 Alsace / Carnaval de Colmar 2016"],
   ["/canetons", "Les canetons"],
   // The real page, not a placeholder — hence the fuller heading.
   ["/planning_repet", "Planning des prestations et des répétitions"],

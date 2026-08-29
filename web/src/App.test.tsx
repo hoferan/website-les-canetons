@@ -22,5 +22,7 @@ test("the app mounts and renders the home route", async () => {
     </QueryClientProvider>,
   );
 
-  expect(await screen.findByRole("heading", { name: "Accueil" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { name: "Bienvenue sur notre site" }),
+  ).toBeInTheDocument();
 });

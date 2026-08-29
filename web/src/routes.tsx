@@ -1,12 +1,17 @@
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
+import { Accueil } from "./pages/Accueil";
+import { Cd } from "./pages/Cd";
 import { Confirmation } from "./pages/Confirmation";
 import { Contact } from "./pages/Contact";
+import { Historique } from "./pages/Historique";
 import { Login } from "./pages/Login";
+import { Multimedia } from "./pages/Multimedia";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
 import { PlanningRepet } from "./pages/PlanningRepet";
+import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
 
 /**
@@ -30,14 +35,14 @@ export function AppRoutes() {
       {/* One layout route wrapping every page, so the header, nav, ribbon and
           footer mount once and survive navigation instead of remounting. */}
       <Route element={<Layout />}>
-        <Route path="/" element={<Placeholder title="Accueil" />} />
-        <Route path="/historique" element={<Placeholder title="Historique" />} />
+        <Route path="/" element={<Accueil />} />
+        <Route path="/historique" element={<Historique />} />
         <Route path="/canetons" element={<Placeholder title="Les canetons" />} />
-        <Route path="/cd" element={<Placeholder title="CD" />} />
+        <Route path="/cd" element={<Cd />} />
         <Route path="/commencement" element={<Placeholder title="Commencer les Canetons" />} />
         <Route path="/moniteurs" element={<Placeholder title="Moniteurs" />} />
-        <Route path="/sponsors" element={<Placeholder title="Sponsors et liens amis" />} />
-        <Route path="/multimedia" element={<Placeholder title="Multimédia" />} />
+        <Route path="/sponsors" element={<Sponsors />} />
+        <Route path="/multimedia" element={<Multimedia />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/comite_teamdirection" element={<Placeholder title="Contact Canetons" />} />
         <Route path="/authentification_inscription" element={<Login />} />
