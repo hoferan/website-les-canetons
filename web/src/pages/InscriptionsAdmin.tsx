@@ -59,30 +59,46 @@ export function InscriptionsAdmin() {
     ...new Set(rows.map((row) => row.instrument).filter((name): name is string => Boolean(name))),
   ].sort((a, b) => a.localeCompare(b, "fr"));
 
+  // Four tiles and these exact words, because that is what the old page had.
+  // "Convoqués" is the roll call — every member the event applies to — and it
+  // is only countable because the endpoint returns people who have NOT answered
+  // as well.
   const tiles = [
+    { label: "Convoqués", value: rows.length },
     { label: "Participe", value: participating.length },
     { label: "Ne participe pas", value: declining.length },
-    { label: "En attente", value: pending },
+    { label: "Pas de réponse", value: pending },
   ];
 
   return (
     <section className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="font-display text-4xl">Résumé des inscriptions</h1>
 
-      {/* aria-live, as the old page had: the numbers change when the query
+      {/* A NAMED list, not a bare div. The tiles and the table below use the
+          same three words — "Participe", "Ne participe pas", "Pas de réponse" —
+          because the old page did, and a plain getByText for one of them
+          matches four elements. Naming the list is what lets a test say which
+          it means, and it is the same thing the planning page does with its
+          "Événements" list.
+
+          aria-live as the old page had it: the numbers change when the query
           refetches, and an admin watching the page should hear it. */}
-      <div aria-live="polite" className="mt-6 grid gap-3 sm:grid-cols-3">
+      <ul
+        aria-label="Résumé de la participation"
+        aria-live="polite"
+        className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      >
         {tiles.map((item) => (
-          <div
+          <li
             key={item.label}
             data-tile
             className="rounded-lg border border-line bg-panel p-5 text-center"
           >
             <p className="font-display text-4xl text-violet">{item.value}</p>
             <p className="mt-1 text-sm text-ink-muted">{item.label}</p>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       <div className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel">
         <table className="w-full text-left" aria-label="Réponses">
@@ -105,10 +121,10 @@ export function InscriptionsAdmin() {
                     cells at once. */}
                 <td className="p-3">
                   {row.response === "participate"
-                    ? "Présent"
+                    ? "Participe"
                     : row.response === "notparticipate"
-                      ? "Absent"
-                      : "Sans réponse"}
+                      ? "Ne participe pas"
+                      : "Pas de réponse"}
                 </td>
               </tr>
             ))}
