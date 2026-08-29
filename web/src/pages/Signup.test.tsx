@@ -1,8 +1,10 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
 import { expect, test } from "vitest";
 
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Signup } from "./Signup";
 
@@ -49,6 +51,45 @@ test("the honeypot is present, hidden, and out of the tab order", async () => {
   expect(trap).not.toBeNull();
   expect(trap).toHaveAttribute("tabindex", "-1");
   expect(trap?.closest("[aria-hidden='true']")).not.toBeNull();
+});
+
+/**
+ * The test above proves the honeypot is RENDERED. This one proves it is SENT,
+ * which is the half that actually stops a bot.
+ *
+ * It has to live here rather than in the e2e spec: a trapped submission is
+ * answered with a plain `201 {ok:true}`, byte-identical to a real success, so
+ * that a bot never learns it was caught (SignupController::store() step 1).
+ * Playwright therefore lands on the thank-you page either way and can observe
+ * no difference at all. The request body is the only evidence there is.
+ *
+ * Without this, deleting `hp` from the payload in Signup.tsx leaves the whole
+ * suite green while every bot walks through.
+ */
+test("the honeypot's value is actually submitted", async () => {
+  let sent: Record<string, unknown> = {};
+  server.use(
+    http.post("/api/signups", async ({ request }) => {
+      sent = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json({ ok: true }, { status: 201 });
+    }),
+  );
+
+  await renderWithSession(app, { route: "/signup" });
+  await fillContact();
+
+  // A bot fills the field a human never sees.
+  const trap = document.querySelector<HTMLInputElement>("input[name='website']");
+  await userEvent.type(trap!, "bot");
+
+  await userEvent.click(screen.getByRole("button", { name: "Envoyer l’inscription" }));
+
+  await waitFor(() => expect(sent.hp).toBe("bot"));
+  // The solved proof-of-work rides along on the same request; if it stopped
+  // being sent the real API would answer 403 captcha_failed and the failure
+  // would be diagnosed on the server rather than here.
+  expect(typeof sent.altcha).toBe("string");
+  expect(sent.first_name).toBe("Ada");
 });
 
 test("a complete reservation lands on the thank-you page", async () => {
