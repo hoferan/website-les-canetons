@@ -25,6 +25,7 @@ export * from "./eventIndex200Item";
 export * from "./eventRequest";
 export * from "./eventStore201";
 export * from "./eventUpdate200";
+export * from "./responseIndex200Item";
 export * from "./responseIndex400";
 export * from "./responseIndexParams";
 export * from "./responseRequest";

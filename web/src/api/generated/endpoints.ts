@@ -37,6 +37,7 @@ import type {
   EventRequest,
   EventStore201,
   EventUpdate200,
+  ResponseIndex200Item,
   ResponseIndex400,
   ResponseIndexParams,
   ResponseRequest,
@@ -1307,7 +1308,7 @@ export const useResponseStore = <
 };
 
 export type responseIndexResponse200 = {
-  data: string[];
+  data: ResponseIndex200Item[];
   status: 200;
 };
 
@@ -1345,22 +1346,18 @@ export const getResponseIndexUrl = (params?: ResponseIndexParams) => {
 };
 
 /**
- * A member who has NOT answered is still listed, with response: null —
- * inscriptions_admin.js derives both "Convoqués" and "Pas de réponse" from
- * the length of this list, so an omitted row would silently shrink the roll
- * call instead of showing up as a pending answer.
+ * index() builds its payload with a Collection::map, and Scramble gives up
+ * on that — it emitted `string[]`, which type-checked at every call site
+ * and was wrong about every field. GET /api/events had the identical
+ * problem and this is the identical fix.
  *
- * Deliberately NOT a 404 for an unknown eventId: the legacy GET never
- * checked the event's existence (only the POST did) and its LEFT JOIN simply
- * matched nothing, so an unknown id lists everyone as unanswered. Changing
- * that would be a user-visible behaviour change, out of scope for this port.
- *
- * Validation is hand-rolled rather than a FormRequest because the two
- * failures the legacy endpoint distinguished — absent vs unusable — map onto
- * different reason tokens, and because ?eventId= arrives in the query string
- * of a GET.
- * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
-event: [{username, instrument, response}, ...]
+ * A LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a
+ * property-less object, which is how the events endpoint ended up as
+ * `string[]` in the first place. That means the shape is written twice —
+ * here and in summary()'s @return — and ResponseShapeContractTest fails if
+ * the two ever disagree, so it is duplication a test catches rather than a
+ * comment asking you to remember.
+ * @summary The 200 shape, declared because Scramble cannot infer it
  */
 export const responseIndex = async (
   params?: ResponseIndexParams,
@@ -1453,8 +1450,7 @@ export function useResponseIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
-event: [{username, instrument, response}, ...]
+ * @summary The 200 shape, declared because Scramble cannot infer it
  */
 
 export function useResponseIndex<

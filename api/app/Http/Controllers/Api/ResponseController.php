@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Response;
 use App\Models\User;
 use App\Support\Capability;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -107,6 +108,22 @@ class ResponseController extends Controller
      * different reason tokens, and because ?eventId= arrives in the query string
      * of a GET.
      */
+    /**
+     * The 200 shape, declared because Scramble cannot infer it.
+     *
+     * index() builds its payload with a Collection::map, and Scramble gives up
+     * on that — it emitted `string[]`, which type-checked at every call site
+     * and was wrong about every field. GET /api/events had the identical
+     * problem and this is the identical fix.
+     *
+     * A LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a
+     * property-less object, which is how the events endpoint ended up as
+     * `string[]` in the first place. That means the shape is written twice —
+     * here and in summary()'s @return — and ResponseShapeContractTest fails if
+     * the two ever disagree, so it is duplication a test catches rather than a
+     * comment asking you to remember.
+     */
+    #[ApiResponse(status: 200, type: 'list<array{username: string, instrument: string|null, response: string|null}>')]
     public function index(Request $request): JsonResponse
     {
         $raw = $request->query('eventId');

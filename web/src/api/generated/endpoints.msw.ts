@@ -20,6 +20,7 @@ import type {
   EventIndex200Item,
   EventStore201,
   EventUpdate200,
+  ResponseIndex200Item,
   ResponseStore201,
   SignupStore201,
 } from "./model";
@@ -125,8 +126,18 @@ export const getResponseStoreResponseMock = (
   overrideResponse: Partial<Extract<ResponseStore201, object>> = {},
 ): ResponseStore201 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getResponseIndexResponseMock = (): string[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, () => faker.word.sample());
+export const getResponseIndexResponseMock = (): ResponseIndex200Item[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    username: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    instrument: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    response: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  }));
 
 export const getSignupStoreResponseMock = (
   overrideResponse: Partial<Extract<SignupStore201, object>> = {},
@@ -393,8 +404,10 @@ export const getResponseStoreMockHandler = (
 
 export const getResponseIndexMockHandler = (
   overrideResponse?:
-    | string[]
-    | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<string[]> | string[]),
+    | ResponseIndex200Item[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ResponseIndex200Item[]> | ResponseIndex200Item[]),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(

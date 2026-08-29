@@ -676,8 +676,8 @@
             },
             "get": {
                 "operationId": "response.index",
-                "description": "A member who has NOT answered is still listed, with response: null \u2014\ninscriptions_admin.js derives both \"Convoqu\u00e9s\" and \"Pas de r\u00e9ponse\" from\nthe length of this list, so an omitted row would silently shrink the roll\ncall instead of showing up as a pending answer.\n\nDeliberately NOT a 404 for an unknown eventId: the legacy GET never\nchecked the event's existence (only the POST did) and its LEFT JOIN simply\nmatched nothing, so an unknown id lists everyone as unanswered. Changing\nthat would be a user-visible behaviour change, out of scope for this port.\n\nValidation is hand-rolled rather than a FormRequest because the two\nfailures the legacy endpoint distinguished \u2014 absent vs unusable \u2014 map onto\ndifferent reason tokens, and because ?eventId= arrives in the query string\nof a GET.",
-                "summary": "GET /api/responses?eventId=N \u2014 the admin's attendance summary for one\nevent: [{username, instrument, response}, ...]",
+                "description": "index() builds its payload with a Collection::map, and Scramble gives up\non that \u2014 it emitted `string[]`, which type-checked at every call site\nand was wrong about every field. GET /api/events had the identical\nproblem and this is the identical fix.\n\nA LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a\nproperty-less object, which is how the events endpoint ended up as\n`string[]` in the first place. That means the shape is written twice \u2014\nhere and in summary()'s @return \u2014 and ResponseShapeContractTest fails if\nthe two ever disagree, so it is duplication a test catches rather than a\ncomment asking you to remember.",
+                "summary": "The 200 shape, declared because Scramble cannot infer it",
                 "tags": [
                     "Response"
                 ],
@@ -698,7 +698,29 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "type": "string"
+                                        "type": "object",
+                                        "properties": {
+                                            "username": {
+                                                "type": "string"
+                                            },
+                                            "instrument": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            },
+                                            "response": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ]
+                                            }
+                                        },
+                                        "required": [
+                                            "username",
+                                            "instrument",
+                                            "response"
+                                        ]
                                     }
                                 }
                             }
