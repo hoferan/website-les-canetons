@@ -1,3 +1,27 @@
+import type { TranslatedError } from "../i18n";
+
+/**
+ * The form-wide error, in a live region that is ALWAYS in the tree.
+ *
+ * A `role="alert"` element inserted into the DOM is announced by most
+ * browser/AT pairs and missed by some — reliably missed when the insertion
+ * shares a commit with other churn, which is exactly when a form error appears:
+ * the same commit releases the submit button. Rendering the region
+ * unconditionally and changing only its contents is the shape that announces
+ * everywhere.
+ *
+ * It lives beside FormField because the two are the same decision — wiring that
+ * is trivially correct, just as trivially copy-pasted wrong, and worth writing
+ * once. There were four byte-identical copies of the old block before this.
+ */
+export function FormError({ error }: { error: TranslatedError | null }) {
+  return (
+    <div role="alert">
+      {error ? <p className="mt-4 text-canetons-red">{error.message}</p> : null}
+    </div>
+  );
+}
+
 /**
  * One labelled text control, and the three attributes that have to agree.
  *

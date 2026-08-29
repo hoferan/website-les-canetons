@@ -42,16 +42,21 @@ export function EventActions({
         <Pencil aria-hidden="true" className="size-4" />
         Modifier
       </button>
+      {/* aria-disabled rather than disabled, for the same reason as every
+          submit button in the app: disabling the focused control blurs it to
+          <body>. The guard has to come BEFORE the confirm, or a second click
+          re-prompts while the first delete is still in flight. */}
       <button
         type="button"
         aria-label={`Supprimer ${event.title}`}
-        disabled={destroy.isPending}
+        aria-disabled={destroy.isPending}
         onClick={() => {
+          if (destroy.isPending) return;
           if (window.confirm("Êtes-vous sûr de vouloir supprimer cet événement?")) {
             destroy.mutate({ id: event.id });
           }
         }}
-        className="flex items-center gap-1 rounded border px-2 py-1 text-sm"
+        className="flex items-center gap-1 rounded border px-2 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         <Trash2 aria-hidden="true" className="size-4" />
         Supprimer

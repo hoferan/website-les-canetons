@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useContact } from "../api/generated/endpoints";
 import type { ContactRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormField } from "../components/FormField";
+import { FormError, FormField } from "../components/FormField";
 
 const EMPTY: ContactRequest = {
   lastName: "",
@@ -51,6 +51,10 @@ export function Contact() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    // Explicit, not implied by the button: aria-disabled leaves the control
+    // clickable, and Enter in a field submits through the default button
+    // regardless. This early return is the only thing preventing a double send.
+    if (send.isPending) return;
     clear();
     send.mutate({ data: values });
   };
@@ -59,11 +63,7 @@ export function Contact() {
     <section className="mx-auto max-w-2xl px-4 py-8">
       <h2 className="text-2xl font-bold">Contact</h2>
 
-      {error ? (
-        <p role="alert" className="mt-4 text-canetons-red">
-          {error.message}
-        </p>
-      ) : null}
+      <FormError error={error} />
 
       {/* The values are NOT cleared on failure: a rejected message must not
           make someone retype it. Same rule as the event form. */}
@@ -88,7 +88,13 @@ export function Contact() {
             onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
           />
         ))}
-        <button type="submit" disabled={send.isPending} className="rounded border px-3 py-1">
+        {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
+            early return is the real guard. */}
+        <button
+          type="submit"
+          aria-disabled={send.isPending}
+          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        >
           Envoyer
         </button>
       </form>

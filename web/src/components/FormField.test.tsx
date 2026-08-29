@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
-import { FormField } from "./FormField";
+import { FormError, FormField } from "./FormField";
 
 const noop = () => {};
 
@@ -58,4 +58,21 @@ test("onChange receives the value, not the event", async () => {
   render(<FormField id="demo-name" label="Nom :" value="" onChange={(v) => seen.push(v)} />);
   await user.type(screen.getByLabelText("Nom :"), "ab");
   expect(seen).toEqual(["a", "b"]);
+});
+
+// The whole point of FormError: the live region is resident, so an error that
+// appears later is a CONTENT change inside an existing alert rather than a
+// freshly-inserted one. Rendering it conditionally again would pass every form
+// test in the suite and silently undo the fix, so it is pinned here.
+test("the error region is in the tree even with no error", () => {
+  render(<FormError error={null} />);
+  expect(screen.getByRole("alert")).toBeEmptyDOMElement();
+});
+
+test("an error fills the same region rather than adding one", () => {
+  const { rerender } = render(<FormError error={null} />);
+  const region = screen.getByRole("alert");
+  rerender(<FormError error={{ message: "Le formulaire contient des erreurs.", fields: [] }} />);
+  expect(screen.getByRole("alert")).toBe(region);
+  expect(region).toHaveTextContent("Le formulaire contient des erreurs.");
 });

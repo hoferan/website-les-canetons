@@ -147,7 +147,9 @@ test("a validation error renders in French against the offending field", async (
   await fillValidEvent(user);
   await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs.");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+  );
   expect(screen.getByText("Heure de début est requis")).toBeInTheDocument();
   expect(screen.getByLabelText("Heure de début :")).toHaveAttribute("aria-invalid", "true");
 });
@@ -168,7 +170,9 @@ test("a rejected submission keeps what the admin typed", async () => {
   await fillValidEvent(user);
   await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
-  await screen.findByRole("alert");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+  );
   expect(screen.getByLabelText("Titre :")).toHaveValue("Cortège");
 });
 
@@ -184,12 +188,14 @@ test("a network failure falls back to a French message", async () => {
   await fillValidEvent(user);
   await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "L’enregistrement a échoué. Veuillez réessayer.",
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "L’enregistrement a échoué. Veuillez réessayer.",
+    ),
   );
 });
 
-test("the submit button is disabled while the request is in flight", async () => {
+test("the submit button is marked unavailable while the request is in flight", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");
 
@@ -212,7 +218,7 @@ test("the submit button is disabled while the request is in flight", async () =>
   const submit = screen.getByRole("button", { name: "Ajouter" });
   await user.click(submit);
 
-  await waitFor(() => expect(submit).toBeDisabled());
+  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
   release();
-  await waitFor(() => expect(submit).toBeEnabled());
+  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "false"));
 });

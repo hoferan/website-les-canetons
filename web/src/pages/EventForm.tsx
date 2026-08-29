@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { getEventIndexQueryKey, useEventStore, useEventUpdate } from "../api/generated/endpoints";
 import type { EventIndex200Item, EventRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormField } from "../components/FormField";
+import { FormError, FormField } from "../components/FormField";
 
 /** What the form edits: the request body the API accepts, plus the id it acts on. */
 export type EditableEvent = EventRequest & { id: number };
@@ -110,6 +110,10 @@ export function EventForm({
 
   const submit = (submitEvent: FormEvent) => {
     submitEvent.preventDefault();
+    // Explicit, not implied by the button: aria-disabled leaves the control
+    // clickable, and Enter in a field submits through the default button
+    // regardless. This early return is the only thing preventing a double save.
+    if (pending) return;
     clear();
     if (editing) {
       update.mutate({ id: editing.id, data: values });
@@ -124,11 +128,7 @@ export function EventForm({
         {editing ? "Modifier l’événement" : "Ajouter un événement"}
       </h2>
 
-      {error ? (
-        <p role="alert" className="text-canetons-red">
-          {error.message}
-        </p>
-      ) : null}
+      <FormError error={error} />
 
       {FIELDS.map((field) => (
         <FormField
@@ -156,13 +156,22 @@ export function EventForm({
       </div>
 
       <div className="flex gap-2">
-        {/* Disabled for the duration, and re-enabled by the mutation settling
-            either way — a slow network must never leave a legitimate retry
-            permanently blocked. */}
-        <button type="submit" disabled={pending} className="rounded border px-3 py-1">
+        {/* Marked unavailable for the duration, and released by the mutation
+            settling either way — a slow network must never leave a legitimate
+            retry permanently blocked. aria-disabled rather than disabled so the
+            focused button is not blurred to <body>; `submit`'s early return is
+            the real guard. */}
+        <button
+          type="submit"
+          aria-disabled={pending}
+          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        >
           {editing ? "Modifier" : "Ajouter"}
         </button>
         {editing ? (
+          // Genuinely disabled, unlike the submit beside it: a cancel cannot be
+          // double-fired into anything, and keeping it unavailable while a save
+          // is in flight is the correct behaviour rather than a focus hazard.
           <button
             type="button"
             onClick={onDone}

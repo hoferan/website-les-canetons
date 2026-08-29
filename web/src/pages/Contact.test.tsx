@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes, useNavigate } from "react-router-dom";
@@ -79,7 +79,9 @@ test("a validation error renders in French against the offending field", async (
   await fillValidMessage(user);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs.");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+  );
   expect(screen.getByText("E-mail n'est pas dans un format valide")).toBeInTheDocument();
   expect(screen.getByLabelText("E-mail:")).toHaveAttribute("aria-invalid", "true");
   expect(screen.queryByText("Merci")).toBeNull();
@@ -100,7 +102,9 @@ test("a rejected message keeps what was typed", async () => {
   await fillValidMessage(user);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
-  await screen.findByRole("alert");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+  );
   expect(screen.getByLabelText("Contenu du message:")).toHaveValue("Bonjour les canetons !");
 });
 

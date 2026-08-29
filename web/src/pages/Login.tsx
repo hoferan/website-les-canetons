@@ -4,7 +4,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getAuthUserQueryKey, useAuthLogin, useAuthLogout } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormField } from "../components/FormField";
+import { FormError, FormField } from "../components/FormField";
 import { safeReturnTo } from "../lib/returnTo";
 import { useSession } from "../session/SessionProvider";
 
@@ -74,10 +74,9 @@ function LoginForm() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    // Explicit, not implied by the disabled button: Enter in a field submits
-    // the form through the DEFAULT button, so the disabled attribute only
-    // happens to cover that case. A form that grows another button before the
-    // submit would lose the protection silently.
+    // Explicit, not implied by the button: aria-disabled leaves the control
+    // clickable, and Enter in a field submits through the default button
+    // regardless. This early return is the only thing preventing a double login.
     if (login.isPending) return;
     clear();
     login.mutate({ data: { username, password } });
@@ -88,11 +87,7 @@ function LoginForm() {
       {/* Inline, not the old alert(). A modal browser dialog is unstyled,
           dismissible only by acknowledgement, and on mobile reads as a warning
           about the browser rather than about the form. */}
-      {error ? (
-        <p role="alert" className="mt-4 text-canetons-red">
-          {error.message}
-        </p>
-      ) : null}
+      <FormError error={error} />
 
       <form onSubmit={submit} className="mt-4 space-y-3">
         <FormField
@@ -114,7 +109,15 @@ function LoginForm() {
           onChange={setPassword}
           problem={messageFor("password")}
         />
-        <button type="submit" disabled={login.isPending} className="rounded border px-3 py-1">
+        {/* aria-disabled, not disabled: disabling the focused button blurs it
+            to <body> and nothing restores focus, so a refused login could leave
+            a keyboard user with no feedback and no place in the document. The
+            early return in `submit` is the real guard. */}
+        <button
+          type="submit"
+          aria-disabled={login.isPending}
+          className="rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        >
           Se connecter
         </button>
       </form>
@@ -156,23 +159,20 @@ function LoggedIn({ username }: { username: string }) {
         Connecté en tant que <strong>{username}</strong>
       </p>
 
-      {error ? (
-        <p role="alert" className="mt-4 text-canetons-red">
-          {error.message}
-        </p>
-      ) : null}
+      <FormError error={error} />
 
-      {/* Guarded by the early return as well as the attribute — see the login
-          side. `logout.mutate()` takes no argument: the generated hook types
-          its variables as `void`. */}
+      {/* aria-disabled keeps the button focusable, so the early return is the
+          only thing stopping a second click — see the login side.
+          `logout.mutate()` takes no argument: the generated hook types its
+          variables as `void`. */}
       <button
         type="button"
         onClick={() => {
           if (logout.isPending) return;
           logout.mutate();
         }}
-        disabled={logout.isPending}
-        className="mt-4 rounded border px-3 py-1"
+        aria-disabled={logout.isPending}
+        className="mt-4 rounded border px-3 py-1 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         Se déconnecter
       </button>

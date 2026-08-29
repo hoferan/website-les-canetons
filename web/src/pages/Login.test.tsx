@@ -66,14 +66,19 @@ test("a bad password shows the French message and does NOT navigate", async () =
   await user.type(screen.getByLabelText("Mot de passe :"), "wrong");
   await user.click(screen.getByRole("button", { name: "Se connecter" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Nom d'utilisateur ou mot de passe incorrect",
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Nom d'utilisateur ou mot de passe incorrect",
+    ),
   );
   expect(screen.queryByText("Accueil")).toBeNull();
   expect(screen.getByLabelText("Identifiant :")).toBeInTheDocument();
   // Re-enabled by the mutation settling: a slow or refused login must never
   // leave a legitimate retry permanently blocked.
-  expect(screen.getByRole("button", { name: "Se connecter" })).toBeEnabled();
+  expect(screen.getByRole("button", { name: "Se connecter" })).toHaveAttribute(
+    "aria-disabled",
+    "false",
+  );
 });
 
 // The 401 path carries no fields — per-field auth errors would enable
@@ -98,12 +103,14 @@ test("a field error from the API lands on the offending input", async () => {
   await renderWithSession(app, { route: "/authentification_inscription" });
   await signIn(user, "demo.admin");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs.");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
+  );
   expect(screen.getByText("Mot de passe est requis")).toBeInTheDocument();
   expect(screen.getByLabelText("Mot de passe :")).toHaveAttribute("aria-invalid", "true");
 });
 
-test("the submit button is disabled while the request is in flight", async () => {
+test("the submit button is marked unavailable while the request is in flight", async () => {
   const user = userEvent.setup();
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -119,7 +126,7 @@ test("the submit button is disabled while the request is in flight", async () =>
   await renderWithSession(app, { route: "/authentification_inscription" });
   await signIn(user, "demo.admin");
   const submit = screen.getByRole("button", { name: "Se connecter" });
-  await waitFor(() => expect(submit).toBeDisabled());
+  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
   release();
 });
 
