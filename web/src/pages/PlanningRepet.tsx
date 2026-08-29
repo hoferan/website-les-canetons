@@ -1,6 +1,10 @@
+import { useState } from "react";
+
 import { useEventIndex } from "../api/generated/endpoints";
 import { formatEventDate, formatEventDateRange, formatTime } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { EventActions } from "./EventActions";
+import { EventForm, toEditableEvent, type EditableEvent } from "./EventForm";
 
 /**
  * The planning of performances and rehearsals.
@@ -12,6 +16,10 @@ import { useSession } from "../session/SessionProvider";
 export function PlanningRepet() {
   const { can } = useSession();
   const events = useEventIndex();
+
+  // Which event the form is editing, or null for "create". It lives here rather
+  // than in the form because the per-row buttons are what set it.
+  const [editing, setEditing] = useState<EditableEvent | null>(null);
 
   if (events.isPending) {
     return <p className="mx-auto max-w-3xl px-4 py-8">Chargement…</p>;
@@ -64,16 +72,16 @@ export function PlanningRepet() {
               </p>
             ) : null}
 
-            {can("manage_events") ? <EventActions event={event} /> : null}
+            {can("manage_events") ? (
+              <EventActions event={toEditableEvent(event)} onEdit={setEditing} />
+            ) : null}
           </li>
         ))}
       </ul>
+
+      {can("manage_events") ? (
+        <EventForm editing={editing} onDone={() => setEditing(null)} />
+      ) : null}
     </section>
   );
-}
-
-// Replaced in the next task with the real create/edit/delete controls. Present
-// so the admin path renders nothing rather than failing to compile.
-function EventActions(_props: { event: unknown }) {
-  return null;
 }
