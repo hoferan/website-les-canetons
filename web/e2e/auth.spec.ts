@@ -51,14 +51,18 @@ test("logging out ends the session", async ({ page }) => {
 
 test("the contact form sends and lands on the confirmation page", async ({ page }) => {
   await page.goto("/contact");
-  // exact: true — Playwright's default label match is a case-insensitive
-  // substring, and "nom:" is literally the tail of "Prénom:", so a plain
-  // getByLabel("Nom:") hits both fields (strict-mode violation).
+  // `exact: true` on every field, not just the one that currently collides.
+  // Playwright's default label match is a case-insensitive SUBSTRING — unlike
+  // Testing Library's, which is why the same labels work unqualified in
+  // Contact.test.tsx. "nom:" is the tail of "Prénom:", so a plain
+  // getByLabel("Nom:") matches both and fails strict mode. The other four
+  // happen not to collide today; a sixth field could make any of them
+  // ambiguous, and the failure would look like a bug in the page.
   await page.getByLabel("Nom:", { exact: true }).fill("Canard");
-  await page.getByLabel("Prénom:").fill("Donald");
-  await page.getByLabel("E-mail:").fill("donald@example.com");
-  await page.getByLabel("Sujet:").fill("Une question");
-  await page.getByLabel("Contenu du message:").fill("Bonjour les canetons !");
+  await page.getByLabel("Prénom:", { exact: true }).fill("Donald");
+  await page.getByLabel("E-mail:", { exact: true }).fill("donald@example.com");
+  await page.getByLabel("Sujet:", { exact: true }).fill("Une question");
+  await page.getByLabel("Contenu du message:", { exact: true }).fill("Bonjour les canetons !");
   await page.getByRole("button", { name: "Envoyer" }).click();
 
   await expect(
