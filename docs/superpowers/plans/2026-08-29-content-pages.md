@@ -333,7 +333,7 @@ with:
   ["/multimedia", "France 3 Alsace / Carnaval de Colmar 2016"],
 ```
 
-**The accessible name of a heading collapses `&nbsp;` to a normal space**, so the `/cd` row reads `20 ans !!!` with an ordinary space even though the JSX has `&nbsp;`. If that row fails, that is why — do not "fix" it by removing the `&nbsp;` from the page, which is there for correct French typography.
+**The accessible name KEEPS `&nbsp;` as a literal U+00A0** — it is not collapsed to an ordinary space. Verified empirically against the rendered DOM with this project's `dom-accessibility-api` version. So the `/cd` row's expected string must contain a real non-breaking space before `!!!`, not a typed space, and the two are indistinguishable by eye. Paste the character; do not retype it. And do not "fix" a failure by removing the `&nbsp;` from the page — French typography wants it before `!`, `?` and `:`.
 
 - [ ] **Step 8: Verify**
 
@@ -857,7 +857,7 @@ In `web/src/routes.test.tsx`, replace the `/comite_teamdirection` row and add `/
   ["/commencement", "Tu veux commencer la guggen ?"],
 ```
 
-Again: `&nbsp;` collapses to a normal space in the accessible name, so the row reads `guggen ?` with an ordinary space.
+Again: the accessible name keeps `&nbsp;` as a literal U+00A0, so that row's expected string needs a real non-breaking space before the `?` — it is `Tu veux commencer la guggen ?`, which looks identical to a typed space and is not one. Copy it from here.
 
 - [ ] **Step 5: Confirm no content page is a placeholder any more**
 
@@ -999,8 +999,8 @@ git push
 ## Notes for whoever executes this
 
 - **Copy the French from this plan, not from the old PHP.** It is already transcribed, and re-transcribing is how an accent or an apostrophe drifts.
-- **`&nbsp;` collapses to a normal space in an accessible name.** A `routes.test.tsx` row asserting on a heading that contains one uses an ordinary space. Do not remove the `&nbsp;` from the page — French typography wants it before `!`, `?` and `:`.
+- **An accessible name keeps `&nbsp;` as a literal U+00A0.** It is NOT collapsed to an ordinary space — this plan originally claimed the opposite and was wrong. A `routes.test.tsx` row asserting on such a heading needs the real character, which is visually identical to a space. Do not remove the `&nbsp;` from the page — French typography wants it before `!`, `?` and `:`.
 - **A Tailwind token that does not exist fails silently.** Check the `@theme` block in `web/src/styles.css` if unsure.
-- **`routes.test.tsx` is the only test file that should change**, and only its `test.each` table. Anything else needing an edit means something went wrong.
+- **`routes.test.tsx` is the only test file Tasks 2 and 3 should change.** Task 1 also had to touch `web/src/App.test.tsx`, which independently asserts the home route's heading — this plan missed it. That one is done; nothing later should need it. Anything else needing an edit means something went wrong.
 - **Do not re-order `NAV` in `Layout.tsx`.** It is the order the band is used to.
 - **`directionmusicale.jpg` appears on two pages** — `/canetons` and `/comite_teamdirection`. It was a 19 MB camera original before the previous sub-project resized it, and the SPA has never rendered it. If it looks soft, that is that compression showing.
