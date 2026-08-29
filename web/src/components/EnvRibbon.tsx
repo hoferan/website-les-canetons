@@ -14,7 +14,12 @@ export function EnvRibbon({ env }: { env: string }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed right-0 top-0 z-50 origin-top-right translate-x-1/4 translate-y-8 rotate-45 bg-danger px-12 py-1 text-center text-sm font-bold tracking-wider text-white shadow"
+      /* A corner TAB, not the old rotated banner. The 45-degree version was
+         translated a quarter of its own width to the right, so most of the
+         label sat outside the viewport and could only be read by guessing —
+         which defeats the entire point of a ribbon that exists to stop someone
+         mistaking TEST for the live site. */
+      className="pointer-events-none fixed top-0 right-0 z-50 rounded-bl bg-danger px-3 py-1 text-xs font-bold tracking-widest text-white shadow-lg"
     >
       {env.toUpperCase()}
     </div>

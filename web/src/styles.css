@@ -55,6 +55,29 @@ body {
   font-family: var(--font-sans);
 }
 
+/* The sticky footer, ported from the old site's main.css and then briefly lost.
+   Without it a short page — /confirmation, the 404 — leaves the dark footer
+   floating halfway up with ground below it, which reads as a broken page. It
+   was invisible before only because the footer had no background of its own.
+
+   The chain has to run through #root as well: React mounts there, so body's
+   flex child is that div rather than the header/main/footer themselves.
+
+   dvh after vh so mobile browsers use the dynamic viewport and the footer does
+   not sit under the address bar; a browser that does not know dvh keeps vh. */
+body,
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#root,
+main {
+  flex: 1;
+}
+
 /* Headings are set in the display face wherever a page asks for it via
    font-display; balance keeps a two-line French title from orphaning a word. */
 h1,
