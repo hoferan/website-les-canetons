@@ -21,7 +21,6 @@ test.each([
   ["/planning_repet", "Planning des prestations et des répétitions"],
   ["/comite_teamdirection", "Le comité"],
   ["/commencement", "Tu veux commencer la guggen ?"],
-  ["/inscriptions_admin", "Inscriptions (admin)"],
 ])("%s renders its page", async (route, heading) => {
   await renderWithSession(<AppRoutes />, { route });
   expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();

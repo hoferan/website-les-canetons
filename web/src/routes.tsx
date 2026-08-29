@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { RequireAuth, RequireCapability } from "./components/guards";
 import { Accueil } from "./pages/Accueil";
+import { Admin } from "./pages/Admin";
 import { Canetons } from "./pages/Canetons";
 import { Cd } from "./pages/Cd";
 import { ComiteTeamDirection } from "./pages/ComiteTeamDirection";
@@ -10,6 +11,7 @@ import { Commencement } from "./pages/Commencement";
 import { Confirmation } from "./pages/Confirmation";
 import { Contact } from "./pages/Contact";
 import { Historique } from "./pages/Historique";
+import { InscriptionsAdmin } from "./pages/InscriptionsAdmin";
 import { InscriptionsUtilisateurs } from "./pages/InscriptionsUtilisateurs";
 import { Login } from "./pages/Login";
 import { Moniteurs } from "./pages/Moniteurs";
@@ -71,8 +73,22 @@ export function AppRoutes() {
           }
         />
         <Route path="/planning_repet" element={<PlanningRepet />} />
-        <Route path="/admin" element={<Placeholder title="Administration" />} />
-        <Route path="/inscriptions_admin" element={<Placeholder title="Inscriptions (admin)" />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireCapability capability="manage_events">
+              <Admin />
+            </RequireCapability>
+          }
+        />
+        <Route
+          path="/inscriptions_admin"
+          element={
+            <RequireCapability capability="view_summary">
+              <InscriptionsAdmin />
+            </RequireCapability>
+          }
+        />
 
         {config.features.souper_signup ? (
           <>
