@@ -15,7 +15,8 @@ test.each([
   ["/cd", "2022 - Les Canetons ont 20 ans !!!"],
   ["/sponsors", "Sponsors et Liens Amis"],
   ["/multimedia", "France 3 Alsace / Carnaval de Colmar 2016"],
-  ["/canetons", "Les canetons"],
+  ["/canetons", "Nos Canetons"],
+  ["/moniteurs", "Nos Moniteurs"],
   // The real page, not a placeholder — hence the fuller heading.
   ["/planning_repet", "Planning des prestations et des répétitions"],
   ["/comite_teamdirection", "Contact Canetons"],

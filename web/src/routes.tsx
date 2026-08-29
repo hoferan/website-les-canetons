@@ -2,11 +2,13 @@ import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { Accueil } from "./pages/Accueil";
+import { Canetons } from "./pages/Canetons";
 import { Cd } from "./pages/Cd";
 import { Confirmation } from "./pages/Confirmation";
 import { Contact } from "./pages/Contact";
 import { Historique } from "./pages/Historique";
 import { Login } from "./pages/Login";
+import { Moniteurs } from "./pages/Moniteurs";
 import { Multimedia } from "./pages/Multimedia";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
@@ -37,10 +39,10 @@ export function AppRoutes() {
       <Route element={<Layout />}>
         <Route path="/" element={<Accueil />} />
         <Route path="/historique" element={<Historique />} />
-        <Route path="/canetons" element={<Placeholder title="Les canetons" />} />
+        <Route path="/canetons" element={<Canetons />} />
         <Route path="/cd" element={<Cd />} />
         <Route path="/commencement" element={<Placeholder title="Commencer les Canetons" />} />
-        <Route path="/moniteurs" element={<Placeholder title="Moniteurs" />} />
+        <Route path="/moniteurs" element={<Moniteurs />} />
         <Route path="/sponsors" element={<Sponsors />} />
         <Route path="/multimedia" element={<Multimedia />} />
         <Route path="/contact" element={<Contact />} />
