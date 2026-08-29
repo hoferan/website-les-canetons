@@ -247,6 +247,16 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 
   The PWA manifest link must keep `crossorigin="use-credentials"`, or the
   manifest fetch fails behind TEST/QA Basic Auth. Previously fixed bug.
+
+  **Photographs have a budget: longest edge 1920px, JPEG quality 82,
+  progressive, no EXIF — roughly 300-600 KB each.** That directory was 44.5 MB
+  before this was enforced, including one 19 MB camera original at 6048x4024,
+  which on a phone at a rehearsal is a page that never finishes loading. Nothing
+  in the test suite or the linters can catch an unprocessed original being
+  dropped in, so it has to be caught here. The logo, `comite.jpg`, `CD_img.png`
+  and `Flyer.jpeg` are deliberately exempt — they are already small, and
+  re-encoding a small image only softens it. Re-encoding is also generational:
+  never run an optimisation pass over already-optimised files.
 - **`web/src/api/generated/` is generated — never hand-edit it.** Change the
   Laravel controller, run `npm run openapi && npm run generate:api`, commit the
   result. CI's `openapi-drift` job fails if either is stale. ESLint ignores the
