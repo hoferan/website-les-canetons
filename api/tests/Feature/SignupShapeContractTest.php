@@ -58,11 +58,21 @@ class SignupShapeContractTest extends TestCase
     }
 
     /**
-     * Two tables, one of them holding two reservations, and every menu used at
-     * least once — so `tables[]`, `tables[].signups[]` and every count are all
-     * non-empty. An empty list documents nothing: the recursive check below
-     * cannot descend into an array with no first element, and the assertion
-     * would pass vacuously.
+     * Two tables, one of them holding two reservations.
+     *
+     * WHAT THE FIXTURE HAS TO GUARANTEE is only that neither `tables` nor
+     * `tables[0].signups` comes back empty: the walk below cannot descend into
+     * an array with no first element, so on an empty list it would pass
+     * vacuously. The two assertions at the end rule that out.
+     *
+     * The rest is headroom, not coverage, and the two obvious readings of it
+     * are both wrong. The walk descends `tables[0]` and `tables[0].signups[0]`
+     * ONLY, so Table B and its second reservation are never visited. And the
+     * spread of menus buys nothing either: SignupStats::zeroCounts() seeds all
+     * three menu keys with array_fill_keys, so `menuCounts` has its three keys
+     * whatever anyone ordered. It is shaped this way because it mirrors
+     * SignupSummaryTest's fixture, and so that it still says something if the
+     * walk ever checks past element 0.
      */
     private function seedAndFetch(): array
     {
@@ -116,7 +126,17 @@ class SignupShapeContractTest extends TestCase
         if ($type === 'object') {
             self::assertIsArray($actual, "{$path} should be an object.");
 
-            $documented = array_keys($schema['properties'] ?? []);
+            // Guarded rather than defaulted to []: a documented object with no
+            // `properties` is the untyped-attribute failure one level down, and
+            // it should say so here rather than warn on an undefined key and
+            // then TypeError inside the recursion below.
+            $properties = $schema['properties'] ?? null;
+            self::assertIsArray(
+                $properties,
+                "{$path} is documented as an object with no properties, so nothing below it is typed."
+            );
+
+            $documented = array_keys($properties);
             $real = array_keys($actual);
             sort($documented);
             sort($real);
@@ -129,7 +149,21 @@ class SignupShapeContractTest extends TestCase
                 'and commit api/openapi.json and web/src/api/generated/ with the change.',
             ]));
 
-            foreach ($schema['properties'] as $key => $child) {
+            // Required-ness, pinned at every level for the same reason
+            // EventShapeContractTest pins it at its one level: the SPA reads
+            // each of these fields unconditionally, and an optional one types
+            // as `field?:` in the generated client, which turns every call site
+            // into a possibly-undefined. Checked here rather than as a separate
+            // flat test because this recursion already reaches all six levels.
+            $required = $schema['required'] ?? [];
+            sort($required);
+
+            self::assertSame($documented, $required, implode("\n", [
+                "Every property documented at {$path} is always present in the response,",
+                'so every one of them must be listed as `required`.',
+            ]));
+
+            foreach ($properties as $key => $child) {
                 $this->assertShapeMatches($child, $actual[$key], "{$path}.{$key}");
             }
 
@@ -141,11 +175,32 @@ class SignupShapeContractTest extends TestCase
             if ($actual === []) {
                 return;
             }
-            $this->assertShapeMatches($schema['items'], $actual[0], "{$path}[0]");
+
+            $items = $schema['items'] ?? null;
+            self::assertIsArray(
+                $items,
+                "{$path} is documented as an array with no items schema, so its elements are untyped."
+            );
+
+            $this->assertShapeMatches($items, $actual[0], "{$path}[0]");
+
+            return;
         }
 
-        // Scalars: the key set is what drifts. Types are pinned by
-        // SignupSummaryTest, which asserts on real values.
+        // Scalars. This is the same failure the attribute itself exists to
+        // prevent — a bare scalar where a structure belongs — read the other
+        // way round and one level down, so it is asserted rather than assumed:
+        // a field documented as a string that starts returning {iso, display}
+        // would otherwise fall out of both branches above, taking its whole
+        // subtree with it, unchecked.
+        self::assertIsNotArray($actual, "{$path} is documented as a scalar but came back as a structure.");
+
+        // VALUE types are deliberately not pinned: a string documented as an
+        // int passes this walk. SignupSummaryTest asserts on real values for
+        // some of these fields — the totals, menuTotals, occasion.title,
+        // tables[].name — but not for the contact fields, the per-signup counts
+        // or five of the six occasion fields, so do not read this walk as
+        // covering more than key sets, required-ness and scalar-vs-structure.
     }
 
     private function documentedSchema(): array
