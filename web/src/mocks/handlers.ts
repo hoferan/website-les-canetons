@@ -1,12 +1,13 @@
 import { HttpResponse, http } from "msw";
 
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
+import type { ContactRequest } from "../api/generated/model";
 
 /**
  * The mocked backend, so the SPA can be developed and tested with no Docker.
  *
  * The bulk is GENERATED from api/openapi.json, so it cannot describe a contract
- * the real API does not have. Four endpoints are hand-written on top, because
+ * the real API does not have. A handful are hand-written on top, because
  * generated faker data describes SHAPE and this project needs CONTENT: a page
  * laid out around "Lorem ipsum" tells you nothing about whether the real French
  * copy fits.
@@ -140,6 +141,11 @@ const unauthenticated = () =>
     { status: 401 },
   );
 
+/** Tied to the model, not retyped as a bare string[]: a field rename in
+ * ContactRequest is a compile error here rather than a mock silently 422ing on
+ * a field the API no longer has. */
+const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
+
 const overrides = [
   // NOT in the OpenAPI document — it is Sanctum's own route, outside /api — so
   // orval generates no handler for it. But http.ts primes it before every
@@ -160,10 +166,11 @@ const overrides = [
   // `subject`, which the OLD HTML form did not mark required even though the
   // API always has.
   http.post("/api/contact", async ({ request }) => {
-    const body = (await request.json()) as Record<string, string | undefined>;
-    const missing = ["lastName", "firstName", "email", "subject", "message"].filter(
-      (field) => !body[field],
-    );
+    const body = (await request.json()) as Partial<Record<keyof ContactRequest, string>>;
+    // Laravel's `required` treats "0" as present and a whitespace-only string
+    // as absent — the opposite of plain falsiness in both cases. `!body[field]`
+    // used to disagree with the real API on exactly those two values.
+    const missing = REQUIRED.filter((field) => (body[field] ?? "").trim() === "");
     if (missing.length > 0) {
       return HttpResponse.json(
         {

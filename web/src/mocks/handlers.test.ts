@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { authUser, config, eventIndex, eventStore } from "../api/generated/endpoints";
+import { authUser, config, contact, eventIndex, eventStore } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
 import { setMockUser } from "./handlers";
 
@@ -29,6 +29,24 @@ test("GET /user reports whoever setMockUser logged in", async () => {
   setMockUser("demo.admin");
   const result = await authUser();
   expect(result.data).toEqual({ username: "demo.admin", role: "admin" });
+});
+
+// The whole reason /api/contact is hand-written is its reject branch — both
+// failure tests in Contact.test.tsx replace the handler outright, so nothing
+// else exercised it.
+test("POST /contact rejects a missing field the way the real API does", async () => {
+  const error = (await contact({
+    lastName: "Canard",
+    firstName: "Donald",
+    email: "donald@example.com",
+    subject: "",
+    message: "Coin",
+  }).catch((thrown: unknown) => thrown)) as ApiError;
+
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error.status).toBe(422);
+  expect(error.code).toBe("validation_failed");
+  expect(error.fields).toEqual([{ field: "subject", reason: "required" }]);
 });
 
 test("GET /events returns the seeded French events, ordered by date", async () => {

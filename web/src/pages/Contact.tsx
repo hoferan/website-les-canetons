@@ -18,11 +18,6 @@ const EMPTY: ContactRequest = {
  * Field order and labels are the old page's, colons and all — including the
  * missing space before them, which the planning page does have. That
  * inconsistency is in the live site and is not being tidied here.
- *
- * `subject` is `required`, which the old markup was NOT even though
- * ContactRequest has always required it. A blank subject used to pass the
- * browser, make a round trip, be rejected, and surface as a generic
- * "Échec de l'envoi du formulaire" alert that named no field. Deliberate fix.
  */
 const FIELDS: {
   name: keyof ContactRequest;
@@ -80,6 +75,12 @@ export function Contact() {
             label={field.label}
             type={field.type}
             as={field.as}
+            /* Every field is required, `subject` included — which the old
+               markup was NOT, even though ContactRequest has always required
+               it. A blank subject used to pass the browser, make a round trip,
+               be rejected, and surface as a generic "Échec de l'envoi du
+               formulaire" alert that named no field. Deliberate fix, pinned by
+               a test. */
             required
             autoComplete={field.autoComplete}
             problem={messageFor(field.name)}

@@ -1,17 +1,30 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import { expect, test } from "vitest";
 
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Contact } from "./Contact";
 
+/** A confirmation page that can go back, so the PUSH is observable. */
+function Confirmed() {
+  const navigate = useNavigate();
+  return (
+    <>
+      <p>Merci</p>
+      <button type="button" onClick={() => navigate(-1)}>
+        retour
+      </button>
+    </>
+  );
+}
+
 const app = (
   <Routes>
     <Route path="/contact" element={<Contact />} />
-    <Route path="/confirmation" element={<p>Merci</p>} />
+    <Route path="/confirmation" element={<Confirmed />} />
   </Routes>
 );
 
@@ -89,4 +102,18 @@ test("a rejected message keeps what was typed", async () => {
 
   await screen.findByRole("alert");
   expect(screen.getByLabelText("Contenu du message:")).toHaveValue("Bonjour les canetons !");
+});
+
+// The old page assigned window.location.href, which pushes — so Back returned
+// to the form with its values gone but the page still there. `replace: true`
+// would swallow the form entirely, and nothing else in this suite would notice.
+test("Back returns to the form, as the old page did", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(app, { route: "/contact" });
+  await fillValidMessage(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+  await screen.findByText("Merci");
+
+  await user.click(screen.getByRole("button", { name: "retour" }));
+  expect(await screen.findByLabelText("Sujet:")).toBeInTheDocument();
 });
