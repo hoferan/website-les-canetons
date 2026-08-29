@@ -82,3 +82,15 @@ test("a malformed challenge rejects", async () => {
     solveChallenge({ ...challenge, salt: undefined as unknown as string }),
   ).rejects.toThrow();
 });
+
+// A missing signature is the failure mode that shipped untested: `signature`
+// used to pass through unchecked, so a response missing it would resolve
+// happily here and only get caught server-side, as a `403 captcha_failed`
+// that reads like an anti-bot failure rather than a client-side bug.
+test("a challenge missing its signature rejects", async () => {
+  const challenge = await challengeFor(3);
+
+  await expect(
+    solveChallenge({ ...challenge, signature: undefined as unknown as string }),
+  ).rejects.toThrow();
+});
