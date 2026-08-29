@@ -62,10 +62,16 @@ test("an unsolvable challenge rejects rather than resolving with nothing", async
   // so a tiny space gives the same coverage for roughly a ten-thousandth of
   // the work. Walking the real 50 000 here made this test a timing bomb: it
   // passed in isolation but blew past vitest's 5s default under full-suite
-  // parallel load. The cast is needed because orval types `maxnumber` as the
-  // literal `50000`, read off `AltchaController::MAX_NUMBER`.
+  // parallel load. The double cast is needed because orval types `maxnumber`
+  // as the literal `50000`, read off `AltchaController::MAX_NUMBER` — and `5`
+  // does not overlap that literal, so a direct `as Altcha200` is a compile
+  // error (TS2352) rather than a narrowing.
   await expect(
-    solveChallenge({ ...challenge, challenge: "0".repeat(64), maxnumber: 5 } as Altcha200),
+    solveChallenge({
+      ...challenge,
+      challenge: "0".repeat(64),
+      maxnumber: 5,
+    } as unknown as Altcha200),
   ).rejects.toThrow(/pas pu|could not|unsolved/i);
 });
 
