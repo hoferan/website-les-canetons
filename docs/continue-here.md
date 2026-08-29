@@ -108,10 +108,30 @@ chrome, light page body, violet as the interface accent, Lilita One and Karla
 self-hosted through Fontsource. The four already-ported pages are on it, and the
 image directory went from **44.5 MB to 6.1 MB**.
 
-**A2 — the nine content pages — is done too** (2026-08-29). Every public page
-is ported. **Seven routes remain on `Placeholder`**: C's four (`sinscrire`,
-`inscriptions_utilisateurs`, `admin`, `inscriptions_admin`) and D's three
-flag-gated souper routes.
+**A2 (the nine content pages) and C (the members' area) are done too**
+(2026-08-29). **Only THREE routes remain on `Placeholder`** — `/signup`,
+`/signup_thanks` and `/signups_admin`, the flag-gated souper feature, which is
+sub-project **D** and the last one.
+
+`grep -c "<Placeholder" web/src/routes.tsx` returning **0** is the green light
+for the merge to `main`. It currently returns 3.
+
+C also carried two fixes worth knowing about:
+
+- **`GET /api/responses` was typed `string[]` and is not.** Scramble cannot
+  infer through the `Collection::map` that builds it — the same failure that
+  made `GET /api/events` a `string[]`. Fixed with a literal `#[Response]`
+  attribute plus `api/tests/Feature/ResponseShapeContractTest.php`, which fails
+  if the attribute and the endpoint disagree. **`GET /api/signups` is still
+  `string` and is D's to fix the same way.**
+- **The register counts on the summary are derived from the response**, not from
+  the hardcoded array of nine French instrument names the old page carried. The
+  endpoint returns every user with their instrument, so the list falls out of
+  the data and cannot drift from the `instruments` table.
+
+`/admin` is a hub now — links to the planning page and the summaries — rather
+than the old two buttons, both of which had become redundant. That was an
+approved design change, not a port.
 
 ### Open content questions — for the band, not for code
 
@@ -230,6 +250,20 @@ redirect-loops. Both have regression tests; the first also has a smoke check.
 registers. It is in `web/src/setupTests.ts`. Without it renders accumulate and
 the next test fails with "Found multiple elements", which reads like a component
 bug and is not one.
+
+**The capability matrix is not a hierarchy, and the members' area is where
+that bites.** `respond` belongs to user and moderator; `admin` holds
+`manage_events` and `view_summary` instead. **An admin cannot respond** — on
+`/sinscrire` a member sees "S'inscrire" and an admin sees "Résumé", different
+buttons on the same row. Every intuition about roles says otherwise, and the
+SPA's guards are UX only, so a mistake will not surface as a 403.
+
+**MSW's mocked session lives in `sessionStorage`, which pages in one Playwright
+context share.** A script that logs in as one user and then another in the same
+context lands on the already-logged-in view instead of the form. Use a context
+per role. And below `md` the nav collapses behind the hamburger, so the username
+link is not a usable "logged in" signal at 390px — wait for the login form to
+detach instead.
 
 **An accessible name keeps `&nbsp;` as a literal U+00A0.** It is not collapsed
 to an ordinary space, and the two are indistinguishable by eye. A test asserting
