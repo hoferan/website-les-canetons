@@ -107,9 +107,8 @@ class ResponseController extends Controller
      * failures the legacy endpoint distinguished — absent vs unusable — map onto
      * different reason tokens, and because ?eventId= arrives in the query string
      * of a GET.
-     */
-    /**
-     * The 200 shape, declared because Scramble cannot infer it.
+     *
+     * THE 200 SHAPE IS DECLARED BELOW because Scramble cannot infer it.
      *
      * index() builds its payload with a Collection::map, and Scramble gives up
      * on that — it emitted `string[]`, which type-checked at every call site
