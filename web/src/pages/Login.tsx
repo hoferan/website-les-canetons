@@ -20,7 +20,7 @@ export function Login() {
   const { user } = useSession();
   return (
     <section className="mx-auto max-w-md px-4 py-8">
-      <h2 className="font-display text-3xl">Authentification</h2>
+      <h1 className="font-display text-3xl">Authentification</h1>
       {user ? <LoggedIn username={user.username} /> : <LoginForm />}
     </section>
   );

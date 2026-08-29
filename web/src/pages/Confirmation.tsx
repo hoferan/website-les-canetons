@@ -10,7 +10,7 @@ export function Confirmation() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-8">
       <div className="rounded-lg border border-line border-l-4 border-l-violet bg-panel p-6">
-        <h2 className="font-display text-3xl">Formulaire envoyé avec succès !</h2>
+        <h1 className="font-display text-3xl">Formulaire envoyé avec succès !</h1>
         <p className="mt-4">
           Merci d’avoir rempli le formulaire. Vous recevrez bientôt un e-mail de confirmation.
         </p>

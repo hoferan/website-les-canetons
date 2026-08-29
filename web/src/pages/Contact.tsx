@@ -61,7 +61,7 @@ export function Contact() {
 
   return (
     <section className="mx-auto max-w-2xl px-4 py-8">
-      <h2 className="font-display text-3xl">Contact</h2>
+      <h1 className="font-display text-3xl">Contact</h1>
 
       <FormError error={error} />
 

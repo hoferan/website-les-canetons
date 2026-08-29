@@ -28,7 +28,17 @@ export function ComiteTeamDirection() {
     <section className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="font-display text-4xl">Le comité</h1>
 
-      <img src="/assets/img/comite.jpg" alt="Le comité des Canetons" className="mt-6 rounded-lg" />
+      {/* The file is called comite.jpg and sits under "Le comité", but it is a
+          stock photograph of actual ducklings, not of the committee. The alt
+          text says what is there rather than what the filename claims: telling
+          a screen-reader user there is a photo of the committee when there is
+          not is worse than the old alt="Le comité" was. Flagged as a content
+          question in docs/continue-here.md. */}
+      <img
+        src="/assets/img/comite.jpg"
+        alt="Des canetons alignés sur un tronc d’arbre"
+        className="mt-6 rounded-lg"
+      />
 
       <div className="mt-6 rounded-lg border border-line bg-panel p-5">
         <h2 className="font-display text-xl">Contact des Canetons</h2>

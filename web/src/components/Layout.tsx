@@ -50,9 +50,13 @@ export function Layout() {
             alt="Logo"
             className="h-16 w-auto rounded"
           />
-          <h1 className="font-display text-2xl leading-none">
+          {/* A <p>, not an <h1>. The page's own title is the document's single
+              h1; a site name repeated in the header of every page is branding,
+              not the heading of the content below it. Two h1s per page is what
+              this was before, on all sixteen routes. */}
+          <p className="font-display text-2xl leading-none">
             Les <span className="text-pink">Canetons</span> de Fribourg
-          </h1>
+          </p>
         </div>
 
         <nav className="border-t border-white/10 bg-panel text-ink">
