@@ -14,18 +14,11 @@ here:
 | What changed since (hard cutover, mocks) | `docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md` |
 | The work itself, step by step | `docs/superpowers/plans/2026-08-28-spa-clean-slate.md` (done) and `…-spa-shell-and-first-page.md` (done) |
 
-## FIRST: this branch has never been pushed
+## The branch is pushed
 
-`feat/spa-cutover` is **22 commits ahead of `feat/frontend-spa-cutover` and
-exists only on the machine it was written on.** There is no
-`origin/feat/spa-cutover`. Everything below — the whole cutover and the first
-page — is one disk failure from gone.
-
-```bash
-git push -u origin feat/spa-cutover
-```
-
-Do that before anything else, unless there is a reason not to.
+`feat/spa-cutover` was pushed on 2026-08-29 and tracks
+`origin/feat/spa-cutover`. It is no longer one disk failure from gone. Keep
+pushing as you go — nothing else backs this work up.
 
 ## Branch and merge policy
 
