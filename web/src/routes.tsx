@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
+import { RequireAuth } from "./components/guards";
 import { Accueil } from "./pages/Accueil";
 import { Canetons } from "./pages/Canetons";
 import { Cd } from "./pages/Cd";
@@ -15,6 +16,7 @@ import { Multimedia } from "./pages/Multimedia";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
 import { PlanningRepet } from "./pages/PlanningRepet";
+import { Sinscrire } from "./pages/Sinscrire";
 import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
 
@@ -50,7 +52,14 @@ export function AppRoutes() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/comite_teamdirection" element={<ComiteTeamDirection />} />
         <Route path="/authentification_inscription" element={<Login />} />
-        <Route path="/sinscrire" element={<Placeholder title="Inscriptions" />} />
+        <Route
+          path="/sinscrire"
+          element={
+            <RequireAuth>
+              <Sinscrire />
+            </RequireAuth>
+          }
+        />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route
           path="/inscriptions_utilisateurs"
