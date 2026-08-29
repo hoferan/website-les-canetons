@@ -56,9 +56,17 @@ test("zero is a valid answer", async () => {
 test("an unsolvable challenge rejects rather than resolving with nothing", async () => {
   const challenge = await challengeFor(3);
 
-  await expect(solveChallenge({ ...challenge, challenge: "0".repeat(64) })).rejects.toThrow(
-    /pas pu|could not|unsolved/i,
-  );
+  // `maxnumber: 5` shrinks the search space the exhaustion loop has to walk.
+  // The behaviour under test is "the loop exhausts the space and throws" —
+  // that path is identical whether the space is 6 digests or 50 001 of them,
+  // so a tiny space gives the same coverage for roughly a ten-thousandth of
+  // the work. Walking the real 50 000 here made this test a timing bomb: it
+  // passed in isolation but blew past vitest's 5s default under full-suite
+  // parallel load. The cast is needed because orval types `maxnumber` as the
+  // literal `50000`, read off `AltchaController::MAX_NUMBER`.
+  await expect(
+    solveChallenge({ ...challenge, challenge: "0".repeat(64), maxnumber: 5 } as Altcha200),
+  ).rejects.toThrow(/pas pu|could not|unsolved/i);
 });
 
 test("a malformed challenge rejects", async () => {
