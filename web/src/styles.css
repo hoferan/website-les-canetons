@@ -1,8 +1,63 @@
+/* Font faces first: a CSS @import has to precede every rule, and Vite resolves
+   these bare specifiers to the packages in node_modules. Self-hosted on
+   purpose — see docs/superpowers/specs/2026-08-29-visual-foundation-design.md. */
 @import "tailwindcss";
+@import "@fontsource-variable/karla";
+@import "@fontsource/lilita-one";
 
-/* The band's colours, taken from app/assets/css/main.css so the palette does
-   not drift during the port. --color-* is Tailwind 4's theme namespace:
-   --color-canetons-red gives you bg-canetons-red, text-canetons-red, and so on. */
+/**
+ * The "Scène" palette.
+ *
+ * Chosen for who uses this site rather than for how it photographs: the nine
+ * public pages are read once by a stranger, while the members' area is read
+ * every week, on a phone, outdoors, by someone checking whether they play on
+ * Saturday. So the CHROME is black and neon — the header is the stage — and the
+ * page body is light.
+ *
+ * The band is a youth Guggenmusik that performs in UV costumes at night, and
+ * the old site's background was a neon splatter on black. Neon on black IS the
+ * identity; anyone tempted to neutralise this palette should open
+ * web/public/assets/img/canetons.jpg first.
+ *
+ * --color-* is Tailwind 4's theme namespace, so --color-violet gives you
+ * bg-violet, text-violet, border-violet and so on. There is no
+ * tailwind.config.ts in this project and there should not be one.
+ */
 @theme {
-  --color-canetons-red: #e0201a;
+  --color-ground: #f7f8fa;
+  --color-panel: #fff;
+  --color-ink: #14121c;
+  --color-ink-muted: #5a5768;
+  --color-line: #e2e3ea;
+
+  /* The header, and only the header. */
+  --color-stage: #0b0a12;
+
+  /* The interface accent: links, the active nav item, primary buttons. */
+  --color-violet: #4b2ed6;
+
+  /* Emphasis only — never a whole surface. */
+  --color-pink: #ff3d9a;
+
+  /* Errors, and the non-prod ribbon, which is the same meaning. This replaces
+     --color-canetons-red, which did double duty as brand AND error. In this
+     palette red is not a brand colour — violet is — so red is free to mean
+     exactly one thing. */
+  --color-danger: #e0201a;
+  --font-sans: "Karla Variable", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Lilita One", "Karla Variable", system-ui, sans-serif;
+}
+
+/* The page's own ground and default face. Everything else is a utility class. */
+body {
+  background-color: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Headings are set in the display face wherever a page asks for it via
+   font-display; balance keeps a two-line French title from orphaning a word. */
+h1,
+h2 {
+  text-wrap: balance;
 }
