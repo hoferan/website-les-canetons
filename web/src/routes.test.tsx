@@ -19,7 +19,8 @@ test.each([
   ["/moniteurs", "Nos Moniteurs"],
   // The real page, not a placeholder — hence the fuller heading.
   ["/planning_repet", "Planning des prestations et des répétitions"],
-  ["/comite_teamdirection", "Contact Canetons"],
+  ["/comite_teamdirection", "Le comité"],
+  ["/commencement", "Tu veux commencer la guggen ?"],
   ["/inscriptions_admin", "Inscriptions (admin)"],
 ])("%s renders its page", async (route, heading) => {
   await renderWithSession(<AppRoutes />, { route });

@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { Accueil } from "./pages/Accueil";
 import { Canetons } from "./pages/Canetons";
 import { Cd } from "./pages/Cd";
+import { ComiteTeamDirection } from "./pages/ComiteTeamDirection";
+import { Commencement } from "./pages/Commencement";
 import { Confirmation } from "./pages/Confirmation";
 import { Contact } from "./pages/Contact";
 import { Historique } from "./pages/Historique";
@@ -41,12 +43,12 @@ export function AppRoutes() {
         <Route path="/historique" element={<Historique />} />
         <Route path="/canetons" element={<Canetons />} />
         <Route path="/cd" element={<Cd />} />
-        <Route path="/commencement" element={<Placeholder title="Commencer les Canetons" />} />
+        <Route path="/commencement" element={<Commencement />} />
         <Route path="/moniteurs" element={<Moniteurs />} />
         <Route path="/sponsors" element={<Sponsors />} />
         <Route path="/multimedia" element={<Multimedia />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/comite_teamdirection" element={<Placeholder title="Contact Canetons" />} />
+        <Route path="/comite_teamdirection" element={<ComiteTeamDirection />} />
         <Route path="/authentification_inscription" element={<Login />} />
         <Route path="/sinscrire" element={<Placeholder title="Inscriptions" />} />
         <Route path="/confirmation" element={<Confirmation />} />
