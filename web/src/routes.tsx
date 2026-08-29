@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
-import { RequireAuth } from "./components/guards";
+import { RequireAuth, RequireCapability } from "./components/guards";
 import { Accueil } from "./pages/Accueil";
 import { Canetons } from "./pages/Canetons";
 import { Cd } from "./pages/Cd";
@@ -10,6 +10,7 @@ import { Commencement } from "./pages/Commencement";
 import { Confirmation } from "./pages/Confirmation";
 import { Contact } from "./pages/Contact";
 import { Historique } from "./pages/Historique";
+import { InscriptionsUtilisateurs } from "./pages/InscriptionsUtilisateurs";
 import { Login } from "./pages/Login";
 import { Moniteurs } from "./pages/Moniteurs";
 import { Multimedia } from "./pages/Multimedia";
@@ -63,7 +64,11 @@ export function AppRoutes() {
         <Route path="/confirmation" element={<Confirmation />} />
         <Route
           path="/inscriptions_utilisateurs"
-          element={<Placeholder title="Mes inscriptions" />}
+          element={
+            <RequireCapability capability="respond">
+              <InscriptionsUtilisateurs />
+            </RequireCapability>
+          }
         />
         <Route path="/planning_repet" element={<PlanningRepet />} />
         <Route path="/admin" element={<Placeholder title="Administration" />} />
