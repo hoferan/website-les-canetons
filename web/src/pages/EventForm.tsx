@@ -180,7 +180,7 @@ export function EventForm({
             type="button"
             onClick={onDone}
             disabled={pending}
-            className="rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+            className="rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet disabled:cursor-not-allowed disabled:opacity-50"
           >
             Annuler
           </button>
