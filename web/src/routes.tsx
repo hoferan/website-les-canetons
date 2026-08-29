@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
+import { Confirmation } from "./pages/Confirmation";
 import { NotFound } from "./pages/NotFound";
 import { Placeholder } from "./pages/Placeholder";
 import { PlanningRepet } from "./pages/PlanningRepet";
@@ -39,7 +40,7 @@ export function AppRoutes() {
         <Route path="/comite_teamdirection" element={<Placeholder title="Contact Canetons" />} />
         <Route path="/authentification_inscription" element={<Placeholder title="Connexion" />} />
         <Route path="/sinscrire" element={<Placeholder title="Inscriptions" />} />
-        <Route path="/confirmation" element={<Placeholder title="Confirmation" />} />
+        <Route path="/confirmation" element={<Confirmation />} />
         <Route
           path="/inscriptions_utilisateurs"
           element={<Placeholder title="Mes inscriptions" />}
