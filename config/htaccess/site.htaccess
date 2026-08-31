@@ -87,10 +87,32 @@ RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 # reaching Laravel. Observed, not theorised: the whole API answered 301 until
 # this was added.
 #
+# THE LOOKAHEAD IS `(?!.*api-laravel/)`, NOT `(?!api-laravel/)`, AND THAT `.*`
+# IS LOAD-BEARING ON THE REAL HOST. Do not "tidy" it back to a start-anchored
+# form — it reads like a redundant wildcard and is not.
+#
+# easy-hebergement runs PHP through a FastCGI wrapper, so the URL mod_alias
+# sees on the re-entered pass is NOT /api-laravel/public/index.php but
+#
+#     /cgi-bin/php5.fcgi/api-laravel/public/index.php
+#
+# A start-anchored `(?!api-laravel/)` tests the characters immediately after
+# the leading slash — which are `cgi-bin/` — so the exclusion never fires, the
+# rule matches, and every /api/* and /sanctum/* request 301s to
+# /cgi-bin/php5.fcgi/api-laravel/public/index. The whole API answers 301 while
+# every public page still renders perfectly, which is what makes it easy to
+# ship. `.*` makes the exclusion match api-laravel/ ANYWHERE in the path, so it
+# holds whatever prefix the host's PHP wrapper adds.
+#
+# Observed on TEST on 2026-08-31, immediately after the SPA cutover, and NOT
+# reproducible locally: the Docker stack serves PHP without that wrapper path,
+# so `npm run smoke` passes 13/13 against a build that takes the real API down.
+# tools/build-overlays.test.mjs now asserts the fcgi-prefixed form specifically.
+#
 # These must stay ABOVE the fallback and BELOW the /api dispatch above.
 RedirectMatch 301 ^/(?:index\.php|accueil\.(?:php|html))$ /
 RedirectMatch 301 ^/(?!index\.html$)(.*)\.html$ /$1
-RedirectMatch 301 ^/(?!api-laravel/)(.*)\.php$ /$1
+RedirectMatch 301 ^/(?!.*api-laravel/)(.*)\.php$ /$1
 
 # SPA fallback: every request is served the shell, index.html, EXCEPT real
 # static assets under /assets/ (the hashed bundles Vite emits, plus img/ and
