@@ -269,6 +269,24 @@ Against `https://test.lescanetons.org` with Basic Auth:
 
 Then tag `2026-08-31-<short-sha>` from the merge commit.
 
+### Deliberately deferred out of A, into B
+
+Both surfaced in code review of `tools/put-overlay.mjs` and were held back on
+purpose, because both require editing `tools/deploy/` — a working, tested tool
+that A is about to depend on for a live 406-file cutover. Refactoring it for
+tidiness immediately before that is the wrong trade.
+
+1. **Extract a shared `requireFtpEnv(target)` into `tools/deploy/preflight.mjs`.**
+   `put-overlay.mjs` and `deploy/cli.mjs` both duplicate the env-load →
+   missing-`FTP_*`-keys → `checkTargetDir` sequence, including the required-key
+   list. If that key set ever changes, one tool silently keeps the old contract.
+   `put-overlay`'s version carries better guidance (it explains the
+   `FTP_PASSWORD`/`FTP_PASS` mismatch) and that wording should win in the shared
+   version.
+2. **`checkTargetDir`'s refusal message says "deploy".** Now that a second tool
+   calls it, a `put-overlay` refusal prints "…so *deploy* only runs against a
+   path matching …". Harmless, but confusing to read mid-cutover.
+
 ### Out of scope for A
 
 **QA and PROD.** Both are bootstrap runs with no `.sync-state.json`, where
