@@ -217,6 +217,13 @@ an FTP client.
   *nothing else* and deletes *nothing*.
 - **Downloads and saves the existing `.htaccess` first**, printing the path, so
   a rollback has the file it needs. Refuses to proceed if that backup fails.
+- **The backup goes to `dist/htaccess-backups/<env>-<timestamp>.htaccess`, not
+  into `dist/overlay/<env>/`.** `tools/build-overlays.mjs` opens each env's
+  build with `rmSync(outDir, { recursive: true, force: true })`, so a backup
+  stored in the overlay directory is destroyed by the next
+  `npm run build:overlay` — silently deleting the one file the Rollback section
+  below depends on. The timestamp also means a `--dry-run` can never overwrite a
+  real cutover's backup.
 - **Reuses what exists:** `basic-ftp` is already a dependency;
   `tools/deploy/preflight.mjs`'s `checkTargetDir` guard is reused verbatim, so
   the tool hard-refuses unless `FTP_DIR` names the target env — the same

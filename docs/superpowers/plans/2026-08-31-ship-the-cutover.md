@@ -780,8 +780,14 @@ PUT-OVERLAY test → ftp.cluster1.easy-hebergement.net /public_html/staging/test
 
 - [ ] **Step 4: Read the backup and confirm it is the OLD front controller**
 
+The backup lands in `dist/htaccess-backups/` with a timestamped name — **not** in
+`dist/overlay/test/`, because `build-overlays.mjs` wipes that directory on every
+run and would delete the only rollback copy.
+
 ```powershell
-Select-String -Path dist/overlay/test/.htaccess.live-backup -Pattern 'index\.php','RewriteRule \^ index.html' | Select-Object Line
+$backup = Get-ChildItem dist/htaccess-backups/test-*.htaccess | Sort-Object LastWriteTime | Select-Object -Last 1
+$backup.FullName
+Select-String -Path $backup.FullName -Pattern 'index\.php','RewriteRule \^ index.html' | Select-Object Line
 ```
 
 Expected: matches on `index.php`, and **no** match on `index.html`. That
@@ -793,12 +799,18 @@ something else — stop and re-read `docs/continue-here.md`.
 
 ```powershell
 Select-String -Path .gitignore -Pattern 'dist' | Select-Object Line
+git status --short dist/
 ```
 
-Expected: a `dist` entry, so `dist/overlay/**` is already ignored. If not, add
-`dist/overlay/*/.htaccess.live-backup` to `.gitignore` and commit — a live
-`.htaccess` can contain a server-absolute `AuthUserFile` path and must not be
-tracked.
+Expected: a `dist` entry, and `git status` showing nothing. A live `.htaccess`
+can contain a server-absolute `AuthUserFile` path, so it must never be tracked.
+
+- [ ] **Step 6: Copy the backup somewhere outside `dist/` before PROD**
+
+Not needed for TEST, but do not skip it when this sequence is repeated for PROD.
+Everything under `dist/` is a build artifact that some tool feels entitled to
+delete. For a PROD cutover, copy the backup to a path you control and note it in
+the deploy record.
 
 ---
 
@@ -1025,15 +1037,21 @@ Expected: the non-prod corner ribbon is visible, driven by `env` from
 - [ ] **Step 9: If any check fails — roll back**
 
 Restore the backed-up `.htaccess` and redeploy the previous tag. Both halves,
-or the site stays broken:
+or the site stays broken.
+
+Note the backup is the **pre-cutover** `.htaccess` — the old front controller.
+Restoring it only makes sense together with redeploying the old PHP artifact;
+putting it back on top of the SPA artifact just reproduces the broken state.
 
 ```powershell
-Copy-Item dist/overlay/test/.htaccess.live-backup dist/overlay/test/.htaccess -Force
+$backup = Get-ChildItem dist/htaccess-backups/test-*.htaccess | Sort-Object LastWriteTime | Select-Object -Last 1
+Copy-Item $backup.FullName dist/overlay/test/.htaccess -Force
 npm run put-overlay:test
 ```
 
 Then redeploy the last known-good ref via `deploy-test.yml`'s
-`workflow_dispatch`.
+`workflow_dispatch`. Artifact first, then the `.htaccess` — the same order, and
+for the same reason, as the forward cutover.
 
 ---
 
