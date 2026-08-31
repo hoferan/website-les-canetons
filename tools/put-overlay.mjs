@@ -18,7 +18,8 @@
 //
 // Exit codes: 0 ok, 1 failure, 2 refused by a guard.
 import ftp from 'basic-ftp';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDotEnv } from './dotenv.mjs';
 import { TARGETS, checkTargetDir } from './deploy/preflight.mjs';
@@ -79,6 +80,26 @@ export function planOverlay(dir, exists) {
     };
   }
   return { files: [REQUIRED, ...OPTIONAL.filter((f) => exists(`${dir}/${f}`))] };
+}
+
+/**
+ * Where to save a backup of the live .htaccess before overwriting it.
+ *
+ * Deliberately OUTSIDE dist/overlay/<env>/: build-overlays.mjs does
+ * `rmSync(outDir, { recursive: true, force: true })` at the top of every
+ * `npm run build:overlay` run, which would silently destroy the only copy of
+ * the live .htaccess the next time someone rebuilds the overlay — and the
+ * whole rollback story depends on that file existing. dist/htaccess-backups/
+ * is never touched by build-overlays.mjs or by Vite.
+ *
+ * Each call gets its own timestamped file (colons and dots stripped so the
+ * name is filesystem-safe on Windows too), so a --dry-run run can never
+ * clobber a real cutover's backup. `now` is injected so this stays pure and
+ * testable without depending on the real clock.
+ */
+export function backupFilePath(target, now = new Date()) {
+  const timestamp = now.toISOString().replace(/[:.]/g, '-');
+  return `dist/htaccess-backups/${target}-${timestamp}.htaccess`;
 }
 
 /**
@@ -163,7 +184,8 @@ async function main() {
     process.exit(2);
   }
 
-  const backupPath = `${localDir}/.htaccess.live-backup`;
+  const backupPath = backupFilePath(target);
+  mkdirSync(dirname(backupPath), { recursive: true });
   console.log(
     `PUT-OVERLAY ${target} → ${process.env.FTP_HOST} ${remoteRoot}${dryRun ? '  (dry-run)' : ''}`
   );
@@ -197,7 +219,7 @@ async function main() {
   );
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error(`\nput-overlay FAILED: ${err.message}`);
     process.exit(1);

@@ -192,3 +192,28 @@ test('putOverlay: uploads .htaccess last so routing flips only once', async () =
   });
   assert.equal(client.calls.uploads.at(-1).remote, '/root/.htaccess');
 });
+
+import { backupFilePath } from './put-overlay.mjs';
+
+// The clock is injected, so this stays pure and does not depend on when the
+// test happens to run.
+test('backupFilePath: lands outside dist/overlay/, timestamped and filesystem-safe', () => {
+  const now = new Date('2026-08-31T12:34:56.789Z');
+  assert.equal(
+    backupFilePath('test', now),
+    'dist/htaccess-backups/test-2026-08-31T12-34-56-789Z.htaccess'
+  );
+});
+
+test('backupFilePath: different targets never collide', () => {
+  const now = new Date('2026-08-31T12:34:56.789Z');
+  assert.notEqual(backupFilePath('test', now), backupFilePath('qa', now));
+});
+
+// This is the exact bug the reviewer flagged against the old fixed path: a
+// --dry-run backup must never be able to overwrite a real cutover's backup.
+test('backupFilePath: two runs a millisecond apart never collide', () => {
+  const a = backupFilePath('test', new Date('2026-08-31T12:00:00.000Z'));
+  const b = backupFilePath('test', new Date('2026-08-31T12:00:00.001Z'));
+  assert.notEqual(a, b);
+});
