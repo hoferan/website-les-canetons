@@ -196,6 +196,14 @@ function fakeClient({ failDownload = null, failUpload = null, remoteSize = HTACC
         err.code = 550;
         throw err;
       }
+      // Same FTP reply CODE as 'notfound' (RFC 959 overloads 550 for both "no
+      // such file" and "permission denied") but different reply TEXT — this is
+      // exactly the case the message-pattern check exists to tell apart.
+      if (failDownload === 'permission') {
+        const err = new Error('550 Permission denied.');
+        err.code = 550;
+        throw err;
+      }
       if (failDownload === 'transport') {
         throw new Error('ECONNRESET: connection reset by peer');
       }
@@ -215,11 +223,11 @@ function fakeClient({ failDownload = null, failUpload = null, remoteSize = HTACC
 
 const noop = () => {};
 
-test('putOverlay: backs up the live .htaccess before uploading anything', async () => {
+test('putOverlay: backs up the live .htaccess before uploading anything, and reports both flags true', async () => {
   const localDir = overlayFixture();
   const client = fakeClient();
   const backupPath = 'dist/htaccess-backups/test-fixture.htaccess';
-  await putOverlay({
+  const result = await putOverlay({
     client,
     remoteRoot: '/public_html/staging/test.lescanetons.org',
     localDir,
@@ -239,15 +247,18 @@ test('putOverlay: backs up the live .htaccess before uploading anything', async 
       '/public_html/staging/test.lescanetons.org/.htaccess',
     ]
   );
+  assert.deepEqual(result, { htaccessUploaded: true, backedUp: true });
 });
 
 // A brand-new server has no live .htaccess yet — a real, documented
-// first-time-per-server operation, not an error condition.
-test('putOverlay: a missing live .htaccess (new environment) logs and proceeds', async () => {
+// first-time-per-server operation, not an error condition. The raw server
+// reply is logged too, so an operator sees exactly what the server said
+// rather than trusting this tool's interpretation of it.
+test('putOverlay: a missing live .htaccess (new environment) logs the raw reply and proceeds', async () => {
   const localDir = overlayFixture();
   const client = fakeClient({ failDownload: 'notfound' });
   const logs = [];
-  await putOverlay({
+  const result = await putOverlay({
     client,
     remoteRoot: '/root',
     localDir,
@@ -258,12 +269,15 @@ test('putOverlay: a missing live .htaccess (new environment) logs and proceeds',
   });
   assert.equal(client.calls.downloads.length, 0);
   assert.ok(logs.some((m) => /no live \.htaccess on the server/.test(m)));
+  assert.ok(logs.some((m) => m.includes('550 No such file or directory.')));
   assert.equal(client.calls.uploads.length, 1);
+  assert.deepEqual(result, { htaccessUploaded: true, backedUp: false });
 });
 
 // Any OTHER backup failure (auth, timeout, transport) is not the "new
 // environment" case and must still refuse hard — and as a guard refusal, not
-// a plain failure, it exits 2.
+// a plain failure, it exits 2. It also carries htaccessUploaded/backedUp so
+// main() can report state without parsing log prose.
 test('putOverlay: a genuine backup failure (not "no such file") refuses and uploads nothing', async () => {
   const localDir = overlayFixture();
   const client = fakeClient({ failDownload: 'transport' });
@@ -280,15 +294,46 @@ test('putOverlay: a genuine backup failure (not "no such file") refuses and uplo
     (err) => {
       assert.match(err.message, /could not back up the live \.htaccess/);
       assert.equal(err.exitCode, 2);
+      assert.equal(err.htaccessUploaded, false);
+      assert.equal(err.backedUp, false);
       return true;
     }
   );
   assert.equal(client.calls.uploads.length, 0);
 });
 
-test('putOverlay: dry-run backs up but uploads nothing', async () => {
+// A 550 reply is ALSO used for "permission denied" (RFC 959 does not give it
+// its own code). Reading only err.code would wrongly treat a server that DOES
+// have a live .htaccess — just one this account cannot read — as a "new
+// environment" and overwrite it with no backup. The reply TEXT is what tells
+// the two apart.
+test('putOverlay: a 550 that reads like permission-denied still refuses hard, not "new environment"', async () => {
+  const localDir = overlayFixture();
+  const client = fakeClient({ failDownload: 'permission' });
+  await assert.rejects(
+    putOverlay({
+      client,
+      remoteRoot: '/root',
+      localDir,
+      files: ['.htaccess'],
+      backupPath: 'dist/htaccess-backups/test-permission.htaccess',
+      dryRun: false,
+      log: noop,
+    }),
+    (err) => {
+      assert.match(err.message, /could not back up the live \.htaccess/);
+      assert.equal(err.exitCode, 2);
+      assert.equal(err.htaccessUploaded, false);
+      assert.equal(err.backedUp, false);
+      return true;
+    }
+  );
+  assert.equal(client.calls.uploads.length, 0);
+});
+
+test('putOverlay: dry-run backs up but uploads nothing, and reports htaccessUploaded false', async () => {
   const client = fakeClient();
-  await putOverlay({
+  const result = await putOverlay({
     client,
     remoteRoot: '/public_html/staging/test.lescanetons.org',
     localDir: 'dist/overlay/test',
@@ -299,6 +344,7 @@ test('putOverlay: dry-run backs up but uploads nothing', async () => {
   });
   assert.equal(client.calls.downloads.length, 1);
   assert.equal(client.calls.uploads.length, 0);
+  assert.deepEqual(result, { htaccessUploaded: false, backedUp: true });
 });
 
 // .htaccess goes LAST: robots.txt landing first is harmless, but .htaccess is
@@ -354,6 +400,11 @@ test('putOverlay: throws on a truncated .htaccess upload (size mismatch) and nam
     (err) => {
       assert.match(err.message, /size mismatch/);
       assert.ok(err.message.includes(backupPath));
+      // .htaccess DID land on the server (just possibly corrupt) — the
+      // operator-facing failure banner needs this to say "the site IS on the
+      // new routing", not "unchanged".
+      assert.equal(err.htaccessUploaded, true);
+      assert.equal(err.backedUp, true);
       return true;
     }
   );
@@ -385,7 +436,14 @@ test('putOverlay: a failed robots.txt upload rejects before .htaccess is ever at
       backupPath: 'dist/htaccess-backups/test-fail-robots.htaccess',
       dryRun: false,
       log: noop,
-    })
+    }),
+    (err) => {
+      // The routing has NOT flipped — the operator-facing banner must say
+      // "UNCHANGED", not "the site IS on the new routing".
+      assert.equal(err.htaccessUploaded, false);
+      assert.equal(err.backedUp, true);
+      return true;
+    }
   );
   assert.equal(client.calls.uploads.some((u) => u.remote.endsWith('.htaccess')), false);
 });
@@ -402,7 +460,14 @@ test('putOverlay: a failed .htaccess upload rejects after robots.txt already lan
       backupPath: 'dist/htaccess-backups/test-fail-htaccess.htaccess',
       dryRun: false,
       log: noop,
-    })
+    }),
+    (err) => {
+      // uploadFrom threw before "uploaded .htaccess" was ever logged, so the
+      // routing has NOT flipped either — same reasoning as the robots.txt case.
+      assert.equal(err.htaccessUploaded, false);
+      assert.equal(err.backedUp, true);
+      return true;
+    }
   );
   assert.equal(client.calls.uploads.some((u) => u.remote.endsWith('robots.txt')), true);
 });

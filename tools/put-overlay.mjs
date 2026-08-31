@@ -134,8 +134,24 @@ export function backupFilePath(target, dryRun = false, now = new Date()) {
   return `${dir}/${target}-${timestamp}.htaccess`;
 }
 
+// A 550 reply covers BOTH "no such file" and "permission denied" (RFC 959
+// does not distinguish them by code). Only the former means "nothing to back
+// up" — the latter is a real problem on a server that DOES have a live
+// .htaccess, and treating it as "new environment" would overwrite that file
+// with no backup, defeating the one guarantee this function exists to give.
+const NOT_FOUND_REPLY = /no such file|not found|cannot find/i;
+
 /**
  * Back up the live .htaccess, then upload the overlay files.
+ *
+ * Returns `{ htaccessUploaded, backedUp }`, and attaches the same two fields
+ * to any error it throws. This is deliberately NOT inferred by the caller
+ * from the prose passed to `log` — a human-readable log line is not a machine
+ * contract, and matching one is exactly the pattern
+ * tools/build-overlays.test.mjs's "check directive LINES, not prose" comment
+ * warns against. `main()` reads these fields to report, on failure, the one
+ * thing an operator needs immediately in this window: did the routing already
+ * flip?
  *
  * .htaccess is uploaded LAST. robots.txt landing early is harmless, but
  * .htaccess is the file that flips routing — so if a later step fails, this
@@ -143,16 +159,16 @@ export function backupFilePath(target, dryRun = false, now = new Date()) {
  * never half-written it. That is NOT the same as the site being fine either
  * way: during a cutover, "untouched" usually means "still broken", because a
  * deploy has already deleted the old app — so a robots.txt failure blocks the
- * one upload that fixes it. main() reports on failure whether .htaccess
- * actually landed, since that is what an operator needs to know immediately.
+ * one upload that fixes it.
  *
  * The backup is mandatory whenever there is something to back up. A rollback
  * needs both the old code artifact and the old server-owned .htaccess;
  * without this copy, redeploying an old tag leaves the site in exactly the
  * broken state this tool exists to resolve. A brand-new server has no live
  * .htaccess yet, though — a real, documented first-time-per-server operation —
- * so an FTP 550 ("no such file") is treated as "nothing to back up" and this
- * proceeds; any other backup failure (auth, timeout, transport) still refuses
+ * so an FTP 550 whose reply text actually says "not found" is treated as
+ * "nothing to back up" and this proceeds; any other backup failure (auth,
+ * timeout, transport, or a 550 that means permission-denied) still refuses
  * hard, because then we genuinely cannot tell whether there was a file to
  * protect.
  *
@@ -163,42 +179,56 @@ export function backupFilePath(target, dryRun = false, now = new Date()) {
  * Skipped under --dry-run, since nothing was actually uploaded to verify.
  */
 export async function putOverlay({ client, remoteRoot, localDir, files, backupPath, dryRun, log }) {
+  let backedUp = false;
+  let htaccessUploaded = false;
+
   try {
     await client.downloadTo(backupPath, `${remoteRoot}/.htaccess`);
+    backedUp = true;
     log(`backed up the live .htaccess -> ${backupPath}`);
   } catch (err) {
-    if (err.code === 550) {
-      log('no live .htaccess on the server — nothing to back up (new environment)');
+    if (err.code === 550 && NOT_FOUND_REPLY.test(err.message)) {
+      log(`no live .htaccess on the server — nothing to back up (new environment). Server said: ${err.message}`);
     } else {
-      throw new Refusal(
-        `could not back up the live .htaccess (${err.message}). ` +
-          `Refusing to overwrite it without a copy to roll back to.`
+      throw Object.assign(
+        new Refusal(
+          `could not back up the live .htaccess (${err.message}). ` +
+            `Refusing to overwrite it without a copy to roll back to.`
+        ),
+        { htaccessUploaded, backedUp }
       );
     }
   }
 
-  const ordered = [...files.filter((f) => f !== REQUIRED), REQUIRED];
-  for (const name of ordered) {
-    if (dryRun) {
-      log(`(dry-run) would upload ${name}`);
-      continue;
-    }
-    await client.uploadFrom(`${localDir}/${name}`, `${remoteRoot}/${name}`);
-    log(`uploaded ${name}`);
-
-    if (name === REQUIRED) {
-      const remoteSize = await client.size(`${remoteRoot}/${REQUIRED}`);
-      const localSize = statSync(`${localDir}/${REQUIRED}`).size;
-      if (remoteSize !== localSize) {
-        throw new Error(
-          `uploaded ${REQUIRED} size mismatch (local ${localSize} bytes, remote ${remoteSize} bytes) — ` +
-            `this host is known to truncate transfers. The site may now be on a corrupt ${REQUIRED}. ` +
-            `Restore ${backupPath} immediately.`
-        );
+  try {
+    const ordered = [...files.filter((f) => f !== REQUIRED), REQUIRED];
+    for (const name of ordered) {
+      if (dryRun) {
+        log(`(dry-run) would upload ${name}`);
+        continue;
       }
-      log(`verified ${REQUIRED}: ${localSize} bytes match on the server`);
+      await client.uploadFrom(`${localDir}/${name}`, `${remoteRoot}/${name}`);
+      log(`uploaded ${name}`);
+
+      if (name === REQUIRED) {
+        htaccessUploaded = true;
+        const remoteSize = await client.size(`${remoteRoot}/${REQUIRED}`);
+        const localSize = statSync(`${localDir}/${REQUIRED}`).size;
+        if (remoteSize !== localSize) {
+          throw new Error(
+            `uploaded ${REQUIRED} size mismatch (local ${localSize} bytes, remote ${remoteSize} bytes) — ` +
+              `this host is known to truncate transfers. The site may now be on a corrupt ${REQUIRED}. ` +
+              `Restore ${backupPath} immediately.`
+          );
+        }
+        log(`verified ${REQUIRED}: ${localSize} bytes match on the server`);
+      }
     }
+  } catch (err) {
+    throw Object.assign(err, { htaccessUploaded, backedUp });
   }
+
+  return { htaccessUploaded, backedUp };
 }
 
 async function main() {
@@ -270,9 +300,7 @@ async function main() {
   console.log(`  files: ${plan.files.join(', ')}`);
 
   const client = new ftp.Client();
-  // Tracked across the log callback so a failure can report the one thing an
-  // operator needs immediately in this window: did the routing actually flip?
-  let htaccessUploaded = false;
+  let result;
   try {
     await client.access({
       host: process.env.FTP_HOST,
@@ -280,21 +308,19 @@ async function main() {
       password: process.env.FTP_PASS,
       secure: false,
     });
-    await putOverlay({
+    result = await putOverlay({
       client,
       remoteRoot,
       localDir,
       files: plan.files,
       backupPath,
       dryRun,
-      log: (m) => {
-        console.log(`  ${m}`);
-        if (m === `uploaded ${REQUIRED}`) {
-          htaccessUploaded = true;
-        }
-      },
+      log: (m) => console.log(`  ${m}`),
     });
   } catch (err) {
+    // Read structured state off the error rather than inferring it from log
+    // prose — see putOverlay's docstring for why that distinction matters.
+    const htaccessUploaded = err.htaccessUploaded ?? false;
     console.error(
       htaccessUploaded
         ? `\n${label}: FAILED after .htaccess was already uploaded — the site IS on the new ` +
@@ -310,10 +336,19 @@ async function main() {
     client.close();
   }
 
+  // "Backed up" is only true when the server actually had a live .htaccess to
+  // copy — a first-time-per-server upload legitimately takes none, and
+  // naming a backupPath that was never written would send a rollback looking
+  // for a file that does not exist.
   console.log(
     dryRun
-      ? `\n(dry-run) ${label}: nothing uploaded. Backup of the live .htaccess is at ${backupPath}.`
-      : `\n${label}: overlay in place. Previous .htaccess saved at ${backupPath} — keep it for rollback.`
+      ? `\n(dry-run) ${label}: nothing uploaded.` +
+          (result.backedUp
+            ? ` Backup of the live .htaccess is at ${backupPath}.`
+            : ' No live .htaccess existed to back up.')
+      : result.backedUp
+        ? `\n${label}: overlay in place. Previous .htaccess saved at ${backupPath} — keep it for rollback.`
+        : `\n${label}: overlay in place. No live .htaccess existed to back up (new environment) — nothing to roll back to.`
   );
 }
 
