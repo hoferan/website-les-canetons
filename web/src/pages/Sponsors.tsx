@@ -1,43 +1,55 @@
-/** Three groups of outbound links, in the order the old page listed them. */
+/**
+ * Three groups of outbound links, in the order the old page listed them.
+ *
+ * ALL URLS ARE https:// AS OF 2026-08-31, and that is a measurement rather than
+ * an assumption. This file used to carry the opposite advice — that upgrading
+ * "would be guessing on twelve third-party hosts we do not control" — which was
+ * fair when nobody had checked. The content audit checked: every host that still
+ * answers serves HTTPS, and six of them already redirected http -> https
+ * themselves.
+ *
+ * Three links were REMOVED because the sites are gone, not merely moved:
+ *
+ *   carnatchaux.ch    answers HTTP 200 with the title "Domain For Sale" -- the
+ *                     domain is squatted. A link checker that only reads status
+ *                     codes passes it, which is why it survived this long.
+ *   lestricounis.ch   DNS no longer resolves. lestricounis.com is a broken Wix
+ *                     "ConnectYourDomain" page, so there is no successor to
+ *                     point at.
+ *   13carnavaleux.com DNS no longer resolves, no successor found.
+ *
+ * Two were 404s whose sites are alive at a different path, so they were FIXED
+ * rather than dropped: Les 3 Canards lost its /portal/index.php, and Collaud &
+ * Criblet its /home.php.
+ *
+ * If a removed band turns out to still exist somewhere, add it back — the audit
+ * could only prove the old address is dead, not that the band is.
+ */
 const GROUPS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
     heading: "Les Carnavals",
     links: [
-      { href: "http://www.carnavaldesbolzes.ch/", label: "Carnaval des Bolzes - Fribourg" },
-      { href: "http://www.carnavalestavayer.ch/", label: "Carnaval d’Estavayer" },
-      { href: "http://www.carnavalromont.ch/", label: "Carnaval de Romont" },
-      {
-        href: "http://www.carnatchaux.ch/",
-        label: "Carna’Tchaux : Carnaval de la Chaux de Fonds",
-      },
-      { href: "http://www.brandonspayerne.ch/", label: "Les Brandons de Payerne" },
+      { href: "https://www.carnavaldesbolzes.ch/", label: "Carnaval des Bolzes - Fribourg" },
+      { href: "https://www.carnavalestavayer.ch/", label: "Carnaval d’Estavayer" },
+      { href: "https://www.carnavalromont.ch/", label: "Carnaval de Romont" },
+      { href: "https://www.brandonspayerne.ch/", label: "Les Brandons de Payerne" },
     ],
   },
   {
     heading: "Les Guggens",
     links: [
-      { href: "http://www.3canards.ch/portal/index.php", label: "Les 3 Canards - Fribourg" },
-      { href: "http://www.lesgouillesagasses.com/", label: "Les Gouilles Agasses - Le Mouret" },
-      { href: "http://www.lesendiables.ch/", label: "Les Endiablés - Courtepin" },
-      { href: "http://www.lestricounis.ch/", label: "Les Tricounis - Belfaux" },
-      { href: "http://www.ladecaps.com/", label: "La Décapsuleuse - Romont" },
+      { href: "https://3canards.ch/", label: "Les 3 Canards - Fribourg" },
+      { href: "https://lesgouillesagasses.com/", label: "Les Gouilles Agasses - Le Mouret" },
+      { href: "https://lesendiables.ch/", label: "Les Endiablés - Courtepin" },
+      { href: "https://ladecaps.com/", label: "La Décapsuleuse - Romont" },
     ],
   },
   {
     heading: "Les Amis",
-    links: [
-      { href: "http://www.collaud-criblet.ch/home.php", label: "Collaud & Criblet - Publicité" },
-      { href: "http://www.13carnavaleux.com/", label: "Les 13 Carnavaleux" },
-    ],
+    links: [{ href: "https://www.collaud-criblet.ch/", label: "Collaud & Criblet - Publicité" }],
   },
 ];
 
-/**
- * The URLs are http:// because that is what the old page had and what these
- * sites answer on. Upgrading them here would be guessing on twelve third-party
- * hosts we do not control; a broken link is worse than an unencrypted one to a
- * public carnival homepage.
- */
 export function Sponsors() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-8">

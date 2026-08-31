@@ -1,28 +1,48 @@
+import { Tbd } from "../components/Tbd";
+
 /**
- * The committee, in the order the old page listed it — which is by office, not
- * alphabetical, and is how the band reads it.
+ * The committee, by office rather than alphabetically — the order the band
+ * reads it in, kept from the old page.
  *
- * One member publishes a phone number and the rest do not. That asymmetry is
- * the old page's and is deliberate: it is the number for booking the band.
+ * THE NAMES ARE GONE ON PURPOSE. The 2026-08-31 content audit asked whether the
+ * eight-member list was current and the answer was "don't know yet — replace
+ * all names with placeholders so I know exactly what to update later". The
+ * OFFICES are structural and stay; the names are the part nobody could vouch
+ * for. Fill each one in and delete its <Tbd />.
+ *
+ * The phone number that used to sit against "Responsable prestations" is gone
+ * for the same reason, and one further one: the direction musicale changed (see
+ * below), so the audit's answer was that the published numbers "might be out of
+ * date as well". A wrong number on a booking page sends a caller to a stranger,
+ * which is worse than no number at all.
  */
-const COMMITTEE: { role: string; name: string; phone?: string }[] = [
-  { role: "Présidente", name: "Delphine Maillard" },
-  { role: "Vice-présidente - secrétaire", name: "Amanda Portmann" },
-  { role: "Responsable prestations", name: "Céline Cuennet", phone: "079 322 12 57" },
-  { role: "Responsable caisse", name: "Marc Rossier" },
-  { role: "Responsable intendance", name: "Tiago Garces Cardoso" },
-  { role: "Responsable costumes", name: "Martine Jutzet" },
-  { role: "Responsable Team Direction", name: "Laura Mantel" },
-  { role: "Membre", name: "Patrice Bersier" },
+const COMMITTEE: { role: string }[] = [
+  { role: "Présidente" },
+  { role: "Vice-présidente - secrétaire" },
+  { role: "Responsable prestations" },
+  { role: "Responsable caisse" },
+  { role: "Responsable intendance" },
+  { role: "Responsable costumes" },
+  { role: "Responsable Team Direction" },
+  { role: "Membre" },
 ];
 
 /**
- * Note: this page lists Laura Mantel and Delphine Maillard as the direction
- * musicale, while Historique.tsx says they handed over to Lilou Keller and
- * Anaïs Meuwly. The live site contradicts itself and the port reproduces both —
- * which is current is a content question for the band. See
- * docs/continue-here.md.
+ * The direction musicale, corrected on 2026-08-31.
+ *
+ * The site used to contradict itself in three places: /historique said the
+ * direction had passed to Lilou Keller and Anaïs Meuwly, while this page and
+ * /canetons both still named Laura Mantel and Delphine Maillard. The band
+ * confirmed Historique was right, so these are the current names and the other
+ * two pages were the stale ones.
+ *
+ * The photograph that used to sit here has been removed rather than updated:
+ * it is the outgoing pair, and /canetons already carries a direction musicale
+ * photograph. Showing the same picture on two pages was one of the redundancies
+ * the audit flagged, and the audit's answer was to remove it here.
  */
+const DIRECTION = "Lilou Keller et Anaïs Meuwly";
+
 export function ComiteTeamDirection() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-8">
@@ -32,20 +52,27 @@ export function ComiteTeamDirection() {
           stock photograph of actual ducklings, not of the committee. The alt
           text says what is there rather than what the filename claims: telling
           a screen-reader user there is a photo of the committee when there is
-          not is worse than the old alt="Le comité" was. Flagged as a content
-          question in docs/continue-here.md. */}
+          not is worse than the old alt="Le comité" was. The band was asked and
+          is content to keep it for now. */}
       <img
         src="/assets/img/comite.jpg"
         alt="Des canetons alignés sur un tronc d’arbre"
         className="mt-6 rounded-lg"
       />
 
+      {/* One contact block, not two. The audit flagged the address appearing on
+          several pages; repeating it twice on this one would be worse. The
+          booking number lives here beside it rather than against a committee
+          office, because it is the number for reserving the band. */}
       <div className="mt-6 rounded-lg border border-line bg-panel p-5">
         <h2 className="font-display text-xl">Contact des Canetons</h2>
         <p className="mt-2">
           <a href="mailto:comite@lescanetons.org" className="text-violet hover:underline">
             comite@lescanetons.org
           </a>
+        </p>
+        <p className="mt-2">
+          Pour réserver les Canetons : <Tbd what="numéro pour les prestations" />
         </p>
       </div>
 
@@ -55,38 +82,15 @@ export function ComiteTeamDirection() {
             <p className="text-xs font-semibold tracking-wide text-violet uppercase">
               {member.role}
             </p>
-            <p className="mt-1">{member.name}</p>
-            {member.phone ? (
-              <p className="mt-1">
-                <a
-                  href={`tel:+41${member.phone.replace(/\s/g, "").slice(1)}`}
-                  className="text-violet hover:underline"
-                >
-                  {member.phone}
-                </a>
-              </p>
-            ) : null}
+            <p className="mt-1">
+              <Tbd what="nom" />
+            </p>
           </li>
         ))}
       </ul>
 
       <h2 className="mt-12 font-display text-2xl">Direction musicale</h2>
-      <img
-        src="/assets/img/directionmusicale.jpg"
-        alt="La direction musicale des Canetons"
-        loading="lazy"
-        className="mt-3 rounded-lg"
-      />
-      <p className="mt-2 text-ink-muted">Laura Mantel et Delphine Maillard</p>
-
-      <h2 className="mt-12 font-display text-2xl">Le parrain et la marraine</h2>
-      <img
-        src="/assets/img/parrainmarraine.jpg"
-        alt="Le parrain et la marraine des Canetons"
-        loading="lazy"
-        className="mt-3 rounded-lg"
-      />
-      <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
+      <p className="mt-2 text-ink-muted">{DIRECTION}</p>
     </section>
   );
 }

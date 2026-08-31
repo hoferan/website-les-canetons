@@ -19,7 +19,8 @@ const NAV = [
   { to: "/moniteurs", label: "Moniteurs" },
   { to: "/planning_repet", label: "Planning et répétitions" },
   { to: "/sinscrire", label: "Inscriptions" },
-  { to: "/cd", label: "CD" },
+  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
+  // { to: "/cd", label: "CD" },
   { to: "/sponsors", label: "Sponsors et liens amis" },
   { to: "/historique", label: "Historique" },
 ];
@@ -111,6 +112,9 @@ export function Layout() {
               </a>
             </li>
 
+            {/* HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
+                The "Galerie" link above is current and stays: it is now the only
+                media destination in the nav.
             <li>
               <Link
                 to="/multimedia"
@@ -125,6 +129,7 @@ export function Layout() {
                 Multimédia
               </Link>
             </li>
+            */}
 
             <li className="nav-auth">
               <NavLink

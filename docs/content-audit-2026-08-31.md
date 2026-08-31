@@ -232,3 +232,98 @@ published on two pages and is the only address on the site.
 Answer by number. Anything you skip stays as it is — nothing in section 3 will
 be changed on a guess. Sections 1 and 2 can proceed on your word alone, except
 2.1 and 2.2, which need a fact only you have.
+
+---
+
+# Answered and acted on — 2026-08-31 (sub-project D)
+
+The band answered all fourteen questions the same day. What follows is what was
+done, so that nobody has to reconstruct it from the diff.
+
+## Resolved outright
+
+| # | Answer | Done |
+| --- | --- | --- |
+| 3.1 | Direction musicale is **Lilou Keller and Anaïs Meuwly** | Corrected on `/comite_teamdirection` and `/canetons`; `/historique` was already right. Lilou's cloches roster entry went with the placeholder sweep. |
+| 3.3 | Parrain/marraine confirmed, **move to `/canetons`** | Section and photograph moved; names kept, no placeholder. |
+| 3.12 | Sousaphone and euphonium **are** wanted | No change. |
+| 3.13 | The mailbox **is** read | No change. Now the fallback contact wherever a phone number became a placeholder. |
+| 3.10 | Duckling photo is fine for now | Kept, with the honest alt text it already had. |
+| 3.14 | Remove redundancy on `/comite_teamdirection` | Duplicate `directionmusicale.jpg` removed there (`/canetons` keeps it); the two contact blocks merged into one. |
+| 1.1–1.2 | — | Three dead links removed, two fixed to their live paths, all remaining upgraded to `https`. |
+| 1.3 | — | Werkhof link is now a `maps/search` place lookup. |
+| 1.5 | — | `NEON_SPLATTER_8x8__white__copy.jpg` and `Imagefondclean.jpg` deleted. |
+
+## Placeholders — the band's to-do list
+
+3.2, 3.4, 3.5 and 3.6 were all "don't know yet — replace with placeholders so I
+know exactly what to update later". `web/src/components/Tbd.tsx` renders a
+visible, unmistakable marker. **Count what is left:**
+
+```bash
+grep -rl "<Tbd" web/src/pages    # which pages still have gaps -- must be empty before PROD
+```
+
+Four pages today, rendering **17** fields: 8 committee names, 6 register
+rosters, 1 booking number, 2 joining contacts.
+
+Do not count occurrences and report that as the number. Several `<Tbd />` sit
+inside a `.map()`, so `grep -o | wc -l` returns 10 — it counts call sites, and
+picks up the component itself and its tests as well. `grep -rl` on
+`web/src/pages` answers the only question that matters: is anything still
+missing?
+
+> ### PROD IS BLOCKED WHILE ANY PLACEHOLDER REMAINS
+> TEST and QA are behind HTTP Basic Auth, so only the band sees these. PROD is
+> public and has never been deployed. Deploying it now would publish
+> "à compléter" where the committee should be. This is a content gate, not a
+> technical one — nothing in CI enforces it, so it has to be remembered here.
+
+## Hidden, not deleted
+
+3.7 (`/cd`, dated 2022) and 3.8 (`/multimedia`, a 2016 reportage) were both
+"just hide the page for now". The route and the nav entry are **commented out**
+in `web/src/routes.tsx` and `web/src/components/Layout.tsx`; the components and
+their content are untouched. Uncommenting four lines is the whole reverse.
+
+Commented out rather than feature-flagged deliberately: a flag needs a key in
+`api/config/app.php` and `api/.env.example`, and the deploy's config-shape
+preflight **refuses (exit 2)** against any server whose `api-laravel/.env` lacks
+a key the code expects — so hiding two pages would have become a coordinated
+hand-edit of `.env` on TEST, QA and PROD.
+
+Both URLs now fall through to the SPA's own 404 view, as every unknown path
+already does. `routes.test.tsx` asserts exactly that, so "hidden" cannot quietly
+become "still reachable".
+
+## The flyer is now the page, printed
+
+3.9 was "replace the Flyer image by a CSS one, because the information in the
+Flyer is outdated anyway". `Flyer.jpeg` and its download link are gone.
+
+The first attempt built a separate flyer panel below the page's fact cards — and
+repeated all four of them verbatim, which is the same redundancy this audit
+exists to remove. It was caught by looking at the rendered page, not by any
+test. So there is no flyer panel: `/commencement` carries a `.printable` class,
+the print rules in `web/src/styles.css` hide the header, nav, footer and the
+button, and **the sheet is the page**. It cannot drift from the page, because it
+is the page.
+
+`moniteurs.jpg` was deleted with its `<img>` (3.11 asked for a "new photo coming"
+placeholder). `CD_img.png` stays: the hidden `Cd.tsx` still references it.
+
+## Left alone on purpose
+
+- **`/historique`'s duplicated lead paragraph.** The audit flagged it under 3.14,
+  but the answer scoped the redundancy work to `/comite_teamdirection`. The lead
+  is still a near-duplicate of the third paragraph, still all-caps with accents
+  stripped ("CREEE"), inherited verbatim from the PHP page. A one-line fix
+  whenever someone wants it.
+- **`/historique`'s historical names.** Jacky Schaller, Anthony Cotting,
+  Delphine Brügger, Fabio Portmann and the outgoing direction are historical
+  record, not a current roster, so they were not swept into placeholders.
+- **`/multimedia`'s France 3 domain migration (1.4).** The page is hidden, so the
+  stale `francetvinfo.fr` href does not matter until it comes back. Fix it then.
+- **The `Marc-Jérôme` / `Marc-Jerome` spelling (2.2).** Both occurrences were
+  names, and both are placeholders now, so the inconsistency is gone by
+  accident rather than settled. If the name comes back, pick one spelling.
