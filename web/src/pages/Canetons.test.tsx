@@ -40,10 +40,25 @@ test("each register's photo placeholder names that register", () => {
   }
 });
 
-// Nothing on this page should still try to load a photograph.
-test("no photographs are requested", () => {
+// Every register photograph went on the assumption it was out of date. The
+// parrain and marraine keep theirs, deliberately — so exactly one image, and it
+// must be that one. A count alone would pass if a register photo came back.
+test("the only photograph left is the parrain and marraine's", () => {
   const { container } = render(<Canetons />);
-  expect(container.querySelectorAll("img")).toHaveLength(0);
+  const images = [...container.querySelectorAll("img")];
+  expect(images).toHaveLength(1);
+  expect(images[0]).toHaveAttribute("src", "/assets/img/parrainmarraine.jpg");
+});
+
+// They are not an active part of the band, so they must not sit in the same flow
+// as the registers — otherwise the page implies they play.
+test("the parrain and marraine are separated from the registers", () => {
+  render(<Canetons />);
+  const heading = screen.getByRole("heading", { name: "Le parrain et la marraine" });
+  // Registers each live in an <article>; this section deliberately does not.
+  expect(heading.closest("article")).toBeNull();
+  const registers = screen.getByRole("heading", { name: "Nos Trombones" }).closest("article")!;
+  expect(registers.contains(heading)).toBe(false);
 });
 
 // The direction musicale is the one fact on this page the band confirmed, and

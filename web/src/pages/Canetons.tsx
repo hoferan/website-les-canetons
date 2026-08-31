@@ -60,14 +60,35 @@ export function Canetons() {
         ))}
       </div>
 
-      {/* Moved here from /comite_teamdirection on 2026-08-31 at the band's
-          request. The names are confirmed current, so no placeholder. It sits
-          on this page rather than the committee one because a parrain and a
-          marraine are not committee officers — they belong with the people of
-          the band. */}
-      <h2 className="mt-12 font-display text-2xl">Le parrain et la marraine</h2>
-      <PhotoPending what="du parrain et de la marraine" />
-      <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
+      {/* SET APART FROM THE REGISTERS ON PURPOSE.
+          Moved here from /comite_teamdirection on 2026-08-31, then separated
+          from the register list the same day: the band pointed out that a
+          parrain and a marraine are not an active part of the Canetons. Listing
+          them in the same flow as the batteurs and the trompettes implies they
+          play, which they do not.
+
+          So it sits after a rule, in its own panel, outside the registers'
+          container. The separation is structural rather than a sentence on the
+          page — inventing copy about what a parrain does is not this change's
+          business.
+
+          Their photograph is the ORIGINAL, not a placeholder. Every other photo
+          went on the assumption it was out of date, but that reasoning is about
+          a roster that turns over yearly; two people who are not in the band
+          do not go stale the same way, and the band asked for the old image
+          back. */}
+      <hr className="mt-12 border-line" />
+
+      <div className="mt-8 rounded-lg border border-line bg-panel p-5">
+        <h2 className="font-display text-2xl">Le parrain et la marraine</h2>
+        <img
+          src="/assets/img/parrainmarraine.jpg"
+          alt="Le parrain et la marraine des Canetons"
+          loading="lazy"
+          className="mt-4 rounded-lg"
+        />
+        <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
+      </div>
     </section>
   );
 }
