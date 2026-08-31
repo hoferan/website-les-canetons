@@ -24,12 +24,13 @@ use Illuminate\Foundation\Http\FormRequest;
  * MaxLength(255)] with no #[Required], because a rehearsal with no dress code is
  * legitimate. An absent or blank tenue is normalised to '' by the controller.
  *
- * `id` is deliberately absent too: only PUT needs it, the legacy endpoint
- * checked it AFTER the field validation (so a doubly-bad request reports the
- * fields, not the id), and its failure token is 'invalid_value' — which
- * i18n.js renders with an interpolated {{allowed}} list that only the `in` rule
- * can supply. EventController::update() raises it through ApiError::json()
- * instead. See ApiError's REASONS docblock.
+ * `id` is deliberately absent too: it identifies WHICH event a PUT/DELETE acts
+ * on, not a property of the event itself, and is now a `/events/{id}` route
+ * parameter (routes/api.php), constrained to digits by whereNumber() — so it
+ * is validated by routing, not by this request. Laravel resolves the
+ * FormRequest before the controller body runs, so field validation still
+ * happens first, exactly as the legacy endpoint's own id check used to run
+ * after field validation.
  */
 class EventRequest extends FormRequest
 {

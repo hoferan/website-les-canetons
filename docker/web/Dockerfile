@@ -1,18 +1,18 @@
 # Local dev image: ONE container running Apache + PHP-FPM, mirroring the real
-# host (easy-hebergement), where a single Apache serves both the old app and the
+# host (easy-hebergement), where a single Apache serves the built SPA and the
 # Laravel API from one document root with PHP as FastCGI.
 #
 # php:8.4-fpm, not php:8.4-apache: production runs PHP as FastCGI, not mod_php.
 # Two workarounds in this codebase only take effect under a CGI-family SAPI —
-# the REDIRECT_STATUS guard on its front-controller catch-all, and the
-# Authorization-header forwarding in its /api/* dispatch block (both in
-# app/.htaccess) — and are dead code under mod_php, so a mod_php container
-# cannot tell you whether they work.
+# the REDIRECT_STATUS guard on the SPA fallback, and the Authorization-header
+# forwarding in the /api/* dispatch block (both in
+# config/htaccess/site.htaccess) — and are dead code under mod_php, so a
+# mod_php container cannot tell you whether they work.
 FROM php:8.4-fpm
 
-# mysqli: the old app (App\Database). pdo_mysql + mbstring: Laravel, which
-# talks to MariaDB over PDO. ONE PHP runtime serves both applications, exactly
-# as on the real host. libonig-dev is mbstring's build dependency.
+# pdo_mysql + mbstring: Laravel, which talks to MariaDB over PDO. mysqli is
+# gone with the old front end's App\Database, the only thing that used it.
+# libonig-dev is mbstring's build dependency.
 #
 # php.ini-production, not -development: log_errors=1 sends PHP errors to the
 # FPM log (and so to `docker compose logs web`), and display_errors=0 matches
@@ -25,7 +25,7 @@ FROM php:8.4-fpm
 # over it, but there is no reason to ship it in the image.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends apache2 libonig-dev \
- && docker-php-ext-install -j"$(nproc)" mysqli pdo_mysql mbstring \
+ && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring \
  && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
  && a2enmod proxy_fcgi setenvif rewrite headers expires \
  && a2dissite 000-default \

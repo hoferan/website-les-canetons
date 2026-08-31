@@ -74,6 +74,12 @@ prod-*.sql
 # generated Vite build output (npm run build / vite build); never hand-edit or commit
 /app/assets/dist/
 
+# Playwright run output (npm run test:e2e): traces, screenshots and the HTML
+# report. Regenerated on every run; never committed.
+/test-results/
+/playwright-report/
+/blob-report/
+
 # linter / tool caches
 .php-cs-fixer.cache
 .phpcs.cache

@@ -11,6 +11,8 @@ use App\Support\Altcha;
 use App\Support\ChallengeGuard;
 use App\Support\Occasion;
 use App\Support\SignupStats;
+use Dedoc\Scramble\Attributes\BodyParameter;
+use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -47,7 +49,12 @@ class SignupController extends Controller
      * Admin-only (`view_summary`), enforced by the route's middleware.
      * Deliberately parameterless apart from `format`: the old endpoint had no
      * paging, filtering or sorting and signups_admin.js expects the whole set.
+     *
+     * The 200 shape is declared in the #[Response] attribute below because
+     * Scramble cannot infer it through SignupStats::compute() — it emitted a
+     * bare string. SignupShapeContractTest fails if the two disagree.
      */
+    #[ApiResponse(status: 200, type: 'array{totalPersons: int, totalTables: int, menuTotals: array{meat: int, child: int, vegetarian: int}, tables: list<array{name: string, personCount: int, menuCounts: array{meat: int, child: int, vegetarian: int}, signups: list<array{first_name: string, last_name: string, address: string, phone: string, email: string, personCount: int, menuCounts: array{meat: int, child: int, vegetarian: int}}>}>, occasion: array{title: string, subtitle: string, date: string, date_display: string, teaser: string, invitation: string}}')]
     public function index(Request $request): JsonResponse|StreamedResponse
     {
         // ORDER BY table_name, id — the old query's ordering, and load-bearing:
@@ -111,6 +118,18 @@ class SignupController extends Controller
         );
     }
 
+    // `hp` (the honeypot field read below) is deliberately NOT documented here:
+    // this document is a public client contract (api/openapi.json is committed),
+    // and spelling out "leave this empty to pass" in machine-readable form would
+    // hand automated abuse tooling an actionable instruction. Do not re-add it.
+    #[BodyParameter('first_name', description: 'Guest first name.', required: true, type: 'string')]
+    #[BodyParameter('last_name', description: 'Guest last name.', required: true, type: 'string')]
+    #[BodyParameter('address', description: 'Postal address.', required: true, type: 'string')]
+    #[BodyParameter('phone', description: 'Contact phone number.', required: true, type: 'string')]
+    #[BodyParameter('email', description: 'Confirmation is mailed here.', required: true, type: 'string')]
+    #[BodyParameter('table_name', description: 'Free-text table or group name.', required: true, type: 'string')]
+    #[BodyParameter('menus', description: 'One menu value per guest; see /config for the allowed values.', required: true, type: 'array')]
+    #[BodyParameter('altcha', description: 'Solved proof-of-work payload from GET /altcha.', required: true, type: 'string')]
     public function store(Request $request): JsonResponse
     {
         // (1) Honeypot: a real form never fills this. Silently accept — same

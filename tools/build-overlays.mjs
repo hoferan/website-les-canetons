@@ -3,13 +3,13 @@
 // server and therefore must NOT travel with the promoted code artifact
 // (public/), plus one local-only target (docker). Output goes to
 // dist/overlay/<env>/; server overlays are ready to upload once per server
-// (and again only when app/.htaccess or the auth block changes).
+// (and again only when config/htaccess/site.htaccess or the auth block changes).
 //
-//   test / qa : .htaccess = staging auth block + the current app/.htaccess
+//   test / qa : .htaccess = staging auth block + the current site.htaccess
 //               front controller (auto-merged), staging robots.txt (noindex),
 //               and .htpasswd if one exists locally.
-//   prod      : plain app/.htaccess + the real app/robots.txt (no auth).
-//   docker    : .htaccess = plain app/.htaccess, same as prod; a local build
+//   prod      : plain site.htaccess + the real app/robots.txt (no auth).
+//   docker    : .htaccess = plain site.htaccess, same as prod; a local build
 //               artifact (feeds the local Docker document root), not a server
 //               overlay — never uploaded anywhere.
 //
@@ -26,8 +26,8 @@ import { loadDotEnv } from './dotenv.mjs';
 const ENVS = ['test', 'qa', 'prod'];
 // `docker` is not a server. It generates the local Docker document root's
 // .htaccess into dist/overlay/docker/, which docker-compose.yml bind-mounts.
-// It used to merge a Laravel API dispatch block onto app/.htaccess; that block
-// now lives in app/.htaccess itself, so this target emits the plain front
+// It used to merge a Laravel API dispatch block onto the template; that block
+// now lives in the template itself, so this target emits the plain front
 // controller — exactly what prod gets. It stays because docker-compose.yml
 // mounts that path, and because generating it keeps the local document root a
 // faithful stand-in for a deployed one.
@@ -49,15 +49,15 @@ if (unknown.length) {
   process.exit(1);
 }
 
-const frontController = readFileSync('app/.htaccess', 'utf8').trimEnd();
+const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8').trimEnd();
 
 /** Appends the built front controller, with its generated-from banner, after `block`. */
 function withFrontController(block) {
   return (
     `${block.trimEnd()}\n\n` +
     '# ---------------------------------------------------------------------------\n' +
-    '# Front controller + cache policy (generated from app/.htaccess by\n' +
-    '# tools/build-overlays.mjs — do not edit here; edit app/.htaccess)\n' +
+    '# Front controller + cache policy (generated from config/htaccess/site.htaccess\n' +
+    '# by tools/build-overlays.mjs — do not edit here; edit the template)\n' +
     '# ---------------------------------------------------------------------------\n' +
     `${frontController}\n`
   );
@@ -93,7 +93,7 @@ for (const env of targets) {
   mkdirSync(outDir, { recursive: true });
 
   if (LOCAL.includes(env)) {
-    // The Laravel dispatch block now lives in app/.htaccess itself, so the
+    // The Laravel dispatch block now lives in the template itself, so the
     // docker overlay is just the front controller — same as prod. No robots.txt:
     // the local stack is not crawled.
     writeFileSync(`${outDir}/.htaccess`, `${frontController}\n`);

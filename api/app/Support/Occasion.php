@@ -14,9 +14,10 @@ namespace App\Support;
  * step — the copy, dates and prices are PLACEHOLDERS and will change, so a
  * change on either side has to be mirrored on the other.
  *
- * SignupRepository::MENU_INFO (per-menu description + price) is intentionally
- * not copied: it is only ever read by the old pages' form markup, never by an
- * API endpoint.
+ * SignupRepository::MENU_INFO (per-menu description + price) is now copied here
+ * because the SPA has no server-rendered markup and /api/config ships it to the
+ * front end — this class is the single source of truth for it, and it stays
+ * pinned to the old app's copy by OccasionDriftTest until that app is retired.
  */
 final class Occasion
 {
@@ -26,6 +27,30 @@ final class Occasion
         'meat' => 'Viande',
         'child' => 'Enfant',
         'vegetarian' => 'Végétarien',
+    ];
+
+    /**
+     * Per-menu description and price, keyed by menu value.
+     *
+     * Previously excluded from this class because only the old pages' form
+     * markup read it. The SPA has no server-rendered markup, so /api/config
+     * ships it and this is now the single source of truth — SignupRepository's
+     * copy dies with the old app.
+     */
+    public const MENU_INFO = [
+        'meat' => [
+            'description' => 'Rôti de bœuf, sauce aux morilles, gratin dauphinois '
+                .'et légumes de saison.',
+            'price' => 'CHF 45.–',
+        ],
+        'child' => [
+            'description' => 'Émincé de poulet, frites maison et compote.',
+            'price' => 'CHF 20.–',
+        ],
+        'vegetarian' => [
+            'description' => 'Risotto aux champignons et légumes rôtis de saison.',
+            'price' => 'CHF 40.–',
+        ],
     ];
 
     public const MAX_GUESTS = 30;

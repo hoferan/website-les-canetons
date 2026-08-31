@@ -1,24 +1,26 @@
 // Smoke-tests the local Docker stack. Every check here asserts something that
-// only holds because the stack matches production: both apps on ONE origin, the
-// Laravel dispatch surviving the old app's catch-all, the authorization
+// only holds because the stack matches production: the SPA shell and the API on
+// ONE origin, the Laravel dispatch surviving the SPA fallback, the authorization
 // boundary the chrooted FTP layout forces around the Laravel tree, and the
-// asset cache policy. Run after `npm run dev`.
+// cache policy on both the shell and the hashed bundles. Run after
+// `npm run build && npm run dev` — the `web` container serves dist/build/, so
+// these assert the artifact that actually gets deployed, not the dev server.
 //
-// Since the cutover, /api/* is Laravel's alone — app/api/ is deleted. So the
-// recurring point of the /api/* checks below is simply that LARAVEL ANSWERS AT
-// ALL, with the right status and the right body shape: a 404 on any of them
-// means the dispatch in app/.htaccess is broken, not that a route is missing.
+// /api/* is Laravel's alone. So the recurring point of the /api/* checks below
+// is simply that LARAVEL ANSWERS AT ALL, with the right status and the right
+// body shape: a 404 on any of them means the dispatch in
+// config/htaccess/site.htaccess is broken, not that a route is missing.
 //
-// Known blind spot: app/.htaccess's dispatch block also forwards the
-// Authorization and X-XSRF-Token headers into the FastCGI request (CGI-family
-// SAPIs don't hand Authorization to PHP otherwise). That half of the block is
-// not asserted here: Sanctum's SPA flow is cookie-based, /api/user 401s the
-// same with or without a bogus bearer token, and no route in this app echoes
-// the header back — so there is no cheap way to observe it through the
-// current routes. Only the [L]-vs-the-old-app's-catch-all half is covered,
-// by check 2.
+// Known blind spot: the dispatch block also forwards the Authorization and
+// X-XSRF-Token headers into the FastCGI request (CGI-family SAPIs don't hand
+// Authorization to PHP otherwise). That half of the block is not asserted here:
+// Sanctum's SPA flow is cookie-based, /api/user 401s the same with or without a
+// bogus bearer token, and no route in this app echoes the header back — so
+// there is no cheap way to observe it through the current routes. Only the
+// [L]-vs-the-fallback half is covered.
 //
-// See docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md.
+// See docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md and
+// docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -32,26 +34,25 @@ const request = (path, init = {}) =>
   fetch(`${BASE}${path}`, { redirect: 'manual', signal: AbortSignal.timeout(15_000), ...init });
 
 /** Renders a response's status plus a clipped, whitespace-collapsed body, so a
- * failure message says who actually answered (Laravel JSON, an old-app Twig
+ * failure message says who actually answered (Laravel JSON, the SPA shell
  * page, an Apache error document, ...) instead of just a bare status code. */
 const detail = async (res) => `${res.status} ${(await res.text()).replace(/\s+/g, ' ').slice(0, 200)}`;
 
 /**
- * Which of the two PHP apps produced a response, decided from headers alone —
- * the only signal left now that the Laravel port is byte-faithful and both apps
- * would answer some routes identically (see check 7).
+ * Whether Laravel produced a response, decided from headers alone.
  *
- * Every old-app response passes through src/bootstrap.php's session_start(),
- * so PHP's session cache limiter stamps it `Cache-Control: no-store, no-cache,
- * must-revalidate` and sets a PHPSESSID cookie. Laravel starts no PHP session
- * and Symfony's HttpFoundation defaults an uncached response to `Cache-Control:
- * no-cache, private`. Both contain the substring "no-cache", so `private` — not
- * "no-cache" — is the discriminating token.
+ * Symfony's HttpFoundation defaults an uncached response to `Cache-Control:
+ * no-cache, private`, so `private` is the token to look for. The alternative
+ * answer is now the SPA fallback serving index.html, which the cache block
+ * stamps `max-age=0, must-revalidate` — so a /api/* request that comes back
+ * without `private` means the dispatch lost to the fallback.
  *
- * Verified empirically in both directions against the running stack: `private`
- * with no PHPSESSID on /api/user, /api/contact, /api/events, /api/altcha,
- * /api/signups and an unrouted /api/nonexistent; `no-store, must-revalidate`
- * with a PHPSESSID on /historique, /contact and an unrouted /nonexistent-page.
+ * The PHPSESSID branch predates the cutover: it distinguished Laravel from the
+ * old front end, whose bootstrap called session_start() on every request. That
+ * app is gone and nothing in the document root starts a PHP session any more,
+ * so the branch should never fire — it is kept because if one ever does appear,
+ * something is running that has no business running, and the message says so
+ * more usefully than a bare Cache-Control mismatch would.
  *
  * Returns null when it looks like Laravel, or a failure string naming who
  * actually answered.
@@ -60,7 +61,7 @@ const mustBeLaravel = (res) => {
   const cacheControl = res.headers.get('cache-control') ?? '';
   const cookies = res.headers.getSetCookie().join('; ');
   if (cookies.includes('PHPSESSID')) {
-    return `a PHPSESSID cookie came back — the OLD app answered, so /api/* is not reaching Laravel (Set-Cookie: "${cookies}")`;
+    return `a PHPSESSID cookie came back — something started a PHP session, so this is not Laravel and not the static shell (Set-Cookie: "${cookies}")`;
   }
   if (!cacheControl.includes('private')) {
     return `Cache-Control "${cacheControl}" is not Symfony's "no-cache, private" — something other than Laravel answered`;
@@ -86,21 +87,50 @@ const dockerApiEnv = (key) => {
   return line[1].trim();
 };
 
-check('the old app is still served (front-controller catch-all intact)', async () => {
+check('the SPA shell is served for a page URL (fallback intact)', async () => {
+  // /historique is a route the SPA owns and no file on disk matches, so this
+  // exercises the fallback rather than a static hit. A 500 here is the rewrite
+  // loop the fallback's REDIRECT_STATUS guard exists to prevent, not a missing
+  // file — see config/htaccess/site.htaccess.
   const res = await request('/historique');
-  if (res.status !== 200) return `expected 200, got ${res.status}`;
+  if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
   const body = await res.text();
   if (body.includes('<?php')) {
     return 'PHP served as source — the FastCGI handler never engaged (mod_proxy_fcgi / SetHandler / php-fpm on 127.0.0.1:9000)';
   }
-  return body.includes('</html>') ? null : 'a 200 that is not a rendered HTML page';
+  return body.includes('<div id="root">') ? null : 'a 200 that is not the SPA shell document';
+});
+
+check('the shell is served must-revalidate, so a deploy is picked up', async () => {
+  // index.html names the hashed bundles. Cached, a returning visitor would keep
+  // loading the previous deploy's bundle graph until the cache expired.
+  const res = await request('/');
+  if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
+  const cacheControl = res.headers.get('cache-control') ?? '';
+  return cacheControl.includes('must-revalidate')
+    ? null
+    : `expected a must-revalidate Cache-Control on the shell, got "${cacheControl}"`;
+});
+
+check('/api/* is not swallowed by the legacy .php redirect', async () => {
+  // Regression guard. The dispatch rewrites /api/* to
+  // api-laravel/public/index.php, and mod_alias sees that .php URL on the
+  // re-entered pass; without the api-laravel/ exclusion on the .php
+  // RedirectMatch, every API call 301s and Laravel is never reached. The whole
+  // API is down while every page still looks fine, which is why this is
+  // asserted at the HTTP layer and not only in the template's unit test.
+  const res = await request('/api/events');
+  if (res.status === 301 || res.status === 302) {
+    return `redirected to "${res.headers.get('location')}" instead of reaching Laravel — the .php RedirectMatch is missing its (?!api-laravel/) exclusion`;
+  }
+  return res.status === 200 ? null : `expected 200, got ${await detail(res)}`;
 });
 
 check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // Three things at once. 401 rather than a 404 proves the dispatch rule won
-  // against the old app's catch-all (it says nothing about [L] specifically —
+  // against the SPA fallback (it says nothing about [L] specifically —
   // REDIRECT_STATUS is what actually defeats the catch-all on the second pass;
-  // see the dispatch block's comment in app/.htaccess). 401 rather than 403
+  // see the dispatch block's comment in the template). 401 rather than 403
   // proves api/public/.htaccess's "Require all granted" overrode the parent
   // deny — this is the ONLY request whose resolved file sits under that denied
   // tree. The JSON body distinguishes Laravel from any other 401.
@@ -109,7 +139,7 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
     return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the /historique result first): ${await detail(res)}`;
   }
   if (res.status === 404) {
-    return `got 404 — either the old app's catch-all answered (the dispatch block lost to it, or is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
+    return `got 404 — either the SPA fallback answered (the dispatch block lost to it, or is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
   }
   if (res.status !== 401) return `expected 401 from Laravel, got ${await detail(res)}`;
   // The error contract, NOT Laravel's native {message: "Unauthenticated."}:
@@ -138,7 +168,7 @@ check("Laravel's .env is not readable over the web", async () => {
   //
   // Locally this is 403, from api/.htaccess's deny-all: Apache evaluates
   // authorization during the directory walk, before mod_rewrite's per-directory
-  // fixup ever runs the old app's catch-all, so the deny-all wins first (see
+  // fixup ever runs the SPA fallback, so the deny-all wins first (see
   // that file's own comment). On a real server it would 404 instead — not
   // because the catch-all wins there, but because .htaccess is a protected
   // basename never uploaded (tools/deploy/preflight.mjs's PROTECTED set), so
@@ -174,7 +204,7 @@ check('the token-gated migrate route works end to end', async () => {
   if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
   const json = await res.json().catch(() => ({}));
   if (json.ok !== true) return `expected {ok:true}, got ${JSON.stringify(json)}`;
-  // MigrateController always returns an `output` key that the old app never
+  // MigrateController always returns an `output` key the old endpoint never
   // emits — pin it so a 200/{ok:true} from some other handler can't pass.
   return typeof json.output === 'string'
     ? null
@@ -205,7 +235,7 @@ check('POST /api/contact is Laravel, answering in the {error, code, fields[]} co
   // smoke run — change the check, not the guard.
   const res = await request('/api/contact', { method: 'POST', headers: { Accept: 'application/json' } });
   if (res.status === 404) {
-    return `got 404 — /api/* is not reaching Laravel at all (the dispatch block in app/.htaccess lost to the front-controller catch-all): ${await detail(res)}`;
+    return `got 404 — /api/* is not reaching Laravel at all (the dispatch block in the template lost to the SPA fallback): ${await detail(res)}`;
   }
   if (res.status !== 400) return `expected Laravel's 400 for an empty body, got ${await detail(res)}`;
   const notLaravel = mustBeLaravel(res);
@@ -333,20 +363,23 @@ check('GET /api/altcha matches what docker/api/env.docker configures', async () 
   return missing.length === 0 ? null : `challenge is missing ${missing.join(', ')}: ${JSON.stringify(body)}`;
 });
 
-check('built assets are served with the immutable cache policy', async () => {
-  const manifestPath = fileURLToPath(new URL('../app/assets/dist/.vite/manifest.json', import.meta.url));
-  let manifest;
+check('hashed bundles are served with the immutable cache policy', async () => {
+  // Read the bundle URL out of the built shell rather than a Vite manifest:
+  // the SPA build emits no manifest (nothing server-side reads one any more),
+  // and index.html is what the browser actually follows.
+  const shellPath = fileURLToPath(new URL('../dist/build/index.html', import.meta.url));
+  let shell;
   try {
-    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    shell = readFileSync(shellPath, 'utf8');
   } catch (error) {
-    return `could not read ${manifestPath}: ${error.message} — has the assets container finished its first build?`;
+    return `could not read ${shellPath}: ${error.message} — run \`npm run build\` first`;
   }
-  const entry = Object.values(manifest).find((e) => typeof e.file === 'string' && e.file.endsWith('.css'));
-  if (!entry) return 'no CSS entry in the Vite manifest';
+  const bundle = shell.match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
+  if (!bundle) return 'no hashed /assets/*.js bundle found in dist/build/index.html';
 
-  const res = await request(`/assets/dist/${entry.file}`);
+  const res = await request(bundle);
   if (res.status !== 200) {
-    return `expected 200 for /assets/dist/${entry.file}, got ${await detail(res)} — a 404 here means the host manifest and the served build disagree (stale manifest, or Vite mid-rebuild)`;
+    return `expected 200 for ${bundle}, got ${await detail(res)} — a 404 here means the container is serving a different build than dist/build/ on disk`;
   }
   const cacheControl = res.headers.get('cache-control') ?? '';
   return cacheControl.includes('immutable')

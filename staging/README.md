@@ -21,19 +21,21 @@ of each staging deployment.
 
 A server folder is **two layers stacked in the same directory**:
 
-1. **The application payload** — the exact output of `npm run build`: the old
-   app at the root (`index.php`, `src/`, `pages/`, `partials/`, `templates/`,
-   `assets/`, `vendor/`) plus the whole Laravel project at `api-laravel/`.
-   Environment-agnostic: the _same bytes_ on test, qa, and prod. It includes
-   neither `config.php` nor `api-laravel/.env`.
-2. **The four server-owned files** — different on every environment, so they
-   are set once per server and never travel with a code promotion:
-   - `.htaccess` — test/qa add HTTP Basic Auth + `noindex` on top of the
-     front-controller rules; prod has the front-controller rules only.
+1. **The application payload** — the exact output of `npm run build`: the SPA
+   shell at the root (`index.html`, `assets/`) plus the whole Laravel project at
+   `api-laravel/`. Environment-agnostic: the _same bytes_ on test, qa, and prod.
+   It does not include `api-laravel/.env`.
+2. **The server-owned files** — different on every environment, so they are set
+   once per server and never travel with a code promotion:
+   - `.htaccess` — test/qa add HTTP Basic Auth + `noindex` on top of the site
+     rules; prod has the site rules only.
    - `robots.txt` — test/qa `Disallow: /`; prod the real one (or none).
-   - `config.php` — env key + DB creds for the old app (git-ignored, set by
-     hand).
-   - `api-laravel/.env` — the same thing for Laravel: `APP_KEY`, DB creds,
+   - `config.php` — **dead.** It configured the old front end, which no longer
+     exists. Still present on every server because the deploy never deletes a
+     protected basename; delete it by hand, once per server, and note that it
+     holds live DB credentials until you do.
+   - `api-laravel/.env` — the only configuration that matters now: `APP_KEY`,
+     DB creds,
      `MIGRATE_TOKEN`, `ALTCHA_HMAC_SECRET`, `SOUPER_SIGNUP_ENABLED`
      (git-ignored, set by hand). See
      [Laravel's server-side `.env`](#laravels-server-side-env) below.
@@ -61,10 +63,10 @@ root, so both files above are silently dropped from every upload even though
 `tools/build.mjs` copies them into `dist/build/api-laravel/`. The cutover
 shipped without the protected-set rework that would fix it, on the judgement
 that the boundary is redundant on a server: the old app's front-controller
-catch-all matches every path except `/api/*` and `/sanctum/*` (which the
+fallback matches every path except `/api/*` and `/sanctum/*` (which the
 dispatch block above it has already claimed), so a direct hit like
 `/api-laravel/.env` or `/api-laravel/vendor/autoload.php` is rewritten to
-`index.php`, matches no route, and 404s.
+`index.html` and gets the SPA shell rather than the file.
 
 **That is a single layer, and it is the app's, not Apache's.** Nothing else
 stands between a URL and Laravel's `.env` on a server. Anything that weakens
@@ -91,13 +93,13 @@ would let the next `--relist` deploy delete every server's API configuration.
 ## Deployment: build once, promote one artifact
 
 ```bash
-npm run build           # -> dist/build/  (the code artifact; no config.php, no api-laravel/.env)
+npm run build           # -> dist/build/  (index.html + assets/ + api-laravel/; no .env)
 npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the generatable server-owned files, per env)
 ```
 
 1. **First-time per server:** upload that env's `dist/overlay/<env>/` files
    (`.htaccess`, `robots.txt`, and for test/qa `.htpasswd`), and create both
-   `config.php` and `api-laravel/.env` by hand (see
+   `api-laravel/.env` by hand (see
    [Laravel's server-side `.env`](#laravels-server-side-env)). Re-run
    `build:overlay` and re-upload only the `.htaccess` when `app/.htaccess` or
    the auth block changes — and note that the `/api/*` dispatch block now lives
@@ -120,81 +122,68 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the generatable serv
 3. **Always exclude the four server-owned files** from every upload/promotion
    so you never overwrite a server's
    `.htaccess`/`robots.txt`/`config.php`/`api-laravel/.env`. WinSCP file mask:
-   `| .htaccess; robots.txt; config.php; .env`. Of the four, `.env` is the one
-   with no recovery path — `config.php` at least has `config.example.php`
+   `| .htaccess; robots.txt; config.php; .env`. `.env` is the one with no
+   recovery path — `config.php` is dead and `config.example.php` is gone
    shipped beside it, and the two `.htaccess` files are tracked source.
 
 `build:overlay` merges the auth block onto the current built front controller
 automatically, so there's no hand-editing of `.htaccess` (which is how the
 FastCGI 500 loop below crept in during early manual assembly).
 
-### `.htaccess` gotcha: the front-controller loop guard
+### `.htaccess` gotcha: the SPA fallback loop guard
 
-The built front-controller block routes every non-asset request to `index.php`.
-On easy-hebergement (PHP runs as **FastCGI**), `RewriteRule ^ index.php [L]`
-re-matches the rewritten `index.php` and loops until Apache returns a **500**
+The built block routes every non-asset request to `index.html`. On
+easy-hebergement (PHP runs as **FastCGI**), `RewriteRule ^ index.html [L]`
+re-matches its own output and loops until Apache returns a **500**
 ("Request exceeded the limit of 10 internal redirects"). The fix — a
 `RewriteCond %{ENV:REDIRECT_STATUS} ^$` guard so the rule fires only on the
 original request — lives in the tracked source `app/.htaccess`, so every build
 carries it. Don't strip it when combining the auth overlay.
 
-## Per-environment `config.php`
+## Per-environment configuration
 
-Each server's `config.php` is git-ignored and set by hand. Besides the `db`
-block it declares the environment, which drives the non-prod corner ribbon (see
-`App\Env` / `app/partials/env_banner.php`):
+There is exactly one per-environment config file left: **`api-laravel/.env`**.
+See [Laravel's server-side `.env`](#laravels-server-side-env) below for what
+goes in it.
 
-```php
-return [
-    'env' => 'test',   // 'test' on TEST, 'qa' on QA, 'prod' (or omitted) on prod
-    'db'  => [ /* … */ ],
-];
-```
+`config.php` used to sit beside it, holding the old front end's `env` key and DB
+credentials. That application is gone. The file is still on every server —
+`config.php` is a protected basename, so no deploy will ever remove it — and it
+still contains live database credentials, so **delete it by hand, once per
+server**. Nothing reads it, and the SPA fallback makes it unreachable over HTTP,
+but there is no reason to leave credentials lying in a web root.
 
-A missing/unknown `env` is treated as `prod` (no ribbon), so prod stays clean
-even if the key is never added there.
+The non-prod corner ribbon no longer comes from a file at all: the SPA reads it
+from `GET /api/config`, which derives it from `APP_ENV` in `api-laravel/.env`.
 
-### Keeping `config.php` in shape with `config.example.php`
+### Keeping `api-laravel/.env` in shape with `api/.env.example`
 
-Before uploading anything, the deploy CLI fetches the target's `config.php` and
-compares its key **shape** (never its values) against the `config.example.php`
-that ships with the artifact. Drift in **either** direction refuses the deploy
-with **exit 2** and names the offending key paths: a key the code now expects
-that the server is missing, *and* a key the server still has that the code no
-longer expects. `-- --dry-run` reports the same drift but does **not** refuse
-(exit 0) — only a real deploy stops.
-
-**Operator step (do this before the deploy that lands the Laravel `/api/*`
-cutover).** On **every** server — TEST, QA and PROD — hand-edit `config.php` and
-delete these two entries, including their comments:
-
-```php
-'auto_migrate' => true,          // delete — App\AutoMigrator no longer exists
-'migrate' => [                   // delete the whole block — Laravel's
-    'token' => '…',              // /api/migrate reads MIGRATE_TOKEN from
-],                               // api-laravel/.env instead
-```
-
-Until a server's `config.php` is trimmed, every deploy to it refuses with:
+Before uploading anything, the deploy CLI fetches the target's
+`api-laravel/.env` and compares its **key set** — never its values, which are
+never read, returned or logged — against the `api/.env.example` in the
+repository. Drift in **either** direction refuses the deploy with **exit 2** and
+names the offending keys: a key the code now expects that the server is missing,
+*and* a key the server still has that the code no longer expects. `-- --dry-run`
+reports the same drift but does **not** refuse (exit 0) — only a real deploy
+stops.
 
 ```
-FAILED at Preflight: TEST's config.php has drifted from config.example.php
-  (0 missing, 2 extra keys — listed above).
-    config.php on TEST has EXTRA key:  auto_migrate
-    config.php on TEST has EXTRA key:  migrate.token
+FAILED at Preflight: TEST's api-laravel/.env has drifted from api/.env.example
+  (1 missing, 0 extra keys — listed above).
+    api-laravel/.env on TEST is MISSING key: SOME_NEW_FLAG
 ```
 
 That refusal is the pre-flight working, not a bug. Nothing is uploaded and
-nothing is deleted — it stops before the scan.
+nothing is deleted — it stops before the scan. Fix the server's `.env` by hand,
+then re-run.
 
-`'altcha' => ['hmac_secret' => …]` and the `'mail'` block **stay** in
-`config.php` for now: the pre-flight compares against `config.example.php`,
-which still declares them, so removing them from a server would trip the same
-brake in the other direction (`MISSING key`). Note that no PHP in the old app
-reads either one any more — `bootstrap.php` consumes only `env`, `features` and
-`db`; Altcha and mail moved to Laravel's `ALTCHA_HMAC_SECRET` / `MAIL_*`. Retiring
-those two blocks is its own coordinated change to `config.example.php` **plus**
-every server, not something to do piecemeal.
+A server with **no** `.env` at all only warns and continues: that is a
+brand-new environment before its one-time hand provisioning, and the API cannot
+run either way, so blocking would add no protection.
+
+This check replaced an AST walk over each server's `config.php` (parsed with
+`php-parser`, never evaluated). The dotenv version needs no parser at all and
+covers the file that actually configures the API.
 
 ## What's tracked vs. not
 
@@ -400,8 +389,9 @@ all**, and the first request Apache dispatches into `api-laravel/` dies on
      Laravel's default reports `environment: production` during a QA migration.
    - `APP_DEBUG=false` — on **every** server, prod included.
    - `APP_URL` — the site's public base URL.
-   - `DB_*` — copy from that server's `config.php`; Laravel shares the old
-     app's database, it does not get one of its own.
+   - `DB_*` — the same database the site has always used. If this server still
+     has its dead `config.php`, copy them out of it before deleting that file;
+     otherwise take them from the hosting control panel.
    - `SANCTUM_STATEFUL_DOMAINS` — the site's hostname, no scheme. A mismatch
      does not error; it just 401s cookie-authed `/api/*` calls.
    - `CACHE_STORE=database` — **required.** The Altcha replay guard uses the

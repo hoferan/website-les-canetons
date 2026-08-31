@@ -1,24 +1,31 @@
 // tools/deploy/preflight.mjs
 // Pre-deploy safety checks: the protected-files set, the per-env target-path
-// guard (the one FTP account reaches every environment), and the config.php
-// key-shape check. config.php is *parsed* to an AST (php-parser) and its
-// top-level `return [ ... ]` walked statically — never evaluated, so this
-// needs no `php` binary and never executes a file fetched off a server. Key
-// *values* never appear anywhere, so secrets can't leak into deploy output.
+// guard (the one FTP account reaches every environment), and the
+// api-laravel/.env key-shape check.
+//
+// That last one used to parse each server's config.php to an AST. config.php
+// is gone with the old front end; Laravel's .env is now the only server-owned
+// configuration, and a dotenv key set is a line-regex rather than a parse — so
+// this no longer needs php-parser at all. Key *values* are never read,
+// returned or logged, so a server's credentials cannot leak into deploy output.
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import Engine from 'php-parser';
 import { STATE_FILE } from './state.mjs';
 
 // Files that live on the server and must never be uploaded or deleted (plus
 // the state file, which this tool owns and writes separately). Matched by
 // BASENAME at any depth (see sync.mjs), which is what protects the nested
 // api-laravel/.env — Laravel's server-owned config (APP_KEY, DB credentials,
-// MIGRATE_TOKEN, ALTCHA_HMAC_SECRET), the exact counterpart of config.php.
-// tools/build.mjs strips it from the artifact, so without this entry a
-// --relist or bootstrap deploy would classify it as a stale remote file and
-// delete the API's entire configuration.
+// MIGRATE_TOKEN, ALTCHA_HMAC_SECRET). tools/build.mjs strips it from the
+// artifact, so without this entry a --relist or bootstrap deploy would
+// classify it as a stale remote file and delete the API's entire
+// configuration.
+//
+// config.php stays listed even though the code no longer has one: every server
+// still HAS the file, and this set is what stops a bootstrap or --relist deploy
+// deleting files it did not put there. It should be removed by hand, once per
+// server, and can drop out of this set after that.
 export const PROTECTED = new Set([
   '.htaccess',
   'robots.txt',
@@ -49,93 +56,53 @@ export function checkTargetDir(target, dir) {
   };
 }
 
-const phpEngine = new Engine({ ast: { withPositions: false }, parser: { extractDoc: false } });
-
-// Resolve an array-entry key node to its literal string form. PHP arrays index
-// unkeyed entries by a running integer (max int key seen so far + 1, from 0),
-// so we track that to stay faithful to how PHP would key a list-style array.
-function literalKey(node, autoIndex) {
-  if (node == null) {
-    return { key: String(autoIndex.next), next: autoIndex.next + 1 };
-  }
-  if (node.kind === 'string') {
-    return { key: String(node.value), next: autoIndex.next };
-  }
-  if (node.kind === 'number' && Number.isInteger(Number(node.value))) {
-    const n = Number(node.value);
-    return { key: String(n), next: Math.max(autoIndex.next, n + 1) };
-  }
-  throw new Error(`Unsupported config key: expected a string/int literal, got "${node.kind}".`);
-}
-
-// Recursively collect dotted key paths from a php-parser `array` node. An
-// empty nested array contributes no keys (a branch with nothing in it).
-function arrayKeyPaths(arrayNode, prefix, out) {
-  const autoIndex = { next: 0 };
-  for (const item of arrayNode.items) {
-    if (item.kind !== 'entry' || item.unpack) {
-      throw new Error(
-        `Unsupported config construct: "${item.unpack ? 'spread' : item.kind}" (expected a plain array entry).`
-      );
-    }
-    const { key, next } = literalKey(item.key, autoIndex);
-    autoIndex.next = next;
-    const full = prefix === '' ? key : `${prefix}.${key}`;
-    if (item.value && item.value.kind === 'array') {
-      arrayKeyPaths(item.value, full, out);
-    } else {
-      out.push(full);
+/**
+ * The KEYS a dotenv file declares, sorted and de-duplicated.
+ *
+ * Values are never captured, so nothing downstream can log a credential. A
+ * commented-out line declares nothing; a key with an empty value still counts
+ * as declared, because an unset value is a value problem and this check is
+ * deliberately only about shape.
+ */
+export function envKeys(source) {
+  const keys = new Set();
+  for (const line of source.split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (match) {
+      keys.add(match[1]);
     }
   }
-  return out;
+  return [...keys].sort();
 }
 
-// Flatten PHP config source to a sorted list of dotted key paths (e.g.
-// "db.host") — never the values. Assumes config.php is a plain literal array
-// (as it always is — see config/config.example.php); any dynamic construct
-// throws a clear error rather than silently under-reporting keys.
-export function configKeyPathsFromSource(src, label) {
-  const program = phpEngine.parseCode(src, label);
-  const ret = program.children.find((n) => n.kind === 'return');
-  if (!ret || !ret.expr) {
-    throw new Error(`${label}: expected a top-level "return [ ... ];".`);
-  }
-  if (ret.expr.kind !== 'array') {
-    throw new Error(`${label}: top-level return is not an array literal — cannot read config key shape statically.`);
-  }
-  return arrayKeyPaths(ret.expr, '', []).sort();
-}
-
-export function configKeyPaths(file) {
-  return configKeyPathsFromSource(readFileSync(file, 'utf8'), file);
-}
-
-// Pure comparison of two key-path lists (example = what the code expects,
-// remote = what the server has).
-export function compareConfigShape(exampleKeys, remoteKeys) {
-  const remoteSet = new Set(remoteKeys);
-  const exampleSet = new Set(exampleKeys);
-  const missing = exampleKeys.filter((k) => !remoteSet.has(k));
-  const extra = remoteKeys.filter((k) => !exampleSet.has(k));
+// Pure comparison of two key lists (expected = what the deployed code needs,
+// actual = what the server declares).
+export function compareEnvShape(expected, actual) {
+  const actualSet = new Set(actual);
+  const expectedSet = new Set(expected);
+  const missing = expected.filter((k) => !actualSet.has(k));
+  const extra = actual.filter((k) => !expectedSet.has(k));
   return { ok: missing.length === 0 && extra.length === 0, missing, extra };
 }
 
-// Fetch the target's config.php and compare its key shape against
-// config/config.example.php (the source of truth for what the deployed code
-// expects). Best-effort on fetch: a brand-new environment has no config.php
-// yet — the site can't run either way, so blocking wouldn't add protection
-// there; report `skipped` and let the caller warn.
-export async function checkConfigShape(client, remoteRoot) {
-  const exampleKeys = configKeyPaths('config/config.example.php');
-  const tmpDir = mkdtempSync(path.join(tmpdir(), 'lc-config-'));
-  const tmpConfig = path.join(tmpDir, 'config.php');
+// Fetch the target's api-laravel/.env and compare its key set against
+// api/.env.example (the source of truth for what the deployed code expects), so
+// a deploy that would land code needing a key the server has never been given
+// fails here rather than 500ing every /api/* request afterwards. Best-effort on
+// fetch: a brand-new environment has no .env yet — the API can't run either
+// way, so blocking wouldn't add protection there; report `skipped` and let the
+// caller warn.
+export async function checkEnvShape(client, remoteRoot) {
+  const expected = envKeys(readFileSync('api/.env.example', 'utf8'));
+  const tmpDir = mkdtempSync(path.join(tmpdir(), 'lc-env-'));
+  const tmpEnv = path.join(tmpDir, 'env');
   try {
     try {
-      await client.downloadTo(tmpConfig, `${remoteRoot}/config.php`);
+      await client.downloadTo(tmpEnv, `${remoteRoot}/api-laravel/.env`);
     } catch (err) {
       return { ok: true, skipped: true, reason: err.message, missing: [], extra: [] };
     }
-    return { skipped: false, ...compareConfigShape(exampleKeys, configKeyPaths(tmpConfig)) };
+    return { skipped: false, ...compareEnvShape(expected, envKeys(readFileSync(tmpEnv, 'utf8'))) };
   } finally {
     rmSync(tmpDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }

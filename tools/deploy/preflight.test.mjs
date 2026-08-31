@@ -6,8 +6,8 @@ import {
   PROTECTED,
   TARGETS,
   checkTargetDir,
-  configKeyPathsFromSource,
-  compareConfigShape,
+  envKeys,
+  compareEnvShape,
 } from './preflight.mjs';
 
 test('PROTECTED: server-owned files plus the tool-owned state file', () => {
@@ -67,29 +67,42 @@ test('checkTargetDir: does not match the env name inside a longer word', () => {
   assert.equal(checkTargetDir('test', '/www/contest.example.ch').ok, false);
 });
 
-test('configKeyPathsFromSource: flattens nested arrays to sorted dotted paths', () => {
-  const src = `<?php return ['db' => ['host' => 'x', 'name' => 'y'], 'env' => 'dev', 'list' => [1, 2]];`;
-  assert.deepEqual(configKeyPathsFromSource(src, 'sample'), ['db.host', 'db.name', 'env', 'list.0', 'list.1']);
+test('envKeys: reads keys, ignoring comments, blank lines and values', () => {
+  const source = ['# a comment', '', 'APP_KEY=base64:secret', 'DB_HOST=127.0.0.1', '   ', 'APP_ENV=test'].join('\n');
+  assert.deepEqual(envKeys(source), ['APP_ENV', 'APP_KEY', 'DB_HOST']);
 });
 
-test('configKeyPathsFromSource: throws on non-literal keys instead of under-reporting', () => {
-  assert.throws(() => configKeyPathsFromSource(`<?php return [FOO => 1];`, 'sample'), /Unsupported config key/);
+test('envKeys: tolerates an export prefix, padding and CRLF', () => {
+  assert.deepEqual(envKeys('export APP_KEY=x  \r\n  DB_HOST =y\r\n'), ['APP_KEY', 'DB_HOST']);
 });
 
-test('configKeyPathsFromSource: throws when there is no top-level return array', () => {
-  assert.throws(() => configKeyPathsFromSource(`<?php $a = 1;`, 'sample'), /expected a top-level/);
-  assert.throws(() => configKeyPathsFromSource(`<?php return getConfig();`, 'sample'), /not an array literal/);
+test('envKeys: a key with an empty value still counts as declared', () => {
+  // A server sets MIGRATE_TOKEN= with no value far more often than it omits
+  // the line; that is a value problem, not a shape problem, and this check
+  // deliberately never looks at values.
+  assert.deepEqual(envKeys('MIGRATE_TOKEN='), ['MIGRATE_TOKEN']);
 });
 
-test('compareConfigShape: reports missing and extra keys', () => {
-  const r = compareConfigShape(['a', 'b', 'c'], ['a', 'c', 'd']);
+test('envKeys: ignores a commented-out key', () => {
+  assert.deepEqual(envKeys('# DB_HOST=1\nAPP_KEY=2'), ['APP_KEY']);
+});
+
+test('compareEnvShape: reports keys the code expects but the server lacks', () => {
+  const r = compareEnvShape(['APP_KEY', 'DB_HOST', 'MIGRATE_TOKEN'], ['APP_KEY', 'DB_HOST']);
   assert.equal(r.ok, false);
-  assert.deepEqual(r.missing, ['b']);
-  assert.deepEqual(r.extra, ['d']);
+  assert.deepEqual(r.missing, ['MIGRATE_TOKEN']);
+  assert.deepEqual(r.extra, []);
 });
 
-test('compareConfigShape: ok when shapes match exactly', () => {
-  const r = compareConfigShape(['a', 'b'], ['a', 'b']);
+test('compareEnvShape: reports keys the server has that the code no longer expects', () => {
+  const r = compareEnvShape(['APP_KEY'], ['APP_KEY', 'OLD_FLAG']);
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.missing, []);
+  assert.deepEqual(r.extra, ['OLD_FLAG']);
+});
+
+test('compareEnvShape: ok when the key sets match, whatever the order', () => {
+  const r = compareEnvShape(['A', 'B'], ['B', 'A']);
   assert.equal(r.ok, true);
   assert.deepEqual(r.missing, []);
   assert.deepEqual(r.extra, []);

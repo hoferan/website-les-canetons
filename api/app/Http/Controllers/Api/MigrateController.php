@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,6 +47,11 @@ class MigrateController extends Controller
      *    environment — so ?token=… would persist the secret to disk in
      *    plain text. A header cannot leak that way.
      */
+    // Excluded from the OpenAPI document: this is deploy tooling called server-side
+    // by tools/dbmigrate.mjs with a shared secret. The generated TypeScript client
+    // is for the browser, and nothing in the browser may trigger a migration.
+    // Do not re-add this to the documentation — it is intentionally hidden.
+    #[ExcludeRouteFromDocs]
     public function __invoke(Request $request): JsonResponse
     {
         $expectedToken = config('app.migrate_token');
