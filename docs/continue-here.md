@@ -371,6 +371,51 @@ away; it looks redundant and is not.
 `/api/config` with `redirect: 'manual'`. A `301` whose `Location` contains
 `cgi-bin` means this bug is back. A `200` with JSON means the dispatch works.
 
+### Check a display font's glyph data BEFORE adopting it
+
+Lilita One was dropped on 2026-08-31 because its woff2 ships incorrect `glyf`
+bounding boxes on **104 of its 210** outline glyphs, so Firefox's OpenType
+Sanitiser logged a warning for every heading glyph it drew. Nothing rendered
+wrong — it was console noise — but it is avoidable noise, and several other
+fonts in the same heavy-display register are worse.
+
+Measured with fontTools in a throwaway venv (this is not a project dependency,
+and does not need to become one):
+
+```bash
+python -m venv /tmp/fontenv && /tmp/fontenv/bin/pip install fonttools brotli
+/tmp/fontenv/bin/python - <<'EOF'
+from fontTools.ttLib import TTFont
+f = TTFont('node_modules/@fontsource/<name>/files/<name>-latin-400-normal.woff2')
+glyf = f['glyf']
+bad = 0
+for n in f.getGlyphOrder():
+    g = glyf[n]
+    if getattr(g, 'numberOfContours', 0) == 0:
+        continue
+    old = (g.xMin, g.yMin, g.xMax, g.yMax)
+    g.recalcBounds(glyf)
+    bad += old != (g.xMin, g.yMin, g.xMax, g.yMax)
+print(bad, 'glyphs with an incorrect bbox')
+EOF
+```
+
+Results recorded 2026-08-31, so nobody re-measures: **clean** — Bungee (0/343),
+Anton, Archivo Black, Alfa Slab One, Passion One, Righteous, Fredoka One, and
+Karla (the body face, 0/274). **Not clean** — Lilita One (104/210), Bowlby One
+(13, and no latin-ext), Titan One (9).
+
+**This is deliberately NOT a CI test.** Doing it in Node means either a new
+dependency or hand-parsing the woff2 glyf transform, and a partial parser would
+give false confidence about the exact thing it is meant to guarantee. A display
+face changes roughly never; the check is a minute by hand at the moment of
+choosing, which is the only moment it matters.
+
+Also worth knowing: **Bungee's lowercase glyphs are drawn as capitals.** It is a
+signage face, so every heading renders in caps whatever the source text says.
+That is the look, not a bug — but it means a heading cannot be sentence-case
+while this face is in use.
+
 ### `npm run dbmigrate:<env>` defaults to APPLY, not dry-run
 
 `tools/dbmigrate.mjs` builds `?mode=apply` unless you pass `-- --dry-run`. The

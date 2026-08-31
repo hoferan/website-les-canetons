@@ -131,12 +131,15 @@ test('content-hashed assets are cached immutably, and that includes the fonts', 
   // Compile the real pattern and run actual built filenames through it, rather
   // than asserting on its spelling — the same lesson as the .php redirect test.
   const pattern = new RegExp(immutable[1]);
+  // Representative Vite output names. The hashes are deliberately synthetic:
+  // real ones change whenever a font or bundle changes, and this test is about
+  // the extensions the rule covers, not about any particular build.
   for (const name of [
-    'index-Dn9hC9ys.js',
-    'index-DDEnc8xO.css',
-    'lilita-one-latin-400-normal-87r-Z-Re.woff2',
-    'lilita-one-latin-400-normal-DXkechA3.woff',
-    'karla-latin-wght-normal-C3-ma4ov.woff2',
+    'index-A1b2C3d4.js',
+    'index-A1b2C3d4.css',
+    'bungee-latin-400-normal-A1b2C3d4.woff2',
+    'bungee-latin-ext-400-normal-A1b2C3d4.woff',
+    'karla-latin-wght-normal-A1b2C3d4.woff2',
   ]) {
     assert.ok(pattern.test(name), `${name} must be cached immutably (it is content-hashed)`);
   }
