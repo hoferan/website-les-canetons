@@ -24,7 +24,8 @@ import { Signup } from "./pages/Signup";
 import { SignupThanks } from "./pages/SignupThanks";
 import { SignupsAdmin } from "./pages/SignupsAdmin";
 import { Sinscrire } from "./pages/Sinscrire";
-import { Sponsors } from "./pages/Sponsors";
+// HIDDEN 2026-08-31 — see the comment on the routes below.
+// import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
 
 /**
@@ -66,13 +67,17 @@ export function AppRoutes() {
             Uncommenting these four lines is the whole of the reverse.
 
             The components and their content are untouched in
-            web/src/pages/Cd.tsx and web/src/pages/Multimedia.tsx. Both URLs now
-            fall through to the SPA's own 404 view, which is what every unknown
-            path already does. */}
+            web/src/pages/Cd.tsx and web/src/pages/Multimedia.tsx. All three
+            URLs now fall through to the SPA's own 404 view, which is what every
+            unknown path already does.
+
+            /sponsors joined them on the same day, after its links had just been
+            audited and repaired. That work is not wasted — it is correct
+            whenever the page returns — but the page itself is hidden for now. */}
         {/* <Route path="/cd" element={<Cd />} /> */}
         <Route path="/commencement" element={<Commencement />} />
         <Route path="/moniteurs" element={<Moniteurs />} />
-        <Route path="/sponsors" element={<Sponsors />} />
+        {/* <Route path="/sponsors" element={<Sponsors />} /> */}
         {/* <Route path="/multimedia" element={<Multimedia />} /> */}
         <Route path="/contact" element={<Contact />} />
         <Route path="/comite_teamdirection" element={<ComiteTeamDirection />} />

@@ -1,3 +1,4 @@
+import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
 
 /**
@@ -27,16 +28,7 @@ export function Moniteurs() {
     <section className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="font-display text-4xl">Nos Moniteurs</h1>
 
-      {/* Not an <img>. The old photograph was missing nine of its seventeen
-          subjects, so it was replaced with an honest gap rather than left to
-          imply a complete group. Swap this whole block for an <img> when the new
-          photograph exists — the alt text should describe the photo, not the
-          page. */}
-      <div className="mt-6 flex min-h-40 items-center justify-center rounded-lg border border-dashed border-line bg-panel px-4 py-10 text-center">
-        <p className="text-ink-muted">
-          Nouvelle photo des moniteurs à venir&nbsp;! <span aria-hidden="true">📷</span>
-        </p>
-      </div>
+      <PhotoPending what="des moniteurs" />
 
       <p className="mt-8 font-display text-3xl text-violet">MERCI</p>
       <p className="mt-1 max-w-prose">

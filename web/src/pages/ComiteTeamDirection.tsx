@@ -1,6 +1,14 @@
 import { Tbd } from "../components/Tbd";
 
 /**
+ * NOTE 2026-08-31: this page no longer carries a photograph or the direction
+ * musicale. The duckling stock photo under "Le comité" was dropped at the band's
+ * request, and the direction musicale moved off this page entirely — /canetons
+ * names Lilou and Anaïs, and /historique tells the handover story. One page owns
+ * that fact now instead of three disagreeing about it.
+ */
+
+/**
  * The committee, by office rather than alphabetically — the order the band
  * reads it in, kept from the old page.
  *
@@ -27,38 +35,10 @@ const COMMITTEE: { role: string }[] = [
   { role: "Membre" },
 ];
 
-/**
- * The direction musicale, corrected on 2026-08-31.
- *
- * The site used to contradict itself in three places: /historique said the
- * direction had passed to Lilou Keller and Anaïs Meuwly, while this page and
- * /canetons both still named Laura Mantel and Delphine Maillard. The band
- * confirmed Historique was right, so these are the current names and the other
- * two pages were the stale ones.
- *
- * The photograph that used to sit here has been removed rather than updated:
- * it is the outgoing pair, and /canetons already carries a direction musicale
- * photograph. Showing the same picture on two pages was one of the redundancies
- * the audit flagged, and the audit's answer was to remove it here.
- */
-const DIRECTION = "Lilou Keller et Anaïs Meuwly";
-
 export function ComiteTeamDirection() {
   return (
     <section className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="font-display text-4xl">Le comité</h1>
-
-      {/* The file is called comite.jpg and sits under "Le comité", but it is a
-          stock photograph of actual ducklings, not of the committee. The alt
-          text says what is there rather than what the filename claims: telling
-          a screen-reader user there is a photo of the committee when there is
-          not is worse than the old alt="Le comité" was. The band was asked and
-          is content to keep it for now. */}
-      <img
-        src="/assets/img/comite.jpg"
-        alt="Des canetons alignés sur un tronc d’arbre"
-        className="mt-6 rounded-lg"
-      />
 
       {/* One contact block, not two. The audit flagged the address appearing on
           several pages; repeating it twice on this one would be worse. The
@@ -88,9 +68,6 @@ export function ComiteTeamDirection() {
           </li>
         ))}
       </ul>
-
-      <h2 className="mt-12 font-display text-2xl">Direction musicale</h2>
-      <p className="mt-2 text-ink-muted">{DIRECTION}</p>
     </section>
   );
 }

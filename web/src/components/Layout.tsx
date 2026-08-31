@@ -21,7 +21,8 @@ const NAV = [
   { to: "/sinscrire", label: "Inscriptions" },
   // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
   // { to: "/cd", label: "CD" },
-  { to: "/sponsors", label: "Sponsors et liens amis" },
+  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
+  // { to: "/sponsors", label: "Sponsors et liens amis" },
   { to: "/historique", label: "Historique" },
 ];
 

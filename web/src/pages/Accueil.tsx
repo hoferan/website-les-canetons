@@ -1,3 +1,4 @@
+import { PhotoPending } from "../components/PhotoPending";
 import { SouperCta } from "../components/SouperCta";
 
 /**
@@ -14,11 +15,7 @@ export function Accueil() {
       <SouperCta />
 
       <h1 className="font-display text-4xl">Bienvenue sur notre site</h1>
-      <img
-        src="/assets/img/Cindyphotography-128.jpg"
-        alt="Les Canetons en concert, costumes fluorescents sous la lumière noire"
-        className="mt-6 rounded-lg"
-      />
+      <PhotoPending what="des Canetons en concert" />
     </section>
   );
 }
