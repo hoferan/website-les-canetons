@@ -17,7 +17,11 @@
 // staging/README.md.
 //
 // Exit codes: 0 ok, 1 failure, 2 refused by a guard.
-import { TARGETS } from './deploy/preflight.mjs';
+import ftp from 'basic-ftp';
+import { existsSync, readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { loadDotEnv } from './dotenv.mjs';
+import { TARGETS, checkTargetDir } from './deploy/preflight.mjs';
 
 export function parseArgs(argv) {
   const flags = { dryRun: false };
@@ -108,4 +112,94 @@ export async function putOverlay({ client, remoteRoot, localDir, files, backupPa
     await client.uploadFrom(`${localDir}/${name}`, `${remoteRoot}/${name}`);
     log(`uploaded ${name}`);
   }
+}
+
+async function main() {
+  const parsed = parseArgs(process.argv.slice(2));
+  if (parsed.error) {
+    console.error(parsed.error);
+    process.exit(1);
+  }
+  const { target, dryRun } = parsed;
+  const label = target.toUpperCase();
+
+  // Env-specific first, shared rest from .env — loadDotEnv never overwrites an
+  // already-set var, so .env.<target> wins. Same order as the deploy CLI.
+  loadDotEnv(`.env.${target}`);
+  loadDotEnv('.env');
+  const missing = ['FTP_HOST', 'FTP_USER', 'FTP_PASS', 'FTP_DIR'].filter((k) => !process.env[k]);
+  if (missing.length) {
+    console.error(
+      `Missing FTP settings: ${missing.join(', ')} — set them in .env.${target}.\n` +
+        `Note .env.* declare FTP_PASSWORD while the tooling reads FTP_PASS; that mismatch is ` +
+        `deliberate (see CLAUDE.md). Inject it for a one-off run rather than editing the env file.`
+    );
+    process.exit(1);
+  }
+  const remoteRoot = process.env.FTP_DIR;
+
+  // The one FTP account reaches every environment; refuse unless the target
+  // path clearly names the intended env.
+  const guard = checkTargetDir(target, remoteRoot);
+  if (!guard.ok) {
+    console.error(guard.message);
+    process.exit(2);
+  }
+
+  const localDir = `dist/overlay/${target}`;
+  const plan = planOverlay(localDir, (p) => existsSync(p));
+  if (plan.error) {
+    console.error(plan.error);
+    process.exit(2);
+  }
+
+  const htaccess = readFileSync(`${localDir}/.htaccess`, 'utf8');
+  if (hasUnsubstitutedAuthPath(htaccess)) {
+    console.error(
+      `${localDir}/.htaccess still has AuthUserFile "__HTPASSWD_PATH__". Uploading it would ` +
+        `500 the whole ${label} site. Set HTPASSWD_PATH in .env.${target} and re-run ` +
+        `\`npm run build:overlay ${target}\`.`
+    );
+    process.exit(2);
+  }
+
+  const backupPath = `${localDir}/.htaccess.live-backup`;
+  console.log(
+    `PUT-OVERLAY ${target} → ${process.env.FTP_HOST} ${remoteRoot}${dryRun ? '  (dry-run)' : ''}`
+  );
+  console.log(`  files: ${plan.files.join(', ')}`);
+
+  const client = new ftp.Client();
+  try {
+    await client.access({
+      host: process.env.FTP_HOST,
+      user: process.env.FTP_USER,
+      password: process.env.FTP_PASS,
+      secure: false,
+    });
+    await putOverlay({
+      client,
+      remoteRoot,
+      localDir,
+      files: plan.files,
+      backupPath,
+      dryRun,
+      log: (m) => console.log(`  ${m}`),
+    });
+  } finally {
+    client.close();
+  }
+
+  console.log(
+    dryRun
+      ? `\n(dry-run) ${label}: nothing uploaded. Backup of the live .htaccess is at ${backupPath}.`
+      : `\n${label}: overlay in place. Previous .htaccess saved at ${backupPath} — keep it for rollback.`
+  );
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(`\nput-overlay FAILED: ${err.message}`);
+    process.exit(1);
+  });
 }
