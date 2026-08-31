@@ -19,43 +19,117 @@ here:
 
 ## START HERE: what to do next
 
-**The cutover is MERGED and LIVE ON TEST.** `main` is at tag
-**`2026-08-31-f120b9f`**, TEST serves the SPA, and the old PHP front end is
-gone. `app/` no longer exists anywhere but in history.
+**Read this whole section before touching anything — one PR is in flight.**
 
-The next work is sub-projects **B, C, D or E** of
-`docs/superpowers/specs/2026-08-31-post-cutover-ship-and-cleanup-design.md`:
+`main` is at **`85bf1f9`**, and TEST serves what `main` says. The cutover shipped
+on 2026-08-31 (tag `2026-08-31-f120b9f`), the old PHP front end is gone, and
+sub-projects **C** and **D** are done.
+
+### ⚠️ PR #61 IS OPEN AND UNMERGED
+
+`feat/content-corrections-round-2` — two commits, CI green, `mergeStateStatus:
+CLEAN`, **deliberately not merged**. André asked for no auto-merge, so it waits
+for him.
+
+```bash
+gh pr view 61            # what is in it
+gh pr diff 61            # the change
+git log --oneline main..origin/feat/content-corrections-round-2
+```
+
+It contains five follow-ups plus one correction: the print button removed from
+`/commencement`; `comite.jpg` dropped; "Direction musicale" removed from
+`/comite_teamdirection`; **every photograph replaced by a placeholder**;
+`/sponsors` hidden; and the parrain/marraine section set apart from the registers
+with its original photograph restored.
+
+**Until it merges, TEST does not show any of that.** If you are picking up E,
+either get #61 merged first or work on top of the branch — but do not start E
+against `main` and then be surprised that nine photographs vanish underneath
+you.
+
+### The sub-projects
 
 | | | |
 | --- | --- | --- |
-| **B** | Structure clean-up (English filenames, dead files, deferred review items) | not started |
-| **C** | Content audit — dead links, the 2016 video, redundancy | **done** — `docs/content-audit-2026-08-31.md` |
-| **D** | Content corrections | **done** — all 14 answers acted on; see the same file |
-| **E** | Restyle polish + mobile. Keep *Scène*; do not restart the design. | do last, after C and D |
+| **B** | Structure clean-up (English filenames, dead files, the two deferred review items) | **not started** |
+| **C** | Content audit | **done** — `docs/content-audit-2026-08-31.md` |
+| **D** | Content corrections | **done** (PR #60 merged, PR #61 open) |
+| **E** | Restyle polish + mobile | **next, and not yet designed** |
 
-**E is deliberately last** so pages are not styled twice.
+### E has no spec yet — and the ground has shifted under it
 
-### PROD IS BLOCKED: the site is full of visible placeholders
+E was scoped in the 2026-08-31 spec as *"keep Scène, polish it"*: mobile
+ergonomics, spacing rhythm, motion, image treatment, touch targets, and
+specifically the members' area on a phone at a rehearsal, which is the site's
+only repeat-use surface. **Do not restart the design** — read
+`docs/superpowers/specs/2026-08-29-visual-foundation-design.md` first, and note
+its warning that neon-on-black is the real identity.
 
-Sub-project D replaced every committee name, register roster, instructor list and
-published phone number with a visible **"••• à compléter"** marker, because the
-band did not yet know which were current. That was the right call — a stale name
-sends a parent to the wrong person — but it means:
+Two things changed after that scoping, and they change what E is actually
+designing:
+
+1. **The display face is now Bungee, not Lilita One** (PR #58). It is a signage
+   face whose **lowercase glyphs are drawn as capitals**, so every heading
+   renders in caps whatever the source text says. A heading cannot be
+   sentence-case while this face is in use. That is a design constraint E
+   inherits, not a bug.
+2. **The site has almost no imagery left.** After #61, `web/public/assets/img/`
+   holds three files: the logo, `CD_img.png` (referenced only by the hidden
+   `Cd.tsx`), and the parrain/marraine photograph. Everything else is a dashed
+   placeholder box.
+
+   `/canetons` is now **nine stacked dashed boxes** — a tall, repetitive page.
+   "Image treatment" was in E's original scope and there are no longer any
+   images to treat. **The first real E decision is what a photo-less version of
+   Scène looks like**, and whether `PhotoPending` should be far more compact
+   than the 160px-minimum box it is today.
+
+### What is hidden, and how to bring it back
+
+Three pages have their route and nav entry **commented out** — components and
+content untouched:
+
+| Page | Why |
+| --- | --- |
+| `/cd` | Headed "2022 - Les Canetons ont 20 ans !!!", still said the CD "vient de sortir" |
+| `/multimedia` | A single France 3 reportage from 2016 |
+| `/sponsors` | Hidden on request, *after* its links had been audited and repaired |
+
+Uncommenting the import, the `<Route>` and the nav entry is the whole reverse —
+see the comment block in `web/src/routes.tsx`, which also records why this is
+commenting-out rather than a feature flag (a flag needs a key in
+`api/.env.example`, and the deploy's config-shape preflight refuses against any
+server whose `.env` lacks it).
+
+`routes.test.tsx` asserts all three fall through to the 404 view, so "hidden"
+cannot quietly become "still reachable".
+
+### ⚠️ PROD IS BLOCKED: the site is full of visible placeholders
+
+Two placeholder components, both deliberate, both visible to any reader:
 
 ```bash
-grep -rl "<Tbd" web/src/pages      # which pages still have gaps
+grep -rl "<Tbd" web/src/pages           # missing names and numbers
+grep -rl "<PhotoPending" web/src/pages  # missing photographs
 ```
 
-Four pages today, rendering **17** fields — 8 committee names, 6 register
-rosters, 1 booking number, 2 joining contacts. Note the call sites and the
-rendered fields are different numbers: several `<Tbd />` sit inside a `.map()`,
-so counting occurrences understates it. `grep -rl` on `web/src/pages` is the
-honest check, and it must come back empty before PROD.
+`Tbd` covers 4 pages / **17 rendered fields** — 8 committee names, 6 register
+rosters, 1 booking number, 2 joining contacts. `PhotoPending` covers 3 pages /
+**10 photographs**. Do not count occurrences and report that as the number:
+several sit inside a `.map()`, so `grep -o | wc -l` understates it, and picks up
+the components and their tests. `grep -rl` on `web/src/pages` answers the only
+question that matters.
 
-TEST and QA are behind HTTP Basic Auth so only the band sees them. **PROD is
+There is deliberately **no `tel:` link on a placeholder** — a clickable wrong
+number dials a stranger. Each affected block offers `comite@lescanetons.org`
+instead.
+
+TEST and QA are behind HTTP Basic Auth so only the band sees these. **PROD is
 public and has never been deployed.** Deploying it now would publish
-"à compléter" where the committee should be. Nothing in CI enforces this — it is
-a content gate, and this paragraph is the enforcement.
+"à compléter" where the committee should be, and dashed boxes where the band
+should be. Nothing in CI enforces this — it is a content gate, and this
+paragraph is the enforcement.
 
 ### Two things left undone on TEST
 
@@ -87,14 +161,16 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-08-31, at commit `f120b9f`, with the dev stack up. If a fresh
-checkout does not match these, something moved before you started.
+Recorded 2026-08-31 on `feat/content-corrections-round-2` (i.e. **including the
+unmerged PR #61**), with the dev stack up. Against `main` alone the web suite is
+205/30, because #61 adds one test. If a fresh checkout matches neither, something
+moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **196** tests, 29 files |
-| `npm run test:js` | **120** passed (85 before `put-overlay` landed) |
+| `npx vitest run` | **206** tests, 30 files (205/30 on `main`) |
+| `npm run test:js` | **122** passed (85 before `put-overlay` landed) |
 | `npm run test:e2e` | **18** passed |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
@@ -111,11 +187,22 @@ catastrophic regression and is not one.
 
 ## Branch and merge history
 
-`main` is the trunk again and carries the cutover. Two squash merges landed it:
-`cfde526` (the cutover, PR #54) and `f120b9f` (the FastCGI 301 fix, PR #55).
-Tag **`2026-08-31-f120b9f`** is the rollback point — tag `cfde526` is
-deliberately NOT a rollback target, because its `.htaccess` template takes the
-API down on the real host.
+`main` is the trunk again. Everything lands by squash merge — the repo permits
+no other kind. In order, all on 2026-08-31:
+
+| PR | Squash | What |
+| --- | --- | --- |
+| #54 | `cfde526` | the SPA cutover |
+| #55 | `f120b9f` | the FastCGI 301 fix — **tag `2026-08-31-f120b9f`, the rollback point** |
+| #56 | `c03624f` | this handover, rewritten post-cutover |
+| #57 | `243232d` | font cache headers + woff2 MIME type |
+| #58 | `6b75c61` | Bungee replaces Lilita One as the display face |
+| #59 | `61eb91e` | the content audit |
+| #60 | `85bf1f9` | acting on the audit answers |
+| **#61** | — | **OPEN, unmerged** — see START HERE |
+
+Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
+takes the API down on the real host.
 
 **The per-step history lives on `archive/spa-cutover-history`** (140 commits,
 head `70a2661`). **Do not delete that branch.** The repo only permits squash
@@ -129,7 +216,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `f120b9f` — **the SPA** | Deployed 2026-08-31. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `85bf1f9` — **the SPA** | Deployed 2026-08-31, five times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. **Does NOT include PR #61.** |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
@@ -230,8 +317,21 @@ identity, and a tasteful white site would look like a different band. Open
 
 ### Open content questions — for the band, not for code
 
-Three things the port reproduced faithfully rather than deciding. None is a bug;
-all three need someone who knows the band to answer. **All three are still open.**
+**ALL THREE WERE ANSWERED ON 2026-08-31** and are kept here only so the reasoning
+survives. The full set of fourteen audit questions and their answers is in
+`docs/content-audit-2026-08-31.md`.
+
+1. **Who directs the band?** → **Lilou Keller and Anaïs Meuwly.** `/historique`
+   was right; the other two pages were stale and are fixed.
+2. **`comite.jpg`** → dropped entirely in PR #61, along with every other
+   photograph.
+3. **"Marc-Jérôme" / "Marc-Jérome"** → moot: both occurrences were names, and
+   both are `<Tbd />` placeholders now. If the name comes back, pick one
+   spelling.
+
+The original text follows.
+
+
 
 1. **Who directs the band?** `/historique` says Delphine Maillard and Laura
    Mantel *"passent à présent le flambeau"* to Lilou Keller and Anaïs Meuwly,
@@ -354,6 +454,67 @@ mocks. Nine checks, all passing:
 **The dev `signups` table now holds one legitimate row** from that verification
 (id 1, `anniversary-supper`). Do not assume a clean slate; the Laravel suite is
 unaffected, since it uses the throwaway `laravel_api_test` database.
+
+## Starting E — the restyle and mobile pass
+
+**E is design work with no spec.** Every other sub-project here went
+brainstorm → written spec, approved → written plan → execute with
+`subagent-driven-development` → look at the rendered pages. E should too. Do not
+skip to editing CSS.
+
+### Read first, in this order
+
+1. `docs/superpowers/specs/2026-08-29-visual-foundation-design.md` — why the
+   palette is what it is. Its warning is load-bearing: the band is a youth
+   Guggenmusik performing in UV costumes at night, neon-on-black *is* the
+   identity, and a tasteful neutral site would look like a different band.
+2. `web/src/styles.css` — the whole design system: `@theme` tokens, the sticky
+   footer chain through `#root`, and the comment explaining why Bungee replaced
+   Lilita One.
+3. `docs/content-audit-2026-08-31.md` — what the pages now say, and what is
+   deliberately a placeholder.
+
+### Look at the site before designing anything
+
+This has found a real defect in every single sub-project, including one that a
+fully green suite could not see (a flyer panel that duplicated the four cards
+above it). The loop that works:
+
+```bash
+npm run build                      # :8090 serves the BUILT artifact
+# then screenshot every route at 1280 and 390 with Playwright,
+# and read the images -- do not trust the test suite for layout
+```
+
+### What E is actually facing
+
+- **`/canetons` is nine stacked dashed placeholder boxes**, each ~160px minimum,
+  each saying "Nouvelle photo … à venir". It is a very tall, very repetitive
+  page. Deciding what `PhotoPending` should look like is probably E's first
+  real decision, and "much smaller" is the obvious hypothesis.
+- **`/accueil` is a heading and one placeholder box**, plus the flag-gated souper
+  card. It is the thinnest page on the site and it is the front door.
+- **Headings are all-caps whatever the source says**, because Bungee's lowercase
+  glyphs are capitals. Sentence-case headings are not available.
+- **The desktop nav is 10 items** and wraps to two rows; the phone nav is a
+  hamburger. Three pages were hidden, which already shortened it.
+- **The members' area is the only repeat-use surface** — `/planning_repet`,
+  `/sinscrire`, `/inscriptions_utilisateurs`, `/inscriptions_admin`. Per the
+  original scoping, this is where mobile ergonomics matter most: someone
+  checking on a phone, outdoors, whether they play on Saturday. The nine public
+  pages are read once by a stranger.
+- **There are no print styles.** A print stylesheet existed briefly for a
+  recruitment flyer and was removed on request. Nothing depends on it.
+
+### What not to do
+
+- Do not restart the design or neutralise the palette.
+- Do not reintroduce photographs as decoration. Every one was removed
+  deliberately, on the assumption it is out of date. The parrain/marraine
+  photograph is the single exception and is deliberately set apart.
+- Do not "fix" the French inconsistencies that were ported on purpose —
+  `Nom:` versus `Nom :`, the title-cased "Liens Amis". If they are worth
+  settling, settle them as an explicit E decision with the band, not silently.
 
 ## Traps worth knowing before you touch anything
 
