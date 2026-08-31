@@ -1,4 +1,4 @@
-# Where we left off — 2026-08-29
+# Where we left off — 2026-08-31
 
 Read this first when picking the SPA cutover back up. It records what is **not**
 derivable from the repository: the state of three servers, decisions taken in
@@ -14,37 +14,65 @@ here:
 | What changed since (hard cutover, mocks) | `docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md` |
 | The work itself, step by step | every plan in `docs/superpowers/plans/` dated 2026-08-28 or 2026-08-29 — **all of them are done** |
 | The design decisions behind them | every spec in `docs/superpowers/specs/` dated 2026-08-29 |
+| **What happens next, and why the obvious clean-ups were rejected** | `docs/superpowers/specs/2026-08-31-post-cutover-ship-and-cleanup-design.md` |
+| How the cutover was shipped, step by step | `docs/superpowers/plans/2026-08-31-ship-the-cutover.md` |
 
 ## START HERE: what to do next
 
-**The cutover is complete.** No route renders `Placeholder`. Every path in
-`web/src/routes.tsx` is a real page, `web/src/pages/Placeholder.tsx` has been
-deleted, and the whole suite is green.
+**The cutover is MERGED and LIVE ON TEST.** `main` is at tag
+**`2026-08-31-f120b9f`**, TEST serves the SPA, and the old PHP front end is
+gone. `app/` no longer exists anywhere but in history.
 
-```bash
-grep -c "Placeholder" web/src/routes.tsx   # 0 — the green light
-```
+The next work is sub-projects **B, C, D or E** of
+`docs/superpowers/specs/2026-08-31-post-cutover-ship-and-cleanup-design.md`:
 
-**The one remaining action is confirming the merge to `main` with André.** That
-is a conversation, not a command. Merging auto-deploys TEST via `ci.yml`'s
-`deploy-test` job, and that deploy is the moment the live site changes hands
-from the PHP app to the SPA. André approved the merge in principle on
-2026-08-29 — *"merge to main at the end if the full page is migrated"* — on the
-precise condition that no route may still render `Placeholder`. That condition
-is now met. Confirm anyway before pressing it: the approval was given against a
-condition, and someone should see the condition met before the site turns over.
+| | | |
+| --- | --- | --- |
+| **B** | Structure clean-up (English filenames, dead files, deferred review items) | not started |
+| **C** | Content audit — dead links, the 2016 video, redundancy | not started |
+| **D** | Content corrections — committee, schedule, facts. **Needs André's answers.** | blocked on C |
+| **E** | Restyle polish + mobile. Keep *Scène*; do not restart the design. | do last, after C and D |
 
-Everything below is context for after that, or for whoever inherits this.
+**E is deliberately last** so pages are not styled twice.
+
+### Two things left undone on TEST
+
+1. **`config.php` is still on the TEST server** and still holds live DB
+   credentials from the old app. It is a PROTECTED basename, so no tool will
+   remove it — delete it by hand, once, in an FTP client. Nothing reads it; the
+   SPA fallback already makes it unreachable over HTTP.
+2. **Nobody has logged in through a browser yet.** The API answers correctly and
+   guests get 401, but the full Sanctum cookie round-trip — and the check that
+   an admin is *refused in place* on `/inscriptions_utilisateurs` rather than
+   bounced to login — has not been exercised by a human. Do that before trusting
+   the members' area.
+
+### QA and PROD are untouched, and are NOT ready
+
+Both are still pre-cutover. Before either can take a deploy:
+
+- **Place `api-laravel/.env` by hand.** Neither has one. Nothing recreates it,
+  and a server without it 500s every `/api/*` request. It must exist *before*
+  the first deploy.
+- **Expect the mass-delete brake to trip.** Both are bootstrap runs with no
+  `.sync-state.json`, where deletion is authoritative. `-- --dry-run` first,
+  read the list, then `-- --force-delete`.
+- **They would have hit the FastCGI 301 bug** (see the traps section) had they
+  been deployed before `2026-08-31-f120b9f`. Deploy that tag or later.
+- **The `.htaccess` must be swapped by hand right after the deploy**, with
+  `npm run put-overlay:<env>`. A deploy alone deletes the old `index.php` and
+  leaves the site broken until that lands.
 
 ## The numbers that mean "green"
 
-Recorded 2026-08-29, at commit `793e98c`, with the dev stack up. If a fresh
+Recorded 2026-08-31, at commit `f120b9f`, with the dev stack up. If a fresh
 checkout does not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
 | `npx vitest run` | **196** tests, 29 files |
+| `npm run test:js` | **120** passed (85 before `put-overlay` landed) |
 | `npm run test:e2e` | **18** passed |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
@@ -59,29 +87,28 @@ both separately. In Git Bash prefix the `docker compose exec` with
 Git Bash all 29 test files fail to collect at once, which looks exactly like a
 catastrophic regression and is not one.
 
-## The branch is pushed
+## Branch and merge history
 
-`feat/spa-cutover` was pushed on 2026-08-29 and tracks
-`origin/feat/spa-cutover`. It is no longer one disk failure from gone. Keep
-pushing as you go — nothing else backs this work up.
+`main` is the trunk again and carries the cutover. Two squash merges landed it:
+`cfde526` (the cutover, PR #54) and `f120b9f` (the FastCGI 301 fix, PR #55).
+Tag **`2026-08-31-f120b9f`** is the rollback point — tag `cfde526` is
+deliberately NOT a rollback target, because its `.htaccess` template takes the
+API down on the real host.
 
-## Branch and merge policy
-
-Work is on `feat/spa-cutover`. The merge to `main` is now the plan's last step,
-and it is deliberately a human decision (see START HERE).
-
-`main` stays at `ffedf84`. `feat/frontend-spa-cutover` is this branch's parent
-and is not being developed. `origin/archive/php-laravel-stack` was deleted; the
-old PHP front end is in `main`'s history and in this branch's, before `dcd7862`.
+**The per-step history lives on `archive/spa-cutover-history`** (140 commits,
+head `70a2661`). **Do not delete that branch.** The repo only permits squash
+merges, so `main` shows the cutover as two opaque commits; every SHA that
+`docs/` references — notably `dcd7862` for the parity reference
+`git show dcd7862^:app/pages/<page>.php` — is reachable only through that
+branch. `feat/spa-cutover` was auto-deleted on merge despite
+`--delete-branch=false`; the archive branch was pushed to recover it.
 
 ## Where the three servers actually are
 
-None of them has seen any of this work.
-
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `ffedf84` — the OLD PHP app | Deployed 2026-07-27, 6915 files. Behind HTTP Basic Auth. |
-| **QA** | pre-cutover artifact | Still has the old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json` |
+| **TEST** | `main` @ `f120b9f` — **the SPA** | Deployed 2026-08-31. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
 Consequences worth knowing before any deploy:
@@ -92,18 +119,22 @@ Consequences worth knowing before any deploy:
 - **Their first deploy is a bootstrap run** (no `.sync-state.json`), where
   deletion is authoritative and will remove the entire old tree. It will trip
   the mass-delete brake. Review a `-- --dry-run` first, then `-- --force-delete`.
+  (TEST did **not** trip it: 406 stale of 6915 is under the 20% threshold.)
 - **Each server still has a dead `config.php`** holding live DB credentials. The
   deploy never removes a protected basename, so delete it by hand, once per
   server.
 - `robots.txt` and `deployment.json` are unreachable over HTTP on every
   environment — the fallback catch-all serves the shell for them. That is by
-  design (it is what hides `api-laravel/.env`), not a regression.
-- The souper feature is flag-gated per server. A server with
-  `souper_signup` off genuinely has no `/signup`, `/signup_thanks` or
-  `/signups_admin` — the route table registers them conditionally off
-  `GET /api/config`, and Laravel 404s the endpoints — so a disabled feature is
-  indistinguishable from an absent one, which is the behaviour the old route
-  table had.
+  design (it is what hides `api-laravel/.env`), not a regression. Verified again
+  on 2026-08-31.
+- The souper feature is flag-gated per server via `SOUPER_SIGNUP_ENABLED` in
+  that server's `api-laravel/.env`. A server with it off genuinely has no
+  `/signup`, `/signup_thanks` or `/signups_admin`.
+- **Environment-dependent values now live only in `api-laravel/.env`.** Config
+  is not cached (nothing runs `php artisan config:cache`, and the artifact's
+  `bootstrap/cache/` holds only `packages.php`/`services.php`), so editing that
+  file takes effect on the next request — no deploy, no cache clear. If anyone
+  ever runs `config:cache`, `.env` edits stop working until `config:clear`.
 
 ## What is done
 
@@ -303,6 +334,67 @@ mocks. Nine checks, all passing:
 unaffected, since it uses the throwaway `laravel_api_test` database.
 
 ## Traps worth knowing before you touch anything
+
+### The one that took TEST down, minutes after the cutover
+
+**`easy-hebergement` runs PHP through a FastCGI wrapper, and that changes the
+URL mod_alias sees on a re-entered rewrite pass.** Not
+`/api-laravel/public/index.php` but:
+
+```
+/cgi-bin/php5.fcgi/api-laravel/public/index.php
+```
+
+So the start-anchored guard `^/(?!api-laravel/)(.*)\.php$` tested the characters
+right after the leading slash — `cgi-bin/` — the exclusion never fired, and
+**every `/api/*` and `/sanctum/*` request 301'd** to
+`/cgi-bin/php5.fcgi/api-laravel/public/index`. The API was entirely down while
+every public page rendered perfectly, which is exactly what makes this class of
+bug easy to ship.
+
+The fix is `(?!.*api-laravel/)` — match `api-laravel/` **anywhere** in the path,
+so it holds whatever prefix the host's PHP wrapper adds. Do not "tidy" that `.*`
+away; it looks redundant and is not.
+
+**Two reasons nothing caught it, both now closed:**
+
+1. **It is not reproducible locally.** The Docker stack serves PHP without that
+   wrapper path, so `npm run smoke` passes 13/13 against a build that takes the
+   real API down. **Local green does not mean the host is green** for anything
+   touching `.htaccess`.
+2. **The regression test was a substring check.** It asserted the pattern
+   *contained* `(?!api-laravel/`, which stayed true while the rule was broken.
+   `tools/build-overlays.test.mjs` now compiles the actual pattern and runs the
+   fcgi-prefixed path through it. Assert behaviour, not spelling.
+
+**How to check this in seconds after any `.htaccess` change:** request
+`/api/config` with `redirect: 'manual'`. A `301` whose `Location` contains
+`cgi-bin` means this bug is back. A `200` with JSON means the dispatch works.
+
+### `npm run dbmigrate:<env>` defaults to APPLY, not dry-run
+
+`tools/dbmigrate.mjs` builds `?mode=apply` unless you pass `-- --dry-run`. The
+endpoint defaults to dry-run for anything that is not exactly `apply`, but the
+tool sends `apply`. Do not point it at PROD casually.
+
+### `build-overlays.mjs` deletes the directory it builds into
+
+It opens each env with `rmSync(outDir, {recursive: true, force: true})`, so
+anything you leave in `dist/overlay/<env>/` is destroyed by the next
+`build:overlay`. This is why `put-overlay` writes its rollback backup to
+`dist/htaccess-backups/` instead. It also substitutes only the *quoted*
+`AuthUserFile "__HTPASSWD_PATH__"` and deliberately leaves the bare token in a
+NOTE comment — so a guard matching the bare token refuses every correctly built
+test/qa overlay.
+
+### A deploy alone does not turn a server over — it breaks it
+
+`.htaccess` is server-owned and never uploaded by a deploy. The deploy uploads
+the SPA, then **deletes** the old `index.php`; until the new `.htaccess` lands
+the site is down. Order: deploy, then **immediately**
+`npm run put-overlay:<env>`. On TEST that window is free (Basic Auth, no
+visitors). On PROD it is real downtime, and there is no atomic swap over FTP.
+
 
 **Run the JS suites from PowerShell, not Git Bash.** Git Bash reports the cwd
 with a **lowercase** drive letter (`c:\Workspace\...`) where PowerShell reports
@@ -505,6 +597,9 @@ npm run dev:web    # Vite on :5173, proxying /api to the real API
 npm run dev:mock   # Vite on :5173 with MSW — no Docker needed at all
 npm run build      # refresh what :8090 serves
 npm run smoke      # 13 HTTP checks against the built artifact
+npm run put-overlay:test   # upload the SERVER-OWNED .htaccess/robots.txt;
+                           # backs up what it replaces, uploads nothing else,
+                           # deletes nothing. Add -- --dry-run to rehearse.
 ```
 
 Note that :8090 serves whatever `npm run build` last produced and does **not**
