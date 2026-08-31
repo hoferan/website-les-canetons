@@ -118,6 +118,45 @@ test('the .php legacy redirect excludes api-laravel/, or the whole API 301s', ()
   );
 });
 
+test('content-hashed assets are cached immutably, and that includes the fonts', () => {
+  // Fonts were missing from this block until 2026-08-31 and so came back from
+  // the server with NO Cache-Control at all — they match neither the css/js
+  // block nor the image block. Vite content-hashes them exactly like the JS and
+  // CSS, so they are equally safe to freeze.
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
+
+  const immutable = frontController.match(/<FilesMatch "([^"]+)">\s*\n\s*Header set Cache-Control "public, max-age=31536000, immutable"/);
+  assert.ok(immutable, 'an immutable Cache-Control FilesMatch must be present');
+
+  // Compile the real pattern and run actual built filenames through it, rather
+  // than asserting on its spelling — the same lesson as the .php redirect test.
+  const pattern = new RegExp(immutable[1]);
+  for (const name of [
+    'index-Dn9hC9ys.js',
+    'index-DDEnc8xO.css',
+    'lilita-one-latin-400-normal-87r-Z-Re.woff2',
+    'lilita-one-latin-400-normal-DXkechA3.woff',
+    'karla-latin-wght-normal-C3-ma4ov.woff2',
+  ]) {
+    assert.ok(pattern.test(name), `${name} must be cached immutably (it is content-hashed)`);
+  }
+
+  // The shell must NOT be frozen — it is the one file that must be re-fetched
+  // for a deploy to be picked up at all.
+  assert.ok(!pattern.test('index.html'), 'index.html must never be immutable');
+});
+
+test('woff2 has an explicit MIME type, or this host serves it as text/plain', () => {
+  // Observed on TEST: no woff2 mapping on the host, so fonts came back as
+  // text/plain. Browsers sniff font data, which is why it went unnoticed.
+  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
+
+  assert.match(frontController, /^\s*AddType font\/woff2 \.woff2$/m, 'woff2 needs an AddType');
+  assert.match(frontController, /^\s*AddType font\/woff \.woff$/m, 'woff needs an AddType');
+  // The x-font-* forms are deprecated; RFC 8081 registered font/*.
+  assert.doesNotMatch(frontController, /AddType\s+application\/x-font/, 'use the RFC 8081 font/* types');
+});
+
 test('the .html legacy redirect excludes index.html, or every page redirect-loops', () => {
   // The fallback rewrites unmatched paths to index.html, and that internal
   // redirect re-enters the ruleset. A rule that 301'd /index.html to / would
