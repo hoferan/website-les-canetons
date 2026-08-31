@@ -17,13 +17,17 @@ E1 ships first because its value does not depend on any open design question.
 
 ## What E may change
 
-E was widened during brainstorming, twice, on request:
+E was widened during brainstorming, three times, on request:
 
 - **Layout, markup and interaction are in scope**, not only CSS. The A1 visual
   foundation held itself to "no markup, copy or behaviour changes"; E does not.
   Tests change where behaviour deliberately changes.
 - **French copy is in scope.** The instruction was "write freely, I'll correct
   it".
+- **Backend changes are in scope**, with the instruction to make sure the
+  changes make sense as UI/UX. Re-examining the API against that standard found
+  one defect worth fixing there rather than working around in the client, and it
+  is the whole of section 6. Everything else in the API is left alone.
 
 **One carve-out is held anyway: E writes no names, no telephone numbers and no
 dates.** Those are precisely the 17 `<Tbd>` fields, and the reason they exist is
@@ -72,6 +76,26 @@ what E1 optimises for.
 - **`/inscriptions_admin`** stacks four stat tiles full-width: 470px of an 844px
   phone for four numbers. The responses table's `Participation` header is
   clipped to `Participatio` by the horizontal scroll container.
+
+### The defect the screenshots could not show
+
+**`GET /api/events` returns every event ever, ascending, with no date filter.**
+The controller's own comment pins it: "ORDER BY date only — exactly the old
+query."
+
+So `/sinscrire`, whose heading reads **"Événements à venir"**, lists events that
+have already happened — at the *top*, since the order is ascending — each with a
+dead `Choix enregistré` button. And on `/planning_repet` the next rehearsal sits
+at the **bottom** of a list that grows every season. For a page whose entire
+purpose is "do I play Saturday?", that is the most consequential finding here.
+
+**Two fixtures hid it, in the same direction.** The MSW mock has three events,
+all future. Every date in `api/tests/Feature/EventIndexTest.php` is in 2027.
+The Docker seed is the only place it shows: of its four events, two are already
+past. A defect that both the mocked front end and the API's own tests are
+biased against seeing is one that survives a full port, and did.
+
+Section 6 fixes it in the API.
 
 ### The chrome
 
@@ -347,7 +371,87 @@ page on the site and gets the floor and nothing else.
 
 Their *shape* is E2.
 
-## 6. Tests that change by design
+## 6. The one API change — upcoming events by default
+
+`GET /api/events` returns **`date >= today` by default**, and
+**`?include=past`** returns everything. Ascending order is unchanged in both
+cases.
+
+The default moves rather than a new parameter merely being offered, because
+every consumer that exists wants upcoming events, and because this codebase
+already prefers making the wrong thing impossible over documenting it — the same
+controller deliberately has no `?username=` parameter so that a fixed IDOR
+cannot be reopened. A page that forgets to pass a filter should get the safe
+answer, not the whole archive.
+
+This is a breaking change to a public endpoint's default. It is acceptable here
+because the SPA is its only consumer: the old `planning_repet.js` and
+`sinscrire.js` named in the route comments were deleted in the cutover.
+
+### What it touches
+
+| | |
+| --- | --- |
+| `EventController::index` | the `whereDate` filter and the `include` parameter |
+| The `#[ApiResponse]` attribute and route comment | the parameter has to appear in the OpenAPI document |
+| `web/src/api/generated/` | **regenerate** — `npm run openapi && npm run generate:api`, and commit. CI's `openapi-drift` job fails if either is stale |
+| `web/src/mocks/handlers.ts` | the mock must implement the same default and the same parameter, or the mocked front end goes on hiding the defect |
+| The mock fixture | **gains a past event.** This is the point: the fixture's all-future bias is what made the bug invisible, so dev and e2e must both be able to see it |
+| `api/tests/Feature/EventIndexTest.php` | a new test asserting a past event is **excluded**, and one asserting `?include=past` returns it |
+
+### Two details that are easy to get wrong
+
+**The comparison is inclusive of today.** An event happening today is upcoming
+until it has happened; `>= today`, not `> today`. The `date` column is a MySQL
+`date` with no time component, so there is nothing finer to compare against.
+
+**`api/config/app.php` hardcodes `'timezone' => 'UTC'`** and there is no
+`APP_TIMEZONE` key in `api/.env.example`. The band is in Fribourg, so local time
+is UTC+1 or UTC+2 — meaning a UTC "today" *lags* local time and today's event
+stays listed for the first one or two hours of tomorrow. **That errs in the safe
+direction** and is left alone: the dangerous direction would be hiding an event
+before it happened, which requires UTC to run ahead of local time and never
+does for Europe/Zurich. Do not "fix" this by setting `APP_TIMEZONE` as a side
+effect of this change — timestamps were standardised on UTC deliberately, and
+that is a separate decision with its own blast radius.
+
+### What it means for the three pages
+
+- **`/sinscrire`** uses the default and therefore never shows a past event. The
+  dead `Choix enregistré` button disappears for two reasons at once.
+- **`/planning_repet`** uses the default too, so the next rehearsal is at the
+  top. It gains a **"Voir les événements passés"** disclosure that refetches
+  with `?include=past` — an archive for members, and the way an admin reaches a
+  past event to correct or delete it. The past section renders most-recent-first;
+  the API stays ascending and the client reverses that one section, so the
+  endpoint keeps one ordering rule.
+- **`/inscriptions_utilisateurs`** finds its event in the same cached list, so a
+  deep link to a *past* event now falls through to its existing "Aucun événement
+  à confirmer" message. That is correct rather than regrettable — the answer
+  would be meaningless — and it is recorded here so it is not later mistaken for
+  a bug.
+
+### What was considered and rejected
+
+- **`GET /api/events/{id}`** for `/inscriptions_utilisateurs`. The list is
+  already cached by the time anyone arrives, and the page is becoming a
+  deep-link fallback rather than the main flow. A new endpoint to serve a rarer
+  path is not yet earned.
+- **Changing the capability matrix** so an admin may also respond. A Team
+  Direction member who plays genuinely cannot answer today, which is odd — but
+  the non-hierarchy is called out as deliberate in three separate places and
+  enforced by `App\Support\Capability`, the `capability:` middleware and several
+  tests. If it is wrong it is wrong as a product decision to take with the band,
+  not as a side effect of a mobile pass. Left untouched, deliberately.
+- **Making the committee and register rosters editable data.** The 17 `<Tbd>`
+  fields can currently only be filled by editing `.tsx` and shipping a deploy,
+  which means **PROD is blocked on content that requires a developer**. Turning
+  them into rows with an admin screen would unblock PROD without a code change
+  and is probably the highest-value thing left on this project — but it is a
+  feature with new tables, endpoints and UI, not an amendment to a mobile pass.
+  Recorded as a candidate sub-project **F**.
+
+## 7. Tests that change by design
 
 Everything not on this list must pass untouched.
 
@@ -358,42 +462,60 @@ Everything not on this list must pass untouched.
 | `web/src/pages/PlanningRepet.test.tsx` | the compressed card: no `Titre :`, one merged time line |
 | `web/src/pages/EventForm.test.tsx` (109, 124, 142, 146, 158) | four `window.confirm` stubs and their call-count assertions become dialog interactions. **Line 124's behaviour — no second prompt over an in-flight delete — must be preserved, not dropped with the stub.** |
 | `web/e2e/members.spec.ts` (30, 34) | `selectOption("participate")` becomes a tap; `Choix enregistré` becomes the saved state plus `Modifier` |
+| `web/src/mocks/handlers.ts` and `handlers.test.ts` | the events handler implements the `include=past` default, and **the fixture gains a past event** |
+| `web/src/api/generated/**` | regenerated, not hand-edited |
 
 New tests: `EventCard`'s heading level; `Button`'s `aria-disabled`-never-
 `disabled` invariant; changing an existing answer end-to-end; the phone nav's
 row height at 390px.
 
+New Laravel tests in `api/tests/Feature/EventIndexTest.php`: a past event is
+**excluded** by default, and `?include=past` returns it. **These must be written
+first.** Every existing date in that file is in 2027, so the filter could ship
+completely untested and the suite would stay green — the same blind spot that let
+the defect survive the port.
+
 `web/e2e/planning.spec.ts` samples animation frames around the submit button and
 selects `#event-title` by id. It must keep passing untouched — that id and that
 form are not in scope.
 
-## 7. Commit order
+## 8. Commit order
 
 Each commit is independently green, and each stage is screenshotted at 1280 and
 390 before the next begins.
 
-1. `@/*` alias in all three configs, plus the stale `vitest.config.ts` comment
+**The API change goes first**, on its own, because the regenerated client is
+what every later step compiles against — and because it is the one commit whose
+correctness is provable by tests alone, before any pixels move.
+
+1. The events filter: new `EventIndexTest` cases first, then
+   `EventController::index` and the `#[ApiResponse]` attribute, then
+   `npm run openapi && npm run generate:api` committed, then the MSW handler and
+   the fixture's new past event. `/planning_repet`'s past-events disclosure lands
+   with the page in step 8.
+2. `@/*` alias in all three configs, plus the stale `vitest.config.ts` comment
    corrected — it still explains itself in terms of the old front end and says
    it becomes redundant "once the SPA cutover lands", which has happened.
    Merging the two configs is sub-project B's business, not E1's.
-2. `shadcn init` and the token mapping; delete the `.dark` block; `sonner`
+3. `shadcn init` and the token mapping; delete the `.dark` block; `sonner`
    de-`next-themes`'d.
-3. The vendored six, with `npm run fix` after each.
-4. Tokens, `@utility` focus ring, `PageSection`, `StatTile`, `EventCard`, with
+4. The vendored six, with `npm run fix` after each.
+5. Tokens, `@utility` focus ring, `PageSection`, `StatTile`, `EventCard`, with
    their tests.
-5. `Layout.tsx` — chrome and the phone nav.
-6. The mechanical page swaps, no behaviour change. The suite must be untouched
+6. `Layout.tsx` — chrome and the phone nav.
+7. The mechanical page swaps, no behaviour change. The suite must be untouched
    at the end of this commit; that is the checkpoint proving the refactor did
    not overreach.
-7. `/planning_repet` and `EventActions` — the overlap fix, the compressed card,
+8. `/planning_repet` and `EventActions` — the overlap fix, the past-events
+   disclosure, the compressed card,
    the dialog and the toast.
-8. `/sinscrire` and `/inscriptions_utilisateurs` — the inline answer.
-9. `/inscriptions_admin` — tiles and tables.
+9. `/sinscrire` and `/inscriptions_utilisateurs` — the inline answer.
+10. `/inscriptions_admin` — tiles and tables.
 
-## 8. Risks
+## 9. Risks
 
 - **This is a sixteen-page refactor on top of a restyle.** That is the shape the
-  chosen approach implies, and the commit order above is the mitigation: step 6
+  chosen approach implies, and the commit order above is the mitigation: step 7
   ends with a green untouched suite, which is the moment the refactor is proved
   safe before any behaviour changes.
 - **The token mapping is the one place a library can neutralise the palette.**
@@ -409,11 +531,19 @@ Each commit is independently green, and each stage is screenshotted at 1280 and
   at rendered pages, and two of them (the button overlap, the clipped table
   header) are invisible to a fully green suite. Screenshot review is part of the
   work, not a nicety.
-- **Nothing here is verifiable on the host by CI.** E1 touches no `.htaccess`
-  and no API, so the FastCGI class of trap does not apply — but the deploy is
-  still TEST-first, and TEST is where this gets looked at on a real phone.
+- **The fixtures are biased toward the future, in both layers.** That bias hid
+  the events defect from the mocked front end and from the API's own tests at
+  the same time. Any new fixture or test date should be chosen to break that
+  habit, not extend it.
+- **E1 touches no `.htaccess`**, so the FastCGI class of trap does not apply.
+  It does touch the API, which means `openapi-drift` can fail the build if the
+  regenerated client is not committed — and the Laravel suite needs a live
+  database, so it runs in Docker (`docker compose exec -w
+  /var/www/html/api-laravel web php artisan test`) and not in `npm run check`.
+  The deploy stays TEST-first, and TEST is where this gets looked at on a real
+  phone.
 
-## 9. Non-goals
+## 10. Non-goals
 
 **E2 inherits, so it is recorded here rather than lost:**
 
@@ -435,7 +565,9 @@ Each commit is independently green, and each stage is screenshotted at 1280 and
   `shadcn init` writes.
 - Print styles. One existed briefly for a recruitment flyer and was removed on
   request; nothing depends on it.
-- Routes, URLs, the API, the database and the capability matrix.
+- Routes and URLs, the database schema, and the capability matrix. **The API
+  itself is no longer wholly out of scope** — section 6 changes one endpoint —
+  but nothing else in it is touched.
 - Bringing back `/cd`, `/multimedia` or `/sponsors`. All three are commented out
   with their nav entries, and `routes.test.tsx` asserts they fall through to the
   404 view.
