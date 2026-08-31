@@ -19,34 +19,32 @@ here:
 
 ## START HERE: what to do next
 
-**Read this whole section before touching anything — one PR is in flight.**
+**Sub-project E — the restyle and mobile pass — is next, and it has no spec.**
+Jump to "Starting E" once you have read this section.
 
-`main` is at **`85bf1f9`**, and TEST serves what `main` says. The cutover shipped
-on 2026-08-31 (tag `2026-08-31-f120b9f`), the old PHP front end is gone, and
-sub-projects **C** and **D** are done.
+### Nothing is in flight — `main` is the whole truth
 
-### ⚠️ PR #61 IS OPEN AND UNMERGED
+`main` is at **`de750d9`** and TEST serves it. There is no open PR and no branch
+you need to know about. The cutover shipped on 2026-08-31 (rollback tag
+`2026-08-31-f120b9f`), the old PHP front end is gone, and sub-projects **A**,
+**C** and **D** are done.
 
-`feat/content-corrections-round-2` — two commits, CI green, `mergeStateStatus:
-CLEAN`, **deliberately not merged**. André asked for no auto-merge, so it waits
-for him.
+> This section previously warned that PR #61 was open and unmerged. André merged
+> it himself at 16:03 UTC on 2026-08-31 — the squash is `de750d9` — and the
+> handover commit describing it as "open" was swept into the same squash, so for
+> a while this file sat in `main` contradicting itself. Fixed here, and worth
+> remembering: **a handover that describes its own PR as unmerged goes stale the
+> moment that PR lands.** Describe state, not in-flight work, or say which commit
+> the statement is true at.
 
-```bash
-gh pr view 61            # what is in it
-gh pr diff 61            # the change
-git log --oneline main..origin/feat/content-corrections-round-2
-```
+What `de750d9` did, and what TEST therefore looks like now: **every photograph is
+gone** except the logo and the parrain/marraine; `/sponsors` is hidden alongside
+`/cd` and `/multimedia`; `comite.jpg` and the print button are gone; and
+"Direction musicale" now lives only on `/canetons` and `/historique`.
 
-It contains five follow-ups plus one correction: the print button removed from
-`/commencement`; `comite.jpg` dropped; "Direction musicale" removed from
-`/comite_teamdirection`; **every photograph replaced by a placeholder**;
-`/sponsors` hidden; and the parrain/marraine section set apart from the registers
-with its original photograph restored.
-
-**Until it merges, TEST does not show any of that.** If you are picking up E,
-either get #61 merged first or work on top of the branch — but do not start E
-against `main` and then be surprised that nine photographs vanish underneath
-you.
+Verified against TEST after that deploy: `/canetons` serves the SPA, all three
+hidden URLs fall through to the 404 view, the deleted photographs 404, the two
+kept images serve 200, and `GET /api/config` still answers `env=test`.
 
 ### The sub-projects
 
@@ -54,7 +52,7 @@ you.
 | --- | --- | --- |
 | **B** | Structure clean-up (English filenames, dead files, the two deferred review items) | **not started** |
 | **C** | Content audit | **done** — `docs/content-audit-2026-08-31.md` |
-| **D** | Content corrections | **done** (PR #60 merged, PR #61 open) |
+| **D** | Content corrections | **done** — PRs #60 and #61, both merged |
 | **E** | Restyle polish + mobile | **next, and not yet designed** |
 
 ### E has no spec yet — and the ground has shifted under it
@@ -74,8 +72,8 @@ designing:
    renders in caps whatever the source text says. A heading cannot be
    sentence-case while this face is in use. That is a design constraint E
    inherits, not a bug.
-2. **The site has almost no imagery left.** After #61, `web/public/assets/img/`
-   holds three files: the logo, `CD_img.png` (referenced only by the hidden
+2. **The site has almost no imagery left.** `web/public/assets/img/` holds three
+   files: the logo, `CD_img.png` (referenced only by the hidden
    `Cd.tsx`), and the parrain/marraine photograph. Everything else is a dashed
    placeholder box.
 
@@ -161,15 +159,13 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-08-31 on `feat/content-corrections-round-2` (i.e. **including the
-unmerged PR #61**), with the dev stack up. Against `main` alone the web suite is
-205/30, because #61 adds one test. If a fresh checkout matches neither, something
-moved before you started.
+Recorded 2026-08-31 at `de750d9`, with the dev stack up. If a fresh checkout does
+not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **206** tests, 30 files (205/30 on `main`) |
+| `npx vitest run` | **206** tests, 30 files |
 | `npm run test:js` | **122** passed (85 before `put-overlay` landed) |
 | `npm run test:e2e` | **18** passed |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
@@ -199,7 +195,7 @@ no other kind. In order, all on 2026-08-31:
 | #58 | `6b75c61` | Bungee replaces Lilita One as the display face |
 | #59 | `61eb91e` | the content audit |
 | #60 | `85bf1f9` | acting on the audit answers |
-| **#61** | — | **OPEN, unmerged** — see START HERE |
+| #61 | `de750d9` | every photograph dropped, `/sponsors` hidden, print button removed |
 
 Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
 takes the API down on the real host.
@@ -216,7 +212,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `85bf1f9` — **the SPA** | Deployed 2026-08-31, five times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. **Does NOT include PR #61.** |
+| **TEST** | `main` @ `de750d9` — **the SPA** | Deployed 2026-08-31, six times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
