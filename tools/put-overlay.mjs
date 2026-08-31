@@ -38,3 +38,16 @@ export function parseArgs(argv) {
   }
   return { target, ...flags };
 }
+
+/**
+ * True when the overlay's AuthUserFile still holds the build-time token, which
+ * would 500 the whole environment.
+ *
+ * Matches the QUOTED DIRECTIVE form specifically. build-overlays.mjs
+ * substitutes only `"__HTPASSWD_PATH__"` and deliberately leaves the bare token
+ * in its explanatory NOTE comment, so matching the bare token would refuse
+ * every correctly built test/qa overlay.
+ */
+export function hasUnsubstitutedAuthPath(text) {
+  return /^\s*AuthUserFile\s+"__HTPASSWD_PATH__"/m.test(text);
+}
