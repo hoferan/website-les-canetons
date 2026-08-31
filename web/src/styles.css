@@ -3,7 +3,7 @@
    purpose — see docs/superpowers/specs/2026-08-29-visual-foundation-design.md. */
 @import "tailwindcss";
 @import "@fontsource-variable/karla";
-@import "@fontsource/lilita-one";
+@import "@fontsource/bungee";
 
 /**
  * The "Scène" palette.
@@ -45,7 +45,20 @@
      exactly one thing. */
   --color-danger: #e0201a;
   --font-sans: "Karla Variable", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Lilita One", "Karla Variable", system-ui, sans-serif;
+
+  /* The display face. Bungee replaced Lilita One on 2026-08-31 — not for looks,
+     but because Lilita One's woff2 ships incorrect glyf bounding boxes on 104 of
+     its 210 outline glyphs, so Firefox logged a sanitiser warning for every
+     heading glyph it drew. Nothing rendered wrong; it was console noise. Bungee
+     is a signage face in the same heavy-display register, measures 0 incorrect
+     bboxes, and carries latin-ext (which Lilita One's shipped subset did not).
+     Karla stays the fallback, and Karla is also clean.
+
+     IF YOU CHANGE THIS FACE, CHECK ITS GLYPH DATA FIRST. Most Google Fonts
+     display faces are fine, but several in this register are not — Bowlby One
+     fails on 13 glyphs, Titan One on 9. The check is in docs/continue-here.md;
+     it needs fontTools and takes about a minute. */
+  --font-display: "Bungee", "Karla Variable", system-ui, sans-serif;
 }
 
 /* The page's own ground and default face. Everything else is a utility class. */
