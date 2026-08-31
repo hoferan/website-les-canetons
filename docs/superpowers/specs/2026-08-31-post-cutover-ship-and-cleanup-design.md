@@ -223,8 +223,20 @@ an FTP client.
   wrong-environment protection the deploy has.
 - **Refuses if the overlay is absent**, rather than uploading nothing and
   reporting success. `npm run build:overlay` must have run.
-- **Refuses if the overlay still contains `__HTPASSWD_PATH__`**, which would
-  lock the environment out with a 500.
+- **Refuses if the overlay still carries an unsubstituted auth path** — i.e. it
+  contains the literal `AuthUserFile "__HTPASSWD_PATH__"`, which would lock the
+  environment out with a 500. The check must match that *quoted directive form*,
+  not the bare token: `mergedHtaccess()` in `tools/build-overlays.mjs`
+  deliberately substitutes only the quoted value and leaves the bare
+  `__HTPASSWD_PATH__` in the explanatory NOTE comment, so a bare-token check
+  would refuse every correctly built test/qa overlay.
+- **Does not upload `.htpasswd`**, even though the overlay may contain one. It
+  is credentials, TEST already has a working copy, and re-uploading it during a
+  cutover window adds a way to lock yourself out for no gain. It stays a
+  hand-placed, once-per-server file per `staging/README.md`.
+- **Uploads `robots.txt` only when the overlay emits one.** test/qa get one from
+  `staging/<env>/robots.txt`; prod gets none now that `app/` is deleted, so the
+  tool must treat it as optional rather than failing.
 - **Credentials:** read the same way the deploy reads them, and never logged.
   Note the known, deliberate `FTP_PASSWORD` (in `.env.*`) versus `FTP_PASS`
   (read by the tooling) mismatch — the tool reads `FTP_PASS`; the env files are
