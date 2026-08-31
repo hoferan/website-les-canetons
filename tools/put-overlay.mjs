@@ -76,3 +76,36 @@ export function planOverlay(dir, exists) {
   }
   return { files: [REQUIRED, ...OPTIONAL.filter((f) => exists(`${dir}/${f}`))] };
 }
+
+/**
+ * Back up the live .htaccess, then upload the overlay files.
+ *
+ * .htaccess is uploaded LAST. robots.txt landing early is harmless, but
+ * .htaccess is the file that flips routing — so if anything fails, the site is
+ * either fully turned over or untouched, never mid-swap.
+ *
+ * The backup is mandatory. A rollback needs both the old code artifact and the
+ * old server-owned .htaccess; without this copy, redeploying an old tag leaves
+ * the site in exactly the broken state this tool exists to resolve.
+ */
+export async function putOverlay({ client, remoteRoot, localDir, files, backupPath, dryRun, log }) {
+  try {
+    await client.downloadTo(backupPath, `${remoteRoot}/.htaccess`);
+    log(`backed up the live .htaccess -> ${backupPath}`);
+  } catch (err) {
+    throw new Error(
+      `could not back up the live .htaccess (${err.message}). ` +
+        `Refusing to overwrite it without a copy to roll back to.`
+    );
+  }
+
+  const ordered = [...files.filter((f) => f !== REQUIRED), REQUIRED];
+  for (const name of ordered) {
+    if (dryRun) {
+      log(`(dry-run) would upload ${name}`);
+      continue;
+    }
+    await client.uploadFrom(`${localDir}/${name}`, `${remoteRoot}/${name}`);
+    log(`uploaded ${name}`);
+  }
+}

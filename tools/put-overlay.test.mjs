@@ -92,3 +92,103 @@ test('planOverlay: a missing .htaccess is an error, not an empty upload', () => 
   assert.match(result.error, /dist\/overlay\/test\/\.htaccess not found/);
   assert.match(result.error, /npm run build:overlay/);
 });
+
+import { putOverlay } from './put-overlay.mjs';
+
+// A stub standing in for basic-ftp's Client: records calls, fails on demand.
+function fakeClient({ failDownload = false, failUpload = null } = {}) {
+  const calls = { downloads: [], uploads: [] };
+  return {
+    calls,
+    async downloadTo(local, remote) {
+      if (failDownload) {
+        throw new Error('550 No such file');
+      }
+      calls.downloads.push({ local, remote });
+    },
+    async uploadFrom(local, remote) {
+      if (failUpload && remote.endsWith(failUpload)) {
+        throw new Error('553 Permission denied');
+      }
+      calls.uploads.push({ local, remote });
+    },
+  };
+}
+
+const noop = () => {};
+
+test('putOverlay: backs up the live .htaccess before uploading anything', async () => {
+  const client = fakeClient();
+  await putOverlay({
+    client,
+    remoteRoot: '/public_html/staging/test.lescanetons.org',
+    localDir: 'dist/overlay/test',
+    files: ['.htaccess', 'robots.txt'],
+    backupPath: 'dist/overlay/test/.htaccess.backup',
+    dryRun: false,
+    log: noop,
+  });
+  assert.deepEqual(client.calls.downloads, [
+    {
+      local: 'dist/overlay/test/.htaccess.backup',
+      remote: '/public_html/staging/test.lescanetons.org/.htaccess',
+    },
+  ]);
+  // .htaccess LAST — see the ordering test below for why.
+  assert.deepEqual(
+    client.calls.uploads.map((u) => u.remote),
+    [
+      '/public_html/staging/test.lescanetons.org/robots.txt',
+      '/public_html/staging/test.lescanetons.org/.htaccess',
+    ]
+  );
+});
+
+test('putOverlay: a failed backup refuses and uploads nothing', async () => {
+  const client = fakeClient({ failDownload: true });
+  await assert.rejects(
+    putOverlay({
+      client,
+      remoteRoot: '/public_html/staging/test.lescanetons.org',
+      localDir: 'dist/overlay/test',
+      files: ['.htaccess'],
+      backupPath: 'dist/overlay/test/.htaccess.backup',
+      dryRun: false,
+      log: noop,
+    }),
+    /could not back up the live \.htaccess/
+  );
+  assert.equal(client.calls.uploads.length, 0);
+});
+
+test('putOverlay: dry-run backs up but uploads nothing', async () => {
+  const client = fakeClient();
+  await putOverlay({
+    client,
+    remoteRoot: '/public_html/staging/test.lescanetons.org',
+    localDir: 'dist/overlay/test',
+    files: ['.htaccess', 'robots.txt'],
+    backupPath: 'dist/overlay/test/.htaccess.backup',
+    dryRun: true,
+    log: noop,
+  });
+  assert.equal(client.calls.downloads.length, 1);
+  assert.equal(client.calls.uploads.length, 0);
+});
+
+// .htaccess goes LAST: robots.txt landing first is harmless, but .htaccess is
+// what flips the routing. If a later upload fails, the site has still turned
+// over rather than being left mid-swap.
+test('putOverlay: uploads .htaccess last so routing flips only once', async () => {
+  const client = fakeClient();
+  await putOverlay({
+    client,
+    remoteRoot: '/root',
+    localDir: 'dist/overlay/test',
+    files: ['.htaccess', 'robots.txt'],
+    backupPath: 'b',
+    dryRun: false,
+    log: noop,
+  });
+  assert.equal(client.calls.uploads.at(-1).remote, '/root/.htaccess');
+});
