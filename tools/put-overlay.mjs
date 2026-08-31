@@ -18,11 +18,21 @@
 //
 // Exit codes: 0 ok, 1 failure, 2 refused by a guard.
 import ftp from 'basic-ftp';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadDotEnv } from './dotenv.mjs';
 import { TARGETS, checkTargetDir } from './deploy/preflight.mjs';
+
+// A refusal is a deliberate guard stop (exit 2), distinct from a genuine
+// transport/auth/timeout failure (exit 1) — mirrors tools/deploy/cli.mjs's
+// Refusal class.
+class Refusal extends Error {
+  constructor(message) {
+    super(message);
+    this.exitCode = 2;
+  }
+}
 
 export function parseArgs(argv) {
   const flags = { dryRun: false };
@@ -55,6 +65,20 @@ export function parseArgs(argv) {
  */
 export function hasUnsubstitutedAuthPath(text) {
   return /^\s*AuthUserFile\s+"__HTPASSWD_PATH__"/m.test(text);
+}
+
+/**
+ * True only when the overlay carries BOTH halves of the cutover: the API
+ * dispatch into Laravel and the SPA fallback. dist/ is git-ignored, so
+ * dist/overlay/<env>/ can be weeks stale — a pre-cutover overlay would route
+ * every /api/* request at the deleted front controller, which is exactly the
+ * outage this tool exists to prevent. Checking for either rule alone is not
+ * enough: a stale overlay can still contain "index.php" (the legacy redirect
+ * target), so the fallback's presence is what actually distinguishes
+ * "post-cutover" from "old front controller".
+ */
+export function hasPostCutoverRules(text) {
+  return text.includes('api-laravel/public/index.php') && text.includes('index.html');
 }
 
 // .htaccess is required; robots.txt is uploaded only when the overlay emits one
@@ -92,36 +116,65 @@ export function planOverlay(dir, exists) {
  * whole rollback story depends on that file existing. dist/htaccess-backups/
  * is never touched by build-overlays.mjs or by Vite.
  *
- * Each call gets its own timestamped file (colons and dots stripped so the
- * name is filesystem-safe on Windows too), so a --dry-run run can never
- * clobber a real cutover's backup. `now` is injected so this stays pure and
- * testable without depending on the real clock.
+ * A dry-run backup gets its own dist/htaccess-backups/dry-run/ subdirectory,
+ * not just a distinct filename in the same directory: after a real cutover, a
+ * later --dry-run would otherwise download the NEW .htaccess into the same
+ * namespace and become the newest file there, so a human restoring "the most
+ * recent backup" would restore the very file being rolled back from.
+ *
+ * Each call also gets its own timestamped file (colons and dots stripped so
+ * the name is filesystem-safe on Windows too), so two real runs can never
+ * collide either. `dryRun` and `now` are both parameters rather than read from
+ * ambient state, so this stays pure and testable without depending on the
+ * real clock or a hidden mode flag.
  */
-export function backupFilePath(target, now = new Date()) {
+export function backupFilePath(target, dryRun = false, now = new Date()) {
   const timestamp = now.toISOString().replace(/[:.]/g, '-');
-  return `dist/htaccess-backups/${target}-${timestamp}.htaccess`;
+  const dir = dryRun ? 'dist/htaccess-backups/dry-run' : 'dist/htaccess-backups';
+  return `${dir}/${target}-${timestamp}.htaccess`;
 }
 
 /**
  * Back up the live .htaccess, then upload the overlay files.
  *
  * .htaccess is uploaded LAST. robots.txt landing early is harmless, but
- * .htaccess is the file that flips routing — so if anything fails, the site is
- * either fully turned over or untouched, never mid-swap.
+ * .htaccess is the file that flips routing — so if a later step fails, this
+ * function has only ever either fully turned .htaccess over or left it alone,
+ * never half-written it. That is NOT the same as the site being fine either
+ * way: during a cutover, "untouched" usually means "still broken", because a
+ * deploy has already deleted the old app — so a robots.txt failure blocks the
+ * one upload that fixes it. main() reports on failure whether .htaccess
+ * actually landed, since that is what an operator needs to know immediately.
  *
- * The backup is mandatory. A rollback needs both the old code artifact and the
- * old server-owned .htaccess; without this copy, redeploying an old tag leaves
- * the site in exactly the broken state this tool exists to resolve.
+ * The backup is mandatory whenever there is something to back up. A rollback
+ * needs both the old code artifact and the old server-owned .htaccess;
+ * without this copy, redeploying an old tag leaves the site in exactly the
+ * broken state this tool exists to resolve. A brand-new server has no live
+ * .htaccess yet, though — a real, documented first-time-per-server operation —
+ * so an FTP 550 ("no such file") is treated as "nothing to back up" and this
+ * proceeds; any other backup failure (auth, timeout, transport) still refuses
+ * hard, because then we genuinely cannot tell whether there was a file to
+ * protect.
+ *
+ * After .htaccess itself is uploaded, its remote size is compared against the
+ * local file's size and a mismatch throws: this host is known to truncate
+ * transfers (see tools/deploy/ftp.mjs's verify phase), and an unverified
+ * .htaccess is the one file that 500s the entire site if it lands short.
+ * Skipped under --dry-run, since nothing was actually uploaded to verify.
  */
 export async function putOverlay({ client, remoteRoot, localDir, files, backupPath, dryRun, log }) {
   try {
     await client.downloadTo(backupPath, `${remoteRoot}/.htaccess`);
     log(`backed up the live .htaccess -> ${backupPath}`);
   } catch (err) {
-    throw new Error(
-      `could not back up the live .htaccess (${err.message}). ` +
-        `Refusing to overwrite it without a copy to roll back to.`
-    );
+    if (err.code === 550) {
+      log('no live .htaccess on the server — nothing to back up (new environment)');
+    } else {
+      throw new Refusal(
+        `could not back up the live .htaccess (${err.message}). ` +
+          `Refusing to overwrite it without a copy to roll back to.`
+      );
+    }
   }
 
   const ordered = [...files.filter((f) => f !== REQUIRED), REQUIRED];
@@ -132,6 +185,19 @@ export async function putOverlay({ client, remoteRoot, localDir, files, backupPa
     }
     await client.uploadFrom(`${localDir}/${name}`, `${remoteRoot}/${name}`);
     log(`uploaded ${name}`);
+
+    if (name === REQUIRED) {
+      const remoteSize = await client.size(`${remoteRoot}/${REQUIRED}`);
+      const localSize = statSync(`${localDir}/${REQUIRED}`).size;
+      if (remoteSize !== localSize) {
+        throw new Error(
+          `uploaded ${REQUIRED} size mismatch (local ${localSize} bytes, remote ${remoteSize} bytes) — ` +
+            `this host is known to truncate transfers. The site may now be on a corrupt ${REQUIRED}. ` +
+            `Restore ${backupPath} immediately.`
+        );
+      }
+      log(`verified ${REQUIRED}: ${localSize} bytes match on the server`);
+    }
   }
 }
 
@@ -168,7 +234,7 @@ async function main() {
   }
 
   const localDir = `dist/overlay/${target}`;
-  const plan = planOverlay(localDir, (p) => existsSync(p));
+  const plan = planOverlay(localDir, existsSync);
   if (plan.error) {
     console.error(plan.error);
     process.exit(2);
@@ -184,7 +250,19 @@ async function main() {
     process.exit(2);
   }
 
-  const backupPath = backupFilePath(target);
+  // dist/ is git-ignored, so this overlay can be arbitrarily stale — including
+  // a pre-cutover build that would route every /api/* request at the deleted
+  // front controller. Both halves of the cutover must be present.
+  if (!hasPostCutoverRules(htaccess)) {
+    console.error(
+      `${localDir}/.htaccess does not look like a post-cutover overlay (missing the API dispatch to ` +
+        `api-laravel/public/index.php and/or the SPA fallback to index.html). It may be stale — ` +
+        `regenerate it with \`npm run build:overlay ${target}\` before uploading.`
+    );
+    process.exit(2);
+  }
+
+  const backupPath = backupFilePath(target, dryRun);
   mkdirSync(dirname(backupPath), { recursive: true });
   console.log(
     `PUT-OVERLAY ${target} → ${process.env.FTP_HOST} ${remoteRoot}${dryRun ? '  (dry-run)' : ''}`
@@ -192,6 +270,9 @@ async function main() {
   console.log(`  files: ${plan.files.join(', ')}`);
 
   const client = new ftp.Client();
+  // Tracked across the log callback so a failure can report the one thing an
+  // operator needs immediately in this window: did the routing actually flip?
+  let htaccessUploaded = false;
   try {
     await client.access({
       host: process.env.FTP_HOST,
@@ -206,8 +287,25 @@ async function main() {
       files: plan.files,
       backupPath,
       dryRun,
-      log: (m) => console.log(`  ${m}`),
+      log: (m) => {
+        console.log(`  ${m}`);
+        if (m === `uploaded ${REQUIRED}`) {
+          htaccessUploaded = true;
+        }
+      },
     });
+  } catch (err) {
+    console.error(
+      htaccessUploaded
+        ? `\n${label}: FAILED after .htaccess was already uploaded — the site IS on the new ` +
+            `routing. Previous .htaccess is backed up at ${backupPath}.`
+        : `\n${label}: FAILED before .htaccess was uploaded — the site is UNCHANGED (still on its ` +
+            `previous routing, which may itself be mid-cutover and broken). Backup of the previous ` +
+            `.htaccess, if one existed, is at ${backupPath}.`
+    );
+    console.error(`\nput-overlay FAILED: ${err.message}`);
+    process.exitCode = err.exitCode ?? 1;
+    return;
   } finally {
     client.close();
   }
@@ -222,6 +320,6 @@ async function main() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((err) => {
     console.error(`\nput-overlay FAILED: ${err.message}`);
-    process.exit(1);
+    process.exit(err.exitCode ?? 1);
   });
 }
