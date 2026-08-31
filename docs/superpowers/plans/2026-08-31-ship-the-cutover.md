@@ -10,6 +10,18 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-31-post-cutover-ship-and-cleanup-design.md`
 
+> **Status, 2026-08-31: Tasks 1–5 are complete.** `tools/put-overlay.mjs` and its
+> suite exist and are committed. Two review rounds added behaviour beyond the
+> code blocks below, so **read the file, not these snippets, as the description
+> of what the tool does**. The additions were: a post-upload size verification of
+> `.htaccess`; a `hasPostCutoverRules` guard that refuses a stale overlay; a
+> `550`/no-such-file branch so a brand-new server is not misdiagnosed as a
+> backup failure; segregated `dry-run/` backup paths; and exit code 2 for a
+> backup refusal. The snippets below are kept as the record of how the file was
+> built, TDD step by step.
+>
+> **Tasks 6–14 have not run.** Task 8 onward touches `main` and a live server.
+
 ---
 
 ## Context an engineer needs before starting
@@ -606,7 +618,7 @@ async function main() {
     process.exit(2);
   }
 
-  const backupPath = `${localDir}/.htaccess.live-backup`;
+  const backupPath = backupFilePath(target, dryRun);
   console.log(
     `PUT-OVERLAY ${target} → ${process.env.FTP_HOST} ${remoteRoot}${dryRun ? '  (dry-run)' : ''}`
   );
@@ -758,6 +770,11 @@ is the whole point of this upload.
 
 - [ ] **Step 3: Dry-run the upload**
 
+Note the dry-run still connects over FTP and still downloads a backup — it is
+"dry" only in that it uploads nothing. It will also refuse if the overlay is
+stale (missing the API dispatch or the SPA fallback), which is a real check
+worth seeing pass here rather than during the cutover.
+
 `.env.test` declares `FTP_PASSWORD` but the tool reads `FTP_PASS`, so inject it:
 
 ```powershell
@@ -771,11 +788,11 @@ Expected output shape:
 ```
 PUT-OVERLAY test → ftp.cluster1.easy-hebergement.net /public_html/staging/test.lescanetons.org  (dry-run)
   files: .htaccess, robots.txt
-  backed up the live .htaccess -> dist/overlay/test/.htaccess.live-backup
+  backed up the live .htaccess -> dist/htaccess-backups/dry-run/test-2026-08-31T10-12-03-441Z.htaccess
   (dry-run) would upload robots.txt
   (dry-run) would upload .htaccess
 
-(dry-run) TEST: nothing uploaded. Backup of the live .htaccess is at dist/overlay/test/.htaccess.live-backup
+(dry-run) TEST: nothing uploaded. Backup of the live .htaccess is at dist/htaccess-backups/dry-run/test-2026-08-31T10-12-03-441Z.htaccess
 ```
 
 - [ ] **Step 4: Read the backup and confirm it is the OLD front controller**
@@ -784,8 +801,14 @@ The backup lands in `dist/htaccess-backups/` with a timestamped name — **not**
 `dist/overlay/test/`, because `build-overlays.mjs` wipes that directory on every
 run and would delete the only rollback copy.
 
+**This step ran a `--dry-run`, so its backup is under the `dry-run/`
+subdirectory.** Dry-run backups are segregated deliberately: a dry-run performed
+*after* a cutover would otherwise download the new `.htaccess`, become the
+newest file, and make the rollback in Task 11 Step 9 restore the very file it
+was rolling back from.
+
 ```powershell
-$backup = Get-ChildItem dist/htaccess-backups/test-*.htaccess | Sort-Object LastWriteTime | Select-Object -Last 1
+$backup = Get-ChildItem dist/htaccess-backups/dry-run/test-*.htaccess -File | Sort-Object LastWriteTime | Select-Object -Last 1
 $backup.FullName
 Select-String -Path $backup.FullName -Pattern 'index\.php','RewriteRule \^ index.html' | Select-Object Line
 ```
@@ -1044,7 +1067,7 @@ Restoring it only makes sense together with redeploying the old PHP artifact;
 putting it back on top of the SPA artifact just reproduces the broken state.
 
 ```powershell
-$backup = Get-ChildItem dist/htaccess-backups/test-*.htaccess | Sort-Object LastWriteTime | Select-Object -Last 1
+$backup = Get-ChildItem dist/htaccess-backups/test-*.htaccess -File | Sort-Object LastWriteTime | Select-Object -Last 1
 Copy-Item $backup.FullName dist/overlay/test/.htaccess -Force
 npm run put-overlay:test
 ```
