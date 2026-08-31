@@ -29,12 +29,7 @@ const OCCASION_FIXTURE = {
 test.each([
   ["/", "Bienvenue sur notre site"],
   ["/historique", "L’Histoire des Canetons"],
-  // The accessible name preserves &nbsp; as an actual U+00A0, not a normal
-  // space — verified against the rendered DOM. Do not "fix" this by removing
-  // the &nbsp; from Cd.tsx; it is there for correct French typography.
-  ["/cd", "2022 - Les Canetons ont 20 ans !!!"],
   ["/sponsors", "Sponsors et Liens Amis"],
-  ["/multimedia", "France 3 Alsace / Carnaval de Colmar 2016"],
   ["/canetons", "Nos Canetons"],
   ["/moniteurs", "Nos Moniteurs"],
   // The real page, not a placeholder — hence the fuller heading.
@@ -45,6 +40,17 @@ test.each([
   await renderWithSession(<AppRoutes />, { route });
   expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
 });
+
+// /cd and /multimedia were HIDDEN on 2026-08-31 (see routes.tsx). Their
+// components still exist, so "hidden" has to mean the route is gone, not that
+// the file was deleted — this is what proves it.
+test.each([["/cd"], ["/multimedia"]])(
+  "%s is hidden and falls through to the 404 view",
+  async (route) => {
+    await renderWithSession(<AppRoutes />, { route });
+    expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
+  },
+);
 
 test("an unknown URL renders the 404 view rather than nothing", async () => {
   await renderWithSession(<AppRoutes />, { route: "/pas-une-page" });

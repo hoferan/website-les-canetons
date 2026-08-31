@@ -29,11 +29,33 @@ The next work is sub-projects **B, C, D or E** of
 | | | |
 | --- | --- | --- |
 | **B** | Structure clean-up (English filenames, dead files, deferred review items) | not started |
-| **C** | Content audit — dead links, the 2016 video, redundancy | not started |
-| **D** | Content corrections — committee, schedule, facts. **Needs André's answers.** | blocked on C |
+| **C** | Content audit — dead links, the 2016 video, redundancy | **done** — `docs/content-audit-2026-08-31.md` |
+| **D** | Content corrections | **done** — all 14 answers acted on; see the same file |
 | **E** | Restyle polish + mobile. Keep *Scène*; do not restart the design. | do last, after C and D |
 
 **E is deliberately last** so pages are not styled twice.
+
+### PROD IS BLOCKED: the site is full of visible placeholders
+
+Sub-project D replaced every committee name, register roster, instructor list and
+published phone number with a visible **"••• à compléter"** marker, because the
+band did not yet know which were current. That was the right call — a stale name
+sends a parent to the wrong person — but it means:
+
+```bash
+grep -rl "<Tbd" web/src/pages      # which pages still have gaps
+```
+
+Four pages today, rendering **17** fields — 8 committee names, 6 register
+rosters, 1 booking number, 2 joining contacts. Note the call sites and the
+rendered fields are different numbers: several `<Tbd />` sit inside a `.map()`,
+so counting occurrences understates it. `grep -rl` on `web/src/pages` is the
+honest check, and it must come back empty before PROD.
+
+TEST and QA are behind HTTP Basic Auth so only the band sees them. **PROD is
+public and has never been deployed.** Deploying it now would publish
+"à compléter" where the committee should be. Nothing in CI enforces this — it is
+a content gate, and this paragraph is the enforcement.
 
 ### Two things left undone on TEST
 

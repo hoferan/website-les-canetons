@@ -97,3 +97,37 @@ h1,
 h2 {
   text-wrap: balance;
 }
+
+/* Print: /commencement becomes the recruitment flyer.
+   That page used to show a Flyer.jpeg and offer it as a download. It is now the
+   page itself: "Imprimer le flyer" calls window.print(), and these rules strip
+   the site chrome so what lands on the sheet is a flyer for a noticeboard.
+
+   Deliberately NOT a separate flyer panel on the page. The first attempt was
+   exactly that, and it repeated the page's four fact cards verbatim -- the same
+   redundancy the 2026-08-31 content audit exists to remove. Printing the page
+   cannot drift from the page.
+
+   visibility rather than display: `display: none` on a parent cannot be undone
+   by a child, and the printable section is nested inside body > #root > main. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .printable,
+  .printable * {
+    visibility: visible;
+  }
+
+  .printable {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    padding: 0;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
