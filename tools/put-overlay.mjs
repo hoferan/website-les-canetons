@@ -51,3 +51,28 @@ export function parseArgs(argv) {
 export function hasUnsubstitutedAuthPath(text) {
   return /^\s*AuthUserFile\s+"__HTPASSWD_PATH__"/m.test(text);
 }
+
+// .htaccess is required; robots.txt is uploaded only when the overlay emits one
+// (test/qa do, prod does not now that app/ is deleted). .htpasswd is
+// deliberately absent from this list — see the header.
+const REQUIRED = '.htaccess';
+const OPTIONAL = ['robots.txt'];
+
+/**
+ * What to upload from an overlay directory. `exists` is injected so this stays
+ * a pure function.
+ *
+ * A missing .htaccess is an error rather than an empty upload: uploading
+ * nothing and reporting success is exactly how a cutover silently fails to
+ * happen.
+ */
+export function planOverlay(dir, exists) {
+  if (!exists(`${dir}/${REQUIRED}`)) {
+    return {
+      error:
+        `${dir}/${REQUIRED} not found. Run \`npm run build:overlay\` first ` +
+        `(it regenerates dist/overlay/<env>/ from config/htaccess/site.htaccess).`,
+    };
+  }
+  return { files: [REQUIRED, ...OPTIONAL.filter((f) => exists(`${dir}/${f}`))] };
+}

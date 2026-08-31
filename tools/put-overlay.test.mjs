@@ -57,3 +57,38 @@ test('hasUnsubstitutedAuthPath: tolerates extra spacing around the directive', (
 test('hasUnsubstitutedAuthPath: an overlay with no auth block is fine (prod)', () => {
   assert.equal(hasUnsubstitutedAuthPath('RewriteEngine on\nRewriteRule ^ index.html [L]\n'), false);
 });
+
+import { planOverlay } from './put-overlay.mjs';
+
+// `exists` is injected so these stay pure — no temp directories needed.
+const existsIn = (names) => (p) => names.includes(p);
+
+test('planOverlay: .htaccess plus robots.txt when both exist', () => {
+  const exists = existsIn(['dist/overlay/test/.htaccess', 'dist/overlay/test/robots.txt']);
+  assert.deepEqual(planOverlay('dist/overlay/test', exists), {
+    files: ['.htaccess', 'robots.txt'],
+  });
+});
+
+test('planOverlay: robots.txt is optional (prod emits none)', () => {
+  const exists = existsIn(['dist/overlay/prod/.htaccess']);
+  assert.deepEqual(planOverlay('dist/overlay/prod', exists), { files: ['.htaccess'] });
+});
+
+// .htpasswd is credentials and stays hand-placed; its presence must not pull it
+// into the upload set.
+test('planOverlay: never includes .htpasswd', () => {
+  const exists = existsIn([
+    'dist/overlay/test/.htaccess',
+    'dist/overlay/test/robots.txt',
+    'dist/overlay/test/.htpasswd',
+  ]);
+  assert.deepEqual(planOverlay('dist/overlay/test', exists).files, ['.htaccess', 'robots.txt']);
+});
+
+test('planOverlay: a missing .htaccess is an error, not an empty upload', () => {
+  const result = planOverlay('dist/overlay/test', existsIn([]));
+  assert.equal(result.files, undefined);
+  assert.match(result.error, /dist\/overlay\/test\/\.htaccess not found/);
+  assert.match(result.error, /npm run build:overlay/);
+});
