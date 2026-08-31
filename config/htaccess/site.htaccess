@@ -145,6 +145,17 @@ RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.html [L]
 
+# This host has no MIME mapping for woff2, so it served the fonts as
+# text/plain until this was added (observed on TEST, 2026-08-31). Browsers
+# sniff font data and render them anyway, which is exactly why it went
+# unnoticed — but a wrong Content-Type is the sort of thing a proxy or a
+# future browser policy stops tolerating. woff/woff2 are the IANA-registered
+# types (RFC 8081), not the old x-font-* forms.
+<IfModule mod_mime.c>
+  AddType font/woff2 .woff2
+  AddType font/woff .woff
+</IfModule>
+
 # Cache policy for this site.
 <IfModule mod_headers.c>
   <FilesMatch "\.html$">
@@ -153,7 +164,16 @@ RewriteRule ^ index.html [L]
   # Vite's build output is content-hashed: a given
   # filename's bytes never change, only the filename does when the
   # content does. Safe to cache indefinitely instead of revalidating.
-  <FilesMatch "\.(css|js)$">
+  #
+  # FONTS BELONG HERE TOO, and were missing until 2026-08-31. Vite hashes
+  # them exactly like the JS and CSS (lilita-one-latin-400-normal-87r-Z-Re.woff2),
+  # so they are just as safe to freeze — but matching neither this block nor
+  # the image block below, they came back from the server with NO
+  # Cache-Control at all. Browsers then fall back to heuristic freshness,
+  # which is unpredictable and generally costs a revalidation round trip per
+  # font. Four fonts, on a members' area that is read every week on a phone
+  # outdoors, is worth the two characters.
+  <FilesMatch "\.(css|js|woff2?)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>
