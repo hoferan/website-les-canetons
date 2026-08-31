@@ -3,20 +3,14 @@ import { expect, test } from "vitest";
 
 import { Commencement } from "./Commencement";
 
-// The flyer used to be a JPEG with an <a download>. It is the PAGE now, printed
-// (see the component for why there is no separate flyer panel), so the call to
-// action is a print button.
-test("the page can be printed as the flyer", () => {
-  render(<Commencement />);
-  expect(screen.getByRole("button", { name: /Imprimer le flyer/ })).toBeInTheDocument();
-});
-
-// If the print container class is ever renamed, the print rules in styles.css
-// silently stop matching and the sheet comes out as the whole website. Nothing
-// visible on screen would change, so only this catches it.
-test("the printable container is marked for the print stylesheet", () => {
+// The flyer is gone entirely: Flyer.jpeg and its download went on 2026-08-31,
+// and the print button that briefly replaced them was removed at the band's
+// request. /commencement is a plain information page now — so the facts a parent
+// needs have to be ON it, with nothing to print or download.
+test("nothing offers a download or a print", () => {
   const { container } = render(<Commencement />);
-  expect(container.querySelector(".printable")).not.toBeNull();
+  expect(container.querySelector("[download]")).toBeNull();
+  expect(screen.queryByRole("button", { name: /Imprimer/ })).not.toBeInTheDocument();
 });
 
 // The facts a parent needs must be on the page, because the page is the flyer.

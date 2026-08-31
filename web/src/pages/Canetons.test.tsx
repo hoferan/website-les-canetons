@@ -19,26 +19,31 @@ test("every register has a section, in the old page's order", () => {
   ]);
 });
 
-// The slip this guards against is a caption landing under the wrong
-// photograph, which no count would catch and which reads as correct.
-//
-// The rosters are placeholders now (see the component), so the assertion moved
-// to the two things still worth pinning: that each register's photograph is its
-// own, and that the one register with real names carries them.
-test("each register's photograph belongs to that register", () => {
+// The slip this guards against is a label landing under the wrong register,
+// which no count would catch and which reads as correct. The photographs are
+// gone (the band asked us to assume all of them are out of date), so the
+// assertion moved from src attributes to the placeholder each register names.
+test("each register's photo placeholder names that register", () => {
   render(<Canetons />);
-  for (const [heading, image] of [
-    ["La Direction Musicale", "directionmusicale.jpg"],
-    ["Nos Batteurs", "batteurs.jpg"],
-    ["Nos Grosses-Caisses", "grossescaisses.jpg"],
-    ["Notre Lyre", "lyre.jpg"],
-    ["Nos Cloches", "cloches.jpg"],
-    ["Nos Trompettes", "trompettes.jpg"],
-    ["Nos Trombones", "trombones.jpg"],
+  for (const [heading, what] of [
+    ["La Direction Musicale", "de la direction musicale"],
+    ["Nos Batteurs", "des batteurs"],
+    ["Nos Grosses-Caisses", "des grosses-caisses"],
+    ["Notre Lyre", "de la lyre"],
+    ["Nos Cloches", "des cloches"],
+    ["Nos Trompettes", "des trompettes"],
+    ["Nos Trombones", "des trombones"],
   ]) {
     const section = screen.getByRole("heading", { name: heading }).closest("article")!;
-    expect(within(section).getByRole("img")).toHaveAttribute("src", `/assets/img/${image}`);
+    const pending = within(section).getByText(/Nouvelle photo/);
+    expect(pending).toHaveTextContent(`Nouvelle photo ${what} à venir`);
   }
+});
+
+// Nothing on this page should still try to load a photograph.
+test("no photographs are requested", () => {
+  const { container } = render(<Canetons />);
+  expect(container.querySelectorAll("img")).toHaveLength(0);
 });
 
 // The direction musicale is the one fact on this page the band confirmed, and

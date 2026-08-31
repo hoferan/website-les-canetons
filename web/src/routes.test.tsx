@@ -29,7 +29,6 @@ const OCCASION_FIXTURE = {
 test.each([
   ["/", "Bienvenue sur notre site"],
   ["/historique", "L’Histoire des Canetons"],
-  ["/sponsors", "Sponsors et Liens Amis"],
   ["/canetons", "Nos Canetons"],
   ["/moniteurs", "Nos Moniteurs"],
   // The real page, not a placeholder — hence the fuller heading.
@@ -41,10 +40,10 @@ test.each([
   expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
 });
 
-// /cd and /multimedia were HIDDEN on 2026-08-31 (see routes.tsx). Their
+// /cd, /multimedia and /sponsors were all HIDDEN on 2026-08-31 (see routes.tsx). Their
 // components still exist, so "hidden" has to mean the route is gone, not that
 // the file was deleted — this is what proves it.
-test.each([["/cd"], ["/multimedia"]])(
+test.each([["/cd"], ["/multimedia"], ["/sponsors"]])(
   "%s is hidden and falls through to the 404 view",
   async (route) => {
     await renderWithSession(<AppRoutes />, { route });

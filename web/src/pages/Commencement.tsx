@@ -40,13 +40,7 @@ const WERKHOF_MAP =
 
 export function Commencement() {
   return (
-    <section className="printable mx-auto max-w-5xl px-4 py-8">
-      {/* Print only. The nav and footer are hidden on paper (see styles.css), so
-          the sheet needs to say who it is from. */}
-      <p className="hidden text-sm font-semibold tracking-widest text-violet uppercase print:block">
-        Guggenmusik Les Canetons de Fribourg &middot; www.lescanetons.org
-      </p>
-
+    <section className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="font-display text-4xl">Tu veux commencer la guggen&nbsp;?</h1>
       <p className="mt-4 max-w-prose">
         Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire
@@ -96,25 +90,6 @@ export function Commencement() {
           </p>
         </div>
       </div>
-
-      {/* THE FLYER IS THE PAGE, PRINTED.
-          Flyer.jpeg used to be shown here and offered as a download; the
-          2026-08-31 content audit's answer was to replace it with a CSS one
-          "because the information in the Flyer is outdated anyway".
-
-          The first attempt built a separate flyer panel below these cards — and
-          it repeated all four of them verbatim, which is exactly the redundancy
-          this sub-project exists to remove. So there is no flyer panel: the print
-          rules in styles.css hide the header, nav, footer and this button, and
-          what remains on the sheet IS the flyer. It can never drift from the
-          page, because it is the page. */}
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="mt-8 inline-block rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 print:hidden"
-      >
-        Imprimer le flyer
-      </button>
     </section>
   );
 }
