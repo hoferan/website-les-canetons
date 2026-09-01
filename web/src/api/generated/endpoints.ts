@@ -34,6 +34,7 @@ import type {
   ContactRequest,
   EventDestroy200,
   EventIndex200Item,
+  EventIndexParams,
   EventRequest,
   EventStore201,
   EventUpdate200,
@@ -689,11 +690,49 @@ export type eventIndexResponseSuccess = eventIndexResponse200 & {
 };
 export type eventIndexResponse = eventIndexResponseSuccess;
 
-export const getEventIndexUrl = () => {
-  return `/events`;
+export const getEventIndexUrl = (params?: EventIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/events?${stringifiedParams}` : `/events`;
 };
 
 /**
+ * `?include=past` returns everything; anything else returns `date >= today`.
+ *
+ * WHY THE DEFAULT IS THE FILTERED ONE. This used to return every event ever,
+ * ascending — "exactly the old query". So /sinscrire, headed "Événements à
+ *      * venir", listed events that had already happened at the TOP of the list,
+ * each with a dead "Choix enregistré" button, and /planning_repet put the
+ * next rehearsal at the BOTTOM of a list that grows every season. On the one
+ * screen whose purpose is "do I play Saturday?", that was the worst defect
+ * in the app.
+ *
+ * The safe answer is the default rather than something a caller opts into,
+ * for the same reason this endpoint deliberately has no ?username=
+ * parameter: a page that forgets to ask should not be able to reintroduce
+ * the bug.
+ *
+ * The boundary is INCLUSIVE of today — an event happening today has not
+ * happened yet — and `where`, not `whereDate`, so the comparison stays
+ * index-friendly if `events.date` is ever indexed (it is not today, and at
+ * this band's volume it does not need to be).
+ *
+ * now() is UTC, because api/config/app.php hardcodes it and there is no
+ * APP_TIMEZONE key. Fribourg is UTC+1/+2, so a UTC "today" LAGS local time
+ * and today's event stays listed for the first hour or two of tomorrow. That
+ * errs in the safe direction; the dangerous direction would be hiding an
+ * event before it happened, which needs UTC to run ahead of local time and
+ * never does here. Do not "fix" this by setting APP_TIMEZONE as a side
+ * effect — timestamps were standardised on UTC deliberately.
+ *
  * `response` is the CALLER'S OWN answer or null. There is deliberately no
  * request parameter naming a user (no ?username=, no ?userId=): that
  * absence is what keeps a previously-fixed IDOR closed. The `responses`
@@ -728,34 +767,38 @@ export const getEventIndexUrl = () => {
  * covered is hypothetical (this API is SPA cookie mode — see
  * bootstrap/app.php) and its failure mode is a caller seeing no answers, not
  * someone else's.
- * @summary GET /api/events — public index, ordered by date
+ * @summary GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date
  */
 export const eventIndex = async (
+  params?: EventIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<eventIndexResponse> => {
-  return customFetch<eventIndexResponse>(getEventIndexUrl(), {
+  return customFetch<eventIndexResponse>(getEventIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getEventIndexQueryKey = () => {
-  return [`/events`] as const;
+export const getEventIndexQueryKey = (params?: EventIndexParams) => {
+  return [`/events`, ...(params ? [params] : [])] as const;
 };
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = unknown,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: EventIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof eventIndex>>> = ({ signal }) =>
-    eventIndex({ signal, ...requestOptions });
+    eventIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof eventIndex>>,
@@ -768,6 +811,7 @@ export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventI
 export type EventIndexQueryError = unknown;
 
 export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
+  params: undefined | EventIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
       Pick<
@@ -783,6 +827,7 @@ export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TE
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
       Pick<
@@ -798,6 +843,7 @@ export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TE
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -805,17 +851,18 @@ export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TE
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary GET /api/events — public index, ordered by date
+ * @summary GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date
  */
 
 export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getEventIndexQueryOptions(options);
+  const queryOptions = getEventIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
