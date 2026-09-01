@@ -1,4 +1,5 @@
 import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /**
  * Three groups of outbound links, in the order the old page listed them.
@@ -62,7 +63,7 @@ export function Sponsors() {
 
       <div className="mt-6 space-y-6">
         {GROUPS.map((group) => (
-          <div key={group.heading} className="rounded-lg border border-line bg-panel p-5">
+          <Card key={group.heading} className="gap-0 p-5">
             <h2 className="font-display text-xl">{group.heading}</h2>
             <ul className="mt-3 list-disc space-y-1 pl-5">
               {group.links.map((link) => (
@@ -78,7 +79,7 @@ export function Sponsors() {
                 </li>
               ))}
             </ul>
-          </div>
+          </Card>
         ))}
       </div>
     </PageSection>

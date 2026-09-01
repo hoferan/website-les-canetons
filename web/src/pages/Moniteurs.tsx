@@ -1,6 +1,7 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
 import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /**
  * One entry per register.
@@ -36,14 +37,16 @@ export function Moniteurs() {
         à tous les moniteurs et toutes les personnes qui donnent de leur temps pour nos canetons
       </p>
 
-      <ul className="mt-6 space-y-1 rounded-lg border border-line bg-panel p-5">
-        {REGISTERS.map((register) => (
-          <li key={register}>
-            <strong className="font-semibold text-ink-muted">{register}&nbsp;:</strong>{" "}
-            <Tbd what="prénoms des moniteurs" />
-          </li>
-        ))}
-      </ul>
+      <Card asChild className="mt-6 gap-0 p-5">
+        <ul className="space-y-1">
+          {REGISTERS.map((register) => (
+            <li key={register}>
+              <strong className="font-semibold text-ink-muted">{register}&nbsp;:</strong>{" "}
+              <Tbd what="prénoms des moniteurs" />
+            </li>
+          ))}
+        </ul>
+      </Card>
     </PageSection>
   );
 }

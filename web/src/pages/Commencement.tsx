@@ -1,5 +1,6 @@
 import { Tbd } from "../components/Tbd";
 import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /** The information blocks, in the old page's order. */
 const FACTS: { heading: string; lines: string[] }[] = [
@@ -50,17 +51,17 @@ export function Commencement() {
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2">
         {FACTS.map((fact) => (
-          <div key={fact.heading} className="rounded-lg border border-line bg-panel p-5">
+          <Card key={fact.heading} className="gap-0 p-5">
             <h2 className="font-display text-xl">{fact.heading}</h2>
             {fact.lines.map((line) => (
               <p key={line} className="mt-1">
                 {line}
               </p>
             ))}
-          </div>
+          </Card>
         ))}
 
-        <div className="rounded-lg border border-line bg-panel p-5">
+        <Card className="gap-0 p-5">
           <h2 className="font-display text-xl">Lieu</h2>
           <p className="mt-1">
             <a
@@ -73,9 +74,9 @@ export function Commencement() {
             </a>
           </p>
           <p>Basse-Ville de Fribourg</p>
-        </div>
+        </Card>
 
-        <div className="rounded-lg border border-line bg-panel p-5">
+        <Card className="gap-0 p-5">
           <h2 className="font-display text-xl">Contacts</h2>
           {Array.from({ length: JOINING_CONTACTS }, (_, i) => (
             <p key={i} className="mt-1">
@@ -89,7 +90,7 @@ export function Commencement() {
             </a>
             .
           </p>
-        </div>
+        </Card>
       </div>
     </PageSection>
   );

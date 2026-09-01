@@ -1,6 +1,7 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
 import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /**
  * One entry per register, in the old page's order.
@@ -80,7 +81,7 @@ export function Canetons() {
           back. */}
       <hr className="mt-12 border-line" />
 
-      <div className="mt-8 rounded-lg border border-line bg-panel p-5">
+      <Card className="mt-8 gap-0 p-5">
         <h2 className="font-display text-2xl">Le parrain et la marraine</h2>
         <img
           src="/assets/img/parrainmarraine.jpg"
@@ -89,7 +90,7 @@ export function Canetons() {
           className="mt-4 rounded-lg"
         />
         <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
-      </div>
+      </Card>
     </PageSection>
   );
 }

@@ -1,6 +1,7 @@
 import { useSignupIndex } from "../api/generated/endpoints";
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
+import { StatTile } from "@/components/StatTile";
 import {
   Table,
   TableBody,
@@ -107,14 +108,7 @@ export function SignupsAdmin() {
         className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
       >
         {tiles.map((item) => (
-          <li
-            key={item.label}
-            data-tile
-            className="rounded-lg border border-line bg-panel p-5 text-center"
-          >
-            <p className="font-display text-4xl text-violet">{item.value}</p>
-            <p className="mt-1 text-sm text-ink-muted">{item.label}</p>
-          </li>
+          <StatTile key={item.label} label={item.label} value={item.value} />
         ))}
       </ul>
 

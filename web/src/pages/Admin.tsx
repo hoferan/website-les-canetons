@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /**
  * The admin's landing page.
@@ -31,13 +32,12 @@ export function Admin() {
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">
         {DESTINATIONS.map((destination) => (
           <li key={destination.to}>
-            <Link
-              to={destination.to}
-              className="block h-full rounded-lg border border-line bg-panel p-5 hover:border-violet"
-            >
-              <span className="font-display text-xl text-violet">{destination.title}</span>
-              <span className="mt-1 block text-ink-muted">{destination.description}</span>
-            </Link>
+            <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
+              <Link to={destination.to} className="block h-full">
+                <span className="font-display text-xl text-violet">{destination.title}</span>
+                <span className="mt-1 block text-ink-muted">{destination.description}</span>
+              </Link>
+            </Card>
           </li>
         ))}
       </ul>
