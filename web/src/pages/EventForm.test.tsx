@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test, vi } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { SEED, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { PlanningRepet } from "./PlanningRepet";
 
 /** The list, addressed by its accessible name so the layout's nav cannot leak in. */
+const CONCERT = SEED.find((event) => event.title === "Concert d'automne")!;
+
 const rows = async () =>
   within(await screen.findByRole("list", { name: "Événements" })).getAllByRole("listitem");
 
@@ -77,7 +79,11 @@ test("editing an event fills the form and saves the change", async () => {
 
   // Times come back from the API as SQL TIMEs ("19:00:00"); an <input type=time>
   // is fed HH:MM, exactly as the old page's edit handler sliced them.
-  expect(screen.getByLabelText("Date :")).toHaveValue("2026-09-20");
+  // Read off SEED rather than pinned as a literal: the fixture's dates are
+  // offsets from today now, so a literal here would fail on a date nobody
+  // chose. What this asserts is that the form is filled from the event it was
+  // opened on, which is the same assertion it always made.
+  expect(screen.getByLabelText("Date :")).toHaveValue(CONCERT.date);
   expect(screen.getByLabelText("Heure de début :")).toHaveValue("19:00");
   expect(screen.getByLabelText("Titre :")).toHaveValue("Concert d'automne");
 

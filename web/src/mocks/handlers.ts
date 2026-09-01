@@ -48,11 +48,36 @@ type MockEvent = {
   response: string | null;
 };
 
+/**
+ * A date N days from today, as "YYYY-MM-DD" in LOCAL parts.
+ *
+ * The fixture's dates are OFFSETS, not literals, because GET /api/events now
+ * filters to upcoming events by default. Three hardcoded 2026 dates were
+ * harmless while the endpoint returned everything and a dated time bomb the
+ * moment it did not: the first would have dropped out of the default response
+ * on 2026-09-21 and all three by 2026-11-16, leaving the mocked /sinscrire
+ * empty and PlanningRepet.test.tsx red for a reason its error message would not
+ * hint at.
+ *
+ * Local parts, not toISOString(), to match lib/date.ts's parseLocalDate: an
+ * event is a plain calendar day, and a UTC round-trip shifts it by one west of
+ * Greenwich.
+ */
+function isoDaysFromToday(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 /** Mirrors docker/db/init/02-seed.sql closely enough to judge a layout. */
-const SEED: MockEvent[] = [
+export const SEED: MockEvent[] = [
   {
     id: 1,
-    date: "2026-09-20",
+    date: isoDaysFromToday(20),
     title: "Concert d'automne",
     startTime: "19:00:00",
     endTime: "22:00:00",
@@ -63,7 +88,7 @@ const SEED: MockEvent[] = [
   },
   {
     id: 2,
-    date: "2026-10-10",
+    date: isoDaysFromToday(40),
     title: "Assemblée générale",
     startTime: "20:00:00",
     endTime: "22:30:00",
@@ -74,7 +99,7 @@ const SEED: MockEvent[] = [
   },
   {
     id: 3,
-    date: "2026-11-14",
+    date: isoDaysFromToday(75),
     title: "Week-end de répétition",
     startTime: "09:00:00",
     endTime: "18:00:00",
