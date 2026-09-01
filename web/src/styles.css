@@ -44,6 +44,21 @@
      palette red is not a brand colour — violet is — so red is free to mean
      exactly one thing. */
   --color-danger: #e0201a;
+
+  /* The floor for every interactive control: 44px. Applied through Button and
+     Input's base variants rather than by hand, so it is a rule rather than a
+     convention that lasts until the next page is written. */
+  --spacing-touch: 2.75rem;
+
+  /* ONE width for the chrome and for page shells, with prose constrained
+     INSIDE it by --container-text.
+
+     Before this, the header/nav/footer were max-w-5xl while most pages were
+     max-w-3xl, so at 1280 the nav's first item started at x=143 and the page
+     content at x=272 -- a visible misalignment on every page. Pages used five
+     different widths between them. PageSection owns these now. */
+  --container-shell: 72rem;
+  --container-text: 44rem;
   --font-sans: "Karla Variable", "Segoe UI", system-ui, sans-serif;
 
   /* The display face. Bungee replaced Lilita One on 2026-08-31 — not for looks,
@@ -176,4 +191,14 @@ main {
 h1,
 h2 {
   text-wrap: balance;
+}
+
+/* One visible focus ring, from one place.
+   focus-visible rather than focus, so a mouse click on a button does not leave
+   a ring behind while a keyboard tab does. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-violet);
+    outline-offset: 2px;
+  }
 }
