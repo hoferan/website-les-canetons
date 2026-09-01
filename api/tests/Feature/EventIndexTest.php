@@ -81,6 +81,58 @@ class EventIndexTest extends TestCase
             ->assertJsonPath('2.title', 'Third');
     }
 
+    public function test_past_events_are_excluded_by_default(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+        $this->event($this->inDays(7), ['title' => 'Upcoming']);
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.title', 'Upcoming');
+    }
+
+    /**
+     * An event happening TODAY is still upcoming — it has not happened yet.
+     * The column is a plain `date` with no time component, so there is nothing
+     * finer to compare against and the boundary must be inclusive.
+     */
+    public function test_an_event_today_is_still_upcoming(): void
+    {
+        $this->event($this->inDays(0), ['title' => 'Today']);
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.title', 'Today');
+    }
+
+    public function test_include_past_returns_the_whole_history(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+        $this->event($this->inDays(7), ['title' => 'Upcoming']);
+
+        $this->getJson('/api/events?include=past')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.title', 'Past')
+            ->assertJsonPath('1.title', 'Upcoming');
+    }
+
+    /**
+     * Anything that is not exactly `past` gets the safe answer, mirroring the
+     * convention POST /api/migrate already uses for `?mode`: only the exact
+     * string opts in, so a typo cannot silently widen what is returned.
+     */
+    public function test_an_unrecognised_include_value_falls_back_to_the_default(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+
+        $this->getJson('/api/events?include=everything')
+            ->assertOk()
+            ->assertJsonCount(0);
+    }
+
     public function test_an_anonymous_caller_sees_no_responses(): void
     {
         $event = $this->event($this->inDays(30));
