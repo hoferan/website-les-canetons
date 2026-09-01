@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test, vi } from "vitest";
 
-import { SEED, setMockUser } from "../mocks/handlers";
+import { SEED, isoDaysFromToday, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { PlanningRepet } from "./PlanningRepet";
@@ -23,7 +23,9 @@ const rows = async () =>
  * handler reject it.
  */
 async function fillValidEvent(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText("Date :"), "2026-12-05");
+  // An offset rather than a literal: the add test asserts this event shows up
+  // in a list that filters to upcoming events.
+  await user.type(await screen.findByLabelText("Date :"), isoDaysFromToday(95));
   await user.type(screen.getByLabelText("Titre :"), "Cortège");
   await user.type(screen.getByLabelText("Heure de début :"), "14:00");
   await user.type(screen.getByLabelText("Heure de fin :"), "17:00");
