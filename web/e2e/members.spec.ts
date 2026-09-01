@@ -22,23 +22,30 @@ test("a guard bounce returns you to the page you wanted", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Événements à venir" })).toBeVisible();
 });
 
-test("a member answers an event and the list remembers", async ({ page }) => {
+test("a member answers an event in one tap and can change it", async ({ page }) => {
   await login(page, "demo.user");
   await page.goto("/sinscrire");
 
-  await page.getByRole("link", { name: "S’inscrire" }).first().click();
-  await page.getByLabel("Participation :").selectOption("participate");
-  await page.getByRole("button", { name: "Confirmer" }).click();
+  const first = page
+    .getByRole("list", { name: "Événements à venir" })
+    .getByRole("listitem")
+    .first();
 
-  await expect(page.getByRole("heading", { name: "Événements à venir" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Choix enregistré" }).first()).toBeVisible();
+  await first.getByRole("button", { name: "Je participe" }).click();
+  await expect(first.getByText("Je participe")).toBeVisible();
+
+  // The half the old flow could not do at all: the API always upserted, and
+  // only the UI made a mistap permanent.
+  await first.getByRole("button", { name: "Modifier" }).click();
+  await first.getByRole("button", { name: "Je ne participe pas" }).click();
+  await expect(first.getByText("Je ne participe pas")).toBeVisible();
 });
 
 test("an admin reads the summary instead of answering", async ({ page }) => {
   await login(page, "demo.admin");
   await page.goto("/sinscrire");
 
-  await expect(page.getByRole("link", { name: "S’inscrire" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Je participe" })).toHaveCount(0);
   await page.getByRole("link", { name: "Résumé" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Résumé des inscriptions" })).toBeVisible();
