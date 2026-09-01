@@ -69,7 +69,8 @@ test("creating an event adds it to the list", async () => {
   await user.click(screen.getByRole("button", { name: "Ajouter" }));
 
   await waitFor(async () => expect(await rows()).toHaveLength(4));
-  expect((await rows())[3]).toHaveTextContent("Titre : Cortège");
+  // No "Titre :" label: the card shows the title on its own line now.
+  expect((await rows())[3]).toHaveTextContent("Cortège");
 });
 
 test("editing an event fills the form and saves the change", async () => {
@@ -94,7 +95,7 @@ test("editing an event fills the form and saves the change", async () => {
   await user.type(title, "Concert d'hiver");
   await user.click(screen.getByRole("button", { name: "Modifier" }));
 
-  await waitFor(async () => expect((await rows())[0]).toHaveTextContent("Titre : Concert d'hiver"));
+  await waitFor(async () => expect((await rows())[0]).toHaveTextContent("Concert d'hiver"));
   // The form returns to create mode once the edit lands.
   expect(await screen.findByRole("button", { name: "Ajouter" })).toBeInTheDocument();
 });

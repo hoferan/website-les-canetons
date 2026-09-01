@@ -15,6 +15,17 @@ import type { EditableEvent } from "./EventForm";
  * For the same reason the accessible name carries the event's title. The visible
  * label is the short word next to the icon, but a list of three buttons all
  * announced as "Supprimer" is unusable without sight of the row they sit in.
+ *
+ * NOT ABSOLUTELY POSITIONED ANY MORE. This was `absolute top-2 right-2`, and at
+ * 390px the two buttons rendered ON TOP of the event date — "dimanche 20
+ * se[Modifier]2(" — hiding the one thing the card exists to tell you. Desktop at
+ * 1280 was fine, which is why it shipped. Neither suite could catch it: both
+ * assert on roles and text, and the text was all present in the DOM. It was only
+ * wrong on screen.
+ *
+ * It renders into EventCard's `actions` footer slot now. A footer cannot overlap
+ * a heading at any width, which is why the fix is structural rather than a
+ * spacing tweak.
  */
 export function EventActions({
   event,
@@ -32,12 +43,13 @@ export function EventActions({
   });
 
   return (
-    <div className="absolute top-2 right-2 flex gap-2">
+    // A fragment: EventCard's `actions` slot is already the flex footer row.
+    <>
       <button
         type="button"
         aria-label={`Modifier ${event.title}`}
         onClick={() => onEdit(event)}
-        className="flex items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet"
+        className="flex flex-1 items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet sm:flex-none"
       >
         <Pencil aria-hidden="true" className="size-4" />
         Modifier
@@ -56,11 +68,11 @@ export function EventActions({
             destroy.mutate({ id: event.id });
           }
         }}
-        className="flex items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        className="flex flex-1 items-center gap-1 rounded border border-line bg-panel px-2 py-1 text-sm text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50 sm:flex-none"
       >
         <Trash2 aria-hidden="true" className="size-4" />
         Supprimer
       </button>
-    </div>
+    </>
   );
 }

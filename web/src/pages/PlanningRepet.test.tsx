@@ -27,10 +27,13 @@ test("the events are listed in the order the API returned them", async () => {
   // Asserted on textContent rather than getByText: each line is split across a
   // <strong> label and a text node, and getByText matches per element, so a
   // query for "Titre : X" finds nothing even though the line reads that way.
+  // "Titre :" is gone — the line is obviously the title, and on a phone five
+  // label-value lines were mostly label. The titles themselves still pin the
+  // order, which is what this test is for.
   expect(items.map((item) => item.textContent)).toEqual([
-    expect.stringContaining("Titre : Concert d'automne"),
-    expect.stringContaining("Titre : Assemblée générale"),
-    expect.stringContaining("Titre : Week-end de répétition"),
+    expect.stringContaining("Concert d'automne"),
+    expect.stringContaining("Assemblée générale"),
+    expect.stringContaining("Week-end de répétition"),
   ]);
 });
 
@@ -47,9 +50,11 @@ test("an event shows its date, times, location and attire", async () => {
   // formatting belongs. This test's job is that the card shows the event's
   // date at all.
   expect(within(first).getByText(formatEventDate(CONCERT.date))).toBeInTheDocument();
-  expect(first).toHaveTextContent("Heure de début : 19:00");
-  expect(first).toHaveTextContent("Heure de fin : 22:00");
-  expect(first).toHaveTextContent("Lieu : Salle communale");
+  // One meta line now: the two "Heure de …" labels and "Lieu :" were three
+  // lines of mostly label on a phone. "Tenue :" KEEPS its label — it is the
+  // detail members scan for and the one they get wrong.
+  expect(first).toHaveTextContent("19:00 – 22:00");
+  expect(first).toHaveTextContent("Salle communale");
   expect(first).toHaveTextContent("Tenue : Costume des canetons");
 });
 
