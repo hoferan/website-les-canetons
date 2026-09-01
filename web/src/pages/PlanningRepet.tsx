@@ -6,6 +6,7 @@ import { useSession } from "../session/SessionProvider";
 import { EventActions } from "./EventActions";
 import { EventForm, toEditableEvent, type EditableEvent } from "./EventForm";
 import { EventCard } from "@/components/EventCard";
+import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/PageSection";
 
 /**
@@ -23,6 +24,17 @@ export function PlanningRepet() {
   // than in the form because the per-row buttons are what set it.
   const [editing, setEditing] = useState<EditableEvent | null>(null);
 
+  // A SECOND query rather than swapping the first one's parameters: the
+  // upcoming list must not blank out while the archive loads, and the archive
+  // is fetched only if someone asks for it.
+  //
+  // EventActions invalidates getEventIndexQueryKey(), which is ["/events"];
+  // this query's key is ["/events", {include:"past"}]. The first is a PREFIX of
+  // the second, and TanStack matches query keys by prefix, so one invalidation
+  // refreshes both lists and the archive cannot go stale after a delete.
+  const [showingPast, setShowingPast] = useState(false);
+  const history = useEventIndex({ include: "past" }, { query: { enabled: showingPast } });
+
   if (events.isPending) {
     return (
       <PageSection width="text">
@@ -38,6 +50,13 @@ export function PlanningRepet() {
       </PageSection>
     );
   }
+
+  // The API returns one ordering — ascending — for both calls, so the endpoint
+  // keeps a single rule and the archive is reversed here. Newest first is what
+  // you want of a past list and the opposite of what you want of a future one.
+  const past = (history.data?.data ?? [])
+    .filter((event) => !events.data.data.some((upcoming) => upcoming.id === event.id))
+    .reverse();
 
   return (
     <PageSection width="text">
@@ -85,6 +104,48 @@ export function PlanningRepet() {
           </EventCard>
         ))}
       </ul>
+
+      <div className="mt-8">
+        <Button
+          type="button"
+          variant="outline"
+          aria-expanded={showingPast}
+          aria-controls="past-events"
+          onClick={() => setShowingPast((wasShowing) => !wasShowing)}
+        >
+          {showingPast ? "Masquer les événements passés" : "Voir les événements passés"}
+        </Button>
+
+        <div id="past-events" hidden={!showingPast}>
+          {history.isPending && showingPast ? <p className="mt-4">Chargement…</p> : null}
+          {history.isError ? (
+            <p role="alert" className="mt-4">
+              Les événements passés n’ont pas pu être chargés. Veuillez réessayer.
+            </p>
+          ) : null}
+          {/* NAMED differently from "Événements", so a listitem query scoped to
+              either list means exactly one thing.
+
+              No EventActions here, deliberately: an admin who needs to correct a
+              past event still can, through the upcoming list's form, but putting
+              delete buttons on an archive invites the misclick they guard
+              against. If that turns out to be wanted it is a separate
+              decision. */}
+          {past.length > 0 ? (
+            <ul aria-label="Événements passés" className="mt-4 space-y-4">
+              {past.map((event) => (
+                <EventCard key={event.id} event={event} className="opacity-75">
+                  <p>
+                    {formatTime(event.startTime)} – {formatTime(event.endTime)}
+                    <span aria-hidden="true"> · </span>
+                    {event.location}
+                  </p>
+                </EventCard>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </div>
 
       {can("manage_events") ? (
         // Keyed on the event being edited, so React remounts the form whenever

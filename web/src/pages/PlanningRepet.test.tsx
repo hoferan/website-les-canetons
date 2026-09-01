@@ -1,4 +1,5 @@
 import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
@@ -102,4 +103,17 @@ test("an empty planning renders the headings and no rows, not a crash", async ()
   expect(
     within(screen.getByRole("list", { name: "Événements" })).queryAllByRole("listitem"),
   ).toHaveLength(0);
+});
+
+test("past events are hidden until asked for, then listed newest first", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<PlanningRepet />);
+
+  const list = await screen.findByRole("list", { name: "Événements" });
+  expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+  expect(screen.queryByText("Répétition du samedi")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: /événements passés/i }));
+
+  expect(await screen.findByText("Répétition du samedi")).toBeInTheDocument();
 });
