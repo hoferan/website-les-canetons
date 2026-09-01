@@ -5,11 +5,16 @@ import { Button } from "@/components/ui/button";
 /**
  * A link that looks like a button.
  *
- * Four places style a Link as a button today — /planning_repet's Résumé actions
- * and SouperCta's call to action — each repeating the primary or secondary
- * class string by hand. Button already carries the variants and the 44px floor, and
- * shadcn's `asChild` (Radix Slot) puts them onto whatever element it wraps, so
- * this is the whole component.
+ * It exists because four separate places used to repeat the primary or secondary
+ * button class string by hand on a Link. Button already carries the variants and
+ * the 44px floor, and shadcn's `asChild` (Radix Slot) puts them onto whatever
+ * element it wraps, so this is the whole component.
+ *
+ * NO COUNT OF CALL SITES HERE, deliberately. This comment used to say "four
+ * places … today" and was wrong twice over: it named three, and there are five
+ * (SouperCta, NotFound, SignupThanks and /planning_repet's two Résumé links).
+ * A tally in a comment is a fact that rots on the next call site; `grep` for
+ * `<ButtonLink` answers it correctly forever.
  *
  * `external` exists so an outbound link cannot be added without rel="noreferrer":
  * target="_blank" without it hands the destination a window.opener it can
