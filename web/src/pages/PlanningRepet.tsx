@@ -177,15 +177,34 @@ export function PlanningRepet() {
           {/* NAMED differently from "Événements", so a listitem query scoped to
               either list means exactly one thing.
 
-              No EventActions here, deliberately: an admin who needs to correct a
-              past event still can, through the upcoming list's form, but putting
-              delete buttons on an archive invites the misclick they guard
-              against. If that turns out to be wanted it is a separate
-              decision. */}
+              ONE action, and only for view_summary: who actually came is most
+              useful AFTER an event, not least. Everything destructive stays
+              off — a delete button on a list of things that already happened
+              invites exactly the misclick it guards against — and there is no
+              way to answer, because answering an event that has happened is
+              meaningless. */}
           {past.length > 0 ? (
             <ul aria-label="Événements passés" className="mt-4 space-y-4">
               {past.map((event) => (
-                <EventCard key={event.id} event={event} className="opacity-75">
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  // NOT dimmed with opacity any more: the card now holds the
+                  // Résumé link, and CSS opacity is multiplicative down the
+                  // tree, so it would dim that link too -- and no child class
+                  // can undo a parent's opacity. EventCard already renders
+                  // `children` in text-ink-muted, which keeps the meta line
+                  // visually secondary, and the list is already unmistakably
+                  // the archive: it sits behind "Voir les événements passés"
+                  // and inside a list named "Événements passés".
+                  actions={
+                    can("view_summary") ? (
+                      <ButtonLink to={`/inscriptions_admin?id=${event.id}`} variant="outline">
+                        Résumé
+                      </ButtonLink>
+                    ) : undefined
+                  }
+                >
                   <p>
                     {formatTime(event.startTime)} – {formatTime(event.endTime)}
                     <span aria-hidden="true"> · </span>

@@ -147,6 +147,49 @@ test("past events are hidden until asked for, then listed newest first", async (
   expect(await screen.findByText("Répétition du samedi")).toBeInTheDocument();
 });
 
+test("an admin can read the summary of a past event", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  await renderWithSession(<PlanningRepet />);
+
+  await user.click(await screen.findByRole("button", { name: /événements passés/i }));
+
+  const past = within(await screen.findByRole("list", { name: "Événements passés" }));
+  expect(await past.findByRole("link", { name: "Résumé" })).toBeInTheDocument();
+});
+
+// Résumé is read-only and is the point of the archive for an admin. Everything
+// destructive stays off it: a delete button on a list of things that already
+// happened invites exactly the misclick it guards against. Answering is not
+// offered either — answering an event that has happened is meaningless, which
+// is why /inscriptions_utilisateurs' 'Aucun événement' branch catches it too.
+test("the archive offers nothing destructive, and no way to answer", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  await renderWithSession(<PlanningRepet />);
+
+  await user.click(await screen.findByRole("button", { name: /événements passés/i }));
+
+  const past = within(await screen.findByRole("list", { name: "Événements passés" }));
+  await past.findByRole("link", { name: "Résumé" });
+  expect(past.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
+  expect(past.queryByRole("button", { name: /^Modifier/ })).toBeNull();
+  expect(past.queryByRole("button", { name: "Je participe" })).toBeNull();
+});
+
+test("a member sees the archive with no controls on it", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.user");
+  await renderWithSession(<PlanningRepet />);
+
+  await user.click(await screen.findByRole("button", { name: /événements passés/i }));
+
+  const past = within(await screen.findByRole("list", { name: "Événements passés" }));
+  await past.findByText("Répétition du samedi");
+  expect(past.queryByRole("button", { name: "Je participe" })).toBeNull();
+  expect(past.queryByRole("link", { name: "Résumé" })).toBeNull();
+});
+
 const cards = async () =>
   within(await screen.findByRole("list", { name: "Événements" })).getAllByRole("listitem");
 
