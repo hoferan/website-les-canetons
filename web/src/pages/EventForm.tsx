@@ -5,6 +5,7 @@ import { getEventIndexQueryKey, useEventStore, useEventUpdate } from "../api/gen
 import type { EventIndex200Item, EventRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { Button } from "@/components/ui/button";
 
 /** What the form edits: the request body the API accepts, plus the id it acts on. */
 export type EditableEvent = EventRequest & { id: number };
@@ -165,25 +166,16 @@ export function EventForm({
             retry permanently blocked. aria-disabled rather than disabled so the
             focused button is not blurred to <body>; `submit`'s early return is
             the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={pending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={pending}>
           {editing ? "Modifier" : "Ajouter"}
-        </button>
+        </Button>
         {editing ? (
           // Genuinely disabled, unlike the submit beside it: a cancel cannot be
           // double-fired into anything, and keeping it unavailable while a save
           // is in flight is the correct behaviour rather than a focus hazard.
-          <button
-            type="button"
-            onClick={onDone}
-            disabled={pending}
-            className="rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button type="button" variant="outline" onClick={onDone} disabled={pending}>
             Annuler
-          </button>
+          </Button>
         ) : null}
       </div>
     </form>

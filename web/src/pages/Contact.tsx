@@ -6,6 +6,7 @@ import type { ContactRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 const EMPTY: ContactRequest = {
   lastName: "",
@@ -91,13 +92,9 @@ export function Contact() {
         ))}
         {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
             early return is the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={send.isPending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={send.isPending}>
           Envoyer
-        </button>
+        </Button>
       </form>
     </PageSection>
   );

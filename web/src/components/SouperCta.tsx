@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
-
 import { useSession } from "../session/SessionProvider";
+import { ButtonLink } from "@/components/ButtonLink";
 
 /**
  * The home page's call to the souper.
@@ -44,12 +43,9 @@ export function SouperCta() {
       )}
 
       <p className="mt-5">
-        <Link
-          to={summary ? "/signups_admin" : "/signup"}
-          className="inline-block rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90"
-        >
+        <ButtonLink to={summary ? "/signups_admin" : "/signup"}>
           {summary ? "Voir les inscriptions" : "S’inscrire au souper"}
-        </Link>
+        </ButtonLink>
       </p>
     </section>
   );

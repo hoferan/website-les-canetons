@@ -7,6 +7,7 @@ import { FormError } from "../components/FormField";
 import { formatEventDate } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 /**
  * Answer one event.
@@ -114,13 +115,9 @@ export function InscriptionsUtilisateurs() {
           </select>
         </div>
 
-        <button
-          type="submit"
-          aria-disabled={respond.isPending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={respond.isPending}>
           Confirmer
-        </button>
+        </Button>
       </form>
     </PageSection>
   );

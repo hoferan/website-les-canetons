@@ -9,6 +9,7 @@ import { FormError, FormField } from "../components/FormField";
 import { useSession } from "../session/SessionProvider";
 import { GuestMenus } from "./GuestMenus";
 import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 /**
  * The public reservation form — the ONLY place in this system where an
@@ -190,13 +191,9 @@ export function Signup() {
 
         {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
             early return is the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={pending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={pending}>
           {verifying ? "Vérification…" : "Envoyer l’inscription"}
-        </button>
+        </Button>
       </form>
     </PageSection>
   );

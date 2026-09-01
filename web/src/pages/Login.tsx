@@ -8,6 +8,7 @@ import { FormError, FormField } from "../components/FormField";
 import { safeReturnTo } from "../lib/returnTo";
 import { useSession } from "../session/SessionProvider";
 import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 /**
  * One route, two states.
@@ -114,13 +115,9 @@ function LoginForm() {
             to <body> and nothing restores focus, so a refused login could leave
             a keyboard user with no feedback and no place in the document. The
             early return in `submit` is the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={login.isPending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={login.isPending}>
           Se connecter
-        </button>
+        </Button>
       </form>
     </>
   );
@@ -166,17 +163,18 @@ function LoggedIn({ username }: { username: string }) {
           only thing stopping a second click — see the login side.
           `logout.mutate()` takes no argument: the generated hook types its
           variables as `void`. */}
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={() => {
           if (logout.isPending) return;
           logout.mutate();
         }}
         aria-disabled={logout.isPending}
-        className="mt-4 rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        className="mt-4"
       >
         Se déconnecter
-      </button>
+      </Button>
     </>
   );
 }

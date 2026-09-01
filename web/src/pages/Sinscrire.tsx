@@ -1,9 +1,8 @@
-import { Link } from "react-router-dom";
-
 import { useEventIndex } from "../api/generated/endpoints";
 import { formatEventDate } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 import { PageSection } from "@/components/PageSection";
+import { ButtonLink } from "@/components/ButtonLink";
 
 /**
  * The events a member answers.
@@ -67,22 +66,16 @@ export function Sinscrire() {
                         Choix enregistré
                       </button>
                     ) : (
-                      <Link
-                        to={`/inscriptions_utilisateurs?id=${event.id}`}
-                        className="inline-block rounded bg-violet px-3 py-1 text-sm font-semibold text-white hover:bg-violet/90"
-                      >
+                      <ButtonLink to={`/inscriptions_utilisateurs?id=${event.id}`}>
                         S’inscrire
-                      </Link>
+                      </ButtonLink>
                     )
                   ) : null}
 
                   {can("view_summary") ? (
-                    <Link
-                      to={`/inscriptions_admin?id=${event.id}`}
-                      className="inline-block rounded border border-line px-3 py-1 text-sm hover:border-violet hover:text-violet"
-                    >
+                    <ButtonLink to={`/inscriptions_admin?id=${event.id}`} variant="outline">
                       Résumé
-                    </Link>
+                    </ButtonLink>
                   ) : null}
                 </td>
               </tr>

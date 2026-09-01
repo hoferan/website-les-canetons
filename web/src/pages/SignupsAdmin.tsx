@@ -1,5 +1,6 @@
 import { useSignupIndex } from "../api/generated/endpoints";
 import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 /**
  * Who reserved, at which table, eating what.
@@ -83,12 +84,11 @@ export function SignupsAdmin() {
         <h1 className="font-display text-3xl">Inscriptions — {data.occasion.title}</h1>
         {/* A plain link, NOT a client call: the generated client cannot stream
             a download, and a normal navigation carries the session cookie. */}
-        <a
-          href="/api/signups?format=xlsx"
-          className="rounded border border-line px-3 py-2 hover:border-violet hover:text-violet"
-        >
-          <span aria-hidden="true">⬇</span> Exporter en Excel
-        </a>
+        <Button asChild variant="outline">
+          <a href="/api/signups?format=xlsx">
+            <span aria-hidden="true">⬇</span> Exporter en Excel
+          </a>
+        </Button>
       </div>
 
       {/* NAMED, because the layout's nav is a list too. */}
