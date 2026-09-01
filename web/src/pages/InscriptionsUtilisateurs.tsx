@@ -1,11 +1,9 @@
-import { useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useEventIndex, useResponseStore } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { formatEventDate } from "../lib/date";
-import { useSession } from "../session/SessionProvider";
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
 
@@ -16,15 +14,22 @@ import { Button } from "@/components/ui/button";
  * GET /api/events/{id}, and the list is already cached by the time anyone
  * arrives here from /sinscrire.
  *
+ * A DEEP-LINK FALLBACK now, not the main flow. /sinscrire answers inline in one
+ * tap, so nothing links here any more — but the URL is frozen and is in
+ * bookmarks, so it keeps working and offers the same two buttons.
+ *
+ * Note a link to a PAST event now falls through to the "Aucun événement à
+ * confirmer" branch below, because GET /api/events returns upcoming events by
+ * default and this page finds its event in that list. That is correct rather
+ * than regrettable: answering an event that has happened is meaningless.
+ *
  * It NAMES the event, which the old page did not: its heading was "Inscription
  * à l'événement" and nothing on screen said which one. That was a defect, and
  * the date and title cost nothing here.
  */
 export function InscriptionsUtilisateurs() {
-  const { user } = useSession();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [participation, setParticipation] = useState("");
   const { error, setFromThrown, clear } = useApiFormError(
     "L’inscription a échoué. Veuillez réessayer.",
   );
@@ -43,16 +48,10 @@ export function InscriptionsUtilisateurs() {
     },
   });
 
-  const submit = (submitEvent: FormEvent) => {
-    submitEvent.preventDefault();
+  const send = (participation: "participate" | "notparticipate") => {
     if (respond.isPending || !event) return;
     clear();
-    respond.mutate({
-      data: {
-        eventId: event.id,
-        participation: participation as "participate" | "notparticipate",
-      },
-    });
+    respond.mutate({ data: { eventId: event.id, participation } });
   };
 
   if (events.isPending) {
@@ -86,39 +85,25 @@ export function InscriptionsUtilisateurs() {
 
       <FormError error={error} />
 
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="response-username">Identifiant de l’utilisateur :</label>
-          <input
-            id="response-username"
-            type="text"
-            readOnly
-            value={user?.username ?? ""}
-            className="w-full rounded border border-line bg-ground px-3 py-2 text-ink-muted"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="response-participation">Participation :</label>
-          <select
-            id="response-participation"
-            required
-            value={participation}
-            onChange={(changeEvent) => setParticipation(changeEvent.target.value)}
-            className="w-full rounded border border-line bg-panel px-3 py-2 text-ink outline-none focus:border-violet focus:ring-2 focus:ring-violet/30"
-          >
-            <option value="" disabled>
-              Choisissez une option
-            </option>
-            <option value="participate">Je participe</option>
-            <option value="notparticipate">Je ne participe pas</option>
-          </select>
-        </div>
-
-        <Button type="submit" aria-disabled={respond.isPending}>
-          Confirmer
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          aria-disabled={respond.isPending}
+          onClick={() => send("participate")}
+          className="flex-1 sm:flex-none"
+        >
+          Je participe
         </Button>
-      </form>
+        <Button
+          type="button"
+          variant="outline"
+          aria-disabled={respond.isPending}
+          onClick={() => send("notparticipate")}
+          className="flex-1 sm:flex-none"
+        >
+          Je ne participe pas
+        </Button>
+      </div>
     </PageSection>
   );
 }
