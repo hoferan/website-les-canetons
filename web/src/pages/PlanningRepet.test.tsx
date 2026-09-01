@@ -89,6 +89,25 @@ test("an anonymous visitor gets no controls at all", async () => {
   expect(screen.queryByRole("button", { name: /^Modifier / })).toBeNull();
 });
 
+test("an anonymous visitor is told that logging in lets them answer", async () => {
+  await renderWithSession(<PlanningRepet />);
+  // The sentence is split across the <Link> and the trailing text node, so a
+  // plain regex findByText can't match it in one go — assert on the link and
+  // on its containing paragraph's full text instead.
+  const link = await screen.findByRole("link", { name: "Connectez-vous" });
+  expect(link).toHaveAttribute("href", "/authentification_inscription");
+  expect(link.closest("p")).toHaveTextContent("Connectez-vous pour indiquer votre participation.");
+});
+
+// A member already has the buttons in front of them. A banner repeating what
+// the UI shows is noise on every visit.
+test("a logged-in member never sees the hint", async () => {
+  setMockUser("demo.user");
+  await renderWithSession(<PlanningRepet />);
+  await screen.findByRole("list", { name: "Événements" });
+  expect(screen.queryByText(/Connectez-vous pour indiquer/)).toBeNull();
+});
+
 test("a failing API renders a message rather than an empty page", async () => {
   server.use(
     http.get("/api/events", () =>

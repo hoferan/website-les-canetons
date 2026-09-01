@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { useEventIndex } from "../api/generated/endpoints";
 import { formatTime } from "../lib/date";
@@ -9,6 +10,7 @@ import { EventForm, toEditableEvent, type EditableEvent } from "./EventForm";
 import { ButtonLink } from "@/components/ButtonLink";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { PageSection } from "@/components/PageSection";
 
 /**
@@ -22,7 +24,7 @@ import { PageSection } from "@/components/PageSection";
  * An anonymous visitor gets none of it. This mirrors what the API enforces.
  */
 export function PlanningRepet() {
-  const { can } = useSession();
+  const { can, user } = useSession();
   const events = useEventIndex();
 
   // Which event the form is editing, or null for "create". It lives here rather
@@ -72,6 +74,28 @@ export function PlanningRepet() {
     <PageSection width="text">
       <h1 className="font-display text-4xl">Planning des prestations et des répétitions</h1>
       <h2 className="text-lg text-ink-muted">sous réserve de modifications</h2>
+
+      {/* Shown to ANONYMOUS visitors only. The page is public — anyone may read
+          when the band plays — but without this a visitor sees a bare schedule
+          with nothing to suggest that signing in lets them answer. A member
+          never sees it: they have the buttons. */}
+      {!user ? (
+        <Card asChild className="mt-6 gap-0 p-4 text-ink-muted">
+          <p>
+            {/* Underlined at rest, unlike every other inline prose link on the
+                site (text-violet hover:underline). Those are a passing
+                reference inside body copy; this one IS the hint's entire
+                point, so it stays visibly a link rather than blending in. */}
+            <Link
+              to="/authentification_inscription"
+              className="focus-ring font-semibold text-violet underline"
+            >
+              Connectez-vous
+            </Link>{" "}
+            pour indiquer votre participation.
+          </p>
+        </Card>
+      ) : null}
 
       {/* Named, so it can be distinguished from the navigation's own list —
           both are `listitem`s to a screen reader and to a test, and "17 rows"
