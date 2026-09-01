@@ -3,8 +3,10 @@ import { useState } from "react";
 import { useEventIndex } from "../api/generated/endpoints";
 import { formatTime } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { AnswerControls } from "./AnswerControls";
 import { EventActions } from "./EventActions";
 import { EventForm, toEditableEvent, type EditableEvent } from "./EventForm";
+import { ButtonLink } from "@/components/ButtonLink";
 import { EventCard } from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
 import { PageSection } from "@/components/PageSection";
@@ -12,9 +14,12 @@ import { PageSection } from "@/components/PageSection";
 /**
  * The planning of performances and rehearsals.
  *
- * Public: anyone can read the list. Only `manage_events` — admin alone — gets
- * the per-event controls and the form below them. That asymmetry is the whole
- * point of the page and mirrors what the API enforces.
+ * Public: anyone can read the list. Per-event controls depend on capability —
+ * `respond` (user/moderator) gets the answer buttons, `view_summary` (admin)
+ * gets the Résumé link, `manage_events` (admin) gets edit/delete and the form
+ * below the list. The matrix is not a hierarchy: `respond` and `view_summary`
+ * never overlap on the same account, so an admin never sees answer buttons.
+ * An anonymous visitor gets none of it. This mirrors what the API enforces.
  */
 export function PlanningRepet() {
   const { can } = useSession();
@@ -58,6 +63,11 @@ export function PlanningRepet() {
     .filter((event) => !events.data.data.some((upcoming) => upcoming.id === event.id))
     .reverse();
 
+  // Anonymous visitors get no footer at all rather than an empty one: an
+  // EventCard renders its actions row whenever `actions` is truthy, and a
+  // fragment of three nulls is truthy.
+  const hasActions = can("respond") || can("view_summary") || can("manage_events");
+
   return (
     <PageSection width="text">
       <h1 className="font-display text-4xl">Planning des prestations et des répétitions</h1>
@@ -76,8 +86,25 @@ export function PlanningRepet() {
             key={event.id}
             event={event}
             actions={
-              can("manage_events") ? (
-                <EventActions event={toEditableEvent(event)} onEdit={setEditing} />
+              hasActions ? (
+                <>
+                  {/* The capability matrix, on one card. `respond` is user and
+                      moderator; `view_summary` and `manage_events` are admin.
+                      They do NOT overlap, so an admin gets the summary and the
+                      edit controls and NO answer buttons -- which is the whole
+                      reason this page can serve every member at once. */}
+                  {can("respond") ? (
+                    <AnswerControls eventId={event.id} answer={event.response} />
+                  ) : null}
+                  {can("view_summary") ? (
+                    <ButtonLink to={`/inscriptions_admin?id=${event.id}`} variant="outline">
+                      Résumé
+                    </ButtonLink>
+                  ) : null}
+                  {can("manage_events") ? (
+                    <EventActions event={toEditableEvent(event)} onEdit={setEditing} />
+                  ) : null}
+                </>
               ) : undefined
             }
           >

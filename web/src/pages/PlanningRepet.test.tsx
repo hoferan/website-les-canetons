@@ -4,7 +4,7 @@ import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
 import { formatEventDate, formatEventDateRange } from "../lib/date";
-import { SEED } from "../mocks/handlers";
+import { SEED, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { PlanningRepet } from "./PlanningRepet";
@@ -79,6 +79,16 @@ test("an anonymous visitor can read the planning", async () => {
   ).toHaveLength(3);
 });
 
+// An anonymous visitor reads the planning and can do nothing to it. This is the
+// assertion that stops the merged page leaking member controls to the public.
+test("an anonymous visitor gets no controls at all", async () => {
+  await renderWithSession(<PlanningRepet />);
+  await screen.findByRole("list", { name: "Événements" });
+  expect(screen.queryByRole("button", { name: "Je participe" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Résumé" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /^Modifier / })).toBeNull();
+});
+
 test("a failing API renders a message rather than an empty page", async () => {
   server.use(
     http.get("/api/events", () =>
@@ -116,4 +126,61 @@ test("past events are hidden until asked for, then listed newest first", async (
   await user.click(screen.getByRole("button", { name: /événements passés/i }));
 
   expect(await screen.findByText("Répétition du samedi")).toBeInTheDocument();
+});
+
+const cards = async () =>
+  within(await screen.findByRole("list", { name: "Événements" })).getAllByRole("listitem");
+
+test("a member who may respond gets both answers on every event", async () => {
+  setMockUser("demo.user");
+  await renderWithSession(<PlanningRepet />);
+  expect(await screen.findAllByRole("button", { name: "Je participe" })).toHaveLength(3);
+  expect(screen.getAllByRole("button", { name: "Je ne participe pas" })).toHaveLength(3);
+  expect(screen.queryByRole("link", { name: "Résumé" })).toBeNull();
+});
+
+// The matrix is NOT a hierarchy: admin holds view_summary and NOT respond, so
+// it gets the other action entirely. Every intuition about roles says an admin
+// can do what a user can; here it cannot.
+test("an admin gets the summary action instead, not as well", async () => {
+  setMockUser("demo.admin");
+  await renderWithSession(<PlanningRepet />);
+  expect(await screen.findAllByRole("link", { name: "Résumé" })).toHaveLength(3);
+  expect(screen.queryByRole("button", { name: "Je participe" })).toBeNull();
+  expect(await screen.findAllByRole("button", { name: /^Modifier / })).toHaveLength(3);
+});
+
+test("a moderator responds, like a user", async () => {
+  setMockUser("demo.moderator");
+  await renderWithSession(<PlanningRepet />);
+  expect(await screen.findAllByRole("button", { name: "Je participe" })).toHaveLength(3);
+});
+
+test("answering an event takes one tap and shows the saved answer", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.user");
+  await renderWithSession(<PlanningRepet />);
+
+  const first = (await cards())[0]!;
+  await user.click(within(first).getByRole("button", { name: "Je participe" }));
+
+  expect(await within(first).findByText("Je participe")).toBeInTheDocument();
+  expect(within(first).getByRole("button", { name: "Modifier" })).toBeInTheDocument();
+});
+
+// The API has ALWAYS allowed this — ResponseController::store upserts on
+// (user_id, event_id) and its own comment says "Answering again overwrites".
+// Only the UI forbade it, with a disabled "Choix enregistré" button, which made
+// a mistap permanent. One-tap answering is only safe because of this.
+test("an answer can be changed", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.user");
+  const concert = SEED.find((event) => event.title === "Concert d'automne")!;
+  server.use(
+    http.get("/api/events", () => HttpResponse.json([{ ...concert, response: "participate" }])),
+  );
+
+  await renderWithSession(<PlanningRepet />);
+  await user.click(await screen.findByRole("button", { name: "Modifier" }));
+  expect(await screen.findByRole("button", { name: "Je ne participe pas" })).toBeInTheDocument();
 });
