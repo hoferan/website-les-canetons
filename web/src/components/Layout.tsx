@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
+import { Toaster } from "./ui/sonner";
 
 /**
  * Link set and ORDER copied from the deleted app/partials/navigation.php
@@ -154,6 +155,11 @@ export function Layout() {
           © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
         </p>
       </footer>
+
+      {/* Mounted once here rather than per page: the layout route survives
+          navigation, so a toast raised by a mutation is not unmounted by the
+          redirect that follows it. */}
+      <Toaster />
     </>
   );
 }
