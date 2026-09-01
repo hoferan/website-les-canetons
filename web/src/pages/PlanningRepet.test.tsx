@@ -97,6 +97,16 @@ test("an anonymous visitor is told that logging in lets them answer", async () =
   const link = await screen.findByRole("link", { name: "Connectez-vous" });
   expect(link).toHaveAttribute("href", "/authentification_inscription");
   expect(link.closest("p")).toHaveTextContent("Connectez-vous pour indiquer votre participation.");
+
+  // The hint must read as ONE SENTENCE, and toHaveTextContent above cannot tell
+  // you whether it does: textContent ignores layout. It shipped broken once
+  // exactly this way -- the paragraph was a `Card asChild`, Card's base classes
+  // are `flex flex-col`, so the link and the trailing text became flex ITEMS and
+  // rendered on two lines while every assertion above still passed. jsdom does
+  // not lay anything out either, so the closest honest proxy is structural: the
+  // paragraph must not be the flex container that caused it.
+  const paragraph = link.closest("p")!;
+  expect(paragraph.className.split(" ")).not.toContain("flex");
 });
 
 // A member already has the buttons in front of them. A banner repeating what

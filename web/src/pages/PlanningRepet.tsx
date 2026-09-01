@@ -78,9 +78,19 @@ export function PlanningRepet() {
       {/* Shown to ANONYMOUS visitors only. The page is public — anyone may read
           when the band plays — but without this a visitor sees a bare schedule
           with nothing to suggest that signing in lets them answer. A member
-          never sees it: they have the buttons. */}
+          never sees it: they have the buttons.
+
+          Card WRAPS the paragraph rather than being it. `asChild` was tried here
+          and is WRONG: Card's base classes are `flex flex-col`, so asChild puts
+          them on the <p> itself, the link and the trailing text become flex
+          ITEMS, and the sentence renders on TWO lines — "Connectez-vous" above
+          "pour indiquer votre participation.". toHaveTextContent could not see
+          that, because textContent ignores layout; only opening the page did.
+          asChild is for when the card must BE a semantic element, like the
+          <li>s in the events list. A paragraph inside a panel is just a
+          paragraph inside a panel. */}
       {!user ? (
-        <Card asChild className="mt-6 gap-0 p-4 text-ink-muted">
+        <Card className="mt-6 p-4 text-ink-muted">
           <p>
             {/* Underlined at rest, unlike every other inline prose link on the
                 site (text-violet hover:underline). Those are a passing
