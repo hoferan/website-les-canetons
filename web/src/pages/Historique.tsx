@@ -1,3 +1,5 @@
+import { PageSection } from "@/components/PageSection";
+
 /**
  * The band's history, ported verbatim from historique.php.
  *
@@ -10,7 +12,7 @@
  */
 export function Historique() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">L’Histoire des Canetons</h1>
 
       <div className="mt-6 max-w-prose space-y-4">
@@ -44,6 +46,6 @@ export function Historique() {
           merveilleuse Guggen.
         </p>
       </div>
-    </section>
+    </PageSection>
   );
 }

@@ -13,7 +13,7 @@ const events = (page: import("@playwright/test").Page) =>
 
 test("the planning page lists events", async ({ page }) => {
   await page.goto("/planning_repet");
-  await expect(page.getByRole("heading", { name: /Planning des prestations/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Événements" })).toBeVisible();
   await expect(events(page)).toHaveCount(3);
   await expect(events(page).first()).toContainText("Concert d'automne");
 });
@@ -48,11 +48,30 @@ async function login(page: import("@playwright/test").Page, username: string) {
   await expect(page.getByRole("link", { name: username })).toBeVisible();
 }
 
+/**
+ * A date N days from today, as "YYYY-MM-DD".
+ *
+ * GET /api/events filters to upcoming events, so an event created with a fixed
+ * date would stop appearing in the list on the day it passed and the add test
+ * would fail for a reason that looks nothing like its cause. Spelled out here
+ * rather than imported from web/src/mocks: this spec drives a browser and does
+ * not share a module graph with the app.
+ */
+function upcoming(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
 test("an admin can add an event", async ({ page }) => {
   await login(page, "demo.admin");
   await page.goto("/planning_repet");
 
-  await page.getByLabel("Date :").fill("2026-12-05");
+  await page.getByLabel("Date :").fill(upcoming(95));
   await page.getByLabel("Titre :").fill("Cortège");
   await page.getByLabel("Heure de début :").fill("14:00");
   await page.getByLabel("Heure de fin :").fill("17:00");

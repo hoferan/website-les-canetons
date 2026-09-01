@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -42,6 +44,15 @@ export default defineConfig({
   root: "web",
   base: "/",
   plugins: [react(), tailwindcss()],
+  // `@/` -> web/src. Note root is "web" below, so this is resolved from the
+  // REPO root and not from the Vite root. It must agree with tsconfig.json's
+  // paths and with vitest.config.ts, which is a separate config file in this
+  // project -- see its own comment.
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./web/src", import.meta.url)),
+    },
+  },
   build: {
     outDir: "../dist/build",
     emptyOutDir: true,

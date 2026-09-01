@@ -29,6 +29,24 @@ class EventIndexTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * A date N days from today, as 'YYYY-MM-DD'.
+     *
+     * Dates here are OFFSETS, not literals, because GET /api/events filters to
+     * upcoming events by default. Every date in this file used to be a 2027
+     * literal, which was harmless while the endpoint returned everything and a
+     * dated time bomb the moment it did not: each one would have fallen out of
+     * the default response on its own date, failing tests that are not about
+     * dates at all.
+     *
+     * now() is UTC (api/config/app.php hardcodes it) and so is the controller's
+     * comparison, so the two agree by construction.
+     */
+    private function inDays(int $days): string
+    {
+        return now()->addDays($days)->toDateString();
+    }
+
     private function event(string $date, array $overrides = []): Event
     {
         return Event::create($overrides + [
@@ -51,9 +69,9 @@ class EventIndexTest extends TestCase
     {
         // Inserted out of order, so the response pins the old query's ORDER BY
         // date rather than insertion / id order.
-        $this->event('2027-03-05', ['title' => 'Third']);
-        $this->event('2027-01-09', ['title' => 'First']);
-        $this->event('2027-02-14', ['title' => 'Second']);
+        $this->event($this->inDays(90), ['title' => 'Third']);
+        $this->event($this->inDays(30), ['title' => 'First']);
+        $this->event($this->inDays(60), ['title' => 'Second']);
 
         $this->getJson('/api/events')
             ->assertOk()
@@ -63,9 +81,61 @@ class EventIndexTest extends TestCase
             ->assertJsonPath('2.title', 'Third');
     }
 
+    public function test_past_events_are_excluded_by_default(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+        $this->event($this->inDays(7), ['title' => 'Upcoming']);
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.title', 'Upcoming');
+    }
+
+    /**
+     * An event happening TODAY is still upcoming — it has not happened yet.
+     * The column is a plain `date` with no time component, so there is nothing
+     * finer to compare against and the boundary must be inclusive.
+     */
+    public function test_an_event_today_is_still_upcoming(): void
+    {
+        $this->event($this->inDays(0), ['title' => 'Today']);
+
+        $this->getJson('/api/events')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.title', 'Today');
+    }
+
+    public function test_include_past_returns_the_whole_history(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+        $this->event($this->inDays(7), ['title' => 'Upcoming']);
+
+        $this->getJson('/api/events?include=past')
+            ->assertOk()
+            ->assertJsonCount(2)
+            ->assertJsonPath('0.title', 'Past')
+            ->assertJsonPath('1.title', 'Upcoming');
+    }
+
+    /**
+     * Anything that is not exactly `past` gets the safe answer, mirroring the
+     * convention POST /api/migrate already uses for `?mode`: only the exact
+     * string opts in, so a typo cannot silently widen what is returned.
+     */
+    public function test_an_unrecognised_include_value_falls_back_to_the_default(): void
+    {
+        $this->event($this->inDays(-7), ['title' => 'Past']);
+
+        $this->getJson('/api/events?include=everything')
+            ->assertOk()
+            ->assertJsonCount(0);
+    }
+
     public function test_an_anonymous_caller_sees_no_responses(): void
     {
-        $event = $this->event('2027-01-09');
+        $event = $this->event($this->inDays(30));
         // A response exists in the database — it must simply never be reachable
         // without an authenticated session.
         Response::create([
@@ -81,7 +151,7 @@ class EventIndexTest extends TestCase
 
     public function test_a_logged_in_user_sees_their_own_answer(): void
     {
-        $event = $this->event('2027-01-09');
+        $event = $this->event($this->inDays(30));
         $user = $this->user('demo.user');
         Response::create([
             'user_id' => $user->id,
@@ -102,7 +172,7 @@ class EventIndexTest extends TestCase
      */
     public function test_a_user_never_sees_another_users_answer(): void
     {
-        $event = $this->event('2027-01-09');
+        $event = $this->event($this->inDays(30));
         $other = $this->user('demo.other');
         $caller = $this->user('demo.caller');
         Response::create([
@@ -142,7 +212,7 @@ class EventIndexTest extends TestCase
 
     public function test_two_users_each_see_only_their_own_answer(): void
     {
-        $event = $this->event('2027-01-09');
+        $event = $this->event($this->inDays(30));
         $alice = $this->user('demo.alice');
         $bob = $this->user('demo.bob');
         Response::create(['user_id' => $alice->id, 'event_id' => $event->id, 'answer' => 'participate']);
@@ -157,7 +227,8 @@ class EventIndexTest extends TestCase
 
     public function test_the_payload_uses_the_camel_case_frontend_shape(): void
     {
-        $event = $this->event('2027-11-13', ['title' => 'Carnaval', 'weekend' => 1]);
+        $date = $this->inDays(180);
+        $event = $this->event($date, ['title' => 'Carnaval', 'weekend' => 1]);
 
         $response = $this->getJson('/api/events')->assertOk();
 
@@ -165,7 +236,7 @@ class EventIndexTest extends TestCase
         // as much as a renamed one would be a break.
         $response->assertExactJson([[
             'id' => $event->id,
-            'date' => '2027-11-13',
+            'date' => $date,
             'title' => 'Carnaval',
             'startTime' => '20:00:00',
             'endTime' => '22:00:00',
@@ -186,10 +257,10 @@ class EventIndexTest extends TestCase
     public function test_the_index_does_not_issue_a_query_per_event(): void
     {
         $user = $this->user('demo.user');
-        $this->event('2027-01-09');
+        $this->event($this->inDays(30));
         $withOne = $this->countQueries(fn () => $this->actingAs($user)->getJson('/api/events')->assertOk());
 
-        foreach (['2027-02-14', '2027-03-05', '2027-04-01', '2027-05-20'] as $date) {
+        foreach ([$this->inDays(60), $this->inDays(90), $this->inDays(120), $this->inDays(150)] as $date) {
             $this->event($date);
         }
         $withFive = $this->countQueries(fn () => $this->actingAs($user)->getJson('/api/events')->assertOk());

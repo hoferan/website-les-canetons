@@ -8,6 +8,9 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { useSession } from "../session/SessionProvider";
 import { GuestMenus } from "./GuestMenus";
+import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 /**
  * The public reservation form — the ONLY place in this system where an
@@ -114,7 +117,7 @@ export function Signup() {
   };
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-3xl">{occasion.title}</h1>
       <p className="mt-1 text-ink-muted">{occasion.subtitle}</p>
       <p className="mt-4">{occasion.teaser}</p>
@@ -133,70 +136,72 @@ export function Signup() {
           <input type="text" id="website" name="website" tabIndex={-1} autoComplete="off" />
         </div>
 
-        <fieldset className="rounded-lg border border-line bg-panel p-5">
-          <legend className="px-2 font-display text-xl">Vos coordonnées</legend>
-          <div className="mt-2 space-y-3">
-            {FIELDS.map((field) => (
-              <FormField
-                key={field.name}
-                id={`signup-${field.name}`}
-                label={field.label}
-                type={field.type}
-                required
-                autoComplete={field.autoComplete}
-                problem={messageFor(field.name)}
-                value={values[field.name]}
-                onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
-              />
-            ))}
-            {/* No datalist of existing table names, deliberately: the old form
+        <Card asChild className="gap-0 p-5">
+          <fieldset>
+            <legend className="px-2 font-display text-xl">Vos coordonnées</legend>
+            <div className="mt-2 space-y-3">
+              {FIELDS.map((field) => (
+                <FormField
+                  key={field.name}
+                  id={`signup-${field.name}`}
+                  label={field.label}
+                  type={field.type}
+                  required
+                  autoComplete={field.autoComplete}
+                  problem={messageFor(field.name)}
+                  value={values[field.name]}
+                  onChange={(next) =>
+                    setValues((previous) => ({ ...previous, [field.name]: next }))
+                  }
+                />
+              ))}
+              {/* No datalist of existing table names, deliberately: the old form
                 published every reserving guest's surname to anonymous
                 visitors. The affordance it carried survives in this hint. */}
-            <p className="text-sm text-ink-muted">
-              Tapez exactement le même nom de table que vos proches pour être placés ensemble.
-            </p>
-          </div>
-        </fieldset>
+              <p className="text-sm text-ink-muted">
+                Tapez exactement le même nom de table que vos proches pour être placés ensemble.
+              </p>
+            </div>
+          </fieldset>
+        </Card>
 
-        <fieldset className="rounded-lg border border-line bg-panel p-5">
-          <legend className="px-2 font-display text-xl">Menus</legend>
-          <p className="mt-2">Choisissez un menu par personne.</p>
+        <Card asChild className="gap-0 p-5">
+          <fieldset>
+            <legend className="px-2 font-display text-xl">Menus</legend>
+            <p className="mt-2">Choisissez un menu par personne.</p>
 
-          <ul aria-label="Menus proposés" className="mt-4 space-y-3">
-            {occasion.menus.map((menu) => (
-              <li key={menu.value} className="rounded border border-line p-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-semibold">{menu.label}</span>
-                  <span className="text-violet">{menu.price}</span>
-                </div>
-                <p className="mt-1 text-sm text-ink-muted">{menu.description}</p>
-              </li>
-            ))}
-          </ul>
+            <ul aria-label="Menus proposés" className="mt-4 space-y-3">
+              {occasion.menus.map((menu) => (
+                <li key={menu.value} className="rounded border border-line p-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-semibold">{menu.label}</span>
+                    <span className="text-violet">{menu.price}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-ink-muted">{menu.description}</p>
+                </li>
+              ))}
+            </ul>
 
-          <div className="mt-5">
-            <GuestMenus
-              menus={guests}
-              onChange={setMenus}
-              options={occasion.menus}
-              maxGuests={occasion.maxGuests}
-            />
-          </div>
-          {messageFor("menus") ? (
-            <p className="mt-2 text-sm text-danger">{messageFor("menus")}</p>
-          ) : null}
-        </fieldset>
+            <div className="mt-5">
+              <GuestMenus
+                menus={guests}
+                onChange={setMenus}
+                options={occasion.menus}
+                maxGuests={occasion.maxGuests}
+              />
+            </div>
+            {messageFor("menus") ? (
+              <p className="mt-2 text-sm text-danger">{messageFor("menus")}</p>
+            ) : null}
+          </fieldset>
+        </Card>
 
         {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
             early return is the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={pending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
+        <Button type="submit" aria-disabled={pending}>
           {verifying ? "Vérification…" : "Envoyer l’inscription"}
-        </button>
+        </Button>
       </form>
-    </section>
+    </PageSection>
   );
 }

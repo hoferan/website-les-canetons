@@ -25,11 +25,14 @@ afterEach(() => {
   server.resetHandlers();
   resetMockState();
 
-  // Spies on globals — window.confirm and window.alert, which the event
-  // controls use — otherwise survive the test that installed them, and so do
+  // Spies on globals otherwise survive the test that installed them, and so do
   // their call counts. A later test asserting toHaveBeenCalledTimes(1) then
   // counts an earlier test's calls and fails only when the whole file runs,
   // passing in isolation. That reads as flakiness and is not.
+  //
+  // This used to name window.confirm and window.alert, which the event controls
+  // used. They are gone -- a real dialog and a toast replaced them -- but the
+  // reset still earns its place: http.test.ts mocks global fetch.
   vi.restoreAllMocks();
 });
 

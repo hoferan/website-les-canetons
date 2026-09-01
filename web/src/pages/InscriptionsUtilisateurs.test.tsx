@@ -10,7 +10,7 @@ import { InscriptionsUtilisateurs } from "./InscriptionsUtilisateurs";
 const app = (
   <Routes>
     <Route path="/inscriptions_utilisateurs" element={<InscriptionsUtilisateurs />} />
-    <Route path="/sinscrire" element={<p>Liste</p>} />
+    <Route path="/planning_repet" element={<p>Liste</p>} />
   </Routes>
 );
 
@@ -20,21 +20,15 @@ test("it names the event being answered, which the old page did not", async () =
   expect(await screen.findByText(/Concert d'automne/)).toBeInTheDocument();
 });
 
-test("the member's own username is shown and not editable", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(app, { route: "/inscriptions_utilisateurs?id=1" });
-  const username = await screen.findByLabelText("Identifiant de l’utilisateur :");
-  expect(username).toHaveValue("demo.user");
-  expect(username).toHaveAttribute("readonly");
-});
+// The read-only username input this used to assert is GONE. It was an input
+// nobody could edit, holding a value the header already shows on every page.
 
-test("answering returns to the list", async () => {
+test("answering takes one tap and returns to the list", async () => {
   const user = userEvent.setup();
   setMockUser("demo.user");
   await renderWithSession(app, { route: "/inscriptions_utilisateurs?id=1" });
 
-  await user.selectOptions(await screen.findByLabelText("Participation :"), "participate");
-  await user.click(screen.getByRole("button", { name: "Confirmer" }));
+  await user.click(await screen.findByRole("button", { name: "Je participe" }));
 
   expect(await screen.findByText("Liste")).toBeInTheDocument();
 });
@@ -45,7 +39,7 @@ test("a missing id says so in French rather than posting", async () => {
   setMockUser("demo.user");
   await renderWithSession(app, { route: "/inscriptions_utilisateurs" });
   expect(await screen.findByRole("alert")).toHaveTextContent("Aucun événement");
-  expect(screen.queryByRole("button", { name: "Confirmer" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Je participe" })).toBeNull();
 });
 
 test("an unknown id says so rather than showing a blank form", async () => {

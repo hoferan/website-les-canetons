@@ -16,6 +16,11 @@ import { useSession } from "../session/SessionProvider";
  * capability is refused in place instead — bouncing them to a login form they
  * are already past reads as "your session expired" and invites them to log in
  * again, repeatedly, at something they will never be allowed to see.
+ *
+ * There is ONE guard, deliberately. RequireAuth existed alongside this and was
+ * deleted on 2026-09-01 with its only call site, /sinscrire: it did nothing
+ * RequireCapability does not already do for an anonymous visitor, and a guard
+ * with no callers is a guard nobody keeps correct.
  */
 
 /**
@@ -27,15 +32,6 @@ import { useSession } from "../session/SessionProvider";
 function useAttemptedPath(): string {
   const location = useLocation();
   return `${location.pathname}${location.search}`;
-}
-
-export function RequireAuth({ children }: { children: ReactNode }) {
-  const { user } = useSession();
-  const from = useAttemptedPath();
-  if (!user) {
-    return <Navigate to="/authentification_inscription" state={{ from }} replace />;
-  }
-  return <>{children}</>;
 }
 
 export function RequireCapability({

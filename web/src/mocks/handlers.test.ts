@@ -18,7 +18,7 @@ import type {
   SignupStoreBody,
 } from "../api/generated/model";
 import { ApiError } from "../api/http";
-import { setMockUser } from "./handlers";
+import { isoDaysFromToday, setMockUser } from "./handlers";
 
 /**
  * The mocked backend is a layer the whole suite and the whole dev loop rest on,
@@ -76,10 +76,39 @@ test("GET /events returns the seeded French events, ordered by date", async () =
   ]);
 });
 
+test("GET /events excludes past events by default", async () => {
+  const response = await fetch("/api/events");
+  const events = (await response.json()) as { title: string }[];
+
+  expect(response.status).toBe(200);
+  expect(events.map((event) => event.title)).toEqual([
+    "Concert d'automne",
+    "Assemblée générale",
+    "Week-end de répétition",
+  ]);
+  expect(events.map((event) => event.title)).not.toContain("Répétition du samedi");
+});
+
+test("GET /events?include=past returns the whole history, oldest first", async () => {
+  const response = await fetch("/api/events?include=past");
+  const events = (await response.json()) as { title: string }[];
+
+  expect(response.status).toBe(200);
+  expect(events.map((event) => event.title)).toEqual([
+    "Répétition du samedi",
+    "Concert d'automne",
+    "Assemblée générale",
+    "Week-end de répétition",
+  ]);
+});
+
 test("creating an event as an admin appends it", async () => {
   setMockUser("demo.admin");
   await eventStore({
-    date: "2026-12-05",
+    // An OFFSET, not a literal: this asserts the created event appears in a
+    // response that now filters to upcoming events, so a fixed date would
+    // start failing on the day it passed.
+    date: isoDaysFromToday(95),
     title: "Cortège",
     startTime: "14:00",
     endTime: "17:00",

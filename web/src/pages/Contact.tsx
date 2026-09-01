@@ -5,6 +5,9 @@ import { useContact } from "../api/generated/endpoints";
 import type { ContactRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const EMPTY: ContactRequest = {
   lastName: "",
@@ -60,44 +63,42 @@ export function Contact() {
   };
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-3xl">Contact</h1>
 
       <FormError error={error} />
 
       {/* The values are NOT cleared on failure: a rejected message must not
           make someone retype it. Same rule as the event form. */}
-      <form onSubmit={submit} className="mt-4 space-y-3 rounded-lg border border-line bg-panel p-5">
-        {FIELDS.map((field) => (
-          <FormField
-            key={field.name}
-            id={`contact-${field.name}`}
-            label={field.label}
-            type={field.type}
-            as={field.as}
-            /* Every field is required, `subject` included — which the old
-               markup was NOT, even though ContactRequest has always required
-               it. A blank subject used to pass the browser, make a round trip,
-               be rejected, and surface as a generic "Échec de l'envoi du
-               formulaire" alert that named no field. Deliberate fix, pinned by
-               a test. */
-            required
-            autoComplete={field.autoComplete}
-            problem={messageFor(field.name)}
-            value={values[field.name]}
-            onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
-          />
-        ))}
-        {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
-            early return is the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={send.isPending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
-          Envoyer
-        </button>
-      </form>
-    </section>
+      <Card asChild className="mt-4 gap-0 p-5">
+        <form onSubmit={submit} className="space-y-3">
+          {FIELDS.map((field) => (
+            <FormField
+              key={field.name}
+              id={`contact-${field.name}`}
+              label={field.label}
+              type={field.type}
+              as={field.as}
+              /* Every field is required, `subject` included — which the old
+                 markup was NOT, even though ContactRequest has always required
+                 it. A blank subject used to pass the browser, make a round trip,
+                 be rejected, and surface as a generic "Échec de l'envoi du
+                 formulaire" alert that named no field. Deliberate fix, pinned by
+                 a test. */
+              required
+              autoComplete={field.autoComplete}
+              problem={messageFor(field.name)}
+              value={values[field.name]}
+              onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+            />
+          ))}
+          {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
+              early return is the real guard. */}
+          <Button type="submit" aria-disabled={send.isPending}>
+            Envoyer
+          </Button>
+        </form>
+      </Card>
+    </PageSection>
   );
 }

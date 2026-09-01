@@ -1,4 +1,6 @@
 import { Tbd } from "../components/Tbd";
+import { PageSection } from "@/components/PageSection";
+import { Card } from "@/components/ui/card";
 
 /**
  * NOTE 2026-08-31: this page no longer carries a photograph or the direction
@@ -37,14 +39,14 @@ const COMMITTEE: { role: string }[] = [
 
 export function ComiteTeamDirection() {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8">
+    <PageSection>
       <h1 className="font-display text-4xl">Le comité</h1>
 
       {/* One contact block, not two. The audit flagged the address appearing on
           several pages; repeating it twice on this one would be worse. The
           booking number lives here beside it rather than against a committee
           office, because it is the number for reserving the band. */}
-      <div className="mt-6 rounded-lg border border-line bg-panel p-5">
+      <Card className="mt-6 gap-0 p-5">
         <h2 className="font-display text-xl">Contact des Canetons</h2>
         <p className="mt-2">
           <a href="mailto:comite@lescanetons.org" className="text-violet hover:underline">
@@ -54,20 +56,22 @@ export function ComiteTeamDirection() {
         <p className="mt-2">
           Pour réserver les Canetons : <Tbd what="numéro pour les prestations" />
         </p>
-      </div>
+      </Card>
 
       <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {COMMITTEE.map((member) => (
-          <li key={member.role} className="rounded-lg border border-line bg-panel p-4">
-            <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-              {member.role}
-            </p>
-            <p className="mt-1">
-              <Tbd what="nom" />
-            </p>
-          </li>
+          <Card key={member.role} asChild className="gap-0 p-4">
+            <li>
+              <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                {member.role}
+              </p>
+              <p className="mt-1">
+                <Tbd what="nom" />
+              </p>
+            </li>
+          </Card>
         ))}
       </ul>
-    </section>
+    </PageSection>
   );
 }

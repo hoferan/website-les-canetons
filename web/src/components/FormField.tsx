@@ -1,3 +1,6 @@
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
 import type { TranslatedError } from "../i18n";
 
 /**
@@ -36,6 +39,12 @@ export function FormError({ error }: { error: TranslatedError | null }) {
  * the control rather than before it, and there is exactly one in the whole app.
  * The event form writes that one out by hand.
  *
+ * The INPUT is shadcn's vendored one, which carries the 44px touch floor and the
+ * aria-invalid styling. The TEXTAREA keeps a hand-written class string, on
+ * purpose: there is no Textarea in the vendored set, and one call site in the
+ * whole app does not earn a component. The two therefore have to be kept
+ * visually in step by hand, which is cheap at one.
+ *
  * `type` applies to the input only — a textarea has none, and passing one
  * alongside `as="textarea"` type-checks but is silently ignored.
  */
@@ -68,18 +77,23 @@ export function FormField({
     value,
     "aria-invalid": problem ? true : undefined,
     "aria-describedby": problem ? errorId : undefined,
-    className: `w-full rounded border bg-panel px-3 py-2 text-ink outline-none focus:border-violet focus:ring-2 focus:ring-violet/30 ${
-      problem ? "border-danger" : "border-line"
-    }`,
   };
 
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id}>{label}</label>
       {as === "textarea" ? (
-        <textarea {...shared} rows={6} onChange={(event) => onChange(event.target.value)} />
+        <textarea
+          {...shared}
+          rows={6}
+          onChange={(event) => onChange(event.target.value)}
+          className={cn(
+            "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
+            problem ? "border-danger" : "border-line",
+          )}
+        />
       ) : (
-        <input {...shared} type={type} onChange={(event) => onChange(event.target.value)} />
+        <Input {...shared} type={type} onChange={(event) => onChange(event.target.value)} />
       )}
       {problem ? (
         <span id={errorId} className="block text-sm text-danger">

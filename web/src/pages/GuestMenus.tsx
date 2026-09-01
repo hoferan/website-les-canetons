@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Config200OccasionMenusItem } from "../api/generated/model";
+import { Button } from "@/components/ui/button";
 
 /**
  * One row per guest — "Personne N", a menu, and a way to remove them.
@@ -99,13 +100,9 @@ export function GuestMenus({
         })}
       </ul>
 
-      <button
-        type="button"
-        onClick={add}
-        className="mt-3 rounded border border-line px-3 py-2 hover:border-violet hover:text-violet"
-      >
+      <Button type="button" variant="outline" onClick={add} className="mt-3">
         ＋ Ajouter une personne
-      </button>
+      </Button>
 
       {capped ? (
         <p role="alert" className="mt-2 text-danger">

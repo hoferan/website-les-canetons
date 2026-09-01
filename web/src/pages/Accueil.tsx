@@ -1,5 +1,6 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { SouperCta } from "../components/SouperCta";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * The home page.
@@ -11,11 +12,11 @@ import { SouperCta } from "../components/SouperCta";
  */
 export function Accueil() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <SouperCta />
 
       <h1 className="font-display text-4xl">Bienvenue sur notre site</h1>
       <PhotoPending what="des Canetons en concert" />
-    </section>
+    </PageSection>
   );
 }

@@ -44,6 +44,21 @@
      palette red is not a brand colour — violet is — so red is free to mean
      exactly one thing. */
   --color-danger: #e0201a;
+
+  /* The floor for every interactive control: 44px. Applied through Button and
+     Input's base variants rather than by hand, so it is a rule rather than a
+     convention that lasts until the next page is written. */
+  --spacing-touch: 2.75rem;
+
+  /* ONE width for the chrome and for page shells, with prose constrained
+     INSIDE it by --container-text.
+
+     Before this, the header/nav/footer were max-w-5xl while most pages were
+     max-w-3xl, so at 1280 the nav's first item started at x=143 and the page
+     content at x=272 -- a visible misalignment on every page. Pages used five
+     different widths between them. PageSection owns these now. */
+  --container-shell: 72rem;
+  --container-text: 44rem;
   --font-sans: "Karla Variable", "Segoe UI", system-ui, sans-serif;
 
   /* The display face. Bungee replaced Lilita One on 2026-08-31 — not for looks,
@@ -59,6 +74,86 @@
      fails on 13 glyphs, Titan One on 9. The check is in docs/continue-here.md;
      it needs fontTools and takes about a minute. */
   --font-display: "Bungee", "Karla Variable", system-ui, sans-serif;
+}
+
+/**
+ * shadcn/ui's token vocabulary, mapped ONTO the Scène palette.
+ *
+ * This mapping is ONE-DIRECTIONAL on purpose: every name here is an ALIAS of a
+ * --color-* token defined in the @theme block above, and none of them
+ * introduces a colour of its own. The palette therefore keeps exactly one
+ * source of truth and cannot drift as vendored components are added.
+ *
+ * This is the single point at which a component library could quietly
+ * neutralise a palette that IS the band's identity. Anyone editing it should
+ * read docs/superpowers/specs/2026-08-29-visual-foundation-design.md first.
+ *
+ * --color-pink is DELIBERATELY ABSENT. shadcn spends --accent on hover
+ * SURFACES, and the palette's rule is "emphasis only -- never a whole
+ * surface", so --accent gets a violet tint instead and pink stays hand-applied
+ * where it already is: the band name in the header.
+ *
+ * THERE IS NO .dark BLOCK, and there must not be one. Scène commits to a single
+ * look -- the visual-foundation spec rejected dark mode explicitly, as "two
+ * would double the surface for nobody who has asked". shadcn writes a .dark
+ * block by default, so a future `shadcn` run that offers to rewrite this file
+ * will try to put one back. Leaving it would mean a stray `dark` class renders
+ * a design nobody approved, and nothing in the test suite would notice.
+ *
+ * This block was written BY HAND rather than by `shadcn init`. The CLI (4.19.1)
+ * now insists on a preset -- Nova, Vega, Maia and the rest -- and every one of
+ * them installs its own font and icon set. Bungee and Karla are the band's
+ * identity and are self-hosted deliberately, so the init was skipped and the
+ * two files it exists to produce, components.json and lib/utils.ts, were
+ * written directly. `shadcn add` validates components.json on every use.
+ */
+:root {
+  --radius: 0.5rem;
+  --background: var(--color-ground);
+  --foreground: var(--color-ink);
+  --card: var(--color-panel);
+  --card-foreground: var(--color-ink);
+  --popover: var(--color-panel);
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-violet);
+  --primary-foreground: #fff;
+  --secondary: var(--color-panel);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-ground);
+  --muted-foreground: var(--color-ink-muted);
+  --accent: color-mix(in oklab, var(--color-violet) 10%, white);
+  --accent-foreground: var(--color-violet);
+  --destructive: var(--color-danger);
+  --destructive-foreground: #fff;
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-violet);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 /* The page's own ground and default face. Everything else is a utility class. */
@@ -96,4 +191,14 @@ main {
 h1,
 h2 {
   text-wrap: balance;
+}
+
+/* One visible focus ring, from one place.
+   focus-visible rather than focus, so a mouse click on a button does not leave
+   a ring behind while a keyboard tab does. */
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--color-violet);
+    outline-offset: 2px;
+  }
 }

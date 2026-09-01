@@ -1,28 +1,35 @@
-import { useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useEventIndex, useResponseStore } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { formatEventDate } from "../lib/date";
-import { useSession } from "../session/SessionProvider";
+import { PageSection } from "@/components/PageSection";
+import { Button } from "@/components/ui/button";
 
 /**
  * Answer one event.
  *
  * The event comes from the list rather than a dedicated endpoint — there is no
  * GET /api/events/{id}, and the list is already cached by the time anyone
- * arrives here from /sinscrire.
+ * arrives here from /planning_repet.
+ *
+ * A DEEP-LINK FALLBACK now, not the main flow. /planning_repet answers inline in
+ * one tap, so nothing links here any more — but the URL is frozen and is in
+ * bookmarks, so it keeps working and offers the same two buttons.
+ *
+ * Note a link to a PAST event now falls through to the "Aucun événement à
+ * confirmer" branch below, because GET /api/events returns upcoming events by
+ * default and this page finds its event in that list. That is correct rather
+ * than regrettable: answering an event that has happened is meaningless.
  *
  * It NAMES the event, which the old page did not: its heading was "Inscription
  * à l'événement" and nothing on screen said which one. That was a defect, and
  * the date and title cost nothing here.
  */
 export function InscriptionsUtilisateurs() {
-  const { user } = useSession();
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const [participation, setParticipation] = useState("");
   const { error, setFromThrown, clear } = useApiFormError(
     "L’inscription a échoué. Veuillez réessayer.",
   );
@@ -36,25 +43,23 @@ export function InscriptionsUtilisateurs() {
 
   const respond = useResponseStore({
     mutation: {
-      onSuccess: () => navigate("/sinscrire"),
+      onSuccess: () => navigate("/planning_repet"),
       onError: setFromThrown,
     },
   });
 
-  const submit = (submitEvent: FormEvent) => {
-    submitEvent.preventDefault();
+  const send = (participation: "participate" | "notparticipate") => {
     if (respond.isPending || !event) return;
     clear();
-    respond.mutate({
-      data: {
-        eventId: event.id,
-        participation: participation as "participate" | "notparticipate",
-      },
-    });
+    respond.mutate({ data: { eventId: event.id, participation } });
   };
 
   if (events.isPending) {
-    return <p className="mx-auto max-w-md px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection width="form">
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   // One message for "no id", "not a number" and "no such event": from the
@@ -62,17 +67,17 @@ export function InscriptionsUtilisateurs() {
   // point at an event any more.
   if (!event) {
     return (
-      <section className="mx-auto max-w-md px-4 py-8">
+      <PageSection width="form">
         <h1 className="font-display text-3xl">Inscription à l’événement</h1>
         <p role="alert" className="mt-4 text-danger">
           Aucun événement à confirmer. Retournez à la liste et choisissez-en un.
         </p>
-      </section>
+      </PageSection>
     );
   }
 
   return (
-    <section className="mx-auto max-w-md px-4 py-8">
+    <PageSection width="form">
       <h1 className="font-display text-3xl">Inscription à l’événement</h1>
       <p className="mt-2 text-ink-muted">
         {formatEventDate(event.date)} — {event.title}
@@ -80,43 +85,25 @@ export function InscriptionsUtilisateurs() {
 
       <FormError error={error} />
 
-      <form onSubmit={submit} className="mt-4 space-y-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="response-username">Identifiant de l’utilisateur :</label>
-          <input
-            id="response-username"
-            type="text"
-            readOnly
-            value={user?.username ?? ""}
-            className="w-full rounded border border-line bg-ground px-3 py-2 text-ink-muted"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="response-participation">Participation :</label>
-          <select
-            id="response-participation"
-            required
-            value={participation}
-            onChange={(changeEvent) => setParticipation(changeEvent.target.value)}
-            className="w-full rounded border border-line bg-panel px-3 py-2 text-ink outline-none focus:border-violet focus:ring-2 focus:ring-violet/30"
-          >
-            <option value="" disabled>
-              Choisissez une option
-            </option>
-            <option value="participate">Je participe</option>
-            <option value="notparticipate">Je ne participe pas</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          type="button"
           aria-disabled={respond.isPending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+          onClick={() => send("participate")}
+          className="flex-1 sm:flex-none"
         >
-          Confirmer
-        </button>
-      </form>
-    </section>
+          Je participe
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          aria-disabled={respond.isPending}
+          onClick={() => send("notparticipate")}
+          className="flex-1 sm:flex-none"
+        >
+          Je ne participe pas
+        </Button>
+      </div>
+    </PageSection>
   );
 }

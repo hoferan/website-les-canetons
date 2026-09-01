@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\EventRequest;
 use App\Models\Event;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response as ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,35 @@ use Illuminate\Http\Request;
 class EventController extends Controller
 {
     /**
-     * GET /api/events — public index, ordered by date.
+     * GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date.
+     *
+     * `?include=past` returns everything; anything else returns `date >= today`.
+     *
+     * WHY THE DEFAULT IS THE FILTERED ONE. This used to return every event ever,
+     * ascending — "exactly the old query". So /sinscrire, headed "Événements à
+     * venir", listed events that had already happened at the TOP of the list,
+     * each with a dead "Choix enregistré" button, and /planning_repet put the
+     * next rehearsal at the BOTTOM of a list that grows every season. On the one
+     * screen whose purpose is "do I play Saturday?", that was the worst defect
+     * in the app.
+     *
+     * The safe answer is the default rather than something a caller opts into,
+     * for the same reason this endpoint deliberately has no ?username=
+     * parameter: a page that forgets to ask should not be able to reintroduce
+     * the bug.
+     *
+     * The boundary is INCLUSIVE of today — an event happening today has not
+     * happened yet — and `where`, not `whereDate`, so the comparison stays
+     * index-friendly if `events.date` is ever indexed (it is not today, and at
+     * this band's volume it does not need to be).
+     *
+     * now() is UTC, because api/config/app.php hardcodes it and there is no
+     * APP_TIMEZONE key. Fribourg is UTC+1/+2, so a UTC "today" LAGS local time
+     * and today's event stays listed for the first hour or two of tomorrow. That
+     * errs in the safe direction; the dangerous direction would be hiding an
+     * event before it happened, which needs UTC to run ahead of local time and
+     * never does here. Do not "fix" this by setting APP_TIMEZONE as a side
+     * effect — timestamps were standardised on UTC deliberately.
      *
      * `response` is the CALLER'S OWN answer or null. There is deliberately no
      * request parameter naming a user (no ?username=, no ?userId=): that
@@ -86,12 +115,26 @@ class EventController extends Controller
      * EventShapeContractTest fails if the two ever disagree, so this is
      * duplication a test catches rather than a comment asks you to remember.
      */
+    #[QueryParameter(
+        'include',
+        description: 'Set to `past` to receive the whole history. Any other value, or none, returns only events from today onwards.',
+        type: 'string',
+        required: false,
+        example: 'past',
+    )]
     #[ApiResponse(status: 200, type: 'list<array{id: int, date: string, title: string, startTime: string, endTime: string, location: string, attire: string|null, weekend: int, response: string|null}>')]
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()?->id;
 
+        // Only the exact string opts in, mirroring POST /api/migrate's ?mode.
+        $includePast = $request->query('include') === 'past';
+
         $events = Event::query()
+            ->when(
+                ! $includePast,
+                fn ($query) => $query->where('date', '>=', now()->toDateString())
+            )
             ->when(
                 $userId !== null,
                 fn ($query) => $query->with([

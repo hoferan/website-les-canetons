@@ -66,15 +66,12 @@ test("the auth link shows the username once logged in", async () => {
   expect(screen.getByRole("link", { name: "demo.admin" })).toBeInTheDocument();
 });
 
-test("the inscription sub-pages highlight the Inscriptions item, as the old nav did", async () => {
+test("the inscription sub-pages highlight the Événements item, as the old nav did", async () => {
   await renderWithSession(<AppRoutes />, { route: "/inscriptions_admin" });
   // aria-current, not a class: this is the accessible expression of "you are
   // here", it is what a screen reader announces, and it does not have to be
   // rewritten the next time the active item's styling changes.
-  expect(screen.getByRole("link", { name: "Inscriptions" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("aria-current", "page");
 });
 
 // The ORDINARY case, which the alias test above does not cover. These items are
@@ -84,16 +81,13 @@ test("the inscription sub-pages highlight the Inscriptions item, as the old nav 
 test("the item for the page you are on is the current one, and only it", async () => {
   await renderWithSession(<AppRoutes />, { route: "/planning_repet" });
 
-  expect(screen.getByRole("link", { name: "Planning et répétitions" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("aria-current", "page");
 
   const current = screen
     .getAllByRole("link")
     .filter((link) => link.getAttribute("aria-current") === "page")
     .map((link) => link.textContent);
-  expect(current).toEqual(["Planning et répétitions"]);
+  expect(current).toEqual(["Événements"]);
 });
 
 test("the hamburger toggles the menu and reports its state", async () => {

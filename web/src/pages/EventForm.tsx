@@ -5,6 +5,8 @@ import { getEventIndexQueryKey, useEventStore, useEventUpdate } from "../api/gen
 import type { EventIndex200Item, EventRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 /** What the form edits: the request body the API accepts, plus the id it acts on. */
 export type EditableEvent = EventRequest & { id: number };
@@ -123,69 +125,58 @@ export function EventForm({
   };
 
   return (
-    <form
-      ref={form}
-      onSubmit={submit}
-      className="mt-8 space-y-4 rounded-lg border border-line bg-panel p-5"
-    >
-      <h2 className="font-display text-xl">
-        {editing ? "Modifier l’événement" : "Ajouter un événement"}
-      </h2>
+    <Card asChild className="mt-8 gap-0 p-5">
+      <form ref={form} onSubmit={submit} className="space-y-4">
+        <h2 className="font-display text-xl">
+          {editing ? "Modifier l’événement" : "Ajouter un événement"}
+        </h2>
 
-      <FormError error={error} />
+        <FormError error={error} />
 
-      {FIELDS.map((field) => (
-        <FormField
-          key={field.name}
-          id={`event-${field.name}`}
-          label={field.label}
-          type={field.type}
-          required={field.required}
-          problem={messageFor(field.name)}
-          value={values[field.name] ?? ""}
-          onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
-        />
-      ))}
+        {FIELDS.map((field) => (
+          <FormField
+            key={field.name}
+            id={`event-${field.name}`}
+            label={field.label}
+            type={field.type}
+            required={field.required}
+            problem={messageFor(field.name)}
+            value={values[field.name] ?? ""}
+            onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+          />
+        ))}
 
-      <div className="flex items-center gap-2">
-        <input
-          id="event-weekend"
-          type="checkbox"
-          checked={Boolean(values.weekend)}
-          onChange={(changeEvent) =>
-            setValues((previous) => ({ ...previous, weekend: changeEvent.target.checked }))
-          }
-        />
-        <label htmlFor="event-weekend">Weekend</label>
-      </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="event-weekend"
+            type="checkbox"
+            checked={Boolean(values.weekend)}
+            onChange={(changeEvent) =>
+              setValues((previous) => ({ ...previous, weekend: changeEvent.target.checked }))
+            }
+          />
+          <label htmlFor="event-weekend">Weekend</label>
+        </div>
 
-      <div className="flex gap-2">
-        {/* Marked unavailable for the duration, and released by the mutation
+        <div className="flex gap-2">
+          {/* Marked unavailable for the duration, and released by the mutation
             settling either way — a slow network must never leave a legitimate
             retry permanently blocked. aria-disabled rather than disabled so the
             focused button is not blurred to <body>; `submit`'s early return is
             the real guard. */}
-        <button
-          type="submit"
-          aria-disabled={pending}
-          className="rounded bg-violet px-4 py-2 font-semibold text-white hover:bg-violet/90 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-        >
-          {editing ? "Modifier" : "Ajouter"}
-        </button>
-        {editing ? (
-          // Genuinely disabled, unlike the submit beside it: a cancel cannot be
-          // double-fired into anything, and keeping it unavailable while a save
-          // is in flight is the correct behaviour rather than a focus hazard.
-          <button
-            type="button"
-            onClick={onDone}
-            disabled={pending}
-            className="rounded border border-line bg-panel px-4 py-2 text-ink hover:border-violet hover:text-violet disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Annuler
-          </button>
-        ) : null}
-      </div>
-    </form>
+          <Button type="submit" aria-disabled={pending}>
+            {editing ? "Modifier" : "Ajouter"}
+          </Button>
+          {editing ? (
+            // Genuinely disabled, unlike the submit beside it: a cancel cannot be
+            // double-fired into anything, and keeping it unavailable while a save
+            // is in flight is the correct behaviour rather than a focus hazard.
+            <Button type="button" variant="outline" onClick={onDone} disabled={pending}>
+              Annuler
+            </Button>
+          ) : null}
+        </div>
+      </form>
+    </Card>
   );
 }

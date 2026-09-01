@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { PageSection } from "@/components/PageSection";
+import { ButtonLink } from "@/components/ButtonLink";
 
 /**
  * A SOFT 404: the server answered 200 with the shell, because the .htaccess
@@ -9,15 +10,19 @@ import { Link } from "react-router-dom";
  */
 export function NotFound() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-16 text-center">
+    <PageSection width="text" className="py-16 text-center">
       <p className="font-display text-7xl text-danger">404</p>
       <h1 className="mt-4 font-display text-3xl">Page introuvable</h1>
       <p className="mt-4 text-gray-600">
         Oups&nbsp;! La page que vous recherchez n’existe pas ou a été déplacée.
       </p>
-      <Link to="/" className="mt-6 inline-block underline">
+      {/* A ButtonLink rather than an underlined text link: this is the page's
+          only way out and the one control on it, so it belongs above the 44px
+          floor. It measured 24px. Inline links inside prose are a different
+          case and stay as they are. */}
+      <ButtonLink to="/" variant="outline" className="mt-6">
         Retour à l’accueil
-      </Link>
-    </section>
+      </ButtonLink>
+    </PageSection>
   );
 }

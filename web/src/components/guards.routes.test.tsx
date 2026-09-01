@@ -6,7 +6,10 @@ import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
 
 // Anonymous: bounced to the login form, carrying where they wanted to go.
-test.each(["/sinscrire", "/inscriptions_utilisateurs?id=1", "/inscriptions_admin?id=1", "/admin"])(
+// /sinscrire is deliberately NOT in this list: it is a bare redirect to
+// /planning_repet now, not a guarded route, so it sends everyone — anonymous or
+// not — straight to the public planning rather than to login.
+test.each(["/inscriptions_utilisateurs?id=1", "/inscriptions_admin?id=1", "/admin"])(
   "%s sends an anonymous visitor to the login form",
   async (route) => {
     await renderWithSession(<AppRoutes />, { route });

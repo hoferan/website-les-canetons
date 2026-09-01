@@ -1,6 +1,8 @@
+import { PageSection } from "@/components/PageSection";
+
 export function Multimedia() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">France 3 Alsace / Carnaval de Colmar 2016</h1>
 
       {/* https, not the old protocol-relative //embed.francetv.fr — the site is
@@ -28,6 +30,6 @@ export function Multimedia() {
           Colmar&nbsp;: une cavalcade rien que pour les enfants
         </a>
       </p>
-    </section>
+    </PageSection>
   );
 }
