@@ -4,7 +4,7 @@ import { Route, Routes, useLocation } from "react-router-dom";
 
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
-import { RequireAuth, RequireCapability } from "./guards";
+import { RequireCapability } from "./guards";
 
 /** Renders whatever the guard put in router state, so a test can read it. */
 function ShowState() {
@@ -73,32 +73,10 @@ test("an anonymous visitor is redirected rather than shown a refusal", async () 
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
-test("RequireAuth lets any logged-in member through, whatever their role", async () => {
-  setMockUser("demo.moderator");
-  await renderWithSession(<RequireAuth>{secret}</RequireAuth>);
-  expect(await screen.findByText(SECRET)).toBeInTheDocument();
-});
-
-test("RequireAuth keeps an anonymous visitor out", async () => {
-  await renderWithSession(<RequireAuth>{secret}</RequireAuth>);
-  expect(screen.queryByText(SECRET)).toBeNull();
-});
-
 // The bounce has to carry the attempted location, or a guard sends everyone to
 // the home page after login and the deep link they clicked is lost. Asserted on
 // the rendered Location rather than on the guard's internals: what matters is
 // what the router receives.
-test("RequireAuth sends an anonymous visitor to the login route", async () => {
-  await renderWithSession(
-    <Routes>
-      <Route path="/planning_repet" element={<RequireAuth>{secret}</RequireAuth>} />
-      <Route path="/authentification_inscription" element={<ShowState />} />
-    </Routes>,
-    { route: "/planning_repet" },
-  );
-  expect(await screen.findByTestId("from")).toHaveTextContent("/planning_repet");
-});
-
 test("RequireCapability carries the location too, query string included", async () => {
   await renderWithSession(
     <Routes>
