@@ -1,12 +1,13 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 
 import { SEED, isoDaysFromToday, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { PlanningRepet } from "./PlanningRepet";
+import { Toaster } from "@/components/ui/sonner";
 
 /** The list, addressed by its accessible name so the layout's nav cannot leak in. */
 const CONCERT = SEED.find((event) => event.title === "Concert d'automne")!;
@@ -115,22 +116,26 @@ test("cancelling an edit empties the form and returns it to create mode", async 
 test("deleting an event removes it from the list", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");
-  vi.spyOn(window, "confirm").mockReturnValue(true);
   await renderWithSession(<PlanningRepet />);
 
   await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
+  // The dialog's own confirm button, not the row's trigger — the trigger
+  // carries the event title in its accessible name, the dialog's does not.
+  await user.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
+  );
 
   await waitFor(async () => expect(await rows()).toHaveLength(2));
 });
 
-// The delete button is aria-disabled rather than disabled, so it stays
-// focusable AND stays clickable — which makes the handler's early return the
-// only thing preventing a second confirm prompt over an in-flight delete.
-// Nothing else in the suite exercises that button's pending state.
-test("a delete in flight marks the button unavailable and refuses a second click", async () => {
+// The trigger is aria-disabled rather than disabled, so it stays focusable AND
+// stays clickable — which makes the handler's early return the only thing
+// preventing a second delete prompt over an in-flight one. Nothing else in the
+// suite exercises that pending state. This replaces a window.confirm call-count
+// assertion; the property is the same one.
+test("a delete in flight marks the trigger unavailable and refuses to reopen", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");
-  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
 
   let release!: () => void;
   const held = new Promise<void>((resolve) => {
@@ -146,28 +151,66 @@ test("a delete in flight marks the button unavailable and refuses a second click
   await renderWithSession(<PlanningRepet />);
   const remove = await screen.findByRole("button", { name: "Supprimer Concert d'automne" });
   await user.click(remove);
+  await user.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
+  );
 
   await waitFor(() => expect(remove).toHaveAttribute("aria-disabled", "true"));
-  expect(confirm).toHaveBeenCalledTimes(1);
 
   // Clickable, because aria-disabled does not block the event — the guard does.
   await user.click(remove);
-  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("alertdialog")).toBeNull();
 
-  // Released, the button becomes available again. The row itself does not
+  // Released, the trigger becomes available again. The row itself does not
   // vanish here: this override replaces the mock's real DELETE, which is what
   // removes it from the store — the test above covers that half.
   release();
   await waitFor(() => expect(remove).not.toHaveAttribute("aria-disabled", "true"));
 });
 
+// The failure path had NO coverage while it was a window.alert, and replacing it
+// with a toast is exactly the moment to give it some: a toast that never renders
+// looks identical to a delete that quietly did nothing.
+//
+// The Toaster is rendered HERE rather than relied upon, because it lives in
+// Layout and renderWithSession mounts a page without one. That is not a fudge --
+// it is the same reason the app mounts it once in the layout route, and without
+// it toast.error() resolves into nothing at all, in a test as in a browser.
+test("a failed delete says so, and leaves the row in place", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.admin");
+  server.use(
+    http.delete("/api/events/:id", () =>
+      HttpResponse.json({ error: "Server error", code: "server_error" }, { status: 500 }),
+    ),
+  );
+  await renderWithSession(
+    <>
+      <PlanningRepet />
+      <Toaster />
+    </>,
+  );
+
+  await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
+  await user.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
+  );
+
+  expect(
+    await screen.findByText("La suppression de l’événement a échoué. Veuillez réessayer."),
+  ).toBeInTheDocument();
+  expect(await rows()).toHaveLength(3);
+});
+
 test("declining the delete confirmation leaves the list alone", async () => {
   const user = userEvent.setup();
   setMockUser("demo.admin");
-  vi.spyOn(window, "confirm").mockReturnValue(false);
   await renderWithSession(<PlanningRepet />);
 
   await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
+  await user.click(
+    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Annuler" }),
+  );
 
   expect(await rows()).toHaveLength(3);
 });
