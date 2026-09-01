@@ -6,6 +6,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { formatEventDate } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * Answer one event.
@@ -54,7 +55,11 @@ export function InscriptionsUtilisateurs() {
   };
 
   if (events.isPending) {
-    return <p className="mx-auto max-w-md px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection width="form">
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   // One message for "no id", "not a number" and "no such event": from the
@@ -62,17 +67,17 @@ export function InscriptionsUtilisateurs() {
   // point at an event any more.
   if (!event) {
     return (
-      <section className="mx-auto max-w-md px-4 py-8">
+      <PageSection width="form">
         <h1 className="font-display text-3xl">Inscription à l’événement</h1>
         <p role="alert" className="mt-4 text-danger">
           Aucun événement à confirmer. Retournez à la liste et choisissez-en un.
         </p>
-      </section>
+      </PageSection>
     );
   }
 
   return (
-    <section className="mx-auto max-w-md px-4 py-8">
+    <PageSection width="form">
       <h1 className="font-display text-3xl">Inscription à l’événement</h1>
       <p className="mt-2 text-ink-muted">
         {formatEventDate(event.date)} — {event.title}
@@ -117,6 +122,6 @@ export function InscriptionsUtilisateurs() {
           Confirmer
         </button>
       </form>
-    </section>
+    </PageSection>
   );
 }

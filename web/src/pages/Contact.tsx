@@ -5,6 +5,7 @@ import { useContact } from "../api/generated/endpoints";
 import type { ContactRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { PageSection } from "@/components/PageSection";
 
 const EMPTY: ContactRequest = {
   lastName: "",
@@ -60,7 +61,7 @@ export function Contact() {
   };
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-3xl">Contact</h1>
 
       <FormError error={error} />
@@ -98,6 +99,6 @@ export function Contact() {
           Envoyer
         </button>
       </form>
-    </section>
+    </PageSection>
   );
 }

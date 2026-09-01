@@ -1,4 +1,5 @@
 import { Tbd } from "../components/Tbd";
+import { PageSection } from "@/components/PageSection";
 
 /** The information blocks, in the old page's order. */
 const FACTS: { heading: string; lines: string[] }[] = [
@@ -40,7 +41,7 @@ const WERKHOF_MAP =
 
 export function Commencement() {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8">
+    <PageSection>
       <h1 className="font-display text-4xl">Tu veux commencer la guggen&nbsp;?</h1>
       <p className="mt-4 max-w-prose">
         Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire
@@ -90,6 +91,6 @@ export function Commencement() {
           </p>
         </div>
       </div>
-    </section>
+    </PageSection>
   );
 }

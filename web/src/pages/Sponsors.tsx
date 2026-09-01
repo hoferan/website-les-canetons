@@ -1,3 +1,5 @@
+import { PageSection } from "@/components/PageSection";
+
 /**
  * Three groups of outbound links, in the order the old page listed them.
  *
@@ -52,7 +54,7 @@ const GROUPS: { heading: string; links: { href: string; label: string }[] }[] = 
 
 export function Sponsors() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       {/* "Liens Amis" title-cased, which is unusual in French and is what the
           old page had. The NAV label beside it is lowercase; both are
           reproduced as they are rather than reconciled. */}
@@ -79,6 +81,6 @@ export function Sponsors() {
           </div>
         ))}
       </div>
-    </section>
+    </PageSection>
   );
 }

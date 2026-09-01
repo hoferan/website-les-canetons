@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * Where the signup form lands on success.
@@ -19,7 +20,7 @@ export function SignupThanks() {
   const occasion = config.occasion;
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8 text-center">
+    <PageSection width="text" className="text-center">
       <p className="text-5xl" aria-hidden="true">
         🎉🦆
       </p>
@@ -44,6 +45,6 @@ export function SignupThanks() {
           Retour à l’accueil
         </Link>
       </p>
-    </section>
+    </PageSection>
   );
 }

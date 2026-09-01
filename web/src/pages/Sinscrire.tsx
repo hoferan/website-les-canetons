@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useEventIndex } from "../api/generated/endpoints";
 import { formatEventDate } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * The events a member answers.
@@ -22,19 +23,23 @@ export function Sinscrire() {
   const events = useEventIndex();
 
   if (events.isPending) {
-    return <p className="mx-auto max-w-3xl px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection width="text">
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   if (events.isError) {
     return (
-      <p role="alert" className="mx-auto max-w-3xl px-4 py-8">
-        Les événements n’ont pas pu être chargés. Veuillez réessayer.
-      </p>
+      <PageSection width="text">
+        <p role="alert">Les événements n’ont pas pu être chargés. Veuillez réessayer.</p>
+      </PageSection>
     );
   }
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">Événements à venir</h1>
 
       <div className="mt-6 overflow-x-auto rounded-lg border border-line bg-panel">
@@ -85,6 +90,6 @@ export function Sinscrire() {
           </tbody>
         </table>
       </div>
-    </section>
+    </PageSection>
   );
 }

@@ -5,6 +5,7 @@ import { formatEventDate, formatEventDateRange, formatTime } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 import { EventActions } from "./EventActions";
 import { EventForm, toEditableEvent, type EditableEvent } from "./EventForm";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * The planning of performances and rehearsals.
@@ -22,19 +23,23 @@ export function PlanningRepet() {
   const [editing, setEditing] = useState<EditableEvent | null>(null);
 
   if (events.isPending) {
-    return <p className="mx-auto max-w-3xl px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection width="text">
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   if (events.isError) {
     return (
-      <p role="alert" className="mx-auto max-w-3xl px-4 py-8">
-        Le planning n’a pas pu être chargé. Veuillez réessayer.
-      </p>
+      <PageSection width="text">
+        <p role="alert">Le planning n’a pas pu être chargé. Veuillez réessayer.</p>
+      </PageSection>
     );
   }
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">Planning des prestations et des répétitions</h1>
       <h2 className="text-lg text-ink-muted">sous réserve de modifications</h2>
 
@@ -92,6 +97,6 @@ export function PlanningRepet() {
         // clicked. See EventForm's own comment, and the e2e test that pins it.
         <EventForm key={editing?.id ?? "new"} editing={editing} onDone={() => setEditing(null)} />
       ) : null}
-    </section>
+    </PageSection>
   );
 }

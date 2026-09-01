@@ -1,5 +1,6 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * One entry per register, in the old page's order.
@@ -44,7 +45,7 @@ const REGISTERS: { heading: string; photo: string; roster?: string }[] = [
 
 export function Canetons() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">Nos Canetons</h1>
       <PhotoPending what="des Canetons au complet" />
 
@@ -89,6 +90,6 @@ export function Canetons() {
         />
         <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
       </div>
-    </section>
+    </PageSection>
   );
 }

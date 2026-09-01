@@ -1,4 +1,5 @@
 import { Tbd } from "../components/Tbd";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * NOTE 2026-08-31: this page no longer carries a photograph or the direction
@@ -37,7 +38,7 @@ const COMMITTEE: { role: string }[] = [
 
 export function ComiteTeamDirection() {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8">
+    <PageSection>
       <h1 className="font-display text-4xl">Le comité</h1>
 
       {/* One contact block, not two. The audit flagged the address appearing on
@@ -68,6 +69,6 @@ export function ComiteTeamDirection() {
           </li>
         ))}
       </ul>
-    </section>
+    </PageSection>
   );
 }

@@ -1,6 +1,8 @@
+import { PageSection } from "@/components/PageSection";
+
 export function Cd() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">2022 - Les Canetons ont 20 ans&nbsp;!!!</h1>
       <p className="mt-2 text-xl text-ink-muted">Notre nouveau CD vient de sortir&nbsp;!!</p>
 
@@ -25,6 +27,6 @@ export function Cd() {
         </p>
         <p className="text-ink-muted">Disponible en CD ou en clé USB</p>
       </div>
-    </section>
+    </PageSection>
   );
 }

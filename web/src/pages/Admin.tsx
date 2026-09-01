@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * The admin's landing page.
@@ -24,7 +25,7 @@ const DESTINATIONS: { to: string; title: string; description: string }[] = [
 
 export function Admin() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">Administration</h1>
 
       <ul className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -40,6 +41,6 @@ export function Admin() {
           </li>
         ))}
       </ul>
-    </section>
+    </PageSection>
   );
 }

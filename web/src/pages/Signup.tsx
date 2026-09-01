@@ -8,6 +8,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { useSession } from "../session/SessionProvider";
 import { GuestMenus } from "./GuestMenus";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * The public reservation form — the ONLY place in this system where an
@@ -114,7 +115,7 @@ export function Signup() {
   };
 
   return (
-    <section className="mx-auto max-w-2xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-3xl">{occasion.title}</h1>
       <p className="mt-1 text-ink-muted">{occasion.subtitle}</p>
       <p className="mt-4">{occasion.teaser}</p>
@@ -197,6 +198,6 @@ export function Signup() {
           {verifying ? "Vérification…" : "Envoyer l’inscription"}
         </button>
       </form>
-    </section>
+    </PageSection>
   );
 }

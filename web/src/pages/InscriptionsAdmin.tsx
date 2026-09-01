@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 
 import { useResponseIndex } from "../api/generated/endpoints";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * Who is coming, and how many of each register.
@@ -22,24 +23,30 @@ export function InscriptionsAdmin() {
 
   if (!eventId) {
     return (
-      <section className="mx-auto max-w-4xl px-4 py-8">
+      <PageSection>
         <h1 className="font-display text-4xl">Résumé des inscriptions</h1>
         <p role="alert" className="mt-4 text-danger">
           Aucun événement choisi. Retournez à la liste et choisissez-en un.
         </p>
-      </section>
+      </PageSection>
     );
   }
 
   if (summary.isPending) {
-    return <p className="mx-auto max-w-4xl px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection>
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   if (summary.isError) {
     return (
-      <p role="alert" className="mx-auto max-w-4xl px-4 py-8 text-danger">
-        Le résumé n’a pas pu être chargé. Veuillez réessayer.
-      </p>
+      <PageSection>
+        <p role="alert" className="text-danger">
+          Le résumé n’a pas pu être chargé. Veuillez réessayer.
+        </p>
+      </PageSection>
     );
   }
 
@@ -71,7 +78,7 @@ export function InscriptionsAdmin() {
   ];
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-8">
+    <PageSection>
       <h1 className="font-display text-4xl">Résumé des inscriptions</h1>
 
       {/* A NAMED list, not a bare div. The tiles and the table below use the
@@ -153,6 +160,6 @@ export function InscriptionsAdmin() {
           </tbody>
         </table>
       </div>
-    </section>
+    </PageSection>
   );
 }

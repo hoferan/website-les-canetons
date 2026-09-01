@@ -1,4 +1,5 @@
 import { useSignupIndex } from "../api/generated/endpoints";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * Who reserved, at which table, eating what.
@@ -27,14 +28,20 @@ export function SignupsAdmin() {
   const summary = useSignupIndex();
 
   if (summary.isPending) {
-    return <p className="mx-auto max-w-5xl px-4 py-8">Chargement…</p>;
+    return (
+      <PageSection>
+        <p>Chargement…</p>
+      </PageSection>
+    );
   }
 
   if (summary.isError) {
     return (
-      <p role="alert" className="mx-auto max-w-5xl px-4 py-8 text-danger">
-        Les inscriptions n’ont pas pu être chargées. Veuillez réessayer.
-      </p>
+      <PageSection>
+        <p role="alert" className="text-danger">
+          Les inscriptions n’ont pas pu être chargées. Veuillez réessayer.
+        </p>
+      </PageSection>
     );
   }
 
@@ -54,9 +61,11 @@ export function SignupsAdmin() {
   const data = summary.data.status === 200 ? summary.data.data : null;
   if (data === null || typeof data === "string") {
     return (
-      <p role="alert" className="mx-auto max-w-5xl px-4 py-8 text-danger">
-        Les inscriptions n’ont pas pu être chargées. Veuillez réessayer.
-      </p>
+      <PageSection>
+        <p role="alert" className="text-danger">
+          Les inscriptions n’ont pas pu être chargées. Veuillez réessayer.
+        </p>
+      </PageSection>
     );
   }
 
@@ -69,7 +78,7 @@ export function SignupsAdmin() {
   ];
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8">
+    <PageSection>
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="font-display text-3xl">Inscriptions — {data.occasion.title}</h1>
         {/* A plain link, NOT a client call: the generated client cannot stream
@@ -185,6 +194,6 @@ export function SignupsAdmin() {
           </tfoot>
         </table>
       </div>
-    </section>
+    </PageSection>
   );
 }

@@ -1,5 +1,6 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
+import { PageSection } from "@/components/PageSection";
 
 /**
  * One entry per register.
@@ -25,7 +26,7 @@ const REGISTERS: string[] = [
 
 export function Moniteurs() {
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <PageSection width="text">
       <h1 className="font-display text-4xl">Nos Moniteurs</h1>
 
       <PhotoPending what="des moniteurs" />
@@ -43,6 +44,6 @@ export function Moniteurs() {
           </li>
         ))}
       </ul>
-    </section>
+    </PageSection>
   );
 }
