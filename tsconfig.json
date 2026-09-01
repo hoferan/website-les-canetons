@@ -9,7 +9,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "types": ["vite/client", "node"],
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // `@/` -> web/src, as shadcn's CLI writes its imports. No "baseUrl": this
+    // TypeScript errors on it as deprecated, and with moduleResolution
+    // "bundler" a relative "paths" is resolved against this file's own
+    // directory anyway. It must agree with vite.config.ts AND vitest.config.ts,
+    // which is a separate config here and does not read vite's.
+    "paths": {
+      "@/*": ["./web/src/*"]
+    }
   },
   "include": ["web/src", "web/e2e", "orval.config.ts", "playwright.config.ts"]
 }
