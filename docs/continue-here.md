@@ -1,4 +1,4 @@
-# Where we left off — 2026-08-31
+# Where we left off — 2026-09-01
 
 Read this first when picking the SPA cutover back up. It records what is **not**
 derivable from the repository: the state of three servers, decisions taken in
@@ -19,32 +19,52 @@ here:
 
 ## START HERE: what to do next
 
-**Sub-project E — the restyle and mobile pass — is next, and it has no spec.**
-Jump to "Starting E" once you have read this section.
+**Sub-project E1 is done and shipped. E2 is next, and it has no spec.** The
+remaining blocker on PROD is unchanged and is not code: the `<Tbd>` and
+`<PhotoPending>` placeholders.
 
 ### Nothing is in flight — `main` is the whole truth
 
-`main` is at **`de750d9`** and TEST serves it. There is no open PR and no branch
+`main` is at **`c7b95fe`** and TEST serves it. There is no open PR and no branch
 you need to know about. The cutover shipped on 2026-08-31 (rollback tag
 `2026-08-31-f120b9f`), the old PHP front end is gone, and sub-projects **A**,
-**C** and **D** are done.
+**C**, **D** and **E1** are done.
 
-> This section previously warned that PR #61 was open and unmerged. André merged
-> it himself at 16:03 UTC on 2026-08-31 — the squash is `de750d9` — and the
-> handover commit describing it as "open" was swept into the same squash, so for
-> a while this file sat in `main` contradicting itself. Fixed here, and worth
-> remembering: **a handover that describes its own PR as unmerged goes stale the
-> moment that PR lands.** Describe state, not in-flight work, or say which commit
-> the statement is true at.
+> Describe state, not in-flight work, or say which commit the statement is true
+> at. This section once warned that PR #61 was open, and the handover commit
+> saying so was swept into the very squash that merged it, so the file sat in
+> `main` contradicting itself. **A handover that describes its own PR as
+> unmerged goes stale the moment that PR lands.**
 
-What `de750d9` did, and what TEST therefore looks like now: **every photograph is
-gone** except the logo and the parrain/marraine; `/sponsors` is hidden alongside
-`/cd` and `/multimedia`; `comite.jpg` and the print button are gone; and
-"Direction musicale" now lives only on `/canetons` and `/historique`.
+What `c7b95fe` (PR #63) did — three plans, 45 commits, squashed:
 
-Verified against TEST after that deploy: `/canetons` serves the SPA, all three
-hidden URLs fall through to the 404 view, the deleted photographs 404, the two
-kept images serve 200, and `GET /api/config` still answers `env=test`.
+- **E1a** — `GET /api/events` returns **upcoming events by default**;
+  `?include=past` returns the whole history. The endpoint used to return every
+  event ever, ascending, so the next rehearsal sat at the *bottom* of a growing
+  list. Plus the shadcn/ui foundation, mapped one-directionally onto the *Scène*
+  palette, and `PageSection` / `StatTile` / `EventCard`.
+- **E1b** — the phone pass. The header costs 117px of an 844px phone instead of
+  156; the phone nav is a labelled trigger over ten 48px rows on the dark stage
+  surface; every interactive control clears 44px; `/sinscrire` became cards that
+  answer in **one tap**; `window.confirm`/`window.alert` became a real dialog and
+  a toast; the admin tiles grid 2-up. **And the defect E1 existed for:**
+  `/planning_repet`'s Modifier/Supprimer were `absolute top-2 right-2` and at
+  390px rendered *on top of the event date*.
+- **E1c** — `/sinscrire` merged into `/planning_repet`. One public page, nav entry
+  **"Événements"**, every control on the card gated by the capability that
+  already gated it. `/sinscrire` redirects. `RequireAuth` deleted.
+
+Verified against TEST after the deploy: `GET /api/config` answers `env=test`,
+`/planning_repet` and `/sinscrire` both 200, and the deployed JS bundle contains
+every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`) and
+**none** of the three retired ones (`Planning des prestations`,
+`Choix enregistré`, `Événements à venir`).
+
+> **TEST's database has three events and all three are in the future**
+> (2026-09-20, 10-10, 11-14). So the upcoming-by-default filter returns all of
+> them there and the past-events archive is **empty on TEST** — neither feature
+> can be seen to discriminate until an event passes. That is data, not a defect.
+> Do not read "the archive is empty" as "the archive is broken".
 
 ### The sub-projects
 
@@ -53,19 +73,45 @@ kept images serve 200, and `GET /api/config` still answers `env=test`.
 | **B** | Structure clean-up (English filenames, dead files, the two deferred review items) | **not started** |
 | **C** | Content audit | **done** — `docs/content-audit-2026-08-31.md` |
 | **D** | Content corrections | **done** — PRs #60 and #61, both merged |
-| **E** | Restyle polish + mobile | **next, and not yet designed** |
+| **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
+| **E2** | What E1 deliberately left | **next, and not yet designed** |
 
-### E has no spec yet — and the ground has shifted under it
+### What E2 inherits
+
+E1 stopped at the point where the next decisions are about content and identity
+rather than ergonomics. Explicitly left undone, and why:
+
+- **`PhotoPending`'s shape.** It keeps its dashed border and its 160px minimum.
+  `/canetons` is still eight stacked dashed boxes, about 3062px on a phone. The
+  first E2 decision is what a photo-less *Scène* looks like — that is a design
+  question nobody has answered, and E1 refused to pre-empt it.
+- **`/accueil` as a front door**, new public-page copy, and motion.
+- **The ported French inconsistencies** — `Nom:` versus `Nom :`, "Liens Amis".
+- **A server-side 301 for `/sinscrire`.** The redirect is client-side only. A
+  `RedirectMatch 301` in `config/htaccess/site.htaccess` would be cheaper and
+  more correct, and that file already carries exactly this kind of legacy-URL
+  rule — but it is server-owned, never uploaded by a deploy, and `CLAUDE.md`
+  documents three ways to take the whole site down by editing it. Worth doing
+  deliberately, not as a side effect.
+- **`/cd`, `/multimedia` and `/sponsors` stay hidden.**
+
+### The two constraints E2 inherits
 
 E was scoped in the 2026-08-31 spec as *"keep Scène, polish it"*: mobile
 ergonomics, spacing rhythm, motion, image treatment, touch targets, and
 specifically the members' area on a phone at a rehearsal, which is the site's
-only repeat-use surface. **Do not restart the design** — read
-`docs/superpowers/specs/2026-08-29-visual-foundation-design.md` first, and note
-its warning that neon-on-black is the real identity.
+only repeat-use surface. **E1 did the ergonomics half of that and shipped it**
+(PR #63); what is left is spacing rhythm, motion and image treatment, which are
+the parts that need a design decision rather than a measurement.
 
-Two things changed after that scoping, and they change what E is actually
-designing:
+**Do not restart the design** — read
+`docs/superpowers/specs/2026-08-29-visual-foundation-design.md` first, and note
+its warning that neon-on-black is the real identity. Then read the three E1
+documents, because they record decisions E2 must not silently reverse:
+`docs/superpowers/specs/2026-08-31-e1-mobile-and-component-library-design.md` and
+`docs/superpowers/specs/2026-09-01-e1c-one-events-page-design.md`.
+
+Two things changed after the original scoping and still bind E2:
 
 1. **The display face is now Bungee, not Lilita One** (PR #58). It is a signage
    face whose **lowercase glyphs are drawn as capitals**, so every heading
@@ -77,11 +123,12 @@ designing:
    `Cd.tsx`), and the parrain/marraine photograph. Everything else is a dashed
    placeholder box.
 
-   `/canetons` is now **nine stacked dashed boxes** — a tall, repetitive page.
-   "Image treatment" was in E's original scope and there are no longer any
-   images to treat. **The first real E decision is what a photo-less version of
-   Scène looks like**, and whether `PhotoPending` should be far more compact
-   than the 160px-minimum box it is today.
+   `/canetons` is a tall, repetitive column of stacked dashed boxes — about
+   3062px on a phone. "Image treatment" was in E's original scope and there are
+   no longer any images to treat. **The first real E2 decision is what a
+   photo-less version of Scène looks like**, and whether `PhotoPending` should be
+   far more compact than the 160px-minimum box it is today. E1 deliberately did
+   not touch it, precisely so that decision stays open.
 
 ### What is hidden, and how to bring it back
 
@@ -159,18 +206,18 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-08-31 at `de750d9`, with the dev stack up. If a fresh checkout does
+Recorded 2026-09-01 at `c7b95fe`, with the dev stack up. If a fresh checkout does
 not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **206** tests, 30 files |
+| `npx vitest run` | **226** tests, 34 files (206/30 before E1) |
 | `npm run test:js` | **122** passed (85 before `put-overlay` landed) |
-| `npm run test:e2e` | **18** passed |
+| `npm run test:e2e` | **20** passed (18 before E1 added `mobile.spec.ts`) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
-| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **234** passed (718 assertions) |
+| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — 234/718 before E1a's filter tests |
 | `du -sh web/public/assets/img/` | ~6.1 MB (it was 44.5 MB before 2026-08-29) |
 
 `npm run check` does **not** build and does **not** run the Laravel suite. Run
@@ -178,7 +225,7 @@ both separately. In Git Bash prefix the `docker compose exec` with
 `MSYS_NO_PATHCONV=1`; PowerShell is fine as-is.
 
 **Run the JS suites from PowerShell, not Git Bash** — see the trap below. From
-Git Bash all 29 test files fail to collect at once, which looks exactly like a
+Git Bash every test file fails to collect at once, which looks exactly like a
 catastrophic regression and is not one.
 
 ## Branch and merge history
@@ -196,6 +243,7 @@ no other kind. In order, all on 2026-08-31:
 | #59 | `61eb91e` | the content audit |
 | #60 | `85bf1f9` | acting on the audit answers |
 | #61 | `de750d9` | every photograph dropped, `/sponsors` hidden, print button removed |
+| #63 | `c7b95fe` | E1a+E1b+E1c — the events filter, the component library, the phone pass, and the two events pages merged into one |
 
 Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
 takes the API down on the real host.
@@ -212,7 +260,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `de750d9` — **the SPA** | Deployed 2026-08-31, six times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `c7b95fe` — **the SPA** | Deployed 2026-08-31, six times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
@@ -451,12 +499,18 @@ mocks. Nine checks, all passing:
 (id 1, `anniversary-supper`). Do not assume a clean slate; the Laravel suite is
 unaffected, since it uses the throwaway `laravel_api_test` database.
 
-## Starting E — the restyle and mobile pass
+## Starting E2 — what the phone pass left behind
 
-**E is design work with no spec.** Every other sub-project here went
+**E2 is design work with no spec.** Every other sub-project here went
 brainstorm → written spec, approved → written plan → execute with
-`subagent-driven-development` → look at the rendered pages. E should too. Do not
-skip to editing CSS.
+`subagent-driven-development` → look at the rendered pages. E1 went that way
+three times over and it earned its keep — see "What E1's review pipeline caught"
+below. E2 should too. Do not skip to editing CSS.
+
+Everything from here to the end of this section was written before E1 shipped.
+It is still accurate about the site's shape and its traps, but read "ergonomics"
+claims against E1's work: the 44px floor, the phone nav, the one-tap answering
+and the container widths are DONE.
 
 ### Read first, in this order
 
@@ -501,6 +555,35 @@ npm run build                      # :8090 serves the BUILT artifact
   pages are read once by a stranger.
 - **There are no print styles.** A print stylesheet existed briefly for a
   recruitment flyer and was removed on request. Nothing depends on it.
+
+### What E1's review pipeline caught
+
+E1c ran every task through an independent spec review and a code-quality review,
+both dispatched as subagents with no access to the implementer's reasoning. Four
+defects came out of that which a green suite had not:
+
+1. **A hint rendered on two lines.** `Card`'s base classes are `flex flex-col`;
+   used with `asChild` they land on the `<p>` itself, so an inline link and the
+   text after it became flex ITEMS and the sentence stacked. Every assertion
+   passed the whole time, because `toHaveTextContent` reads `textContent` and
+   textContent ignores layout. **Only opening the page found it.**
+2. **`web/e2e/planning.spec.ts` was failing** on a renamed heading, invisible
+   because `npm run test:web` does not cover `web/e2e/`. Run both.
+3. **An e2e guard test could not detect the bug it existed for.**
+   `InscriptionsAdmin` renders the same `<h1>` in its success and its no-id
+   branches, so a dropped `returnTo` query string would still have passed.
+4. **`opacity-75` dimmed a newly-added link.** CSS opacity is multiplicative and
+   no child can undo it, so wrapping an interactive control in a dimmed card
+   dims the control.
+
+The transferable lesson, and it is the same one the phone-overlap defect taught:
+**a green suite is not a rendered page.** Three of those four are invisible to
+any assertion about roles and text. Screenshot the states and read them.
+
+Two guards were also proven rather than assumed, by reintroducing the bug and
+watching the test fail. Do that for any test whose whole purpose is to catch a
+regression — a guard that cannot fail is worth nothing, and one of E1's would
+have silently asserted nothing forever.
 
 ### What not to do
 
