@@ -72,7 +72,7 @@ export function PlanningRepet() {
 
   return (
     <PageSection width="text">
-      <h1 className="font-display text-4xl">Planning des prestations et des répétitions</h1>
+      <h1 className="font-display text-4xl">Événements</h1>
       <h2 className="text-lg text-ink-muted">sous réserve de modifications</h2>
 
       {/* Shown to ANONYMOUS visitors only. The page is public — anyone may read

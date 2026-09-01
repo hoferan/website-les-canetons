@@ -13,7 +13,7 @@ const events = (page: import("@playwright/test").Page) =>
 
 test("the planning page lists events", async ({ page }) => {
   await page.goto("/planning_repet");
-  await expect(page.getByRole("heading", { name: /Planning des prestations/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Événements" })).toBeVisible();
   await expect(events(page)).toHaveCount(3);
   await expect(events(page).first()).toContainText("Concert d'automne");
 });

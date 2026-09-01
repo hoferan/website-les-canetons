@@ -1,7 +1,7 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
-import { RequireAuth, RequireCapability } from "./components/guards";
+import { RequireCapability } from "./components/guards";
 import { Accueil } from "./pages/Accueil";
 import { Admin } from "./pages/Admin";
 import { Canetons } from "./pages/Canetons";
@@ -23,7 +23,6 @@ import { PlanningRepet } from "./pages/PlanningRepet";
 import { Signup } from "./pages/Signup";
 import { SignupThanks } from "./pages/SignupThanks";
 import { SignupsAdmin } from "./pages/SignupsAdmin";
-import { Sinscrire } from "./pages/Sinscrire";
 // HIDDEN 2026-08-31 — see the comment on the routes below.
 // import { Sponsors } from "./pages/Sponsors";
 import { useSession } from "./session/SessionProvider";
@@ -82,14 +81,13 @@ export function AppRoutes() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/comite_teamdirection" element={<ComiteTeamDirection />} />
         <Route path="/authentification_inscription" element={<Login />} />
-        <Route
-          path="/sinscrire"
-          element={
-            <RequireAuth>
-              <Sinscrire />
-            </RequireAuth>
-          }
-        />
+        {/* MERGED into /planning_repet on 2026-09-01. The URL is kept and
+            REDIRECTED rather than dropped, because URLs are frozen here: members
+            have it bookmarked and the nav pointed at it for years. Nothing in
+            the app links here any more — every internal link goes straight to
+            the surviving URL — so this exists for bookmarks alone, which is why
+            routes.test.tsx pins it. */}
+        <Route path="/sinscrire" element={<Navigate to="/planning_repet" replace />} />
         <Route path="/confirmation" element={<Confirmation />} />
         <Route
           path="/inscriptions_utilisateurs"

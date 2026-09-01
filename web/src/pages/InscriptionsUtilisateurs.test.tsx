@@ -10,7 +10,7 @@ import { InscriptionsUtilisateurs } from "./InscriptionsUtilisateurs";
 const app = (
   <Routes>
     <Route path="/inscriptions_utilisateurs" element={<InscriptionsUtilisateurs />} />
-    <Route path="/sinscrire" element={<p>Liste</p>} />
+    <Route path="/planning_repet" element={<p>Liste</p>} />
   </Routes>
 );
 

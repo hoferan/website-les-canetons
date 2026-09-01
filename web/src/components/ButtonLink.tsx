@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 /**
  * A link that looks like a button.
  *
- * Four places style a Link as a button today — /sinscrire's two actions and
- * SouperCta's call to action — each repeating the primary or secondary class
- * string by hand. Button already carries the variants and the 44px floor, and
+ * Four places style a Link as a button today — /planning_repet's Résumé actions
+ * and SouperCta's call to action — each repeating the primary or secondary
+ * class string by hand. Button already carries the variants and the 44px floor, and
  * shadcn's `asChild` (Radix Slot) puts them onto whatever element it wraps, so
  * this is the whole component.
  *

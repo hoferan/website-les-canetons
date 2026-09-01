@@ -31,8 +31,7 @@ test.each([
   ["/historique", "L’Histoire des Canetons"],
   ["/canetons", "Nos Canetons"],
   ["/moniteurs", "Nos Moniteurs"],
-  // The real page, not a placeholder — hence the fuller heading.
-  ["/planning_repet", "Planning des prestations et des répétitions"],
+  ["/planning_repet", "Événements"],
   ["/comite_teamdirection", "Le comité"],
   ["/commencement", "Tu veux commencer la guggen ?"],
 ])("%s renders its page", async (route, heading) => {
@@ -54,6 +53,14 @@ test.each([["/cd"], ["/multimedia"], ["/sponsors"]])(
 test("an unknown URL renders the 404 view rather than nothing", async () => {
   await renderWithSession(<AppRoutes />, { route: "/pas-une-page" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
+});
+
+// /sinscrire was MERGED into /planning_repet, not deleted: the URL is frozen and
+// is in members' bookmarks. A redirect that nothing in the app relies on is a
+// redirect nobody notices has broken, so it is pinned here.
+test("/sinscrire redirects to the planning rather than 404ing", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/sinscrire" });
+  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
 });
 
 // The souper routes are feature-gated, and "off" must mean ABSENT, not empty:

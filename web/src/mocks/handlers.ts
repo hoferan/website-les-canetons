@@ -55,7 +55,7 @@ type MockEvent = {
  * filters to upcoming events by default. Three hardcoded 2026 dates were
  * harmless while the endpoint returned everything and a dated time bomb the
  * moment it did not: the first would have dropped out of the default response
- * on 2026-09-21 and all three by 2026-11-16, leaving the mocked /sinscrire
+ * on 2026-09-21 and all three by 2026-11-16, leaving the mocked /planning_repet
  * empty and PlanningRepet.test.tsx red for a reason its error message would not
  * hint at.
  *
@@ -84,9 +84,9 @@ export const SEED: MockEvent[] = [
     // DELIBERATELY IN THE PAST. The fixture used to be all-future, and that
     // bias is exactly what hid the missing date filter from the mocked front
     // end while the API's own tests were biased the same way. Keep one past
-    // event here so /sinscrire hiding it, and /planning_repet's past-events
-    // disclosure revealing it, are both visible in `npm run dev:mock` and
-    // testable in e2e.
+    // event here so /planning_repet's default upcoming list hiding it, and its
+    // past-events disclosure revealing it, are both visible in `npm run
+    // dev:mock` and testable in e2e.
     id: 4,
     date: isoDaysFromToday(-9),
     title: "Répétition du samedi",

@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/button";
  *
  * The event comes from the list rather than a dedicated endpoint — there is no
  * GET /api/events/{id}, and the list is already cached by the time anyone
- * arrives here from /sinscrire.
+ * arrives here from /planning_repet.
  *
- * A DEEP-LINK FALLBACK now, not the main flow. /sinscrire answers inline in one
- * tap, so nothing links here any more — but the URL is frozen and is in
+ * A DEEP-LINK FALLBACK now, not the main flow. /planning_repet answers inline in
+ * one tap, so nothing links here any more — but the URL is frozen and is in
  * bookmarks, so it keeps working and offers the same two buttons.
  *
  * Note a link to a PAST event now falls through to the "Aucun événement à
@@ -43,7 +43,7 @@ export function InscriptionsUtilisateurs() {
 
   const respond = useResponseStore({
     mutation: {
-      onSuccess: () => navigate("/sinscrire"),
+      onSuccess: () => navigate("/planning_repet"),
       onError: setFromThrown,
     },
   });

@@ -7,11 +7,11 @@ import { ButtonLink } from "./ButtonLink";
 test("an internal destination renders a router link", () => {
   render(
     <MemoryRouter>
-      <ButtonLink to="/sinscrire">S’inscrire</ButtonLink>
+      <ButtonLink to="/planning_repet">Résumé</ButtonLink>
     </MemoryRouter>,
   );
-  const link = screen.getByRole("link", { name: "S’inscrire" });
-  expect(link).toHaveAttribute("href", "/sinscrire");
+  const link = screen.getByRole("link", { name: "Résumé" });
+  expect(link).toHaveAttribute("href", "/planning_repet");
 });
 
 // An external link that opens a new tab without rel="noreferrer" hands the

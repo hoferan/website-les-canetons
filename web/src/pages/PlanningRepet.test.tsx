@@ -126,9 +126,7 @@ test("an empty planning renders the headings and no rows, not a crash", async ()
   server.use(http.get("/api/events", () => HttpResponse.json([])));
 
   await renderWithSession(<PlanningRepet />);
-  expect(
-    await screen.findByRole("heading", { name: /Planning des prestations/ }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
   expect(
     within(screen.getByRole("list", { name: "Événements" })).queryAllByRole("listitem"),
   ).toHaveLength(0);

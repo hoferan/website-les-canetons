@@ -13,12 +13,14 @@ export type EventCardEvent = {
  * One event, as a card: the date as the heading, the title under it, then
  * whatever the page wants in the body and the footer.
  *
- * SHARED BY /planning_repet AND /sinscrire on purpose. /sinscrire was a
- * three-column table squeezed into 390px -- every cell wrapping to three lines,
- * its action button 28px tall -- and rebuilding it as cards without this
- * component would mean a second, near-identical card tree to keep in step
- * forever. The two pages differ in their body and their footer, which is
- * exactly what `children` and `actions` are.
+ * USED BY /planning_repet'S TWO LISTS — upcoming and the past-events archive —
+ * on purpose. It was also shared with /sinscrire until that page was merged
+ * into /planning_repet on 2026-09-01: /sinscrire was a three-column table
+ * squeezed into 390px -- every cell wrapping to three lines, its action button
+ * 28px tall -- and rebuilding it as cards without this component would have
+ * meant a second, near-identical card tree to keep in step forever. The two
+ * lists still differ in their body and their footer, which is exactly what
+ * `children` and `actions` are.
  *
  * THE ACTIONS ARE A FOOTER SLOT, NOT AN OVERLAY. /planning_repet's controls
  * were `absolute top-2 right-2`, which at 390px rendered the Modifier and

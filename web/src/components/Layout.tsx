@@ -18,8 +18,7 @@ const NAV = [
   { to: "/comite_teamdirection", label: "Contact Canetons" },
   { to: "/canetons", label: "Les canetons" },
   { to: "/moniteurs", label: "Moniteurs" },
-  { to: "/planning_repet", label: "Planning et répétitions" },
-  { to: "/sinscrire", label: "Inscriptions" },
+  { to: "/planning_repet", label: "Événements" },
   // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
   // { to: "/cd", label: "CD" },
   // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
@@ -28,12 +27,13 @@ const NAV = [
 ];
 
 /**
- * The two inscription sub-pages highlight the "Inscriptions" item, matching the
- * old setActiveNavigation() behaviour.
+ * The two inscription sub-pages highlight the "Événements" item, matching the
+ * old setActiveNavigation() behaviour. They pointed at /sinscrire until that
+ * page was merged into /planning_repet on 2026-09-01.
  */
 const ACTIVE_ALIASES: Record<string, string> = {
-  "/inscriptions_admin": "/sinscrire",
-  "/inscriptions_utilisateurs": "/sinscrire",
+  "/inscriptions_admin": "/planning_repet",
+  "/inscriptions_utilisateurs": "/planning_repet",
 };
 
 /**

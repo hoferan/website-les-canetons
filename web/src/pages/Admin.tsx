@@ -14,13 +14,8 @@ import { Card } from "@/components/ui/card";
 const DESTINATIONS: { to: string; title: string; description: string }[] = [
   {
     to: "/planning_repet",
-    title: "Planning et répétitions",
-    description: "Ajouter, modifier ou supprimer un événement.",
-  },
-  {
-    to: "/sinscrire",
-    title: "Inscriptions",
-    description: "Voir les réponses des membres, événement par événement.",
+    title: "Événements",
+    description: "Ajouter, modifier ou supprimer un événement, et lire les réponses des membres.",
   },
 ];
 
