@@ -3,6 +3,14 @@ import { useSearchParams } from "react-router-dom";
 import { useResponseIndex } from "../api/generated/endpoints";
 import { PageSection } from "@/components/PageSection";
 import { StatTile } from "@/components/StatTile";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Who is coming, and how many of each register.
@@ -109,67 +117,67 @@ export function InscriptionsAdmin() {
             clip: without it the table shrinks to the container and the last
             header, "Participation", is cut off on a phone with no way to reach
             it. */}
-        <table className="w-full min-w-[28rem] text-left" aria-label="Réponses">
-          <thead>
-            <tr className="border-b border-line">
-              <th scope="col" className="p-3 font-semibold text-ink-muted">
+        <Table className="min-w-[28rem] text-left" aria-label="Réponses">
+          <TableHeader>
+            <TableRow className="border-b border-line">
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
                 Nom d’utilisateur
-              </th>
-              <th scope="col" className="p-3 font-semibold text-ink-muted">
+              </TableHead>
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
                 Instrument
-              </th>
-              <th scope="col" className="p-3 font-semibold text-ink-muted">
+              </TableHead>
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
                 Participation
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row) => (
-              <tr key={row.username} className="border-b border-line last:border-0">
-                <td className="p-3">{row.username}</td>
-                <td className="p-3">{row.instrument ?? "—"}</td>
+              <TableRow key={row.username} className="border-b border-line last:border-0">
+                <TableCell className="p-3">{row.username}</TableCell>
+                <TableCell className="p-3">{row.instrument ?? "—"}</TableCell>
                 {/* Deliberately worded differently from the tile labels above
                     ("Participe" / "Ne participe pas" / "En attente"): with the
                     same three strings in both places, an accessible-name query
                     for one string would match a tile AND up to five table
                     cells at once. */}
-                <td className="p-3">
+                <TableCell className="p-3">
                   {row.response === "participate"
                     ? "Participe"
                     : row.response === "notparticipate"
                       ? "Ne participe pas"
                       : "Pas de réponse"}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <h2 className="mt-10 font-display text-2xl">Résumé des instruments</h2>
       <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-panel">
-        <table className="w-full min-w-[20rem] text-left" aria-label="Résumé des instruments">
-          <thead>
-            <tr className="border-b border-line">
-              <th scope="col" className="p-3 font-semibold text-ink-muted">
+        <Table className="min-w-[20rem] text-left" aria-label="Résumé des instruments">
+          <TableHeader>
+            <TableRow className="border-b border-line">
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
                 Instrument
-              </th>
-              <th scope="col" className="p-3 font-semibold text-ink-muted">
+              </TableHead>
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
                 Nombre
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {registers.map((register) => (
-              <tr key={register} className="border-b border-line last:border-0">
-                <td className="p-3">{register}</td>
-                <td className="p-3 tabular-nums">
+              <TableRow key={register} className="border-b border-line last:border-0">
+                <TableCell className="p-3">{register}</TableCell>
+                <TableCell className="p-3 tabular-nums">
                   {participating.filter((row) => row.instrument === register).length}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </PageSection>
   );

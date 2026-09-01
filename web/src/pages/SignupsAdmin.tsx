@@ -1,6 +1,15 @@
 import { useSignupIndex } from "../api/generated/endpoints";
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 /**
  * Who reserved, at which table, eating what.
@@ -15,13 +24,13 @@ import { Button } from "@/components/ui/button";
 /** A zero is a dash, as the old page had it — it keeps a long table readable. */
 function Num({ value, total = false }: { value: number; total?: boolean }) {
   return (
-    <td
+    <TableCell
       className={`p-3 text-right tabular-nums ${total ? "font-semibold" : ""} ${
         value === 0 ? "text-ink-muted" : ""
       }`}
     >
       {value === 0 ? "–" : value}
-    </td>
+    </TableCell>
   );
 }
 
@@ -128,31 +137,43 @@ export function SignupsAdmin() {
         tabIndex={0}
         className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel focus-visible:outline-2 focus-visible:outline-violet"
       >
-        <table className="w-full min-w-160 text-left" aria-label="Inscriptions">
-          <thead>
-            <tr className="border-b border-line">
-              <th className="p-3 font-semibold text-ink-muted">Table / Contact</th>
-              <th className="p-3 font-semibold text-ink-muted">Tél.</th>
-              <th className="p-3 text-right font-semibold text-ink-muted">Viande</th>
-              <th className="p-3 text-right font-semibold text-ink-muted">Enfant</th>
-              <th className="p-3 text-right font-semibold text-ink-muted">Végét.</th>
-              <th className="p-3 text-right font-semibold text-ink-muted">Total</th>
-            </tr>
-          </thead>
+        <Table className="min-w-160 text-left" aria-label="Inscriptions">
+          <TableHeader>
+            <TableRow className="border-b border-line">
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
+                Table / Contact
+              </TableHead>
+              <TableHead scope="col" className="p-3 font-semibold text-ink-muted">
+                Tél.
+              </TableHead>
+              <TableHead scope="col" className="p-3 text-right font-semibold text-ink-muted">
+                Viande
+              </TableHead>
+              <TableHead scope="col" className="p-3 text-right font-semibold text-ink-muted">
+                Enfant
+              </TableHead>
+              <TableHead scope="col" className="p-3 text-right font-semibold text-ink-muted">
+                Végét.
+              </TableHead>
+              <TableHead scope="col" className="p-3 text-right font-semibold text-ink-muted">
+                Total
+              </TableHead>
+            </TableRow>
+          </TableHeader>
           {/* flatMap, not a nested <tbody> per table: the group row and its
               reservations are SIBLINGS, as the old markup had them, and a
               <tbody> per table would break the row count every test asserts on. */}
-          <tbody aria-live="polite">
+          <TableBody aria-live="polite">
             {data.tables.flatMap((table) => [
-              <tr key={`${table.name}-group`} className="border-b border-line bg-line/30">
-                <td className="p-3 font-semibold" colSpan={2}>
+              <TableRow key={`${table.name}-group`} className="border-b border-line bg-line/30">
+                <TableCell className="p-3 font-semibold" colSpan={2}>
                   {table.name}
-                </td>
+                </TableCell>
                 <Num value={table.menuCounts.meat} />
                 <Num value={table.menuCounts.child} />
                 <Num value={table.menuCounts.vegetarian} />
                 <Num value={table.personCount} total />
-              </tr>,
+              </TableRow>,
               /* Keyed by POSITION, not by contact details. A signup carries no
                  id — the payload has none, `signups` has no unique index on
                  email, and store() does not dedupe — so two reservations from
@@ -161,38 +182,38 @@ export function SignupsAdmin() {
                  phone. This list is read-only and never reorders, so the index
                  is both stable and safe here. */
               ...table.signups.map((signup, position) => (
-                <tr key={`${table.name}-${position}`} className="border-b border-line">
-                  <td className="p-3">
+                <TableRow key={`${table.name}-${position}`} className="border-b border-line">
+                  <TableCell className="p-3">
                     <strong>
                       {signup.first_name} {signup.last_name}
                     </strong>
                     <span className="block text-sm text-ink-muted">{signup.address}</span>
-                  </td>
+                  </TableCell>
                   {/* nowrap: a phone number has one shape and reading it costs
                       nothing when it is on one line and everything when the
                       column is narrow enough to stack it digit-group per
                       line. */}
-                  <td className="p-3 whitespace-nowrap">{signup.phone}</td>
+                  <TableCell className="p-3 whitespace-nowrap">{signup.phone}</TableCell>
                   <Num value={signup.menuCounts.meat} />
                   <Num value={signup.menuCounts.child} />
                   <Num value={signup.menuCounts.vegetarian} />
                   <Num value={signup.personCount} total />
-                </tr>
+                </TableRow>
               )),
             ])}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-line bg-line/30">
-              <td className="p-3 font-semibold" colSpan={2}>
+          </TableBody>
+          <TableFooter>
+            <TableRow className="border-t-2 border-line bg-line/30">
+              <TableCell className="p-3 font-semibold" colSpan={2}>
                 Total général
-              </td>
+              </TableCell>
               <Num value={data.menuTotals.meat} total />
               <Num value={data.menuTotals.child} total />
               <Num value={data.menuTotals.vegetarian} total />
               <Num value={data.totalPersons} total />
-            </tr>
-          </tfoot>
-        </table>
+            </TableRow>
+          </TableFooter>
+        </Table>
       </div>
     </PageSection>
   );

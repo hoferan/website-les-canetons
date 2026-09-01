@@ -2,15 +2,31 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * VENDORED from shadcn/ui, WITHOUT its scroll container.
+ *
+ * The registry version wraps the table in its own
+ * `<div className="relative w-full overflow-x-auto">`. Both pages that use this
+ * already own a scroller of their own, and each one is deliberate:
+ *
+ *   /signups_admin's is a role="region" with tabIndex={0} and its own label,
+ *   because a container that scrolls has to be reachable by keyboard; and
+ *   both carry a `min-w-*` on the TABLE, which is the thing that actually gives
+ *   a container something to scroll -- `w-full` inside an overflow-x container
+ *   is 100% OF THAT CONTAINER, so the table squeezes instead of scrolling.
+ *
+ * Keeping shadcn's div as well would nest two scroll containers, which on a
+ * phone is a genuinely unpleasant bug: the inner one swallows the gesture and
+ * the outer, focusable one never moves. Exactly one scroller, owned by the page
+ * that knows how wide its own table is.
+ */
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
   );
 }
 
