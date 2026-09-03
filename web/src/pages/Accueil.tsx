@@ -1,3 +1,4 @@
+import { DestinationCards, type Destination } from "../components/DestinationCards";
 import { NextEvent } from "../components/NextEvent";
 import { PhotoPending } from "../components/PhotoPending";
 import { SouperCta } from "../components/SouperCta";
@@ -23,6 +24,45 @@ import { BrandLogo } from "@/components/Logo";
  * is the most time-sensitive thing on the site. It lives in its own component
  * because its two buttons link to /signup and /signups_admin.
  */
+
+/**
+ * The four pages a stranger most likely wants, in the order the spec set them.
+ *
+ * A CURATED SUBSET OF THE NAV, ON PURPOSE — see DestinationCards.tsx. The nav
+ * lists all ten pages; these are four of them, chosen rather than derived.
+ *
+ * "Événements", not "Planning". The E2b spec wrote "Planning (/planning_repet)"
+ * descriptively, from before E1c merged /sinscrire into that page and renamed
+ * both the nav entry and the page's own h1 to "Événements". Two names for one
+ * page, on the front door, is exactly the kind of drift the content audit found
+ * elsewhere on this site.
+ *
+ * Each description says what is ON the page it links to. None of them asserts a
+ * fact about the band — those come from /historique, or from the band.
+ */
+const DESTINATIONS: Destination[] = [
+  {
+    to: "/commencement",
+    title: "Nous rejoindre",
+    description: "Les instruments recherchés, les horaires et les critères d’âge.",
+  },
+  {
+    to: "/canetons",
+    title: "Les canetons",
+    description: "Les musiciens du groupe, registre par registre.",
+  },
+  {
+    to: "/planning_repet",
+    title: "Événements",
+    description: "Les prochaines prestations et répétitions.",
+  },
+  {
+    to: "/comite_teamdirection",
+    title: "Contact",
+    description: "Nous écrire, réserver les Canetons, et le comité.",
+  },
+];
+
 export function Accueil() {
   return (
     <PageSection width="text">
@@ -80,6 +120,10 @@ export function Accueil() {
           on this page that changes by itself, and it is allowed to render
           nothing — see NextEvent.tsx. */}
       <NextEvent />
+
+      {/* LAST, per the spec's page order. Someone who has read the hero and the
+          next event and is still here is the person who wants to go somewhere. */}
+      <DestinationCards label="Découvrir les Canetons" destinations={DESTINATIONS} />
     </PageSection>
   );
 }

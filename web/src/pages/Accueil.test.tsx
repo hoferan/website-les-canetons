@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
@@ -25,9 +25,15 @@ test("the hero says what the band is, in one line and one sentence", async () =>
   // Fragments, not the whole sentence: it contains a non-breaking space before
   // its colon, and a test asserting the full string with an ordinary space
   // fails on two characters that look identical in the diff.
+  //
+  // "apprennent les morceaux registre par registre", not the bare "registre
+  // par registre": the /canetons destination card's own description (added in
+  // Task 5) also says "registre par registre", so the bare fragment is
+  // ambiguous the moment DestinationCards renders on this page. Anchoring on
+  // the surrounding words keeps this test pinned to the hero sentence.
   expect(screen.getByText(/De 7 à 18 ans/)).toBeInTheDocument();
   expect(screen.getByText(/pas besoin de connaître la musique/)).toBeInTheDocument();
-  expect(screen.getByText(/registre par registre/)).toBeInTheDocument();
+  expect(screen.getByText(/apprennent les morceaux registre par registre/)).toBeInTheDocument();
   expect(screen.getByText(/répétitions du samedi matin/)).toBeInTheDocument();
 });
 
@@ -138,4 +144,21 @@ test("with no upcoming events the hero and the photo slot are still there", asyn
     }),
   ).toBeVisible();
   expect(container.querySelector("[data-photo-pending]")).toBeInTheDocument();
+});
+
+// FOUR, and these four. The nav has ten entries; this is the curated shortlist
+// a stranger wants first, and the test names the routes so a "tidy-up" that
+// generates them from NAV fails here instead of silently turning the front door
+// into a second navigation.
+test("the front page offers four curated destinations", async () => {
+  await renderWithSession(<Accueil />);
+
+  const list = await screen.findByRole("list", { name: "Découvrir les Canetons" });
+  expect(within(list).getAllByRole("listitem")).toHaveLength(4);
+
+  const href = (name: RegExp) => screen.getByRole("link", { name }).getAttribute("href");
+  expect(href(/^Nous rejoindre/)).toBe("/commencement");
+  expect(href(/^Les canetons/)).toBe("/canetons");
+  expect(href(/^Événements/)).toBe("/planning_repet");
+  expect(href(/^Contact/)).toBe("/comite_teamdirection");
 });
