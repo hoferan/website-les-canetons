@@ -182,6 +182,27 @@ test("every destination card is a full-size tap target that navigates", async ({
   }
 });
 
+// The scroll-reset defect this guards: nothing in the app resets scroll on
+// navigation by default (react-router does not), so clicking a destination
+// card from the bottom of this page used to land on the target page still
+// scrolled down — measured, window.scrollY 1120 on a 390x844 fixture where
+// this page bottoms out at scrollY 1000. See ScrollToTop.tsx.
+test("landing on a destination page after scrolling starts at the top", async ({ page }) => {
+  await page.goto("/");
+  const list = page.getByRole("list", { name: "Découvrir les Canetons" });
+  await list.getByRole("link", { name: /^Les canetons/ }).waitFor();
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const scrolledDown = await page.evaluate(() => window.scrollY);
+  expect(scrolledDown).toBeGreaterThan(0);
+
+  await list.getByRole("link", { name: /^Les canetons/ }).click();
+  await expect(page).toHaveURL(/\/canetons$/);
+
+  await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
+
 test("the next event block shows a real event and leads to the planning", async ({ page }) => {
   await page.goto("/");
 

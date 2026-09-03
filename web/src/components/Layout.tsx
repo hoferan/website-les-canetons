@@ -6,6 +6,7 @@ import { Logo } from "./Logo";
 
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
+import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
@@ -69,6 +70,12 @@ export function Layout() {
 
   return (
     <>
+      {/* Renders nothing; resets scroll on pathname change. Mounted here,
+          rather than per route in routes.tsx, so it survives navigation
+          instead of remounting on every page. See its own doc comment for
+          why, including the measured symptom and the hash exclusion. */}
+      <ScrollToTop />
+
       <EnvRibbon env={config.env} />
 
       <header className="bg-stage text-white">
