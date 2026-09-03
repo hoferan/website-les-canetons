@@ -19,16 +19,18 @@ here:
 
 ## START HERE: what to do next
 
-**Sub-project E1 is done and shipped. E2 is next, and it has no spec.** The
-remaining blocker on PROD is unchanged and is not code: the `<Tbd>` and
-`<PhotoPending>` placeholders.
+**E2 is designed as three rounds. E2a is shipped; E2b is next, and its spec is
+already written** — so the next session plans and executes, it does not
+brainstorm. The remaining blocker on PROD is unchanged and is not code: the
+`<Tbd>` and `<PhotoPending>` placeholders.
 
 ### Nothing is in flight — `main` is the whole truth
 
-`main` is at **`c7b95fe`** and TEST serves it. There is no open PR and no branch
-you need to know about. The cutover shipped on 2026-08-31 (rollback tag
-`2026-08-31-f120b9f`), the old PHP front end is gone, and sub-projects **A**,
-**C**, **D** and **E1** are done.
+`main` is at **`022f8b9`** and TEST serves it, verified in a browser on
+2026-09-03. There is no open PR and no branch you need to know about. The
+cutover shipped on 2026-08-31 (rollback tag `2026-08-31-f120b9f`), the old PHP
+front end is gone, and sub-projects **A**, **C**, **D**, **E1** and **E2a** are
+done.
 
 > Describe state, not in-flight work, or say which commit the statement is true
 > at. This section once warned that PR #61 was open, and the handover commit
@@ -74,18 +76,65 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 | **C** | Content audit | **done** — `docs/content-audit-2026-08-31.md` |
 | **D** | Content corrections | **done** — PRs #60 and #61, both merged |
 | **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
-| **E2** | What E1 deliberately left | **next, and not yet designed** |
+| **E2a** | `/canetons` register index, one-line `PhotoPending`, the image guard | **done** — PR #65 |
+| **E2b** | `/accueil` as a front door | **next — spec written, not yet planned** |
+| **E2c** | Feedback motion and one spacing scale | designed; **last on purpose** |
+
+### E2 is three rounds, and the order is load-bearing
+
+The specs are all dated 2026-09-01 in `docs/superpowers/specs/`. Build in order:
+
+- **E2a** — shipped as `022f8b9`. See below.
+- **E2b** — `/accueil` as a front door. It *looks* blocked on copy nobody has
+  written; it is not. `/historique` already publishes the founding date, the
+  7-18 age range, "pas besoin de connaître la musique" and the Saturday
+  rehearsals, and the hero condenses those. **The head-count is deliberately
+  dropped:** the source says the band *grew to* forty in 2003, and asserting
+  that today would be a new and perishable claim.
+- **E2c** — motion and one spacing scale (ten distinct `mt-*` values across 94
+  uses become four named steps). **Last, because a scale applied to pages E2b is
+  about to reshape is work done twice.** Motion only where it reports that
+  something happened, all behind `prefers-reduced-motion`. Entrance and
+  scroll animation were rejected: this site is read on phones, outdoors.
+
+The **French inconsistencies are not in E2**. They were ported deliberately and
+get settled with the band, not silently.
+
+### What E2a shipped, and the framing that is easy to get backwards
+
+`022f8b9` (PR #65) did three things:
+
+- **A register index on `/canetons`** — a row of jump-link chips, each register
+  `<article>` carrying a stable English `id`.
+- **`PhotoPending` is one line, not a 160px box.** `/canetons` went from 3034px
+  to **2134px** at 390px. `/accueil` and `/moniteurs` inherit it.
+- **`tools/image-budget.mjs`**, wired into `npm run check` as `guard:images`.
+
+> **The placeholders did NOT make `/canetons` too long, and a session that
+> assumes they did will design the wrong thing.** One photo per register is a
+> requirement carried from the legacy site, the band is re-shooting them, and
+> the *photographed* page measures ~3554px — longer than the placeholder page
+> ever was. The length is inherent, so the page got a **way in**, not a diet.
+> Photos will keep their natural aspect ratio: the legacy captions read "de
+> gauche à droite", so a uniform crop can cut a person out and make the caption
+> wrong.
+
+Verified against TEST after the deploy, in a real browser at 390px: the index
+renders 7 links, the 8 placeholders are single lines, the page is 2134px, and
+clicking "Trombones" actually scrolls (`scrollY 1290`, URL `#trombones`). The
+one console error is `401 /api/user` — the session probe for an anonymous
+visitor, which is correct — and the PWA manifest still carries
+`crossorigin="use-credentials"`, so that previously-fixed bug has not returned.
 
 ### What E2 inherits
 
 E1 stopped at the point where the next decisions are about content and identity
 rather than ergonomics. Explicitly left undone, and why:
 
-- **`PhotoPending`'s shape.** It keeps its dashed border and its 160px minimum.
-  `/canetons` is still eight stacked dashed boxes, about 3062px on a phone. The
-  first E2 decision is what a photo-less *Scène* looks like — that is a design
-  question nobody has answered, and E1 refused to pre-empt it.
-- **`/accueil` as a front door**, new public-page copy, and motion.
+- ~~**`PhotoPending`'s shape.**~~ **Settled by E2a**: one line, not a 160px box.
+  It keeps its dashed border, its `what` prop and its `data-photo-pending` hook.
+- **`/accueil` as a front door**, new public-page copy, and motion — E2b and
+  E2c, both now specced.
 - **The ported French inconsistencies** — `Nom:` versus `Nom :`, "Liens Amis".
 - **A server-side 301 for `/sinscrire`.** The redirect is client-side only. A
   `RedirectMatch 301` in `config/htaccess/site.htaccess` would be cheaper and
@@ -123,12 +172,18 @@ Two things changed after the original scoping and still bind E2:
    `Cd.tsx`), and the parrain/marraine photograph. Everything else is a dashed
    placeholder box.
 
-   `/canetons` is a tall, repetitive column of stacked dashed boxes — about
-   3062px on a phone. "Image treatment" was in E's original scope and there are
-   no longer any images to treat. **The first real E2 decision is what a
-   photo-less version of Scène looks like**, and whether `PhotoPending` should be
-   far more compact than the 160px-minimum box it is today. E1 deliberately did
-   not touch it, precisely so that decision stays open.
+   "Image treatment" was in E's original scope and there are no longer any
+   images to treat. **E2a answered this**: `PhotoPending` is one line, and
+   `/canetons` is 2134px on a phone rather than 3034px. The photographs are
+   coming back, so the page is designed for its photographed state — see the
+   E2a framing above before changing anything there.
+
+   **`tools/image-budget.mjs` now guards what arrives.** Longest edge 1920px,
+   600 KB, exemptions by name in the file, and an exempt name is still held to a
+   4000px / 2 MB ceiling so a camera original cannot sail through under one. It
+   runs in `npm run check`. This matters because the band is about to hand over
+   eight re-shot photographs, and the legacy site still serves 37.5 MB of them
+   including a 19.8 MB 6048x4024 original.
 
 ### What is hidden, and how to bring it back
 
@@ -159,12 +214,24 @@ grep -rl "<Tbd" web/src/pages           # missing names and numbers
 grep -rl "<PhotoPending" web/src/pages  # missing photographs
 ```
 
-`Tbd` covers 4 pages / **17 rendered fields** — 8 committee names, 6 register
-rosters, 1 booking number, 2 joining contacts. `PhotoPending` covers 3 pages /
-**10 photographs**. Do not count occurrences and report that as the number:
-several sit inside a `.map()`, so `grep -o | wc -l` understates it, and picks up
-the components and their tests. `grep -rl` on `web/src/pages` answers the only
-question that matters.
+`Tbd` covers 4 pages / **23 rendered fields**; `PhotoPending` covers 3 pages /
+**10 photographs**. Counted in a browser against TEST on 2026-09-03, which is
+the only method that gives a true number:
+
+| | `Tbd` | `PhotoPending` |
+| --- | --- | --- |
+| `/comite_teamdirection` | 9 | 0 |
+| `/canetons` | 6 | 8 |
+| `/moniteurs` | 6 | 1 |
+| `/commencement` | 2 | 0 |
+| `/accueil` | 0 | 1 |
+| **total** | **23** | **10** |
+
+> This file previously said **17**, omitting `/moniteurs`' six. Do not count
+> occurrences and report that as the number: several sit inside a `.map()`, so
+> `grep -o | wc -l` understates it *and* picks up the components and their own
+> tests. `grep -rl` on `web/src/pages` tells you which pages; only rendering
+> them tells you how many fields.
 
 There is deliberately **no `tel:` link on a placeholder** — a clickable wrong
 number dials a stranger. Each affected block offers `comite@lescanetons.org`
@@ -206,23 +273,36 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-09-01 at `c7b95fe`, with the dev stack up. If a fresh checkout does
-not match these, something moved before you started.
+Recorded 2026-09-03 at `022f8b9`, every one of them run, with the dev stack up.
+If a fresh checkout does not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **226** tests, 34 files (206/30 before E1) |
-| `npm run test:js` | **122** passed (85 before `put-overlay` landed) |
-| `npm run test:e2e` | **20** passed (18 before E1 added `mobile.spec.ts`) |
+| `npx vitest run` | **234** tests, 36 files (226/34 before E2a) |
+| `npm run test:js` | **140** passed (122 before E2a's image guard) |
+| `npm run test:e2e` | **25** passed (20 before E2a added `canetons.spec.ts`) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
-| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — 234/718 before E1a's filter tests |
-| `du -sh web/public/assets/img/` | ~6.1 MB (it was 44.5 MB before 2026-08-29) |
+| `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — unchanged by E2a, which touched no API |
+| `du -sh web/public/assets/img/` | **656 KB**, 3 files (44.5 MB before 2026-08-29) |
 
 `npm run check` does **not** build and does **not** run the Laravel suite. Run
 both separately. In Git Bash prefix the `docker compose exec` with
 `MSYS_NO_PATHCONV=1`; PowerShell is fine as-is.
+
+**`npm run check` gained `guard:images`** in E2a — it is the last step, after
+`guard`, and prints two "exempt but not in the tree" notes for `comite.jpg` and
+`Flyer.jpeg` before its OK line. Those notes are expected: both files were
+deleted in `de750d9` and stay on the exemption list so restoring them does not
+trip a guard that was never about them.
+
+**The e2e suite now runs in CI**, which it did not before E2a — no workflow
+invoked Playwright at all, so a broken spec could reach `main` unnoticed, and
+did once during E1c. The `e2e` job is in `ci.yml` and is in `deploy-test`'s
+`needs` list, so a red e2e blocks the TEST auto-deploy. It runs `--mode mock`
+(MSW, no Docker), so it is **not** proof of the API contract — that is
+`tests-api` and `openapi-drift`.
 
 **Run the JS suites from PowerShell, not Git Bash** — see the trap below. From
 Git Bash every test file fails to collect at once, which looks exactly like a
@@ -245,6 +325,13 @@ no other kind. In order, all on 2026-08-31:
 | #61 | `de750d9` | every photograph dropped, `/sponsors` hidden, print button removed |
 | #63 | `c7b95fe` | E1a+E1b+E1c — the events filter, the component library, the phone pass, and the two events pages merged into one |
 
+Then on 2026-09-03:
+
+| PR | Squash | What |
+| --- | --- | --- |
+| #64 | `0699ecd` | this handover, updated for E1 |
+| #65 | `022f8b9` | E2a — the register index, the one-line `PhotoPending`, `tools/image-budget.mjs`, `/canetons` e2e coverage, and the `e2e` CI job |
+
 Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
 takes the API down on the real host.
 
@@ -260,7 +347,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `c7b95fe` — **the SPA** | Deployed 2026-08-31, six times. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `022f8b9` — **the SPA** | Auto-deployed 2026-09-03 by CI on the E2a merge (4 files up, 2 stale deleted, 38.7s, brake not tripped). `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
@@ -501,16 +588,17 @@ unaffected, since it uses the throwaway `laravel_api_test` database.
 
 ## Starting E2 — what the phone pass left behind
 
-**E2 is design work with no spec.** Every other sub-project here went
-brainstorm → written spec, approved → written plan → execute with
-`subagent-driven-development` → look at the rendered pages. E1 went that way
-three times over and it earned its keep — see "What E1's review pipeline caught"
-below. E2 should too. Do not skip to editing CSS.
+**E2 now HAS its specs** — three of them, dated 2026-09-01, one per round; see
+"E2 is three rounds" near the top. E2a is shipped. So the next session goes
+straight to written plan → execute → look at the rendered pages, and does **not**
+re-brainstorm. Do not skip to editing CSS either.
 
-Everything from here to the end of this section was written before E1 shipped.
-It is still accurate about the site's shape and its traps, but read "ergonomics"
-claims against E1's work: the 44px floor, the phone nav, the one-tap answering
-and the container widths are DONE.
+Everything from here to the end of this section was written before E1 shipped
+and not fully revised since. It is still accurate about the site's traps, but
+read it against two rounds of work: E1 did the ergonomics (the 44px floor, the
+phone nav, the one-tap answering, the container widths) and **E2a did
+`/canetons` and `PhotoPending`**. Where this section and the top of the file
+disagree, the top is newer.
 
 ### Read first, in this order
 
@@ -538,12 +626,13 @@ npm run build                      # :8090 serves the BUILT artifact
 
 ### What E is actually facing
 
-- **`/canetons` is nine stacked dashed placeholder boxes**, each ~160px minimum,
-  each saying "Nouvelle photo … à venir". It is a very tall, very repetitive
-  page. Deciding what `PhotoPending` should look like is probably E's first
-  real decision, and "much smaller" is the obvious hypothesis.
+- ~~**`/canetons` is nine stacked dashed placeholder boxes**~~ — **done in E2a.**
+  The placeholders are single lines, the page has a register index, and it is
+  2134px at 390px. Read the E2a framing at the top before changing it: the page
+  is deliberately designed for its *photographed* state, which is longer still.
 - **`/accueil` is a heading and one placeholder box**, plus the flag-gated souper
-  card. It is the thinnest page on the site and it is the front door.
+  card. It is the thinnest page on the site and it is the front door. **This is
+  E2b, and its spec is written.**
 - **Headings are all-caps whatever the source says**, because Bungee's lowercase
   glyphs are capitals. Sentence-case headings are not available.
 - **The desktop nav is 10 items** and wraps to two rows; the phone nav is a
