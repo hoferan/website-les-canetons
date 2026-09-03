@@ -126,6 +126,33 @@ one console error is `401 /api/user` — the session probe for an anonymous
 visitor, which is correct — and the PWA manifest still carries
 `crossorigin="use-credentials"`, so that previously-fixed bug has not returned.
 
+### The logo rework, and the one thing it could not fix
+
+Shipped with the duck lockup (PR #69): the header carries the duck mark plus a
+Bungee wordmark, the original badge moved to `/accueil`, and `Logo.tsx` holds
+both with the reasoning for the split. The wordmark deliberately carries **no
+accent colour** — "Canetons" used to be pink, an inch from the duck's red beak,
+and matching them by turning it red only moved the clash, because the phone
+nav's active row is that same pink two rows below. The rule that came out of it:
+**colour in the header means the MARK, colour in the nav means STATE.**
+
+**THE FAVICON IS STILL A SMUDGE AT 16px, and cropping will not fix it.** Two
+structural causes, both measured on 2026-09-03: the duck is portrait (438x613 of
+ink) fitted into a square, so it shrinks and floats; and it is thin line art, so
+at 16px a 1px white stroke lands between pixels and greys out. A tighter
+head-and-beak crop was built and rasterised to a real 16px — features about 40%
+larger, the beak a solid block instead of a smear — and it is better but still
+not good. **The honest fix is purpose-drawn small-size artwork** (a simplified
+silhouette, bolder strokes, or the beak alone), which is what Apple and Google
+ship and what the `<link rel="icon" sizes>` set already supports. That is a
+drawing task, best done in Claude Design where the duck came from — not a coding
+one, which is why it was left rather than bodged.
+
+Whoever picks it up: `favicon.ico` also carries 16/32 and cannot be rebuilt
+without adding an image dependency to a project that deliberately has none.
+Either drop its `<link>` (nothing since pre-Chromium IE needs it) or accept the
+`.ico` and the PNGs disagreeing at small sizes.
+
 ### What E2 inherits
 
 E1 stopped at the point where the next decisions are about content and identity
