@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import { readDimensions } from './image-budget.mjs';
+import { audit, MAX_BYTES, MAX_EDGE, readDimensions } from './image-budget.mjs';
 
 // Fixture builders. These are HEADERS, not decodable images -- the guard reads
 // headers, so a header is all a fixture needs, and building one by hand is what
@@ -68,4 +71,101 @@ test('returns null for a format it cannot measure', () => {
   // A .webp or an .svg is not an error -- the file-size budget still applies to
   // it, and the audit relies on null meaning "size-check only".
   assert.equal(readDimensions(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" />')), null);
+});
+
+/** A throwaway image directory. Each test gets its own. */
+function fixture(files) {
+  const dir = mkdtempSync(join(tmpdir(), 'image-budget-'));
+  for (const [name, contents] of Object.entries(files)) {
+    const path = join(dir, name);
+    mkdirSync(join(path, '..'), { recursive: true });
+    writeFileSync(path, contents);
+  }
+  return dir;
+}
+
+test('an image inside the budget passes', () => {
+  const dir = fixture({ 'registre.jpg': jpeg(1920, 1275, 400 * 1024) });
+
+  assert.deepEqual(audit(dir).offenders, []);
+});
+
+test('an image over the pixel budget fails, and is named', () => {
+  // directionmusicale.jpg, the file CLAUDE.md names: 6048x4024.
+  const dir = fixture({ 'directionmusicale.jpg': jpeg(6048, 4024, 100 * 1024) });
+
+  const [offender, ...rest] = audit(dir).offenders;
+  assert.deepEqual(rest, []);
+  assert.equal(offender.file, 'directionmusicale.jpg');
+  assert.match(offender.problem, /6048x4024/);
+  assert.match(offender.problem, new RegExp(String(MAX_EDGE)));
+});
+
+test('a portrait image is measured on its longest edge', () => {
+  // 1277x1920 is inside the budget; 1277x4024 is not. A guard that only looked
+  // at width would pass a 4000px-tall original.
+  assert.deepEqual(audit(fixture({ 'lyre.jpg': jpeg(1277, 1920) })).offenders, []);
+  assert.equal(audit(fixture({ 'lyre.jpg': jpeg(1277, 4024) })).offenders.length, 1);
+});
+
+test('an image over the file-size budget fails, and is named', () => {
+  const dir = fixture({ 'batteurs.jpg': jpeg(1600, 1067, MAX_BYTES + 1) });
+
+  const [offender] = audit(dir).offenders;
+  assert.equal(offender.file, 'batteurs.jpg');
+  assert.match(offender.problem, /KB/);
+});
+
+test('a format it cannot measure is still size-checked', () => {
+  const oversized = Buffer.alloc(MAX_BYTES + 1);
+  oversized.write('RIFF', 0, 'ascii');
+  const dir = fixture({ 'hero.webp': oversized });
+
+  assert.equal(audit(dir).offenders.length, 1);
+});
+
+test('it recurses into subdirectories', () => {
+  const dir = fixture({ 'registres/trompettes.jpg': jpeg(6048, 4024) });
+
+  assert.deepEqual(
+    audit(dir).offenders.map((o) => o.file),
+    ['registres/trompettes.jpg'],
+  );
+});
+
+test('it ignores files that are not images', () => {
+  const dir = fixture({ 'README.md': Buffer.alloc(MAX_BYTES + 1) });
+
+  assert.deepEqual(audit(dir).offenders, []);
+});
+
+test('an exempt file is not held to the budget', () => {
+  // CD_img.png is 536x489 and 344 KB today; the exemption is what keeps a
+  // future re-encode of it from being suggested by this guard.
+  const dir = fixture({ 'CD_img.png': png(2400, 2400, MAX_BYTES + 1) });
+
+  assert.deepEqual(audit(dir).offenders, []);
+});
+
+test('an exempt name does not excuse a camera original arriving under it', () => {
+  // The exemption's reason is "already small". A 19.8 MB 6048x4024 file called
+  // comite.jpg is a different file, and is exactly what this guard is for.
+  const dir = fixture({ 'comite.jpg': jpeg(6048, 4024, 4 * 1024 * 1024) });
+
+  const [offender] = audit(dir).offenders;
+  assert.equal(offender.file, 'comite.jpg');
+});
+
+test('an exemption matching no file is reported, not failed', () => {
+  // comite.jpg and Flyer.jpeg went in de750d9. They stay listed so a restore
+  // does not trip a guard that was never about them.
+  const { offenders, staleExemptions } = audit(fixture({ 'registre.jpg': jpeg(1600, 1067) }));
+
+  assert.deepEqual(offenders, []);
+  assert.ok(staleExemptions.includes('comite.jpg'));
+});
+
+test('the repository tree passes its own guard', () => {
+  // The assertion that makes this guard real rather than theoretical.
+  assert.deepEqual(audit('web/public/assets/img').offenders, []);
 });

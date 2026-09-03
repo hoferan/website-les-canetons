@@ -12,6 +12,40 @@
 // library: this project has no runtime dependencies by design and should not
 // gain a build-time one for a size check.
 
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+export const MAX_EDGE = 1920;
+export const MAX_BYTES = 600 * 1024;
+
+// Even an exempt file may not be a camera original. The exemption's reason is
+// "this one is already small, and re-encoding a small image only softens it" --
+// which says nothing about a DIFFERENT file arriving under the same name. The
+// band is about to hand over eight new photographs.
+const CEILING_EDGE = 4000;
+const CEILING_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Exempt by basename, with the reason beside each -- the same shape as the
+ * commented-out routes in web/src/routes.tsx. Adding one is meant to be a
+ * deliberate, reviewable act rather than a threshold nudge.
+ *
+ * comite.jpg and Flyer.jpeg are not in the tree; they went in de750d9. They
+ * stay listed so restoring them does not trip a guard that was never about
+ * them. A listed name matching no file is reported, not failed.
+ */
+const EXEMPT = {
+  'Les_Canetons_Fribourg_logo_2.jpg':
+    'the band identity at 237x174, not a photograph that can go stale',
+  'CD_img.png': 'the CD sleeve, already 536x489',
+  'comite.jpg': 'already small (CLAUDE.md); absent from the tree since de750d9',
+  'Flyer.jpeg': 'already small (CLAUDE.md); absent from the tree since de750d9',
+};
+
+const IMAGE = /\.(jpe?g|png|gif|webp|avif)$/i;
+
+const kb = (bytes) => `${Math.round(bytes / 1024)} KB`;
+
 /**
  * The pixel size of a PNG or JPEG, or null for anything else.
  *
@@ -62,4 +96,48 @@ export function readDimensions(buffer) {
   }
 
   return null;
+}
+
+/**
+ * Every image under `dir` that breaks the budget, plus any exemption that
+ * matched no file.
+ */
+export function audit(dir) {
+  const offenders = [];
+  const seen = new Set();
+
+  for (const entry of readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile() || !IMAGE.test(entry.name)) continue;
+
+    const path = join(entry.parentPath, entry.name);
+    // Reported with forward slashes whatever the platform: the offender line is
+    // read by a person and pasted into a git command.
+    const file = relative(dir, path).split('\\').join('/');
+    const exempt = EXEMPT[entry.name];
+    if (exempt) seen.add(entry.name);
+
+    const maxEdge = exempt ? CEILING_EDGE : MAX_EDGE;
+    const maxBytes = exempt ? CEILING_BYTES : MAX_BYTES;
+
+    const contents = readFileSync(path);
+    const size = readDimensions(contents);
+
+    if (size && Math.max(size.width, size.height) > maxEdge) {
+      offenders.push({
+        file,
+        problem: `${size.width}x${size.height} — the longest edge may not exceed ${maxEdge}px`,
+      });
+    } else if (contents.length > maxBytes) {
+      // `else if`, so one oversized original is reported once, by its cause.
+      offenders.push({
+        file,
+        problem: `${kb(contents.length)} — the budget is ${kb(maxBytes)}`,
+      });
+    }
+  }
+
+  return {
+    offenders,
+    staleExemptions: Object.keys(EXEMPT).filter((name) => !seen.has(name)),
+  };
 }
