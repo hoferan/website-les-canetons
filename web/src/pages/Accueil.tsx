@@ -30,8 +30,8 @@ export function Accueil() {
 
       {/* The band's badge — the mark people know from the flyers, the costumes
           and the instruments — as the hero's mark. It sits here because the
-          header now carries the duck as its own mark, split from the wordmark;
-          see Logo.tsx for why.
+          header now carries the duck as its own mark beside a live-text
+          wordmark; see Logo.tsx for why.
 
           THIS IS THE BADGE'S ONLY PLACEMENT ON THE SITE. It was briefly in the
           footer too, and dropped on 2026-09-03: shown in the chrome of every

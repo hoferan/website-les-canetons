@@ -116,13 +116,20 @@ test("the front page carries the next upcoming event", async () => {
   expect(screen.getByText("Concert d'automne")).toBeVisible();
 });
 
-// The hero and the photo slot must survive the live dependency failing. This is
-// the page-level half of NextEvent's own coverage: that component renders
-// nothing, and this proves nothing else on the page went with it.
+// The hero and the photo slot must survive the events query coming back empty
+// (a 200 with no rows, not a failure). This is the page-level half of
+// NextEvent's own coverage: that component renders nothing on an empty list,
+// and this proves nothing else on the page went with it. The absence of the
+// "Prochain événement" heading itself — and the failing-request case — are
+// NextEvent's own claims, proven there against a query-state probe so the
+// assertion cannot fire before the query settles; see
+// "with no upcoming events the section is absent, not empty" and
+// "a failing request renders nothing rather than an error" in
+// NextEvent.test.tsx.
 test("with no upcoming events the hero and the photo slot are still there", async () => {
   server.use(http.get("/api/events", () => HttpResponse.json([])));
 
-  await renderWithSession(<Accueil />);
+  const { container } = await renderWithSession(<Accueil />);
 
   expect(
     await screen.findByRole("heading", {
@@ -130,6 +137,5 @@ test("with no upcoming events the hero and the photo slot are still there", asyn
       name: "La guggen d’enfants de Fribourg, depuis 2002.",
     }),
   ).toBeVisible();
-  expect(screen.queryByRole("heading", { name: "Prochain événement" })).not.toBeInTheDocument();
-  expect(document.querySelector("[data-photo-pending]")).toBeInTheDocument();
+  expect(container.querySelector("[data-photo-pending]")).toBeInTheDocument();
 });
