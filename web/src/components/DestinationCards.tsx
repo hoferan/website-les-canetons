@@ -25,9 +25,22 @@ export type Destination = { to: string; title: string; description: string };
  * turned into an <a>, and `focus-ring` is what this codebase uses in place of
  * the browser default everywhere else.
  *
- * `h-full` on both the card and the anchor: in a grid row, a two-line
- * description beside a one-line one otherwise leaves the shorter card floating
- * with a ragged bottom edge.
+ * `Card asChild` makes the card BE the anchor — Radix `Slot.Root` clones its
+ * props onto the single child element, so there is exactly one rendered
+ * element carrying both class strings, not a card wrapping a separate anchor.
+ * `h-full` on the `Card` is what fills the stretched grid item (the `<li>` is
+ * the grid cell and stretches to the row height, so the anchor's
+ * `height: 100%` resolves against that); that is what stops a shorter card
+ * floating with a ragged bottom edge when it sits beside a taller one in the
+ * same row.
+ *
+ * Trap: `Slot` merges `className` by string-concatenating the parent's and the
+ * child's — `[slot, child].filter(Boolean).join(" ")` — NOT by tailwind-merge.
+ * A `display` utility passed to the child therefore does not override the
+ * `Card` base's `flex flex-col`; it just sits in the class list, unused, and
+ * the emitted CSS's own rule order (`.block` before `.flex`) means `flex`
+ * would win even if the two were literally in conflict. Passing one here
+ * would be silently dead — don't.
  */
 export function DestinationCards({
   label,
@@ -41,7 +54,7 @@ export function DestinationCards({
       {destinations.map((destination) => (
         <li key={destination.to}>
           <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
-            <Link to={destination.to} className="focus-ring block h-full">
+            <Link to={destination.to} className="focus-ring">
               <span className="font-display text-xl text-violet">{destination.title}</span>
               <span className="mt-1 block text-ink-muted">{destination.description}</span>
             </Link>

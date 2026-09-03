@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test } from "vitest";
 
@@ -36,7 +36,7 @@ test("the list is named, and holds one item per destination", () => {
   renderCards();
 
   const list = screen.getByRole("list", { name: "Où aller" });
-  expect(list.querySelectorAll("li")).toHaveLength(2);
+  expect(within(list).getAllByRole("listitem")).toHaveLength(2);
 });
 
 test("the description is part of the link", () => {
@@ -44,10 +44,12 @@ test("the description is part of the link", () => {
 
   // Matched as a fragment of the accessible NAME, not as separate text: what is
   // being pinned is that the description is inside the anchor. Do not assert
-  // the joined string — jsdom loads no stylesheet, so the `block` on the second
-  // span is inert there and the two texts run together without a space. That is
-  // a jsdom artefact, not what a browser computes, and pinning it would pin the
-  // artefact.
+  // the joined string — in a browser the description span is a flex item,
+  // blockified by the anchor's `flex-col`, and that is what makes the browser
+  // compute a separator between the two texts in the accessible name. jsdom
+  // loads no stylesheet at all, so it applies no such layout and the two texts
+  // run together without a space. That is a jsdom artefact, not what a browser
+  // computes, and pinning it would pin the artefact.
   expect(screen.getByRole("link", { name: /Registre par registre\./ })).toHaveAttribute(
     "href",
     "/canetons",
