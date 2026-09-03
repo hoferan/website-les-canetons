@@ -28,7 +28,11 @@ export function PhotoPending({ what }: { what: string }) {
       className="mt-4 rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
       data-photo-pending={what}
     >
-      Nouvelle photo {what} à venir&nbsp;! <span aria-hidden="true">📷</span>
+      {/* Both spaces are non-breaking. Now that this is one line rather than a
+          centred box, a plain space before the camera let it wrap onto a line
+          of its own under the longer `what` values — "des Canetons au complet"
+          and "des Canetons en concert" both did it at 390px. */}
+      Nouvelle photo {what} à venir&nbsp;!&nbsp;<span aria-hidden="true">📷</span>
     </p>
   );
 }
