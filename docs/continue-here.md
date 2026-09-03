@@ -147,6 +147,60 @@ of truth for what *exists*; this is a curated shortlist of what a stranger wants
 first. Both the component and the page say so in comments, and a test pins the
 four routes and their order.
 
+### The pre-merge UX round, and the three things it changed
+
+Reviewing PR #70 before merge raised three points, all now in it:
+
+1. **The souper announcement is a BANNER, not half the first screen.** It was a
+   458px centred card above the hero — 54% of an 844px phone — so the badge sat
+   at y=639 and the `h1` at y=804, both below the fold. **The souper is
+   temporary** (flag-gated, one event in November 2027), so the front page has
+   to read well in both states, and it did not in the "on" state. It is now
+   title + date + one line beside the button, left-aligned: **226px on a phone,
+   118px on desktop**, badge at y=407, `h1` at y=572. `occasion.subtitle` and
+   `occasion.teaser` are deliberately gone from it — **`Signup.tsx` already
+   renders both**, so the detail is one click away on the page where you act on
+   it. `web/e2e/accueil.spec.ts` pins the banner's height AND that the badge and
+   `h1` stay on the first screen with the flag on — the assertion the earlier
+   "hero above the fold" attempt could not make.
+2. **Nothing reset the scroll position on navigation, anywhere on the site.**
+   React Router resets nothing by default, so every `<Link>` kept the previous
+   offset: `/` scrolled to the bottom, click a destination card, arrive on
+   `/canetons` at **scrollY 1120**. `web/src/components/ScrollToTop.tsx` fixes it
+   site-wide.
+3. **`/admin` was an orphan and is now a redirect.** Nothing linked to it, and
+   its one card duplicated the nav's "Événements" entry, so the page is deleted
+   and the URL redirects to `/planning_repet` — the same treatment E1c gave
+   `/sinscrire`, and for the same reason: URLs are frozen here. It is
+   deliberately **no longer capability-guarded**, because `/planning_repet` is
+   public and gates its own admin controls, so an anonymous visitor lands on the
+   planning rather than being bounced to login for a page that no longer exists.
+
+> **`ScrollToTop` waits on `document.fonts.ready` before honouring a hash, and
+> that is not defensive padding.** A fresh load of a shared `/canetons#trombones`
+> left `scrollY` at 0 with the section at y=1371, because the browser tries the
+> fragment while the document is first parsed, before the SPA has rendered the
+> section. Scrolling immediately in the effect was still wrong — **the
+> self-hosted Bungee/Karla swap reflows every heading and grows the document
+> from 1872px to 2134px a few frames after first paint**, and `scrollIntoView`
+> clamps to the height that exists when it runs, landing the register at y=323.
+> Two `requestAnimationFrame`s were tried and were not enough (the swap took
+> three frames, not a fixed count). Waiting on the browser's own font signal
+> lands it at y=81 — **exactly** where an in-page chip click lands. The call is
+> optional-chained with an immediate fallback because this is a LAYOUT effect: a
+> throw there does not skip a scroll, it takes the whole page down.
+
+The register chips are untouched by all of this: `RegisterIndex` uses plain
+`<a href="#id">`, which never enters the router, so no location change fires.
+That also means **`canetons.spec.ts` cannot detect a regression in the hash
+branch** — only `ScrollToTop.test.tsx` can. Proven by mutation, both ways.
+
+`web/src/setupTests.ts` now stubs `window.scrollTo`, `Element.prototype.scrollIntoView`
+and `document.fonts` — jsdom implements none of them, and without the stubs every
+test that renders `Layout` logged 31 "Not implemented" lines that read like
+failures. The stubs are guarded on `typeof window`, because `altcha.test.ts` opts
+into the `node` environment and has no `window` at all.
+
 ### What E2a shipped, and the framing that is easy to get backwards
 
 `022f8b9` (PR #65) did three things:
@@ -355,9 +409,9 @@ If a fresh checkout does not match these, something moved before you started.
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **255** tests, 40 files (254/40 before E2b, 234/36 before E2a) |
+| `npx vitest run` | **258** tests, 40 files (234/36 before E2a) |
 | `npm run test:js` | **140** passed, unchanged by E2b (122 before E2a's image guard) |
-| `npm run test:e2e` | **29** passed (25 before E2b added `accueil.spec.ts`, 20 before E2a) |
+| `npm run test:e2e` | **32** passed (25 before E2b, 20 before E2a) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
 | `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — unchanged by E2a, which touched no API |
