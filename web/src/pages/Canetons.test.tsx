@@ -79,3 +79,35 @@ test("the registers without confirmed names show a placeholder", () => {
   const { container } = render(<Canetons />);
   expect(container.querySelectorAll("[data-tbd]")).toHaveLength(6);
 });
+
+// THE ASSERTION THAT CATCHES A RENAMED ANCHOR. An index link whose target id no
+// longer exists is a dead link that renders perfectly and scrolls nowhere --
+// invisible to every other test on this page, and to a screenshot.
+test("every index link points at a section that exists", () => {
+  const { container } = render(<Canetons />);
+  const nav = screen.getByRole("navigation", { name: "Registres" });
+  const links = [...nav.querySelectorAll("a")];
+
+  expect(links).toHaveLength(7);
+  for (const link of links) {
+    const id = link.getAttribute("href")!.slice(1);
+    expect(container.querySelector(`#${id}`)).not.toBeNull();
+  }
+});
+
+// The index is a way into the register list, so it has to be in the list's
+// order -- a shuffled index is worse than none.
+test("the index is in the registers' order", () => {
+  render(<Canetons />);
+  const nav = screen.getByRole("navigation", { name: "Registres" });
+
+  expect([...nav.querySelectorAll("a")].map((a) => a.textContent)).toEqual([
+    "Direction",
+    "Batteurs",
+    "Grosses-caisses",
+    "Lyre",
+    "Cloches",
+    "Trompettes",
+    "Trombones",
+  ]);
+});

@@ -18,13 +18,21 @@
  */
 export function PhotoPending({ what }: { what: string }) {
   return (
-    <div
-      className="mt-6 flex min-h-40 items-center justify-center rounded-lg border border-dashed border-line bg-panel px-4 py-10 text-center"
+    // ONE LINE, NOT A BOX. This was a 160px-minimum panel, and /canetons shows
+    // eight of them: 1280px, 42% of the page, reserved for content that is not
+    // there. The photographed page is LONGER than the placeholder page — about
+    // 3554px against 3034px at 390px — so the height was never standing in for
+    // anything. See the E2a spec. Dashed and muted so it still reads as a gap
+    // rather than as copy.
+    <p
+      className="mt-4 rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
       data-photo-pending={what}
     >
-      <p className="text-ink-muted">
-        Nouvelle photo {what} à venir&nbsp;! <span aria-hidden="true">📷</span>
-      </p>
-    </div>
+      {/* Both spaces are non-breaking. Now that this is one line rather than a
+          centred box, a plain space before the camera let it wrap onto a line
+          of its own under the longer `what` values — "des Canetons au complet"
+          and "des Canetons en concert" both did it at 390px. */}
+      Nouvelle photo {what} à venir&nbsp;!&nbsp;<span aria-hidden="true">📷</span>
+    </p>
   );
 }

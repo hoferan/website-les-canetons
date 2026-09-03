@@ -1,6 +1,7 @@
 import { PhotoPending } from "../components/PhotoPending";
 import { Tbd } from "../components/Tbd";
 import { PageSection } from "@/components/PageSection";
+import { RegisterIndex } from "@/components/RegisterIndex";
 import { Card } from "@/components/ui/card";
 
 /**
@@ -33,15 +34,39 @@ import { Card } from "@/components/ui/card";
  * Keller and Anaïs Meuwly, not the Laura and Delphine this page used to name.
  * Note Lilou was ALSO listed here as a cloche player; that entry went with the
  * rest of the roster.
+ *
+ * `id` anchors the register index above the list, and is ENGLISH because
+ * CLAUDE.md puts identifiers and slugs in English — the French on this page is
+ * the heading and the index's own label, both of which are read. `short` is
+ * that label: "Grosses-caisses", not "Nos Grosses-Caisses", because seven full
+ * headings do not fit on one row at 390px. Renaming an `id` without renaming
+ * the link breaks a jump link silently; Canetons.test.tsx asserts the pairing.
  */
-const REGISTERS: { heading: string; photo: string; roster?: string }[] = [
-  { heading: "La Direction Musicale", photo: "de la direction musicale", roster: "Lilou et Anaïs" },
-  { heading: "Nos Batteurs", photo: "des batteurs" },
-  { heading: "Nos Grosses-Caisses", photo: "des grosses-caisses" },
-  { heading: "Notre Lyre", photo: "de la lyre" },
-  { heading: "Nos Cloches", photo: "des cloches" },
-  { heading: "Nos Trompettes", photo: "des trompettes" },
-  { heading: "Nos Trombones", photo: "des trombones" },
+const REGISTERS: {
+  id: string;
+  short: string;
+  heading: string;
+  photo: string;
+  roster?: string;
+}[] = [
+  {
+    id: "direction",
+    short: "Direction",
+    heading: "La Direction Musicale",
+    photo: "de la direction musicale",
+    roster: "Lilou et Anaïs",
+  },
+  { id: "drums", short: "Batteurs", heading: "Nos Batteurs", photo: "des batteurs" },
+  {
+    id: "bass-drums",
+    short: "Grosses-caisses",
+    heading: "Nos Grosses-Caisses",
+    photo: "des grosses-caisses",
+  },
+  { id: "lyre", short: "Lyre", heading: "Notre Lyre", photo: "de la lyre" },
+  { id: "bells", short: "Cloches", heading: "Nos Cloches", photo: "des cloches" },
+  { id: "trumpets", short: "Trompettes", heading: "Nos Trompettes", photo: "des trompettes" },
+  { id: "trombones", short: "Trombones", heading: "Nos Trombones", photo: "des trombones" },
 ];
 
 export function Canetons() {
@@ -49,10 +74,14 @@ export function Canetons() {
     <PageSection width="text">
       <h1 className="font-display text-4xl">Nos Canetons</h1>
       <PhotoPending what="des Canetons au complet" />
+      <RegisterIndex entries={REGISTERS.map(({ id, short }) => ({ id, label: short }))} />
 
       <div className="mt-10 space-y-10">
         {REGISTERS.map((register) => (
-          <article key={register.heading}>
+          // scroll-mt so a jumped-to heading is not flush against the top of
+          // the viewport. NOT an offset for a sticky header — this site's
+          // header scrolls away with the page.
+          <article key={register.id} id={register.id} className="scroll-mt-6">
             <h2 className="font-display text-2xl">{register.heading}</h2>
             <PhotoPending what={register.photo} />
             <p className="mt-2 text-ink-muted">
