@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -168,4 +169,36 @@ test('an exemption matching no file is reported, not failed', () => {
 test('the repository tree passes its own guard', () => {
   // The assertion that makes this guard real rather than theoretical.
   assert.deepEqual(audit('web/public/assets/img').offenders, []);
+});
+
+const run = (...args) => {
+  try {
+    return {
+      status: 0,
+      out: execFileSync(process.execPath, ['tools/image-budget.mjs', ...args], {
+        encoding: 'utf8',
+      }),
+    };
+  } catch (error) {
+    return { status: error.status, out: `${error.stdout}${error.stderr}` };
+  }
+};
+
+test('the CLI passes the repository tree', () => {
+  const { status, out } = run();
+
+  assert.equal(status, 0);
+  assert.match(out, /OK/);
+});
+
+test('the CLI fails, names the file and says why', () => {
+  // The failure has to be readable by whoever dropped the file in, which is the
+  // whole point of a guard over a comment in CLAUDE.md.
+  const dir = fixture({ 'directionmusicale.jpg': jpeg(6048, 4024) });
+  const { status, out } = run(dir);
+
+  assert.equal(status, 1);
+  assert.match(out, /directionmusicale\.jpg/);
+  assert.match(out, /6048x4024/);
+  assert.match(out, /1920/);
 });

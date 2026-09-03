@@ -14,6 +14,7 @@
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export const MAX_EDGE = 1920;
 export const MAX_BYTES = 600 * 1024;
@@ -140,4 +141,26 @@ export function audit(dir) {
     offenders,
     staleExemptions: Object.keys(EXEMPT).filter((name) => !seen.has(name)),
   };
+}
+
+// The CLI. Guarded so that importing this module from the test does not run it.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  const dir = process.argv[2] ?? 'web/public/assets/img';
+  const { offenders, staleExemptions } = audit(dir);
+
+  for (const name of staleExemptions) {
+    console.log(`Image budget: note — ${name} is exempt but is not in ${dir}.`);
+  }
+
+  if (offenders.length > 0) {
+    console.error('Image budget FAILED — re-encode these before committing:');
+    for (const { file, problem } of offenders) console.error(`  ${file}: ${problem}`);
+    console.error('');
+    console.error('The budget is in CLAUDE.md: longest edge 1920px, JPEG quality 82,');
+    console.error('progressive, no EXIF. Re-encoding is generational — never run a');
+    console.error('second pass over an already-optimised file.');
+    process.exit(1);
+  }
+
+  console.log(`Image budget: OK (every image in ${dir} is within budget).`);
 }
