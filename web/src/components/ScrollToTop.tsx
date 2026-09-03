@@ -29,15 +29,39 @@ import { useLocation } from "react-router-dom";
  * keying on pathname costs nothing and is the correct guard if one is ever
  * added.
  *
- * HASH IS DELIBERATELY EXCLUDED. A same-page fragment is the browser's own
- * job — see the comment in RegisterIndex.tsx, whose jump links are plain
- * `<a href="#id">` for exactly that reason — and scrolling to the top here
- * would fight it on any router navigation that carries a hash. (A *fresh*
- * load of a hashed URL, e.g. `/canetons#trombones`, is a separate,
- * pre-existing gap: measured, the browser does not scroll to the element
- * either, since the SPA hasn't rendered the section yet when the hash is
- * parsed. That is not touched here — it is not this component's job to fix,
- * and a naive top-reset would only make it worse.)
+ * A HASHED LOCATION SCROLLS ITS OWN ELEMENT INTO VIEW, NOT THE TOP. A same-page
+ * fragment click never reaches this component at all: RegisterIndex.tsx's jump
+ * links are plain `<a href="#id">` on purpose, so clicking one is the
+ * browser's own job — no router navigation fires, so this effect doesn't run,
+ * and scrolling to the top here would only fight it.
+ *
+ * What DOES reach this component is a *fresh* load of a hashed URL, e.g. a
+ * shared or bookmarked `/canetons#trombones`. Measured: window.scrollY stayed
+ * 0 with the target section at y=1371, because the browser tries to honour
+ * the fragment while the document is first parsed, before the SPA has
+ * rendered the section the id belongs to — an SPA cannot rely on the browser
+ * for this. So the hash branch ACTS rather than abstains: it looks the
+ * element up by id and scrolls it into view, falling back to doing nothing
+ * when a stale or hand-typed fragment matches no element (must not throw,
+ * must not yank the page).
+ *
+ * WAITS ON document.fonts.ready FIRST — measured, not assumed. The element is
+ * always in the DOM by the time this effect runs (SessionProvider gates the
+ * whole router on GET /api/config and GET /api/user, so Layout and the routed
+ * page commit together in one React pass — no separate "page not mounted yet"
+ * race). But calling scrollIntoView immediately on that first commit still
+ * under-scrolled: self-hosted Bungee/Karla (styles.css) swap in shortly after
+ * first paint, and that font swap reflows every heading on the page, growing
+ * its total scrollable height. scrollIntoView clamps its target to whatever
+ * height exists at the moment it runs, so calling it before the swap lands the
+ * register partway down the viewport instead of at the top — measured y=323 for
+ * #trombones (last register, so worst-affected) against y=81 from an in-page
+ * chip click on the same section once fonts had settled. Two rAFs after mount
+ * were not enough — the swap took three frames in testing, not a fixed count —
+ * so this waits on the browser's own signal for "fonts have finished loading
+ * and any resulting reflow has happened" rather than guessing a frame count or
+ * a timeout. Confirmed empirically: with the wait, the fresh-load y matches the
+ * chip-click y exactly (81, scrollY 1290 both).
  *
  * useLayoutEffect, not useEffect: the reset needs to happen before the
  * browser paints the new page at the old offset. useEffect runs after paint,
@@ -49,7 +73,12 @@ export function ScrollToTop() {
   const { pathname, hash } = useLocation();
 
   useLayoutEffect(() => {
-    if (hash) return;
+    if (hash) {
+      document.fonts.ready.then(() => {
+        document.getElementById(hash.slice(1))?.scrollIntoView();
+      });
+      return;
+    }
     window.scrollTo(0, 0);
   }, [pathname, hash]);
 
