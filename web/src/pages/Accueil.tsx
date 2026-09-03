@@ -6,30 +6,11 @@ import { PageSection } from "@/components/PageSection";
 import { BrandLogo } from "@/components/Logo";
 
 /**
- * The home page — the front door.
- *
- * IT WAS FAITHFUL PARITY, AND THAT WAS THE PROBLEM. The legacy home page was a
- * logo, the words "Bienvenue sur notre site", the navigation and one image: it
- * never said when the band was founded, what a Guggenmusik is, or who can join.
- * The SPA reproduced that exactly, so with the souper flag off the front page
- * was a content-free heading and a placeholder. See the E2b spec.
- *
- * THE HERO COPY IS A CONDENSATION OF /historique, NOT NEW COPY. Nothing factual
- * is invented anywhere on this site — the 23 `<Tbd>` fields blocking PROD are
- * the proof of how seriously that is taken. Every clause below is already
- * published on /historique, which is why this page did not have to wait for the
- * band to write anything. It still deserves their eyes once.
- *
- * The souper call-to-action stays FIRST and stays flag-gated: while it is on it
- * is the most time-sensitive thing on the site. It lives in its own component
- * because its two buttons link to /signup and /signups_admin.
- */
-
-/**
  * The four pages a stranger most likely wants, in the order the spec set them.
  *
  * A CURATED SUBSET OF THE NAV, ON PURPOSE — see DestinationCards.tsx. The nav
- * lists all ten pages; these are four of them, chosen rather than derived.
+ * lists seven live pages (three more — /cd, /sponsors, /multimedia — are
+ * hidden, see Layout.tsx); these are four of them, chosen rather than derived.
  *
  * "Événements", not "Planning". The E2b spec wrote "Planning (/planning_repet)"
  * descriptively, from before E1c merged /sinscrire into that page and renamed
@@ -37,8 +18,14 @@ import { BrandLogo } from "@/components/Logo";
  * page, on the front door, is exactly the kind of drift the content audit found
  * elsewhere on this site.
  *
- * Each description says what is ON the page it links to. None of them asserts a
- * fact about the band — those come from /historique, or from the band.
+ * Each description says what is on the page it links to, in the state that
+ * page ships in — not a promise about some future finished version. /canetons
+ * today shows the seven registers with `<Tbd what="prénoms du registre" />`
+ * standing in for the names on six of them; PROD is deliberately blocked
+ * until those and the other 23 placeholder fields across the site are filled.
+ * So this is honest about the shipping site rather than about the current
+ * preview. None of them asserts a fact about the band — those come from
+ * /historique, or from the band.
  */
 const DESTINATIONS: Destination[] = [
   {
@@ -63,6 +50,25 @@ const DESTINATIONS: Destination[] = [
   },
 ];
 
+/**
+ * The home page — the front door.
+ *
+ * IT WAS FAITHFUL PARITY, AND THAT WAS THE PROBLEM. The legacy home page was a
+ * logo, the words "Bienvenue sur notre site", the navigation and one image: it
+ * never said when the band was founded, what a Guggenmusik is, or who can join.
+ * The SPA reproduced that exactly, so with the souper flag off the front page
+ * was a content-free heading and a placeholder. See the E2b spec.
+ *
+ * THE HERO COPY IS A CONDENSATION OF /historique, NOT NEW COPY. Nothing factual
+ * is invented anywhere on this site — the 23 `<Tbd>` fields blocking PROD are
+ * the proof of how seriously that is taken. Every clause below is already
+ * published on /historique, which is why this page did not have to wait for the
+ * band to write anything. It still deserves their eyes once.
+ *
+ * The souper call-to-action stays FIRST and stays flag-gated: while it is on it
+ * is the most time-sensitive thing on the site. It lives in its own component
+ * because its two buttons link to /signup and /signups_admin.
+ */
 export function Accueil() {
   return (
     <PageSection width="text">

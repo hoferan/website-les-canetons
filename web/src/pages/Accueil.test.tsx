@@ -146,19 +146,27 @@ test("with no upcoming events the hero and the photo slot are still there", asyn
   expect(container.querySelector("[data-photo-pending]")).toBeInTheDocument();
 });
 
-// FOUR, and these four. The nav has ten entries; this is the curated shortlist
-// a stranger wants first, and the test names the routes so a "tidy-up" that
-// generates them from NAV fails here instead of silently turning the front door
-// into a second navigation.
+// FOUR, and these four. The nav has seven live entries (three more — /cd,
+// /sponsors, /multimedia — are hidden, see Layout.tsx); this is the curated
+// shortlist a stranger wants first, and the test names the routes so a
+// "tidy-up" that generates them from NAV fails here instead of silently
+// turning the front door into a second navigation.
 test("the front page offers four curated destinations", async () => {
   await renderWithSession(<Accueil />);
 
   const list = await screen.findByRole("list", { name: "Découvrir les Canetons" });
   expect(within(list).getAllByRole("listitem")).toHaveLength(4);
 
-  const href = (name: RegExp) => screen.getByRole("link", { name }).getAttribute("href");
-  expect(href(/^Nous rejoindre/)).toBe("/commencement");
-  expect(href(/^Les canetons/)).toBe("/canetons");
-  expect(href(/^Événements/)).toBe("/planning_repet");
-  expect(href(/^Contact/)).toBe("/comite_teamdirection");
+  // List-scoped, not `screen`: Layout.tsx's nav has entries labelled "Les
+  // canetons", "Contact Canetons" and "Événements", which the name-anchored
+  // lookups this replaced would also match — scoping to `list` is what keeps
+  // this assertion about the destination cards rather than about whatever
+  // else happens to render alongside them. Reading hrefs in document order
+  // also pins the order the spec set them in, which a name-keyed lookup does
+  // not: shuffling DESTINATIONS would leave every `href(...)` call unchanged.
+  expect(
+    within(list)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href")),
+  ).toEqual(["/commencement", "/canetons", "/planning_repet", "/comite_teamdirection"]);
 });
