@@ -24,20 +24,22 @@ spec is already written** — so the next session plans and executes, it does no
 brainstorm. The remaining blocker on PROD is unchanged and is not code: the
 `<Tbd>` and `<PhotoPending>` placeholders.
 
-### ⚠️ `main` IS RED, AND TEST DOES NOT HAVE E2b
+### Nothing is in flight — `main` is the whole truth
 
-`main` is at **`748241a`** (E2b, PR #70, merged 2026-09-03) — **and CI failed on
-it.** One e2e test went red on headless Linux (see the `document.fonts.ready`
-box below), so the `e2e` job failed, and because `deploy-test` lists it in
-`needs`, **the TEST deploy was SKIPPED. TEST still serves `022f8b9`, which is
-E2a.** That is CI working exactly as intended: a red suite stopped a deploy.
+`main` is at **`4f17eb3`**, CI is green on it, and **CI auto-deployed it to TEST,
+where E2b was verified in a real browser on 2026-09-03** (see the verification
+list below). There is no open PR you need to know about at the time of writing —
+but check, because that sentence is the one that rots: `gh pr list` and
+`gh run list --branch main --limit 1`.
 
-**A follow-up PR reverts the offending piece and greens `main`.** Check whether
-it landed — `gh pr list` and `gh run list --branch main --limit 1` — before
-believing anything here about what TEST serves.
+> **E2b took two merges, and the second one is the lesson.** `748241a` (PR #70)
+> merged with a red `e2e` job on Linux, so `deploy-test` — which lists `e2e` in
+> `needs` — was **skipped**, and TEST sat on E2a while `main` claimed E2b. CI
+> working exactly as designed. `4f17eb3` (PR #71) reverted the offending piece
+> and the deploy went through. **A merge is not a deploy: check
+> `gh run list --branch main --limit 1` after every one.**
 
-Once that PR merges, CI auto-deploys TEST and this section should be rewritten to
-say so. The cutover
+The cutover
 shipped on 2026-08-31 (rollback tag `2026-08-31-f120b9f`), the old PHP front end
 is gone, and sub-projects **A**, **C**, **D**, **E1**, **E2a** and **E2b** are all
 done.
@@ -207,6 +209,39 @@ Reviewing PR #70 before merge raised three points, all shipped in it:
 > loop that re-asserts while the geometry changes and bails on real user input —
 > and **verifying it on Linux**, not on one developer's machine. `ScrollToTop`'s
 > own doc comment carries this so nobody re-attempts the cheap version.
+
+### Verified on TEST in a real browser — 2026-09-03, at `4f17eb3`
+
+Fourteen checks against the deployed TEST server, at 390x844, with Basic Auth
+supplied from `.env.test`'s `BASIC_AUTH_USER`/`BASIC_AUTH_PASS` (Playwright's
+`httpCredentials` — no manual login needed):
+
+`GET /api/config` 200 and `env=test` · no `cgi-bin` 301 on `/api/*` (the FastCGI
+trap that once took TEST down) · the hero heading is E2b's · the hero sentence
+renders · the destinations carry a visible heading · four destination cards ·
+"Bienvenue sur notre site" is gone · the souper banner is **198px** · a
+destination card lands at **scrollY 0** (from 589) · `/admin` redirects to
+`/planning_repet` · no sideways scroll · the PWA manifest still carries
+`crossorigin="use-credentials"`. The next-event block shows **dimanche 20
+septembre 2026 · Concert d'automne · 19:00–22:00 · Salle communale**, which is
+the correct next of the three events on TEST (2026-09-20, 10-10, 11-14).
+
+> **Two of those checks were wrong before they were right, both in the same way,
+> and it is the trap this file already documents.** A non-waiting
+> `isVisible()` reported the next-event block ABSENT — it was still in flight;
+> with a `waitFor` it renders. And a geometry read taken a beat early reported
+> the badge at **h=0** and the `h1` at 72px rather than 144px, because neither
+> the JPEG nor Bungee had loaded. **Nothing in Playwright's non-waiting API
+> waits for anything.** Both readings looked like defects and were not.
+>
+> **But the second one exposed a real defect.** Neither logo `<img>` carried
+> `width`/`height`, so the browser reserved no box: the badge's `h-auto`
+> computed to 0 until the bytes arrived and the whole hero jumped **141px** when
+> it landed — and `BrandLogo` was `loading="lazy"`, which on the front page's
+> above-the-fold hero guarantees exactly that. Both fixed, with the intrinsic
+> pixels (139x172 and 237x174) written in and two tests pinning them, because a
+> browser renders identically once the image is cached: this regresses silently
+> and only for a first-time visitor.
 
 The register chips are untouched by all of this: `RegisterIndex` uses plain
 `<a href="#id">`, which never enters the router, so no location change fires.
@@ -427,7 +462,7 @@ If a fresh checkout does not match these, something moved before you started.
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **256** tests, 40 files (234/36 before E2a) |
+| `npx vitest run` | **258** tests, 40 files (234/36 before E2a) |
 | `npm run test:js` | **140** passed, unchanged by E2b (122 before E2a's image guard) |
 | `npm run test:e2e` | **31** passed (25 before E2b, 20 before E2a) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
@@ -499,7 +534,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `022f8b9` — **the SPA, E2a, NOT E2b** | Auto-deployed 2026-09-03 by CI on the E2a merge (4 files up, 2 stale deleted, 38.7s, brake not tripped). **The E2b merge did NOT deploy** — its `e2e` job failed on Linux, so `deploy-test` was skipped. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `4f17eb3` — **the SPA, with E2b** | Auto-deployed 2026-09-03 by CI on the E2b fix merge, and **verified in a browser** (list below). Note the E2b merge itself (`748241a`) did NOT deploy — its `e2e` job failed on Linux, so `deploy-test` was skipped; `4f17eb3` is what landed. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
