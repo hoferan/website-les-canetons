@@ -106,3 +106,30 @@ test("with the feature off there is no card", async () => {
   expect(screen.queryByRole("link", { name: "S’inscrire au souper" })).not.toBeInTheDocument();
   expect(screen.queryByText(/25 ans des Canetons/)).not.toBeInTheDocument();
 });
+
+test("the front page carries the next upcoming event", async () => {
+  await renderWithSession(<Accueil />);
+
+  expect(await screen.findByRole("heading", { name: "Prochain événement" })).toBeVisible();
+  // A <p>, not a heading — EventCard's h3 is the date — and a straight
+  // apostrophe, which is what the MSW fixture holds.
+  expect(screen.getByText("Concert d'automne")).toBeVisible();
+});
+
+// The hero and the photo slot must survive the live dependency failing. This is
+// the page-level half of NextEvent's own coverage: that component renders
+// nothing, and this proves nothing else on the page went with it.
+test("with no upcoming events the hero and the photo slot are still there", async () => {
+  server.use(http.get("/api/events", () => HttpResponse.json([])));
+
+  await renderWithSession(<Accueil />);
+
+  expect(
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "La guggen d’enfants de Fribourg, depuis 2002.",
+    }),
+  ).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Prochain événement" })).not.toBeInTheDocument();
+  expect(document.querySelector("[data-photo-pending]")).toBeInTheDocument();
+});

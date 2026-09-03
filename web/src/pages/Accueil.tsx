@@ -1,3 +1,4 @@
+import { NextEvent } from "../components/NextEvent";
 import { PhotoPending } from "../components/PhotoPending";
 import { SouperCta } from "../components/SouperCta";
 import { PageSection } from "@/components/PageSection";
@@ -29,8 +30,8 @@ export function Accueil() {
 
       {/* The band's badge — the mark people know from the flyers, the costumes
           and the instruments — as the hero's mark. It sits here because the
-          header carries the duck alone; see Logo.tsx for why the lockup was
-          split.
+          header now carries the duck as its own mark, split from the wordmark;
+          see Logo.tsx for why.
 
           THIS IS THE BADGE'S ONLY PLACEMENT ON THE SITE. It was briefly in the
           footer too, and dropped on 2026-09-03: shown in the chrome of every
@@ -73,6 +74,12 @@ export function Accueil() {
       </p>
 
       <PhotoPending what="des Canetons en concert" />
+
+      {/* AFTER the photo slot, per the E2b spec's page order: the hero says what
+          the band is, and this says what it is doing next. It is the only thing
+          on this page that changes by itself, and it is allowed to render
+          nothing — see NextEvent.tsx. */}
+      <NextEvent />
     </PageSection>
   );
 }
