@@ -1,4 +1,4 @@
-# Where we left off — 2026-09-01
+# Where we left off — 2026-09-03
 
 Read this first when picking the SPA cutover back up. It records what is **not**
 derivable from the repository: the state of three servers, decisions taken in
@@ -19,24 +19,30 @@ here:
 
 ## START HERE: what to do next
 
-**E2 is designed as three rounds. E2a is shipped; E2b is next, and its spec is
-already written** — so the next session plans and executes, it does not
+**E2 is designed as three rounds. E2a and E2b are shipped; E2c is next, and its
+spec is already written** — so the next session plans and executes, it does not
 brainstorm. The remaining blocker on PROD is unchanged and is not code: the
 `<Tbd>` and `<PhotoPending>` placeholders.
 
-### Nothing is in flight — `main` is the whole truth
+### One thing IS in flight: PR #70, E2b
 
-`main` is at **`022f8b9`** and TEST serves it, verified in a browser on
-2026-09-03. There is no open PR and no branch you need to know about. The
-cutover shipped on 2026-08-31 (rollback tag `2026-08-31-f120b9f`), the old PHP
-front end is gone, and sub-projects **A**, **C**, **D**, **E1** and **E2a** are
-done.
+**PR #70 (`feat/e2b-accueil-front-door`) is open and unmerged at the time of
+writing.** It is E2b — `/accueil` as a front door. Check whether it landed before
+believing anything below about the front page; `git log --oneline main -5` and
+`gh pr view 70` settle it in two commands.
 
-> Describe state, not in-flight work, or say which commit the statement is true
-> at. This section once warned that PR #61 was open, and the handover commit
-> saying so was swept into the very squash that merged it, so the file sat in
-> `main` contradicting itself. **A handover that describes its own PR as
-> unmerged goes stale the moment that PR lands.**
+> That warning is here because of the trap this file has already fallen into
+> once: a handover describing its own PR as unmerged goes stale the moment that
+> PR lands, and the commit saying so got swept into the very squash that merged
+> it. **Describe state, or say which commit the statement is true at.**
+
+### `main` is otherwise the whole truth
+
+`main` is at **`80633d6`** and TEST serves `022f8b9`; the three commits since
+(#66, #67, #69) are docs, CI and the header logo split. Verified in a browser on
+2026-09-03. The cutover shipped on 2026-08-31 (rollback tag
+`2026-08-31-f120b9f`), the old PHP front end is gone, and sub-projects **A**,
+**C**, **D**, **E1** and **E2a** are done on `main`; **E2b** is done in PR #70.
 
 What `c7b95fe` (PR #63) did — three plans, 45 commits, squashed:
 
@@ -77,20 +83,20 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 | **D** | Content corrections | **done** — PRs #60 and #61, both merged |
 | **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
 | **E2a** | `/canetons` register index, one-line `PhotoPending`, the image guard | **done** — PR #65 |
-| **E2b** | `/accueil` as a front door | **next — spec written, not yet planned** |
-| **E2c** | Feedback motion and one spacing scale | designed; **last on purpose** |
+| **E2b** | `/accueil` as a front door | **done** — PR #70, open at the time of writing |
+| **E2c** | Feedback motion and one spacing scale | **next** — designed; was last on purpose |
 
 ### E2 is three rounds, and the order is load-bearing
 
 The specs are all dated 2026-09-01 in `docs/superpowers/specs/`. Build in order:
 
 - **E2a** — shipped as `022f8b9`. See below.
-- **E2b** — `/accueil` as a front door. It *looks* blocked on copy nobody has
-  written; it is not. `/historique` already publishes the founding date, the
+- **E2b** — shipped as PR #70. `/accueil` *looked* blocked on copy nobody had
+  written; it was not. `/historique` already publishes the founding date, the
   7-18 age range, "pas besoin de connaître la musique" and the Saturday
   rehearsals, and the hero condenses those. **The head-count is deliberately
   dropped:** the source says the band *grew to* forty in 2003, and asserting
-  that today would be a new and perishable claim.
+  that today would be a new and perishable claim. See "What E2b shipped" below.
 - **E2c** — motion and one spacing scale (ten distinct `mt-*` values across 94
   uses become four named steps). **Last, because a scale applied to pages E2b is
   about to reshape is work done twice.** Motion only where it reports that
@@ -99,6 +105,101 @@ The specs are all dated 2026-09-01 in `docs/superpowers/specs/`. Build in order:
 
 The **French inconsistencies are not in E2**. They were ported deliberately and
 get settled with the band, not silently.
+
+### What E2b shipped, and the three numbers it measured
+
+PR #70 turned `/accueil` from "the souper card, the words *Bienvenue sur notre
+site*, and one placeholder box" into a hero, a next-event block and four curated
+destination cards. With the souper flag **off** — the state the page exists for —
+it went from 1103px of nothing much to a real front door.
+
+Three measurements are worth keeping, because they were all guessed wrong first:
+
+1. **The souper card is 458px of an 844px phone screen** on its own. That is why
+   the hero cannot be above the fold while the flag is on, and it is not a defect
+   in the hero: the spec puts the time-sensitive card first on purpose. An e2e
+   test asserting the hero was on the first screen contradicted the page's own
+   approved order; it measures the hero's own **footprint** instead (badge width
+   ≤ 200px, badge-top to sentence-bottom ≤ 460px).
+2. **The `<h1>` wraps to four lines at 390px at `text-3xl` AND at `text-4xl`.**
+   A comment claiming `text-4xl` cost four lines was simply false; the real
+   saving is 16px of line-height. Measured with `Range.getClientRects()`.
+3. **A two-column mutation does not make the page scroll sideways** — grid tracks
+   shrink and text wraps. The overflow guard trips only on content that cannot
+   shrink (a `whitespace-nowrap` string takes `scrollWidth` to 502 against 390).
+   Worth knowing before trusting any such test elsewhere.
+
+> **The defect that a green suite could not see, again.** The four destination
+> cards shipped with no visible heading, so at both widths they read as a
+> continuation of "Prochain événement" — one heading over five identical cards —
+> while a screen reader heard a properly named second list. The two trees
+> disagreed. Found by screenshotting `/` in three roles at two widths with the
+> flag both on and off. `DestinationCards` renders its `label` as a visible `h2`
+> now, `aria-labelledby` wired, on `NextEvent`'s own `mt-8`/`h2`/`mt-3` rhythm.
+
+`NextEvent` **renders nothing** when it has nothing — pending, error and an empty
+list all collapse into one guard, so a slow or failing `/api/events` cannot touch
+the hero. There is deliberately no "aucun événement" empty state: on a band's
+front page that reads as "this band does nothing".
+
+**`DestinationCards` must never be generated from `NAV`.** The nav is the source
+of truth for what *exists*; this is a curated shortlist of what a stranger wants
+first. Both the component and the page say so in comments, and a test pins the
+four routes and their order.
+
+### The pre-merge UX round, and the three things it changed
+
+Reviewing PR #70 before merge raised three points, all now in it:
+
+1. **The souper announcement is a BANNER, not half the first screen.** It was a
+   458px centred card above the hero — 54% of an 844px phone — so the badge sat
+   at y=639 and the `h1` at y=804, both below the fold. **The souper is
+   temporary** (flag-gated, one event in November 2027), so the front page has
+   to read well in both states, and it did not in the "on" state. It is now
+   title + date + one line beside the button, left-aligned: **226px on a phone,
+   118px on desktop**, badge at y=407, `h1` at y=572. `occasion.subtitle` and
+   `occasion.teaser` are deliberately gone from it — **`Signup.tsx` already
+   renders both**, so the detail is one click away on the page where you act on
+   it. `web/e2e/accueil.spec.ts` pins the banner's height AND that the badge and
+   `h1` stay on the first screen with the flag on — the assertion the earlier
+   "hero above the fold" attempt could not make.
+2. **Nothing reset the scroll position on navigation, anywhere on the site.**
+   React Router resets nothing by default, so every `<Link>` kept the previous
+   offset: `/` scrolled to the bottom, click a destination card, arrive on
+   `/canetons` at **scrollY 1120**. `web/src/components/ScrollToTop.tsx` fixes it
+   site-wide.
+3. **`/admin` was an orphan and is now a redirect.** Nothing linked to it, and
+   its one card duplicated the nav's "Événements" entry, so the page is deleted
+   and the URL redirects to `/planning_repet` — the same treatment E1c gave
+   `/sinscrire`, and for the same reason: URLs are frozen here. It is
+   deliberately **no longer capability-guarded**, because `/planning_repet` is
+   public and gates its own admin controls, so an anonymous visitor lands on the
+   planning rather than being bounced to login for a page that no longer exists.
+
+> **`ScrollToTop` waits on `document.fonts.ready` before honouring a hash, and
+> that is not defensive padding.** A fresh load of a shared `/canetons#trombones`
+> left `scrollY` at 0 with the section at y=1371, because the browser tries the
+> fragment while the document is first parsed, before the SPA has rendered the
+> section. Scrolling immediately in the effect was still wrong — **the
+> self-hosted Bungee/Karla swap reflows every heading and grows the document
+> from 1872px to 2134px a few frames after first paint**, and `scrollIntoView`
+> clamps to the height that exists when it runs, landing the register at y=323.
+> Two `requestAnimationFrame`s were tried and were not enough (the swap took
+> three frames, not a fixed count). Waiting on the browser's own font signal
+> lands it at y=81 — **exactly** where an in-page chip click lands. The call is
+> optional-chained with an immediate fallback because this is a LAYOUT effect: a
+> throw there does not skip a scroll, it takes the whole page down.
+
+The register chips are untouched by all of this: `RegisterIndex` uses plain
+`<a href="#id">`, which never enters the router, so no location change fires.
+That also means **`canetons.spec.ts` cannot detect a regression in the hash
+branch** — only `ScrollToTop.test.tsx` can. Proven by mutation, both ways.
+
+`web/src/setupTests.ts` now stubs `window.scrollTo`, `Element.prototype.scrollIntoView`
+and `document.fonts` — jsdom implements none of them, and without the stubs every
+test that renders `Layout` logged 31 "Not implemented" lines that read like
+failures. The stubs are guarded on `typeof window`, because `altcha.test.ts` opts
+into the `node` environment and has no `window` at all.
 
 ### What E2a shipped, and the framing that is easy to get backwards
 
@@ -160,8 +261,9 @@ rather than ergonomics. Explicitly left undone, and why:
 
 - ~~**`PhotoPending`'s shape.**~~ **Settled by E2a**: one line, not a 160px box.
   It keeps its dashed border, its `what` prop and its `data-photo-pending` hook.
-- **`/accueil` as a front door**, new public-page copy, and motion — E2b and
-  E2c, both now specced.
+- ~~**`/accueil` as a front door**~~ — **done by E2b (PR #70)**: a hero condensed
+  from `/historique`, a live next-event block, four curated destination cards.
+  Motion and the spacing scale are E2c, still open.
 - **The ported French inconsistencies** — `Nom:` versus `Nom :`, "Liens Amis".
 - **A server-side 301 for `/sinscrire`.** The redirect is client-side only. A
   `RedirectMatch 301` in `config/htaccess/site.htaccess` would be cheaper and
@@ -300,15 +402,16 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-09-03 at `022f8b9`, every one of them run, with the dev stack up.
+Recorded 2026-09-03 on PR #70's head, every one of them run, with the dev stack
+up. The pre-E2b column is `80633d6`.
 If a fresh checkout does not match these, something moved before you started.
 
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **234** tests, 36 files (226/34 before E2a) |
-| `npm run test:js` | **140** passed (122 before E2a's image guard) |
-| `npm run test:e2e` | **25** passed (20 before E2a added `canetons.spec.ts`) |
+| `npx vitest run` | **258** tests, 40 files (234/36 before E2a) |
+| `npm run test:js` | **140** passed, unchanged by E2b (122 before E2a's image guard) |
+| `npm run test:e2e` | **32** passed (25 before E2b, 20 before E2a) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
 | `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — unchanged by E2a, which touched no API |
@@ -358,6 +461,10 @@ Then on 2026-09-03:
 | --- | --- | --- |
 | #64 | `0699ecd` | this handover, updated for E1 |
 | #65 | `022f8b9` | E2a — the register index, the one-line `PhotoPending`, `tools/image-budget.mjs`, `/canetons` e2e coverage, and the `e2e` CI job |
+| #66 | `fc13683` | this handover, updated for E2a |
+| #67 | `3fdae68` | CI skips the build, the suites and the deploy for docs-only changes |
+| #69 | `80633d6` | the duck mark split from the wordmark in the header; the badge moved to `/accueil` |
+| #70 | *open* | **E2b — `/accueil` as a front door.** The hero, `NextEvent`, `DestinationCards`, `/admin` adopting it, `web/e2e/accueil.spec.ts` |
 
 Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
 takes the API down on the real host.
@@ -657,9 +764,10 @@ npm run build                      # :8090 serves the BUILT artifact
   The placeholders are single lines, the page has a register index, and it is
   2134px at 390px. Read the E2a framing at the top before changing it: the page
   is deliberately designed for its *photographed* state, which is longer still.
-- **`/accueil` is a heading and one placeholder box**, plus the flag-gated souper
-  card. It is the thinnest page on the site and it is the front door. **This is
-  E2b, and its spec is written.**
+- ~~**`/accueil` is a heading and one placeholder box**~~ — **done in E2b (PR
+  #70).** It is now a hero, a live next-event block and four destination cards;
+  read "What E2b shipped" at the top before changing it, especially the three
+  measurements, since two of them contradict what looks obvious.
 - **Headings are all-caps whatever the source says**, because Bungee's lowercase
   glyphs are capitals. Sentence-case headings are not available.
 - **The desktop nav is 10 items** and wraps to two rows; the phone nav is a

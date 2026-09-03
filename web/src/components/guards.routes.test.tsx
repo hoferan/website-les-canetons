@@ -6,10 +6,12 @@ import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
 
 // Anonymous: bounced to the login form, carrying where they wanted to go.
-// /sinscrire is deliberately NOT in this list: it is a bare redirect to
-// /planning_repet now, not a guarded route, so it sends everyone — anonymous or
-// not — straight to the public planning rather than to login.
-test.each(["/inscriptions_utilisateurs?id=1", "/inscriptions_admin?id=1", "/admin"])(
+// /sinscrire and /admin are deliberately NOT in this list: both are bare
+// redirects to /planning_repet now, not guarded routes, so they send everyone —
+// anonymous or not — straight to the public planning rather than to login.
+// /admin joined /sinscrire here on 2026-09-03, when its page was deleted as an
+// orphan and its URL turned into the same kind of redirect.
+test.each(["/inscriptions_utilisateurs?id=1", "/inscriptions_admin?id=1"])(
   "%s sends an anonymous visitor to the login form",
   async (route) => {
     await renderWithSession(<AppRoutes />, { route });
@@ -33,10 +35,4 @@ test("an admin is refused the response form", async () => {
   setMockUser("demo.admin");
   await renderWithSession(<AppRoutes />, { route: "/inscriptions_utilisateurs?id=1" });
   expect(await screen.findByRole("alert")).toHaveTextContent("Accès refusé.");
-});
-
-test("an admin reaches the summary and the hub", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<AppRoutes />, { route: "/admin" });
-  expect(await screen.findByRole("heading", { name: "Administration" })).toBeInTheDocument();
 });

@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { RequireCapability } from "./components/guards";
 import { Accueil } from "./pages/Accueil";
-import { Admin } from "./pages/Admin";
 import { Canetons } from "./pages/Canetons";
 // HIDDEN 2026-08-31 — see the comment on the routes below.
 // import { Cd } from "./pages/Cd";
@@ -98,14 +97,19 @@ export function AppRoutes() {
           }
         />
         <Route path="/planning_repet" element={<PlanningRepet />} />
-        <Route
-          path="/admin"
-          element={
-            <RequireCapability capability="manage_events">
-              <Admin />
-            </RequireCapability>
-          }
-        />
+        {/* DELETED 2026-09-03. /admin was an orphan: nothing in the app linked
+            here, and its one card duplicated the nav's "Événements" entry,
+            which already sends everyone to /planning_repet. The URL is kept
+            and REDIRECTED rather than dropped, because URLs are frozen here
+            and it is in bookmarks from the old site.
+
+            Deliberately NOT capability-guarded any more, unlike /sinscrire's
+            guarded destination: /planning_repet is itself public and gates its
+            own admin controls, so an anonymous visitor now lands on the public
+            planning instead of being bounced to login for a page that no
+            longer exists. Nothing in the app links here any more, which is why
+            routes.test.tsx pins it. */}
+        <Route path="/admin" element={<Navigate to="/planning_repet" replace />} />
         <Route
           path="/inscriptions_admin"
           element={

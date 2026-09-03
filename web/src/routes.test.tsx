@@ -27,7 +27,7 @@ const OCCASION_FIXTURE = {
 };
 
 test.each([
-  ["/", "Bienvenue sur notre site"],
+  ["/", "La guggen d’enfants de Fribourg, depuis 2002."],
   ["/historique", "L’Histoire des Canetons"],
   ["/canetons", "Nos Canetons"],
   ["/moniteurs", "Nos Moniteurs"],
@@ -60,6 +60,16 @@ test("an unknown URL renders the 404 view rather than nothing", async () => {
 // redirect nobody notices has broken, so it is pinned here.
 test("/sinscrire redirects to the planning rather than 404ing", async () => {
   await renderWithSession(<AppRoutes />, { route: "/sinscrire" });
+  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
+});
+
+// /admin was DELETED, not merged: the page was an orphan (nothing linked to
+// it) whose one card duplicated the nav's "Événements" entry. The URL is
+// frozen and is in bookmarks from the old site, so it redirects rather than
+// 404ing, same as /sinscrire above — and it lands on the same page, so this
+// asserts on the same heading.
+test("/admin redirects to the planning rather than 404ing", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/admin" });
   expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
 });
 
