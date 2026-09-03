@@ -2,6 +2,8 @@ import { ExternalLink, Menu } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { BrandLogo, Logo } from "./Logo";
+
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Toaster } from "./ui/sonner";
@@ -71,18 +73,9 @@ export function Layout() {
 
       <header className="bg-stage text-white">
         <div className="mx-auto flex max-w-shell items-center gap-3 px-4 py-3">
-          <img
-            src="/assets/img/Les_Canetons_Fribourg_logo_2.jpg"
-            alt="Logo"
-            className="h-12 w-auto rounded sm:h-16"
-          />
-          {/* A <p>, not an <h1>. The page's own title is the document's single
-              h1; a site name repeated in the header of every page is branding,
-              not the heading of the content below it. Two h1s per page is what
-              this was before, on all sixteen routes. */}
-          <p className="font-display text-lg leading-tight sm:text-2xl sm:leading-none">
-            Les <span className="text-pink">Canetons</span> de Fribourg
-          </p>
+          {/* The lockup, and the reasoning for splitting the mark from the
+              wordmark, both live in Logo.tsx. */}
+          <Logo />
         </div>
 
         <nav className="border-t border-white/10 bg-panel text-ink">
@@ -167,9 +160,16 @@ export function Layout() {
       </main>
 
       <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
-        <p className="mx-auto max-w-shell px-4">
-          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
-        </p>
+        {/* The band's real badge, at a size where it can be read. It left the
+            header because at 64px its baked-in lettering was noise beside the
+            same words in live text — but it is the mark on the flyers, the
+            costumes and the instruments, so it keeps a place of its own. */}
+        <div className="mx-auto flex max-w-shell flex-col items-center gap-5 px-4">
+          <BrandLogo className="w-28" />
+          <p>
+            © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
+          </p>
+        </div>
       </footer>
 
       {/* Mounted once here rather than per page: the layout route survives
