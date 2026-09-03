@@ -87,14 +87,24 @@ export function Accueil() {
           Narrower below `sm`. It was a flat w-64 (256px) when this page was a
           heading and a box; above a hero that now has a display line and a
           sentence to read, 256px of duck on a 390px screen pushes the copy off
-          the first screen. */}
+          the first screen. Measured at 390px: w-48 renders 192×141, w-64
+          renders 256×188 — dropping to w-48 saves 47px of hero height, not
+          just the 64px of width the class name suggests, because the image
+          keeps its aspect ratio. */}
       <BrandLogo className="mx-auto w-48 sm:w-64" />
 
       {/* text-3xl below `sm`. Bungee is a signage face whose lowercase glyphs
           are drawn as CAPITALS, so this line sets as caps whatever the source
-          says and is far wider than Karla at the same size — at text-4xl it
-          takes four lines on a 390px screen. A sentence-case heading is not
-          available while this face is in use; that is the look, not a bug. */}
+          says and is far wider than Karla at the same size. That width is why
+          it wraps at all — but it wraps to FOUR lines at EITHER size: measured
+          at 390px (358px available inside PageSection's padding), text-3xl is
+          30px/36px font/line-height and text-4xl is 36px/40px, and
+          `Range.getClientRects()` on the text node reports 4 lines both times.
+          text-3xl does not buy a line — it buys 4px of line-height per line,
+          144px (4 × 36) against 160px (4 × 40), 16px total. That is a real if
+          modest saving, not the difference between a two-line and a four-line
+          heading. A sentence-case heading is not available while this face is
+          in use; that is the look, not a bug. */}
       <h1 className="mt-6 font-display text-3xl sm:text-4xl">
         La guggen d’enfants de Fribourg, depuis 2002.
       </h1>

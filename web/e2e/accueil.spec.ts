@@ -6,6 +6,15 @@ import { expect, test } from "@playwright/test";
 // which is the state most likely to overflow.
 test.use({ viewport: { width: 390, height: 844 } });
 
+// PROVEN, not assumed: adding `whitespace-nowrap` to the description <span> in
+// DestinationCards.tsx (a long French sentence that can no longer wrap) turns
+// this red — scrollWidth 502 against clientWidth 390. What does NOT turn it
+// red: forcing the grid to `grid-cols-2` unconditionally at 390px leaves
+// scrollWidth === clientWidth === 390, because CSS grid tracks shrink to fit
+// and the card text just wraps into a taller, narrower cell — two-up alone
+// produces no overflow to catch. This guard is only tripped by content that
+// CANNOT shrink — a nowrap string, a fixed min-width, a table — not by a
+// layout that merely gets tighter.
 test("the front door does not scroll sideways on a phone", async ({ page }) => {
   await page.goto("/");
 
@@ -39,7 +48,28 @@ test("the hero's own footprint stays within a phone's budget", async ({ page }) 
   // does not eat a phone screen (see the comments in Accueil.tsx). Measured on
   // this fixture: badge y=639 h=141, h1 y=804 h=144, sentence y=964 h=112 —
   // badge width 192px (w-48), block height (sentence bottom minus badge top)
-  // about 437px.
+  // 436.95px.
+  //
+  // WHAT THIS BUDGET DOES AND DOES NOT GUARD, established by mutation:
+  // - Forcing the <h1> to text-4xl (badge unchanged) grows heroHeight to only
+  //   452.95px — the heading wraps to the same 4 lines at either size (see the
+  //   Accueil.tsx comment), so this only adds 4px of line-height × 4 lines.
+  //   Nothing near 480, or even a materially tightened bound, can catch a
+  //   heading-only regression without sitting within ~15px of the 436.95px
+  //   baseline — which is exactly the kind of margin that turns a real test
+  //   into a flaky one. This budget cannot guard the heading's size; the
+  //   Accueil.tsx comment above the <h1> is the record of that, not this test.
+  // - Reverting the badge to w-64 (the pre-E2b size, heading unchanged) grows
+  //   heroHeight to 483.94px — a real regression this budget can and should
+  //   catch, but the OLD 480px bound caught it by 3.94px of luck, not design:
+  //   close enough to font-hinting or sub-pixel layout jitter to be
+  //   unreliable. 460px leaves 23px of headroom above the 436.95px baseline
+  //   (comfortably clear of jitter, and not within ~15px of it) and 24px of
+  //   margin below the 483.94px badge regression — a bound chosen on purpose
+  //   instead of one that happened to work. It is still redundant with the
+  //   explicit `badgeBox.width` assertion below, which is the more precise and
+  //   more direct guard for that same regression; this one is the coarse
+  //   aggregate backstop.
   const badge = page.getByAltText("Le logo des Canetons de Fribourg");
   const heading = page.getByRole("heading", { level: 1 });
   const sentence = page.getByText(/pas besoin de connaître la musique/);
@@ -56,7 +86,10 @@ test("the hero's own footprint stays within a phone's budget", async ({ page }) 
   // From the badge's top to the sentence's bottom: the badge, the <h1> and the
   // sentence together, whatever sits above them.
   const heroHeight = sentenceBox.y + sentenceBox.height - badgeBox.y;
-  expect(heroHeight, "the hero block should stay within a phone's budget").toBeLessThanOrEqual(480);
+  expect(
+    heroHeight,
+    "the hero block should stay within a phone's budget (this guards the badge staying narrow and catches a gross aggregate regression — it does not and structurally cannot guard the <h1>'s font size, see the comment above)",
+  ).toBeLessThanOrEqual(460);
 });
 
 test("every destination card is a full-size tap target that navigates", async ({ page }) => {
