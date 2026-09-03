@@ -74,9 +74,20 @@ export function ScrollToTop() {
 
   useLayoutEffect(() => {
     if (hash) {
-      document.fonts.ready.then(() => {
-        document.getElementById(hash.slice(1))?.scrollIntoView();
-      });
+      // The lookup is deliberately INSIDE the callback, not captured before the
+      // await: by the time fonts settle the visitor may have navigated on, and
+      // then there is no element with this id and this correctly does nothing.
+      const jump = () => document.getElementById(hash.slice(1))?.scrollIntoView();
+
+      // Optional-chained, and it falls through to jumping immediately. This runs
+      // in a LAYOUT effect, so a throw here does not merely skip a scroll — it
+      // propagates out of the commit and takes the whole page down. document.fonts
+      // is the Font Loading API: present in every browser this site targets, absent
+      // in jsdom (setupTests.ts stubs it) and in anything older, and not worth a
+      // blank site to depend on.
+      if (document.fonts?.ready) void document.fonts.ready.then(jump);
+      else jump();
+
       return;
     }
     window.scrollTo(0, 0);
