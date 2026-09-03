@@ -27,7 +27,7 @@ const OCCASION_FIXTURE = {
 };
 
 test.each([
-  ["/", "Bienvenue sur notre site"],
+  ["/", "La guggen d’enfants de Fribourg, depuis 2002."],
   ["/historique", "L’Histoire des Canetons"],
   ["/canetons", "Nos Canetons"],
   ["/moniteurs", "Nos Moniteurs"],

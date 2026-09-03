@@ -23,6 +23,9 @@ test("the app mounts and renders the home route", async () => {
   );
 
   expect(
-    await screen.findByRole("heading", { name: "Bienvenue sur notre site" }),
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "La guggen d’enfants de Fribourg, depuis 2002.",
+    }),
   ).toBeInTheDocument();
 });
