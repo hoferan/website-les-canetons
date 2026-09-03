@@ -63,6 +63,16 @@ test("/sinscrire redirects to the planning rather than 404ing", async () => {
   expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
 });
 
+// /admin was DELETED, not merged: the page was an orphan (nothing linked to
+// it) whose one card duplicated the nav's "Événements" entry. The URL is
+// frozen and is in bookmarks from the old site, so it redirects rather than
+// 404ing, same as /sinscrire above — and it lands on the same page, so this
+// asserts on the same heading.
+test("/admin redirects to the planning rather than 404ing", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/admin" });
+  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
+});
+
 // The souper routes are feature-gated, and "off" must mean ABSENT, not empty:
 // a disabled route has to be indistinguishable from one that never existed,
 // which is what stops a server with the feature off advertising an unannounced

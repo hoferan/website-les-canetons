@@ -8,6 +8,12 @@ export type Destination = { to: string; title: string; description: string };
 /**
  * A short grid of link cards pointing somewhere else on the site.
  *
+ * Its one caller today is /accueil. It was extracted on 2026-09-03 from the
+ * tree /admin used to carry, back when that page duplicated /accueil's own
+ * card grid; /admin is gone now, but the extraction is not wasted — it is
+ * what made the two trees stop needing to be kept in step, and the component
+ * stays well-factored and tested on its own.
+ *
  * IT MUST NEVER BE GENERATED FROM `NAV`. On /accueil these four cards
  * deliberately duplicate four of the navigation's ten entries: the nav is the
  * list of every page and is the source of truth for what EXISTS, while this is
