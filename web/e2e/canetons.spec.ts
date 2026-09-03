@@ -48,28 +48,6 @@ test("every index link scrolls the page to its own register", async ({ page }) =
   }
 });
 
-test("a fresh load of a hashed URL lands on its own register, not scrollY 0", async ({ page }) => {
-  // ScrollToTop.tsx: a browser cannot honour a fragment on a fresh SPA load —
-  // the target section doesn't exist yet when the hash is parsed — so this is
-  // the component's own job now, on mount, not the router-navigation case the
-  // first test above covers. Same bounds as that test: near the top, not
-  // merely on the page, with the same loose upper bound because the last
-  // register cannot reach the very top.
-  await page.goto("/canetons#trombones");
-
-  // toBeInViewport auto-retries: ScrollToTop deliberately waits on
-  // document.fonts.ready before scrolling (see its doc comment — scrolling any
-  // earlier under-scrolls, because the self-hosted font swap that follows
-  // first paint still reflows the page), so the jump lands a beat after
-  // load, not before it. A one-shot boundingBox() read here would race that
-  // and fail even though the fix works — this is what caught it.
-  await expect(page.locator("#trombones")).toBeInViewport();
-
-  const box = (await page.locator("#trombones").boundingBox())!;
-  expect(box.y, "Trombones should be scrolled near the top on a fresh load").toBeLessThan(150);
-  expect(box.y).toBeGreaterThan(-1);
-});
-
 test("the jump leaves the register readable, not flush against the top", async ({ page }) => {
   await page.goto("/canetons");
 

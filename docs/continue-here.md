@@ -24,10 +24,20 @@ spec is already written** — so the next session plans and executes, it does no
 brainstorm. The remaining blocker on PROD is unchanged and is not code: the
 `<Tbd>` and `<PhotoPending>` placeholders.
 
-### Nothing is in flight — `main` is the whole truth
+### ⚠️ `main` IS RED, AND TEST DOES NOT HAVE E2b
 
-`main` is at **`748241a`** (E2b, PR #70, merged 2026-09-03), and CI auto-deployed
-it to TEST. There is no open PR and no branch you need to know about. The cutover
+`main` is at **`748241a`** (E2b, PR #70, merged 2026-09-03) — **and CI failed on
+it.** One e2e test went red on headless Linux (see the `document.fonts.ready`
+box below), so the `e2e` job failed, and because `deploy-test` lists it in
+`needs`, **the TEST deploy was SKIPPED. TEST still serves `022f8b9`, which is
+E2a.** That is CI working exactly as intended: a red suite stopped a deploy.
+
+**A follow-up PR reverts the offending piece and greens `main`.** Check whether
+it landed — `gh pr list` and `gh run list --branch main --limit 1` — before
+believing anything here about what TEST serves.
+
+Once that PR merges, CI auto-deploys TEST and this section should be rewritten to
+say so. The cutover
 shipped on 2026-08-31 (rollback tag `2026-08-31-f120b9f`), the old PHP front end
 is gone, and sub-projects **A**, **C**, **D**, **E1**, **E2a** and **E2b** are all
 done.
@@ -172,19 +182,31 @@ Reviewing PR #70 before merge raised three points, all shipped in it:
    public and gates its own admin controls, so an anonymous visitor lands on the
    planning rather than being bounced to login for a page that no longer exists.
 
-> **`ScrollToTop` waits on `document.fonts.ready` before honouring a hash, and
-> that is not defensive padding.** A fresh load of a shared `/canetons#trombones`
-> left `scrollY` at 0 with the section at y=1371, because the browser tries the
+> **A FRESH `/canetons#trombones` STILL DOES NOT JUMP, and the attempt to fix it
+> is the most useful thing in this section.** The gap is real and predates E2b:
+> scrollY stays 0 with the section at y=1371, because the browser tries the
 > fragment while the document is first parsed, before the SPA has rendered the
-> section. Scrolling immediately in the effect was still wrong — **the
-> self-hosted Bungee/Karla swap reflows every heading and grows the document
-> from 1872px to 2134px a few frames after first paint**, and `scrollIntoView`
-> clamps to the height that exists when it runs, landing the register at y=323.
-> Two `requestAnimationFrame`s were tried and were not enough (the swap took
-> three frames, not a fixed count). Waiting on the browser's own font signal
-> lands it at y=81 — **exactly** where an in-page chip click lands. The call is
-> optional-chained with an immediate fallback because this is a LAYOUT effect: a
-> throw there does not skip a scroll, it takes the whole page down.
+> section it names. Closing it looks like a two-line job. It is not.
+>
+> Calling `scrollIntoView` from the effect under-scrolls to y=323, because the
+> self-hosted Bungee/Karla faces swap in shortly after first paint and reflow
+> every heading — the document grows from **1872px to 2134px** — and
+> `scrollIntoView` clamps to whatever height exists when it runs. Awaiting
+> `document.fonts.ready` first measured **y=81 on Windows**, an exact match for
+> an in-page chip click, and shipped. **It then measured y=291 in CI on headless
+> Linux, went red on `main`, and blocked the TEST deploy.** Two
+> `requestAnimationFrame`s had also been tried and were not enough — the swap
+> took three frames, not a fixed count.
+>
+> **`document.fonts.ready` is a font-loading signal, not a "layout has settled"
+> signal**, and one scroll fired at a guessed moment is platform-dependent by
+> construction. It was reverted rather than have its bound loosened: a bound
+> relaxed to accept y=291 would pin nothing, and a register sitting 291px down
+> reads as broken anyway. Doing it properly means observing the element's
+> document offset until it stops moving — a `ResizeObserver`, or a bounded rAF
+> loop that re-asserts while the geometry changes and bails on real user input —
+> and **verifying it on Linux**, not on one developer's machine. `ScrollToTop`'s
+> own doc comment carries this so nobody re-attempts the cheap version.
 
 The register chips are untouched by all of this: `RegisterIndex` uses plain
 `<a href="#id">`, which never enters the router, so no location change fires.
@@ -405,9 +427,9 @@ If a fresh checkout does not match these, something moved before you started.
 | Command | Expect |
 | --- | --- |
 | `npm run check` | exit 0 |
-| `npx vitest run` | **258** tests, 40 files (234/36 before E2a) |
+| `npx vitest run` | **256** tests, 40 files (234/36 before E2a) |
 | `npm run test:js` | **140** passed, unchanged by E2b (122 before E2a's image guard) |
-| `npm run test:e2e` | **32** passed (25 before E2b, 20 before E2a) |
+| `npm run test:e2e` | **31** passed (25 before E2b, 20 before E2a) |
 | `npm run build` | exit 0, `dist/build/` holds `index.html`, `assets/`, `api-laravel/` |
 | `npm run smoke` | 13/13 |
 | `docker compose exec -w /var/www/html/api-laravel web php artisan test` | **238** passed (730 assertions) — unchanged by E2a, which touched no API |
@@ -477,7 +499,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `022f8b9` — **the SPA** | Auto-deployed 2026-09-03 by CI on the E2a merge (4 files up, 2 stale deleted, 38.7s, brake not tripped). `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `022f8b9` — **the SPA, E2a, NOT E2b** | Auto-deployed 2026-09-03 by CI on the E2a merge (4 files up, 2 stale deleted, 38.7s, brake not tripped). **The E2b merge did NOT deploy** — its `e2e` job failed on Linux, so `deploy-test` was skipped. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
