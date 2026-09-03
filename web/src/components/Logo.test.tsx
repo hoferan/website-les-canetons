@@ -81,3 +81,36 @@ test("the brand logo can be sized by its caller without losing its own classes",
   const img = within(container).getByRole("img");
   expect(img.className).toMatch(/w-40/);
 });
+
+// LAYOUT SHIFT, and it was measured rather than guessed. Neither image carried
+// width/height, so the browser had no aspect ratio until the bytes arrived: the
+// badge's `h-auto` computed to 0 and the whole /accueil hero — heading,
+// sentence, photo slot, next event — sat 141px too high and jumped down when
+// the JPEG landed. Caught on TEST, where a measurement taken a beat early read
+// the badge as h=0 and the page looked like it had no badge at all.
+//
+// The numbers are each file's INTRINSIC pixels, so the reserved box has the
+// right shape; the CSS still decides the rendered size. Asserted here because
+// nothing else can see a missing attribute — a browser renders identically once
+// the image is cached, so this regresses silently and only on a first visit.
+test("both marks reserve their own space, so nothing jumps when they load", () => {
+  const { container } = renderLogo();
+  const duck = container.querySelector("img")!;
+  expect(duck).toHaveAttribute("width", "139");
+  expect(duck).toHaveAttribute("height", "172");
+
+  render(<BrandLogo />);
+  const badge = screen.getByRole("img", { name: /Canetons/ });
+  expect(badge).toHaveAttribute("width", "237");
+  expect(badge).toHaveAttribute("height", "174");
+});
+
+// The hero image of the front page must not be lazy: `loading="lazy"` was on the
+// badge and defers the one image a first-time visitor is meant to see, which on
+// a slow connection guarantees the shift the width/height above prevent. `lazy`
+// belongs on images below the fold, of which this site currently has none.
+test("the brand logo is not lazy-loaded", () => {
+  render(<BrandLogo />);
+
+  expect(screen.getByRole("img")).not.toHaveAttribute("loading", "lazy");
+});
