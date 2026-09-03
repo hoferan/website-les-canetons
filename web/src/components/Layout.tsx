@@ -2,7 +2,7 @@ import { ExternalLink, Menu } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
-import { BrandLogo, Logo } from "./Logo";
+import { Logo } from "./Logo";
 
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
@@ -159,17 +159,14 @@ export function Layout() {
         <Outlet />
       </main>
 
+      {/* NO LOGO HERE, DELIBERATELY. The badge was briefly shown above this
+          line and taken out again on 2026-09-03: it is the mark on the flyers
+          and the costumes, so it earns one prominent placement rather than a
+          repeat in the chrome of every page. That placement is /accueil. */}
       <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
-        {/* The band's real badge, at a size where it can be read. It left the
-            header because at 64px its baked-in lettering was noise beside the
-            same words in live text — but it is the mark on the flyers, the
-            costumes and the instruments, so it keeps a place of its own. */}
-        <div className="mx-auto flex max-w-shell flex-col items-center gap-5 px-4">
-          <BrandLogo className="w-28" />
-          <p>
-            © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
-          </p>
-        </div>
+        <p className="mx-auto max-w-shell px-4">
+          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
+        </p>
       </footer>
 
       {/* Mounted once here rather than per page: the layout route survives

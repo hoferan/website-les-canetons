@@ -27,11 +27,11 @@ export function Accueil() {
           from facts /historique already publishes. This is a placement, not that
           hero — E2b should be free to rework the page around it.
 
-          It is DELIBERATELY BIGGER THAN THE FOOTER'S (w-64 against w-28). Both
-          were w-40-ish at first and, on a page this short, the badge appeared
-          twice at the same size within one screen and read as a duplication
-          bug. Size is what makes one the page's mark and the other a sign-off;
-          if either changes, keep the gap. */}
+          THIS IS THE BADGE'S ONLY PLACEMENT ON THE SITE. It was briefly in the
+          footer too, and dropped on 2026-09-03: shown in the chrome of every
+          page it stopped being the thing you recognize and became wallpaper,
+          and on a page this short the two appeared within one screen and read
+          as a duplication bug. One prominent placement beats two quiet ones. */}
       <BrandLogo className="mx-auto mt-6 w-64" />
 
       <PhotoPending what="des Canetons en concert" />
