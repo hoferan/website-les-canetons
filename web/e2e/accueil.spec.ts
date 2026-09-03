@@ -99,6 +99,62 @@ test("the hero's own footprint stays within a phone's budget", async ({ page }) 
   ).toBeLessThanOrEqual(460);
 });
 
+// THE ASSERTION THE EARLIER "HERO ABOVE THE FOLD" ATTEMPT COULD NOT MAKE. The
+// "hero's own footprint" test above deliberately measures the hero independent
+// of whatever sits above it, because with the OLD 458px centred souper card —
+// a 🦆🎉 line, h2, subtitle, date, teaser, invitation and button, each on its
+// own line — there was no hero height that fit below it on an 844px screen:
+// badge y=639, <h1> y=804, the sentence y=964, all below the fold. Asserting
+// "the hero is on the first screen" against that shape would have contradicted
+// the page's own approved order, which is why that test guards the hero's OWN
+// sizing instead. This PR's banner reshape changes the premise it was working
+// around: measured on this fixture with the flag ON, the banner itself is
+// 226px (was 458px), the badge starts at y=407 (was y=639) and the <h1> starts
+// at y=571.95 (was y=804) — the announcement and the band's identity now both
+// fit on the first screen at once. This test pins that.
+test("the souper announcement leaves the band's identity on the first screen", async ({ page }) => {
+  await page.goto("/");
+
+  // `[data-souper-banner]`, the same boolean-attribute idiom PhotoPending
+  // already uses (`data-photo-pending`) for a component-level test hook — a
+  // section with no other stable, non-copy-dependent selector.
+  const banner = page.locator("[data-souper-banner]");
+  const badge = page.getByAltText("Le logo des Canetons de Fribourg");
+  const heading = page.getByRole("heading", { level: 1 });
+
+  await expect(banner).toBeVisible();
+  await expect(heading).toBeVisible();
+
+  const bannerBox = (await banner.boundingBox())!;
+  const badgeBox = (await badge.boundingBox())!;
+  const headingBox = (await heading.boundingBox())!;
+
+  // Measured 226px against the old card's 458px. 300px leaves 33% headroom
+  // over the measurement while staying far below the shape this replaces —
+  // not a bound that happens to work, one chosen with room in both
+  // directions.
+  expect(
+    bannerBox.height,
+    "the announcement should read as a slim banner, not the old half-screen card",
+  ).toBeLessThanOrEqual(300);
+
+  // Measured badge y=407 (was 639) and <h1> y=571.95 (was 804) with the flag
+  // ON — both must START within the 844px viewport for the identity to
+  // actually be "on the first screen" alongside the announcement, not merely
+  // present somewhere below it. Both bounds carry over 25% headroom above the
+  // measurement while staying well clear of 844, so a partial regression back
+  // toward the old shape reddens this before the identity has fully fallen off
+  // the bottom of the screen.
+  expect(
+    badgeBox.y,
+    "the badge should start well within the first screen, not below the banner",
+  ).toBeLessThanOrEqual(550);
+  expect(
+    headingBox.y,
+    "the h1 should start well within the first screen, not below the banner",
+  ).toBeLessThanOrEqual(750);
+});
+
 test("every destination card is a full-size tap target that navigates", async ({ page }) => {
   const destinations = [
     { name: /^Nous rejoindre/, path: "/commencement" },
