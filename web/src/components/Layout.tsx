@@ -2,6 +2,8 @@ import { ExternalLink, Menu } from "lucide-react";
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { Logo } from "./Logo";
+
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { Toaster } from "./ui/sonner";
@@ -71,18 +73,9 @@ export function Layout() {
 
       <header className="bg-stage text-white">
         <div className="mx-auto flex max-w-shell items-center gap-3 px-4 py-3">
-          <img
-            src="/assets/img/Les_Canetons_Fribourg_logo_2.jpg"
-            alt="Logo"
-            className="h-12 w-auto rounded sm:h-16"
-          />
-          {/* A <p>, not an <h1>. The page's own title is the document's single
-              h1; a site name repeated in the header of every page is branding,
-              not the heading of the content below it. Two h1s per page is what
-              this was before, on all sixteen routes. */}
-          <p className="font-display text-lg leading-tight sm:text-2xl sm:leading-none">
-            Les <span className="text-pink">Canetons</span> de Fribourg
-          </p>
+          {/* The lockup, and the reasoning for splitting the mark from the
+              wordmark, both live in Logo.tsx. */}
+          <Logo />
         </div>
 
         <nav className="border-t border-white/10 bg-panel text-ink">
@@ -166,6 +159,10 @@ export function Layout() {
         <Outlet />
       </main>
 
+      {/* NO LOGO HERE, DELIBERATELY. The badge was briefly shown above this
+          line and taken out again on 2026-09-03: it is the mark on the flyers
+          and the costumes, so it earns one prominent placement rather than a
+          repeat in the chrome of every page. That placement is /accueil. */}
       <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
         <p className="mx-auto max-w-shell px-4">
           © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
