@@ -31,7 +31,7 @@ export function Admin() {
     <PageSection width="text">
       <h1 className="font-display text-4xl">Administration</h1>
 
-      <DestinationCards label="Administration" destinations={DESTINATIONS} />
+      <DestinationCards label="Actions disponibles" destinations={DESTINATIONS} />
     </PageSection>
   );
 }
