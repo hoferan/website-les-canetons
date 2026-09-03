@@ -1,7 +1,7 @@
 # E2a — `/canetons`, and the image rule — Design
 
 **Date:** 2026-09-01
-**Status:** approved, not yet planned
+**Status:** approved — implemented by `docs/superpowers/plans/2026-09-03-e2a-canetons-and-the-image-rule.md`
 **Part of:** E2, which is three rounds — E2a (this), E2b (`/accueil` as a front door), E2c (feedback motion and one spacing scale). Build in that order.
 **Builds on:** E1 (`c7b95fe`, PR #63), which shipped the phone pass and deliberately did not touch `PhotoPending`'s shape so this decision stayed open.
 
