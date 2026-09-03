@@ -13,6 +13,41 @@
          fetch fails behind TEST/QA Basic Auth. Previously fixed bug; keep it. -->
     <link rel="manifest" href="/assets/icons/manifest.json" crossorigin="use-credentials" />
     <meta name="theme-color" content="#e0201a" />
+
+    <!-- SOCIAL PREVIEW. Without these a link shared on WhatsApp or Facebook —
+         which is how this band's site actually gets passed around — previews as
+         a bare URL with no image and no description.
+
+         THE URLS ARE ABSOLUTE, AND POINT AT PROD. That is deliberate, and it is
+         the one place a canonical domain is baked into the shared bundle. Every
+         crawler resolves og:image poorly or not at all when it is relative, and
+         the alternative — injecting it per environment — would mean an
+         env-specific build, which this project does not have and does not want
+         (see CLAUDE.md: TEST, QA and PROD run the same promoted bundle).
+         Harmless in practice: TEST and QA sit behind HTTP Basic Auth, so a
+         crawler gets 401 there and never renders a preview at all.
+
+         The card is generated from the same lockup as the header, at the
+         1200x630 every major crawler crops to. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Les Canetons de Fribourg" />
+    <meta property="og:title" content="Guggenmusik Les Canetons de Fribourg" />
+    <meta
+      property="og:description"
+      content="La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin."
+    />
+    <meta property="og:url" content="https://lescanetons.org/" />
+    <meta property="og:image" content="https://lescanetons.org/assets/img/social-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Les Canetons de Fribourg — Guggenmusik" />
+    <meta property="og:locale" content="fr_CH" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Also used by search results, so it is not only for the crawlers above. -->
+    <meta
+      name="description"
+      content="La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin."
+    />
   </head>
   <body>
     <noscript>
