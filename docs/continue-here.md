@@ -24,25 +24,21 @@ spec is already written** — so the next session plans and executes, it does no
 brainstorm. The remaining blocker on PROD is unchanged and is not code: the
 `<Tbd>` and `<PhotoPending>` placeholders.
 
-### One thing IS in flight: PR #70, E2b
+### Nothing is in flight — `main` is the whole truth
 
-**PR #70 (`feat/e2b-accueil-front-door`) is open and unmerged at the time of
-writing.** It is E2b — `/accueil` as a front door. Check whether it landed before
-believing anything below about the front page; `git log --oneline main -5` and
-`gh pr view 70` settle it in two commands.
+`main` is at **`748241a`** (E2b, PR #70, merged 2026-09-03), and CI auto-deployed
+it to TEST. There is no open PR and no branch you need to know about. The cutover
+shipped on 2026-08-31 (rollback tag `2026-08-31-f120b9f`), the old PHP front end
+is gone, and sub-projects **A**, **C**, **D**, **E1**, **E2a** and **E2b** are all
+done.
 
-> That warning is here because of the trap this file has already fallen into
-> once: a handover describing its own PR as unmerged goes stale the moment that
-> PR lands, and the commit saying so got swept into the very squash that merged
-> it. **Describe state, or say which commit the statement is true at.**
-
-### `main` is otherwise the whole truth
-
-`main` is at **`80633d6`** and TEST serves `022f8b9`; the three commits since
-(#66, #67, #69) are docs, CI and the header logo split. Verified in a browser on
-2026-09-03. The cutover shipped on 2026-08-31 (rollback tag
-`2026-08-31-f120b9f`), the old PHP front end is gone, and sub-projects **A**,
-**C**, **D**, **E1** and **E2a** are done on `main`; **E2b** is done in PR #70.
+> **This file described PR #70 as open right up to the moment it was merged, and
+> that was deliberate** — the section named the PR, said it was unmerged, and told
+> the reader to run `gh pr view 70` rather than believe it. It was rewritten to
+> this the moment the merge landed. Do the same: describe state, or say which
+> commit the statement is true at. The trap is real — an earlier version warned
+> that PR #61 was open, and the commit saying so was swept into the very squash
+> that merged it, leaving `main` contradicting itself.
 
 What `c7b95fe` (PR #63) did — three plans, 45 commits, squashed:
 
@@ -83,7 +79,7 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 | **D** | Content corrections | **done** — PRs #60 and #61, both merged |
 | **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
 | **E2a** | `/canetons` register index, one-line `PhotoPending`, the image guard | **done** — PR #65 |
-| **E2b** | `/accueil` as a front door | **done** — PR #70, open at the time of writing |
+| **E2b** | `/accueil` as a front door | **done** — PR #70, squashed to `748241a` |
 | **E2c** | Feedback motion and one spacing scale | **next** — designed; was last on purpose |
 
 ### E2 is three rounds, and the order is load-bearing
@@ -91,7 +87,7 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 The specs are all dated 2026-09-01 in `docs/superpowers/specs/`. Build in order:
 
 - **E2a** — shipped as `022f8b9`. See below.
-- **E2b** — shipped as PR #70. `/accueil` *looked* blocked on copy nobody had
+- **E2b** — shipped as `748241a` (PR #70). `/accueil` *looked* blocked on copy nobody had
   written; it was not. `/historique` already publishes the founding date, the
   7-18 age range, "pas besoin de connaître la musique" and the Saturday
   rehearsals, and the hero condenses those. **The head-count is deliberately
@@ -108,7 +104,7 @@ get settled with the band, not silently.
 
 ### What E2b shipped, and the three numbers it measured
 
-PR #70 turned `/accueil` from "the souper card, the words *Bienvenue sur notre
+`748241a` (PR #70) turned `/accueil` from "the souper card, the words *Bienvenue sur notre
 site*, and one placeholder box" into a hero, a next-event block and four curated
 destination cards. With the souper flag **off** — the state the page exists for —
 it went from 1103px of nothing much to a real front door.
@@ -149,7 +145,7 @@ four routes and their order.
 
 ### The pre-merge UX round, and the three things it changed
 
-Reviewing PR #70 before merge raised three points, all now in it:
+Reviewing PR #70 before merge raised three points, all shipped in it:
 
 1. **The souper announcement is a BANNER, not half the first screen.** It was a
    458px centred card above the hero — 54% of an 844px phone — so the badge sat
@@ -402,8 +398,8 @@ Both are still pre-cutover. Before either can take a deploy:
 
 ## The numbers that mean "green"
 
-Recorded 2026-09-03 on PR #70's head, every one of them run, with the dev stack
-up. The pre-E2b column is `80633d6`.
+Recorded 2026-09-03 at `748241a`, every one of them run, with the dev stack up.
+The pre-E2b column is `80633d6`.
 If a fresh checkout does not match these, something moved before you started.
 
 | Command | Expect |
@@ -464,7 +460,7 @@ Then on 2026-09-03:
 | #66 | `fc13683` | this handover, updated for E2a |
 | #67 | `3fdae68` | CI skips the build, the suites and the deploy for docs-only changes |
 | #69 | `80633d6` | the duck mark split from the wordmark in the header; the badge moved to `/accueil` |
-| #70 | *open* | **E2b — `/accueil` as a front door.** The hero, `NextEvent`, `DestinationCards`, `/admin` adopting it, `web/e2e/accueil.spec.ts` |
+| #70 | `748241a` | **E2b — `/accueil` as a front door.** The hero, `NextEvent`, `DestinationCards`, the souper banner, `ScrollToTop`, `/admin` retired to a redirect, `web/e2e/accueil.spec.ts` |
 
 Tag `cfde526` is deliberately NOT a rollback target: its `.htaccess` template
 takes the API down on the real host.
