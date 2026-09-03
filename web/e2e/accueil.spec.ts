@@ -23,6 +23,13 @@ test("the front door does not scroll sideways on a phone", async ({ page }) => {
   // clientWidth — the assertion would pass no matter what the page does.
   await expect(page.getByRole("list", { name: "Découvrir les Canetons" })).toBeVisible();
 
+  // The list's name lives on a real, visible <h2> now, not just in
+  // aria-label — this was the defect the fix addresses: the section used to
+  // have an accessible name nothing on screen carried, so the four cards read
+  // as a continuation of "Prochain événement" above them. A locator query
+  // alone (above) cannot catch that regression; this can.
+  await expect(page.getByRole("heading", { name: "Découvrir les Canetons" })).toBeVisible();
+
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
     clientWidth: document.documentElement.clientWidth,

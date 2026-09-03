@@ -39,6 +39,17 @@ test("the list is named, and holds one item per destination", () => {
   expect(within(list).getAllByRole("listitem")).toHaveLength(2);
 });
 
+// The whole point of the fix: `label` used to be only an `aria-label` on the
+// <ul>, a name a screen reader announced and nobody ever saw. Screenshotted,
+// that made the cards read as a continuation of whatever section sat above
+// them. This pins that the heading is now actually on screen, not just in the
+// accessible-name tree.
+test("the label renders as a visible heading", () => {
+  renderCards();
+
+  expect(screen.getByRole("heading", { name: "Où aller" })).toBeVisible();
+});
+
 test("the description is part of the link", () => {
   renderCards();
 

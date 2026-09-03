@@ -20,6 +20,13 @@ test("the hub links the admin to the events page", async () => {
 
   expect(await screen.findByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
 
+  // DestinationCards now renders `label` as a visible h2, distinct from this
+  // page's own h1: "Administration" (level 1) and "Actions disponibles"
+  // (level 2, unqualified below) are two different headings and this query
+  // does not collide with the one above it, because the h1 query is scoped by
+  // `level: 1` and this one is not level-qualified but has a distinct name.
+  expect(screen.getByRole("heading", { name: "Actions disponibles" })).toBeVisible();
+
   // The list's own name, distinct from the h1. /accueil names its list
   // "Découvrir les Canetons" rather than echoing its heading, and a list whose
   // accessible name repeats the heading above it announces the same words

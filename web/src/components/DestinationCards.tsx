@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Link } from "react-router-dom";
 
 import { Card } from "@/components/ui/card";
@@ -41,6 +42,21 @@ export type Destination = { to: string; title: string; description: string };
  * the emitted CSS's own rule order (`.block` before `.flex`) means `flex`
  * would win even if the two were literally in conflict. Passing one here
  * would be silently dead — don't.
+ *
+ * `label` IS A VISIBLE HEADING, NOT A HIDDEN NAME. It used to be only an
+ * `aria-label` on the `<ul>` — a name a screen reader announced and a sighted
+ * visitor never saw. Screenshotted at 390x844 and 1280x900 on /accueil, that
+ * made the four cards read as a continuation of `NextEvent`'s "Prochain
+ * événement" section above them: same white, rounded, bordered card shape, no
+ * heading of their own, and a 24px gap above them that is only twice the 12px
+ * gap between them. A sighted visitor saw one heading over five cards; a
+ * screen-reader user heard a properly named second list. The two trees
+ * disagreed, and the accessibility tree was the only one that was right.
+ *
+ * THE `mt-8` / `h2` / `mt-3` RHYTHM DELIBERATELY MATCHES `NextEvent.tsx`. That
+ * is what makes "Prochain événement" and this `label` read as two peer
+ * sections instead of one section and an afterthought — same section-level
+ * gap above, same heading treatment, same gap from heading to list.
  */
 export function DestinationCards({
   label,
@@ -49,18 +65,26 @@ export function DestinationCards({
   label: string;
   destinations: Destination[];
 }) {
+  const headingId = useId();
+
   return (
-    <ul aria-label={label} className="mt-6 grid gap-3 sm:grid-cols-2">
-      {destinations.map((destination) => (
-        <li key={destination.to}>
-          <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
-            <Link to={destination.to} className="focus-ring">
-              <span className="font-display text-xl text-violet">{destination.title}</span>
-              <span className="mt-1 block text-ink-muted">{destination.description}</span>
-            </Link>
-          </Card>
-        </li>
-      ))}
-    </ul>
+    <section className="mt-8">
+      <h2 id={headingId} className="font-display text-2xl">
+        {label}
+      </h2>
+
+      <ul aria-labelledby={headingId} className="mt-3 grid gap-3 sm:grid-cols-2">
+        {destinations.map((destination) => (
+          <li key={destination.to}>
+            <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
+              <Link to={destination.to} className="focus-ring">
+                <span className="font-display text-xl text-violet">{destination.title}</span>
+                <span className="mt-1 block text-ink-muted">{destination.description}</span>
+              </Link>
+            </Card>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

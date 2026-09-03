@@ -154,7 +154,12 @@ test("with no upcoming events the hero and the photo slot are still there", asyn
 test("the front page offers four curated destinations", async () => {
   await renderWithSession(<Accueil />);
 
-  const list = await screen.findByRole("list", { name: "Découvrir les Canetons" });
+  // Visible, not just an accessible name: this is the section that was
+  // screenshotted reading as a continuation of "Prochain événement" above it,
+  // because its name lived only in aria-label and never on screen.
+  expect(await screen.findByRole("heading", { name: "Découvrir les Canetons" })).toBeVisible();
+
+  const list = screen.getByRole("list", { name: "Découvrir les Canetons" });
   expect(within(list).getAllByRole("listitem")).toHaveLength(4);
 
   // List-scoped, not `screen`: Layout.tsx's nav has entries labelled "Les
