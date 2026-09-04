@@ -50,6 +50,22 @@
      convention that lasts until the next page is written. */
   --spacing-touch: 2.75rem;
 
+  /* The vertical scale (E2c). Four steps, named for RELATIONSHIPS rather than
+     sizes, because "is this a label or a section?" has an answer where "mt-3
+     or mt-4?" does not:
+       tight    0.5rem  a label to the thing it labels
+       related  1rem    items within one block
+       block    2rem    between blocks inside a section
+       section  4rem    between major sections of a page
+     Pages use these instead of choosing a number. A CONVENTION, not a lint
+     rule: the vendored ui/ components keep their own spacing, and the
+     recorded one-offs stay (the footer's mt-16 from E1, Logo's lockup
+     mt-1.5, scroll-mt-*). See the E2c spec for why exactly four. */
+  --spacing-tight: 0.5rem;
+  --spacing-related: 1rem;
+  --spacing-block: 2rem;
+  --spacing-section: 4rem;
+
   /* ONE width for the chrome and for page shells, with prose constrained
      INSIDE it by --container-text.
 
