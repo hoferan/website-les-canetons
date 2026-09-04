@@ -76,7 +76,7 @@ export function Canetons() {
       <PhotoPending what="des Canetons au complet" />
       <RegisterIndex entries={REGISTERS.map(({ id, short }) => ({ id, label: short }))} />
 
-      <div className="mt-10 space-y-10">
+      <div className="mt-block space-y-block">
         {REGISTERS.map((register) => (
           // scroll-mt so a jumped-to heading is not flush against the top of
           // the viewport. NOT an offset for a sticky header — this site's
@@ -84,7 +84,7 @@ export function Canetons() {
           <article key={register.id} id={register.id} className="scroll-mt-6">
             <h2 className="font-display text-2xl">{register.heading}</h2>
             <PhotoPending what={register.photo} />
-            <p className="mt-2 text-ink-muted">
+            <p className="mt-tight text-ink-muted">
               {register.roster ?? <Tbd what="prénoms du registre" />}
             </p>
           </article>
@@ -108,17 +108,17 @@ export function Canetons() {
           a roster that turns over yearly; two people who are not in the band
           do not go stale the same way, and the band asked for the old image
           back. */}
-      <hr className="mt-12 border-line" />
+      <hr className="mt-section border-line" />
 
-      <Card className="mt-8 gap-0 p-5">
+      <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-2xl">Le parrain et la marraine</h2>
         <img
           src="/assets/img/parrainmarraine.jpg"
           alt="Le parrain et la marraine des Canetons"
           loading="lazy"
-          className="mt-4 rounded-lg"
+          className="mt-related rounded-lg"
         />
-        <p className="mt-2 text-ink-muted">Richard Hertig et Annick Bürgisser</p>
+        <p className="mt-tight text-ink-muted">Richard Hertig et Annick Bürgisser</p>
       </Card>
     </PageSection>
   );

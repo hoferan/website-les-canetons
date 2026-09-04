@@ -105,7 +105,7 @@ export function SignupsAdmin() {
       <ul
         aria-label="Totaux des inscriptions"
         aria-live="polite"
-        className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
+        className="mt-block grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
       >
         {tiles.map((item) => (
           <StatTile key={item.label} label={item.label} value={item.value} />
@@ -129,7 +129,7 @@ export function SignupsAdmin() {
         role="region"
         aria-label="Tableau des inscriptions"
         tabIndex={0}
-        className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel focus-visible:outline-2 focus-visible:outline-violet"
+        className="mt-block overflow-x-auto rounded-lg border border-line bg-panel focus-visible:outline-2 focus-visible:outline-violet"
       >
         <Table className="min-w-160 text-left" aria-label="Inscriptions">
           <TableHeader>

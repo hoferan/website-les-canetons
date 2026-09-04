@@ -105,7 +105,7 @@ export function Accueil() {
           modest saving, not the difference between a two-line and a four-line
           heading. A sentence-case heading is not available while this face is
           in use; that is the look, not a bug. */}
-      <h1 className="mt-6 font-display text-3xl sm:text-4xl">
+      <h1 className="mt-block font-display text-3xl sm:text-4xl">
         La guggen d’enfants de Fribourg, depuis 2002.
       </h1>
 
@@ -124,7 +124,7 @@ export function Accueil() {
           REPLACE THIS ONE. That is the whole reason the page could ship without
           waiting for them, and why no <Tbd /> was put on the front page: the
           destination is the same page minus one paragraph. */}
-      <p className="mt-4 text-lg text-ink-muted">
+      <p className="mt-related text-lg text-ink-muted">
         De 7 à 18 ans — et pas besoin de connaître la musique&nbsp;: les moniteurs apprennent les
         morceaux registre par registre, aux répétitions du samedi matin.
       </p>

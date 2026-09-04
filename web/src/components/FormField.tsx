@@ -19,7 +19,9 @@ import type { TranslatedError } from "../i18n";
  */
 export function FormError({ error }: { error: TranslatedError | null }) {
   return (
-    <div role="alert">{error ? <p className="mt-4 text-danger">{error.message}</p> : null}</div>
+    <div role="alert">
+      {error ? <p className="mt-related text-danger">{error.message}</p> : null}
+    </div>
   );
 }
 

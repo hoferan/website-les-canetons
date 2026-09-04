@@ -15,7 +15,7 @@ export function Historique() {
     <PageSection width="text">
       <h1 className="font-display text-4xl">L’Histoire des Canetons</h1>
 
-      <div className="mt-6 max-w-prose space-y-4">
+      <div className="mt-block max-w-prose space-y-related">
         <p className="font-semibold">
           LA GUGGEN D’ENFANTS &laquo;&nbsp;LES CANETONS&nbsp;&raquo; DE FRIBOURG S’EST
           OFFICIELLEMENT CREEE EN OCTOBRE 2002. DEBUTANT AVEC UNE DIZAINE DE MUSICIENS… CETTE JEUNE

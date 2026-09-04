@@ -25,7 +25,7 @@ export function PhotoPending({ what }: { what: string }) {
     // anything. See the E2a spec. Dashed and muted so it still reads as a gap
     // rather than as copy.
     <p
-      className="mt-4 rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
+      className="mt-related rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
       data-photo-pending={what}
     >
       {/* Both spaces are non-breaking. Now that this is one line rather than a

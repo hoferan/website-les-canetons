@@ -5,7 +5,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /**
- * VENDORED from shadcn/ui and then edited. Three deliberate local changes:
+ * VENDORED from shadcn/ui and then edited. Four deliberate local changes:
  *
  * 1. `min-h-touch` (44px, from --spacing-touch in styles.css) on the base
  *    variant. Every interactive control in this app has a floor, and putting it
@@ -28,9 +28,12 @@ import { cn } from "@/lib/utils";
  *    text, so an example written in full is itself a class it will generate --
  *    which is how the first draft of this very comment put a dark-mode rule
  *    back into the bundle it was warning about.
+ * 4. `active:scale-[0.98]` on the base variant -- E2c's press feedback. The
+ *    existing `transition-all` animates it and the global reduced-motion
+ *    block in styles.css zeroes it; do not add a duration here.
  */
 const buttonVariants = cva(
-  "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex min-h-touch shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none active:scale-[0.98] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

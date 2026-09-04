@@ -17,7 +17,7 @@ export function RegisterIndex({ entries }: { entries: { id: string; label: strin
     // aria-label because this is the page's SECOND nav; the site's own is
     // "Menu de navigation" and two unnamed navs are indistinguishable to a
     // screen reader.
-    <nav aria-label="Registres" className="mt-6">
+    <nav aria-label="Registres" className="mt-block">
       <ul className="flex flex-wrap gap-2">
         {entries.map((entry) => (
           <li key={entry.id}>

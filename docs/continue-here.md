@@ -19,10 +19,12 @@ here:
 
 ## START HERE: what to do next
 
-**E2 is designed as three rounds. E2a and E2b are shipped; E2c is next, and its
-spec is already written** — so the next session plans and executes, it does not
-brainstorm. The remaining blocker on PROD is unchanged and is not code: the
-`<Tbd>` and `<PhotoPending>` placeholders.
+**E2 is designed as three rounds, and all three are built. E2a and E2b are
+shipped; E2c is implemented on PR #74** — open at the time of writing, so check
+`gh pr view 74` rather than believing this line. Once it merges, E2 is done.
+The remaining blocker on PROD is unchanged and is not code: the `<Tbd>` and
+`<PhotoPending>` placeholders. Sub-project **B** (structure clean-up) is the
+only unstarted code work.
 
 ### Nothing is in flight — `main` is the whole truth
 
@@ -93,7 +95,7 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 | **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
 | **E2a** | `/canetons` register index, one-line `PhotoPending`, the image guard | **done** — PR #65 |
 | **E2b** | `/accueil` as a front door | **done** — PR #70, squashed to `748241a` |
-| **E2c** | Feedback motion and one spacing scale | **next** — designed; was last on purpose |
+| **E2c** | Feedback motion and one spacing scale | **built** — PR #74, open at the time of writing |
 
 ### E2 is three rounds, and the order is load-bearing
 
@@ -106,11 +108,18 @@ The specs are all dated 2026-09-01 in `docs/superpowers/specs/`. Build in order:
   rehearsals, and the hero condenses those. **The head-count is deliberately
   dropped:** the source says the band *grew to* forty in 2003, and asserting
   that today would be a new and perishable claim. See "What E2b shipped" below.
-- **E2c** — motion and one spacing scale (ten distinct `mt-*` values across 94
-  uses become four named steps). **Last, because a scale applied to pages E2b is
-  about to reshape is work done twice.** Motion only where it reports that
-  something happened, all behind `prefers-reduced-motion`. Entrance and
-  scroll animation were rejected: this site is read on phones, outdoors.
+- **E2c** — motion and one spacing scale — **built on PR #74** (2026-09-04).
+  Four `@theme` spacing tokens (`tight` 0.5rem / `related` 1rem / `block` 2rem /
+  `section` 4rem) replaced every improvised `mt-*`/`space-y-*`; the recorded
+  one-offs are the footer's `mt-16`, `Logo.tsx`'s lockup `mt-1.5`,
+  `scroll-mt-6`, and the vendored `ui/`. Motion in exactly four places, as
+  feedback only: `Button`'s `active:scale-[0.98]`, a 150ms `animate-reveal` on
+  the phone nav and the past-events disclosure (a keyframe that replays on
+  display change — closing snaps deliberately; see the comment in `styles.css`),
+  and sonner's own toast animation, verified rather than re-implemented. One
+  global `prefers-reduced-motion` block zeroes every duration. **The suite was
+  untouched, per the spec: still 258 / 140 / 31 / 13.** Entrance and scroll
+  animation stay rejected: this site is read on phones, outdoors.
 
 The **French inconsistencies are not in E2**. They were ported deliberately and
 get settled with the band, not silently.
@@ -317,7 +326,7 @@ rather than ergonomics. Explicitly left undone, and why:
   It keeps its dashed border, its `what` prop and its `data-photo-pending` hook.
 - ~~**`/accueil` as a front door**~~ — **done by E2b (PR #70)**: a hero condensed
   from `/historique`, a live next-event block, four curated destination cards.
-  Motion and the spacing scale are E2c, still open.
+  Motion and the spacing scale were E2c, built on PR #74.
 - **The ported French inconsistencies** — `Nom:` versus `Nom :`, "Liens Amis".
 - **A server-side 301 for `/sinscrire`.** The redirect is client-side only. A
   `RedirectMatch 301` in `config/htaccess/site.htaccess` would be cheaper and

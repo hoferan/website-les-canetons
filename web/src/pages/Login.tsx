@@ -91,7 +91,7 @@ function LoginForm() {
           about the browser rather than about the form. */}
       <FormError error={error} />
 
-      <form onSubmit={submit} className="mt-4 space-y-3">
+      <form onSubmit={submit} className="mt-related space-y-related">
         <FormField
           id="login-username"
           label="Identifiant :"
@@ -153,7 +153,7 @@ function LoggedIn({ username }: { username: string }) {
   // back would duplicate chrome that has to be edited in lockstep forever.
   return (
     <>
-      <p className="mt-4">
+      <p className="mt-related">
         Connecté en tant que <strong>{username}</strong>
       </p>
 
@@ -171,7 +171,7 @@ function LoggedIn({ username }: { username: string }) {
           logout.mutate();
         }}
         aria-disabled={logout.isPending}
-        className="mt-4"
+        className="mt-related"
       >
         Se déconnecter
       </Button>

@@ -59,7 +59,7 @@ export type Destination = { to: string; title: string; description: string };
  * screen-reader user heard a properly named second list. The two trees
  * disagreed, and the accessibility tree was the only one that was right.
  *
- * THE `mt-8` / `h2` / `mt-3` RHYTHM DELIBERATELY MATCHES `NextEvent.tsx`. That
+ * THE `mt-block` / `h2` / `mt-related` RHYTHM DELIBERATELY MATCHES `NextEvent.tsx`. That
  * is what makes "Prochain événement" and this `label` read as two peer
  * sections instead of one section and an afterthought — same section-level
  * gap above, same heading treatment, same gap from heading to list.
@@ -74,18 +74,18 @@ export function DestinationCards({
   const headingId = useId();
 
   return (
-    <section className="mt-8">
+    <section className="mt-block">
       <h2 id={headingId} className="font-display text-2xl">
         {label}
       </h2>
 
-      <ul aria-labelledby={headingId} className="mt-3 grid gap-3 sm:grid-cols-2">
+      <ul aria-labelledby={headingId} className="mt-related grid gap-3 sm:grid-cols-2">
         {destinations.map((destination) => (
           <li key={destination.to}>
             <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
               <Link to={destination.to} className="focus-ring">
                 <span className="font-display text-xl text-violet">{destination.title}</span>
-                <span className="mt-1 block text-ink-muted">{destination.description}</span>
+                <span className="mt-tight block text-ink-muted">{destination.description}</span>
               </Link>
             </Card>
           </li>

@@ -100,7 +100,7 @@ export function Layout() {
 
           <ul
             id="nav-menu"
-            className={`${open ? "block" : "hidden"} border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
+            className={`${open ? "block" : "hidden"} animate-reveal border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
           >
             {NAV.map((item) => (
               <li key={item.to} className={NAV_ITEM}>

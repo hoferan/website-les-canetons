@@ -50,6 +50,39 @@
      convention that lasts until the next page is written. */
   --spacing-touch: 2.75rem;
 
+  /* The vertical scale (E2c). Four steps, named for RELATIONSHIPS rather than
+     sizes, because "is this a label or a section?" has an answer where "mt-3
+     or mt-4?" does not:
+       tight    0.5rem  a label to the thing it labels
+       related  1rem    items within one block
+       block    2rem    between blocks inside a section
+       section  4rem    between major sections of a page
+     Pages use these instead of choosing a number. A CONVENTION, not a lint
+     rule: the vendored ui/ components keep their own spacing, and the
+     recorded one-offs stay (the footer's mt-16 from E1, Logo's lockup
+     mt-1.5, scroll-mt-*). See the E2c spec for why exactly four. */
+  --spacing-tight: 0.5rem;
+  --spacing-related: 1rem;
+  --spacing-block: 2rem;
+  --spacing-section: 4rem;
+
+  /* E2c's reveal: a 150ms fade-and-settle that REPLAYS each time the element
+     re-enters the rendering tree, because display:none -> visible restarts a
+     CSS animation. That is the whole mechanism: the phone nav (hidden/block
+     class) and the past-events disclosure (the hidden attribute) both toggle
+     display, so `animate-reveal` on them animates every OPEN with no JS and
+     no DOM change. Closing snaps DELIBERATELY: the acknowledgement matters on
+     reveal, animating collapse needs measured heights (or interpolate-size,
+     which Firefox lacks), and jsdom/Playwright stay untouched either way. */
+  --animate-reveal: reveal 150ms ease-out;
+
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      translate: 0 -0.25rem;
+    }
+  }
+
   /* ONE width for the chrome and for page shells, with prose constrained
      INSIDE it by --container-text.
 
@@ -200,5 +233,21 @@ h2 {
   &:focus-visible {
     outline: 2px solid var(--color-violet);
     outline-offset: 2px;
+  }
+}
+
+/* E2c: every duration to near-zero under reduced motion. This covers the
+   Button press transition, the reveal animation, and sonner's own toast
+   animation, in one place — a per-site motion-reduce: variant would be a
+   convention that lasts until the next transition is written. 0.01ms rather
+   than 0 so transitionend/animationend still fire for anything listening.
+   Not optional politeness: the band's audience includes children and the
+   members' area is used one-handed outdoors. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }
