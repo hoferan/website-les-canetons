@@ -90,7 +90,7 @@ export function PlanningRepet() {
           <li>s in the events list. A paragraph inside a panel is just a
           paragraph inside a panel. */}
       {!user ? (
-        <Card className="mt-6 p-4 text-ink-muted">
+        <Card className="mt-block p-4 text-ink-muted">
           <p>
             {/* Underlined at rest, unlike every other inline prose link on the
                 site (text-violet hover:underline). Those are a passing
@@ -110,7 +110,7 @@ export function PlanningRepet() {
       {/* Named, so it can be distinguished from the navigation's own list —
           both are `listitem`s to a screen reader and to a test, and "17 rows"
           when there are four events is confusing in either. */}
-      <ul aria-label="Événements" className="mt-6 space-y-4">
+      <ul aria-label="Événements" className="mt-block space-y-related">
         {/* The API orders by date and now returns only upcoming events, so
             there is no client-side re-sort and no client-side filter — a test
             pins the order, so a change in the API's ordering fails there
@@ -158,7 +158,7 @@ export function PlanningRepet() {
                 This one KEEPS its label: it is the detail members scan for and
                 the one they get wrong. */}
             {event.attire ? (
-              <p className="mt-1">
+              <p className="mt-tight">
                 <strong className="font-semibold">Tenue :</strong> {event.attire}
               </p>
             ) : null}
@@ -166,7 +166,7 @@ export function PlanningRepet() {
         ))}
       </ul>
 
-      <div className="mt-8">
+      <div className="mt-block">
         <Button
           type="button"
           variant="outline"
@@ -178,9 +178,9 @@ export function PlanningRepet() {
         </Button>
 
         <div id="past-events" hidden={!showingPast} className="animate-reveal">
-          {history.isPending && showingPast ? <p className="mt-4">Chargement…</p> : null}
+          {history.isPending && showingPast ? <p className="mt-related">Chargement…</p> : null}
           {history.isError ? (
-            <p role="alert" className="mt-4">
+            <p role="alert" className="mt-related">
               Les événements passés n’ont pas pu être chargés. Veuillez réessayer.
             </p>
           ) : null}
@@ -194,7 +194,7 @@ export function PlanningRepet() {
               way to answer, because answering an event that has happened is
               meaningless. */}
           {past.length > 0 ? (
-            <ul aria-label="Événements passés" className="mt-4 space-y-4">
+            <ul aria-label="Événements passés" className="mt-related space-y-related">
               {past.map((event) => (
                 <EventCard
                   key={event.id}

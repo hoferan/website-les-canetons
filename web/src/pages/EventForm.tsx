@@ -125,8 +125,8 @@ export function EventForm({
   };
 
   return (
-    <Card asChild className="mt-8 gap-0 p-5">
-      <form ref={form} onSubmit={submit} className="space-y-4">
+    <Card asChild className="mt-block gap-0 p-5">
+      <form ref={form} onSubmit={submit} className="space-y-related">
         <h2 className="font-display text-xl">
           {editing ? "Modifier l’événement" : "Ajouter un événement"}
         </h2>

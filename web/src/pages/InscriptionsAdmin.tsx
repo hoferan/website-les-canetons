@@ -34,7 +34,7 @@ export function InscriptionsAdmin() {
     return (
       <PageSection>
         <h1 className="font-display text-4xl">Résumé des inscriptions</h1>
-        <p role="alert" className="mt-4 text-danger">
+        <p role="alert" className="mt-related text-danger">
           Aucun événement choisi. Retournez à la liste et choisissez-en un.
         </p>
       </PageSection>
@@ -105,14 +105,14 @@ export function InscriptionsAdmin() {
       <ul
         aria-label="Résumé de la participation"
         aria-live="polite"
-        className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+        className="mt-block grid grid-cols-2 gap-3 sm:grid-cols-4"
       >
         {tiles.map((item) => (
           <StatTile key={item.label} label={item.label} value={item.value} />
         ))}
       </ul>
 
-      <div className="mt-8 overflow-x-auto rounded-lg border border-line bg-panel">
+      <div className="mt-block overflow-x-auto rounded-lg border border-line bg-panel">
         {/* min-w is what makes the overflow-x-auto wrapper SCROLL rather than
             clip: without it the table shrinks to the container and the last
             header, "Participation", is cut off on a phone with no way to reach
@@ -154,8 +154,8 @@ export function InscriptionsAdmin() {
         </Table>
       </div>
 
-      <h2 className="mt-10 font-display text-2xl">Résumé des instruments</h2>
-      <div className="mt-3 overflow-x-auto rounded-lg border border-line bg-panel">
+      <h2 className="mt-section font-display text-2xl">Résumé des instruments</h2>
+      <div className="mt-related overflow-x-auto rounded-lg border border-line bg-panel">
         <Table className="min-w-[20rem] text-left" aria-label="Résumé des instruments">
           <TableHeader>
             <TableRow className="border-b border-line">

@@ -69,7 +69,7 @@ export function InscriptionsUtilisateurs() {
     return (
       <PageSection width="form">
         <h1 className="font-display text-3xl">Inscription à l’événement</h1>
-        <p role="alert" className="mt-4 text-danger">
+        <p role="alert" className="mt-related text-danger">
           Aucun événement à confirmer. Retournez à la liste et choisissez-en un.
         </p>
       </PageSection>
@@ -79,13 +79,13 @@ export function InscriptionsUtilisateurs() {
   return (
     <PageSection width="form">
       <h1 className="font-display text-3xl">Inscription à l’événement</h1>
-      <p className="mt-2 text-ink-muted">
+      <p className="mt-tight text-ink-muted">
         {formatEventDate(event.date)} — {event.title}
       </p>
 
       <FormError error={error} />
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-related flex flex-wrap gap-2">
         <Button
           type="button"
           aria-disabled={respond.isPending}

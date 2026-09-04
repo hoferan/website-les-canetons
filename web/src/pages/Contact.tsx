@@ -70,8 +70,8 @@ export function Contact() {
 
       {/* The values are NOT cleared on failure: a rejected message must not
           make someone retype it. Same rule as the event form. */}
-      <Card asChild className="mt-4 gap-0 p-5">
-        <form onSubmit={submit} className="space-y-3">
+      <Card asChild className="mt-related gap-0 p-5">
+        <form onSubmit={submit} className="space-y-related">
           {FIELDS.map((field) => (
             <FormField
               key={field.name}
