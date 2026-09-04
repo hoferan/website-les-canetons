@@ -218,3 +218,19 @@ h2 {
     outline-offset: 2px;
   }
 }
+
+/* E2c: every duration to near-zero under reduced motion. This covers the
+   Button press transition, the reveal animation, and sonner's own toast
+   animation, in one place — a per-site motion-reduce: variant would be a
+   convention that lasts until the next transition is written. 0.01ms rather
+   than 0 so transitionend/animationend still fire for anything listening.
+   Not optional politeness: the band's audience includes children and the
+   members' area is used one-handed outdoors. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
