@@ -177,7 +177,7 @@ export function PlanningRepet() {
           {showingPast ? "Masquer les événements passés" : "Voir les événements passés"}
         </Button>
 
-        <div id="past-events" hidden={!showingPast}>
+        <div id="past-events" hidden={!showingPast} className="animate-reveal">
           {history.isPending && showingPast ? <p className="mt-4">Chargement…</p> : null}
           {history.isError ? (
             <p role="alert" className="mt-4">
