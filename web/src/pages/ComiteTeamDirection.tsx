@@ -46,26 +46,26 @@ export function ComiteTeamDirection() {
           several pages; repeating it twice on this one would be worse. The
           booking number lives here beside it rather than against a committee
           office, because it is the number for reserving the band. */}
-      <Card className="mt-6 gap-0 p-5">
+      <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-xl">Contact des Canetons</h2>
-        <p className="mt-2">
+        <p className="mt-tight">
           <a href="mailto:comite@lescanetons.org" className="text-violet hover:underline">
             comite@lescanetons.org
           </a>
         </p>
-        <p className="mt-2">
+        <p className="mt-tight">
           Pour réserver les Canetons : <Tbd what="numéro pour les prestations" />
         </p>
       </Card>
 
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-block grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {COMMITTEE.map((member) => (
           <Card key={member.role} asChild className="gap-0 p-4">
             <li>
               <p className="text-xs font-semibold tracking-wide text-violet uppercase">
                 {member.role}
               </p>
-              <p className="mt-1">
+              <p className="mt-tight">
                 <Tbd what="nom" />
               </p>
             </li>

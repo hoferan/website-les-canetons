@@ -32,13 +32,13 @@ export function Moniteurs() {
 
       <PhotoPending what="des moniteurs" />
 
-      <p className="mt-8 font-display text-3xl text-violet">MERCI</p>
-      <p className="mt-1 max-w-prose">
+      <p className="mt-section font-display text-3xl text-violet">MERCI</p>
+      <p className="mt-tight max-w-prose">
         à tous les moniteurs et toutes les personnes qui donnent de leur temps pour nos canetons
       </p>
 
-      <Card asChild className="mt-6 gap-0 p-5">
-        <ul className="space-y-1">
+      <Card asChild className="mt-block gap-0 p-5">
+        <ul className="space-y-tight">
           {REGISTERS.map((register) => (
             <li key={register}>
               <strong className="font-semibold text-ink-muted">{register}&nbsp;:</strong>{" "}

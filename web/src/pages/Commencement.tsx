@@ -44,17 +44,17 @@ export function Commencement() {
   return (
     <PageSection>
       <h1 className="font-display text-4xl">Tu veux commencer la guggen&nbsp;?</h1>
-      <p className="mt-4 max-w-prose">
+      <p className="mt-related max-w-prose">
         Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire
         &laquo;&nbsp;concurrence&nbsp;&raquo; à nos percussions&nbsp;!
       </p>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="mt-block grid gap-4 sm:grid-cols-2">
         {FACTS.map((fact) => (
           <Card key={fact.heading} className="gap-0 p-5">
             <h2 className="font-display text-xl">{fact.heading}</h2>
             {fact.lines.map((line) => (
-              <p key={line} className="mt-1">
+              <p key={line} className="mt-tight">
                 {line}
               </p>
             ))}
@@ -63,7 +63,7 @@ export function Commencement() {
 
         <Card className="gap-0 p-5">
           <h2 className="font-display text-xl">Lieu</h2>
-          <p className="mt-1">
+          <p className="mt-tight">
             <a
               href={WERKHOF_MAP}
               target="_blank"
@@ -79,11 +79,11 @@ export function Commencement() {
         <Card className="gap-0 p-5">
           <h2 className="font-display text-xl">Contacts</h2>
           {Array.from({ length: JOINING_CONTACTS }, (_, i) => (
-            <p key={i} className="mt-1">
+            <p key={i} className="mt-tight">
               <Tbd what="nom et numéro" />
             </p>
           ))}
-          <p className="mt-3 text-sm text-ink-muted">
+          <p className="mt-related text-sm text-ink-muted">
             En attendant, écrivez-nous à{" "}
             <a href="mailto:comite@lescanetons.org" className="text-violet hover:underline">
               comite@lescanetons.org
