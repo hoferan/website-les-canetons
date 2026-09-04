@@ -119,15 +119,15 @@ export function Signup() {
   return (
     <PageSection width="text">
       <h1 className="font-display text-3xl">{occasion.title}</h1>
-      <p className="mt-1 text-ink-muted">{occasion.subtitle}</p>
-      <p className="mt-4">{occasion.teaser}</p>
-      <p className="mt-2">{occasion.invitation}</p>
+      <p className="mt-tight text-ink-muted">{occasion.subtitle}</p>
+      <p className="mt-related">{occasion.teaser}</p>
+      <p className="mt-tight">{occasion.invitation}</p>
 
       <FormError error={error} />
 
       {/* The values are NOT cleared on failure — a rejected reservation must
           not make someone retype it. Same rule as the contact form. */}
-      <form onSubmit={submit} className="mt-6 space-y-6">
+      <form onSubmit={submit} className="mt-block space-y-block">
         {/* Honeypot: hidden from real users; bots that autofill it are dropped
             server-side, which answers a plain 201 so they never learn it. It
             must keep being rendered and submitted. */}
@@ -139,7 +139,7 @@ export function Signup() {
         <Card asChild className="gap-0 p-5">
           <fieldset>
             <legend className="px-2 font-display text-xl">Vos coordonnées</legend>
-            <div className="mt-2 space-y-3">
+            <div className="mt-tight space-y-related">
               {FIELDS.map((field) => (
                 <FormField
                   key={field.name}
@@ -168,21 +168,21 @@ export function Signup() {
         <Card asChild className="gap-0 p-5">
           <fieldset>
             <legend className="px-2 font-display text-xl">Menus</legend>
-            <p className="mt-2">Choisissez un menu par personne.</p>
+            <p className="mt-tight">Choisissez un menu par personne.</p>
 
-            <ul aria-label="Menus proposés" className="mt-4 space-y-3">
+            <ul aria-label="Menus proposés" className="mt-related space-y-related">
               {occasion.menus.map((menu) => (
                 <li key={menu.value} className="rounded border border-line p-3">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="font-semibold">{menu.label}</span>
                     <span className="text-violet">{menu.price}</span>
                   </div>
-                  <p className="mt-1 text-sm text-ink-muted">{menu.description}</p>
+                  <p className="mt-tight text-sm text-ink-muted">{menu.description}</p>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-5">
+            <div className="mt-related">
               <GuestMenus
                 menus={guests}
                 onChange={setMenus}
@@ -191,7 +191,7 @@ export function Signup() {
               />
             </div>
             {messageFor("menus") ? (
-              <p className="mt-2 text-sm text-danger">{messageFor("menus")}</p>
+              <p className="mt-tight text-sm text-danger">{messageFor("menus")}</p>
             ) : null}
           </fieldset>
         </Card>

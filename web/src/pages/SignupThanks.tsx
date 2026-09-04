@@ -23,20 +23,20 @@ export function SignupThanks() {
       <p className="text-5xl" aria-hidden="true">
         🎉🦆
       </p>
-      <h1 className="mt-4 font-display text-3xl">Merci pour votre inscription !</h1>
+      <h1 className="mt-related font-display text-3xl">Merci pour votre inscription !</h1>
 
-      <p className="mt-6">
+      <p className="mt-block">
         Votre inscription au <strong>{occasion?.title}</strong> a bien été enregistrée.
       </p>
-      <p className="mt-3 text-ink-muted">
+      <p className="mt-related text-ink-muted">
         Un e-mail de confirmation vient de vous être envoyé, avec le récapitulatif de votre
         réservation. Pensez à vérifier vos courriers indésirables si vous ne le trouvez pas.
       </p>
-      <p className="mt-6">
+      <p className="mt-block">
         Rendez-vous le <strong>{occasion?.dateDisplay}</strong> !
       </p>
 
-      <p className="mt-8">
+      <p className="mt-block">
         <ButtonLink to="/">Retour à l’accueil</ButtonLink>
       </p>
     </PageSection>

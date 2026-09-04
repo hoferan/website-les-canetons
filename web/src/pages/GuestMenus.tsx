@@ -58,7 +58,7 @@ export function GuestMenus({
     <div>
       {/* NAMED, because the layout's nav is a list too and an unscoped
           getByRole("listitem") counts nav items. */}
-      <ul aria-label="Personnes" className="space-y-2">
+      <ul aria-label="Personnes" className="space-y-tight">
         {menus.map((menu, index) => {
           const id = `guest-${index}`;
           return (
@@ -100,18 +100,18 @@ export function GuestMenus({
         })}
       </ul>
 
-      <Button type="button" variant="outline" onClick={add} className="mt-3">
+      <Button type="button" variant="outline" onClick={add} className="mt-related">
         ＋ Ajouter une personne
       </Button>
 
       {capped ? (
-        <p role="alert" className="mt-2 text-danger">
+        <p role="alert" className="mt-tight text-danger">
           {maxGuests} personnes au maximum par inscription. Faites une seconde inscription pour le
           reste de votre groupe.
         </p>
       ) : null}
 
-      <p data-testid="guest-total" aria-live="polite" className="mt-3 text-sm text-ink-muted">
+      <p data-testid="guest-total" aria-live="polite" className="mt-related text-sm text-ink-muted">
         {menus.length} {menus.length > 1 ? "personnes" : "personne"} ·{" "}
         {counts.map((count) => `${count.total} ${count.label}`).join(", ")}
       </p>
