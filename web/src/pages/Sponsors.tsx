@@ -61,11 +61,11 @@ export function Sponsors() {
           reproduced as they are rather than reconciled. */}
       <h1 className="font-display text-4xl">Sponsors et Liens Amis</h1>
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-block space-y-block">
         {GROUPS.map((group) => (
           <Card key={group.heading} className="gap-0 p-5">
             <h2 className="font-display text-xl">{group.heading}</h2>
-            <ul className="mt-3 list-disc space-y-1 pl-5">
+            <ul className="mt-related list-disc space-y-tight pl-5">
               {group.links.map((link) => (
                 <li key={link.href}>
                   <a

@@ -5,15 +5,15 @@ export function Cd() {
   return (
     <PageSection width="text">
       <h1 className="font-display text-4xl">2022 - Les Canetons ont 20 ans&nbsp;!!!</h1>
-      <p className="mt-2 text-xl text-ink-muted">Notre nouveau CD vient de sortir&nbsp;!!</p>
+      <p className="mt-tight text-xl text-ink-muted">Notre nouveau CD vient de sortir&nbsp;!!</p>
 
-      <img src="/assets/img/CD_img.png" alt="La pochette du CD des Canetons" className="mt-6" />
+      <img src="/assets/img/CD_img.png" alt="La pochette du CD des Canetons" className="mt-block" />
 
-      <p className="mt-6">N’hésitez pas à le commander au plus vite&nbsp;!!</p>
+      <p className="mt-block">N’hésitez pas à le commander au plus vite&nbsp;!!</p>
 
-      <Card className="mt-6 gap-0 p-5">
+      <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-xl">Comment commander</h2>
-        <ul className="mt-3 list-disc space-y-1 pl-5">
+        <ul className="mt-related list-disc space-y-tight pl-5">
           <li>Auprès des musiciens que vous connaissez</li>
           <li>Auprès de chaque membre du comité</li>
           <li>
@@ -23,7 +23,7 @@ export function Cd() {
             </a>
           </li>
         </ul>
-        <p className="mt-4 text-lg font-semibold">
+        <p className="mt-related text-lg font-semibold">
           Prix&nbsp;: <span className="text-violet">20.-</span> pièce
         </p>
         <p className="text-ink-muted">Disponible en CD ou en clé USB</p>
