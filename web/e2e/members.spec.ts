@@ -58,3 +58,24 @@ test("an admin reads the summary instead of answering", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "Résumé des inscriptions" })).toBeVisible();
 });
+
+// THE REFUSAL PAGE, WHICH NOTHING HAD EVER LOOKED AT. The capability matrix is
+// not a hierarchy, so an admin following a link to /inscriptions_utilisateurs is
+// refused — correctly, and in place rather than bounced to a login form they are
+// already past. What nobody checked was what that refusal RENDERS as: a bare
+// `<p role="alert">Accès refusé.</p>`, outside the page shell, so the words sat
+// flush against the left edge at x=0 while every other route on the site is
+// padded. guards.test.tsx had four passing assertions over it, all of them true
+// of that page, because they only ever asserted the string.
+test("a refused admin gets a real page, not a sentence in the corner", async ({ page }) => {
+  await login(page, "demo.admin");
+  await page.goto("/inscriptions_utilisateurs");
+
+  const heading = page.getByRole("heading", { name: "Accès refusé" });
+  await expect(heading).toBeVisible();
+
+  // PageSection's gutter is px-4. Asserting a real inset is what fails against
+  // the unshelled paragraph; asserting the heading exists would not have.
+  const box = (await heading.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(16);
+});

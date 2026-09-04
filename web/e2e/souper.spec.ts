@@ -100,7 +100,7 @@ test("a member without view_summary is refused in place", async ({ page }) => {
   await login(page, "demo.user");
   await page.goto("/signups_admin");
 
-  await expect(page.getByRole("alert")).toHaveText("Accès refusé.");
+  await expect(page.getByRole("heading", { name: "Accès refusé" })).toBeVisible();
   // Refused in place, NOT bounced: bouncing someone already past the login form
   // reads as "your session expired".
   await expect(page).toHaveURL(/\/signups_admin$/);

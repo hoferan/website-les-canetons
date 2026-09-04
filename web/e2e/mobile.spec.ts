@@ -23,6 +23,62 @@ test("the phone menu opens, and its rows are big enough to tap", async ({ page }
   expect(box.height).toBeGreaterThanOrEqual(44);
 });
 
+// THE CONTROL E1's TOUCH PASS MISSED. Every text input in the admin event form
+// carries min-h-touch and measures 44px; the "Weekend" checkbox carried no
+// className at all and rendered at the browser default of 13x13 — in the one
+// form the band actually uses one-handed, at a rehearsal, on a phone.
+//
+// Asserted over EVERY control in the form rather than over the checkbox alone.
+// Pinning the one known offender would leave the next added control just as
+// unguarded, and the defect here was never "this checkbox" — it was "a control
+// slipped through". The unit suite cannot see any of it: jsdom has no layout.
+test("every control in the admin event form clears the 44px touch floor", async ({ page }) => {
+  await page.goto("/authentification_inscription");
+  await page.getByLabel("Identifiant :").fill("demo.admin");
+  await page.getByLabel("Mot de passe :").fill("demo");
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await page.waitForURL((url) => !url.pathname.includes("authentification"));
+  await page.goto("/planning_repet");
+
+  // Located by its heading, not getByRole("form"): a <form> exposes that role
+  // only when it has an accessible name, and this one has none — so the role
+  // query would fail here for a reason that has nothing to do with tap targets.
+  const form = page
+    .locator("form")
+    .filter({ has: page.getByRole("heading", { name: "Ajouter un événement" }) });
+  // count() does NOT auto-wait, unlike expect(). Without settling the form
+  // first it returns 0 against a page React has not finished rendering, and the
+  // test then fails on the guard below rather than on any tap target.
+  await expect(form).toBeVisible();
+
+  const controls = form.locator("input, select, textarea, button");
+  const count = await controls.count();
+  // A form that rendered no controls would otherwise pass this vacuously.
+  expect(count).toBeGreaterThan(6);
+
+  const undersized: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const control = controls.nth(i);
+    // What a finger hits, not what the control paints. A checkbox is allowed to
+    // stay visually small as long as a WRAPPING label carries the target — that
+    // is the normal way to do it, and demanding a 44px box would be absurd. A
+    // label merely sitting BESIDE the input (htmlFor) does not count: the row
+    // then has tappable text and a tappable box with a dead gap between them.
+    const box = await control.evaluate((el) => {
+      const target = el.closest("label") ?? el;
+      const r = target.getBoundingClientRect();
+      return {
+        h: r.height,
+        w: r.width,
+        id: el.id || el.textContent?.trim().slice(0, 20) || el.tagName,
+      };
+    });
+    if (box.h === 0 && box.w === 0) continue; // not rendered at this viewport
+    if (box.h < 44) undersized.push(`${box.id}@${Math.round(box.h)}px`);
+  }
+  expect(undersized).toEqual([]);
+});
+
 test("the event controls do not cover the date on a phone", async ({ page }) => {
   await page.goto("/authentification_inscription");
   await page.getByLabel("Identifiant :").fill("demo.admin");

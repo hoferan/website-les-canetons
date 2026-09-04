@@ -146,7 +146,20 @@ export function EventForm({
           />
         ))}
 
-        <div className="flex items-center gap-2">
+        {/* THE LABEL WRAPS THE INPUT AND CARRIES THE 44px FLOOR, so the whole
+            row toggles rather than a 13x13 box. It was a bare `<input>` beside
+            a separate `<label htmlFor>`, with no className at all, so it
+            rendered at the browser default while every other control in this
+            form measures 44px -- in the one form the band uses one-handed, on a
+            phone, at a rehearsal. E1b's touch pass covered the text inputs
+            through `Input` and missed the one control that does not use it.
+
+            Wrapping rather than widening: a 44px checkbox would be absurd, and a
+            label merely NEXT to the input leaves a dead gap between two small
+            targets. htmlFor is kept alongside the wrapping so `getByLabel` and
+            `input.labels` keep working. Pinned by web/e2e/mobile.spec.ts, which
+            measures every control in this form, not just this one. */}
+        <label htmlFor="event-weekend" className="flex min-h-touch items-center gap-2">
           <input
             id="event-weekend"
             type="checkbox"
@@ -155,8 +168,8 @@ export function EventForm({
               setValues((previous) => ({ ...previous, weekend: changeEvent.target.checked }))
             }
           />
-          <label htmlFor="event-weekend">Weekend</label>
-        </div>
+          Weekend
+        </label>
 
         <div className="flex gap-2">
           {/* Marked unavailable for the duration, and released by the mutation
