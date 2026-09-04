@@ -34,7 +34,7 @@ export function StatTile({
     <Card asChild className={cn("gap-0 p-5 text-center", className)}>
       <li data-tile>
         <p className="font-display text-4xl text-violet">{value}</p>
-        <p className="mt-1 text-sm text-ink-muted">{label}</p>
+        <p className="mt-tight text-sm text-ink-muted">{label}</p>
       </li>
     </Card>
   );

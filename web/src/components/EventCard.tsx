@@ -51,12 +51,12 @@ export function EventCard({
         <h3 className="font-bold">
           {event.weekend ? formatEventDateRange(event.date) : formatEventDate(event.date)}
         </h3>
-        <p className="mt-1 font-display text-lg">{event.title}</p>
+        <p className="mt-tight font-display text-lg">{event.title}</p>
 
-        {children ? <div className="mt-3 text-ink-muted">{children}</div> : null}
+        {children ? <div className="mt-related text-ink-muted">{children}</div> : null}
 
         {actions ? (
-          <div data-event-actions className="mt-4 flex flex-wrap gap-2">
+          <div data-event-actions className="mt-related flex flex-wrap gap-2">
             {actions}
           </div>
         ) : null}

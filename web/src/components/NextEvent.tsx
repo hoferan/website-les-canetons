@@ -40,7 +40,7 @@ export function NextEvent() {
   if (!next) return null;
 
   return (
-    <section className="mt-8">
+    <section className="mt-block">
       <h2 className="font-display text-2xl">Prochain événement</h2>
 
       {/* A ONE-ITEM <ul>, because EventCard IS an <li> (it uses Card's asChild
@@ -53,7 +53,7 @@ export function NextEvent() {
           thing — the layout's nav is a list too, and an unscoped query once
           counted four events as seventeen rows. The name matches the heading;
           they are different roles, so no query is ambiguous. */}
-      <ul aria-label="Prochain événement" className="mt-3">
+      <ul aria-label="Prochain événement" className="mt-related">
         <EventCard
           event={next}
           actions={

@@ -52,8 +52,8 @@ export function SouperCta() {
           <h2 className="font-display text-xl">
             <span aria-hidden="true">🦆</span> {occasion.title}
           </h2>
-          <p className="mt-1 font-semibold text-violet">{occasion.dateDisplay}</p>
-          <p className="mt-1 text-ink-muted">
+          <p className="mt-tight font-semibold text-violet">{occasion.dateDisplay}</p>
+          <p className="mt-tight text-ink-muted">
             {summary
               ? "Consultez les inscriptions : totaux par menu et par table."
               : occasion.invitation}
