@@ -19,12 +19,17 @@ here:
 
 ## START HERE: what to do next
 
-**E2 is designed as three rounds, and all three are built. E2a and E2b are
-shipped; E2c is implemented on PR #74** — open at the time of writing, so check
-`gh pr view 74` rather than believing this line. Once it merges, E2 is done.
-The remaining blocker on PROD is unchanged and is not code: the `<Tbd>` and
-`<PhotoPending>` placeholders. Sub-project **B** (structure clean-up) is the
-only unstarted code work.
+**E2 IS DONE.** All three rounds are shipped: E2a (`022f8b9`), E2b (`748241a`),
+E2c (`d6197f9`, PR #74, merged 2026-09-04). `main` is at `d6197f9`, all ten CI
+jobs green including `deploy-test`, and **E2c was verified in a browser on TEST
+the same day** — see "E2c verified" below. The remaining blocker on PROD is
+unchanged and is not code: the `<Tbd>` and `<PhotoPending>` placeholders.
+
+**Two pre-existing defects were found during that verification** and are the
+smallest useful next code task — see "Two defects the E2c pass surfaced". Beyond
+them, sub-project **B** (structure clean-up) is the only unstarted code work,
+and **QA has never been deployed**, which blocks PROD independently of the
+content gate (`deploy-prod.yml` refuses any commit QA has not taken).
 
 ### Nothing is in flight — `main` is the whole truth
 
@@ -95,7 +100,7 @@ every new string (`Connectez-vous`, `Voir les événements passés`, `Résumé`)
 | **E1** | Phone pass, component library, events filter, one events page | **done** — PR #63 |
 | **E2a** | `/canetons` register index, one-line `PhotoPending`, the image guard | **done** — PR #65 |
 | **E2b** | `/accueil` as a front door | **done** — PR #70, squashed to `748241a` |
-| **E2c** | Feedback motion and one spacing scale | **built** — PR #74, open at the time of writing |
+| **E2c** | Feedback motion and one spacing scale | **done** — PR #74, squashed to `d6197f9` |
 
 ### E2 is three rounds, and the order is load-bearing
 
@@ -219,6 +224,81 @@ Reviewing PR #70 before merge raised three points, all shipped in it:
 > loop that re-asserts while the geometry changes and bails on real user input —
 > and **verifying it on Linux**, not on one developer's machine. `ScrollToTop`'s
 > own doc comment carries this so nobody re-attempts the cheap version.
+
+### E2c verified — 2026-09-04, at `d6197f9`
+
+**E2c is clean: no regressions, and all four motion points do what the spec
+says.** Measured, not eyeballed — the durations below are computed styles read
+mid-animation, and the heights are `scrollHeight`.
+
+The deployed bundle really is E2c, checked before looking at anything:
+`assets/index-ufG6IO28.css` on TEST carries `@keyframes reveal`,
+`--animate-reveal`, one `prefers-reduced-motion` block, all four
+`--spacing-{tight,related,block,section}` tokens, and the generated
+`.mt-*`/`.space-y-*` utilities for them. **Do this first every time** — an
+unknown Tailwind class is inert rather than an error, so a spacing round can
+"ship" and change nothing.
+
+| motion point | measured |
+| --- | --- |
+| `Button` press | `transition-all` **150ms** `cubic-bezier(.4,0,.2,1)` + `active:scale-[0.98]` |
+| phone nav reveal | `animation: reveal` **150ms** `ease-out`, caught mid-fade |
+| past-events disclosure | height **1185 → 1343** (+158), opacity 0.34 at 50ms of 150ms |
+| toast (sonner's own) | `transition-duration: 0.4s`, opacity 0.41 mid-arrival — verified, not re-implemented |
+| closing the disclosure | snaps: back to 1185 within 50ms. **Deliberate** — see the comment in `styles.css` |
+| `prefers-reduced-motion: reduce` | max duration anywhere in the tree = **0.01ms**; reveal settles to opacity 1 at once |
+
+Also confirmed across every route, three roles, 390px and 1280px: **no
+horizontal overflow anywhere**, no page errors, and the placeholder count is
+still exactly **23 `<Tbd>` / 10 `<PhotoPending>`** (comite 9, canetons 6,
+moniteurs 6, commencement 2 — rendered, not grepped).
+
+> **TEST cannot show you the members' area, and this cost a cycle.**
+> `demo.user` / `demo.admin` / `demo` are **local-stack seeds**
+> (`docker/db/init/*.sql`), not TEST accounts. On TEST the flow works perfectly
+> and answers `401 invalid_credentials`, rendered as "Nom d'utilisateur ou mot de
+> passe incorrect" — i.e. a correct API, a correct translation, and no way in.
+> **TEST also has no past events**, so the disclosure there opens onto nothing
+> and its height does not change.
+>
+> So: **verify public pages on TEST, and the gated pages and all motion against
+> `npx vite --mode mock --port <free> --strictPort`.** The mock carries one
+> event at `-9` days precisely so the disclosure has something to reveal. The
+> numbers in the table above come from the mock for that reason.
+
+### Two defects the E2c pass surfaced — both PRE-EXISTING, neither an E2c regression
+
+Confirmed by `git show d6197f9`: E2c's only change to `EventForm.tsx` was
+`mt-8`→`mt-block` and `space-y-4`→`space-y-related`, and it did not touch
+`guards.tsx` at all (last touched in E1, `c7b95fe`).
+
+1. **`web/src/pages/EventForm.tsx:150` — the "Weekend" checkbox is 13×13px on a
+   phone.** It carries `className=""`, so it is the browser default, while every
+   other input in the same admin form measures exactly **44px** via
+   `min-h-touch`. This is the precise defect class E1b existed to remove, in the
+   one control E1b's pass missed — inside the create/edit event form on
+   `/planning_repet`, which is the site's only repeat-use surface and is used
+   one-handed at a rehearsal.
+
+2. **`web/src/components/guards.tsx:50` — a refused admin gets a bare
+   `<p role="alert">Accès refusé.</p>` and nothing else.** No `h1`, no heading of
+   any kind, and **outside the page shell**, so at 390px the text sits flush
+   against the left edge with zero padding while every other route is padded.
+   A screen-reader user navigating by heading finds an empty document. Compare
+   the SPA's own 404, which is a proper `h1` "Page introuvable".
+
+   This is reachable in normal use, not a corner: the capability matrix is **not
+   a hierarchy**, so an `admin` may not `respond` and lands here on
+   `/inscriptions_utilisateurs`. A human deliberately checked this exact case on
+   TEST on 2026-09-04 and correctly reported that the refusal happens *in place*
+   rather than bouncing to login — which is the right behaviour. What nobody
+   looked at was what the refusal *looks like*.
+
+> **Both are pinned by passing tests.** `guards.test.tsx` and
+> `guards.routes.test.tsx` assert `getByRole("alert")` has the text
+> "Accès refusé." — entirely true of an unheadinged, unpadded page. Four green
+> assertions over a defect: "a green suite is not a rendered page", almost
+> verbatim. Any fix must add an assertion that fails on today's markup.
 
 ### Verified on TEST in a real browser — 2026-09-03, at `4f17eb3`
 
