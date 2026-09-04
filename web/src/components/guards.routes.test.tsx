@@ -26,7 +26,7 @@ test.each(["/inscriptions_utilisateurs?id=1", "/inscriptions_admin?id=1"])(
 test("a member without view_summary is refused, not redirected", async () => {
   setMockUser("demo.user");
   await renderWithSession(<AppRoutes />, { route: "/inscriptions_admin?id=1" });
-  expect(await screen.findByRole("alert")).toHaveTextContent("Accès refusé.");
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Authentification" })).toBeNull();
 });
 
@@ -34,5 +34,5 @@ test("a member without view_summary is refused, not redirected", async () => {
 test("an admin is refused the response form", async () => {
   setMockUser("demo.admin");
   await renderWithSession(<AppRoutes />, { route: "/inscriptions_utilisateurs?id=1" });
-  expect(await screen.findByRole("alert")).toHaveTextContent("Accès refusé.");
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
 });

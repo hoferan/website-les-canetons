@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 
+import { ButtonLink } from "@/components/ButtonLink";
+import { PageSection } from "@/components/PageSection";
+
 import type { Capability } from "../session/capabilities";
 import { useSession } from "../session/SessionProvider";
 
@@ -47,7 +50,41 @@ export function RequireCapability({
   if (!user) {
     return <Navigate to="/authentification_inscription" state={{ from }} replace />;
   }
-  if (!can(capability)) return <p role="alert">Accès refusé.</p>;
+  if (!can(capability)) return <AccessDenied />;
 
   return <>{children}</>;
+}
+
+/**
+ * The refusal page.
+ *
+ * IT USED TO BE `<p role="alert">Accès refusé.</p>` AND NOTHING ELSE — no
+ * heading, and outside PageSection, so at 390px the words sat flush against the
+ * left edge with no gutter while every other route on the site was padded, and
+ * anyone navigating by heading found an empty document. Four assertions in
+ * guards.test.tsx passed over it the whole time, because they only ever checked
+ * that the string was somewhere in the DOM.
+ *
+ * This is a page a legitimate, logged-in member reaches by following an ordinary
+ * link: the capability matrix is NOT a hierarchy, so an `admin` lands here on
+ * /inscriptions_utilisateurs. So it gets a heading, an explanation that does not
+ * blame them, and a way out — the same shape as NotFound, which is the site's
+ * other dead end.
+ *
+ * `role="alert"` stays on the explanation so the refusal is ANNOUNCED: the route
+ * changed without a navigation, and a screen-reader user who hears nothing has
+ * no idea why the page they asked for is not there.
+ */
+function AccessDenied() {
+  return (
+    <PageSection width="text" className="py-16 text-center">
+      <h1 className="font-display text-3xl">Accès refusé</h1>
+      <p role="alert" className="mt-related text-gray-600">
+        Votre compte n’a pas accès à cette page.
+      </p>
+      <ButtonLink to="/" variant="outline" className="mt-block">
+        Retour à l’accueil
+      </ButtonLink>
+    </PageSection>
+  );
 }

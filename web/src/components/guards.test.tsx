@@ -34,7 +34,7 @@ test("an admin may NOT respond", async () => {
   setMockUser("demo.admin");
   await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
   expect(screen.queryByText(SECRET)).toBeNull();
-  expect(screen.getByRole("alert")).toHaveTextContent("Accès refusé.");
+  expect(screen.getByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
 });
 
 test("an admin may manage events", async () => {
@@ -51,7 +51,7 @@ test("a user may NOT manage events", async () => {
     <RequireCapability capability="manage_events">{secret}</RequireCapability>,
   );
   expect(screen.queryByText(SECRET)).toBeNull();
-  expect(screen.getByRole("alert")).toHaveTextContent("Accès refusé.");
+  expect(screen.getByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
 });
 
 // A refusal, not a redirect: bouncing someone already logged in to a login form
@@ -63,6 +63,26 @@ test("a logged-in user without the capability is refused in place, not redirecte
     <RequireCapability capability="manage_events">{secret}</RequireCapability>,
   );
   expect(screen.getByRole("alert")).toBeInTheDocument();
+});
+
+// A REFUSAL IS A PAGE, AND THIS FILE USED TO PROVE ONLY THAT IT WAS A STRING.
+// Every assertion above is on getByRole("alert") having the right text, and all
+// of them were true of a bare `<p role="alert">` that carried no heading and sat
+// outside the page shell — so at 390px the words hit the left edge with no
+// gutter, and a screen reader navigating by heading found an empty document.
+// Four green tests over a visible defect. Assert the structure, not the string.
+test("a refusal has a heading, so the page is not empty to a screen reader", async () => {
+  setMockUser("demo.admin");
+  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});
+
+// The refusal is a dead end unless it offers one, and the visitor is logged in
+// and legitimate: they followed a link to something their role does not cover.
+test("a refusal offers a way out", async () => {
+  setMockUser("demo.admin");
+  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
+  expect(await screen.findByRole("link", { name: /accueil/i })).toHaveAttribute("href", "/");
 });
 
 test("an anonymous visitor is redirected rather than shown a refusal", async () => {
