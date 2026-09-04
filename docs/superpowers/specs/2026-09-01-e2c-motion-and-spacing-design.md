@@ -1,7 +1,7 @@
 # E2c — feedback motion, and one spacing scale — Design
 
 **Date:** 2026-09-01
-**Status:** approved, not yet planned
+**Status:** implemented — PR #74, plan in `docs/superpowers/plans/2026-09-04-e2c-motion-and-spacing.md`
 **Part of:** E2. Build **last** — after E2a (`/canetons`) and E2b (`/accueil`).
 
 ## Why last
