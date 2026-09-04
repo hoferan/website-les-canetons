@@ -26,9 +26,10 @@ brainstorm. The remaining blocker on PROD is unchanged and is not code: the
 
 ### Nothing is in flight — `main` is the whole truth
 
-`main` is at **`4f17eb3`**, CI is green on it, and **CI auto-deployed it to TEST,
-where E2b was verified in a real browser on 2026-09-03** (see the verification
-list below). There is no open PR you need to know about at the time of writing —
+`main` is at **`d6d4994`** (PR #72, the logo layout-shift fix), CI is green on
+it, and **CI auto-deployed it to TEST** on 2026-09-03. E2b itself was verified
+in a real browser on TEST the same day, at `4f17eb3` (see the verification list
+below). There is no open PR you need to know about at the time of writing —
 but check, because that sentence is the one that rots: `gh pr list` and
 `gh run list --branch main --limit 1`.
 
@@ -425,17 +426,15 @@ public and has never been deployed.** Deploying it now would publish
 should be. Nothing in CI enforces this — it is a content gate, and this
 paragraph is the enforcement.
 
-### Two things left undone on TEST
+### ~~Two things left undone on TEST~~ — both done, reported 2026-09-04
 
-1. **`config.php` is still on the TEST server** and still holds live DB
-   credentials from the old app. It is a PROTECTED basename, so no tool will
-   remove it — delete it by hand, once, in an FTP client. Nothing reads it; the
-   SPA fallback already makes it unreachable over HTTP.
-2. **Nobody has logged in through a browser yet.** The API answers correctly and
-   guests get 401, but the full Sanctum cookie round-trip — and the check that
-   an admin is *refused in place* on `/inscriptions_utilisateurs` rather than
-   bounced to login — has not been exercised by a human. Do that before trusting
-   the members' area.
+1. ~~**`config.php` is still on the TEST server**~~ — **deleted by hand** in an
+   FTP client (it is a PROTECTED basename, so no tool could have). QA and PROD
+   still have theirs — see the server table.
+2. ~~**Nobody has logged in through a browser yet.**~~ — **a human has now
+   exercised the real Sanctum cookie round-trip on TEST**, including the check
+   that an admin is *refused in place* on `/inscriptions_utilisateurs` rather
+   than bounced to login. The members' area can be trusted.
 
 ### QA and PROD are untouched, and are NOT ready
 
@@ -534,7 +533,7 @@ branch. `feat/spa-cutover` was auto-deleted on merge despite
 
 | | Runs | Notes |
 | --- | --- | --- |
-| **TEST** | `main` @ `4f17eb3` — **the SPA, with E2b** | Auto-deployed 2026-09-03 by CI on the E2b fix merge, and **verified in a browser** (list below). Note the E2b merge itself (`748241a`) did NOT deploy — its `e2e` job failed on Linux, so `deploy-test` was skipped; `4f17eb3` is what landed. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **still there — delete by hand.** Behind HTTP Basic Auth. |
+| **TEST** | `main` @ `d6d4994` — **the SPA, with E2b and the logo layout-shift fix** | Auto-deployed 2026-09-03 by CI on the PR #72 merge; E2b was **verified in a browser** at `4f17eb3` (list below). Note the E2b merge itself (`748241a`) did NOT deploy — its `e2e` job failed on Linux, so `deploy-test` was skipped. `.htaccess` carries the SPA fallback + the fixed `.php` exclusion + font headers. `api-laravel/.env` present. `config.php` **deleted by hand on 2026-09-04**, and a human has exercised the browser login round-trip. Behind HTTP Basic Auth. |
 | **QA** | pre-cutover artifact | Old `api/` and `sql/` trees, **no `api-laravel/`**, no `.sync-state.json`, **no `api-laravel/.env`** |
 | **PROD** | pre-cutover artifact | Same. `/sanctum/csrf-cookie` 404s there, so the Laravel API has never been deployed to it |
 
@@ -547,9 +546,9 @@ Consequences worth knowing before any deploy:
   deletion is authoritative and will remove the entire old tree. It will trip
   the mass-delete brake. Review a `-- --dry-run` first, then `-- --force-delete`.
   (TEST did **not** trip it: 406 stale of 6915 is under the 20% threshold.)
-- **Each server still has a dead `config.php`** holding live DB credentials. The
-  deploy never removes a protected basename, so delete it by hand, once per
-  server.
+- **QA and PROD still have a dead `config.php`** holding live DB credentials.
+  The deploy never removes a protected basename, so delete it by hand, once per
+  server. (TEST's was deleted on 2026-09-04.)
 - `robots.txt` and `deployment.json` are unreachable over HTTP on every
   environment — the fallback catch-all serves the shell for them. That is by
   design (it is what hides `api-laravel/.env`), not a regression. Verified again
