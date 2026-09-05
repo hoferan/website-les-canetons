@@ -42,7 +42,11 @@ test("the Galerie link is external and opens in a new tab", async () => {
 
 test("the auth link says Connexion when nobody is logged in", async () => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  expect(screen.getByRole("link", { name: "Connexion" })).toBeInTheDocument();
+  const link = screen.getByRole("link", { name: "Connexion" });
+  expect(link).toBeInTheDocument();
+  // Pins the destination, not just the accessible name: without this, the
+  // link could be repointed at any dead URL and this test would still pass.
+  expect(link).toHaveAttribute("href", "/login");
 });
 
 test("the auth link shows the username once logged in", async () => {

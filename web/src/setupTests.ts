@@ -37,8 +37,8 @@ afterEach(() => {
   cleanup();
 
   // Both are needed: resetHandlers() drops per-test server.use() overrides,
-  // resetMockState() clears the session and events the handlers keep in module
-  // state. Forget the second and a test that logs in leaks into the next one.
+  // resetMockState() clears the session the handlers keep in module state.
+  // Forget the second and a test that logs in leaks into the next one.
   server.resetHandlers();
   resetMockState();
 

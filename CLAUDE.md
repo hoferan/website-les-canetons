@@ -368,10 +368,9 @@ raw-SQL schema. (The Laravel *test* suite uses its own throwaway
 `laravel_api_test` database — see `api/phpunit.xml` — because `RefreshDatabase`
 drops every table.)
 
-Seeded test logins (all passwords `demo`, synthetic data only):
-- `demo.admin` — admin (manage events, view summaries)
-- `demo.moderator` — moderator (respond)
-- `demo.user` — user (respond)
+There are no seeded logins on this branch: Task 1 deleted the `users` table
+along with the old role/capability system. Seed data and demo accounts for the
+rebuilt auth model are introduced in a later task.
 
 ## Development Commands
 
@@ -415,9 +414,10 @@ A Husky pre-commit hook runs `lint-staged` on staged files.
 Web sessions have no Docker daemon. `tools/ensure-dev-stack.sh` (via the
 cross-platform `tools/ensure-dev-stack.mjs` entry) detects a web session
 (`$CLAUDE_CODE_REMOTE=true`, `docker info` failing) and stands up an equivalent
-stack natively: MariaDB via `apt`, `lescanetons` + `lescanetons_test` seeded from
-`docker/db/init/*.sql`, and `api/.env` generated from `api/.env.example` pointed
-at `127.0.0.1`. It is idempotent and a no-op when Docker is reachable. It is
+stack natively: MariaDB via `apt`, `lescanetons` + `lescanetons_test` created
+empty (Laravel's own migrations populate them), and `api/.env` generated from
+`api/.env.example` pointed at `127.0.0.1`. It is idempotent and a no-op when
+Docker is reachable. It is
 **not** run from the SessionStart hook — apt/DB provisioning would blow the hook
 timeout.
 

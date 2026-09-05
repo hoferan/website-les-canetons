@@ -54,7 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // SESSION_DRIVER=database, StartSession would read a `sessions` table
         // that does not exist yet and 500 before the middleware that would have
         // created it ever ran. Covering only `api` would have left the repair
-        // depending on some earlier page happening to fetch GET /api/events
+        // depending on some earlier page happening to fetch GET /api/config
         // first, which is likely but not guaranteed.
         //
         // FIRST IN EACH GROUP, which is load-bearing and is why these calls come

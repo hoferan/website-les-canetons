@@ -22,7 +22,10 @@ import type { ContactRequest } from "../api/generated/model";
  * unpinned title renames this export between machines.
  *
  * During the R1a rebuild this file only covers what the API still has:
- * /api/config, /api/contact, and auth (/api/login, /api/logout, /api/user).
+ * /api/config, /api/contact, and auth (/api/login, /api/logout). The real API
+ * exposes GET /api/me, not GET /api/user — this mock still answers /api/user
+ * because SessionProvider's call to it is only repointed to /api/me in a
+ * later task; until then the mock matches SessionProvider, not the real API.
  * The event/signup/response/altcha handlers and the Occasion fixture that used
  * to live here modeled the domain Task 1 deleted; later tasks bring their
  * mocked replacements back alongside the real endpoints.

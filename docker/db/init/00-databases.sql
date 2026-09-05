@@ -1,8 +1,9 @@
 -- Databases beyond the one the image creates from MYSQL_DATABASE (lescanetons).
 --
--- Runs before 01-schema.sql (the entrypoint applies *.sql in filename order).
--- Each file is fed with --database=$MYSQL_DATABASE, so a USE here does not leak
--- into the later files: they still populate lescanetons as intended.
+-- The entrypoint applies *.sql in filename order; this is the only file here
+-- now that migrations own the schema (Laravel's `migrate` populates
+-- lescanetons instead of a checked-in 01-schema.sql). Fed with
+-- --database=$MYSQL_DATABASE, so a USE here does not leak into any later file.
 --
 -- laravel_api_test backs the Laravel API's PHPUnit suite (api/phpunit.xml).
 -- It MUST stay a dedicated database: those tests use RefreshDatabase, which

@@ -4,7 +4,8 @@
 # docker compose (site + MariaDB via Apache/php:8.4-fpm) is how this repo
 # normally does local dev, but Claude Code web sessions have no Docker daemon.
 # When that's the case, this stands up an equivalent stack natively: MariaDB
-# directly, both databases seeded, and api/.env pointing at it.
+# directly, the databases created (empty — Laravel's migrations populate
+# them), and api/.env pointing at it.
 #
 # Invoked on-demand by the DB-dependent npm scripts (via ensure-dev-stack.mjs),
 # NOT from the SessionStart hook — session startup must stay fast and must not
@@ -51,12 +52,15 @@ fi
 sudo mysql -e "
   CREATE DATABASE IF NOT EXISTS lescanetons CHARACTER SET utf8mb4;
   CREATE DATABASE IF NOT EXISTS lescanetons_test CHARACTER SET utf8mb4;
+  CREATE DATABASE IF NOT EXISTS laravel_api_test CHARACTER SET utf8mb4;
   CREATE USER IF NOT EXISTS 'canetons'@'127.0.0.1' IDENTIFIED BY 'canetons';
   CREATE USER IF NOT EXISTS 'canetons'@'localhost' IDENTIFIED BY 'canetons';
   GRANT ALL PRIVILEGES ON lescanetons.* TO 'canetons'@'127.0.0.1';
   GRANT ALL PRIVILEGES ON lescanetons.* TO 'canetons'@'localhost';
   GRANT ALL PRIVILEGES ON lescanetons_test.* TO 'canetons'@'127.0.0.1';
   GRANT ALL PRIVILEGES ON lescanetons_test.* TO 'canetons'@'localhost';
+  GRANT ALL PRIVILEGES ON laravel_api_test.* TO 'canetons'@'127.0.0.1';
+  GRANT ALL PRIVILEGES ON laravel_api_test.* TO 'canetons'@'localhost';
   FLUSH PRIVILEGES;
 "
 
