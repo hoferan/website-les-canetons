@@ -323,6 +323,20 @@ In `api/config/app.php` delete the `souper_signup_enabled` key. In
 `ALTCHA_HMAC_SECRET` line. In `api/phpunit.xml` delete the
 `SOUPER_SIGNUP_ENABLED` env element and its comment.
 
+**Leave `CACHE_STORE=database` in `phpunit.xml` alone.** Its comment justifies
+it by `App\Support\ChallengeGuard`, which this task deletes, so it now looks
+like dead configuration — it is not. Task 6's login throttle runs on the
+`RateLimiter`, which is backed by the cache, and switching this to `array`
+would make the throttling tests pass per-process while proving nothing about a
+real multi-worker server. Replace the stale comment with:
+
+```xml
+        <!-- database, not array: the login throttle (AuthController) runs on
+             the RateLimiter, which is cache-backed. The array store is
+             per-process, so it would let a throttled attempt through on a real
+             multi-worker server while the suite stayed green. -->
+```
+
 In `api/app/Http/Controllers/Api/ConfigController.php`, reduce `__invoke()` to:
 
 ```php
@@ -2285,12 +2299,15 @@ class AccessIntegrityTest extends TestCase
 
     public function test_a_member_without_the_permission_may_be_deleted_freely(): void
     {
+        // The assertion IS that the call returns rather than throwing.
+        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
+        // would only be silencing PHPUnit's risky-test warning.
+        $this->expectNotToPerformAssertions();
+
         $actor = $this->member('actor', $this->admins);
         $target = $this->member('target', $this->plain);
 
         AccessIntegrity::assertMayDelete($actor, $target);
-
-        $this->assertTrue(true, 'no exception thrown');
     }
 
     public function test_the_last_administrator_cannot_be_demoted(): void
@@ -2318,6 +2335,8 @@ class AccessIntegrityTest extends TestCase
 
     public function test_keeping_administration_while_adding_a_role_is_allowed(): void
     {
+        $this->expectNotToPerformAssertions();
+
         $actor = $this->member('actor', $this->admins);
 
         AccessIntegrity::assertMayReplaceRoles(
@@ -2325,8 +2344,6 @@ class AccessIntegrityTest extends TestCase
             $actor,
             [$this->admins->id, $this->plain->id],
         );
-
-        $this->assertTrue(true, 'no exception thrown');
     }
 
     public function test_a_violation_renders_as_409_in_the_error_contract(): void
