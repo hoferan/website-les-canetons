@@ -2,8 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\EffectivePermissions;
+use App\Support\Permission;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Collection;
 
 /**
  * A person associated with the band. See the members migration for why
@@ -53,5 +57,22 @@ class Member extends Authenticatable
     public function isPlayer(): bool
     {
         return $this->section_id !== null;
+    }
+
+    /** @return BelongsToMany<Role, $this> */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'member_roles');
+    }
+
+    /** @return Collection<int, Permission> */
+    public function permissions(): Collection
+    {
+        return EffectivePermissions::for($this->id);
+    }
+
+    public function hasPermission(Permission $permission): bool
+    {
+        return $this->permissions()->contains($permission);
     }
 }
