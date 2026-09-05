@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Member;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
@@ -25,7 +26,7 @@ class LoginTest extends TestCase
      */
     private function throttleKey(string $username = 'lea.keller'): string
     {
-        return 'login:'.strtolower(trim($username)).'|127.0.0.1';
+        return 'login:'.Str::lower(trim($username)).'|127.0.0.1';
     }
 
     /**
@@ -122,28 +123,31 @@ class LoginTest extends TestCase
     }
 
     /**
-     * Renamed from test_a_member_without_a_username_cannot_log_in(), whose
-     * inert Member::create() (no username set, but never queried either) was
-     * ballast: its 400 came purely from `required` rejecting an empty-string
-     * username and would have passed against an empty database. This tests
-     * the property the old name claimed: a member who was never assigned a
-     * username stays unreachable, for ANY guessed username — not merely an
-     * empty one.
+     * members.password is nullable by design (see the members migration): a
+     * member row is a PERSON, not an account, so an admin can create one with
+     * a username assigned but no password yet issued. Auth::attempt() DOES
+     * find this row (unlike the null-username case, which is a WHERE that
+     * can never match), so this exercises the hasher path with a null hash —
+     * exactly the shape of bug this task was created to eliminate, so this
+     * must come back as the same generic 401 as every other failure, never a
+     * 500, and never a distinct code (a distinct code would let an attacker
+     * enumerate which accounts still lack a password).
      */
-    public function test_a_member_with_a_null_username_cannot_be_logged_into(): void
+    public function test_a_member_with_a_username_but_no_password_cannot_log_in(): void
     {
         Member::create([
             'first_name' => 'Petit',
             'last_name' => 'Canard',
-            'password' => 'secret123',
-            // username left unset (NULL): this member has never been given a
-            // login and must not be matchable by any credential guess.
+            'username' => 'petit.canard',
+            'password' => null,
         ]);
 
         $this->spaPostJson('/api/login', [
-            'username' => 'anything',
-            'password' => 'secret123',
-        ])->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
+            'username' => 'petit.canard',
+            'password' => 'whatever',
+        ])->assertStatus(401)
+            ->assertJson(['code' => 'invalid_credentials'])
+            ->assertJsonMissingPath('exception');
 
         $this->assertGuest();
     }
@@ -228,7 +232,11 @@ class LoginTest extends TestCase
             ]);
         }
 
-        $this->assertGreaterThan(800, RateLimiter::availableIn($this->throttleKey()));
+        // Both bounds matter: the floor alone would also pass at 90000
+        // seconds despite the test's name promising fifteen minutes (900s).
+        $availableIn = RateLimiter::availableIn($this->throttleKey());
+        $this->assertGreaterThan(800, $availableIn);
+        $this->assertLessThan(1000, $availableIn);
     }
 
     public function test_a_successful_login_clears_the_counter(): void
