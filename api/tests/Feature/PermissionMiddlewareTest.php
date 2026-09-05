@@ -48,7 +48,15 @@ class PermissionMiddlewareTest extends TestCase
 
     public function test_a_member_without_the_permission_gets_403(): void
     {
+        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
+        // `api` group) reads auth.started_at off the request's session, so
+        // every actingAs() call needs both the Origin header (which makes
+        // Sanctum treat this as a stateful frontend request and actually
+        // attach a session store to the request) and the stamp itself — see
+        // MeTest for the full explanation.
         $this->actingAs($this->memberWith(null))
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
             ->getJson('/api/_test/guarded')
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
@@ -57,6 +65,8 @@ class PermissionMiddlewareTest extends TestCase
     public function test_a_member_with_the_permission_passes(): void
     {
         $this->actingAs($this->memberWith(Permission::EventsManage))
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
             ->getJson('/api/_test/guarded')
             ->assertOk()
             ->assertJson(['ok' => true]);
@@ -65,6 +75,8 @@ class PermissionMiddlewareTest extends TestCase
     public function test_a_different_permission_does_not_open_the_route(): void
     {
         $this->actingAs($this->memberWith(Permission::MembersManage))
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
             ->getJson('/api/_test/guarded')
             ->assertStatus(403);
     }
@@ -78,6 +90,8 @@ class PermissionMiddlewareTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         $this->actingAs($this->memberWith(Permission::EventsManage))
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
             ->getJson('/api/_test/typo');
     }
 }

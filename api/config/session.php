@@ -32,7 +32,21 @@ return [
     |
     */
 
+    /*
+     * IDLE lifetime. Refreshed on every request, so on its own a daily user's
+     * session never ends — see 'absolute_lifetime' below.
+     */
     'lifetime' => (int) env('SESSION_LIFETIME', 120),
+
+    /*
+     * ABSOLUTE lifetime, in minutes. Not a Laravel setting: it is read by
+     * App\Http\Middleware\EnforceAbsoluteSessionLifetime, which ends any
+     * session that began longer ago than this however active it has been.
+     * Twelve hours — long enough that nobody is logged out mid-rehearsal,
+     * short enough that a session on a shared family device does not last a
+     * season.
+     */
+    'absolute_lifetime' => (int) env('SESSION_ABSOLUTE_LIFETIME', 720),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
@@ -169,7 +183,13 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    /*
+     * Defaults to TRUE, unlike Laravel's packaged config. Every real server is
+     * HTTPS; only local http dev needs it off, and docker/api/env.docker sets
+     * SESSION_SECURE_COOKIE=false for exactly that. Defaulting the other way
+     * means a forgotten .env key silently ships a cookie over plaintext.
+     */
+    'secure' => filter_var(env('SESSION_SECURE_COOKIE', true), FILTER_VALIDATE_BOOLEAN),
 
     /*
     |--------------------------------------------------------------------------
@@ -199,7 +219,14 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'lax'),
+    /*
+     * strict, not Laravel's lax. The SPA and the API are same-origin, and the
+     * shell is a static file that needs no cookie to load — every request that
+     * must carry the session is an XHR from that already-loaded page, which is
+     * same-site. So strict costs nothing here and closes the cross-site cases
+     * lax leaves open.
+     */
+    'same_site' => env('SESSION_SAME_SITE', 'strict'),
 
     /*
     |--------------------------------------------------------------------------

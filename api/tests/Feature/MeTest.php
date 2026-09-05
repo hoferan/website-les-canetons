@@ -41,7 +41,19 @@ class MeTest extends TestCase
         // production always hydrates the authenticated user from the row.
         $member = Member::find($member->id);
 
-        $response = $this->actingAs($member)->getJson('/api/me')->assertOk();
+        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
+        // `api` group) reads auth.started_at off the request's session, so
+        // every actingAs() call against /api/* now needs both: the Origin
+        // header is what makes Sanctum's EnsureFrontendRequestsAreStateful
+        // treat this as a stateful frontend request and actually attach a
+        // session store to the request (fromFrontend() checks Origin/Referer);
+        // withSession() alone only seeds the container's session singleton,
+        // not this simulated request's own session. Mirrors
+        // LoginTest::spaPostJson().
+        $response = $this->actingAs($member)
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
+            ->getJson('/api/me')->assertOk();
 
         $response->assertJson([
             'id' => $member->id,
@@ -74,7 +86,10 @@ class MeTest extends TestCase
             'password' => 'secret123',
         ]);
 
-        $body = $this->actingAs($member->fresh())->getJson('/api/me')->assertOk()->json();
+        $body = $this->actingAs($member->fresh())
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
+            ->getJson('/api/me')->assertOk()->json();
 
         $this->assertArrayNotHasKey('password', $body);
         $this->assertStringNotContainsString('argon2', json_encode($body));
@@ -89,7 +104,10 @@ class MeTest extends TestCase
             'password' => 'secret123',
         ]);
 
-        $response = $this->actingAs($member->fresh())->getJson('/api/me')->assertOk();
+        $response = $this->actingAs($member->fresh())
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
+            ->getJson('/api/me')->assertOk();
 
         // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
         // regress to null and still satisfy an expectation of false. assertSame()
@@ -110,7 +128,10 @@ class MeTest extends TestCase
             'password' => 'secret123',
         ]);
 
-        $this->actingAs($member->fresh())->getJson('/api/me')
+        $this->actingAs($member->fresh())
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
+            ->getJson('/api/me')
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');
     }

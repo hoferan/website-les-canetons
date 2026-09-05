@@ -63,6 +63,12 @@ class AuthController extends Controller
         // privilege change.
         $request->session()->regenerate();
 
+        // The absolute-lifetime clock. Written after regenerate(), because
+        // regenerating migrates the session data and writing before it would
+        // work but reads as though the order did not matter — it does the day
+        // someone switches to a driver that does not migrate.
+        $request->session()->put('auth.started_at', time());
+
         /** @var Member $member */
         $member = Auth::user();
         $member->forceFill(['last_login_at' => now()])->save();

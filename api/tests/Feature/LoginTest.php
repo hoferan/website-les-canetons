@@ -262,8 +262,13 @@ class LoginTest extends TestCase
     {
         $member = $this->member();
 
+        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
+        // `api` group) reads auth.started_at off the request's session, so
+        // this actingAs() call needs the stamp too — see MeTest for the full
+        // explanation. The Origin header was already here.
         $this->actingAs($member)
             ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
             ->postJson('/api/logout')
             ->assertOk()->assertJson(['ok' => true]);
 
