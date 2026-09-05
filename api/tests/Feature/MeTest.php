@@ -48,9 +48,16 @@ class MeTest extends TestCase
             'username' => 'lea.keller',
             'firstName' => 'Léa',
             'lastName' => 'Keller',
-            'isPlayer' => true,
-            'mustChangePassword' => false,
         ]);
+
+        // assertJson() above compares LOOSELY (PHPUnit array-subset semantics
+        // under `==`), and in PHP `null == false` — so a boolean field that
+        // regressed to null would still satisfy an `assertJson([... => false])`
+        // expectation. Pinning both booleans here with assertSame() (identity
+        // comparison) is what actually pins the contract; do not fold these
+        // back into the assertJson() block above.
+        $this->assertSame(true, $response->json('isPlayer'));
+        $this->assertSame(false, $response->json('mustChangePassword'));
 
         $this->assertEqualsCanonicalizing(
             ['events.manage', 'attendance.view_all'],
@@ -82,9 +89,12 @@ class MeTest extends TestCase
             'password' => 'secret123',
         ]);
 
-        $this->actingAs($member->fresh())->getJson('/api/me')
-            ->assertOk()
-            ->assertJson(['isPlayer' => false]);
+        $response = $this->actingAs($member->fresh())->getJson('/api/me')->assertOk();
+
+        // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
+        // regress to null and still satisfy an expectation of false. assertSame()
+        // is the identity comparison that actually pins the boolean contract.
+        $this->assertSame(false, $response->json('isPlayer'));
     }
 
     public function test_the_response_is_never_cached(): void
