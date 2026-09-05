@@ -72,6 +72,12 @@ final class AccessIntegrity
      * True when removing these members would leave nobody holding
      * members.manage.
      *
+     * This also returns true when nobody holds members.manage in the first
+     * place — a state R1b's controller cannot reach (it is gated on
+     * members.manage), but a seeder or console command calling into
+     * AccessIntegrity against such a database would find every deletion
+     * refused. Not a guarantee that removing these members is the cause.
+     *
      * @param  array<int, int>  $excludedMemberIds
      */
     private static function wouldOrphanAdministration(array $excludedMemberIds): bool

@@ -127,6 +127,46 @@ class AccessIntegrityTest extends TestCase
         }
     }
 
+    public function test_a_sole_administrator_demoting_themselves_gets_the_last_administrator_code(): void
+    {
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($only, $only, [$this->plain->id]);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            // Both conditions apply here: $only is the sole administrator,
+            // AND is acting on themselves. The orphan check must win —
+            // see the ordering comment in assertMayReplaceRoles().
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_replacing_with_an_empty_role_list_on_the_sole_administrator_is_refused(): void
+    {
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($only, $only, []);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_replacing_with_an_empty_role_list_on_a_non_administrator_is_allowed(): void
+    {
+        // The assertion IS that the call returns rather than throwing.
+        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
+        // would only be silencing PHPUnit's risky-test warning.
+        $this->expectNotToPerformAssertions();
+
+        $actor = $this->member('actor', $this->admins);
+        $target = $this->member('target', $this->plain);
+
+        AccessIntegrity::assertMayReplaceRoles($actor, $target, []);
+    }
+
     public function test_keeping_administration_while_adding_a_role_is_allowed(): void
     {
         $this->expectNotToPerformAssertions();
