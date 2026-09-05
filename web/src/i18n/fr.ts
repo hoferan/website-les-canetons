@@ -17,7 +17,7 @@ export const fr = {
     not_authenticated: "Non authentifié",
     access_denied: "Accès refusé",
     invalid_credentials: "Nom d'utilisateur ou mot de passe incorrect",
-    too_many_attempts: "Trop de tentatives. Veuillez réessayer dans une minute.",
+    too_many_attempts: "Trop de tentatives. Veuillez réessayer plus tard.",
     event_not_found: "Événement introuvable",
     invalid_session: "Session invalide",
     service_unavailable: "Service indisponible",

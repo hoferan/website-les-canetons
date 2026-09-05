@@ -9,12 +9,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     /**
-     * Five failures per username+IP, then a one-minute lock that grows with
-     * every further attempt.
+     * Five failures per username+IP, then a flat lock of DECAY_SECONDS measured
+     * from the FIRST failure — it does not grow. RateLimiter::hit() calls
+     * cache->add() for both the attempt counter and its `:timer`, which is a
+     * no-op once either key already exists, so the TTL is set once, on the
+     * first hit, and never extended by subsequent ones. Attempts made WHILE
+     * throttled are not counted either: login() returns 429 before ever
+     * calling hit(), so hammering a locked account does not push the lock out
+     * further.
      *
      * Keyed on BOTH so that neither dimension alone defeats it: per-IP only
      * lets a botnet spread attempts across addresses, per-username only lets
@@ -22,7 +29,7 @@ class AuthController extends Controller
      */
     private const MAX_ATTEMPTS = 5;
 
-    private const DECAY_SECONDS = 60;
+    private const DECAY_SECONDS = 900;
 
     public function login(Request $request): JsonResponse
     {
@@ -91,8 +98,16 @@ class AuthController extends Controller
         ])->header('Cache-Control', 'no-store, private');
     }
 
+    /**
+     * Normalises the username before keying, exactly as Laravel's own
+     * LoginRequest::throttleKey() does: members.username collates
+     * utf8mb4_unicode_ci (case-insensitive, PAD SPACE), so the database
+     * authenticates spellings that a raw concatenation would count as
+     * separate accounts — letting an attacker exhaust the limit as
+     * "lea.keller" and then walk straight past it as "LEA.Keller".
+     */
     private function throttleKey(string $username, ?string $ip): string
     {
-        return 'login:'.$username.'|'.($ip ?? 'unknown');
+        return 'login:'.Str::lower(trim($username)).'|'.($ip ?? 'unknown');
     }
 }

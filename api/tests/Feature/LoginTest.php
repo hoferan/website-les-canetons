@@ -18,9 +18,14 @@ class LoginTest extends TestCase
         RateLimiter::clear($this->throttleKey());
     }
 
+    /**
+     * Mirrors AuthController::throttleKey()'s normalisation, so this stays the
+     * same bucket the controller reads/clears no matter the case or padding a
+     * test (or a future caller) spells the username with.
+     */
     private function throttleKey(string $username = 'lea.keller'): string
     {
-        return 'login:'.$username.'|127.0.0.1';
+        return 'login:'.strtolower(trim($username)).'|127.0.0.1';
     }
 
     /**
@@ -81,7 +86,12 @@ class LoginTest extends TestCase
             ->assertJson(['code' => 'invalid_credentials'])
             // Ported from the now-deleted LoginSmokeTest: pins the {error, code,
             // fields[]} contract, not Laravel's native {message, exception, trace}.
-            ->assertJsonMissing(['exception']);
+            //
+            // assertJsonMissing() searches for 'exception' as a VALUE, never as a
+            // key, so a body containing "exception":"QueryException" would still
+            // pass it — assertJsonMissingPath() is what actually checks the key
+            // is absent.
+            ->assertJsonMissingPath('exception');
 
         $this->assertGuest();
     }
@@ -100,18 +110,40 @@ class LoginTest extends TestCase
             'password' => 'wrong',
         ]);
 
+        // Concrete assertions, not just equality: two responses that were both
+        // e.g. a 500 with no `code` would satisfy assertSame() below without
+        // either actually being the generic-refusal contract this test exists
+        // to pin.
+        $unknown->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
+        $wrong->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
+
         $this->assertSame($unknown->status(), $wrong->status());
         $this->assertSame($unknown->json('code'), $wrong->json('code'));
     }
 
-    public function test_a_member_without_a_username_cannot_log_in(): void
+    /**
+     * Renamed from test_a_member_without_a_username_cannot_log_in(), whose
+     * inert Member::create() (no username set, but never queried either) was
+     * ballast: its 400 came purely from `required` rejecting an empty-string
+     * username and would have passed against an empty database. This tests
+     * the property the old name claimed: a member who was never assigned a
+     * username stays unreachable, for ANY guessed username — not merely an
+     * empty one.
+     */
+    public function test_a_member_with_a_null_username_cannot_be_logged_into(): void
     {
-        Member::create(['first_name' => 'Petit', 'last_name' => 'Canard']);
+        Member::create([
+            'first_name' => 'Petit',
+            'last_name' => 'Canard',
+            'password' => 'secret123',
+            // username left unset (NULL): this member has never been given a
+            // login and must not be matchable by any credential guess.
+        ]);
 
         $this->spaPostJson('/api/login', [
-            'username' => '',
-            'password' => 'anything',
-        ])->assertStatus(400)->assertJson(['code' => 'validation_failed']);
+            'username' => 'anything',
+            'password' => 'secret123',
+        ])->assertStatus(401)->assertJson(['code' => 'invalid_credentials']);
 
         $this->assertGuest();
     }
@@ -152,6 +184,51 @@ class LoginTest extends TestCase
         ])->assertStatus(429);
 
         $this->assertGuest();
+    }
+
+    public function test_the_throttle_survives_a_different_case_or_padding(): void
+    {
+        // Proves the throttle key is normalised: members.username collates
+        // utf8mb4_unicode_ci (case-insensitive, PAD SPACE), so the database
+        // authenticates spellings a raw concatenation would count as separate
+        // RateLimiter buckets. Without Str::lower(trim(...)) in throttleKey(),
+        // an attacker who exhausts the limit as "lea.keller" walks straight
+        // past it by resubmitting "LEA.Keller" — even with the CORRECT
+        // password.
+        $this->member();
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->spaPostJson('/api/login', [
+                'username' => 'lea.keller',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->spaPostJson('/api/login', [
+            'username' => 'LEA.Keller',
+            'password' => 'secret123',
+        ])->assertStatus(429)->assertJson(['code' => 'too_many_attempts']);
+
+        $this->assertGuest();
+    }
+
+    public function test_the_lockout_decay_window_is_fifteen_minutes(): void
+    {
+        // Pins the decay window itself, not merely that SOME lock exists —
+        // RateLimiter::hit()'s cache->add() sets the TTL once, on the first
+        // failure, and never extends it, so a DECAY_SECONDS regression (e.g.
+        // back to 60, or to 0) would still throttle the very next request and
+        // slip past every other test here.
+        $this->member();
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->spaPostJson('/api/login', [
+                'username' => 'lea.keller',
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->assertGreaterThan(800, RateLimiter::availableIn($this->throttleKey()));
     }
 
     public function test_a_successful_login_clears_the_counter(): void
