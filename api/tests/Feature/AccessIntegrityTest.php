@@ -68,7 +68,13 @@ class AccessIntegrityTest extends TestCase
             AccessIntegrity::assertMayDelete($only, $only);
             $this->fail('Expected AccessIntegrityViolation');
         } catch (AccessIntegrityViolation $e) {
-            $this->assertSame('cannot_remove_last_administrator', $e->code);
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+
+            // Exception::$code is inherited, untyped, and expected by the
+            // wider PHP ecosystem to stay an int — it must NOT be shadowed
+            // with the machine token above. Pins the fix; don't "simplify"
+            // the property back to `code`.
+            $this->assertSame(0, $e->getCode());
         }
     }
 
@@ -81,7 +87,7 @@ class AccessIntegrityTest extends TestCase
             AccessIntegrity::assertMayDelete($actor, $actor);
             $this->fail('Expected AccessIntegrityViolation');
         } catch (AccessIntegrityViolation $e) {
-            $this->assertSame('cannot_delete_self', $e->code);
+            $this->assertSame('cannot_delete_self', $e->errorCode);
         }
     }
 
@@ -117,7 +123,7 @@ class AccessIntegrityTest extends TestCase
             AccessIntegrity::assertMayReplaceRoles($actor, $actor, [$this->plain->id]);
             $this->fail('Expected AccessIntegrityViolation');
         } catch (AccessIntegrityViolation $e) {
-            $this->assertSame('cannot_demote_self', $e->code);
+            $this->assertSame('cannot_demote_self', $e->errorCode);
         }
     }
 

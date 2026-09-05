@@ -14,23 +14,22 @@ use RuntimeException;
  */
 final class AccessIntegrityViolation extends RuntimeException
 {
-    /**
-     * Untyped and NOT `readonly`, deliberately, unlike everywhere else in this
-     * codebase: `\Exception` already declares `protected $code` (untyped, no
-     * default type, mutable), and PHP 8.4 fatally refuses a subclass that
-     * redeclares an inherited property with a type or with `readonly` added —
-     * "Cannot redeclare non-readonly property Exception::$code as readonly",
-     * and the same failure for adding a plain `string` type with no `readonly`
-     * at all. Widening visibility to `public` is the only change PHP accepts.
-     * The property is still set exactly once, in the constructor below, and
-     * never written again — that is the actual contract, just not one PHP's
-     * `readonly` keyword can express here.
-     */
-    public $code;
-
-    public function __construct(string $code, string $message)
-    {
-        $this->code = $code;
+    public function __construct(
+        /**
+         * Deliberately NOT named `code`: `\Exception` already declares
+         * `protected $code` (untyped, no default type, mutable), and PHP 8.4
+         * fatally refuses a subclass that redeclares an inherited property
+         * with a type or with `readonly` added. Beyond the PHP restriction,
+         * the wider PHP ecosystem — loggers, error handlers, monitoring
+         * integrations — expects `Exception::getCode()` to return an int;
+         * shadowing it with a machine token would silently break that
+         * contract for anything that never touches this app's own renderer.
+         * A distinct property name buys both a typed `readonly` property and
+         * a correct, untouched `getCode()`.
+         */
+        public readonly string $errorCode,
+        string $message,
+    ) {
         parent::__construct($message);
     }
 }

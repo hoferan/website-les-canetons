@@ -163,7 +163,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // invariant — see App\Support\AccessIntegrity. Registered before the
         // catch-all HttpException closure below so the specific case wins.
         $exceptions->render(fn (AccessIntegrityViolation $e, Request $request) => $request->is('api/*')
-            ? ApiError::json(409, $e->code, $e->getMessage())
+            ? ApiError::json(409, $e->errorCode, $e->getMessage())
             : null);
 
         // 419/CSRF. Same prepareException() trap as the 403 above, but worse:
