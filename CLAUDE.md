@@ -16,7 +16,7 @@ Two applications, one origin, one repository:
   **Tailwind 4**. Data comes from the API through a **generated** client
   (OpenAPI → orval → TanStack Query hooks). The build output *is* the deployed
   document root: `index.html` plus hashed bundles under `assets/`.
-- **`api/` — Laravel 11**, which owns the whole JSON API and the database
+- **`api/` — Laravel 13** (`composer.json` requires `^13.8`), which owns the whole JSON API and the database
   schema. Its own Composer project (`api/composer.json`, `api/vendor/`, its own
   tests and migrations), sharing the database rather than having one of its own.
   Deployed as `api-laravel/` inside the document root.

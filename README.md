@@ -63,7 +63,7 @@ npm run dev:down  # stop
 
 ```
 web/           React + TypeScript SPA (Vite, Tailwind). The public site and members' area.
-api/            Laravel 11 — the whole JSON API and the database schema. Its own Composer project.
+api/            Laravel 13 — the whole JSON API and the database schema. Its own Composer project.
 dist/build/     Generated FTP deploy payload (npm run build). Git-ignored; never hand-edited.
 config/htaccess/ The site .htaccess template, merged per environment by tools/build-overlays.mjs
 docker/         Local dev stack (web Dockerfile, DB schema + synthetic seed)

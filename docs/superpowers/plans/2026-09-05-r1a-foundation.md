@@ -13,7 +13,7 @@ account. Authorization reads a fixed `Permission` enum in code, granted only
 through editable `roles`. Auth stays cookie-session (Sanctum SPA mode), hardened
 with argon2id, login throttling, and immediate session revocation.
 
-**Tech Stack:** Laravel 11, PHP 8.4, MariaDB 10.3, PHPUnit, Laravel Pint.
+**Tech Stack:** Laravel 13 (see composer.json `^13.8`), PHP 8.4, MariaDB 10.3, PHPUnit, Laravel Pint.
 
 **Source spec:** `docs/superpowers/specs/2026-09-05-rebuild-design.md`
 
