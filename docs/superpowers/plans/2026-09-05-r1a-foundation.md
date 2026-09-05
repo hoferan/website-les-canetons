@@ -48,23 +48,63 @@ pretending otherwise would mean carrying two member tables at once.
 
 ## Running the tests
 
-The Laravel suite needs a live database:
+Every task below writes its test command in the **Docker** form:
 
 ```bash
-docker compose exec -w /var/www/html/api-laravel web php artisan test
+docker compose exec -w /var/www/html/api-laravel web php artisan test --filter=SomeTest
 ```
 
-In Git Bash prefix with `MSYS_NO_PATHCONV=1`. In a Claude Code **web session**
-there is no Docker; run `npm run websession:init` first (installs MariaDB via
-apt, seeds `lescanetons` + `lescanetons_test`, writes `api/.env`, runs
-`composer install`), then:
+In Git Bash prefix that with `MSYS_NO_PATHCONV=1`, or the `-w` argument is
+rewritten to a Windows path and Docker rejects it. PowerShell is unaffected.
+
+### In a Claude Code web session, substitute this everywhere
+
+There is no Docker daemon. **CLAUDE.md says the Laravel suite cannot run in a
+web session; that is out of date — it can**, and this recipe was verified on
+2026-09-05 (238 tests, 730 assertions, 9.3s). One-time setup:
 
 ```bash
-cd api && php artisan test
+npm run websession:init          # npm install; MariaDB via apt; seeds lescanetons*
+cd api && composer install       # api/vendor/ is not committed
+php artisan key:generate         # ensure-dev-stack leaves APP_KEY empty without vendor/
 ```
 
-`api/vendor/` is not committed. If it is missing, `composer install` inside
-`api/` must run before any test command.
+`npm run websession:init` does **not** create the database `phpunit.xml` names,
+so create it once by hand:
+
+```bash
+mariadb -uroot -e "CREATE DATABASE IF NOT EXISTS laravel_api_test CHARACTER SET utf8mb4;
+  GRANT ALL ON laravel_api_test.* TO 'canetons'@'localhost';
+  GRANT ALL ON laravel_api_test.* TO 'canetons'@'127.0.0.1';
+  FLUSH PRIVILEGES;"
+```
+
+Then every `docker compose exec … php artisan test …` in this plan becomes:
+
+```bash
+cd api && DB_HOST=127.0.0.1 php artisan test --filter=SomeTest
+```
+
+`DB_HOST` must be overridden because `api/phpunit.xml` hardcodes `DB_HOST=db`,
+the **Docker service name**, which does not resolve natively. PHPUnit's `<env>`
+elements do not carry `force="true"`, so an already-set environment variable
+wins — which is what makes the override work at all.
+
+### What a native green run does and does not prove
+
+`apt` installs **MariaDB 10.11**; production and the Docker stack are **10.3**.
+A green native run is therefore weaker evidence than a green Docker run, and
+anything touching SQL modes, `enum` or strict-mode behaviour should be
+re-checked in Docker before it is called done.
+
+Two things the native stack cannot do at all:
+
+- **`npm run smoke`** and any browser check — those need Apache serving
+  `dist/build/` on :8090, which is the Docker `web` service.
+- **Task 11 Step 7 and Task 12 Step 9**, both of which require a real browser
+  against :8090. Leave them unticked in a web session and say so; do not mark
+  them done off a passing suite. This project has already shipped auth changes
+  that passed every test and failed in Chrome.
 
 ## Non-goals for R1a
 
