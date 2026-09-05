@@ -35,7 +35,7 @@ import type { AuthMe200, ContactRequest } from "../api/generated/model";
 // drifting from the real contract.
 type MockUser = AuthMe200;
 
-const USERS: Record<string, MockUser> = {
+const USERS = {
   // Organises, does not play — mirrors DevSeeder's demo.direction exactly.
   "demo.direction": {
     id: 1,
@@ -79,7 +79,7 @@ const USERS: Record<string, MockUser> = {
       "registrations.view",
     ],
   },
-};
+} satisfies Record<string, MockUser>;
 
 /**
  * The mocked session, persisted per tab.
@@ -189,7 +189,11 @@ const overrides = [
 
   http.post("/api/login", async ({ request }) => {
     const body = (await request.json()) as { username?: string; password?: string };
-    const user = body.username ? USERS[body.username] : undefined;
+    // Unlike setMockUser's test seam, this handler stands in for a real login
+    // request: the username is untyped input from the request body, so it is
+    // deliberately looked up against USERS as a plain string-indexed record
+    // rather than against the literal key union `satisfies` gives USERS.
+    const user = body.username ? (USERS as Record<string, MockUser>)[body.username] : undefined;
     if (!user || body.password !== "demo") {
       return HttpResponse.json(
         { error: "Incorrect username or password", code: "invalid_credentials", fields: [] },

@@ -368,9 +368,24 @@ raw-SQL schema. (The Laravel *test* suite uses its own throwaway
 `laravel_api_test` database — see `api/phpunit.xml` — because `RefreshDatabase`
 drops every table.)
 
-There are no seeded logins on this branch: Task 1 deleted the `users` table
-along with the old role/capability system. Seed data and demo accounts for the
-rebuilt auth model are introduced in a later task.
+**Seeded members come from `api/database/seeders/DevSeeder.php`.** There are
+four seeded members; three have logins (all password `demo`), one deliberately
+has no account at all. Describe them by what they can **do** — roles are now
+editable data that group permissions, and there is no per-user role string to
+name instead:
+
+- `demo.direction` (Dominique Direction) — holds the `direction` role
+  (`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
+  `members.manage`, `registrations.view`). Has no section, so is not in any
+  register and never appears in an attendance list: organises, does not play.
+- `demo.player` (Perrine Player) — plays in Clarinettes (in the register, so
+  answerable for events) and holds no role: no manage/view permissions at all.
+- `demo.both` (Bastien Both) — plays in Trompettes **and** holds the
+  `direction` role, so answers for events for themselves *and* manages them.
+  This is the case the old either/or role matrix could not express; if
+  someone reintroduces an either/or, this member is what breaks.
+- Nadia Sansconnexion — a `Member` row with no `username`/`password` at all:
+  listed publicly (`public_visible`), never logs in.
 
 ## Development Commands
 

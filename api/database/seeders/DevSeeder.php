@@ -19,6 +19,15 @@ class DevSeeder extends Seeder
 {
     public function run(): void
     {
+        // Belt-and-braces: this seeder ships to every deployed environment
+        // (only tests/ is excluded from the build artifact, not
+        // database/seeders/), and nothing must ever be able to invoke it
+        // there and create demo.* accounts with a known password on a real
+        // server. Nothing currently does, but this must hold regardless.
+        if (app()->isProduction()) {
+            return;
+        }
+
         $sections = collect([
             'Trompettes' => 1,
             'Trombones' => 2,
@@ -32,19 +41,28 @@ class DevSeeder extends Seeder
             ['key' => 'direction'],
             ['label_fr' => 'Team Direction'],
         );
-        $direction->syncPermissions([
-            Permission::EventsManage,
-            Permission::AttendanceViewAll,
-            Permission::AttendanceRecordForOthers,
-            Permission::MembersManage,
-            Permission::RegistrationsView,
-        ]);
+        // Seed permissions only when this role is new. syncPermissions() is
+        // an unconditional delete-then-insert, so calling it unconditionally
+        // here would silently reset a developer's hand-edited permissions on
+        // every re-seed (e.g. every `npm run dev`) — exactly the "roles are
+        // editable data" capability this rebuild exists to add.
+        if ($direction->wasRecentlyCreated) {
+            $direction->syncPermissions([
+                Permission::EventsManage,
+                Permission::AttendanceViewAll,
+                Permission::AttendanceRecordForOthers,
+                Permission::MembersManage,
+                Permission::RegistrationsView,
+            ]);
+        }
 
         $committee = Role::firstOrCreate(
             ['key' => 'committee'],
             ['label_fr' => 'Comité'],
         );
-        $committee->syncPermissions([Permission::RegistrationsView]);
+        if ($committee->wasRecentlyCreated) {
+            $committee->syncPermissions([Permission::RegistrationsView]);
+        }
 
         // Organises, does not play: no register, so never in an attendance list.
         $this->member('demo.direction', 'Dominique', 'Direction', null)

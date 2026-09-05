@@ -46,13 +46,14 @@ place first, which `npm run dev` handles for you (see [CLAUDE.md](CLAUDE.md) for
 The :8090 stack serves whatever `npm run build` last produced; it does not pick
 up source edits. That is the point — it is the parity check.
 
-Seeded test logins (synthetic data, all passwords `demo`):
+Seeded test logins (synthetic data, all passwords `demo`; a fourth member,
+Nadia Sansconnexion, is seeded with no account at all):
 
-| Username         | Role                                  |
-| ---------------- | ------------------------------------- |
-| `demo.admin`     | admin (manage events, view summaries) |
-| `demo.moderator` | moderator (respond)                   |
-| `demo.user`      | user (respond)                        |
+| Username         | What they can do                                                    |
+| ---------------- | --------------------------------------------------------------------- |
+| `demo.direction` | Holds the `direction` role: manage events, view/record attendance for others, manage members. No section, so not in any register. |
+| `demo.player`    | Plays in Clarinettes (in the register, answers for events). Holds no role. |
+| `demo.both`      | Plays in Trompettes **and** holds the `direction` role — both answers for events and manages them. |
 
 ```bash
 npm run smoke     # HTTP smoke checks against the built artifact (13 checks)

@@ -41,8 +41,13 @@ retry() {
 retry php api-laravel/artisan migrate --force
 
 # Dev-only synthetic data (sections, roles, three demo logins). DevSeeder is
-# idempotent (firstOrCreate throughout), so running it on every container
-# start is safe and never duplicates or overwrites anything real.
+# idempotent (firstOrCreate throughout) and never overwrites an existing
+# member's fields (including a hand-changed password) or re-creates a
+# hand-edited role, so running it on every container start is safe. It DOES
+# still re-attach each demo member to their intended role if you detach it by
+# hand, and it seeds a role's permissions only once, at creation — a role's
+# hand-edited permissions survive a re-seed (DevSeeder only calls
+# syncPermissions() for a role it just created).
 retry php api-laravel/artisan db:seed --force
 
 # The artisan call above ran as root (this entrypoint's own user); php-fpm

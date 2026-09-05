@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Member;
+use App\Models\Role;
 use App\Models\Section;
 use App\Support\Permission;
 use Database\Seeders\DevSeeder;
@@ -67,7 +68,27 @@ class DevSeederTest extends TestCase
     {
         $names = Section::orderBy('sort_order')->pluck('name')->all();
 
-        $this->assertSame('Trompettes', $names[0]);
-        $this->assertGreaterThanOrEqual(4, count($names));
+        $this->assertSame(['Trompettes', 'Trombones', 'Clarinettes', 'Percussions'], $names);
+        $this->assertTrue(
+            Section::where('sort_order', '!=', 0)->exists(),
+            'expected at least one section with a non-zero sort_order',
+        );
+    }
+
+    public function test_a_hand_edited_roles_permissions_survive_a_reseed(): void
+    {
+        $direction = Role::where('key', 'direction')->sole();
+
+        // Simulate a developer experimenting with a role's permissions...
+        $direction->syncPermissions([Permission::RegistrationsView]);
+
+        // ...and re-running the seeder, as `npm run dev` does on every start.
+        $this->seed(DevSeeder::class);
+
+        $this->assertSame(
+            [Permission::RegistrationsView],
+            $direction->permissions()->all(),
+            'a hand-edited role\'s permissions must survive a re-seed',
+        );
     }
 }

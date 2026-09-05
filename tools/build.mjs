@@ -92,6 +92,12 @@ const LARAVEL_BUILD_EXCLUDES = new Set([
   // weight on every deploy over a flaky FTP link.
   'tests',
   'phpunit.xml',
+  // Dev/test fixtures that create accounts with a known password (`demo`).
+  // Nothing on a server currently invokes seeders (RunPendingMigrations and
+  // POST /api/migrate both run `migrate` only), but they must never ship
+  // regardless — see DevSeeder's own production guard for the second half of
+  // this defense.
+  'database/seeders',
   // A gitignored local artifact whose bytes change on every local test run.
   // Worse than dead weight: it re-uploads on every deploy, and it makes a
   // locally-built artifact differ byte-for-byte from a CI-built one.
