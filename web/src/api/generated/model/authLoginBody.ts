@@ -6,6 +6,7 @@
  */
 
 export type AuthLoginBody = {
+  /** @maxLength 255 */
   username: string;
   password: string;
 };

@@ -1,7 +1,7 @@
 import { HttpResponse, http } from "msw";
 
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
-import type { ContactRequest } from "../api/generated/model";
+import type { AuthMe200, ContactRequest } from "../api/generated/model";
 
 /**
  * The mocked backend, so the SPA can be developed and tested with no Docker.
@@ -13,30 +13,72 @@ import type { ContactRequest } from "../api/generated/model";
  * copy fits.
  *
  * Authentication is deliberately real rather than a dev-only role switcher:
- * POST /login accepts the same three seeded accounts the Docker stack has, and
- * GET /user reports whoever logged in. So the mocked app exercises the actual
- * login flow and the actual guards — a switcher would leave both untested.
+ * POST /login accepts the same three seeded accounts DevSeeder creates
+ * (api/database/seeders/DevSeeder.php), and GET /me reports whoever logged in
+ * with the same shape AuthController::me returns. So the mocked app exercises
+ * the actual login flow and the actual guards — a switcher would leave both
+ * untested.
  *
  * Note the aggregate's name, getLesCanetonsAPIMock: orval derives it from the
  * OpenAPI document's title, which is why tools/openapi.mjs pins APP_NAME. An
  * unpinned title renames this export between machines.
  *
  * During the R1a rebuild this file only covers what the API still has:
- * /api/config, /api/contact, and auth (/api/login, /api/logout). The real API
- * exposes GET /api/me, not GET /api/user — this mock still answers /api/user
- * because SessionProvider's call to it is only repointed to /api/me in a
- * later task; until then the mock matches SessionProvider, not the real API.
- * The event/signup/response/altcha handlers and the Occasion fixture that used
- * to live here modeled the domain Task 1 deleted; later tasks bring their
- * mocked replacements back alongside the real endpoints.
+ * /api/config, /api/contact, and auth (/api/login, /api/logout, /api/me). The
+ * event/signup/response/altcha handlers and the Occasion fixture that used to
+ * live here modeled the domain Task 1 deleted; later tasks bring their mocked
+ * replacements back alongside the real endpoints.
  */
 
-type MockUser = { username: string; role: string };
+// Tied to the generated model, not retyped by hand: a shape change in
+// AuthController::me is a compile error here rather than a mock silently
+// drifting from the real contract.
+type MockUser = AuthMe200;
 
 const USERS: Record<string, MockUser> = {
-  "demo.admin": { username: "demo.admin", role: "admin" },
-  "demo.moderator": { username: "demo.moderator", role: "moderator" },
-  "demo.user": { username: "demo.user", role: "user" },
+  // Organises, does not play — mirrors DevSeeder's demo.direction exactly.
+  "demo.direction": {
+    id: 1,
+    username: "demo.direction",
+    firstName: "Dominique",
+    lastName: "Direction",
+    isPlayer: false,
+    mustChangePassword: false,
+    permissions: [
+      "events.manage",
+      "attendance.view_all",
+      "attendance.record_for_others",
+      "members.manage",
+      "registrations.view",
+    ],
+  },
+  // Plays, organises nothing.
+  "demo.player": {
+    id: 2,
+    username: "demo.player",
+    firstName: "Perrine",
+    lastName: "Player",
+    isPlayer: true,
+    mustChangePassword: false,
+    permissions: [],
+  },
+  // BOTH — the case the old role matrix could not express: an organiser who
+  // also plays. See DevSeeder's own comment for why this case matters.
+  "demo.both": {
+    id: 3,
+    username: "demo.both",
+    firstName: "Bastien",
+    lastName: "Both",
+    isPlayer: true,
+    mustChangePassword: false,
+    permissions: [
+      "events.manage",
+      "attendance.view_all",
+      "attendance.record_for_others",
+      "members.manage",
+      "registrations.view",
+    ],
+  },
 };
 
 /**
@@ -113,13 +155,9 @@ const overrides = [
   http.get("/sanctum/csrf-cookie", () => new HttpResponse(null, { status: 204 })),
 
   // Mirrors App\Http\Controllers\Api\ConfigController exactly: `env` only.
-  // features/occasion are NOT part of the real response any more — they
-  // belonged to the deleted souper-signup domain — but the generated
-  // Config200 type still declares them (api/openapi.json is stale until
-  // Task 11 regenerates it), so nothing here type-checks against that shape.
   http.get("/api/config", () => HttpResponse.json({ env: "dev" })),
 
-  http.get("/api/user", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
+  http.get("/api/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
   // Hand-written because the generated handler always succeeds, and the whole
   // point of a contact form is what it does when it does not. The required set
@@ -159,7 +197,10 @@ const overrides = [
       );
     }
     setCurrentUser(user);
-    return HttpResponse.json({ role: user.role });
+    // Deliberately no identity in this body — mirrors AuthController::login
+    // exactly, which returns only {ok: true}: the client asks GET /api/me for
+    // identity, so there is exactly one shape describing who you are.
+    return HttpResponse.json({ ok: true });
   }),
 
   http.post("/api/logout", () => {

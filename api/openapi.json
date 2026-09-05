@@ -11,81 +11,6 @@
         }
     ],
     "paths": {
-        "/altcha": {
-            "get": {
-                "operationId": "altcha",
-                "tags": [
-                    "Altcha"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "PoW cost: up to 50k client-side SHA-256 iterations (a few thousand on\naverage) \u2014 light friction per submission; 10-minute expiry.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "algorithm": {
-                                            "type": "string",
-                                            "const": "SHA-256"
-                                        },
-                                        "challenge": {
-                                            "type": "string"
-                                        },
-                                        "maxnumber": {
-                                            "type": "integer",
-                                            "const": 50000
-                                        },
-                                        "salt": {
-                                            "type": "string"
-                                        },
-                                        "signature": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "algorithm",
-                                        "challenge",
-                                        "maxnumber",
-                                        "salt",
-                                        "signature"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "string",
-                                            "const": "Service unavailable"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "const": "service_unavailable"
-                                        },
-                                        "fields": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    },
-                                    "required": [
-                                        "error",
-                                        "code",
-                                        "fields"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/login": {
             "post": {
                 "operationId": "auth.login",
@@ -100,7 +25,8 @@
                                 "type": "object",
                                 "properties": {
                                     "username": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "maxLength": 255
                                     },
                                     "password": {
                                         "type": "string"
@@ -116,25 +42,25 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Deliberately no role or permissions in this body. The client asks\nGET /api/me for identity, so there is exactly one shape describing\nwho you are and one place to change it.",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "role": {
-                                            "type": "string"
+                                        "ok": {
+                                            "type": "boolean"
                                         }
                                     },
                                     "required": [
-                                        "role"
+                                        "ok"
                                     ]
                                 }
                             }
                         }
                     },
                     "401": {
-                        "description": "One generic code, never a per-field error: that would reveal\nwhich of username/password was wrong, and enable enumeration.\nThe unconverted-row case lands here too, deliberately \u2014 the\nmember sees the same 401 as any other failure, and the detail\ngoes to the log.",
+                        "description": "One generic code, never per-field: saying which of username or\npassword was wrong enables enumeration. A member with no username\nnever reaches here \u2014 the `required` rule above rejects an empty\none, and a NULL username matches nothing.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -147,6 +73,35 @@
                                         "code": {
                                             "type": "string",
                                             "const": "invalid_credentials"
+                                        },
+                                        "fields": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "code",
+                                        "fields"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "Too many attempts"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "const": "too_many_attempts"
                                         },
                                         "fields": {
                                             "type": "array",
@@ -199,9 +154,9 @@
                 }
             }
         },
-        "/user": {
+        "/me": {
             "get": {
-                "operationId": "auth.user",
+                "operationId": "auth.me",
                 "tags": [
                     "Auth"
                 ],
@@ -213,16 +168,42 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
                                         "username": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "firstName": {
                                             "type": "string"
                                         },
-                                        "role": {
+                                        "lastName": {
                                             "type": "string"
+                                        },
+                                        "isPlayer": {
+                                            "type": "boolean"
+                                        },
+                                        "mustChangePassword": {
+                                            "type": "boolean"
+                                        },
+                                        "permissions": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
                                         }
                                     },
                                     "required": [
+                                        "id",
                                         "username",
-                                        "role"
+                                        "firstName",
+                                        "lastName",
+                                        "isPlayer",
+                                        "mustChangePassword",
+                                        "permissions"
                                     ]
                                 }
                             }
@@ -250,96 +231,10 @@
                                     "properties": {
                                         "env": {
                                             "type": "string"
-                                        },
-                                        "features": {
-                                            "type": "object",
-                                            "properties": {
-                                                "souper_signup": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "souper_signup"
-                                            ]
-                                        },
-                                        "occasion": {
-                                            "type": [
-                                                "object",
-                                                "null"
-                                            ],
-                                            "description": "Null when the feature is off, so a server with the feature\ndisabled publishes no copy about an unannounced event \u2014 matching\nthe old app, where those routes did not exist at all.",
-                                            "properties": {
-                                                "title": {
-                                                    "type": "string",
-                                                    "const": "Souper des 25 ans des Canetons"
-                                                },
-                                                "subtitle": {
-                                                    "type": "string",
-                                                    "const": "Sortie du nouveau costume \u00b7 Soir\u00e9e guggen"
-                                                },
-                                                "date": {
-                                                    "type": "string",
-                                                    "const": "2027-11-13"
-                                                },
-                                                "dateDisplay": {
-                                                    "type": "string",
-                                                    "const": "13 novembre 2027"
-                                                },
-                                                "teaser": {
-                                                    "type": "string",
-                                                    "const": "F\u00eatez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soir\u00e9e guggen."
-                                                },
-                                                "invitation": {
-                                                    "type": "string",
-                                                    "const": "Amis et familles, r\u00e9servez votre place et votre menu."
-                                                },
-                                                "maxGuests": {
-                                                    "type": "integer",
-                                                    "const": 30
-                                                },
-                                                "menus": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "value": {
-                                                                "type": "string"
-                                                            },
-                                                            "label": {
-                                                                "type": "string"
-                                                            },
-                                                            "description": {
-                                                                "type": "string"
-                                                            },
-                                                            "price": {
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "value",
-                                                            "label",
-                                                            "description",
-                                                            "price"
-                                                        ]
-                                                    }
-                                                }
-                                            },
-                                            "required": [
-                                                "title",
-                                                "subtitle",
-                                                "date",
-                                                "dateDisplay",
-                                                "teaser",
-                                                "invitation",
-                                                "maxGuests",
-                                                "menus"
-                                            ]
                                         }
                                     },
                                     "required": [
-                                        "env",
-                                        "features",
-                                        "occasion"
+                                        "env"
                                     ]
                                 }
                             }
@@ -388,698 +283,6 @@
                     }
                 }
             }
-        },
-        "/events": {
-            "get": {
-                "operationId": "event.index",
-                "description": "`?include=past` returns everything; anything else returns `date >= today`.\n\nWHY THE DEFAULT IS THE FILTERED ONE. This used to return every event ever,\nascending \u2014 \"exactly the old query\". So /sinscrire, headed \"\u00c9v\u00e9nements \u00e0\n     * venir\", listed events that had already happened at the TOP of the list,\neach with a dead \"Choix enregistr\u00e9\" button, and /planning_repet put the\nnext rehearsal at the BOTTOM of a list that grows every season. On the one\nscreen whose purpose is \"do I play Saturday?\", that was the worst defect\nin the app.\n\nThe safe answer is the default rather than something a caller opts into,\nfor the same reason this endpoint deliberately has no ?username=\nparameter: a page that forgets to ask should not be able to reintroduce\nthe bug.\n\nThe boundary is INCLUSIVE of today \u2014 an event happening today has not\nhappened yet \u2014 and `where`, not `whereDate`, so the comparison stays\nindex-friendly if `events.date` is ever indexed (it is not today, and at\nthis band's volume it does not need to be).\n\nnow() is UTC, because api/config/app.php hardcodes it and there is no\nAPP_TIMEZONE key. Fribourg is UTC+1/+2, so a UTC \"today\" LAGS local time\nand today's event stays listed for the first hour or two of tomorrow. That\nerrs in the safe direction; the dangerous direction would be hiding an\nevent before it happened, which needs UTC to run ahead of local time and\nnever does here. Do not \"fix\" this by setting APP_TIMEZONE as a side\neffect \u2014 timestamps were standardised on UTC deliberately.\n\n`response` is the CALLER'S OWN answer or null. There is deliberately no\nrequest parameter naming a user (no ?username=, no ?userId=): that\nabsence is what keeps a previously-fixed IDOR closed. The `responses`\nrelation is additionally CONSTRAINED to the caller's own user_id, so the\nrows fetched from the database cannot carry another member's answer at\nall \u2014 a mistake in the shaping code below could not leak one.\n\nEager-loaded rather than queried per event: one events query plus one\nresponses query, instead of the N+1 a per-event lookup would cost. It is\nalso closer to the old single LEFT JOIN than N queries would be. A JOIN\nwas avoided only because Eloquent would then need a raw select alias to\ncarry `answer` alongside the model's own columns; the constrained\neager-load expresses the same restriction declaratively.\n\nOPTIONAL authentication, on the DEFAULT guard. This route deliberately\ncarries no auth middleware \u2014 it must serve anonymous visitors \u2014 so\nnothing has called Auth::shouldUse() and $request->user() resolves the\ndefault `web` guard. Under Sanctum SPA mode that is exactly right:\nstatefulApi() only starts a session for a request whose referer/origin\nmatches a configured stateful domain, so the `web` guard sees a user in\nprecisely the cases Sanctum considers authenticated, and nowhere else. No\nuser resolved is not an error here; it is the anonymous case, which is a\nlegitimate 200 with `response: null` throughout.\n\n$request->user('sanctum') was tried and deliberately reverted. It behaves\nidentically over real HTTP (both were verified against a live login), but\nSanctum's RequestGuard memoizes the user it resolved, and actingAs() sets\nthe user on the `web` guard without clearing that memo \u2014 so a second\nrequest in one test kept the FIRST user. That makes the harness unable to\ndetect a cross-user leak across requests, i.e. a false negative on exactly\nthe property EventIndexTest exists to guard. The token case it would have\ncovered is hypothetical (this API is SPA cookie mode \u2014 see\nbootstrap/app.php) and its failure mode is a caller seeing no answers, not\nsomeone else's.",
-                "summary": "GET /api/events \u2014 public index, UPCOMING BY DEFAULT, ordered by date",
-                "tags": [
-                    "Event"
-                ],
-                "parameters": [
-                    {
-                        "name": "include",
-                        "in": "query",
-                        "description": "Set to `past` to receive the whole history. Any other value, or none, returns only events from today onwards.",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "example": "past"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "->all() first: an empty collection serialises as `{}` through some\npaths, and planning_repet.js calls .sort() on the parsed body.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "id": {
-                                                "type": "integer"
-                                            },
-                                            "date": {
-                                                "type": "string"
-                                            },
-                                            "title": {
-                                                "type": "string"
-                                            },
-                                            "startTime": {
-                                                "type": "string"
-                                            },
-                                            "endTime": {
-                                                "type": "string"
-                                            },
-                                            "location": {
-                                                "type": "string"
-                                            },
-                                            "attire": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            },
-                                            "weekend": {
-                                                "type": "integer"
-                                            },
-                                            "response": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            }
-                                        },
-                                        "required": [
-                                            "id",
-                                            "date",
-                                            "title",
-                                            "startTime",
-                                            "endTime",
-                                            "location",
-                                            "attire",
-                                            "weekend",
-                                            "response"
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "operationId": "event.store",
-                "summary": "POST /api/events \u2014 admin only. 201 {\"ok\":true}, matching the old endpoint",
-                "tags": [
-                    "Event"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/EventRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/events/{id}": {
-            "put": {
-                "operationId": "event.update",
-                "description": "The EventRequest is injected, so field validation still runs before the\nEvent::find() lookup below \u2014 the legacy endpoint's order, now simply a\nconsequence of Laravel resolving the FormRequest before the controller\nbody executes, rather than an explicit id check this method used to do.\n\nA well-formed id for an event that no longer exists is a 200 {\"ok\":true}\nno-op, NOT a 404: the old `UPDATE ... WHERE id=?` matched no rows and\nreported success just the same. planning_repet.js treats any non-2xx as a\nfailure and shows a French error, so turning a stale list entry into a 404\nwould be a user-visible behaviour change, out of scope for this port.",
-                "summary": "PUT /api/events/{id} \u2014 admin only. The id is a route parameter,\nconstrained to digits by whereNumber() in routes/api.php, so it is\nalways present and numeric by the time this method runs",
-                "tags": [
-                    "Event"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/EventRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "event.destroy",
-                "description": "The event's responses go with it via the FK's ON DELETE CASCADE; nothing\nhere deletes them explicitly.",
-                "summary": "DELETE /api/events/{id} \u2014 admin only. The id is a route parameter,\nconstrained to digits by whereNumber() in routes/api.php, so it is\nalways present and numeric by the time this method runs \u2014 unlike the\nlegacy query-string id, an absent or non-numeric one never reaches this\nmethod at all (the route itself 404s)",
-                "tags": [
-                    "Event"
-                ],
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/responses": {
-            "post": {
-                "operationId": "response.store",
-                "description": "THE USER COMES FROM THE SESSION, never from the request. ResponseRequest\nhas no field naming a user and nothing here reads one, so there is no way\nto answer on someone else's behalf \u2014 that absence is the endpoint's main\nsecurity property and ResponseStoreTest pins it.\n\n$request->user() on the DEFAULT guard, not $request->user('sanctum'),\nfollowing EventController::index() \u2014 see its docblock for the full\nreasoning. The hazard there is real in principle: Sanctum's RequestGuard\nmemoizes the user it resolved, RequestGuard::setRequest() does not clear\nthat memo, and actingAs() sets the user on the `web` guard without\ntouching it either \u2014 so a second request in one test can silently reuse\nthe FIRST caller, a false negative on exactly the cross-user properties\nthis endpoint is tested for.\n\nHonest scope of that claim: THESE tests do not exhibit it. Both forms were\ntried here and ResponseStoreTest passed either way, cross-user cases\nincluded, so the choice is convention rather than a difference this file\ncan demonstrate. The two also behave identically over real HTTP (verified\nagainst a live login). Kept as the default guard because it is the form\nthe rest of this API uses and the one whose failure mode is understood.\n\nThe user is never null here: auth:sanctum runs first, so an anonymous\ncaller is already a 401.",
-                "summary": "POST /api/responses \u2014 the caller's own RSVP. 201 {\"ok\":true}, matching the\nold endpoint",
-                "tags": [
-                    "Response"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ResponseRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "string",
-                                            "const": "Event not found"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "const": "event_not_found"
-                                        },
-                                        "fields": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    },
-                                    "required": [
-                                        "error",
-                                        "code",
-                                        "fields"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "get": {
-                "operationId": "response.index",
-                "description": "A member who has NOT answered is still listed, with response: null \u2014\ninscriptions_admin.js derives both \"Convoqu\u00e9s\" and \"Pas de r\u00e9ponse\" from\nthe length of this list, so an omitted row would silently shrink the roll\ncall instead of showing up as a pending answer.\n\nDeliberately NOT a 404 for an unknown eventId: the legacy GET never\nchecked the event's existence (only the POST did) and its LEFT JOIN simply\nmatched nothing, so an unknown id lists everyone as unanswered. Changing\nthat would be a user-visible behaviour change, out of scope for this port.\n\nValidation is hand-rolled rather than a FormRequest because the two\nfailures the legacy endpoint distinguished \u2014 absent vs unusable \u2014 map onto\ndifferent reason tokens, and because ?eventId= arrives in the query string\nof a GET.\n\nTHE 200 SHAPE IS DECLARED BELOW because Scramble cannot infer it.\n\nindex() builds its payload with a Collection::map, and Scramble gives up\non that \u2014 it emitted `string[]`, which type-checked at every call site\nand was wrong about every field. GET /api/events had the identical\nproblem and this is the identical fix.\n\nA LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a\nproperty-less object, which is how the events endpoint ended up as\n`string[]` in the first place. That means the shape is written twice \u2014\nhere and in summary()'s @return \u2014 and ResponseShapeContractTest fails if\nthe two ever disagree, so it is duplication a test catches rather than a\ncomment asking you to remember.",
-                "summary": "GET /api/responses?eventId=N \u2014 the admin's attendance summary for one\nevent: [{username, instrument, response}, ...]",
-                "tags": [
-                    "Response"
-                ],
-                "parameters": [
-                    {
-                        "name": "eventId",
-                        "in": "query",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "properties": {
-                                            "username": {
-                                                "type": "string"
-                                            },
-                                            "instrument": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            },
-                                            "response": {
-                                                "type": [
-                                                    "string",
-                                                    "null"
-                                                ]
-                                            }
-                                        },
-                                        "required": [
-                                            "username",
-                                            "instrument",
-                                            "response"
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "string",
-                                            "const": "Invalid form submission"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "const": "validation_failed"
-                                        },
-                                        "fields": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    },
-                                    "required": [
-                                        "error",
-                                        "code",
-                                        "fields"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/signups": {
-            "post": {
-                "operationId": "signup.store",
-                "tags": [
-                    "Signup"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "first_name": {
-                                        "type": "string",
-                                        "description": "Guest first name."
-                                    },
-                                    "last_name": {
-                                        "type": "string",
-                                        "description": "Guest last name."
-                                    },
-                                    "address": {
-                                        "type": "string",
-                                        "description": "Postal address."
-                                    },
-                                    "phone": {
-                                        "type": "string",
-                                        "description": "Contact phone number."
-                                    },
-                                    "email": {
-                                        "type": "string",
-                                        "description": "Confirmation is mailed here."
-                                    },
-                                    "table_name": {
-                                        "type": "string",
-                                        "description": "Free-text table or group name."
-                                    },
-                                    "menus": {
-                                        "type": "array",
-                                        "description": "One menu value per guest; see /config for the allowed values.",
-                                        "items": {}
-                                    },
-                                    "altcha": {
-                                        "type": "string",
-                                        "description": "Solved proof-of-work payload from GET /altcha."
-                                    }
-                                },
-                                "required": [
-                                    "first_name",
-                                    "last_name",
-                                    "address",
-                                    "phone",
-                                    "email",
-                                    "table_name",
-                                    "menus",
-                                    "altcha"
-                                ]
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "string",
-                                            "const": "Anti-bot verification failed, please try again"
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "const": "captcha_failed"
-                                        },
-                                        "fields": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    },
-                                    "required": [
-                                        "error",
-                                        "code",
-                                        "fields"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "get": {
-                "operationId": "signup.index",
-                "description": "Admin-only (`view_summary`), enforced by the route's middleware.\nDeliberately parameterless apart from `format`: the old endpoint had no\npaging, filtering or sorting and signups_admin.js expects the whole set.\n\nThe 200 shape is declared in the #[Response] attribute below because\nScramble cannot infer it through SignupStats::compute() \u2014 it emitted a\nbare string. SignupShapeContractTest fails if the two disagree.",
-                "summary": "GET /api/signups \u2014 the admin summary, or ?format=xlsx for the export",
-                "tags": [
-                    "Signup"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Same body as the old endpoint: computeStats() plus the occasion.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "totalPersons": {
-                                            "type": "integer"
-                                        },
-                                        "totalTables": {
-                                            "type": "integer"
-                                        },
-                                        "menuTotals": {
-                                            "type": "object",
-                                            "properties": {
-                                                "meat": {
-                                                    "type": "integer"
-                                                },
-                                                "child": {
-                                                    "type": "integer"
-                                                },
-                                                "vegetarian": {
-                                                    "type": "integer"
-                                                }
-                                            },
-                                            "required": [
-                                                "meat",
-                                                "child",
-                                                "vegetarian"
-                                            ]
-                                        },
-                                        "tables": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                    "name": {
-                                                        "type": "string"
-                                                    },
-                                                    "personCount": {
-                                                        "type": "integer"
-                                                    },
-                                                    "menuCounts": {
-                                                        "type": "object",
-                                                        "properties": {
-                                                            "meat": {
-                                                                "type": "integer"
-                                                            },
-                                                            "child": {
-                                                                "type": "integer"
-                                                            },
-                                                            "vegetarian": {
-                                                                "type": "integer"
-                                                            }
-                                                        },
-                                                        "required": [
-                                                            "meat",
-                                                            "child",
-                                                            "vegetarian"
-                                                        ]
-                                                    },
-                                                    "signups": {
-                                                        "type": "array",
-                                                        "items": {
-                                                            "type": "object",
-                                                            "properties": {
-                                                                "first_name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "last_name": {
-                                                                    "type": "string"
-                                                                },
-                                                                "address": {
-                                                                    "type": "string"
-                                                                },
-                                                                "phone": {
-                                                                    "type": "string"
-                                                                },
-                                                                "email": {
-                                                                    "type": "string"
-                                                                },
-                                                                "personCount": {
-                                                                    "type": "integer"
-                                                                },
-                                                                "menuCounts": {
-                                                                    "type": "object",
-                                                                    "properties": {
-                                                                        "meat": {
-                                                                            "type": "integer"
-                                                                        },
-                                                                        "child": {
-                                                                            "type": "integer"
-                                                                        },
-                                                                        "vegetarian": {
-                                                                            "type": "integer"
-                                                                        }
-                                                                    },
-                                                                    "required": [
-                                                                        "meat",
-                                                                        "child",
-                                                                        "vegetarian"
-                                                                    ]
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "first_name",
-                                                                "last_name",
-                                                                "address",
-                                                                "phone",
-                                                                "email",
-                                                                "personCount",
-                                                                "menuCounts"
-                                                            ]
-                                                        }
-                                                    }
-                                                },
-                                                "required": [
-                                                    "name",
-                                                    "personCount",
-                                                    "menuCounts",
-                                                    "signups"
-                                                ]
-                                            }
-                                        },
-                                        "occasion": {
-                                            "type": "object",
-                                            "properties": {
-                                                "title": {
-                                                    "type": "string"
-                                                },
-                                                "subtitle": {
-                                                    "type": "string"
-                                                },
-                                                "date": {
-                                                    "type": "string"
-                                                },
-                                                "date_display": {
-                                                    "type": "string"
-                                                },
-                                                "teaser": {
-                                                    "type": "string"
-                                                },
-                                                "invitation": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": [
-                                                "title",
-                                                "subtitle",
-                                                "date",
-                                                "date_display",
-                                                "teaser",
-                                                "invitation"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "totalPersons",
-                                        "totalTables",
-                                        "menuTotals",
-                                        "tables",
-                                        "occasion"
-                                    ]
-                                }
-                            },
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-                                "schema": {
-                                    "type": "string"
-                                }
-                            }
-                        },
-                        "headers": {
-                            "Transfer-Encoding": {
-                                "required": true,
-                                "schema": {
-                                    "type": "string",
-                                    "enum": [
-                                        "chunked"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
         }
     },
     "components": {
@@ -1117,73 +320,6 @@
                     "message"
                 ],
                 "title": "ContactRequest"
-            },
-            "EventRequest": {
-                "type": "object",
-                "description": "Validation for POST/PUT /api/events.\n\nField names are camelCase because planning_repet.js posts them that way and\nApp\\Exceptions\\ApiError echoes them straight into fields[].field, where both\napp/assets/js/i18n.js (for the French message) and planning_repet.js's\nEVENT_FIELD_INPUT_IDS map (for highlighting the offending input) look them up.\nThe DB columns are snake_case; the mapping happens in EventController, not\nhere \u2014 do not normalise either direction.\n\nRule ORDER is load-bearing: ApiError reports only the first failed rule per\nfield, so `required` must come first (an empty field reports `required`, not\n`invalid_type`) and `max` must precede any format-ish rule (an over-long\ntitle reports `too_long`). Field order mirrors App\\Dto\\EventInput's attribute\norder, so the reported fields[] list keeps the legacy endpoint's sequence.\n\n`attire` is deliberately NOT required \u2014 the old DTO annotated it #[TypeString,\nMaxLength(255)] with no #[Required], because a rehearsal with no dress code is\nlegitimate. An absent or blank tenue is normalised to '' by the controller.\n\n`id` is deliberately absent too: it identifies WHICH event a PUT/DELETE acts\non, not a property of the event itself, and is now a `/events/{id}` route\nparameter (routes/api.php), constrained to digits by whereNumber() \u2014 so it\nis validated by routing, not by this request. Laravel resolves the\nFormRequest before the controller body runs, so field validation still\nhappens first, exactly as the legacy endpoint's own id check used to run\nafter field validation.",
-                "properties": {
-                    "date": {
-                        "type": "string"
-                    },
-                    "title": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "startTime": {
-                        "type": "string"
-                    },
-                    "endTime": {
-                        "type": "string"
-                    },
-                    "location": {
-                        "type": "string",
-                        "maxLength": 255
-                    },
-                    "attire": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "maxLength": 255
-                    },
-                    "weekend": {
-                        "type": [
-                            "boolean",
-                            "null"
-                        ]
-                    }
-                },
-                "required": [
-                    "date",
-                    "title",
-                    "startTime",
-                    "endTime",
-                    "location"
-                ],
-                "title": "EventRequest"
-            },
-            "ResponseRequest": {
-                "type": "object",
-                "description": "Validation for POST /api/responses \u2014 a member's own RSVP for one event.\n\nField names are camelCase because inscriptions_utilisateurs.js posts them that\nway and App\\Exceptions\\ApiError echoes them straight into fields[].field,\nwhere app/assets/js/i18n.js looks them up (fields.eventId => \"\u00c9v\u00e9nement\",\nfields.participation => \"Participation\"). The column is `answer`; that mapping\nhappens in ResponseController, not here.\n\nThere is deliberately NO field naming a user. The answer is always recorded\nfor the session's own user, so a userId/username in the body has nothing to\nbind to \u2014 see ResponseController::store().\n\nRule ORDER is load-bearing: ApiError reports only the first failed rule per\nfield, so `required` comes first (an absent field reports `required`, not\n`invalid_type`). Field order mirrors App\\Dto\\ResponseInput's attribute order,\nso the reported fields[] list keeps the legacy endpoint's sequence.",
-                "properties": {
-                    "eventId": {
-                        "type": "integer",
-                        "description": "`integer` accepts a numeric STRING, which is what the frontend\nsends \u2014 inscriptions_utilisateurs.js reads the id out of the query\nstring. It is also what makes `gt` compare numerically rather than\nby string length (Validator::getSize() treats the value as a number\nonly when a numeric rule is present). gt:0 maps to the PARAMLESS 'invalid_number', not the legacy\nendpoint's 'invalid_value': i18n.js renders invalid_value as \"doit\n \u00eatre l'une des valeurs suivantes : {{allowed}}\" and only the `in`\nrule can supply that list. See ApiError::REASONS."
-                    },
-                    "participation": {
-                        "type": "string",
-                        "description": "The STRING form of `in`, not Rule::in(...): ApiError keys its\nreason map on the failed rule's name, and an object rule arrives as\na class name that never matches \u2014 so Rule::in() would silently\ndegrade this to the generic 'invalid_format' and lose the\nparams.allowed list the French message interpolates.",
-                        "enum": [
-                            "participate",
-                            "notparticipate"
-                        ]
-                    }
-                },
-                "required": [
-                    "eventId",
-                    "participation"
-                ],
-                "title": "ResponseRequest"
             }
         },
         "responses": {

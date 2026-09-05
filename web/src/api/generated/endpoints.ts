@@ -21,33 +21,16 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  Altcha200,
-  Altcha503,
   AuthLogin200,
   AuthLogin401,
+  AuthLogin429,
   AuthLoginBody,
   AuthLogout200,
-  AuthUser200,
+  AuthMe200,
   AuthenticationExceptionResponse,
   Config200,
   Contact200,
   ContactRequest,
-  EventDestroy200,
-  EventIndex200Item,
-  EventIndexParams,
-  EventRequest,
-  EventStore201,
-  EventUpdate200,
-  ResponseIndex200Item,
-  ResponseIndex400,
-  ResponseIndexParams,
-  ResponseRequest,
-  ResponseStore201,
-  ResponseStore404,
-  SignupIndex200One,
-  SignupStore201,
-  SignupStore403,
-  SignupStoreBody,
   ValidationExceptionResponse,
 } from "./model";
 
@@ -70,120 +53,6 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type altchaResponse200 = {
-  data: Altcha200;
-  status: 200;
-};
-
-export type altchaResponse503 = {
-  data: Altcha503;
-  status: 503;
-};
-
-export type altchaResponseSuccess = altchaResponse200 & {
-  headers: Headers;
-};
-export type altchaResponseError = altchaResponse503 & {
-  headers: Headers;
-};
-
-export type altchaResponse = altchaResponseSuccess | altchaResponseError;
-
-export const getAltchaUrl = () => {
-  return `/altcha`;
-};
-
-export const altcha = async (
-  options?: Parameters<typeof customFetch>[1],
-): Promise<altchaResponse> => {
-  return customFetch<altchaResponse>(getAltchaUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getAltchaQueryKey = () => {
-  return [`/altcha`] as const;
-};
-
-export const getAltchaQueryOptions = <
-  TData = Awaited<ReturnType<typeof altcha>>,
-  TError = Altcha503,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof altcha>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getAltchaQueryKey();
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof altcha>>> = ({ signal }) =>
-    altcha({ signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof altcha>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type AltchaQueryResult = NonNullable<Awaited<ReturnType<typeof altcha>>>;
-export type AltchaQueryError = Altcha503;
-
-export function useAltcha<TData = Awaited<ReturnType<typeof altcha>>, TError = Altcha503>(
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof altcha>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof altcha>>,
-          TError,
-          Awaited<ReturnType<typeof altcha>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAltcha<TData = Awaited<ReturnType<typeof altcha>>, TError = Altcha503>(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof altcha>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof altcha>>,
-          TError,
-          Awaited<ReturnType<typeof altcha>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAltcha<TData = Awaited<ReturnType<typeof altcha>>, TError = Altcha503>(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof altcha>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-export function useAltcha<TData = Awaited<ReturnType<typeof altcha>>, TError = Altcha503>(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof altcha>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getAltchaQueryOptions(options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
 export type authLoginResponse200 = {
   data: AuthLogin200;
   status: 200;
@@ -199,10 +68,17 @@ export type authLoginResponse401 = {
   status: 401;
 };
 
+export type authLoginResponse429 = {
+  data: AuthLogin429;
+  status: 429;
+};
+
 export type authLoginResponseSuccess = authLoginResponse200 & {
   headers: Headers;
 };
-export type authLoginResponseError = (authLoginResponse400 | authLoginResponse401) & {
+export type authLoginResponseError = (
+  authLoginResponse400 | authLoginResponse401 | authLoginResponse429
+) & {
   headers: Headers;
 };
 
@@ -225,7 +101,7 @@ export const authLogin = async (
 };
 
 export const getAuthLoginMutationOptions = <
-  TError = ValidationExceptionResponse | AuthLogin401,
+  TError = ValidationExceptionResponse | AuthLogin401 | AuthLogin429,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -262,10 +138,10 @@ export const getAuthLoginMutationOptions = <
 
 export type AuthLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authLogin>>>;
 export type AuthLoginMutationBody = AuthLoginBody;
-export type AuthLoginMutationError = ValidationExceptionResponse | AuthLogin401;
+export type AuthLoginMutationError = ValidationExceptionResponse | AuthLogin401 | AuthLogin429;
 
 export const useAuthLogin = <
-  TError = ValidationExceptionResponse | AuthLogin401,
+  TError = ValidationExceptionResponse | AuthLogin401 | AuthLogin429,
   TContext = unknown,
 >(
   options?: {
@@ -354,77 +230,77 @@ export const useAuthLogout = <TError = AuthenticationExceptionResponse, TContext
   return useMutation(getAuthLogoutMutationOptions(options), queryClient);
 };
 
-export type authUserResponse200 = {
-  data: AuthUser200;
+export type authMeResponse200 = {
+  data: AuthMe200;
   status: 200;
 };
 
-export type authUserResponse401 = {
+export type authMeResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type authUserResponseSuccess = authUserResponse200 & {
+export type authMeResponseSuccess = authMeResponse200 & {
   headers: Headers;
 };
-export type authUserResponseError = authUserResponse401 & {
+export type authMeResponseError = authMeResponse401 & {
   headers: Headers;
 };
 
-export type authUserResponse = authUserResponseSuccess | authUserResponseError;
+export type authMeResponse = authMeResponseSuccess | authMeResponseError;
 
-export const getAuthUserUrl = () => {
-  return `/user`;
+export const getAuthMeUrl = () => {
+  return `/me`;
 };
 
-export const authUser = async (
+export const authMe = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<authUserResponse> => {
-  return customFetch<authUserResponse>(getAuthUserUrl(), {
+): Promise<authMeResponse> => {
+  return customFetch<authMeResponse>(getAuthMeUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getAuthUserQueryKey = () => {
-  return [`/user`] as const;
+export const getAuthMeQueryKey = () => {
+  return [`/me`] as const;
 };
 
-export const getAuthUserQueryOptions = <
-  TData = Awaited<ReturnType<typeof authUser>>,
+export const getAuthMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof authMe>>,
   TError = AuthenticationExceptionResponse,
 >(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authUser>>, TError, TData>>;
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getAuthUserQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getAuthMeQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof authUser>>> = ({ signal }) =>
-    authUser({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof authMe>>> = ({ signal }) =>
+    authMe({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof authUser>>,
+    Awaited<ReturnType<typeof authMe>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type AuthUserQueryResult = NonNullable<Awaited<ReturnType<typeof authUser>>>;
-export type AuthUserQueryError = AuthenticationExceptionResponse;
+export type AuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof authMe>>>;
+export type AuthMeQueryError = AuthenticationExceptionResponse;
 
-export function useAuthUser<
-  TData = Awaited<ReturnType<typeof authUser>>,
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
   TError = AuthenticationExceptionResponse,
 >(
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof authUser>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof authUser>>,
+          Awaited<ReturnType<typeof authMe>>,
           TError,
-          Awaited<ReturnType<typeof authUser>>
+          Awaited<ReturnType<typeof authMe>>
         >,
         "initialData"
       >;
@@ -432,17 +308,17 @@ export function useAuthUser<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthUser<
-  TData = Awaited<ReturnType<typeof authUser>>,
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
   TError = AuthenticationExceptionResponse,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authUser>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof authUser>>,
+          Awaited<ReturnType<typeof authMe>>,
           TError,
-          Awaited<ReturnType<typeof authUser>>
+          Awaited<ReturnType<typeof authMe>>
         >,
         "initialData"
       >;
@@ -450,28 +326,28 @@ export function useAuthUser<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthUser<
-  TData = Awaited<ReturnType<typeof authUser>>,
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
   TError = AuthenticationExceptionResponse,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authUser>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
-export function useAuthUser<
-  TData = Awaited<ReturnType<typeof authUser>>,
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
   TError = AuthenticationExceptionResponse,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authUser>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getAuthUserQueryOptions(options);
+  const queryOptions = getAuthMeQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -679,1105 +555,3 @@ export const useContact = <TError = ValidationExceptionResponse, TContext = unkn
 > => {
   return useMutation(getContactMutationOptions(options), queryClient);
 };
-
-export type eventIndexResponse200 = {
-  data: EventIndex200Item[];
-  status: 200;
-};
-
-export type eventIndexResponseSuccess = eventIndexResponse200 & {
-  headers: Headers;
-};
-export type eventIndexResponse = eventIndexResponseSuccess;
-
-export const getEventIndexUrl = (params?: EventIndexParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : String(value));
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/events?${stringifiedParams}` : `/events`;
-};
-
-/**
- * `?include=past` returns everything; anything else returns `date >= today`.
- *
- * WHY THE DEFAULT IS THE FILTERED ONE. This used to return every event ever,
- * ascending — "exactly the old query". So /sinscrire, headed "Événements à
- *      * venir", listed events that had already happened at the TOP of the list,
- * each with a dead "Choix enregistré" button, and /planning_repet put the
- * next rehearsal at the BOTTOM of a list that grows every season. On the one
- * screen whose purpose is "do I play Saturday?", that was the worst defect
- * in the app.
- *
- * The safe answer is the default rather than something a caller opts into,
- * for the same reason this endpoint deliberately has no ?username=
- * parameter: a page that forgets to ask should not be able to reintroduce
- * the bug.
- *
- * The boundary is INCLUSIVE of today — an event happening today has not
- * happened yet — and `where`, not `whereDate`, so the comparison stays
- * index-friendly if `events.date` is ever indexed (it is not today, and at
- * this band's volume it does not need to be).
- *
- * now() is UTC, because api/config/app.php hardcodes it and there is no
- * APP_TIMEZONE key. Fribourg is UTC+1/+2, so a UTC "today" LAGS local time
- * and today's event stays listed for the first hour or two of tomorrow. That
- * errs in the safe direction; the dangerous direction would be hiding an
- * event before it happened, which needs UTC to run ahead of local time and
- * never does here. Do not "fix" this by setting APP_TIMEZONE as a side
- * effect — timestamps were standardised on UTC deliberately.
- *
- * `response` is the CALLER'S OWN answer or null. There is deliberately no
- * request parameter naming a user (no ?username=, no ?userId=): that
- * absence is what keeps a previously-fixed IDOR closed. The `responses`
- * relation is additionally CONSTRAINED to the caller's own user_id, so the
- * rows fetched from the database cannot carry another member's answer at
- * all — a mistake in the shaping code below could not leak one.
- *
- * Eager-loaded rather than queried per event: one events query plus one
- * responses query, instead of the N+1 a per-event lookup would cost. It is
- * also closer to the old single LEFT JOIN than N queries would be. A JOIN
- * was avoided only because Eloquent would then need a raw select alias to
- * carry `answer` alongside the model's own columns; the constrained
- * eager-load expresses the same restriction declaratively.
- *
- * OPTIONAL authentication, on the DEFAULT guard. This route deliberately
- * carries no auth middleware — it must serve anonymous visitors — so
- * nothing has called Auth::shouldUse() and $request->user() resolves the
- * default `web` guard. Under Sanctum SPA mode that is exactly right:
- * statefulApi() only starts a session for a request whose referer/origin
- * matches a configured stateful domain, so the `web` guard sees a user in
- * precisely the cases Sanctum considers authenticated, and nowhere else. No
- * user resolved is not an error here; it is the anonymous case, which is a
- * legitimate 200 with `response: null` throughout.
- *
- * $request->user('sanctum') was tried and deliberately reverted. It behaves
- * identically over real HTTP (both were verified against a live login), but
- * Sanctum's RequestGuard memoizes the user it resolved, and actingAs() sets
- * the user on the `web` guard without clearing that memo — so a second
- * request in one test kept the FIRST user. That makes the harness unable to
- * detect a cross-user leak across requests, i.e. a false negative on exactly
- * the property EventIndexTest exists to guard. The token case it would have
- * covered is hypothetical (this API is SPA cookie mode — see
- * bootstrap/app.php) and its failure mode is a caller seeing no answers, not
- * someone else's.
- * @summary GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date
- */
-export const eventIndex = async (
-  params?: EventIndexParams,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<eventIndexResponse> => {
-  return customFetch<eventIndexResponse>(getEventIndexUrl(params), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getEventIndexQueryKey = (params?: EventIndexParams) => {
-  return [`/events`, ...(params ? [params] : [])] as const;
-};
-
-export const getEventIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = unknown,
->(
-  params?: EventIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey(params);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof eventIndex>>> = ({ signal }) =>
-    eventIndex(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof eventIndex>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
-export type EventIndexQueryError = unknown;
-
-export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
-  params: undefined | EventIndexParams,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eventIndex>>,
-          TError,
-          Awaited<ReturnType<typeof eventIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
-  params?: EventIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eventIndex>>,
-          TError,
-          Awaited<ReturnType<typeof eventIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
-  params?: EventIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date
- */
-
-export function useEventIndex<TData = Awaited<ReturnType<typeof eventIndex>>, TError = unknown>(
-  params?: EventIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getEventIndexQueryOptions(params, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export type eventStoreResponse201 = {
-  data: EventStore201;
-  status: 201;
-};
-
-export type eventStoreResponse400 = {
-  data: ValidationExceptionResponse;
-  status: 400;
-};
-
-export type eventStoreResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type eventStoreResponseSuccess = eventStoreResponse201 & {
-  headers: Headers;
-};
-export type eventStoreResponseError = (eventStoreResponse400 | eventStoreResponse401) & {
-  headers: Headers;
-};
-
-export type eventStoreResponse = eventStoreResponseSuccess | eventStoreResponseError;
-
-export const getEventStoreUrl = () => {
-  return `/events`;
-};
-
-/**
- * @summary POST /api/events — admin only. 201 {"ok":true}, matching the old endpoint
- */
-export const eventStore = async (
-  eventRequest: EventRequest,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<eventStoreResponse> => {
-  return customFetch<eventStoreResponse>(getEventStoreUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(eventRequest),
-  });
-};
-
-export const getEventStoreMutationOptions = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof eventStore>>,
-    TError,
-    { data: EventRequest },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof eventStore>>,
-  TError,
-  { data: EventRequest },
-  TContext
-> => {
-  const mutationKey = ["eventStore"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof eventStore>>,
-    { data: EventRequest }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return eventStore(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type EventStoreMutationResult = NonNullable<Awaited<ReturnType<typeof eventStore>>>;
-export type EventStoreMutationBody = EventRequest;
-export type EventStoreMutationError = ValidationExceptionResponse | AuthenticationExceptionResponse;
-
-/**
- * @summary POST /api/events — admin only. 201 {"ok":true}, matching the old endpoint
- */
-export const useEventStore = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof eventStore>>,
-      TError,
-      { data: EventRequest },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof eventStore>>,
-  TError,
-  { data: EventRequest },
-  TContext
-> => {
-  return useMutation(getEventStoreMutationOptions(options), queryClient);
-};
-
-export type eventUpdateResponse200 = {
-  data: EventUpdate200;
-  status: 200;
-};
-
-export type eventUpdateResponse400 = {
-  data: ValidationExceptionResponse;
-  status: 400;
-};
-
-export type eventUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type eventUpdateResponseSuccess = eventUpdateResponse200 & {
-  headers: Headers;
-};
-export type eventUpdateResponseError = (eventUpdateResponse400 | eventUpdateResponse401) & {
-  headers: Headers;
-};
-
-export type eventUpdateResponse = eventUpdateResponseSuccess | eventUpdateResponseError;
-
-export const getEventUpdateUrl = (id: number) => {
-  return `/events/${id}`;
-};
-
-/**
- * The EventRequest is injected, so field validation still runs before the
- * Event::find() lookup below — the legacy endpoint's order, now simply a
- * consequence of Laravel resolving the FormRequest before the controller
- * body executes, rather than an explicit id check this method used to do.
- *
- * A well-formed id for an event that no longer exists is a 200 {"ok":true}
- * no-op, NOT a 404: the old `UPDATE ... WHERE id=?` matched no rows and
- * reported success just the same. planning_repet.js treats any non-2xx as a
- * failure and shows a French error, so turning a stale list entry into a 404
- * would be a user-visible behaviour change, out of scope for this port.
- * @summary PUT /api/events/{id} — admin only. The id is a route parameter,
-constrained to digits by whereNumber() in routes/api.php, so it is
-always present and numeric by the time this method runs
- */
-export const eventUpdate = async (
-  id: number,
-  eventRequest: EventRequest,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<eventUpdateResponse> => {
-  return customFetch<eventUpdateResponse>(getEventUpdateUrl(id), {
-    ...options,
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(eventRequest),
-  });
-};
-
-export const getEventUpdateMutationOptions = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof eventUpdate>>,
-    TError,
-    { id: number; data: EventRequest },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof eventUpdate>>,
-  TError,
-  { id: number; data: EventRequest },
-  TContext
-> => {
-  const mutationKey = ["eventUpdate"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof eventUpdate>>,
-    { id: number; data: EventRequest }
-  > = (props) => {
-    const { id, data } = props ?? {};
-
-    return eventUpdate(id, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type EventUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof eventUpdate>>>;
-export type EventUpdateMutationBody = EventRequest;
-export type EventUpdateMutationError =
-  ValidationExceptionResponse | AuthenticationExceptionResponse;
-
-/**
- * @summary PUT /api/events/{id} — admin only. The id is a route parameter,
-constrained to digits by whereNumber() in routes/api.php, so it is
-always present and numeric by the time this method runs
- */
-export const useEventUpdate = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof eventUpdate>>,
-      TError,
-      { id: number; data: EventRequest },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof eventUpdate>>,
-  TError,
-  { id: number; data: EventRequest },
-  TContext
-> => {
-  return useMutation(getEventUpdateMutationOptions(options), queryClient);
-};
-
-export type eventDestroyResponse200 = {
-  data: EventDestroy200;
-  status: 200;
-};
-
-export type eventDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type eventDestroyResponseSuccess = eventDestroyResponse200 & {
-  headers: Headers;
-};
-export type eventDestroyResponseError = eventDestroyResponse401 & {
-  headers: Headers;
-};
-
-export type eventDestroyResponse = eventDestroyResponseSuccess | eventDestroyResponseError;
-
-export const getEventDestroyUrl = (id: number) => {
-  return `/events/${id}`;
-};
-
-/**
- * The event's responses go with it via the FK's ON DELETE CASCADE; nothing
- * here deletes them explicitly.
- * @summary DELETE /api/events/{id} — admin only. The id is a route parameter,
-constrained to digits by whereNumber() in routes/api.php, so it is
-always present and numeric by the time this method runs — unlike the
-legacy query-string id, an absent or non-numeric one never reaches this
-method at all (the route itself 404s)
- */
-export const eventDestroy = async (
-  id: number,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<eventDestroyResponse> => {
-  return customFetch<eventDestroyResponse>(getEventDestroyUrl(id), {
-    ...options,
-    method: "DELETE",
-  });
-};
-
-export const getEventDestroyMutationOptions = <
-  TError = AuthenticationExceptionResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof eventDestroy>>,
-    TError,
-    { id: number },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof eventDestroy>>,
-  TError,
-  { id: number },
-  TContext
-> => {
-  const mutationKey = ["eventDestroy"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<Awaited<ReturnType<typeof eventDestroy>>, { id: number }> = (
-    props,
-  ) => {
-    const { id } = props ?? {};
-
-    return eventDestroy(id, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type EventDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof eventDestroy>>>;
-
-export type EventDestroyMutationError = AuthenticationExceptionResponse;
-
-/**
- * @summary DELETE /api/events/{id} — admin only. The id is a route parameter,
-constrained to digits by whereNumber() in routes/api.php, so it is
-always present and numeric by the time this method runs — unlike the
-legacy query-string id, an absent or non-numeric one never reaches this
-method at all (the route itself 404s)
- */
-export const useEventDestroy = <TError = AuthenticationExceptionResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof eventDestroy>>,
-      TError,
-      { id: number },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof eventDestroy>>,
-  TError,
-  { id: number },
-  TContext
-> => {
-  return useMutation(getEventDestroyMutationOptions(options), queryClient);
-};
-
-export type responseStoreResponse201 = {
-  data: ResponseStore201;
-  status: 201;
-};
-
-export type responseStoreResponse400 = {
-  data: ValidationExceptionResponse;
-  status: 400;
-};
-
-export type responseStoreResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type responseStoreResponse404 = {
-  data: ResponseStore404;
-  status: 404;
-};
-
-export type responseStoreResponseSuccess = responseStoreResponse201 & {
-  headers: Headers;
-};
-export type responseStoreResponseError = (
-  responseStoreResponse400 | responseStoreResponse401 | responseStoreResponse404
-) & {
-  headers: Headers;
-};
-
-export type responseStoreResponse = responseStoreResponseSuccess | responseStoreResponseError;
-
-export const getResponseStoreUrl = () => {
-  return `/responses`;
-};
-
-/**
- * THE USER COMES FROM THE SESSION, never from the request. ResponseRequest
- * has no field naming a user and nothing here reads one, so there is no way
- * to answer on someone else's behalf — that absence is the endpoint's main
- * security property and ResponseStoreTest pins it.
- *
- * $request->user() on the DEFAULT guard, not $request->user('sanctum'),
- * following EventController::index() — see its docblock for the full
- * reasoning. The hazard there is real in principle: Sanctum's RequestGuard
- * memoizes the user it resolved, RequestGuard::setRequest() does not clear
- * that memo, and actingAs() sets the user on the `web` guard without
- * touching it either — so a second request in one test can silently reuse
- * the FIRST caller, a false negative on exactly the cross-user properties
- * this endpoint is tested for.
- *
- * Honest scope of that claim: THESE tests do not exhibit it. Both forms were
- * tried here and ResponseStoreTest passed either way, cross-user cases
- * included, so the choice is convention rather than a difference this file
- * can demonstrate. The two also behave identically over real HTTP (verified
- * against a live login). Kept as the default guard because it is the form
- * the rest of this API uses and the one whose failure mode is understood.
- *
- * The user is never null here: auth:sanctum runs first, so an anonymous
- * caller is already a 401.
- * @summary POST /api/responses — the caller's own RSVP. 201 {"ok":true}, matching the
-old endpoint
- */
-export const responseStore = async (
-  responseRequest: ResponseRequest,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<responseStoreResponse> => {
-  return customFetch<responseStoreResponse>(getResponseStoreUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(responseRequest),
-  });
-};
-
-export const getResponseStoreMutationOptions = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse | ResponseStore404,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof responseStore>>,
-    TError,
-    { data: ResponseRequest },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof responseStore>>,
-  TError,
-  { data: ResponseRequest },
-  TContext
-> => {
-  const mutationKey = ["responseStore"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof responseStore>>,
-    { data: ResponseRequest }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return responseStore(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type ResponseStoreMutationResult = NonNullable<Awaited<ReturnType<typeof responseStore>>>;
-export type ResponseStoreMutationBody = ResponseRequest;
-export type ResponseStoreMutationError =
-  ValidationExceptionResponse | AuthenticationExceptionResponse | ResponseStore404;
-
-/**
- * @summary POST /api/responses — the caller's own RSVP. 201 {"ok":true}, matching the
-old endpoint
- */
-export const useResponseStore = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse | ResponseStore404,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof responseStore>>,
-      TError,
-      { data: ResponseRequest },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof responseStore>>,
-  TError,
-  { data: ResponseRequest },
-  TContext
-> => {
-  return useMutation(getResponseStoreMutationOptions(options), queryClient);
-};
-
-export type responseIndexResponse200 = {
-  data: ResponseIndex200Item[];
-  status: 200;
-};
-
-export type responseIndexResponse400 = {
-  data: ResponseIndex400;
-  status: 400;
-};
-
-export type responseIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type responseIndexResponseSuccess = responseIndexResponse200 & {
-  headers: Headers;
-};
-export type responseIndexResponseError = (responseIndexResponse400 | responseIndexResponse401) & {
-  headers: Headers;
-};
-
-export type responseIndexResponse = responseIndexResponseSuccess | responseIndexResponseError;
-
-export const getResponseIndexUrl = (params?: ResponseIndexParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : String(value));
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/responses?${stringifiedParams}` : `/responses`;
-};
-
-/**
- * A member who has NOT answered is still listed, with response: null —
- * inscriptions_admin.js derives both "Convoqués" and "Pas de réponse" from
- * the length of this list, so an omitted row would silently shrink the roll
- * call instead of showing up as a pending answer.
- *
- * Deliberately NOT a 404 for an unknown eventId: the legacy GET never
- * checked the event's existence (only the POST did) and its LEFT JOIN simply
- * matched nothing, so an unknown id lists everyone as unanswered. Changing
- * that would be a user-visible behaviour change, out of scope for this port.
- *
- * Validation is hand-rolled rather than a FormRequest because the two
- * failures the legacy endpoint distinguished — absent vs unusable — map onto
- * different reason tokens, and because ?eventId= arrives in the query string
- * of a GET.
- *
- * THE 200 SHAPE IS DECLARED BELOW because Scramble cannot infer it.
- *
- * index() builds its payload with a Collection::map, and Scramble gives up
- * on that — it emitted `string[]`, which type-checked at every call site
- * and was wrong about every field. GET /api/events had the identical
- * problem and this is the identical fix.
- *
- * A LITERAL, not a @phpstan-type alias: Scramble resolves an alias to a
- * property-less object, which is how the events endpoint ended up as
- * `string[]` in the first place. That means the shape is written twice —
- * here and in summary()'s @return — and ResponseShapeContractTest fails if
- * the two ever disagree, so it is duplication a test catches rather than a
- * comment asking you to remember.
- * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
-event: [{username, instrument, response}, ...]
- */
-export const responseIndex = async (
-  params?: ResponseIndexParams,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<responseIndexResponse> => {
-  return customFetch<responseIndexResponse>(getResponseIndexUrl(params), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getResponseIndexQueryKey = (params?: ResponseIndexParams) => {
-  return [`/responses`, ...(params ? [params] : [])] as const;
-};
-
-export const getResponseIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof responseIndex>>,
-  TError = ResponseIndex400 | AuthenticationExceptionResponse,
->(
-  params?: ResponseIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof responseIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getResponseIndexQueryKey(params);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof responseIndex>>> = ({ signal }) =>
-    responseIndex(params, { signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof responseIndex>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type ResponseIndexQueryResult = NonNullable<Awaited<ReturnType<typeof responseIndex>>>;
-export type ResponseIndexQueryError = ResponseIndex400 | AuthenticationExceptionResponse;
-
-export function useResponseIndex<
-  TData = Awaited<ReturnType<typeof responseIndex>>,
-  TError = ResponseIndex400 | AuthenticationExceptionResponse,
->(
-  params: undefined | ResponseIndexParams,
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof responseIndex>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof responseIndex>>,
-          TError,
-          Awaited<ReturnType<typeof responseIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useResponseIndex<
-  TData = Awaited<ReturnType<typeof responseIndex>>,
-  TError = ResponseIndex400 | AuthenticationExceptionResponse,
->(
-  params?: ResponseIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof responseIndex>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof responseIndex>>,
-          TError,
-          Awaited<ReturnType<typeof responseIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useResponseIndex<
-  TData = Awaited<ReturnType<typeof responseIndex>>,
-  TError = ResponseIndex400 | AuthenticationExceptionResponse,
->(
-  params?: ResponseIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof responseIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary GET /api/responses?eventId=N — the admin's attendance summary for one
-event: [{username, instrument, response}, ...]
- */
-
-export function useResponseIndex<
-  TData = Awaited<ReturnType<typeof responseIndex>>,
-  TError = ResponseIndex400 | AuthenticationExceptionResponse,
->(
-  params?: ResponseIndexParams,
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof responseIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getResponseIndexQueryOptions(params, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export type signupStoreResponse201 = {
-  data: SignupStore201;
-  status: 201;
-};
-
-export type signupStoreResponse403 = {
-  data: SignupStore403;
-  status: 403;
-};
-
-export type signupStoreResponseSuccess = signupStoreResponse201 & {
-  headers: Headers;
-};
-export type signupStoreResponseError = signupStoreResponse403 & {
-  headers: Headers;
-};
-
-export type signupStoreResponse = signupStoreResponseSuccess | signupStoreResponseError;
-
-export const getSignupStoreUrl = () => {
-  return `/signups`;
-};
-
-export const signupStore = async (
-  signupStoreBody: SignupStoreBody,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<signupStoreResponse> => {
-  return customFetch<signupStoreResponse>(getSignupStoreUrl(), {
-    ...options,
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(signupStoreBody),
-  });
-};
-
-export const getSignupStoreMutationOptions = <
-  TError = SignupStore403,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof signupStore>>,
-    TError,
-    { data: SignupStoreBody },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof signupStore>>,
-  TError,
-  { data: SignupStoreBody },
-  TContext
-> => {
-  const mutationKey = ["signupStore"];
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof signupStore>>,
-    { data: SignupStoreBody }
-  > = (props) => {
-    const { data } = props ?? {};
-
-    return signupStore(data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type SignupStoreMutationResult = NonNullable<Awaited<ReturnType<typeof signupStore>>>;
-export type SignupStoreMutationBody = SignupStoreBody;
-export type SignupStoreMutationError = SignupStore403;
-
-export const useSignupStore = <TError = SignupStore403, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof signupStore>>,
-      TError,
-      { data: SignupStoreBody },
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof signupStore>>,
-  TError,
-  { data: SignupStoreBody },
-  TContext
-> => {
-  return useMutation(getSignupStoreMutationOptions(options), queryClient);
-};
-
-export type signupIndexResponse200ApplicationJson = {
-  data: SignupIndex200One;
-  status: 200;
-};
-
-export type signupIndexResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet = {
-  data: string;
-  status: 200;
-};
-
-export type signupIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
-  status: 401;
-};
-
-export type signupIndexResponseSuccess = (
-  | signupIndexResponse200ApplicationJson
-  | signupIndexResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet
-) & {
-  headers: Headers;
-};
-export type signupIndexResponseError = signupIndexResponse401 & {
-  headers: Headers;
-};
-
-export type signupIndexResponse = signupIndexResponseSuccess | signupIndexResponseError;
-
-export const getSignupIndexUrl = () => {
-  return `/signups`;
-};
-
-/**
- * Admin-only (`view_summary`), enforced by the route's middleware.
- * Deliberately parameterless apart from `format`: the old endpoint had no
- * paging, filtering or sorting and signups_admin.js expects the whole set.
- *
- * The 200 shape is declared in the #[Response] attribute below because
- * Scramble cannot infer it through SignupStats::compute() — it emitted a
- * bare string. SignupShapeContractTest fails if the two disagree.
- * @summary GET /api/signups — the admin summary, or ?format=xlsx for the export
- */
-export const signupIndex = async (
-  options?: Parameters<typeof customFetch>[1],
-): Promise<signupIndexResponse> => {
-  return customFetch<signupIndexResponse>(getSignupIndexUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getSignupIndexQueryKey = () => {
-  return [`/signups`] as const;
-};
-
-export const getSignupIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof signupIndex>>,
-  TError = AuthenticationExceptionResponse,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof signupIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getSignupIndexQueryKey();
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof signupIndex>>> = ({ signal }) =>
-    signupIndex({ signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof signupIndex>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type SignupIndexQueryResult = NonNullable<Awaited<ReturnType<typeof signupIndex>>>;
-export type SignupIndexQueryError = AuthenticationExceptionResponse;
-
-export function useSignupIndex<
-  TData = Awaited<ReturnType<typeof signupIndex>>,
-  TError = AuthenticationExceptionResponse,
->(
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof signupIndex>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof signupIndex>>,
-          TError,
-          Awaited<ReturnType<typeof signupIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSignupIndex<
-  TData = Awaited<ReturnType<typeof signupIndex>>,
-  TError = AuthenticationExceptionResponse,
->(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof signupIndex>>, TError, TData>> &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof signupIndex>>,
-          TError,
-          Awaited<ReturnType<typeof signupIndex>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSignupIndex<
-  TData = Awaited<ReturnType<typeof signupIndex>>,
-  TError = AuthenticationExceptionResponse,
->(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof signupIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary GET /api/signups — the admin summary, or ?format=xlsx for the export
- */
-
-export function useSignupIndex<
-  TData = Awaited<ReturnType<typeof signupIndex>>,
-  TError = AuthenticationExceptionResponse,
->(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof signupIndex>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getSignupIndexQueryOptions(options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}

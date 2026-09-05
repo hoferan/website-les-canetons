@@ -5,6 +5,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type EventUpdate200 = {
-  ok: boolean;
+export type AuthLogin429 = {
+  error: "Too many attempts";
+  code: "too_many_attempts";
+  fields: unknown[];
 };

@@ -70,6 +70,13 @@ sudo mysql -e "
 # below needs to branch on whether a database already has tables — `migrate`
 # is itself idempotent against a database that already has some or all of its
 # tables.
+#
+# This script deliberately does NOT also run `php artisan db:seed` (unlike
+# docker/web/entrypoint.sh, which runs both migrate and seed on every
+# container start): this script never runs migrate either, so there would be
+# no schema yet for the seeder to insert into. Run both by hand once the
+# schema exists: `cd api && php artisan migrate && php artisan db:seed`
+# (DevSeeder is idempotent, so re-running it is always safe).
 
 # app/src/bootstrap.php does `require __DIR__ . '/../vendor/autoload.php'`,
 # i.e. it expects vendor/ as a sibling of app/src/ — true both under Docker

@@ -11,7 +11,7 @@ function Probe() {
   return (
     <div>
       <span data-testid="env">{config.env}</span>
-      <span data-testid="role">{user?.role ?? "anonymous"}</span>
+      <span data-testid="username">{user?.username ?? "anonymous"}</span>
     </div>
   );
 }
@@ -36,16 +36,16 @@ test("config reaches the context once the gate opens", async () => {
   expect(await screen.findByTestId("env")).toHaveTextContent("dev");
 });
 
-test("a 401 from /user is a normal answer meaning anonymous, not an error", async () => {
+test("a 401 from /me is a normal answer meaning anonymous, not an error", async () => {
   await renderWithSession(<Probe />);
-  expect(await screen.findByTestId("role")).toHaveTextContent("anonymous");
+  expect(await screen.findByTestId("username")).toHaveTextContent("anonymous");
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
-test("a logged-in user's role reaches the context", async () => {
-  setMockUser("demo.admin");
+test("a logged-in user's identity reaches the context", async () => {
+  setMockUser("demo.direction");
   await renderWithSession(<Probe />);
-  expect(await screen.findByTestId("role")).toHaveTextContent("admin");
+  expect(await screen.findByTestId("username")).toHaveTextContent("demo.direction");
 });
 
 test("useSession outside the provider fails loudly rather than returning undefined", () => {

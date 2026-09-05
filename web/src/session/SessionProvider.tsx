@@ -1,12 +1,12 @@
 import { createContext, use, type ReactNode } from "react";
 
-import { useAuthUser, useConfig } from "../api/generated/endpoints";
-import type { AuthUser200, Config200 } from "../api/generated/model";
+import { useAuthMe, useConfig } from "../api/generated/endpoints";
+import type { AuthMe200, Config200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
 
 type Session = {
   config: Config200;
-  user: AuthUser200 | null;
+  user: AuthMe200 | null;
 };
 
 const SessionContext = createContext<Session | null>(null);
@@ -28,7 +28,7 @@ export function useSession(): Session {
  * non-prod ribbon, which is exactly the thing the ribbon exists to prevent
  * anyone believing.
  *
- * A 401 from GET /api/user is a NORMAL answer meaning "anonymous", not a
+ * A 401 from GET /api/me is a NORMAL answer meaning "anonymous", not a
  * failure. `retry: false` keeps Query from retrying it three times before
  * settling, which would delay the first paint for every logged-out visitor —
  * i.e. almost all of them.
@@ -40,7 +40,7 @@ export function useSession(): Session {
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
   const config = useConfig({ query: { retry: false, staleTime: Infinity } });
-  const user = useAuthUser({ query: { retry: false, staleTime: Infinity } });
+  const user = useAuthMe({ query: { retry: false, staleTime: Infinity } });
 
   if (config.isPending || user.isPending) {
     return null;
@@ -52,15 +52,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // A 401 is the anonymous case. Anything else from /user is worth knowing
+  // A 401 is the anonymous case. Anything else from /me is worth knowing
   // about, but must not block the site: the public pages do not need a session.
   if (user.isError && !(user.error instanceof ApiError && user.error.status === 401)) {
     console.error("Unexpected failure reading the session:", user.error);
   }
 
   // Narrowed on status, not on isError alone. orval types this response as a
-  // discriminated union of every declared response — authUserResponse200 |
-  // authUserResponse401 — so `.data` is `AuthUser200 | AuthenticationException`
+  // discriminated union of every declared response — authMeResponse200 |
+  // authMeResponse401 — so `.data` is `AuthMe200 | AuthenticationException`
   // until `status` picks a branch. In practice the mutator throws on 401 so the
   // error branch never arrives as a resolved value, but the type is honest that
   // it could, and narrowing costs one comparison.

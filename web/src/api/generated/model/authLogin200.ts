@@ -6,5 +6,5 @@
  */
 
 export type AuthLogin200 = {
-  role: string;
+  ok: boolean;
 };

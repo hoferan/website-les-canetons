@@ -50,9 +50,9 @@ test("the auth link says Connexion when nobody is logged in", async () => {
 });
 
 test("the auth link shows the username once logged in", async () => {
-  setMockUser("demo.admin");
+  setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  expect(screen.getByRole("link", { name: "demo.admin" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "demo.direction" })).toBeInTheDocument();
 });
 
 test("the hamburger toggles the menu and reports its state", async () => {

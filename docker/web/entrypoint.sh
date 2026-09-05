@@ -40,6 +40,11 @@ retry() {
 # genuinely needs the wrapper above.
 retry php api-laravel/artisan migrate --force
 
+# Dev-only synthetic data (sections, roles, three demo logins). DevSeeder is
+# idempotent (firstOrCreate throughout), so running it on every container
+# start is safe and never duplicates or overwrites anything real.
+retry php api-laravel/artisan db:seed --force
+
 # The artisan call above ran as root (this entrypoint's own user); php-fpm
 # serves every subsequent request as www-data. Without this, any log line
 # artisan wrote along the way (routine, and guaranteed at least once if the

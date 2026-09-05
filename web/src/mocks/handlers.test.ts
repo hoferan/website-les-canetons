@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { authLogin, authLogout, authUser, config, contact } from "../api/generated/endpoints";
+import { authLogin, authLogout, authMe, config, contact } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
 import { setMockUser } from "./handlers";
 
@@ -21,17 +21,31 @@ test("GET /config answers with the shape the boot gate reads", async () => {
   expect(result.data.env).toBe("dev");
 });
 
-test("GET /user is 401 for an anonymous caller, which is a normal answer", async () => {
-  const error = (await authUser().catch((thrown: unknown) => thrown)) as ApiError;
+test("GET /me is 401 for an anonymous caller, which is a normal answer", async () => {
+  const error = (await authMe().catch((thrown: unknown) => thrown)) as ApiError;
   expect(error).toBeInstanceOf(ApiError);
   expect(error.status).toBe(401);
   expect(error.code).toBe("not_authenticated");
 });
 
-test("GET /user reports whoever setMockUser logged in", async () => {
-  setMockUser("demo.admin");
-  const result = await authUser();
-  expect(result.data).toEqual({ username: "demo.admin", role: "admin" });
+test("GET /me reports whoever setMockUser logged in", async () => {
+  setMockUser("demo.direction");
+  const result = await authMe();
+  expect(result.data).toEqual({
+    id: 1,
+    username: "demo.direction",
+    firstName: "Dominique",
+    lastName: "Direction",
+    isPlayer: false,
+    mustChangePassword: false,
+    permissions: [
+      "events.manage",
+      "attendance.view_all",
+      "attendance.record_for_others",
+      "members.manage",
+      "registrations.view",
+    ],
+  });
 });
 
 // The whole reason /api/contact is hand-written is its reject branch — both
@@ -65,10 +79,17 @@ test("logging in as an unknown username is refused, not a crash", async () => {
 });
 
 test("logging out clears the mocked session", async () => {
-  await authLogin({ username: "demo.admin", password: "demo" });
-  expect((await authUser()).data).toEqual({ username: "demo.admin", role: "admin" });
+  await authLogin({ username: "demo.direction", password: "demo" });
+
+  // Narrowed on status, not a bare .data access: orval types this as a
+  // discriminated union of every declared response, same as SessionProvider.
+  const loggedIn = await authMe();
+  if (loggedIn.status !== 200) {
+    throw new Error(`expected 200, got ${loggedIn.status}`);
+  }
+  expect(loggedIn.data.username).toBe("demo.direction");
 
   await authLogout();
-  const error = (await authUser().catch((thrown: unknown) => thrown)) as ApiError;
+  const error = (await authMe().catch((thrown: unknown) => thrown)) as ApiError;
   expect(error.status).toBe(401);
 });
