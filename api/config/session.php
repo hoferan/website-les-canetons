@@ -229,6 +229,19 @@ return [
     'same_site' => env('SESSION_SAME_SITE', 'strict'),
 
     /*
+     * A second key holding the SAME value as 'same_site' above, read from the
+     * same env var. It exists only because
+     * Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful
+     * unconditionally overwrites the 'same_site' key itself at runtime (to
+     * "lax") on every request through the `api` middleware group — so by the
+     * time App\Http\Middleware\EnforceAbsoluteSessionLifetime runs and wants
+     * to restore the configured value, re-reading 'same_site' would just read
+     * Sanctum's own override back. This untouched copy is what it restores
+     * from instead. See that middleware for the full explanation.
+     */
+    'same_site_intended' => env('SESSION_SAME_SITE', 'strict'),
+
+    /*
     |--------------------------------------------------------------------------
     | Partitioned Cookies
     |--------------------------------------------------------------------------

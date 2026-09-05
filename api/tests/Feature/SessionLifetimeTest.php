@@ -20,14 +20,51 @@ class SessionLifetimeTest extends TestCase
         ]);
     }
 
-    public function test_the_session_cookie_is_secure_http_only_and_strict(): void
+    public function test_the_session_configuration_is_secure_http_only_and_strict(): void
     {
+        // This checks the CONFIGURATION FILE, not what a real response actually
+        // sends: Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful
+        // unconditionally overrides session.same_site to "lax" at runtime on
+        // every request through the `api` group, so config('session.same_site')
+        // read outside a request (as here) can pass while the real Set-Cookie
+        // header ships something else entirely. See
+        // test_the_session_cookie_carries_strict_secure_and_http_only below for
+        // the behavioural assertion, which reads the actual header off a real
+        // response.
         $this->assertTrue(config('session.http_only'));
         $this->assertSame('strict', config('session.same_site'));
         $this->assertTrue(
             config('session.secure'),
             'SESSION_SECURE_COOKIE must default to true; local http dev overrides it.',
         );
+    }
+
+    /**
+     * Pins the REAL Set-Cookie header a login response sends, not the config
+     * file. Sanctum's EnsureFrontendRequestsAreStateful::
+     * configureSecureCookieSessions() unconditionally forces
+     * session.same_site to "lax" on every /api request — see
+     * App\Http\Middleware\EnforceAbsoluteSessionLifetime for the fix that
+     * restores the configured value before
+     * Illuminate\Session\Middleware\StartSession builds this header on the way
+     * out. Without that fix, this test fails with SameSite=Lax even though
+     * config/session.php says "strict".
+     */
+    public function test_the_session_cookie_carries_strict_secure_and_http_only(): void
+    {
+        $this->member();
+
+        $response = $this->withHeaders(['Origin' => 'http://localhost'])
+            ->postJson('/api/login', ['username' => 'lea.keller', 'password' => 'secret123'])
+            ->assertOk();
+
+        $cookie = collect($response->headers->getCookies())
+            ->first(fn ($cookie) => $cookie->getName() === config('session.cookie'));
+
+        $this->assertNotNull($cookie, 'the login response must set the session cookie');
+        $this->assertSame('strict', $cookie->getSameSite());
+        $this->assertTrue($cookie->isSecure());
+        $this->assertTrue($cookie->isHttpOnly());
     }
 
     public function test_login_stamps_the_session_start(): void
