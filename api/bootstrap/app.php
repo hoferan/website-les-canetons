@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AccessIntegrityViolation;
 use App\Exceptions\ApiError;
 use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\RequirePermission;
@@ -156,6 +157,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // and a 503 there stops the mutating request that was about to follow.
         $exceptions->render(fn (SchemaUnavailable $e, Request $request) => $request->is('api/*')
             ? ApiError::serviceUnavailable($e)
+            : null);
+
+        // 409. A write was refused because it would have broken an access
+        // invariant — see App\Support\AccessIntegrity. Registered before the
+        // catch-all HttpException closure below so the specific case wins.
+        $exceptions->render(fn (AccessIntegrityViolation $e, Request $request) => $request->is('api/*')
+            ? ApiError::json(409, $e->code, $e->getMessage())
             : null);
 
         // 419/CSRF. Same prepareException() trap as the 403 above, but worse:

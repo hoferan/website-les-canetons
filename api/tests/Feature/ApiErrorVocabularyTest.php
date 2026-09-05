@@ -78,6 +78,23 @@ class ApiErrorVocabularyTest extends TestCase
     private const EXTRA_FIELDS = ['username', 'password'];
 
     /**
+     * Codes no `::json(<status>, '<code>'` scan of app/ can see.
+     *
+     * - cannot_remove_last_administrator, cannot_demote_self,
+     *   cannot_delete_self: raised by App\Support\AccessIntegrity, but never
+     *   through a direct ApiError::json() call — they are thrown as an
+     *   AccessIntegrityViolation and rendered by an exception-renderer closure
+     *   in bootstrap/app.php, which sits outside APP_DIR entirely. Without this
+     *   entry the scan simply never encounters them, and this guard would pass
+     *   whether or not fr.ts carried their French copy.
+     */
+    private const EXTRA_CODES = [
+        'cannot_remove_last_administrator',
+        'cannot_demote_self',
+        'cannot_delete_self',
+    ];
+
+    /**
      * Floors for the derived lists, so a derivation that silently stops working
      * fails loudly instead of passing on an empty set. These are NOT the
      * authoritative lists — the derivations are; growing one of those needs no
@@ -91,7 +108,8 @@ class ApiErrorVocabularyTest extends TestCase
     private const MUST_INCLUDE_CODES = [
         'validation_failed', 'not_authenticated', 'access_denied',
         'method_not_allowed', 'invalid_session', 'invalid_credentials',
-        'service_unavailable',
+        'service_unavailable', 'cannot_remove_last_administrator',
+        'cannot_demote_self', 'cannot_delete_self',
     ];
 
     private const MUST_INCLUDE_FIELDS = [
@@ -181,17 +199,16 @@ class ApiErrorVocabularyTest extends TestCase
      * Code tokens: every `::json(<status>, '<code>'` call site in app/ — which
      * covers both ApiError's own named helpers (self::json(401,
      * 'not_authenticated', …)) and the controllers' direct ApiError::json(…)
-     * calls, including SignupController's multi-line one.
+     * calls, including SignupController's multi-line one — plus EXTRA_CODES.
      *
      * @return list<string>
      */
     private function emittableCodes(): array
     {
-        return $this->normalise(
+        return $this->normalise(array_merge(
             $this->scanAppFor("/::json\(\s*\d+\s*,\s*'([a-z_]+)'/"),
-            self::MUST_INCLUDE_CODES,
-            'codes'
-        );
+            self::EXTRA_CODES,
+        ), self::MUST_INCLUDE_CODES, 'codes');
     }
 
     /**
