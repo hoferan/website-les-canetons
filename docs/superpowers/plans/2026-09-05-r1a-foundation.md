@@ -179,8 +179,10 @@ on an empty field rather than around a legacy one.
 **Interfaces:**
 - Consumes: nothing
 - Produces: an API exposing only `GET /api/config`, `POST /api/contact`,
-  `POST /api/migrate`; an SPA routing only `/authentification_inscription` and
-  the 404. `App\Exceptions\ApiError`, `ConfigController`, `ContactController`,
+  `POST /api/migrate`; an SPA routing only `/login` and the 404. (An earlier
+  draft of this line said `/authentification_inscription` — that was a leftover
+  from the legacy URL set and is wrong. English URLs are decision D10; Step 7's
+  code block is correct and governs.) `App\Exceptions\ApiError`, `ConfigController`, `ContactController`,
   `contact_messages` and the `web/src/components/ui/*` library all survive
   untouched.
 
