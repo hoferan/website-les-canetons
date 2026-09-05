@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test } from "vitest";
@@ -29,23 +29,8 @@ test.each([
   expect(container.textContent).toBe(shown ? env.toUpperCase() : "");
 });
 
-test("the nav keeps the order the old site used, not alphabetical", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/" });
-
-  const nav = within(screen.getByRole("navigation"));
-  const labels = nav.getAllByRole("link").map((link) => link.textContent?.trim());
-
-  expect(labels.slice(0, 5)).toEqual([
-    "Accueil",
-    "Commencer les Canetons",
-    "Contact Canetons",
-    "Les canetons",
-    "Moniteurs",
-  ]);
-});
-
 test("the Galerie link is external and opens in a new tab", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/" });
+  await renderWithSession(<AppRoutes />, { route: "/login" });
 
   const galerie = screen.getByRole("link", { name: /Galerie/ });
   expect(galerie).toHaveAttribute("href", expect.stringContaining("flickr.com"));
@@ -56,42 +41,18 @@ test("the Galerie link is external and opens in a new tab", async () => {
 });
 
 test("the auth link says Connexion when nobody is logged in", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/" });
+  await renderWithSession(<AppRoutes />, { route: "/login" });
   expect(screen.getByRole("link", { name: "Connexion" })).toBeInTheDocument();
 });
 
 test("the auth link shows the username once logged in", async () => {
   setMockUser("demo.admin");
-  await renderWithSession(<AppRoutes />, { route: "/" });
+  await renderWithSession(<AppRoutes />, { route: "/login" });
   expect(screen.getByRole("link", { name: "demo.admin" })).toBeInTheDocument();
 });
 
-test("the inscription sub-pages highlight the Événements item, as the old nav did", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/inscriptions_admin" });
-  // aria-current, not a class: this is the accessible expression of "you are
-  // here", it is what a screen reader announces, and it does not have to be
-  // rewritten the next time the active item's styling changes.
-  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("aria-current", "page");
-});
-
-// The ORDINARY case, which the alias test above does not cover. These items are
-// plain Links rather than NavLinks — NavLink gates its own aria-current on an
-// internal literal match that knows nothing about ACTIVE_ALIASES — so "you are
-// here" is entirely our own expression now, and nothing else pins it.
-test("the item for the page you are on is the current one, and only it", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/planning_repet" });
-
-  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("aria-current", "page");
-
-  const current = screen
-    .getAllByRole("link")
-    .filter((link) => link.getAttribute("aria-current") === "page")
-    .map((link) => link.textContent);
-  expect(current).toEqual(["Événements"]);
-});
-
 test("the hamburger toggles the menu and reports its state", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/" });
+  await renderWithSession(<AppRoutes />, { route: "/login" });
 
   const toggle = screen.getByRole("button", { name: "Menu de navigation" });
   expect(toggle).toHaveAttribute("aria-expanded", "false");

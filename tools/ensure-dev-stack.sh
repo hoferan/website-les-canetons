@@ -60,13 +60,12 @@ sudo mysql -e "
   FLUSH PRIVILEGES;
 "
 
-for db in lescanetons lescanetons_test; do
-  table_count=$(sudo mysql -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}';")
-  if [ "${table_count:-0}" -eq 0 ]; then
-    sudo mysql "$db" < "$PROJECT_DIR/docker/db/init/01-schema.sql"
-    sudo mysql "$db" < "$PROJECT_DIR/docker/db/init/02-seed.sql"
-  fi
-done
+# Laravel owns the schema outright — there is no SQL to seed here. The
+# databases created above are left empty; `php artisan migrate` (run by hand,
+# or by RunPendingMigrations on the first request) populates them. Nothing
+# below needs to branch on whether a database already has tables — `migrate`
+# is itself idempotent against a database that already has some or all of its
+# tables.
 
 # app/src/bootstrap.php does `require __DIR__ . '/../vendor/autoload.php'`,
 # i.e. it expects vendor/ as a sibling of app/src/ — true both under Docker

@@ -357,12 +357,16 @@ own), before Apache accepts its first request. On a real server there is no
 entrypoint: the schema is applied by `RunPendingMigrations` on the first request
 after a deploy, or by `npm run dbmigrate:<env>` by hand.
 
-Laravel's migrations are written **guarded** — they adopt the tables
-`docker/db/init/01-schema.sql` seeds rather than assuming an empty database — so
-re-running them on a live server never drops or reseeds data. Keep new ones that
-way; the same files run against TEST and PROD. (The Laravel *test* suite uses
-its own throwaway `laravel_api_test` database — see `api/phpunit.xml` — because
-`RefreshDatabase` drops every table.)
+Laravel owns the schema outright and starts from an empty database — there is
+no `docker/db/init/01-schema.sql` any more for migrations to coexist with, so
+new migrations need not guard against tables created some other way. They must
+still be safe to re-run: the same files run against TEST, QA and PROD, and
+`RunPendingMigrations` re-checks for pending work on every request, so a
+migration must be idempotent regardless (a repeat run must not error or
+duplicate data) even though it no longer has to defend against a pre-existing
+raw-SQL schema. (The Laravel *test* suite uses its own throwaway
+`laravel_api_test` database — see `api/phpunit.xml` — because `RefreshDatabase`
+drops every table.)
 
 Seeded test logins (all passwords `demo`, synthetic data only):
 - `demo.admin` — admin (manage events, view summaries)

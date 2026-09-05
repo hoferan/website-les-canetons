@@ -7,10 +7,10 @@ import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
 
 // Guarded on `typeof window`: this file is the global setupFiles entry for
-// EVERY test, including altcha.test.ts, which opts into `@vitest-environment
-// node` for a real WebCrypto SubtleCrypto and so has no window/document at
-// all. Referencing them unguarded turned "window is not defined" into a
-// failure of that whole file.
+// EVERY test, including any that opt into `@vitest-environment node` (for a
+// real WebCrypto SubtleCrypto, say) and so have no window/document at all.
+// Referencing them unguarded turned "window is not defined" into a failure of
+// that whole file.
 if (typeof window !== "undefined") {
   // jsdom does not implement window.scrollTo — calling it logs
   // "Error: Not implemented: window.scrollTo" to stderr instead of doing

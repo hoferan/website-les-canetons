@@ -80,8 +80,8 @@ use UnexpectedValueException;
  *
  * NOT Cache::lock() and NOT `php artisan migrate --isolated`. Both route
  * through the cache store, which this project configures as the `database`
- * store (CACHE_STORE=database is mandatory — App\Support\ChallengeGuard needs a
- * shared one), and the `cache` table is ITSELF created by a migration. On a
+ * store (CACHE_STORE=database, set project-wide — see api/.env.example), and
+ * the `cache` table is ITSELF created by a migration. On a
  * fresh or never-migrated server, taking the lock would query a table that the
  * lock exists to let us create. GET_LOCK is a server-level function and needs
  * no table, so it works on an empty database.
@@ -125,7 +125,7 @@ class RunPendingMigrations
         // Default TRUE (see config/app.php). A server that simply does not have
         // the key must still self-heal — a silently-disabled server is the exact
         // failure this whole class exists to prevent, so the fail-safe direction
-        // here is the opposite of souper_signup's.
+        // here is "missing means ON", not "missing means OFF".
         if (config('app.auto_migrate')) {
             $this->maybeMigrate();
         }

@@ -3,12 +3,10 @@ import { createContext, use, type ReactNode } from "react";
 import { useAuthUser, useConfig } from "../api/generated/endpoints";
 import type { AuthUser200, Config200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
-import { can, type Capability } from "./capabilities";
 
 type Session = {
   config: Config200;
   user: AuthUser200 | null;
-  can: (capability: Capability) => boolean;
 };
 
 const SessionContext = createContext<Session | null>(null);
@@ -73,7 +71,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // inner one is orval's { data, status, headers } envelope. See http.ts.
     config: config.data.data,
     user: currentUser,
-    can: (capability) => can(currentUser?.role, capability),
   };
 
   return <SessionContext value={value}>{children}</SessionContext>;

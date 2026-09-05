@@ -10,34 +10,14 @@ import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * Link set and ORDER copied from the deleted app/partials/navigation.php
- * (`git show dcd7862^:app/partials/navigation.php`). It is neither alphabetical
- * nor the route table's order — it is the order the band is used to, so it is
- * reproduced rather than tidied.
+ * The content nav, during the R1a rebuild: deliberately empty. The old link
+ * set (Accueil, Commencer les Canetons, Contact Canetons, …) pointed at pages
+ * the domain deletion removed along with their routes (see web/src/routes.tsx)
+ * — every one of them would 404 today. R1b/R1c bring real pages back on
+ * English URLs and repopulate this list; until then the only working
+ * destination is the auth item below.
  */
-const NAV = [
-  { to: "/", label: "Accueil" },
-  { to: "/commencement", label: "Commencer les Canetons" },
-  { to: "/comite_teamdirection", label: "Contact Canetons" },
-  { to: "/canetons", label: "Les canetons" },
-  { to: "/moniteurs", label: "Moniteurs" },
-  { to: "/planning_repet", label: "Événements" },
-  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-  // { to: "/cd", label: "CD" },
-  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-  // { to: "/sponsors", label: "Sponsors et liens amis" },
-  { to: "/historique", label: "Historique" },
-];
-
-/**
- * The two inscription sub-pages highlight the "Événements" item, matching the
- * old setActiveNavigation() behaviour. They pointed at /sinscrire until that
- * page was merged into /planning_repet on 2026-09-01.
- */
-const ACTIVE_ALIASES: Record<string, string> = {
-  "/inscriptions_admin": "/planning_repet",
-  "/inscriptions_utilisateurs": "/planning_repet",
-};
+const NAV: Array<{ to: string; label: string }> = [];
 
 /**
  * One nav row. On a phone this is a 48px full-width row on the dark stage
@@ -66,7 +46,7 @@ export function Layout() {
   const { config, user } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
-  const active = ACTIVE_ALIASES[pathname] ?? pathname;
+  const active = pathname;
 
   return (
     <>
@@ -107,9 +87,7 @@ export function Layout() {
                 {/*
                   Link, not NavLink: NavLink's own aria-current is gated by its
                   internal isActive, which matches `to` literally against the
-                  URL and has no idea about ACTIVE_ALIASES below. Link leaves
-                  aria-current and className to us, so the alias page and the
-                  real page agree.
+                  URL. Link leaves aria-current and className to us instead.
                 */}
                 <Link
                   to={item.to}
@@ -151,7 +129,7 @@ export function Layout() {
 
             <li className={`nav-auth ${NAV_ITEM} md:ml-auto`}>
               <NavLink
-                to="/authentification_inscription"
+                to="/login"
                 onClick={() => setOpen(false)}
                 className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
               >

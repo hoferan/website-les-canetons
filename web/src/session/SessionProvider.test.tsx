@@ -7,12 +7,11 @@ import { renderWithSession } from "../test/renderWithSession";
 import { SessionProvider, useSession } from "./SessionProvider";
 
 function Probe() {
-  const { config, user, can } = useSession();
+  const { config, user } = useSession();
   return (
     <div>
       <span data-testid="env">{config.env}</span>
       <span data-testid="role">{user?.role ?? "anonymous"}</span>
-      <span data-testid="manage">{String(can("manage_events"))}</span>
     </div>
   );
 }
@@ -47,18 +46,6 @@ test("a logged-in user's role reaches the context", async () => {
   setMockUser("demo.admin");
   await renderWithSession(<Probe />);
   expect(await screen.findByTestId("role")).toHaveTextContent("admin");
-});
-
-test("the context's can() uses the capability matrix", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<Probe />);
-  expect(await screen.findByTestId("manage")).toHaveTextContent("true");
-});
-
-test("a user may not manage events, so can() says so", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(<Probe />);
-  expect(await screen.findByTestId("manage")).toHaveTextContent("false");
 });
 
 test("useSession outside the provider fails loudly rather than returning undefined", () => {

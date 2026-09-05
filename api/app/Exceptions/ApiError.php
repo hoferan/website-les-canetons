@@ -79,8 +79,8 @@ final class ApiError
      * the UI would have nothing to highlight. The second loop closes that gap:
      * for any field carrying a message but no failed rule, the MESSAGE IS THE
      * REASON TOKEN, emitted as-is. So a closure validator must add a bare token
-     * (e.g. 'invalid_format'), never a prose sentence — see
-     * App\Http\Requests\SignupRequest::after().
+     * (e.g. 'invalid_format'), never a prose sentence — see any FormRequest's
+     * withValidator()/after() hook that calls $validator->errors()->add().
      *
      * That token must also be a PARAMLESS one. This path emits `field` and
      * `reason` only, with no way to attach `params`, and i18next prints a
@@ -173,12 +173,10 @@ final class ApiError
      * than served against a possibly half-applied database — see
      * App\Http\Middleware\RunPendingMigrations.
      *
-     * 503 and the EXISTING `service_unavailable` code, not a new one:
-     * AltchaController already emits that pair for its own fail-closed case,
-     * i18n.js already renders it as "Service indisponible", and that is exactly
-     * what this is from the visitor's side — a temporary refusal to serve, retry
-     * shortly. Minting a second code would have added French copy that says the
-     * same thing. $e is unused deliberately; see unauthenticated().
+     * 503 and the generic `service_unavailable` code, not a bespoke one:
+     * web/src/i18n/fr.ts already renders it as "Service indisponible", and that
+     * is exactly what this is from the visitor's side — a temporary refusal to
+     * serve, retry shortly. $e is unused deliberately; see unauthenticated().
      */
     public static function serviceUnavailable(SchemaUnavailable $e): JsonResponse
     {

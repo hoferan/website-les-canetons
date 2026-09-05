@@ -63,9 +63,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // EnsureFrontendRequestsAreStateful (and therefore ahead of the session
         // pipeline it nests), on `web` ahead of EncryptCookies/StartSession.
         //
-        // Router::gatherRouteMiddleware()'s priority sort (see the note below on
-        // EnsureSouperSignupEnabled) cannot displace it from index 0 in either
-        // group. SortedMiddleware only ever moves a priority-listed middleware
+        // Router::gatherRouteMiddleware()'s priority sort cannot displace it
+        // from index 0 in either group. SortedMiddleware only ever moves a
+        // priority-listed middleware
         // to the index of a PREVIOUSLY SEEN priority-listed one, and index 0 is
         // held here by a middleware that is not on that list — so $lastIndex is
         // always >= 1 by the time any move can happen. Pinned by
