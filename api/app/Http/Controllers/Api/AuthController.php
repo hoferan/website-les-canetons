@@ -94,7 +94,7 @@ class AuthController extends Controller
         return is_string($stored) && $stored !== '' && Hash::info($stored)['algoName'] !== 'bcrypt';
     }
 
-    public function user(Request $request)
+    public function me(Request $request)
     {
         $user = $request->user();
 

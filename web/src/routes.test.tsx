@@ -1,109 +1,29 @@
 import { screen } from "@testing-library/react";
-import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { server } from "./mocks/node";
 import { AppRoutes } from "./routes";
 import { renderWithSession } from "./test/renderWithSession";
 
-// The souper pages read the occasion copy, so an override that turns the flag
-// on MUST carry it. `occasion: null` with the flag on is a state the real API
-// never produces (ConfigController ties the two together) and it crashes the
-// pages.
-const OCCASION_FIXTURE = {
-  title: "Souper des 25 ans des Canetons",
-  subtitle: "Sortie du nouveau costume · Soirée guggen",
-  date: "2027-11-13",
-  dateDisplay: "13 novembre 2027",
-  teaser:
-    "Fêtez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soirée guggen.",
-  invitation: "Amis et familles, réservez votre place et votre menu.",
-  maxGuests: 30,
-  menus: [
-    { value: "meat", label: "Viande", description: "Rôti de bœuf.", price: "CHF 45.–" },
-    { value: "child", label: "Enfant", description: "Émincé de poulet.", price: "CHF 20.–" },
-    { value: "vegetarian", label: "Végétarien", description: "Risotto.", price: "CHF 40.–" },
-  ],
-};
-
-test.each([
-  ["/", "La guggen d’enfants de Fribourg, depuis 2002."],
-  ["/historique", "L’Histoire des Canetons"],
-  ["/canetons", "Nos Canetons"],
-  ["/moniteurs", "Nos Moniteurs"],
-  ["/planning_repet", "Événements"],
-  ["/comite_teamdirection", "Le comité"],
-  ["/commencement", "Tu veux commencer la guggen ?"],
-])("%s renders its page", async (route, heading) => {
-  await renderWithSession(<AppRoutes />, { route });
-  expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+/**
+ * The route table during the R1a rebuild: almost empty on purpose (see
+ * routes.tsx). Only /login and the 404 fallback exist; everything else — the
+ * old domain's pages, the legacy French URLs — is gone until R1b/R1c bring
+ * real screens back.
+ */
+test("/login renders its page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
-
-// /cd, /multimedia and /sponsors were all HIDDEN on 2026-08-31 (see routes.tsx). Their
-// components still exist, so "hidden" has to mean the route is gone, not that
-// the file was deleted — this is what proves it.
-test.each([["/cd"], ["/multimedia"], ["/sponsors"]])(
-  "%s is hidden and falls through to the 404 view",
-  async (route) => {
-    await renderWithSession(<AppRoutes />, { route });
-    expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
-  },
-);
 
 test("an unknown URL renders the 404 view rather than nothing", async () => {
   await renderWithSession(<AppRoutes />, { route: "/pas-une-page" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
 
-// /sinscrire was MERGED into /planning_repet, not deleted: the URL is frozen and
-// is in members' bookmarks. A redirect that nothing in the app relies on is a
-// redirect nobody notices has broken, so it is pinned here.
-test("/sinscrire redirects to the planning rather than 404ing", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/sinscrire" });
-  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
-});
-
-// /admin was DELETED, not merged: the page was an orphan (nothing linked to
-// it) whose one card duplicated the nav's "Événements" entry. The URL is
-// frozen and is in bookmarks from the old site, so it redirects rather than
-// 404ing, same as /sinscrire above — and it lands on the same page, so this
-// asserts on the same heading.
-test("/admin redirects to the planning rather than 404ing", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/admin" });
-  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
-});
-
-// The souper routes are feature-gated, and "off" must mean ABSENT, not empty:
-// a disabled route has to be indistinguishable from one that never existed,
-// which is what stops a server with the feature off advertising an unannounced
-// event through a stray URL.
-test("the souper routes 404 while the feature is off", async () => {
-  // The mocked backend now ships the feature ON, so "off" is the case that
-  // needs an override here — it used to be the other way round.
-  server.use(
-    http.get("/api/config", () =>
-      HttpResponse.json({ env: "dev", features: { souper_signup: false }, occasion: null }),
-    ),
-  );
-
-  await renderWithSession(<AppRoutes />, { route: "/signup" });
+// Legacy French paths are NOT redirected — the rebuild owes no backwards
+// compatibility (design §7) — so the old login URL now falls through to 404
+// like any other unknown path.
+test("the legacy login URL is not redirected and falls through to 404", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/authentification_inscription" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
-});
-
-test("the souper routes exist when the feature is on", async () => {
-  server.use(
-    http.get("/api/config", () =>
-      HttpResponse.json({
-        env: "dev",
-        features: { souper_signup: true },
-        occasion: OCCASION_FIXTURE,
-      }),
-    ),
-  );
-
-  await renderWithSession(<AppRoutes />, { route: "/signup" });
-  // The heading is the occasion's own title, read from the config override
-  // above — /signup is no longer a Placeholder. That the fixture's copy reaches
-  // the page is the point: it proves the route resolved to the real form.
-  expect(await screen.findByRole("heading", { name: OCCASION_FIXTURE.title })).toBeInTheDocument();
 });

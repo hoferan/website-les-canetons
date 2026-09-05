@@ -67,7 +67,7 @@ class ApiErrorContractTest extends TestCase
 
     public function test_unauthenticated_request_uses_the_legacy_contract(): void
     {
-        $this->getJson('/api/user')->assertStatus(401)->assertExactJson([
+        $this->getJson('/api/me')->assertStatus(401)->assertExactJson([
             'error' => 'Not authenticated',
             'code' => 'not_authenticated',
         ]);
@@ -91,12 +91,12 @@ class ApiErrorContractTest extends TestCase
         $expected = ['error' => 'Not authenticated', 'code' => 'not_authenticated'];
 
         // A browser's Accept header, i.e. the URL-pasted-into-the-address-bar case.
-        $this->get('/api/user', ['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
+        $this->get('/api/me', ['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
             ->assertStatus(401)
             ->assertExactJson($expected);
 
         // And with no Accept header at all (curl's default).
-        $this->call('GET', '/api/user')
+        $this->call('GET', '/api/me')
             ->assertStatus(401)
             ->assertExactJson($expected);
     }

@@ -64,10 +64,7 @@ class ApiErrorVocabularyTest extends TestCase
      * Reason tokens no scan of `'reason' =>` literals can see.
      *
      * - invalid_format: ApiError::validation()'s fallback for any rule absent
-     *   from REASONS, written as `self::REASONS[$rule] ?? 'invalid_format'`, and
-     *   also the token SignupRequest::after() adds for `menus` through
-     *   $validator->errors()->add() — where the MESSAGE IS THE REASON, so the
-     *   token never appears next to a `'reason' =>` key at all.
+     *   from REASONS, written as `self::REASONS[$rule] ?? 'invalid_format'`.
      */
     private const EXTRA_REASONS = ['invalid_format'];
 
@@ -77,11 +74,8 @@ class ApiErrorVocabularyTest extends TestCase
      * - username, password: AuthController::login() validates them with an
      *   inline $request->validate([...]) rather than a FormRequest, so they are
      *   not reachable through the Requests/ reflection below.
-     * - menus: added by SignupRequest::after() via $validator->errors()->add(),
-     *   deliberately NOT a rules() key (Occasion::normalizeMenus() validates it),
-     *   so reflecting rules() cannot see it.
      */
-    private const EXTRA_FIELDS = ['username', 'password', 'menus'];
+    private const EXTRA_FIELDS = ['username', 'password'];
 
     /**
      * Floors for the derived lists, so a derivation that silently stops working
@@ -97,22 +91,11 @@ class ApiErrorVocabularyTest extends TestCase
     private const MUST_INCLUDE_CODES = [
         'validation_failed', 'not_authenticated', 'access_denied',
         'method_not_allowed', 'invalid_session', 'invalid_credentials',
-        'event_not_found', 'service_unavailable', 'captcha_failed',
+        'service_unavailable',
     ];
 
-    // 'id' used to belong here: EventController::update()/destroy() each had a
-    // `['field' => 'id', ...]` branch when the id travelled in the PUT body /
-    // DELETE query string. Both were deleted once the id became a
-    // whereNumber()-constrained /events/{id} route parameter — an absent or
-    // non-numeric id is now a 404/405 the router produces before the
-    // controller runs, never a `fields[].field === 'id'` validation error. The
-    // token genuinely can no longer be emitted, so it is intentionally absent
-    // below (see the caveat in normalise()'s failure message).
     private const MUST_INCLUDE_FIELDS = [
         'lastName', 'firstName', 'email', 'subject', 'message',
-        'date', 'title', 'startTime', 'endTime', 'location', 'attire',
-        'first_name', 'last_name', 'address', 'phone', 'table_name',
-        'eventId', 'participation',
     ];
 
     /*

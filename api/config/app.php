@@ -29,21 +29,6 @@ return [
 
     'migrate_token' => env('MIGRATE_TOKEN'),
 
-    // Shared secret signing Altcha proof-of-work challenges. Empty or the
-    // literal CHANGE_ME makes the endpoint fail closed (503): the example
-    // value is public, so challenges signed with it are forgeable.
-    'altcha_secret' => env('ALTCHA_HMAC_SECRET', ''),
-
-    // Server-owned feature flag gating the souper signup endpoints
-    // (GET /api/altcha, POST+GET /api/signups) — the Laravel half of the old
-    // app's $config['features']['souper_signup'] (App\Features). Both halves
-    // are separate settings on separate files and MUST agree: this one alone
-    // leaves the API open while the pages hide the form, and config.php's
-    // alone renders a form whose endpoints 404. Off by default, exactly like
-    // App\Features' missing-key behaviour, so a server never serves the
-    // feature until someone flips it by hand.
-    'souper_signup_enabled' => (bool) env('SOUPER_SIGNUP_ENABLED', false),
-
     // Whether App\Http\Middleware\RunPendingMigrations applies pending
     // migrations on the first /api/* request after a deploy.
     //
