@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiError;
 use App\Exceptions\SchemaUnavailable;
+use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
@@ -81,6 +82,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // test_traversing_both_groups_migrates_once_and_does_not_deadlock.
         $middleware->prependToGroup('api', RunPendingMigrations::class);
         $middleware->prependToGroup('web', RunPendingMigrations::class);
+
+        $middleware->alias([
+            'permission' => RequirePermission::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // This governs only Laravel's DEFAULT renderer — whether it falls back
