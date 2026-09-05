@@ -2,11 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-// NOTE: the auth guard's provider model (App\Models\Member) is introduced in
-// Task 2, which also repoints api/config/auth.php at it. Until then,
-// Auth::attempt() below has no model to resolve against and login cannot
-// succeed.
-
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
