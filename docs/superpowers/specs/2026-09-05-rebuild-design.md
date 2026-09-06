@@ -517,3 +517,25 @@ R1 + R2 together replace the entire current site. R3 replaces the souper.
    along with the souper feature it was attached to, so R2 or R3 must
    reintroduce it as the generic mechanism §3 describes rather than assume it
    still exists.
+
+6. **Repository documentation clean-up — DEFERRED TO R1d by decision,
+   2026-09-05.** The docs tree still describes the system this rebuild
+   replaced. Deliberately left alone until the rebuild is complete, so the docs
+   can be rewritten once against a coherent system rather than twice against a
+   half-migrated one. Scope when R1d picks it up:
+
+   - `docs/superpowers/specs/` (40 files) and `plans/` (41) — 35 of each predate
+     this rebuild and describe deleted code. Git history preserves them, so
+     deletion loses nothing; the 2026-09-05 spec and plan stay.
+   - `docs/continue-here.md` (74 KB) — a handover for the *previous* cutover.
+     Mostly obsolete, but its "traps" section documents host behaviour that is
+     still true and expensive to rediscover (the two `.htaccess` outages, the
+     FastCGI 301 bug, the display-font glyph problem). Salvage that section
+     before deleting the file.
+   - `docs/content-audit-2026-08-31.md` — **do not delete.** Its fourteen open
+     questions for the band (rosters, committee, the three published phone
+     numbers) were gathered by probing live links and are inputs R2 needs.
+   - `README.md` — the tech stack, project structure and deployment sections
+     describe the pre-rebuild layout.
+   - `docker-compose.yml:56-57` and `tools/smoke-docker.mjs:22-23` cite spec
+     files by path; repoint or drop those comments when the specs go.
