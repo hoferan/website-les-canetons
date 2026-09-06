@@ -502,3 +502,18 @@ R1 + R2 together replace the entire current site. R3 replaces the souper.
    `/history` and `/join` (section 3 of `docs/content-audit-2026-08-31.md`).
    They no longer block anything structural, because the people-pages are now
    generated.
+
+5. **Contact-form anti-abuse has no owner in the release slicing** — found by
+   the R1a whole-branch review, 2026-09-05. §6 requires honeypot + submit-timing
+   + Altcha "applied generically to both public write endpoints", but R1 covers
+   the members' tool, R2 the public pages and R3 registration; none of them
+   claims the contact form. `ContactController` and `ContactRequest` were
+   untouched by R1a (verified: zero lines changed), so the form still has **no
+   anti-abuse of any kind** — the state §1 lists as a defect of the current
+   site. Decide explicitly which release owns it. R2 is the natural home, since
+   that is when the public pages ship and the form becomes reachable again.
+
+   Note the sequencing: the Altcha implementation was deleted in R1a Task 1
+   along with the souper feature it was attached to, so R2 or R3 must
+   reintroduce it as the generic mechanism §3 describes rather than assume it
+   still exists.
