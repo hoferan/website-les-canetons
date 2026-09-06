@@ -15,22 +15,22 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
  *     {"error": "...", "code": "...", "fields": [{"field", "reason", "params"?}]}
  *
  * This deliberately replaces Laravel's native {message, errors:{}} shape.
- * app/assets/js/i18n.js's translateApiError() is the ONLY place French is
+ * web/src/i18n/'s translateApiError() is the ONLY place French is
  * computed in the whole system, and it maps `code` and `fields[].reason` —
  * stable machine tokens — onto French text. Laravel's native shape carries
  * English prose instead, which that layer cannot translate. Keeping this
  * contract is also what upholds the project rule that API bodies stay English.
  *
  * Every `reason` and `field` token emitted here must exist as a key in
- * i18n.js; a later task adds ApiErrorVocabularyTest to enforce this.
+ * web/src/i18n/fr.ts; ApiErrorVocabularyTest enforces this.
  */
 final class ApiError
 {
     /**
      * Laravel rule name => legacy reason token.
      *
-     * 'invalid_value' is RESERVED for the `in` rule. i18n.js renders it as
-     * "doit être l'une des valeurs suivantes : {{allowed}}", and `in` is the
+     * 'invalid_value' is RESERVED for the `in` rule. web/src/i18n/fr.ts renders
+     * it as "doit être l'une des valeurs suivantes : {{allowed}}", and `in` is the
      * only rule for which validation() supplies that `allowed` parameter —
      * i18next emits the placeholder literally when no value is given. Numeric
      * failures therefore use the paramless 'invalid_number' instead.
@@ -94,7 +94,7 @@ final class ApiError
         $fields = [];
 
         // One entry per field, first failure only — the old Validator broke out
-        // of its constraint loop on the first hit, and i18n.js renders one
+        // of its constraint loop on the first hit, and web/src/i18n/ renders one
         // message per field.
         foreach ($e->validator->failed() as $field => $rules) {
             $failedRule = (string) array_key_first($rules);
@@ -207,8 +207,8 @@ final class ApiError
         $body = ['error' => $message, 'code' => $code];
         if ($fields !== []) {
             // array_values, because an associative array would serialise as a
-            // JSON object and i18n.js calls .map() on this — a TypeError in the
-            // browser. Nothing statically checks the @param above.
+            // JSON object and web/src/i18n/ calls .map() on this — a TypeError in
+            // the browser. Nothing statically checks the @param above.
             $body['fields'] = array_values($fields);
         }
 
