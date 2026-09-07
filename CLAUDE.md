@@ -147,6 +147,8 @@ never deleted — matched as **exact root-relative paths** (`PROTECTED_PATHS` in
 2026-09-07, and the basename form silently dropped `api/.htaccess` and
 `api/public/.htaccess` — the authorization boundary around the Laravel tree —
 from every upload for the whole life of the project, so no server ever had them.
+(It dropped a third, `api/public/robots.txt`, Laravel's stock file: harmless and
+unreachable behind the catch-all, so the set that now travels is three.)
 The exact-path form has one obligation in exchange: **a rename of the deployed
 directory has to be mirrored in that set.** The entry is the literal
 `_api/.env`, and if it stops matching, the next `--relist` or bootstrap deploy

@@ -1546,12 +1546,33 @@ the reasons this is a hard reset rather than a staged swap.
 TEST is down from here until step 5. It is private, behind Basic Auth, and
 holds synthetic data only.
 
-- [ ] **Step 3: Upload the saved file as `_api/.env`**
+- [ ] **Step 3: Reconcile the saved file's key set, then upload it as `_api/.env`**
 
-Create `_api/` and put it there. If Plan B (Scalar) has already landed, add
-`API_DOCS_ENABLED=true` in the same edit. If the R1b plan has landed, add its
-`BOOTSTRAP_ADMIN_*` keys too — the config-shape pre-flight compares the whole
-key set and refuses on any drift, so one edit is cheaper than three.
+**Do not upload it verbatim.** TEST's live `.env` dates from 2026-07-27, and
+`compareEnvShape` (`tools/deploy/preflight.mjs`) refuses on **extra** keys as
+well as missing ones — so a file that old almost certainly still carries
+`ALTCHA_HMAC_SECRET` and `SOUPER_SIGNUP_ENABLED`, both deleted from
+`api/.env.example` in the R1a rebuild, and is missing whatever has been added
+since. Diff its key set against `api/.env.example` first, **before** you upload:
+
+- **drop** `ALTCHA_HMAC_SECRET` and `SOUPER_SIGNUP_ENABLED` if present;
+- **add** any key `api/.env.example` has that the saved file does not;
+- keep every value — the check reads key names only, never values.
+
+See `staging/README.md`,
+[Keeping `_api/.env` in shape with `api/.env.example`](../../../staging/README.md#keeping-_apienv-in-shape-with-apienvexample),
+which documents this check and both directions of drift.
+
+Then create `_api/` and put the reconciled file there. If Plan B (Scalar) has
+already landed, add `API_DOCS_ENABLED=true` in the same edit. If the R1b plan
+has landed, add its `BOOTSTRAP_ADMIN_*` keys too — the pre-flight compares the
+whole key set at once, so one edit is cheaper than three.
+
+Getting this wrong is recoverable but expensive in the middle of a cutover:
+Step 5's `--dry-run` **reports** the drift without refusing (exit 0), so it is
+where you find out — but by then TEST is wiped, the real deploy after it will
+refuse with **exit 2**, and you are back in the FTP client editing `.env` with
+the site down. Reconcile here instead.
 
 - [ ] **Step 4: Place the `.htaccess` and `robots.txt`**
 
@@ -1584,6 +1605,18 @@ curl -su "USER:PASS" -o /dev/null -w "%{http_code}\n" https://test.lescanetons.o
   `_api/public/.htaccess`, re-check, and record the result: it means this host
   cannot have the Apache-level boundary and the catch-all is the only layer
   available. **Note it in `staging/README.md` and in the spec's open items.**
+
+  **That FTP delete is not durable — it gets the site back, it does not keep it
+  back.** Both files travel in the artifact and are deliberately *not* in
+  `PROTECTED_PATHS`, so a routine state-based deploy leaves them alone (the
+  state file records their hash, so `classify` calls them unchanged) but a
+  `--relist`, a `--force` or any bootstrap run classifies them as new — absent
+  from the remote LIST — and uploads them straight back, taking the server from
+  working to **500 on every `/api/*` request**. Nothing catches that:
+  `npm run smoke` runs against localhost, CI cannot reach this host at all, and
+  the post-deploy verifier is deferred. **The durable rollback is to delete the
+  two files from `api/` in the repository and redeploy.** Do that in the same
+  sitting.
 
 ```bash
 curl -su "USER:PASS" -o /dev/null -w "%{http_code}\n" https://test.lescanetons.org/_api/.env

@@ -69,7 +69,10 @@ project, even though `tools/build.mjs` had always copied them into the
 artifact. `PROTECTED_PATHS` is now a set of **exact root-relative paths** —
 `.htaccess`, `robots.txt`, `.htpasswd`, `config.php` and `_api/.env` — so the
 four at the deploy root stay server-owned while the two nested `.htaccess`
-files travel with the code, which is what they were always for.
+files travel with the code, which is what they were always for. (Three files
+travel, strictly: the basename `robots.txt` also dropped Laravel's stock
+`api/public/robots.txt`, which is harmless and unreachable behind the
+catch-all.)
 
 **That is a fact about the tool, not about any server. Assume the boundary is
 absent until a server answers 403.** A server acquires the two files on its
@@ -86,6 +89,15 @@ documented fallback is to FTP-delete both files, which leaves this host with no
 Apache-level boundary available even in principle. The one thing that settles
 it for a given server is `/_api/.env` there answering **403** rather than a 500
 or the SPA shell.
+
+**That FTP delete is not durable.** Both files are in the artifact and
+deliberately *not* protected paths, so a routine state-based deploy leaves them
+alone but a `--relist`, a `--force` or any bootstrap run sees them missing from
+the remote tree, calls them new, and uploads them straight back — putting the
+server back to 500 on every `/api/*` request, with nothing to catch it (`npm run
+smoke` runs against localhost and CI cannot reach this host). Use the delete to
+get the site back in the moment; the **durable rollback is to delete the two
+files from `api/` in the repository and redeploy.**
 
 Note the one entry that is deliberately *not* at the root. `_api/.env` is
 nested by definition, is absent from the artifact, and exists nowhere else, so
@@ -171,6 +183,17 @@ npm run build:overlay   # -> dist/overlay/{test,qa,prod}/  (the generatable serv
 
    and afterwards check that both access files actually landed on the server.
    The mask is what should protect them; the check is what tells you it did.
+
+**One known ordering property of the fan-out.** `tools/deploy/ftp.mjs` groups
+uploads by directory and uploads the groups concurrently, so `_api/` is an early
+batch and `_api/public/` a much later one: on a run that uploads both access
+files, the deny-all lands seconds before the grant and `/api/*` answers **403**
+in between — and a run that dies in that window leaves it 403ing until the
+deploy is re-run. That only happens on a bootstrap or a `--force`/`--relist`
+run, i.e. when the site is already down or being rewritten wholesale, so it is
+recorded rather than fixed. If it ever matters, the fix is to order those two
+uploads the way `tools/put-overlay.mjs` orders its own two ("so routing flips
+only once") — not to serialise the whole deploy.
 
 `build:overlay` merges the auth block onto the current site template
 automatically, so there's no hand-editing of `.htaccess` (which is how the

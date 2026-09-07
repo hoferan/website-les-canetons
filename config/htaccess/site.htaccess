@@ -44,7 +44,9 @@ RewriteEngine on
 # would match and fire — but that whole rewrite block was deleted from the file
 # on 2026-09-07. It now carries an authorization grant and nothing else,
 # re-opening the one directory of the Laravel tree that _api/.htaccess's
-# deny-all closes. So the header forwarding has to happen here.
+# deny-all closes. So the header forwarding has to happen here — CGI-family
+# SAPIs, which is what this host and the local container both use, do not hand
+# Authorization to PHP otherwise.
 #
 # Deleting that block cost nothing, which is a separate point about a separate
 # rule: Laravel's FRONT-CONTROLLER rule is guarded `RewriteCond
@@ -53,11 +55,10 @@ RewriteEngine on
 # and the guard fails. That rule had nothing left to route either way.
 # (Both files do now ship to every server: the deploy CLI's protected set is
 # root-relative paths, not basenames at any depth.)
-# CGI-family SAPIs — which is what this host and the local container both use —
-# do not hand Authorization to PHP otherwise. The X-XSRF-Token rule is the same
-# belt-and-braces Laravel ships; it is kept so this block stays a faithful
-# stand-in for the rules Laravel's own stock public/.htaccess carries
-# upstream, even though Apache already exports
+#
+# The X-XSRF-Token rule is the same belt-and-braces Laravel ships; it is kept
+# so this block stays a faithful stand-in for the rules Laravel's own stock
+# public/.htaccess carries upstream, even though Apache already exports
 # arbitrary request headers as HTTP_* (X-XSRF-Token reaches PHP without this
 # rule) and the E= value this rule sets arrives on the dispatched request as
 # REDIRECT_HTTP_X_XSRF_TOKEN, which Symfony's ServerBag doesn't read (its

@@ -3,9 +3,9 @@
 // server (each deployed path -> {size, sha256 hash}). A routine deploy diffs
 // the local build against this one small file instead of walking the whole
 // remote tree, and it makes an aborted deploy resumable. A dotfile so the
-// front-controller catch-all + .htaccess don't serve it; part of PROTECTED so
-// it's never deleted. Format is unchanged from the previous tool, so an
-// existing .sync-state.json on a server keeps working.
+// front-controller catch-all + .htaccess don't serve it; an exact entry in
+// PROTECTED_PATHS so it's never deleted. Format is unchanged from the previous
+// tool, so an existing .sync-state.json on a server keeps working.
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

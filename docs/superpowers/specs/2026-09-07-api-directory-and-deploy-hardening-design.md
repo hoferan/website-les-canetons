@@ -112,7 +112,11 @@ does not permit these directives, every `/api/*` request answers 500. It cannot
 be tested before the cutover — while the old catch-all is in place, a request
 for `/_api/.env` is rewritten to the shell. So it is tested immediately after,
 and the fallback is to FTP-delete the two files, which restores exactly today's
-behaviour.
+behaviour — but only until the next deploy that is not state-based. They are in
+the artifact and are not protected paths, so a `--relist`, a `--force` or a
+bootstrap run puts them straight back and the server 500s again. **The durable
+rollback is to delete them from `api/` in the repository and redeploy;** the FTP
+delete is the stopgap that buys the time to do it.
 
 ## 5. The protected set
 
@@ -231,7 +235,10 @@ git-ignored. It holds `APP_KEY`, the DB credentials and `MIGRATE_TOKEN`.
 5. Verify, in this order:
    - `GET /api/config` → **200**. A **500** means `AllowOverride` refuses the
      new directives: FTP-delete `_api/.htaccess` and `_api/public/.htaccess`
-     and re-verify.
+     and re-verify — then make it durable by deleting them from `api/` in the
+     repository and redeploying, because they are in the artifact and not
+     protected paths, so a `--relist`, `--force` or bootstrap run uploads them
+     back and the 500 returns.
    - `GET /_api/.env` → **403**. The SPA shell means the deny file is not being
      honoured; a 200 serving the file means it is not there at all.
    - A browser login works, and the session cookie is `HttpOnly`,
@@ -264,3 +271,12 @@ QA and PROD need no migration: neither has an `_api/.env` or an
    question that already forced `[L]` over `[END]`.
 2. **The post-deploy verifier is still deferred** (it predates this spec). Until
    it exists, §7 step 5 is done by hand.
+3. **The deny lands before the grant.** `tools/deploy/ftp.mjs` groups uploads by
+   directory and fans out, so `_api/` is an early batch and `_api/public/` a much
+   later one: the deny-all arrives seconds before the grant and `/api/*` answers
+   403 in between, and a run that dies in that window leaves it 403ing until the
+   deploy is re-run. The window exists only on runs where the site is already
+   down or being force-rewritten (bootstrap, `--force`, `--relist`), so this is
+   recorded, not fixed. If it ever matters, order those two uploads — the way
+   `tools/put-overlay.mjs` already orders its own two — rather than serialising
+   the whole deploy.
