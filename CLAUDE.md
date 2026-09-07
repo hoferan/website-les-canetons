@@ -19,7 +19,7 @@ Two applications, one origin, one repository:
 - **`api/` — Laravel 13** (`composer.json` requires `^13.8`), which owns the whole JSON API and the database
   schema. Its own Composer project (`api/composer.json`, `api/vendor/`, its own
   tests and migrations), sharing the database rather than having one of its own.
-  Deployed as `api-laravel/` inside the document root.
+  Deployed as `_api/` inside the document root.
 - **PHP 8.4** (matches prod) and **MariaDB 10.3** (prod: 10.3.8).
 - **Apache** with `.htaccess` (API dispatch + SPA fallback + cache policy) on
   `easy-hebergement.net` shared hosting.
@@ -38,38 +38,59 @@ so `.stylelintrc.json` lists them under `at-rule-no-unknown`'s `ignoreAtRules`
 and disables `import-notation` (v4 imports a bare `"tailwindcss"`, not a
 `url()`).
 
-### The `.htaccess`, and three things that will take the site down
+### The `.htaccess`, and two things that will take the site down
 
 The tracked template is `config/htaccess/site.htaccess`;
 `tools/build-overlays.mjs` merges it with each environment's auth block into
 `dist/overlay/<env>/`. The file is **server-owned** and never uploaded by a
-deploy. Read its comments before touching any of it. Three properties are
+deploy. Read its comments before touching any of it. Two properties are
 load-bearing:
 
-1. **The `/api/*` dispatch must stay first**, above the legacy redirects and the
-   SPA fallback, because the fallback matches every path.
+1. **The `/api/*` dispatch must stay first**, above the SPA fallback, because
+   the fallback matches every path. Nothing sits between the two any more — see
+   the note below.
 2. **`[L]`, not `[END]`.** `END` is Apache 2.3.9+; this host's version is
    unresolved (it 500s on `<RequireAny>`, which leans 2.2) and an unknown
    `RewriteRule` flag is a syntax error — a 500 on *every* request to the whole
    site. `[L]` is safe on 2.2 and 2.4, and correct here because the substituted
-   path `api-laravel/...` cannot re-match `^api(/|$)`: the hyphen defeats
-   `(/|$)`. That is also why the directory is called `api-laravel` and must not
-   be "tidied" to `api`.
-3. **Two negative lookaheads on the legacy 301s**, both learned the hard way:
-   - the `.php` rule excludes `api-laravel/`, or the dispatch's own rewrite
-     target gets 301'd on the re-entered pass and **the entire API answers 301**
-     while every page still looks fine;
-   - the `.html` rule excludes `index.html`, or the SPA fallback's own output
-     gets 301'd and **every URL of the site redirect-loops**.
+   path `_api/public/index.php` cannot re-match `^api(/|$)`: that pattern
+   matches only a path that is **exactly** `api` or that **begins** `api/`, so
+   every name but the literal `api` is loop-safe for free — the previous name,
+   `api-laravel`, included, though not for the reason its comment used to give;
+   see `config/htaccess/site.htaccess`.
 
-   Both are covered by `tools/build-overlays.test.mjs` and by `npm run smoke`.
+**There was a third property until 2026-09-07: two negative lookaheads on the
+legacy `RedirectMatch 301` rules**, each of which had already broken something
+— the `.php` rule's lookahead excluding the dispatch target (without it **the
+entire API answered 301** while every page still looked fine), and the `.html`
+rule's `(?!index\.html$)` (without it the SPA fallback's own output was 301'd
+and **every URL of the site redirect-looped**). All three legacy 301s were
+deleted on 2026-09-07 — the rebuild makes every URL English and owes no
+backwards compatibility, so each one 301'd to a path that answers the SPA's own
+404 view anyway — and both landmines went with them. The mechanism is still
+written up in the template at the point where they used to sit, because it is
+what makes *any* future redirect here dangerous: a `RedirectMatch` is mod_alias,
+which sees internal paths on the re-entered pass, including whatever prefix this
+host's FastCGI wrapper adds. Read that block before adding one.
 
 The fallback is a **catch-all** with a `RewriteCond %{ENV:REDIRECT_STATUS} ^$`
 guard, not an `!-f`/`!-d` guard. The guard is what stops the rewrite re-matching
 its own output and looping into a 500 on this FastCGI host; the catch-all is
-what keeps `api-laravel/.env`, `api-laravel/vendor/` and each server's now-dead
-`config.php` unreachable. An unknown URL therefore answers **200 with the SPA's
-own 404 view**, deliberately — enumerating routes in `.htaccess` would drift.
+what keeps files that *do* exist and must not be read — each server's now-dead
+`config.php`, and any future stray — served as the shell rather than served as
+themselves. An unknown URL therefore answers **200 with the SPA's own 404
+view**, deliberately — enumerating routes in `.htaccess` would drift.
+
+**That catch-all is not meant to be the only thing in front of the Laravel
+tree any more, nor the primary one.** `api/.htaccess` denies the whole tree and
+`api/public/.htaccess` re-grants the one directory meant to be reachable,
+shipping as `_api/.htaccess` and `_api/public/.htaccess`; every deploy from now
+on uploads them, and until 2026-09-07 none ever did (see **Deployment**). But
+that is the tool's state, not a server's: **assume the boundary is absent on a
+given server until `/_api/.env` there answers 403.** `staging/README.md` carries
+the per-server checklist and what to do if this host 500s on the new
+directives; `config/htaccess/site.htaccess` carries the mechanism, and why
+Apache's authorization beats the rewrite it now sits in front of.
 
 ### Build
 
@@ -79,7 +100,7 @@ environment-agnostic code artifact:
 ```
 index.html        the SPA shell
 assets/           hashed JS/CSS, plus img/ and icons/ copied verbatim
-api-laravel/      the Laravel API with a production-only vendor/
+_api/             the Laravel API with a production-only vendor/
 ```
 
 **The order of the two builds is load-bearing.** Vite empties its `outDir`, so
@@ -106,12 +127,12 @@ target commit already deployed successfully to `qa`, and refuses otherwise even
 with `dry_run`. Rolling back is redeploying an older tag.
 
 Every upload **excludes the server-owned files** — `.htaccess`, `robots.txt`,
-`api-laravel/.env` (and `config.php`, which still exists on each server and
-should be deleted by hand once). Those are placed per server:
-`npm run build:overlay` generates `.htaccess`/`robots.txt` into
-`dist/overlay/<env>/`; `api-laravel/.env` is always set by hand. Nothing
-recreates it, and a server without it 500s every `/api/*` request — so it must
-exist *before* the first deploy. See `staging/README.md`.
+`_api/.env` (and `config.php`, which still exists on each server and should be
+deleted by hand once). Those are placed per server: `npm run build:overlay`
+generates `.htaccess`/`robots.txt` into `dist/overlay/<env>/`; `_api/.env` is
+always set by hand. Nothing recreates it, and a server without it 500s every
+`/api/*` request — so it must exist *before* the first deploy. See
+`staging/README.md`.
 
 **Automated deploy (`npm run deploy:<env>`):** `tools/deploy/cli.mjs` builds and
 then **mirrors** `dist/build/` to the target over plain FTP (creds from a
@@ -121,10 +142,17 @@ removes emptied directories deepest-first. A **mass-delete safety brake**
 refuses (exit 2) when a deploy would delete both >50 files and >20% of the
 remote tree; override with `-- --force-delete` after checking the plan.
 Server-owned files and the tool-owned `.sync-state.json` are never uploaded and
-never deleted — matched by **basename at any depth**, which is what protects the
-nested `api-laravel/.env`. Every bulk phase fans out over `FTP_CONCURRENCY`
-connections (default 6, clamped 1-8) with exponential-backoff reconnect; the
-host is flaky under concurrency.
+never deleted — matched as **exact root-relative paths** (`PROTECTED_PATHS` in
+`tools/deploy/preflight.mjs`). That was a **basename match at any depth** until
+2026-09-07, and the basename form silently dropped `api/.htaccess` and
+`api/public/.htaccess` — the authorization boundary around the Laravel tree —
+from every upload for the whole life of the project, so no server ever had them.
+The exact-path form has one obligation in exchange: **a rename of the deployed
+directory has to be mirrored in that set.** The entry is the literal
+`_api/.env`, and if it stops matching, the next `--relist` or bootstrap deploy
+classifies every server's hand-placed API configuration as stale and deletes it.
+Every bulk phase fans out over `FTP_CONCURRENCY` connections (default 6, clamped
+1-8) with exponential-backoff reconnect; the host is flaky under concurrency.
 
 > **The `.env.*` files use `FTP_PASSWORD`; the CLI reads `FTP_PASS`.** That is a
 > known, deliberate mismatch — do not "fix" the env files. Inject it for a
@@ -145,7 +173,7 @@ and the build-free `status:<env>`, `<env>` = `test`|`qa`|`prod`. Flags after
 target hard-refuses unless its `FTP_DIR` matches the env name.
 
 **Config-shape pre-flight:** before uploading, the deploy CLI fetches the
-target's `api-laravel/.env` and compares its **key set** (never values — those
+target's `_api/.env` and compares its **key set** (never values — those
 are never read or logged) against `api/.env.example`. Any drift refuses the
 deploy with the exact keys to fix, so shipping code that expects a new key fails
 that server's deploy instead of 500ing every request afterwards. `--dry-run`
@@ -224,7 +252,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   (`package.json`, `vite.config.ts`, `orval.config.ts`, `tsconfig.json`,
   `docker/`, `config/`, `tools/`, `.github/`).
 - **Apache splits the traffic before either application runs.** `/api/*` and
-  `/sanctum/*` go to `api-laravel/public/index.php`; everything else gets
+  `/sanctum/*` go to `_api/public/index.php`; everything else gets
   `index.html`.
 - **`web/` layout:**
 
@@ -308,7 +336,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 npm run dev         # generate the docker .htaccess overlay, then bring the stack up
 npm run dev:web     # Vite dev server on :5173 — where you actually work
 npm run build       # refresh the artifact the :8090 stack serves
-npm run smoke       # HTTP smoke checks against the built artifact (13 checks)
+npm run smoke       # HTTP smoke checks against the built artifact (9 checks)
 npm run dev:down    # stop
 ```
 
@@ -351,7 +379,7 @@ that healthcheck pings `-h 127.0.0.1`, not `localhost`, because the unix-socket
 path falsely reports healthy against MariaDB's temporary `--skip-networking`
 init server.
 
-**Migrations run from the `web` entrypoint** (`php api-laravel/artisan migrate
+**Migrations run from the `web` entrypoint** (`php _api/artisan migrate
 --force`, wrapped in a retry because `artisan` has no connection retry of its
 own), before Apache accepts its first request. On a real server there is no
 entrypoint: the schema is applied by `RunPendingMigrations` on the first request
@@ -403,7 +431,7 @@ npm run lint:api      # Laravel Pint (--test)
 it runs inside the stack:
 
 ```bash
-docker compose exec -w /var/www/html/api-laravel web php artisan test
+docker compose exec -w /var/www/html/_api web php artisan test
 ```
 
 In Git Bash, prefix that with `MSYS_NO_PATHCONV=1` or the `-w` argument is
@@ -419,7 +447,7 @@ identical command from PowerShell is green. It is intermittent, which makes it
 worse — it has already sent two separate sessions hunting a phantom.
 
 `npm run check` deliberately does **not** build: `build:web` empties
-`dist/build/`, which would delete `api-laravel/` out from under a running stack.
+`dist/build/`, which would delete `_api/` out from under a running stack.
 CI's `build` job covers the artifact.
 
 A Husky pre-commit hook runs `lint-staged` on staged files.
@@ -480,5 +508,10 @@ done.
 - Never commit `dist/build/`, `api/.env`, or any production data / DB dump.
 - Never hand-edit `dist/build/` or `web/src/api/generated/`.
 - Never store real member data or passwords in seed files.
-- Never rename `api-laravel/` without first adding a `REDIRECT_STATUS` guard to
-  both dispatch rules — see the `.htaccess` section above.
+- Never rename `_api/` without checking two things. The `REDIRECT_STATUS` guard
+  on both dispatch rules is needed only for a name `^api(/|$)` can actually
+  match — i.e. literally `api`; every other name is loop-safe for free, `_api`
+  included (see the `.htaccess` section above). But **every** rename has to be
+  mirrored in `PROTECTED_PATHS` (`tools/deploy/preflight.mjs`), which names
+  `_api/.env` as an exact path, or the next `--relist` deploy deletes each
+  server's API configuration — see **Deployment** above.

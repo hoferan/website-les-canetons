@@ -129,12 +129,16 @@ RewriteRule ^sanctum(/|$) _api/public/index.php [L]
 # real 404. Accepted deliberately: the alternative is enumerating every route
 # here, where it would drift from the router.
 #
-# The catch-all is also a second layer in front of the Laravel tree — no longer
-# the only one, and no longer the primary one. _api/.htaccess's deny-all now
-# ships to every server, and it is strictly stronger: Apache evaluates
+# The catch-all is also a layer in front of the Laravel tree — and, on any
+# server that has not been deployed to since 2026-09-07, still the only one.
+# _api/.htaccess's deny-all ships with every deploy from now on (before that
+# change its basename kept it out of every upload, so no server has ever had
+# it), and where it lands and is read it is strictly stronger: Apache evaluates
 # authorization during its directory walk, BEFORE mod_rewrite's per-directory
 # rules run in the fixup phase, so a request for _api/.env is refused with a
-# real 403 and this rewrite never sees it. What the catch-all still adds is
+# real 403 and this rewrite never sees it. That is verified against the local
+# stack only — whether this host accepts the directives is what the TEST
+# cutover establishes. What the catch-all still adds is
 # coverage of anything outside the Laravel tree, where that deny-all does not
 # reach — the now-dead config.php still sitting on each server, and any future
 # stray file — plus the 200-with-the-SPA's-own-404-view behaviour described
@@ -151,10 +155,10 @@ RewriteRule ^sanctum(/|$) _api/public/index.php [L]
 #     redirects") — on EVERY url of the site, not just one page.
 #  2. It stays a CATCH-ALL rather than an !-f/!-d guard. A !-f guard serves
 #     whatever exists, which is the opposite of what is wanted for files that do
-#     exist and must not be read — config.php still being the live example. It
-#     is no longer the only thing standing in front of _api/.env and
-#     _api/vendor/ (_api/.htaccess's deny-all is), so this is no longer the sole
-#     reason the Laravel tree is safe — but it is still what makes an unknown
+#     exist and must not be read — config.php still being the live example. On
+#     a server that has _api/.htaccess's deny-all it is not the only thing
+#     standing in front of _api/.env and _api/vendor/; on a server that does
+#     not, it is the ONLY thing. Either way it is still what makes an unknown
 #     URL answer the SPA instead of whatever happens to be on disk.
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{ENV:REDIRECT_STATUS} ^$

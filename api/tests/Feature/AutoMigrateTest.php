@@ -32,8 +32,8 @@ use Tests\TestCase;
  * migration path gives the middleware something genuinely pending to act on.
  *
  * AUTO_MIGRATE is pinned false in phpunit.xml, so each test that wants the
- * middleware live turns it on with config([...]) — the same pattern
- * SouperSignupFlagTest uses for its flag.
+ * middleware live turns it on with config([...]) — the same pattern MigrateTest
+ * uses for app.migrate_token.
  *
  * ---------------------------------------------------- what is NOT tested here
  *

@@ -44,10 +44,10 @@ class ApiErrorVocabularyTest extends TestCase
      * In the repository tree — a developer's checkout and CI — it sits at
      * <root>/web/src/i18n/fr.ts, three levels up from this file. In the dev
      * container the document root is the BUILT artifact, which contains only
-     * hashed bundles, so the source is not reachable from api-laravel/ at all;
+     * hashed bundles, so the source is not reachable from _api/ at all;
      * docker-compose.yml mounts the tracked web/ read-only at /srv/web purely
      * so this guard can still read it. The suite runs with a -w of
-     * /var/www/html/api-laravel, so neither cwd nor one absolute path would do.
+     * /var/www/html/_api, so neither cwd nor one absolute path would do.
      *
      * (api/app/ needs no such list: this file sits inside api/, so ../../app is
      * the same relative path in both layouts.)

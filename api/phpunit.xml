@@ -58,17 +58,18 @@
              fail; and more generally a test that silently repaired the schema
              underneath itself would hide exactly the breakage a suite is for.
              AutoMigrateTest turns it back on with config([...]) per test, the
-             same way SouperSignupFlagTest does. Pinned rather than left to the
-             ambient environment because the suite runs INSIDE the web
-             container, where docker/api/env.docker is mounted as
-             api-laravel/.env with AUTO_MIGRATE=true. -->
+             same way MigrateTest (named above) sets app.migrate_token in each
+             of its own. Pinned rather than left to the ambient environment
+             because the suite runs INSIDE the web container, where
+             docker/api/env.docker is mounted as _api/.env with
+             AUTO_MIGRATE=true. -->
         <env name="AUTO_MIGRATE" value="false"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <!-- The DEPLOYED posture, pinned for the same reason as AUTO_MIGRATE
              above: the suite runs INSIDE the web container, where
-             docker/api/env.docker is mounted as api-laravel/.env and sets
+             docker/api/env.docker is mounted as _api/.env and sets
              SESSION_SECURE_COOKIE=false. That override is correct for local dev
              — :8090 is plain http, and a browser will not send a Secure-only
              cookie back over it, so login breaks outright without it — but a

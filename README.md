@@ -56,7 +56,7 @@ Nadia Sansconnexion, is seeded with no account at all):
 | `demo.both`      | Plays in Trompettes **and** holds the `direction` role — both answers for events and manages them. |
 
 ```bash
-npm run smoke     # HTTP smoke checks against the built artifact (13 checks)
+npm run smoke     # HTTP smoke checks against the built artifact (9 checks)
 npm run dev:down  # stop
 ```
 
@@ -86,7 +86,7 @@ npm run fix     # auto-fix
 `npm run check` does not run the Laravel suite — it needs a live database:
 
 ```bash
-docker compose exec -w /var/www/html/api-laravel web php artisan test
+docker compose exec -w /var/www/html/_api web php artisan test
 ```
 
 A Husky pre-commit hook lints staged files automatically. See **[CLAUDE.md](CLAUDE.md)**
@@ -117,7 +117,7 @@ approvals in that same run:
   commit, ref, and time — e.g. `https://<prod-host>/deployment.json` — so you can
   always see what is live where. Per-env status is also on the badges above.
 
-The server-owned files (`.htaccess`, `robots.txt`, `api-laravel/.env`) are never
+The server-owned files (`.htaccess`, `robots.txt`, `_api/.env`) are never
 uploaded, so promotion never touches a server's config. For the full server
 layout, the access-control overlay, and manual/WinSCP fallbacks, see
 [staging/README.md](staging/README.md).
