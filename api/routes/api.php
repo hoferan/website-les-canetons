@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MigrateController;
 use Illuminate\Support\Facades\Route;
@@ -32,7 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // whereas Scramble's own /docs/api has been swallowed by that fallback since
 // the day it was installed.
 Route::middleware('docs')->group(function () {
-    Route::get('/docs', fn () => response('placeholder'));
+    Route::get('/docs', DocsController::class);
     Route::get('/docs.json', DocsDocumentController::class);
 });
 

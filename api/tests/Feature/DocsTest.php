@@ -144,4 +144,51 @@ class DocsTest extends TestCase
 
         $this->getJson('/api/docs.json')->assertNotFound();
     }
+
+    public function test_the_page_points_at_this_apps_document(): void
+    {
+        config(['docs.enabled' => true]);
+
+        $this->get('/api/docs')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+            ->assertSee('/api/docs.json');
+    }
+
+    public function test_the_page_does_not_route_requests_through_a_third_party(): void
+    {
+        // api/config/scramble.php sets proxyUrl => https://proxy.scalar.com,
+        // and Scramble's own view passes its whole renderer config through — so
+        // anyone modelling this page on that file inherits it. That would send
+        // request bodies off-site, lose the session cookie on the hop, and fail
+        // opaquely on TEST, where the proxy has no Basic Auth credentials.
+        // These requests are same-origin and need no proxy.
+        config(['docs.enabled' => true]);
+
+        $this->get('/api/docs')
+            ->assertOk()
+            ->assertDontSee('proxy.scalar.com')
+            ->assertDontSee('proxyUrl', false);
+    }
+
+    public function test_the_page_replays_the_csrf_token_so_try_it_is_not_419(): void
+    {
+        // Sanctum's stateful SPA mode puts /api/* behind the `web` middleware
+        // group, so a mutating request without X-XSRF-TOKEN answers
+        // 419 {"code":"invalid_session"}. web/src/api/http.ts does this for the
+        // SPA; a docs page that skipped it would 419 on the first POST and
+        // look broken rather than protected.
+        config(['docs.enabled' => true]);
+
+        $page = $this->get('/api/docs')->assertOk();
+
+        $page->assertSee('X-XSRF-TOKEN', false);
+        $page->assertSee('XSRF-TOKEN', false);
+        // The cookie has to exist before it can be replayed, and only
+        // /sanctum/csrf-cookie plants it.
+        $page->assertSee('/sanctum/csrf-cookie', false);
+        // Without this the session cookie is not sent and every authenticated
+        // endpoint answers 401.
+        $page->assertSee('credentials', false);
+    }
 }
