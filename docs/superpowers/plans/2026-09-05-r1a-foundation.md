@@ -3096,6 +3096,19 @@ all. On a shared family device that is indefinite access.
 
 - [ ] **Step 1: Write the failing test**
 
+> **CORRECTION, 2026-09-07.** As written, this step and **Step 4 contradict each
+> other**: Step 4 sets `SESSION_SECURE_COOKIE=false` in
+> `docker/api/env.docker`, which is mounted as `api-laravel/.env`, so the
+> `config('session.secure')` assertion below reads `false` and fails in Docker.
+> It passes only in a Claude Code web session, where the native `api/.env` comes
+> from `api/.env.example` and omits the variable — which is how it was committed
+> green and stayed red in Docker for a day. The fix, already applied: pin
+> `SESSION_SECURE_COOKIE=true` in `api/phpunit.xml` (as `AUTO_MIGRATE` already
+> is), and assert the *fallback* in a test that clears the variable and re-reads
+> `config/session.php` — otherwise the pin makes the assertion below vacuous.
+> Read the committed `api/tests/Feature/SessionLifetimeTest.php`, not the code
+> in this step.
+
 Create `api/tests/Feature/SessionLifetimeTest.php`:
 
 ```php

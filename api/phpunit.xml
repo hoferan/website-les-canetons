@@ -66,6 +66,22 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- The DEPLOYED posture, pinned for the same reason as AUTO_MIGRATE
+             above: the suite runs INSIDE the web container, where
+             docker/api/env.docker is mounted as api-laravel/.env and sets
+             SESSION_SECURE_COOKIE=false. That override is correct for local dev
+             — :8090 is plain http, and a browser will not send a Secure-only
+             cookie back over it, so login breaks outright without it — but a
+             suite that inherits it is measuring a dev workaround instead of
+             what ships. Left unpinned, SessionLifetimeTest's two cookie tests
+             fail in Docker while passing natively in a Claude Code web session,
+             where api/.env comes from api/.env.example and omits the variable
+             altogether. They did exactly that.
+             The fallback this pin hides — what a server gets when its .env says
+             nothing — is asserted by
+             SessionLifetimeTest::test_the_secure_cookie_default_is_true_when_a_server_sets_nothing,
+             which clears the variable and re-reads config/session.php. -->
+        <env name="SESSION_SECURE_COOKIE" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

@@ -33,10 +33,84 @@ class SessionLifetimeTest extends TestCase
         // response.
         $this->assertTrue(config('session.http_only'));
         $this->assertSame('strict', config('session.same_site'));
+
+        // This one asserts THE SUITE'S OWN POSTURE, not the application
+        // default: api/phpunit.xml pins SESSION_SECURE_COOKIE=true so that
+        // every test here runs configured the way a deployed server is, and
+        // this line is what fails if that pin is ever dropped. It says nothing
+        // about config/session.php's fallback — with the pin in place it would
+        // pass against Laravel's stock, insecure default too. The fallback is
+        // the property that actually protects a real server, and it has its own
+        // test below.
         $this->assertTrue(
             config('session.secure'),
-            'SESSION_SECURE_COOKIE must default to true; local http dev overrides it.',
+            'api/phpunit.xml must pin SESSION_SECURE_COOKIE=true, or this suite '.
+            'measures the plain-http dev override in docker/api/env.docker.',
         );
+    }
+
+    /**
+     * A DEPLOYED server's `.env` omits SESSION_SECURE_COOKIE entirely
+     * (api/.env.example says so in as many words), so the whole security of the
+     * session cookie rests on config/session.php's fallback being `true` rather
+     * than Laravel's stock `env('SESSION_SECURE_COOKIE')`, which resolves to
+     * false and ships the session cookie over plain http.
+     *
+     * That fallback cannot be read off config('session.secure') anywhere in
+     * this suite: something always sets the variable. api/phpunit.xml pins it
+     * true (deliberately — see the comment there), and underneath that
+     * docker/api/env.docker sets it false, because local dev is plain http and
+     * a Secure-only cookie is one a browser will not send back, which breaks
+     * login on :8090 outright. Both are legitimate; neither says anything about
+     * what a real server gets.
+     *
+     * So this re-evaluates the config file with the variable absent from every
+     * adapter Illuminate\Support\Env consults — $_ENV, $_SERVER and putenv.
+     * Env::getOption() reads the repository live on every call and memoizes
+     * nothing, so a fresh `require` of the file sees the cleared state and
+     * yields the true default.
+     */
+    public function test_the_secure_cookie_default_is_true_when_a_server_sets_nothing(): void
+    {
+        $config = $this->sessionConfigWithout('SESSION_SECURE_COOKIE');
+
+        $this->assertTrue(
+            $config['secure'],
+            'config/session.php must default session.secure to true, so a server whose '.
+            '.env omits SESSION_SECURE_COOKIE still gets a Secure-only cookie.',
+        );
+    }
+
+    /**
+     * The session config as it evaluates on a server that sets $variable
+     * nowhere. Restores the environment afterwards whatever happens — leaking a
+     * cleared SESSION_SECURE_COOKIE into the rest of the suite would silently
+     * change what every later test measures.
+     *
+     * @return array<string, mixed>
+     */
+    private function sessionConfigWithout(string $variable): array
+    {
+        $fromEnv = array_key_exists($variable, $_ENV) ? $_ENV[$variable] : null;
+        $fromServer = array_key_exists($variable, $_SERVER) ? $_SERVER[$variable] : null;
+        $fromProcess = getenv($variable);
+
+        unset($_ENV[$variable], $_SERVER[$variable]);
+        putenv($variable);
+
+        try {
+            return require config_path('session.php');
+        } finally {
+            if ($fromEnv !== null) {
+                $_ENV[$variable] = $fromEnv;
+            }
+            if ($fromServer !== null) {
+                $_SERVER[$variable] = $fromServer;
+            }
+            if ($fromProcess !== false) {
+                putenv("{$variable}={$fromProcess}");
+            }
+        }
     }
 
     /**
