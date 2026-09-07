@@ -31,6 +31,8 @@ import type {
   Config200,
   Contact200,
   ContactRequest,
+  RoleResource,
+  SectionResource,
   ValidationExceptionResponse,
 } from "./model";
 
@@ -555,3 +557,277 @@ export const useContact = <TError = ValidationExceptionResponse, TContext = unkn
 > => {
   return useMutation(getContactMutationOptions(options), queryClient);
 };
+
+export type roleIndexResponse200 = {
+  data: RoleResource[];
+  status: 200;
+};
+
+export type roleIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type roleIndexResponseSuccess = roleIndexResponse200 & {
+  headers: Headers;
+};
+export type roleIndexResponseError = roleIndexResponse401 & {
+  headers: Headers;
+};
+
+export type roleIndexResponse = roleIndexResponseSuccess | roleIndexResponseError;
+
+export const getRoleIndexUrl = () => {
+  return `/roles`;
+};
+
+/**
+ * @summary `index()`, not `__invoke()` — see SectionController for why
+ */
+export const roleIndex = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<roleIndexResponse> => {
+  return customFetch<roleIndexResponse>(getRoleIndexUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRoleIndexQueryKey = () => {
+  return [`/roles`] as const;
+};
+
+export const getRoleIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRoleIndexQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof roleIndex>>> = ({ signal }) =>
+    roleIndex({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof roleIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type RoleIndexQueryResult = NonNullable<Awaited<ReturnType<typeof roleIndex>>>;
+export type RoleIndexQueryError = AuthenticationExceptionResponse;
+
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleIndex>>,
+          TError,
+          Awaited<ReturnType<typeof roleIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof roleIndex>>,
+          TError,
+          Awaited<ReturnType<typeof roleIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary `index()`, not `__invoke()` — see SectionController for why
+ */
+
+export function useRoleIndex<
+  TData = Awaited<ReturnType<typeof roleIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRoleIndexQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type sectionIndexResponse200 = {
+  data: SectionResource[];
+  status: 200;
+};
+
+export type sectionIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type sectionIndexResponseSuccess = sectionIndexResponse200 & {
+  headers: Headers;
+};
+export type sectionIndexResponseError = sectionIndexResponse401 & {
+  headers: Headers;
+};
+
+export type sectionIndexResponse = sectionIndexResponseSuccess | sectionIndexResponseError;
+
+export const getSectionIndexUrl = () => {
+  return `/sections`;
+};
+
+/**
+ * The return type is AnonymousResourceCollection rather than JsonResponse
+ * deliberately: it is what lets Scramble emit a $ref to a named schema.
+ * Wrapping this in response()->json() would erase the type and generate
+ * `string[]` in the client — measured, not inferred.
+ *
+ * `index()` rather than `__invoke()`, even though this controller has one
+ * action: Scramble names the operation after controller + method and drops
+ * the method for a single-action controller, so `__invoke` would generate
+ * the hook `useSection` for something that returns a list. `index` gives
+ * `useSectionIndex`.
+ * @summary The registers, in their configured order
+ */
+export const sectionIndex = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<sectionIndexResponse> => {
+  return customFetch<sectionIndexResponse>(getSectionIndexUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSectionIndexQueryKey = () => {
+  return [`/sections`] as const;
+};
+
+export const getSectionIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof sectionIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSectionIndexQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof sectionIndex>>> = ({ signal }) =>
+    sectionIndex({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof sectionIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type SectionIndexQueryResult = NonNullable<Awaited<ReturnType<typeof sectionIndex>>>;
+export type SectionIndexQueryError = AuthenticationExceptionResponse;
+
+export function useSectionIndex<
+  TData = Awaited<ReturnType<typeof sectionIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sectionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof sectionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSectionIndex<
+  TData = Awaited<ReturnType<typeof sectionIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sectionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof sectionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useSectionIndex<
+  TData = Awaited<ReturnType<typeof sectionIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The registers, in their configured order
+ */
+
+export function useSectionIndex<
+  TData = Awaited<ReturnType<typeof sectionIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getSectionIndexQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

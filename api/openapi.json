@@ -283,6 +283,61 @@
                     }
                 }
             }
+        },
+        "/roles": {
+            "get": {
+                "operationId": "role.index",
+                "summary": "`index()`, not `__invoke()` \u2014 see SectionController for why",
+                "tags": [
+                    "Role"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `RoleResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RoleResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/sections": {
+            "get": {
+                "operationId": "section.index",
+                "description": "The return type is AnonymousResourceCollection rather than JsonResponse\ndeliberately: it is what lets Scramble emit a $ref to a named schema.\nWrapping this in response()->json() would erase the type and generate\n`string[]` in the client \u2014 measured, not inferred.\n\n`index()` rather than `__invoke()`, even though this controller has one\naction: Scramble names the operation after controller + method and drops\nthe method for a single-action controller, so `__invoke` would generate\nthe hook `useSection` for something that returns a list. `index` gives\n`useSectionIndex`.",
+                "summary": "The registers, in their configured order",
+                "tags": [
+                    "Section"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `SectionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SectionResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
         }
     },
     "components": {
@@ -320,6 +375,53 @@
                     "message"
                 ],
                 "title": "ContactRequest"
+            },
+            "RoleResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "key": {
+                        "type": "string"
+                    },
+                    "labelFr": {
+                        "type": "string"
+                    },
+                    "permissions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "key",
+                    "labelFr",
+                    "permissions"
+                ],
+                "title": "RoleResource"
+            },
+            "SectionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "sortOrder": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "sortOrder"
+                ],
+                "title": "SectionResource"
             }
         },
         "responses": {

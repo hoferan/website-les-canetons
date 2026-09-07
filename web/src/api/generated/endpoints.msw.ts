@@ -9,7 +9,15 @@ import { faker } from "@faker-js/faker";
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
-import type { AuthLogin200, AuthLogout200, AuthMe200, Config200, Contact200 } from "./model";
+import type {
+  AuthLogin200,
+  AuthLogout200,
+  AuthMe200,
+  Config200,
+  Contact200,
+  RoleResource,
+  SectionResource,
+} from "./model";
 
 export const getAuthLoginResponseMock = (
   overrideResponse: Partial<Extract<AuthLogin200, object>> = {},
@@ -47,6 +55,23 @@ export const getConfigResponseMock = (
 export const getContactResponseMock = (
   overrideResponse: Partial<Extract<Contact200, object>> = {},
 ): Contact200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getRoleIndexResponseMock = (): RoleResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    key: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.string.alpha({ length: { min: 10, max: 20 } }),
+    ),
+  }));
+
+export const getSectionIndexResponseMock = (): SectionResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    sortOrder: faker.number.int(),
+  }));
 
 export const getAuthLoginMockHandler = (
   overrideResponse?:
@@ -161,10 +186,60 @@ export const getContactMockHandler = (
     options,
   );
 };
+
+export const getRoleIndexMockHandler = (
+  overrideResponse?:
+    | RoleResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<RoleResource[]> | RoleResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/roles",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRoleIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionIndexMockHandler = (
+  overrideResponse?:
+    | SectionResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<SectionResource[]> | SectionResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/sections",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
 export const getLesCanetonsAPIMock = () => [
   getAuthLoginMockHandler(),
   getAuthLogoutMockHandler(),
   getAuthMeMockHandler(),
   getConfigMockHandler(),
   getContactMockHandler(),
+  getRoleIndexMockHandler(),
+  getSectionIndexMockHandler(),
 ];

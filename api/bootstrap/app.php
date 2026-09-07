@@ -6,6 +6,7 @@ use App\Exceptions\ReauthenticationFailed;
 use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
+use App\Http\Middleware\NoStoreResponse;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Auth\AuthenticationException;
@@ -90,6 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'permission' => RequirePermission::class,
             'docs' => EnsureDocsEnabled::class,
+            'no-store' => NoStoreResponse::class,
         ]);
 
         // APPENDED, not prepended: it needs the session started and the user

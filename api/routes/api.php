@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\SectionController;
 use Illuminate\Support\Facades\Route;
 
 // Public: the SPA fetches this before its first render to learn the
@@ -17,9 +19,25 @@ Route::post('/contact', ContactController::class);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+// `no-store` on the whole authenticated group: every response below depends on
+// who is asking, and a shared proxy that cached one would serve one member's
+// view to another (design §4). A middleware rather than nine ->header() calls,
+// so the tenth endpoint cannot forget.
+Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+
+    // Member administration. `permission:` never sees a role name: roles merely
+    // group permissions, and which role granted this one is not a question the
+    // enforcement point may ask (design §3). Paired with auth:sanctum so an
+    // anonymous caller gets 401 rather than 403.
+    Route::middleware('permission:members.manage')->group(function () {
+        // Read-only reference data the roster form needs. Gated on
+        // members.manage because /members is the only consumer that exists;
+        // R2's public band page can widen it when it has a second one.
+        Route::get('/sections', [SectionController::class, 'index']);
+        Route::get('/roles', [RoleController::class, 'index']);
+    });
 });
 
 // The API reference, for developers. PUBLIC BUT GATED: no session is required
