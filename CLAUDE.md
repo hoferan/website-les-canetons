@@ -306,6 +306,20 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `import.meta.env`. TEST, QA and PROD run the *same promoted bundle*, so no
   environment-specific value may be baked in. That endpoint drives the non-prod
   corner ribbon and the feature flags.
+- **The API reference lives at `GET /api/docs`**, gated by `API_DOCS_ENABLED`
+  in each server's `.env` (default **off**, answering 404 rather than 403).
+  It is a Scalar page reading the **committed** `openapi.json` that ships in
+  the artifact — Scramble is a dev dependency and is not installed on any
+  server, and CI's `openapi-drift` job already guarantees that file matches the
+  code, so the docs cannot describe an API the generated client does not speak.
+  `GET /api/docs.json` serves that document with its `servers` rewritten to a
+  relative `/api`: the committed file pins an absolute production URL (for a
+  byte-identical export), and serving it untouched would make the docs page on
+  TEST fire real requests at PROD.
+
+  Both routes sit under `/api/` deliberately, because the `.htaccess` dispatch
+  claims that prefix before the SPA fallback. Scramble's own `/docs/api` is
+  outside it and has always been swallowed by the fallback.
 - **Auth:** Laravel owns it — `POST /api/login` / `POST /api/logout` via
   Sanctum's stateful SPA cookie flow. The capability matrix is **not a
   hierarchy**: `user`/`moderator` may `respond`; `admin` may `manage_events` /
