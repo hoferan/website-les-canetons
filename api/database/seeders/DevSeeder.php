@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
-use App\Support\Permission;
 use Illuminate\Database\Seeder;
 
 /**
@@ -28,59 +27,41 @@ class DevSeeder extends Seeder
             return;
         }
 
-        $sections = collect([
-            'Trompettes' => 1,
-            'Trombones' => 2,
-            'Clarinettes' => 3,
-            'Percussions' => 4,
-        ])->mapWithKeys(fn (int $order, string $name) => [
-            $name => Section::firstOrCreate(['name' => $name], ['sort_order' => $order]),
-        ]);
+        // The registers come from the 2026_09_07_000001 migration now — they
+        // are reference data, not fixtures. Assigning demo members to the REAL
+        // registers also means the dev stack renders the same register list a
+        // server does, which is what makes a local screenshot worth anything.
+        $sections = Section::orderBy('sort_order')->get()->keyBy('name');
 
-        $direction = Role::firstOrCreate(
-            ['key' => 'direction'],
-            ['label_fr' => 'Team Direction'],
-        );
-        // Seed permissions only when this role is new. syncPermissions() is
-        // an unconditional delete-then-insert, so calling it unconditionally
-        // here would silently reset a developer's hand-edited permissions on
-        // every re-seed (e.g. every `npm run dev`) — exactly the "roles are
-        // editable data" capability this rebuild exists to add.
-        if ($direction->wasRecentlyCreated) {
-            $direction->syncPermissions([
-                Permission::EventsManage,
-                Permission::AttendanceViewAll,
-                Permission::AttendanceRecordForOthers,
-                Permission::MembersManage,
-                Permission::RegistrationsView,
-            ]);
-        }
-
-        $committee = Role::firstOrCreate(
-            ['key' => 'committee'],
-            ['label_fr' => 'Comité'],
-        );
-        if ($committee->wasRecentlyCreated) {
-            $committee->syncPermissions([Permission::RegistrationsView]);
-        }
+        // The roles come from the migration too. firstOrCreate here would
+        // create a SECOND role with the same key on a database where the
+        // migration had run — and syncPermissions would undo a developer's
+        // hand-edits, which is the thing DevSeederTest pins.
+        $direction = Role::where('key', 'direction')->sole();
+        $committee = Role::where('key', 'committee')->sole();
 
         // Organises, does not play: no register, so never in an attendance list.
         $this->member('demo.direction', 'Dominique', 'Direction', null)
             ->roles()->syncWithoutDetaching([$direction->id]);
 
         // Plays, organises nothing.
-        $this->member('demo.player', 'Perrine', 'Player', $sections['Clarinettes']->id);
+        $this->member('demo.player', 'Perrine', 'Player', $sections['Cloches']->id);
 
         // BOTH — the case the old role matrix could not express. If someone
         // reintroduces an either/or, this member is what breaks.
         $this->member('demo.both', 'Bastien', 'Both', $sections['Trompettes']->id)
             ->roles()->syncWithoutDetaching([$direction->id]);
 
+        // Holds the committee role and plays: the guest list is the only
+        // thing they can see, and they are still in the attendance list.
+        $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id)
+            ->roles()->syncWithoutDetaching([$committee->id]);
+
         // A person with no account at all: listed publicly, never logs in.
         Member::firstOrCreate(
             ['first_name' => 'Nadia', 'last_name' => 'Sansconnexion'],
             [
-                'section_id' => $sections['Percussions']->id,
+                'section_id' => $sections['Batteurs']->id,
                 'public_visible' => true,
             ],
         );

@@ -413,8 +413,13 @@ raw-SQL schema. (The Laravel *test* suite uses its own throwaway
 drops every table.)
 
 **Seeded members come from `api/database/seeders/DevSeeder.php`.** There are
-four seeded members; three have logins (all password `demo`), one deliberately
-has no account at all. Describe them by what they can **do** — roles are now
+five seeded members; four have logins (all password `demo`), one deliberately
+has no account at all. The **registers and roles are no longer the seeder's** —
+they are reference data seeded by `2026_09_07_000001_seed_registers_and_roles`,
+because the shared host has no shell to run a seeder with. A sixth account,
+`comite.local`, is created by `2026_09_07_000002_bootstrap_first_administrator`
+on a fresh database (migrations run before the seeder, so nobody holds
+`members.manage` yet). Describe them by what they can **do** — roles are now
 editable data that group permissions, and there is no per-user role string to
 name instead:
 
@@ -422,12 +427,16 @@ name instead:
   (`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
   `members.manage`, `registrations.view`). Has no section, so is not in any
   register and never appears in an attendance list: organises, does not play.
-- `demo.player` (Perrine Player) — plays in Clarinettes (in the register, so
+- `demo.player` (Perrine Player) — plays in Cloches (in the register, so
   answerable for events) and holds no role: no manage/view permissions at all.
 - `demo.both` (Bastien Both) — plays in Trompettes **and** holds the
   `direction` role, so answers for events for themselves *and* manages them.
   This is the case the old either/or role matrix could not express; if
   someone reintroduces an either/or, this member is what breaks.
+- `demo.committee` (Camille Committee) — plays in Trombones and holds the
+  `committee` role, whose single permission is `registrations.view`. The role
+  exists in reference data, so somebody has to hold it or its screen is never
+  looked at.
 - Nadia Sansconnexion — a `Member` row with no `username`/`password` at all:
   listed publicly (`public_visible`), never logs in.
 

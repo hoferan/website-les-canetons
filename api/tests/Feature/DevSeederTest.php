@@ -64,11 +64,22 @@ class DevSeederTest extends TestCase
         $this->assertSame(1, Member::where('username', 'demo.player')->count());
     }
 
-    public function test_the_sections_are_ordered(): void
+    public function test_the_seeder_uses_the_real_registers_rather_than_inventing_any(): void
     {
+        // The register list belongs to the 2026_09_07_000001 migration now.
+        // What this pins is that the SEEDER did not add to it: a synthetic
+        // register in the dev stack means a local screenshot shows a list no
+        // server has.
         $names = Section::orderBy('sort_order')->pluck('name')->all();
 
-        $this->assertSame(['Trompettes', 'Trombones', 'Clarinettes', 'Percussions'], $names);
+        $this->assertSame([
+            'Batteurs',
+            'Grosses-caisses',
+            'Lyre',
+            'Cloches',
+            'Trompettes',
+            'Trombones',
+        ], $names);
         $this->assertTrue(
             Section::where('sort_order', '!=', 0)->exists(),
             'expected at least one section with a non-zero sort_order',

@@ -31,7 +31,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_permissions_arrive_through_roles(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'direction', 'label_fr' => 'Team Direction']);
+        $role = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
@@ -44,10 +44,10 @@ class EffectivePermissionsTest extends TestCase
     {
         $member = $this->member();
 
-        $direction = Role::create(['key' => 'direction', 'label_fr' => 'Team Direction']);
+        $direction = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
         $direction->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
 
-        $committee = Role::create(['key' => 'committee', 'label_fr' => 'Comité']);
+        $committee = Role::create(['key' => 'fixture-plain', 'label_fr' => 'Fixture plain']);
         $committee->syncPermissions([Permission::EventsManage, Permission::MembersManage]);
 
         $member->roles()->attach([$direction->id, $committee->id]);
@@ -77,7 +77,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_revoking_a_role_revokes_its_permissions(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'direction', 'label_fr' => 'Team Direction']);
+        $role = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
         $role->syncPermissions([Permission::MembersManage]);
         $member->roles()->attach($role);
 

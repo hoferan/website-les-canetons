@@ -64,6 +64,23 @@
              docker/api/env.docker is mounted as _api/.env with
              AUTO_MIGRATE=true. -->
         <env name="AUTO_MIGRATE" value="false"/>
+        <!--
+            The bootstrap administrator must NOT be created during the suite.
+            docker/api/env.docker sets these so the local stack can bootstrap
+            itself, and without pinning them here every test's RefreshDatabase
+            migration would create comite.local — which holds members.manage,
+            so AccessIntegrityTest's "last administrator" fixtures stop being
+            the last administrator and BootstrapAdministratorTest starts from a
+            bootstrapped database.
+
+            Empty, not absent: `blank()` is what the migration checks, and an
+            explicit empty value is immune to whatever a container or a
+            developer's shell happens to export. Same reasoning as
+            SESSION_SECURE_COOKIE below, which was pinned after two tests were
+            green natively and red in Docker for a day.
+        -->
+        <env name="BOOTSTRAP_ADMIN_USERNAME" value=""/>
+        <env name="BOOTSTRAP_ADMIN_PASSWORD" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

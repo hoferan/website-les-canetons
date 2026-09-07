@@ -23,10 +23,18 @@ class AccessIntegrityTest extends TestCase
     {
         parent::setUp();
 
-        $this->admins = Role::create(['key' => 'direction', 'label_fr' => 'Team Direction']);
+        // FIXTURE KEYS, not 'direction'/'committee'. Those two are reference
+        // data now, seeded by the 2026_09_07_000001 migration that
+        // RefreshDatabase runs, so re-creating them here is a duplicate-key
+        // error. Reading the seeded ones instead would be worse: this suite
+        // needs a role granting exactly one permission (below, `plain` grants
+        // events.manage, which the real committee role does not), and roles
+        // are editable data — a committee changing what `direction` grants
+        // must not turn this suite red.
+        $this->admins = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
         $this->admins->syncPermissions([Permission::MembersManage]);
 
-        $this->plain = Role::create(['key' => 'committee', 'label_fr' => 'Comité']);
+        $this->plain = Role::create(['key' => 'fixture-plain', 'label_fr' => 'Fixture plain']);
         $this->plain->syncPermissions([Permission::EventsManage]);
     }
 

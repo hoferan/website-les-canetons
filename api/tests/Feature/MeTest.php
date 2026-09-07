@@ -30,7 +30,7 @@ class MeTest extends TestCase
             'username' => 'lea.keller',
             'password' => 'secret123',
         ]);
-        $role = Role::create(['key' => 'direction', 'label_fr' => 'Team Direction']);
+        $role = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
