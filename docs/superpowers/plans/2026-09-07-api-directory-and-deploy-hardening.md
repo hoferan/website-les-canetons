@@ -718,14 +718,30 @@ check("Laravel's .env is not readable over the web", async () => {
   // answer, and asserting the loose form would hide the deny-all silently
   // failing to load — which is precisely the AllowOverride risk this file
   // exists to catch.
+  // ORDER MATTERS, and an earlier draft of this check got it wrong: it
+  // returned on `status === 200` BEFORE reading the body, which made the
+  // APP_KEY leak test unreachable for the only status where it could ever
+  // matter. Read the body first, then discriminate.
+  //
+  // A 200 here does NOT mean the file was served. The site .htaccess's
+  // fallback is a deliberate catch-all that answers 200 with the SPA shell for
+  // any unknown path — so a missing deny-all shows up as the shell, not as a
+  // 404. (The comment this replaced claimed a server would 404. It never did.)
+  // Distinguishing the two matters at 23:00: "the .env is exposed" and "the
+  // boundary is missing but nothing leaked" call for very different panic.
   const res = await request('/api-laravel/.env');
-  if (res.status === 200) return 'served 200 — the .env is exposed';
   const body = await res.text();
-  if (body.includes('APP_KEY')) return 'the response body leaked .env contents';
-  return res.status === 403
-    ? null
-    : `expected 403 from the deny-all, got ${res.status} — the SPA catch-all answered instead, ` +
-      `which means api/.htaccess is not being read (AllowOverride?) or did not deploy`;
+
+  if (body.includes('APP_KEY') || body.includes('DB_PASSWORD')) {
+    return `the response body leaked .env contents (status ${res.status})`;
+  }
+  if (res.status === 403) return null;
+  if (res.status === 200) {
+    return 'got 200 serving the SPA shell — the deny-all did not answer, so the only ' +
+      'thing protecting the Laravel tree is the catch-all rewrite. api/.htaccess is ' +
+      'either not being read (AllowOverride?) or did not deploy';
+  }
+  return `expected 403 from the deny-all, got ${res.status}`;
 });
 ```
 
@@ -757,13 +773,16 @@ before changing anything in this task.
 
 2. Delete api/public/.htaccess entirely.
    npm run build && npm run smoke
-   EXPECT: the deny-all check FAILS with 403 on /api/me — proving the grant is
-   what keeps the dispatch alive. Restore it.
+   EXPECT 5/9 (measured). FOUR checks fail, not one: /api/me, /sanctum/*, the
+   migrate route and POST /api/contact all answer 403, because the grant is
+   what keeps the WHOLE dispatch alive — every request Laravel serves resolves
+   under public/. Restore it.
 
 3. Delete api/.htaccess entirely.
    npm run build && npm run smoke
-   EXPECT: the .env check FAILS, reporting the SPA catch-all answered.
-   Restore it.
+   EXPECT 7/9 (measured): the .env and vendor/ checks fail, both reporting a
+   200 that serves the SPA SHELL — not the file, and not a 404. Confirm with
+   curl that the body is the shell and carries no APP_KEY. Restore it.
 ```
 
 Record all three outcomes in the commit message, including the honest one:
