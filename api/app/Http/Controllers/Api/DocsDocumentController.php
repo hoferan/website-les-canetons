@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\Environment;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -50,15 +51,27 @@ class DocsDocumentController extends Controller
             abort(404);
         }
 
+        // THE URL IS THE SAFETY PROPERTY; THE DESCRIPTION IS A LABEL. Keeping
+        // the url relative is what stops a reader on TEST from firing requests
+        // at production — it cannot name the wrong environment because it
+        // names none. The description is display text a human reads next to
+        // it, so naming the environment there is useful rather than dangerous:
+        // the worst a wrong label can do is mislabel, never misroute. The
+        // assertions below this in DocsTest keep them apart on purpose.
+        //
+        // Shared with the SPA's env ribbon via App\Support\Environment, so the
+        // two cannot disagree about which environment this is, and inheriting
+        // its fail-safe: an unrecognised APP_ENV reads as Production rather
+        // than as staging.
+        //
         // English, despite the site's UI being French. This is an API JSON
         // response body, which CLAUDE.md keeps English without exception, and
         // the audience is a developer reading a document whose every other
         // string — endpoint summaries, response descriptions, the schema — is
-        // English too. The spec said 'Cet environnement'; that was wrong, and
-        // it was the only French word in the whole reference.
+        // English too.
         $document['servers'] = [[
             'url' => '/api',
-            'description' => 'This environment',
+            'description' => Environment::label(),
         ]];
 
         // no-store: the document describes whatever code this server is

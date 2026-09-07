@@ -91,7 +91,53 @@ class DocsTest extends TestCase
 
         $servers = $this->getJson('/api/docs.json')->assertOk()->json('servers');
 
-        $this->assertSame([['url' => '/api', 'description' => 'This environment']], $servers);
+        $this->assertCount(1, $servers, 'One server, so there is nothing to pick wrongly.');
+        $this->assertSame('/api', $servers[0]['url']);
+    }
+
+    public function test_the_server_label_names_the_environment_you_are_reading(): void
+    {
+        // The description is display text, so it earns its place by saying
+        // WHICH host you are about to send requests to. "This environment"
+        // said nothing the relative URL did not already say.
+        config(['docs.enabled' => true]);
+
+        foreach (['test' => 'TEST environment', 'local' => 'Local dev', 'qa' => 'QA environment'] as $appEnv => $label) {
+            config(['app.env' => $appEnv]);
+
+            $this->getJson('/api/docs.json')
+                ->assertOk()
+                ->assertJsonPath('servers.0.description', $label);
+        }
+    }
+
+    public function test_an_unknown_environment_is_labelled_production(): void
+    {
+        // The same fail-safe the env ribbon has, and for the same reason: a
+        // misspelled APP_ENV must not label the live API as staging. Shared
+        // via App\Support\Environment so the two cannot drift apart.
+        config(['docs.enabled' => true]);
+        config(['app.env' => 'staging-2']);
+
+        $this->getJson('/api/docs.json')
+            ->assertOk()
+            ->assertJsonPath('servers.0.description', 'Production');
+    }
+
+    public function test_the_label_can_never_become_a_route(): void
+    {
+        // The url is the safety property; the description is only a label.
+        // This keeps them apart: whatever the label says, it must not be
+        // something a reader could send a request to. A wrong label mislabels;
+        // it must never misroute.
+        config(['docs.enabled' => true]);
+        config(['app.env' => 'test']);
+
+        $description = $this->getJson('/api/docs.json')->assertOk()->json('servers.0.description');
+
+        $this->assertStringNotContainsString('http', $description);
+        $this->assertStringNotContainsString('lescanetons.org', $description);
+        $this->assertStringNotContainsString('/', $description);
     }
 
     public function test_the_document_server_is_relative_so_it_cannot_name_an_environment(): void
