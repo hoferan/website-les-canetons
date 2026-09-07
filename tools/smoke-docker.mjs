@@ -14,13 +14,19 @@
 // Known blind spot: the dispatch block also forwards the Authorization and
 // X-XSRF-Token headers into the FastCGI request (CGI-family SAPIs don't hand
 // Authorization to PHP otherwise). That half of the block is not asserted here:
-// Sanctum's SPA flow is cookie-based, /api/user 401s the same with or without a
+// Sanctum's SPA flow is cookie-based, /api/me 401s the same with or without a
 // bogus bearer token, and no route in this app echoes the header back — so
 // there is no cheap way to observe it through the current routes. Only the
 // [L]-vs-the-fallback half is covered.
 //
 // See docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md and
 // docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md.
+//
+// Trimmed 2026-09-07: four checks asserted the events/signups/altcha domain
+// that R1a deleted, and the deny-all check requested the framework's default
+// /api/user, which this app's route table has never had. The file was 8/13 for
+// that whole period, which is worse than having no smoke test — a real
+// breakage would have arrived as one more red line among five.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -69,24 +75,6 @@ const mustBeLaravel = (res) => {
   return null;
 };
 
-/**
- * One value out of docker/api/env.docker — the file the stack actually mounts
- * as api-laravel/.env, so this is the same configuration Laravel booted with.
- * Checks that read it assert the behaviour the stack IS configured for rather
- * than hardcoding one branch, which is what lets a maintainer flip a setting
- * there and still get a meaningful 11/11.
- *
- * Throws rather than returning a sentinel: an unreadable env.docker or a
- * missing key is a broken stack, and each caller turns it into a failure
- * string.
- */
-const dockerApiEnv = (key) => {
-  const envPath = fileURLToPath(new URL('../docker/api/env.docker', import.meta.url));
-  const line = new RegExp(`^${key}=(.*)$`, 'm').exec(readFileSync(envPath, 'utf8'));
-  if (!line) throw new Error(`no ${key}= line in ${envPath}`);
-  return line[1].trim();
-};
-
 check('the SPA shell is served for a page URL (fallback intact)', async () => {
   // /historique is a route the SPA owns and no file on disk matches, so this
   // exercises the fallback rather than a static hit. A 500 here is the rewrite
@@ -112,20 +100,6 @@ check('the shell is served must-revalidate, so a deploy is picked up', async () 
     : `expected a must-revalidate Cache-Control on the shell, got "${cacheControl}"`;
 });
 
-check('/api/* is not swallowed by the legacy .php redirect', async () => {
-  // Regression guard. The dispatch rewrites /api/* to
-  // api-laravel/public/index.php, and mod_alias sees that .php URL on the
-  // re-entered pass; without the api-laravel/ exclusion on the .php
-  // RedirectMatch, every API call 301s and Laravel is never reached. The whole
-  // API is down while every page still looks fine, which is why this is
-  // asserted at the HTTP layer and not only in the template's unit test.
-  const res = await request('/api/events');
-  if (res.status === 301 || res.status === 302) {
-    return `redirected to "${res.headers.get('location')}" instead of reaching Laravel — the .php RedirectMatch is missing its (?!api-laravel/) exclusion`;
-  }
-  return res.status === 200 ? null : `expected 200, got ${await detail(res)}`;
-});
-
 check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // Three things at once. 401 rather than a 404 proves the dispatch rule won
   // against the SPA fallback (it says nothing about [L] specifically —
@@ -134,19 +108,24 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // proves api/public/.htaccess's "Require all granted" overrode the parent
   // deny — this is the ONLY request whose resolved file sits under that denied
   // tree. The JSON body distinguishes Laravel from any other 401.
-  const res = await request('/api/user', { headers: { Accept: 'application/json' } });
+  //
+  // /api/me, not the framework's default /api/user: R1a's route table has no
+  // /user, so this check asserted a 404 for weeks. Any authenticated route
+  // would do; /api/me is the one guaranteed to exist for as long as there is a
+  // session at all.
+  const res = await request('/api/me', { headers: { Accept: 'application/json' } });
   if (res.status === 403) {
-    return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the /historique result first): ${await detail(res)}`;
+    return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the shell result first): ${await detail(res)}`;
   }
   if (res.status === 404) {
-    return `got 404 — either the SPA fallback answered (the dispatch block lost to it, or is not first in the merged .htaccess), or Laravel booted with no /api/user route: ${await detail(res)}`;
+    return `got 404 — either the SPA fallback answered (the dispatch block lost to it, or is not first in the merged .htaccess), or Laravel booted with no /api/me route: ${await detail(res)}`;
   }
   if (res.status !== 401) return `expected 401 from Laravel, got ${await detail(res)}`;
   // The error contract, NOT Laravel's native {message: "Unauthenticated."}:
   // App\Exceptions\ApiError deliberately replaces that shape so that
-  // app/assets/js/i18n.js's translateApiError() has a stable machine token to
-  // map onto French. Asserting `code` here is what pins that replacement in
-  // place end to end, through the real HTTP stack.
+  // web/src/i18n/'s translateApiError() has a stable machine token to map onto
+  // French. Asserting `code` here is what pins that replacement in place end to
+  // end, through the real HTTP stack.
   const body = await res.json().catch(() => ({}));
   return body.code === 'not_authenticated'
     ? null
@@ -250,117 +229,6 @@ check('POST /api/contact is Laravel, answering in the {error, code, fields[]} co
   return Array.isArray(body.fields) && body.fields.length > 0
     ? null
     : `expected a non-empty fields[] alongside the code, got ${JSON.stringify(body)}`;
-});
-
-check('GET /api/events is public and served by Laravel', async () => {
-  // planning_repet.js and sinscrire.js both fetch this before anyone logs in,
-  // so an auth requirement here would silently empty the public planning. 401
-  // is therefore as much a failure as 404.
-  const res = await request('/api/events', { headers: { Accept: 'application/json' } });
-  if (res.status === 404) return `got 404 — /api/* is not reaching Laravel: ${await detail(res)}`;
-  if (res.status === 401 || res.status === 403) {
-    return `got ${res.status} — /api/events must stay unauthenticated: ${await detail(res)}`;
-  }
-  if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
-  const notLaravel = mustBeLaravel(res);
-  if (notLaravel) return notLaravel;
-  const body = await res.json().catch(() => null);
-  return Array.isArray(body) ? null : `expected a JSON array of events, got ${JSON.stringify(body)?.slice(0, 200)}`;
-});
-
-check('GET /api/signups matches what docker/api/env.docker configures', async () => {
-  // The opposite boundary from /api/events on the very same prefix: this one
-  // lists every guest's name, address, phone and email, and is gated by
-  // auth:sanctum + capability:view_summary. Anonymous must get the contract's
-  // 401 — never a 200.
-  //
-  // Unless the whole feature is off. SOUPER_SIGNUP_ENABLED gates the endpoint
-  // NAME, both verbs together (App\Http\Middleware\EnsureSouperSignupEnabled),
-  // so with it off the correct answer is a 404 that looks like an unrouted
-  // path — which is why this reads the flag instead of hardcoding 401. A 404 is
-  // only a broken dispatch under the enabled branch.
-  let enabled;
-  try {
-    enabled = dockerApiEnv('SOUPER_SIGNUP_ENABLED') === 'true';
-  } catch (error) {
-    return error.message;
-  }
-
-  const res = await request('/api/signups', { headers: { Accept: 'application/json' } });
-  const notLaravel = mustBeLaravel(res);
-  if (notLaravel) return notLaravel;
-
-  if (!enabled) {
-    // Not a pass-by-default branch: 200 or 401 would both mean the gate is not
-    // holding, so assert the disabled contract exactly.
-    return res.status === 404
-      ? null
-      : `SOUPER_SIGNUP_ENABLED is off in docker/api/env.docker, so expected 404, got ${await detail(res)}`;
-  }
-
-  if (res.status === 404) return `got 404 despite SOUPER_SIGNUP_ENABLED=true — broken dispatch, or stale container config (recreate it, don't just restart): ${await detail(res)}`;
-  if (res.status === 200) return `got 200 — the summary is exposed to anonymous callers: ${await detail(res)}`;
-  if (res.status !== 401) return `expected 401 for an anonymous caller, got ${await detail(res)}`;
-  const body = await res.json().catch(() => ({}));
-  return body.code === 'not_authenticated'
-    ? null
-    : `expected code "not_authenticated", got ${JSON.stringify(body)}`;
-});
-
-check('GET /api/altcha matches what docker/api/env.docker configures', async () => {
-  // AltchaController fails CLOSED with 503 on an empty secret or the literal
-  // CHANGE_ME, so the correct outcome depends on the stack's own config — which
-  // is why this reads it rather than hardcoding 200. Either way the point is
-  // the same: Laravel answered.
-  //
-  // Two settings decide the answer now. SOUPER_SIGNUP_ENABLED gates the route's
-  // very existence, and it is checked FIRST because that is the order the
-  // middleware stack runs in: with the feature off there is no route to fail
-  // closed, so the secret is irrelevant and the correct answer is 404. Only
-  // under the enabled branch is a 404 a broken dispatch.
-  let enabled;
-  let secret;
-  try {
-    enabled = dockerApiEnv('SOUPER_SIGNUP_ENABLED') === 'true';
-    secret = dockerApiEnv('ALTCHA_HMAC_SECRET');
-  } catch (error) {
-    return error.message;
-  }
-  const configured = secret !== '' && secret !== 'CHANGE_ME';
-
-  const res = await request('/api/altcha', { headers: { Accept: 'application/json' } });
-  const notLaravel = mustBeLaravel(res);
-  if (notLaravel) return notLaravel;
-
-  if (!enabled) {
-    return res.status === 404
-      ? null
-      : `SOUPER_SIGNUP_ENABLED is off in docker/api/env.docker, so expected 404, got ${await detail(res)}`;
-  }
-
-  if (res.status === 404) return `got 404 despite SOUPER_SIGNUP_ENABLED=true — broken dispatch, or stale container config (recreate it, don't just restart): ${await detail(res)}`;
-  const body = await res.json().catch(() => ({}));
-
-  if (!configured) {
-    // Not a pass-by-default branch: fail-closed is a real behaviour with its own
-    // contract code, so assert it exactly.
-    if (res.status !== 503) {
-      return `ALTCHA_HMAC_SECRET is unset/CHANGE_ME in docker/api/env.docker, so expected a fail-closed 503, got ${res.status} ${JSON.stringify(body)}`;
-    }
-    return body.code === 'service_unavailable'
-      ? null
-      : `expected code "service_unavailable", got ${JSON.stringify(body)}`;
-  }
-
-  if (res.status === 503) {
-    return `503 despite a secret in docker/api/env.docker — the container is running stale config (recreate it, don't just restart): ${JSON.stringify(body)}`;
-  }
-  if (res.status !== 200) return `expected 200, got ${await detail(res)}`;
-  // The full challenge, not just a 200: sinscrire.js's Altcha widget cannot
-  // compute a proof without every one of these, and POST /api/signups verifies
-  // the signature against them.
-  const missing = ['algorithm', 'challenge', 'salt', 'signature', 'maxnumber'].filter((k) => body[k] == null);
-  return missing.length === 0 ? null : `challenge is missing ${missing.join(', ')}: ${JSON.stringify(body)}`;
 });
 
 check('hashed bundles are served with the immutable cache policy', async () => {
