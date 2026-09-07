@@ -75,8 +75,20 @@ site.** Confirmed, not suspected.
 So `GET /api/docs.json` decodes the file, replaces `servers` with
 
 ```json
-"servers": [{ "url": "/api", "description": "This environment" }]
+"servers": [{ "url": "/api", "description": "TEST environment" }]
 ```
+
+The **url** is the safety property and stays relative. The **description** is
+display text beside it, so it names the environment (`Local dev`,
+`TEST environment`, `QA environment`, `Production`) — a wrong label can only
+mislabel, never misroute, and a test pins that by requiring the description to
+carry no scheme, host or slash. The label comes from `App\Support\Environment`,
+shared with the SPA's env ribbon so the two cannot disagree, and inheriting its
+fail-safe: an unrecognised `APP_ENV` reads as Production, not as staging.
+
+*(Both were originally specified as the French `Cet environnement`. Wrong on
+two counts — an API JSON body must be English, and it said nothing the relative
+URL did not already say.)*
 
 and re-encodes. OpenAPI 3.1 defines a relative server URL as relative to where
 the document is served, so Scalar resolves it against the page's own origin.

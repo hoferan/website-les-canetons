@@ -1168,8 +1168,14 @@ committed work; they are recorded here so a reader of the plan is not misled.
    reference whose every other word is English, and it sat in an API JSON
    response body, which CLAUDE.md keeps English without exception; French in
    this project is for the band's user-visible UI, not a developer console.
-   Shipped as `This environment`, with `<html lang="fr">` on the page corrected
-   to `en` for the same reason. Both this plan and the spec above have been
+   Shipped first as `This environment`, then — on André's point that a label
+   which says nothing earns no space — as the environment's own name:
+   `Local dev` / `TEST environment` / `QA environment` / `Production`, from a
+   new `App\Support\Environment` shared with the SPA's env ribbon. Naming an
+   environment is safe here because the guard lives in `servers[].url`, which
+   stays relative; a test requires the description to carry no scheme, host or
+   slash. `<html lang="fr">` on the page corrected to `en` for the same
+   language reason. Both this plan and the spec above have been
    corrected at source so the string is not reintroduced.
 
 4. **Task 6 Step 2 named `npm run status:test`** to surface the config-shape
