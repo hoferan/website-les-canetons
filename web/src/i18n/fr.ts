@@ -18,6 +18,8 @@ export const fr = {
     access_denied: "Accès refusé",
     invalid_credentials: "Nom d'utilisateur ou mot de passe incorrect",
     too_many_attempts: "Trop de tentatives. Veuillez réessayer plus tard.",
+    reauth_failed:
+      "Mot de passe incorrect. Cette action doit être confirmée par votre mot de passe.",
     cannot_delete_self: "Vous ne pouvez pas supprimer votre propre compte.",
     cannot_demote_self: "Vous ne pouvez pas retirer vos propres droits d'administration.",
     cannot_remove_last_administrator: "C'est la dernière personne pouvant administrer les membres.",
@@ -42,6 +44,7 @@ export const fr = {
     location: "Lieu",
     attire: "Tenue",
     weekend: "Week-end",
+    currentPassword: "Mot de passe actuel",
     id: "Identifiant",
     lastName: "Nom",
     firstName: "Prénom",

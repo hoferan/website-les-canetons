@@ -2,6 +2,7 @@
 
 use App\Exceptions\AccessIntegrityViolation;
 use App\Exceptions\ApiError;
+use App\Exceptions\ReauthenticationFailed;
 use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
@@ -172,6 +173,22 @@ return Application::configure(basePath: dirname(__DIR__))
         // catch-all HttpException closure below so the specific case wins.
         $exceptions->render(fn (AccessIntegrityViolation $e, Request $request) => $request->is('api/*')
             ? ApiError::json(409, $e->errorCode, $e->getMessage())
+            : null);
+
+        // 403 or 429. A destructive privileged action was refused because the
+        // actor did not re-prove their identity — see App\Support\Reauthentication.
+        // The status travels on the exception because a wrong password and a
+        // throttled actor are different answers, and hard-coding 403 here would
+        // turn the throttle into a silent lie.
+        //
+        // Placed with the other specific renderers and BEFORE the catch-all
+        // HttpException one. Not strictly required — ReauthenticationFailed is
+        // a plain RuntimeException that closure would never see — but the
+        // SchemaUnavailable closure above carries the same comment for the same
+        // reason: keeping specific-before-general means widening either one
+        // later cannot silently pick the wrong winner.
+        $exceptions->render(fn (ReauthenticationFailed $e, Request $request) => $request->is('api/*')
+            ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
             : null);
 
         // 419/CSRF. Same prepareException() trap as the 403 above, but worse:
