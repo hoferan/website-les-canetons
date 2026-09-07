@@ -50,6 +50,7 @@ Four questions the spec leaves open were settled on 2026-09-07 before writing:
 | **B2** | **The first administrator is created by a guarded migration reading `BOOTSTRAP_ADMIN_*` from that server's `.env`.** | The shared host has no shell: FTP plus the token-gated `POST /api/migrate` is the whole remote surface, so `artisan` cannot be run on a server and there is otherwise no way to get a first login onto TEST. |
 | **B3** | **`/members` ASSIGNS existing roles and registers; it does not edit them.** Roles, their permissions, and the register list are created by the bootstrap migration. | §3 calls roles "freely-editable data" but §4 defines no URL for editing them, and none for registers either. Naming two new URLs is a decision for when there is a screen to hang them on. |
 | **B4** | **One plan, API first then UI.** | R1a's shape, and the branch stays continuous. |
+| **B5** | **The current user is `/api/me` everywhere**, so changing your own password is `POST /api/me/password`, not `POST /api/account/password`. | Added 2026-09-07, after André queried `/api/me`. `/me` is the widespread convention (Spotify, Microsoft Graph) and is already built, so it stays; what changes is the sibling this plan had put under a second noun. One resource noun for one subject. The SPA **screen** is still `/account` — a page name and a resource name are different things, and only the API had two nouns for the same subject. |
 
 **A consequence of B3 to state plainly:** after this plan, adding or renaming a
 register, or changing what a role grants, is an Adminer job. That is a
@@ -241,7 +242,7 @@ web/e2e/shell.spec.ts                  the login page assertion, once it is a fo
 | DELETE | `/api/members/{member}` | `permission:members.manage` | `{currentPassword}` → `{ok, sessionsEnded}` |
 | PUT | `/api/members/{member}/roles` | `permission:members.manage` | `{roleIds[], currentPassword}` → `{member, sessionsEnded}` |
 | POST | `/api/members/{member}/password` | `permission:members.manage` | `{currentPassword}` → `{generatedPassword, sessionsEnded}` |
-| POST | `/api/account/password` | `auth:sanctum` | `{currentPassword, newPassword}` → `{ok, sessionsEnded}` |
+| POST | `/api/me/password` | `auth:sanctum` | `{currentPassword, newPassword}` → `{ok, sessionsEnded}` |
 
 Every one of these is identity-dependent, so **every response must carry
 `Cache-Control: no-store, private`** (§4). `AuthController::me()` already does;
@@ -249,7 +250,7 @@ Every one of these is identity-dependent, so **every response must carry
 member's roster view to somebody else.
 
 **Re-authentication is required on exactly the destructive three** — delete,
-role replacement, password reset — plus `/api/account/password`, which carries
+role replacement, password reset — plus `/api/me/password`, which carries
 the actor's current password as its own subject. Creating and editing a person
 do **not** require it: they are not destructive, and a password prompt on every
 typo correction is a prompt people learn to type through without reading.
@@ -3809,7 +3810,7 @@ keeps using all evening, and a deleted member with a live session is theatre."
 
 Two endpoints that look similar and differ in every detail that matters:
 
-| | `POST /api/members/{member}/password` | `POST /api/account/password` |
+| | `POST /api/members/{member}/password` | `POST /api/me/password` |
 | --- | --- | --- |
 | Gate | `permission:members.manage` | `auth:sanctum` — any account holder |
 | Who chooses the password | the system (`GeneratedPassword`) | the member |
@@ -4098,7 +4099,7 @@ class AccountPasswordTest extends TestCase
     {
         // No permission is required, and that is the point: this is the screen
         // every member needs and nobody administers.
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertOk();
@@ -4108,7 +4109,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_it_clears_the_forced_change_flag(): void
     {
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertOk();
@@ -4118,7 +4119,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_the_wrong_current_password_changes_nothing(): void
     {
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => 'not-my-password',
             'newPassword' => 'my-own-choice',
         ])->assertStatus(403)
@@ -4132,7 +4133,7 @@ class AccountPasswordTest extends TestCase
         // `min` used to map to 'invalid_number' — "n'est pas un nombre valide"
         // for a short password. ApiError's own docblock predicted this and asked
         // for a too_short token; this is it.
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'short',
         ])->assertStatus(400)
@@ -4157,7 +4158,7 @@ class AccountPasswordTest extends TestCase
             'last_activity' => now()->timestamp,
         ]);
 
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertOk();
@@ -4171,7 +4172,7 @@ class AccountPasswordTest extends TestCase
         // ...but not the session standing on the screen. Every first login lands
         // on the forced-change form, so logging the actor out here would bounce
         // every new account straight back to the login page.
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertOk();
@@ -4181,7 +4182,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_it_is_audited_without_either_password(): void
     {
-        $this->actingAsMember()->postJson('/api/account/password', [
+        $this->actingAsMember()->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertOk();
@@ -4195,7 +4196,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_an_anonymous_caller_gets_401(): void
     {
-        $this->postJson('/api/account/password', [
+        $this->postJson('/api/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'my-own-choice',
         ])->assertStatus(401);
@@ -4943,7 +4944,7 @@ and add these to the `overrides` array:
     return HttpResponse.json({ generatedPassword: "hjkm-4pqr-7tuv", sessionsEnded: 1 });
   }),
 
-  http.post("/api/account/password", async ({ request }) => {
+  http.post("/api/me/password", async ({ request }) => {
     if (!currentUser) return unauthenticated();
 
     const body = (await request.json()) as { currentPassword?: string; newPassword?: string };
