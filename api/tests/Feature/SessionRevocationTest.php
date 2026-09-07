@@ -83,4 +83,41 @@ class SessionRevocationTest extends TestCase
 
         $this->assertSame(1, DB::table('sessions')->where('user_id', $lea->id)->count());
     }
+
+    public function test_revoking_all_but_one_session_leaves_that_one_alive(): void
+    {
+        // §6 wants revocation to be immediate on a password change. Taken
+        // literally that also kills the session the actor is standing in — and
+        // the forced-change screen is where every first login begins, so the
+        // literal reading bounces every new account straight back to the login
+        // form. The property that actually matters is that every OTHER session
+        // dies.
+        $member = $this->member('perrine');
+        $this->seedSession('current', $member->id);
+        $this->seedSession('phone', $member->id);
+        $this->seedSession('laptop', $member->id);
+
+        $ended = SessionRevoker::forMemberExcept($member->id, 'current');
+
+        $this->assertSame(2, $ended);
+        $this->assertSame(
+            ['current'],
+            DB::table('sessions')->where('user_id', $member->id)->pluck('id')->all(),
+        );
+    }
+
+    public function test_revoking_all_but_one_touches_no_other_member(): void
+    {
+        $member = $this->member('perrine');
+        $colleague = $this->member('bastien');
+        $this->seedSession('current', $member->id);
+        $this->seedSession('phone', $member->id);
+        $this->seedSession('colleague-session', $colleague->id);
+        $this->seedSession('anonymous', null);
+
+        SessionRevoker::forMemberExcept($member->id, 'current');
+
+        $this->assertDatabaseHas('sessions', ['id' => 'colleague-session']);
+        $this->assertDatabaseHas('sessions', ['id' => 'anonymous']);
+    }
 }
