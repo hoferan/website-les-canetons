@@ -123,7 +123,7 @@ never sets the key gets no docs.
 - Create: `api/tests/Feature/DocsTest.php`
 - Modify: `api/routes/api.php`, `api/bootstrap/app.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/DocsTest.php`:
 
@@ -212,7 +212,7 @@ class DocsTest extends TestCase
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -225,7 +225,7 @@ Expected: FAIL — 404 on every route because they do not exist, so
 `test_both_routes_are_invisible_when_the_flag_is_off` passes for the wrong
 reason while the other three fail. Read the output rather than the summary.
 
-- [ ] **Step 3: Write the config**
+- [x] **Step 3: Write the config**
 
 Create `api/config/docs.php`:
 
@@ -253,7 +253,7 @@ return [
 ];
 ```
 
-- [ ] **Step 4: Write the middleware**
+- [x] **Step 4: Write the middleware**
 
 Create `api/app/Http/Middleware/EnsureDocsEnabled.php`:
 
@@ -290,7 +290,7 @@ class EnsureDocsEnabled
 }
 ```
 
-- [ ] **Step 5: Alias it**
+- [x] **Step 5: Alias it**
 
 In `api/bootstrap/app.php`, extend the existing alias array:
 
@@ -306,7 +306,7 @@ and add `use App\Http\Middleware\EnsureDocsEnabled;`.
 > If the R1b plan has landed, that array also holds `'no-store'`. Add to it;
 > do not replace it.
 
-- [ ] **Step 6: Add the routes with placeholder closures**
+- [x] **Step 6: Add the routes with placeholder closures**
 
 In `api/routes/api.php`, above the `POST /api/migrate` route:
 
@@ -327,7 +327,7 @@ Route::middleware('docs')->group(function () {
 });
 ```
 
-- [ ] **Step 7: Run the test to verify it passes**
+- [x] **Step 7: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -335,7 +335,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
 
 Expected: PASS, 4 tests.
 
-- [ ] **Step 8: Mutation-test the gate**
+- [x] **Step 8: Mutation-test the gate**
 
 ```
 1. Change abort_unless(...) to abort_unless(true, 404). Re-run.
@@ -345,7 +345,7 @@ Expected: PASS, 4 tests.
 3. Restore. Re-run: green.
 ```
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add api/config/docs.php api/app/Http/Middleware/EnsureDocsEnabled.php \
@@ -387,7 +387,7 @@ makes the export byte-identical on every machine, which is what lets CI's
 - Create: `api/app/Http/Controllers/Api/DocsDocumentController.php`
 - Modify: `api/routes/api.php`, `api/tests/Feature/DocsTest.php`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `api/tests/Feature/DocsTest.php`, inside the class:
 
@@ -459,7 +459,7 @@ Append to `api/tests/Feature/DocsTest.php`, inside the class:
     }
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -468,7 +468,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
 Expected: FAIL — the placeholder returns `{"placeholder": true}`, so `servers`
 is null and `openapi` is missing.
 
-- [ ] **Step 3: Add the document path to the config**
+- [x] **Step 3: Add the document path to the config**
 
 The last test needs the path to be overridable. In `api/config/docs.php`, add:
 
@@ -487,7 +487,7 @@ The last test needs the path to be overridable. In `api/config/docs.php`, add:
     'document' => base_path('openapi.json'),
 ```
 
-- [ ] **Step 4: Write the controller**
+- [x] **Step 4: Write the controller**
 
 Create `api/app/Http/Controllers/Api/DocsDocumentController.php`:
 
@@ -559,7 +559,7 @@ class DocsDocumentController extends Controller
 }
 ```
 
-- [ ] **Step 5: Point the route at it**
+- [x] **Step 5: Point the route at it**
 
 In `api/routes/api.php`, replace the `/docs.json` placeholder:
 
@@ -569,7 +569,7 @@ In `api/routes/api.php`, replace the `/docs.json` placeholder:
 
 and add the import.
 
-- [ ] **Step 6: Run the tests**
+- [x] **Step 6: Run the tests**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -577,7 +577,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
 
 Expected: PASS, 9 tests.
 
-- [ ] **Step 7: Mutation-test the servers rewrite**
+- [x] **Step 7: Mutation-test the servers rewrite**
 
 This guard is the whole reason the task exists. Prove it can fail.
 
@@ -594,7 +594,7 @@ This guard is the whole reason the task exists. Prove it can fail.
 3. Restore. Re-run: green.
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/app/Http/Controllers/Api/DocsDocumentController.php \
@@ -629,7 +629,7 @@ switching to url('/api') fails the relative-URL assertion."
 - Create: `api/resources/views/docs.blade.php`
 - Modify: `api/routes/api.php`, `api/tests/Feature/DocsTest.php`
 
-- [ ] **Step 1: Read the reference implementation**
+- [x] **Step 1: Read the reference implementation**
 
 ```bash
 cat api/vendor/dedoc/scramble/resources/views/scalar.blade.php
@@ -638,7 +638,7 @@ cat api/vendor/dedoc/scramble/resources/views/scalar.blade.php
 Three things in it are kept below, and one is deliberately dropped. Read the
 next step's comments before writing the file.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Append to `api/tests/Feature/DocsTest.php`, inside the class:
 
@@ -691,7 +691,7 @@ Append to `api/tests/Feature/DocsTest.php`, inside the class:
     }
 ```
 
-- [ ] **Step 3: Run them to verify they fail**
+- [x] **Step 3: Run them to verify they fail**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -699,7 +699,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
 
 Expected: FAIL — the placeholder returns the string `placeholder`.
 
-- [ ] **Step 4: Write the view**
+- [x] **Step 4: Write the view**
 
 Create `api/resources/views/docs.blade.php`:
 
@@ -778,7 +778,7 @@ Create `api/resources/views/docs.blade.php`:
 </html>
 ```
 
-- [ ] **Step 5: Write the controller**
+- [x] **Step 5: Write the controller**
 
 Create `api/app/Http/Controllers/Api/DocsController.php`:
 
@@ -811,7 +811,7 @@ class DocsController extends Controller
 }
 ```
 
-- [ ] **Step 6: Point the route at it**
+- [x] **Step 6: Point the route at it**
 
 In `api/routes/api.php`, replace the `/docs` placeholder:
 
@@ -821,7 +821,7 @@ In `api/routes/api.php`, replace the `/docs` placeholder:
 
 and add the import.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
@@ -829,7 +829,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=DocsTest
 
 Expected: PASS, 12 tests.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/app/Http/Controllers/Api/DocsController.php \
@@ -860,7 +860,7 @@ in HTML; none of them proves Scalar renders, or that a request goes where it
 should. This project has shipped auth changes that passed every test and failed
 in Chrome.
 
-- [ ] **Step 1: Enable it locally and rebuild**
+- [x] **Step 1: Enable it locally and rebuild**
 
 In `docker/api/env.docker`, add:
 
@@ -881,7 +881,7 @@ npm run dev
 The container reads its `.env` from the mounted file, so the stack must be
 **recreated**, not just restarted — `npm run dev` does that.
 
-- [ ] **Step 2: Open it**
+- [x] **Step 2: Open it**
 
 http://localhost:8090/api/docs
 
@@ -889,7 +889,7 @@ Confirm: Scalar renders; the endpoint list shows `/login`, `/logout`, `/me`,
 `/config`, `/contact`; the server selector shows a **relative** `/api` and not
 `lescanetons.org`.
 
-- [ ] **Step 3: Send a request and watch where it goes**
+- [x] **Step 3: Send a request and watch where it goes**
 
 With the browser's network panel open, send `GET /config` from the page.
 
@@ -900,7 +900,7 @@ spec's documented fallback (`$request->getSchemeAndHttpHost().'/api'`), update
 `test_the_document_server_is_relative_so_it_cannot_name_an_environment` to
 match, and record the change.
 
-- [ ] **Step 4: Prove try-it works against a session**
+- [x] **Step 4: Prove try-it works against a session**
 
 1. Log in through the SPA at http://localhost:8090/login as
    `demo.direction` / `demo`.
@@ -914,7 +914,7 @@ Confirm **200** with the member's identity, not 401. A 401 means
 Confirm **200**, not 419. A 419 means the CSRF replay or the prime is not
 working — check that the `XSRF-TOKEN` cookie exists in the browser first.
 
-- [ ] **Step 5: Confirm the gate, from the browser**
+- [x] **Step 5: Confirm the gate, from the browser**
 
 Set `API_DOCS_ENABLED=false` in `docker/api/env.docker`, run `npm run dev`
 again, and reload `/api/docs`.
@@ -922,7 +922,7 @@ again, and reload `/api/docs`.
 Confirm: the SPA's own 404 view or Laravel's 404 — **not** the Scalar page.
 Then set it back to `true` and recreate again.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docker/api/env.docker
@@ -951,7 +951,7 @@ stripped and `servers` is unchanged. So this is safe.
 **Files:**
 - Modify: `api/config/scramble.php`
 
-- [ ] **Step 1: Add the exclusion**
+- [x] **Step 1: Add the exclusion**
 
 In `api/config/scramble.php`, replace `'api_path' => 'api',` with:
 
@@ -972,7 +972,7 @@ In `api/config/scramble.php`, replace `'api_path' => 'api',` with:
     ],
 ```
 
-- [ ] **Step 2: Regenerate and confirm nothing moved**
+- [x] **Step 2: Regenerate and confirm nothing moved**
 
 ```bash
 npm run openapi
@@ -987,7 +987,7 @@ If the diff is non-empty, read it before proceeding. Paths gaining an `/api`
 prefix means the stripping behaviour changed and the exclusion must be done
 another way (`Scramble::routes()` in a service provider).
 
-- [ ] **Step 3: Confirm the client is unaffected**
+- [x] **Step 3: Confirm the client is unaffected**
 
 ```bash
 npm run generate:api
@@ -996,7 +996,7 @@ git status --porcelain api/openapi.json web/src/api/generated
 
 Expected: no output. This is the same check CI's `openapi-drift` job runs.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/config/scramble.php
@@ -1023,7 +1023,7 @@ request afterwards — but it means TEST cannot take another deploy until its
 - Modify: `api/.env.example`
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: Document the key**
+- [x] **Step 1: Document the key**
 
 Add to `api/.env.example`, after the session block:
 
@@ -1042,7 +1042,7 @@ Add to `api/.env.example`, after the session block:
 API_DOCS_ENABLED=false
 ```
 
-- [ ] **Step 2: Confirm the pre-flight now sees the drift**
+- [x] **Step 2: Confirm the pre-flight now sees the drift**
 
 Without deploying:
 
@@ -1058,7 +1058,7 @@ land code expecting a key nobody set.
 Record which environments need the hand-edit. TEST's happens in the other
 plan's cutover runbook (Task 8, step 3).
 
-- [ ] **Step 3: Document the feature**
+- [x] **Step 3: Document the feature**
 
 Add to `CLAUDE.md`, in the Architecture section after the runtime-configuration
 bullet:
@@ -1080,7 +1080,7 @@ bullet:
   outside it and has always been swallowed by the fallback.
 ```
 
-- [ ] **Step 4: Full green run**
+- [x] **Step 4: Full green run**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -1097,7 +1097,7 @@ makes no assertion about `/api/docs`, deliberately: the flag is off by default
 and a smoke check would have to enable it, which is a check of its own
 scaffolding.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/.env.example CLAUDE.md
@@ -1137,3 +1137,46 @@ expecting a new key fails a deploy rather than 500ing every request afterwards
 - **Smoke coverage for `/api/docs`.** Deliberately none: the flag defaults off,
   so a check would have to enable it and would then be testing its own
   scaffolding. The browser pass in Task 4 is the verification.
+
+---
+
+## Corrections made while executing, 2026-09-07
+
+Three things in this plan were wrong as written. All three are fixed in the
+committed work; they are recorded here so a reader of the plan is not misled.
+
+1. **Task 3's view put the proxy warning in a JS `//` comment**, containing both
+   `proxyUrl` and `proxy.scalar.com` — the two strings Task 3's own test
+   asserts are *absent from the rendered page*. The plan's view therefore fails
+   the plan's own test. Shipped as a **Blade** comment instead: the warning
+   still lives in the source for anyone diffing against Scramble's view, and
+   the rendered page genuinely contains neither string. Mutation-tested by
+   adding `proxyUrl` back.
+
+2. **Task 4 Step 4 said to log in through the SPA** at `:8090/login` as
+   `demo.direction`/`demo`. Impossible on this branch — `web/src/pages/Login.tsx`
+   is still R1a's formless stub, so there is no form to fill. This is the same
+   trap the R1b plan already had corrected once. Substituted: log in from the
+   **docs page's own `POST /login` try-it**, which is strictly stronger — it
+   puts a mutating request through the CSRF replay and the cookie prime, which
+   is exactly what the step exists to prove. Verified `POST /login` 200 (not
+   419), `GET /me` returning Dominique Direction with the five `direction`
+   permissions, `POST /logout` 200.
+
+3. **Task 6 Step 2 named `npm run status:test`** to surface the config-shape
+   drift. That command only reads the remote `.sync-state.json` manifest and
+   never runs the pre-flight. `npm run deploy:test -- --dry-run` is what does,
+   and it uploads nothing:
+   `_api/.env on TEST is MISSING key: API_DOCS_ENABLED`.
+
+Everything else executed as written, including the measured claim that the
+`api_path` array form leaves `api/openapi.json` byte-identical.
+
+### Final state
+
+- Laravel suite **147 passed** (was 135; DocsTest adds 12).
+- `npm run test:js` 144, `npm run smoke` 9/9, `npm run check` exit 0.
+- `npm run openapi && npm run generate:api` leaves the tree clean.
+- Nothing deployed, no PR opened. **TEST still needs `API_DOCS_ENABLED` added
+  to its `_api/.env` by hand before it can take another deploy** — fold it into
+  the same visit as any other pending hand-edit.
