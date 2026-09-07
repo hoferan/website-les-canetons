@@ -21,7 +21,20 @@ return [
      * Multiple includes or wildcards → server defaults to / and paths stay full (/api/users).
      * Override with `servers`, or use Scramble::registerApi() for separate bases.
      */
-    'api_path' => 'api',
+    /*
+     * The docs routes are excluded so the API reference does not document
+     * itself — and, more to the point, so orval does not generate TanStack
+     * Query hooks for a documentation page.
+     *
+     * The array form is used with a SINGLE include, which keeps Scramble's
+     * path-stripping behaviour: paths stay /me and /config rather than
+     * becoming /api/me. Verified 2026-09-07 by exporting both ways and
+     * diffing — the document is byte-identical.
+     */
+    'api_path' => [
+        'include' => 'api',
+        'exclude' => ['api/docs', 'api/docs.json'],
+    ],
 
     /*
      * Your API domain. By default, app domain is used. This is also a part of the default API routes
