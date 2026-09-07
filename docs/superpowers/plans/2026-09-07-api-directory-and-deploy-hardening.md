@@ -1033,12 +1033,16 @@ and update every mention of `api-laravel` in that file's comments. **THREE
 comments need their reasoning corrected, not just the token swapped, because
 Tasks 2 and 3 made them false.** Read each in full before editing:
 
-- **The dispatch block's** "the hyphen defeats `(/|$)`" becomes: `^api(/|$)`
-  matches only exactly `api` or a path beginning `api/`, so `_api/...` cannot
-  match — and neither could any name but `api` itself. Its final sentence
-  ("Never rename that directory without first adding a REDIRECT_STATUS guard")
-  should say the guard is needed only for a name `^api(/|$)` can actually
-  match, i.e. literally `api`.
+- **The dispatch block** needs three fixes, not one. (a) Its opening paragraph
+  says this block "MUST stay above both the RedirectMatch 301 legacy-URL rules
+  and the SPA fallback" — Task 4 deleted those rules, so it now stays above the
+  fallback alone, and that is still load-bearing because the fallback matches
+  every path. (b) "the hyphen defeats `(/|$)`" becomes: `^api(/|$)` matches only
+  exactly `api` or a path beginning `api/`, so `_api/...` cannot match — and
+  neither could any name but `api` itself. (c) Its final sentence ("Never rename
+  that directory without first adding a REDIRECT_STATUS guard") should say the
+  guard is needed only for a name `^api(/|$)` can actually match, i.e. literally
+  `api`.
 - **The header-forwarding block** currently says Laravel ships the same rules
   in `api/public/.htaccess` "but that file never reaches a server (the deploy
   CLI treats .htaccess as a protected basename at any depth)". **Both halves
