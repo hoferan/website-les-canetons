@@ -91,7 +91,7 @@ class DocsTest extends TestCase
 
         $servers = $this->getJson('/api/docs.json')->assertOk()->json('servers');
 
-        $this->assertSame([['url' => '/api', 'description' => 'Cet environnement']], $servers);
+        $this->assertSame([['url' => '/api', 'description' => 'This environment']], $servers);
     }
 
     public function test_the_document_server_is_relative_so_it_cannot_name_an_environment(): void

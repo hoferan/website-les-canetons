@@ -75,7 +75,7 @@ site.** Confirmed, not suspected.
 So `GET /api/docs.json` decodes the file, replaces `servers` with
 
 ```json
-"servers": [{ "url": "/api", "description": "Cet environnement" }]
+"servers": [{ "url": "/api", "description": "This environment" }]
 ```
 
 and re-encodes. OpenAPI 3.1 defines a relative server URL as relative to where

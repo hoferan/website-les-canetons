@@ -50,9 +50,15 @@ class DocsDocumentController extends Controller
             abort(404);
         }
 
+        // English, despite the site's UI being French. This is an API JSON
+        // response body, which CLAUDE.md keeps English without exception, and
+        // the audience is a developer reading a document whose every other
+        // string — endpoint summaries, response descriptions, the schema — is
+        // English too. The spec said 'Cet environnement'; that was wrong, and
+        // it was the only French word in the whole reference.
         $document['servers'] = [[
             'url' => '/api',
-            'description' => 'Cet environnement',
+            'description' => 'This environment',
         ]];
 
         // no-store: the document describes whatever code this server is

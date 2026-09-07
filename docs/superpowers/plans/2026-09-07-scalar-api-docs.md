@@ -404,7 +404,7 @@ Append to `api/tests/Feature/DocsTest.php`, inside the class:
 
         $servers = $this->getJson('/api/docs.json')->assertOk()->json('servers');
 
-        $this->assertSame([['url' => '/api', 'description' => 'Cet environnement']], $servers);
+        $this->assertSame([['url' => '/api', 'description' => 'This environment']], $servers);
     }
 
     public function test_the_document_server_is_relative_so_it_cannot_name_an_environment(): void
@@ -546,7 +546,7 @@ class DocsDocumentController extends Controller
 
         $document['servers'] = [[
             'url' => '/api',
-            'description' => 'Cet environnement',
+            'description' => 'This environment',
         ]];
 
         // no-store: the document describes whatever code this server is
@@ -1142,7 +1142,7 @@ expecting a new key fails a deploy rather than 500ing every request afterwards
 
 ## Corrections made while executing, 2026-09-07
 
-Three things in this plan were wrong as written. All three are fixed in the
+Four things in this plan were wrong as written. All four are fixed in the
 committed work; they are recorded here so a reader of the plan is not misled.
 
 1. **Task 3's view put the proxy warning in a JS `//` comment**, containing both
@@ -1163,7 +1163,16 @@ committed work; they are recorded here so a reader of the plan is not misled.
    419), `GET /me` returning Dominique Direction with the five `direction`
    permissions, `POST /logout` 200.
 
-3. **Task 6 Step 2 named `npm run status:test`** to surface the config-shape
+3. **The `servers` description was specified in French** — `Cet environnement`.
+   Caught by André on TEST, after the fact. It was the only French string in a
+   reference whose every other word is English, and it sat in an API JSON
+   response body, which CLAUDE.md keeps English without exception; French in
+   this project is for the band's user-visible UI, not a developer console.
+   Shipped as `This environment`, with `<html lang="fr">` on the page corrected
+   to `en` for the same reason. Both this plan and the spec above have been
+   corrected at source so the string is not reintroduced.
+
+4. **Task 6 Step 2 named `npm run status:test`** to surface the config-shape
    drift. That command only reads the remote `.sync-state.json` manifest and
    never runs the pre-flight. `npm run deploy:test -- --dry-run` is what does,
    and it uploads nothing:
