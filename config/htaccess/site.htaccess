@@ -67,52 +67,31 @@ RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 RewriteRule ^api(/|$) api-laravel/public/index.php [L]
 RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 
-# Legacy URL 301s. These used to be generated in app/src/routes.php, which is
-# gone with the old front end — this is a move, not new behaviour. Both the old
-# .php URLs and the older .html ones redirect to today's clean URLs, so existing
-# bookmarks, inbound links and search results keep working.
+# ---------------------------------------------------------------------------
+# There are deliberately NO legacy URL redirects here.
 #
-# /index.html is deliberately matched by NONE of these, and that is
-# load-bearing. The fallback below rewrites every unmatched path to index.html,
-# and in per-directory context that internal redirect re-enters the ruleset.
-# A rule that 301'd /index.html to / would then rewrite to index.html again,
-# 301 again, and loop — on every page of the site. Hence the negative lookahead
-# in the second rule, and why the first names index.php but not index.html.
+# Three RedirectMatch 301 rules lived at this point until 2026-09-07, mapping
+# the pre-SPA site's /x.php and /x.html URLs onto today's clean ones. They were
+# removed because their targets no longer exist: the rebuild makes every URL
+# English (design D10) and owes no backwards compatibility (D11), so
+# /historique.php would have 301'd to /historique and then answered the SPA's
+# own 404 view — one extra hop to the same place.
 #
-# The api-laravel/ exclusion on the .php rule is load-bearing too, for the same
-# reason and a worse failure. The dispatch above rewrites /api/* to
-# api-laravel/public/index.php, and that substitution re-enters the ruleset,
-# where mod_alias sees a URL ending in .php — so without the exclusion EVERY
-# /api/* and /sanctum/* request 301s to /api-laravel/public/index instead of
-# reaching Laravel. Observed, not theorised: the whole API answered 301 until
-# this was added.
+# They also carried both of this file's negative-lookahead landmines, and each
+# had already broken something: the .php rule's `(?!.*api-laravel/)` (with the
+# `.*` missing, EVERY /api/* request 301s and the whole API is down while every
+# page still renders — only reproducible on the real host, whose FastCGI
+# wrapper prefixes /cgi-bin/php5.fcgi/ onto the re-entered path) and the .html
+# rule's `(?!index\.html$)` (without it the fallback's own output is 301'd and
+# every URL redirect-loops).
 #
-# THE LOOKAHEAD IS `(?!.*api-laravel/)`, NOT `(?!api-laravel/)`, AND THAT `.*`
-# IS LOAD-BEARING ON THE REAL HOST. Do not "tidy" it back to a start-anchored
-# form — it reads like a redundant wildcard and is not.
-#
-# easy-hebergement runs PHP through a FastCGI wrapper, so the URL mod_alias
-# sees on the re-entered pass is NOT /api-laravel/public/index.php but
-#
-#     /cgi-bin/php5.fcgi/api-laravel/public/index.php
-#
-# A start-anchored `(?!api-laravel/)` tests the characters immediately after
-# the leading slash — which are `cgi-bin/` — so the exclusion never fires, the
-# rule matches, and every /api/* and /sanctum/* request 301s to
-# /cgi-bin/php5.fcgi/api-laravel/public/index. The whole API answers 301 while
-# every public page still renders perfectly, which is what makes it easy to
-# ship. `.*` makes the exclusion match api-laravel/ ANYWHERE in the path, so it
-# holds whatever prefix the host's PHP wrapper adds.
-#
-# Observed on TEST on 2026-08-31, immediately after the SPA cutover, and NOT
-# reproducible locally: the Docker stack serves PHP without that wrapper path,
-# so `npm run smoke` passes 13/13 against a build that takes the real API down.
-# tools/build-overlays.test.mjs now asserts the fcgi-prefixed form specifically.
-#
-# These must stay ABOVE the fallback and BELOW the /api dispatch above.
-RedirectMatch 301 ^/(?:index\.php|accueil\.(?:php|html))$ /
-RedirectMatch 301 ^/(?!index\.html$)(.*)\.html$ /$1
-RedirectMatch 301 ^/(?!.*api-laravel/)(.*)\.php$ /$1
+# If a redirect is ever needed again, note what made these dangerous: a
+# RedirectMatch is mod_alias, which runs on the re-entered pass after
+# mod_rewrite's substitution, so it sees INTERNAL paths — including whatever
+# prefix this host's PHP wrapper adds. Anchor on the full path, exclude the
+# dispatch target with a `.*`-prefixed lookahead, and add a case to
+# tools/build-overlays.test.mjs asserting the fcgi-prefixed form.
+# ---------------------------------------------------------------------------
 
 # SPA fallback: every request is served the shell, index.html, EXCEPT real
 # static assets under /assets/ (the hashed bundles Vite emits, plus img/ and

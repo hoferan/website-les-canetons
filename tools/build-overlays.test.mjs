@@ -57,64 +57,27 @@ test('the header-forwarding rules precede the dispatch rules in the template', (
   );
 });
 
-test('the dispatch rules precede the legacy-URL redirects and the SPA fallback', () => {
+test('the dispatch rules precede the SPA fallback', () => {
   // The fallback matches every path, so if it came first the dispatch would
   // never run at all.
   const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
   const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
-  const legacyRedirect = frontController.match(/^RedirectMatch 301 .*$/m);
   const fallback = frontController.match(/^RewriteRule \^ index\.html \[L\]$/m);
   assert.ok(firstDispatch, 'a dispatch RewriteRule into api-laravel/ must be present');
-  assert.ok(legacyRedirect, 'the legacy-URL RedirectMatch rules must be present');
   assert.ok(fallback, 'the SPA fallback to index.html must be present');
-  assert.ok(firstDispatch.index < legacyRedirect.index, 'dispatch must precede RedirectMatch 301');
   assert.ok(firstDispatch.index < fallback.index, 'dispatch must precede the fallback');
 });
 
-test('the .php legacy redirect excludes api-laravel/, or the whole API 301s', () => {
-  // Regression test for a bug caught by hand during the cutover. The dispatch
-  // rewrites /api/* to api-laravel/public/index.php; in per-directory context
-  // that substitution re-enters the ruleset, where mod_alias sees a URL ending
-  // in .php. Without the exclusion every /api/* and /sanctum/* request 301s to
-  // /api-laravel/public/index and Laravel is never reached — the entire API is
-  // down, while every page of the site still looks fine.
-  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
+test('the site rules carry no legacy RedirectMatch', () => {
+  // Deleted 2026-09-07 with their targets (design D10/D11). They carried both
+  // of the template's negative-lookahead landmines, so a re-added rule needs
+  // its own assertions — see the note left in site.htaccess.
+  const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
-  const phpRedirect = frontController.match(/^RedirectMatch 301 (\S*\(\.\*\)\\\.php\$) .*$/m);
-  assert.ok(phpRedirect, 'a .php -> clean-URL RedirectMatch must be present');
-
-  // Assert BEHAVIOUR, not the presence of a substring. The previous version of
-  // this test asserted the pattern contained the literal `(?!api-laravel/`,
-  // which passed while the rule was still broken on the real host — see below.
-  // Compile the actual pattern and run paths through it.
-  const pattern = new RegExp(phpRedirect[1]);
-
-  // A genuine client request for a legacy .php URL must still be redirected.
-  assert.ok(pattern.test('/contact.php'), 'a legacy .php URL must still 301 to its clean form');
-
-  // The dispatch target must be excluded, or the whole API 301s.
   assert.ok(
-    !pattern.test('/api-laravel/public/index.php'),
-    'the dispatch target must not match the .php redirect'
-  );
-
-  // THE CASE THAT ACTUALLY TOOK TEST DOWN on 2026-08-31, minutes after the
-  // cutover. easy-hebergement runs PHP through a FastCGI wrapper, so the URL
-  // mod_alias sees on the re-entered pass carries a /cgi-bin/php5.fcgi/ prefix.
-  // A start-anchored `(?!api-laravel/)` tests the characters right after the
-  // leading slash — `cgi-bin/` — so the exclusion never fired and every
-  // /api/* and /sanctum/* request 301'd to
-  // /cgi-bin/php5.fcgi/api-laravel/public/index. The API was entirely down
-  // while every public page rendered perfectly.
-  //
-  // Not reproducible locally: the Docker stack serves PHP without that wrapper
-  // path, so `npm run smoke` passed 13/13 against the broken build. This
-  // assertion is the only thing standing between that bug and production.
-  assert.ok(
-    !pattern.test('/cgi-bin/php5.fcgi/api-laravel/public/index.php'),
-    'the exclusion must match api-laravel/ ANYWHERE in the path, not just at the start — ' +
-      'the host prefixes the rewritten path with its FastCGI wrapper'
+    !/^\s*RedirectMatch/m.test(template),
+    'a RedirectMatch was re-added without the fcgi-prefix assertions that made the old ones safe',
   );
 });
 
@@ -158,21 +121,6 @@ test('woff2 has an explicit MIME type, or this host serves it as text/plain', ()
   assert.match(frontController, /^\s*AddType font\/woff \.woff$/m, 'woff needs an AddType');
   // The x-font-* forms are deprecated; RFC 8081 registered font/*.
   assert.doesNotMatch(frontController, /AddType\s+application\/x-font/, 'use the RFC 8081 font/* types');
-});
-
-test('the .html legacy redirect excludes index.html, or every page redirect-loops', () => {
-  // The fallback rewrites unmatched paths to index.html, and that internal
-  // redirect re-enters the ruleset. A rule that 301'd /index.html to / would
-  // rewrite to index.html again and loop, on every URL of the site.
-  const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
-
-  const htmlRedirect = frontController.match(/^RedirectMatch 301 (\S*\(\.\*\)\\\.html\$) .*$/m);
-  assert.ok(htmlRedirect, 'a .html -> clean-URL RedirectMatch must be present');
-  assert.match(
-    htmlRedirect[1],
-    /\(\?!index\\\.html\$\)/,
-    'the .html RedirectMatch must exclude index.html with a negative lookahead'
-  );
 });
 
 test('docker is not part of the default (server) run', () => {
