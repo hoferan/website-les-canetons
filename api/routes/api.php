@@ -20,6 +20,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 });
 
+// The API reference, for developers. PUBLIC BUT GATED: no session is required
+// — you should be able to read the login endpoint's documentation before
+// logging in — and the `docs` middleware answers 404 unless this environment
+// sets API_DOCS_ENABLED. TEST and QA sit behind HTTP Basic Auth; PROD has the
+// flag off.
+//
+// Under /api/ deliberately. The site .htaccess dispatches /api/* to Laravel
+// BEFORE its SPA fallback, so these need no rewrite rule of their own —
+// whereas Scramble's own /docs/api has been swallowed by that fallback since
+// the day it was installed.
+Route::middleware('docs')->group(function () {
+    Route::get('/docs', fn () => response('placeholder'));
+    Route::get('/docs.json', fn () => response()->json(['placeholder' => true]));
+});
+
 // Token-gated (not session-gated): the deploy tooling calls this server-side
 // with the shared MIGRATE_TOKEN. Excluded from the OpenAPI document — nothing
 // in the browser may trigger a migration.
