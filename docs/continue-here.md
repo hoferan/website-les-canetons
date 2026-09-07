@@ -1,3 +1,32 @@
+> # ⚠️ SUPERSEDED — 2026-09-07. Do not act on this file.
+>
+> This is the handover for the **previous** SPA cutover (E1/E2), written
+> 2026-09-03. On **2026-09-04** the brief changed: PROD was declared legacy and
+> the project moved to a **from-scratch rebuild**, so the roadmap below — "E2 is
+> done, next are two defects, then sub-project B or the QA bootstrap" — is a
+> plan that no longer exists.
+>
+> **Read instead:**
+>
+> | For | Read |
+> | --- | --- |
+> | The approved design | `docs/superpowers/specs/2026-09-05-rebuild-design.md` |
+> | What is built | `docs/superpowers/plans/2026-09-05-r1a-foundation.md` (R1a) and `2026-09-07-api-directory-and-deploy-hardening.md` (shipped, TEST cut over) |
+> | What is next | `docs/superpowers/plans/2026-09-07-r1b-members-and-account.md` |
+> | Architecture, commands, host constraints | `CLAUDE.md` — accurate as of 2026-09-07 |
+>
+> **Two things below are specifically wrong now**, beyond the roadmap: the
+> Laravel tree is deployed as `_api/`, not `api-laravel/`, and the deploy's
+> protected-file set matches exact root-relative paths rather than basenames at
+> any depth — so the deny/grant `.htaccess` pair it says "never reaches any
+> server" now ships with every deploy and is verified answering 403 on TEST.
+>
+> **What is still worth reading here:** the "Traps worth knowing before you
+> touch anything" section. It documents host behaviour that remains true and
+> expensive to rediscover — the two `.htaccess` outages, the FastCGI 301 bug,
+> the display-font glyph problem. The rebuild spec's §9 item 6 says to salvage
+> exactly that section before this file is deleted in R1d.
+
 # Where we left off — 2026-09-03
 
 Read this first when picking the SPA cutover back up. It records what is **not**
