@@ -972,8 +972,21 @@ The current comments in `tools/build.mjs` and `config/htaccess/site.htaccess`
 claim the hyphen specifically is what saves it; that is true but narrower than
 the real rule, and both comments are corrected here.
 
-**Files:** the sixteen functional touch points, enumerated by
-`grep -rl api-laravel`.
+**Files:** the functional touch points, enumerated by `grep -rl api-laravel`.
+
+> **CORRECTED after execution, 2026-09-07: it is EIGHTEEN files, not sixteen,
+> and the step list below names only fifteen of them.** The three the steps miss
+> were found by the implementer's pre-flight read and are not optional:
+>
+> - `api/.htaccess` and `api/public/.htaccess` — Task 3 wrote deliberate forward
+>   references ("`_api/` after Task 5") that this task resolves.
+> - `docker/api/env.docker`, `tools/deploy/local.mjs`,
+>   `tools/deploy/local.test.mjs` — prose comments naming the deployed path.
+> - **`tools/build-overlays.test.mjs` — FUNCTIONAL.** It asserts the dispatch
+>   rules by exact escaped regex against the old path, so `npm run test:js` and
+>   CI both go red without it. This was the real gap.
+>
+> Run Step 1's grep and work from its output, not from this list.
 
 - [ ] **Step 1: Confirm the full list before editing anything**
 
@@ -1449,12 +1462,51 @@ Read the output. It reports the remote tree against the local artifact. This is
 the last chance to see, before Task 8, that the plan's understanding of TEST
 matches reality.
 
-- [ ] **Step 4: Browser check**
+- [ ] **Step 4: Close the one coverage gap this plan exposed**
+
+Task 4's review found that the SPA fallback's two `RewriteCond` guards have
+**never** had a test — the plan's own Step 2 said to "keep every test about the
+`REDIRECT_STATUS` guard", and there was none to keep. That guard is now one of
+only **two** load-bearing properties left in the template (with `[L]` not
+`[END]`), and it is the one whose absence 500-loops every URL on this FastCGI
+host. Untested is not acceptable for it.
+
+Add to `tools/build-overlays.test.mjs`:
+
+```js
+test('the SPA fallback keeps both of its guards', () => {
+  // The REDIRECT_STATUS guard is what stops the fallback re-matching its own
+  // output and looping until Apache gives up with "Request exceeded the limit
+  // of 10 internal redirects" — on EVERY url of the site, not one page. The
+  // !^/assets/ guard is what lets the hashed bundles be served as files.
+  //
+  // Neither had a test until 2026-09-07, which was found by reviewing the
+  // task that deleted this file's other assertions: the plan said to keep the
+  // REDIRECT_STATUS test and there was none to keep.
+  const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
+  const lines = template.split(/\r?\n/);
+
+  const fallback = lines.findIndex((line) => /^RewriteRule \^ index\.html \[L\]/.test(line));
+  assert.notEqual(fallback, -1, 'the SPA fallback rule is gone');
+
+  // Both guards must be the two lines IMMEDIATELY above it: a RewriteCond
+  // applies only to the rule that follows it, so a blank line or another rule
+  // in between silently detaches them.
+  assert.match(lines[fallback - 1], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
+  assert.match(lines[fallback - 2], /^RewriteCond %\{REQUEST_URI\} !\^\/assets\//);
+});
+```
+
+Run `npm run test:js` (expect 144), then **mutation-test it**: delete the
+`REDIRECT_STATUS` line from the template, confirm this test fails, restore it
+with a targeted edit, confirm green. Commit separately from the rest of Task 7.
+
+- [ ] **Step 5: Browser check**
 
 At http://localhost:8090: the SPA shell loads, `/login` renders its form, and
 `/_api/.env` shows Apache's 403 page rather than the SPA.
 
-- [ ] **Step 5: Commit any fixes, then stop**
+- [ ] **Step 6: Commit any fixes, then stop**
 
 Do not deploy. Task 8 is a hand-run runbook and needs a human at the FTP
 client.
