@@ -634,7 +634,8 @@ Replace the whole of `api/.htaccess`:
 # It is STRONGER than the SPA fallback that used to be the only layer: Apache
 # evaluates authorization during its directory walk, BEFORE mod_rewrite's
 # per-directory rules run in the fixup phase. So a request for /_api/.env is
-# refused with a real 403 and the rewrite never sees it.
+# refused with a real 403 and the rewrite never sees it. (The URL is
+# /api-laravel/.env until Task 5 renames the directory to _api/.)
 #
 # WRITTEN TWICE, and both halves are load-bearing. `Require all denied` is
 # Apache 2.4+; `Order`/`Deny` is 2.2 and deprecated in 2.4. This host's version
@@ -670,7 +671,8 @@ Replace the whole of `api/public/.htaccess`:
 # only for that.
 #
 # The dispatch in config/htaccess/site.htaccess rewrites /api/* to
-# _api/public/index.php, so the request that has to survive both files is
+# api-laravel/public/index.php (_api/public/index.php after Task 5), so the
+# request that has to survive both files is
 # exactly this one. npm run smoke asserts it: a 403 on /api/me means this file
 # is missing or not being read.
 #
