@@ -20,7 +20,7 @@ import { parseConcurrency, classify, classifyWithList, brakeTrips, emptyDirsAfte
 import { withRetry, listRemote, uploadFiles, deleteFiles, sweepEmptyDirs, verifyUploaded } from './ftp.mjs';
 import { STATE_FILE, buildState, downloadState, uploadState } from './state.mjs';
 import { walkBuild, fingerprint, writeDeploymentMarker } from './local.mjs';
-import { PROTECTED, TARGETS, checkTargetDir, checkEnvShape } from './preflight.mjs';
+import { PROTECTED_PATHS, TARGETS, checkTargetDir, checkEnvShape } from './preflight.mjs';
 
 const LOCAL_ROOT = 'dist/build';
 
@@ -201,7 +201,7 @@ async function main() {
 
     // --- Scan ---------------------------------------------------------------
     ui.start('scan');
-    const files = walkBuild(LOCAL_ROOT, PROTECTED);
+    const files = walkBuild(LOCAL_ROOT, PROTECTED_PATHS);
     const localEntries = fingerprint(LOCAL_ROOT, files, (done, total) => ui.progress('scan', { done, total }));
     ui.done('scan', `${files.length} files hashed`);
 
@@ -226,8 +226,8 @@ async function main() {
     // --- Plan -----------------------------------------------------------------
     ui.start('plan');
     let { newFiles, changed, unchanged, stale } = authoritative
-      ? classifyWithList(localEntries, remoteSizes, remoteState?.files, PROTECTED)
-      : classify(localEntries, remoteState.files, PROTECTED);
+      ? classifyWithList(localEntries, remoteSizes, remoteState?.files, PROTECTED_PATHS)
+      : classify(localEntries, remoteState.files, PROTECTED_PATHS);
     if (force) {
       changed = [...localEntries].map(([rel, e]) => ({ rel, size: e.size }));
       newFiles = [];

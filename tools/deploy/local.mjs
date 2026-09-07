@@ -14,16 +14,22 @@ import path from 'node:path';
 export const MARKER = 'deployment.json';
 
 // Walk the build tree: [{rel, size}] with posix rel paths, sorted, excluding
-// protected basenames (server-owned files must never even be candidates).
-export function walkBuild(root, protectedSet) {
+// PROTECTED_PATHS (server-owned files must never even be candidates).
+//
+// The rel path is computed BEFORE the exclusion test, not after, because the
+// test is now on the path rather than the basename — which is what lets a
+// nested api-laravel/.htaccess upload while the root .htaccess stays
+// server-owned.
+export function walkBuild(root, protectedPaths) {
   const out = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
+      const rel = path.relative(root, full).split(path.sep).join('/');
       if (entry.isDirectory()) {
         walk(full);
-      } else if (!protectedSet.has(entry.name)) {
-        out.push({ rel: path.relative(root, full).split(path.sep).join('/'), size: statSync(full).size });
+      } else if (!protectedPaths.has(rel)) {
+        out.push({ rel, size: statSync(full).size });
       }
     }
   };

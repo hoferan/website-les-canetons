@@ -14,24 +14,48 @@ import path from 'node:path';
 import { STATE_FILE } from './state.mjs';
 
 // Files that live on the server and must never be uploaded or deleted (plus
-// the state file, which this tool owns and writes separately). Matched by
-// BASENAME at any depth (see sync.mjs), which is what protects the nested
-// api-laravel/.env — Laravel's server-owned config (APP_KEY, DB credentials,
-// MIGRATE_TOKEN, ALTCHA_HMAC_SECRET). tools/build.mjs strips it from the
-// artifact, so without this entry a --relist or bootstrap deploy would
-// classify it as a stale remote file and delete the API's entire
-// configuration.
+// the state file, which this tool owns and writes separately).
 //
-// config.php stays listed even though the code no longer has one: every server
-// still HAS the file, and this set is what stops a bootstrap or --relist deploy
-// deleting files it did not put there. It should be removed by hand, once per
-// server, and can drop out of this set after that.
-export const PROTECTED = new Set([
+// ROOT-RELATIVE PATHS, matched exactly — NOT basenames at any depth, which is
+// what this used to be. The basename form silently dropped `api/.htaccess`
+// and `api/public/.htaccess` — which ship as `api-laravel/.htaccess` and
+// `api-laravel/public/.htaccess` in the artifact this set actually matches
+// against — from every upload for the whole life of the project:
+// tools/build.mjs copies both into the artifact, and they are the deny/grant
+// pair that is supposed to be the authorization boundary around the Laravel
+// tree, so the effect was that a server had exactly ONE thing between the
+// internet and Laravel's .env — the SPA fallback's catch-all rewrite.
+//
+// Written without a leading slash so each entry compares === to the posix
+// `rel` paths walkBuild() and the state file both use.
+//
+// The export was renamed along with the semantics, on purpose: a call site
+// still passing this to something that does a basename match now throws
+// instead of quietly matching nothing and making every server-owned file
+// deletable.
+export const PROTECTED_PATHS = new Set([
+  // Server-owned: the site rules plus each staging environment's auth block.
   '.htaccess',
+  // Server-owned: Disallow on test/qa, the real one (or none) on prod.
   'robots.txt',
-  'config.php',
+  // Server-owned credentials for the staging Basic Auth. NO tool uploads this
+  // — see tools/put-overlay.mjs, which refuses on purpose, because
+  // re-uploading credentials during a cutover window is a way to lock yourself
+  // out. It also lives INSIDE the document root on this host, so deleting it
+  // leaves an .htaccess whose AuthUserFile points at nothing and Apache
+  // answers 500 to every request.
   '.htpasswd',
-  '.env',
+  // Dead — it configured the front end deleted in the SPA cutover — but every
+  // server still HAS it, and this set is what stops a bootstrap or --relist
+  // deploy deleting files it did not put there. It holds live DB credentials
+  // until removed by hand, once per server, after which this entry can go.
+  'config.php',
+  // Laravel's server-owned configuration: APP_KEY, DB credentials,
+  // MIGRATE_TOKEN. Hand-placed, git-ignored, stripped from the artifact by
+  // tools/build.mjs, and it exists NOWHERE ELSE — so without this entry a
+  // --relist or bootstrap deploy classifies it as stale and deletes the API's
+  // entire configuration.
+  'api-laravel/.env',
   STATE_FILE,
 ]);
 

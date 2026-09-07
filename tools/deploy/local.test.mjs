@@ -16,13 +16,18 @@ function fixture() {
   writeFileSync(path.join(root, 'sub', 'b.txt'), 'world');
   writeFileSync(path.join(root, 'sub', 'deep', 'c.txt'), '!');
   writeFileSync(path.join(root, '.htaccess'), 'server-owned');
-  writeFileSync(path.join(root, 'sub', 'config.php'), 'server-owned');
+  writeFileSync(path.join(root, 'config.php'), 'server-owned');
   return root;
 }
 
+// Root-relative paths, matched exactly — not basenames. See preflight.test.mjs
+// for the dedicated coverage of the path-vs-basename distinction itself (a
+// nested api-laravel/.htaccess deploys while the root one stays protected);
+// this fixture only needs a couple of protected root-level entries to prove
+// walkBuild excludes them at all.
 const PROT = new Set(['.htaccess', 'config.php']);
 
-test('walkBuild: posix rel paths + sizes, sorted, protected basenames excluded at any depth', () => {
+test('walkBuild: posix rel paths + sizes, sorted, protected paths excluded', () => {
   const files = walkBuild(fixture(), PROT);
   assert.deepEqual(files, [
     { rel: 'a.txt', size: 5 },

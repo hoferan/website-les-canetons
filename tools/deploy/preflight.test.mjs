@@ -1,49 +1,122 @@
 // tools/deploy/preflight.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { classify, classifyWithList } from './sync.mjs';
+import { walkBuild } from './local.mjs';
 import {
-  PROTECTED,
+  PROTECTED_PATHS,
   TARGETS,
   checkTargetDir,
   envKeys,
   compareEnvShape,
 } from './preflight.mjs';
 
-test('PROTECTED: server-owned files plus the tool-owned state file', () => {
-  for (const name of ['.htaccess', 'robots.txt', 'config.php', '.htpasswd', '.env', '.sync-state.json']) {
-    assert.ok(PROTECTED.has(name), `${name} must be protected`);
+test('PROTECTED_PATHS: the server-owned files, as ROOT-RELATIVE paths', () => {
+  // Paths, not basenames. The basename form protected `.htaccess` at any
+  // depth, which silently dropped `api/.htaccess` and `api/public/.htaccess`
+  // — which ship as `api-laravel/.htaccess` and `api-laravel/public/.htaccess`
+  // in the artifact this set actually matches against — from every upload for
+  // the whole life of the project; the two files that were written to be the
+  // authorization boundary around the Laravel tree.
+  for (const rel of [
+    '.htaccess',
+    'robots.txt',
+    'config.php',
+    '.htpasswd',
+    'api-laravel/.env',
+    '.sync-state.json',
+  ]) {
+    assert.ok(PROTECTED_PATHS.has(rel), `${rel} must be protected`);
   }
 });
 
-// api-laravel/.env is Laravel's server-owned configuration (APP_KEY, DB
-// credentials, MIGRATE_TOKEN, ALTCHA_HMAC_SECRET). tools/build.mjs strips it
-// from the artifact, so it is never in localEntries — which makes it look
-// exactly like a stale remote file. A routine state-based deploy never sees it
-// (it isn't in the state file either), but --relist and the bootstrap deploy
-// classify from the server's real tree, and would delete it. Deleting it is
-// unrecoverable from the repo and takes the whole API down.
-test('PROTECTED: a --relist/bootstrap deploy never marks api-laravel/.env stale', () => {
+test('PROTECTED_PATHS: a bare .env is NOT protected — only the one in the API tree', () => {
+  // There is no .env at the document root. Protecting the bare basename is
+  // what caused the nested-file bug; asserting its absence is what stops a
+  // future edit reintroducing it "for safety".
+  assert.ok(!PROTECTED_PATHS.has('.env'));
+});
+
+test('PROTECTED_PATHS: the nested access files are NOT protected, so they deploy', () => {
+  // The entire point of this change.
+  assert.ok(!PROTECTED_PATHS.has('api-laravel/.htaccess'));
+  assert.ok(!PROTECTED_PATHS.has('api-laravel/public/.htaccess'));
+});
+
+test('walkBuild: uploads a nested .htaccess and skips a protected root path', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'lc-walk-'));
+  try {
+    mkdirSync(path.join(root, 'api-laravel', 'public'), { recursive: true });
+    writeFileSync(path.join(root, '.htaccess'), 'root — server-owned');
+    writeFileSync(path.join(root, 'index.html'), 'shell');
+    writeFileSync(path.join(root, 'api-laravel', '.htaccess'), 'deny all');
+    writeFileSync(path.join(root, 'api-laravel', 'public', '.htaccess'), 'grant');
+
+    const rels = walkBuild(root, PROTECTED_PATHS).map((f) => f.rel);
+
+    assert.ok(!rels.includes('.htaccess'), 'the root .htaccess is server-owned');
+    assert.deepEqual(rels.sort(), [
+      'api-laravel/.htaccess',
+      'api-laravel/public/.htaccess',
+      'index.html',
+    ]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('PROTECTED_PATHS: a --relist/bootstrap deploy never marks the API .env stale', () => {
+  // api-laravel/.env is Laravel's server-owned configuration (APP_KEY, DB
+  // credentials, MIGRATE_TOKEN) and exists nowhere else. On an authoritative
+  // run, deletion is grounded in the real remote tree, so an unprotected .env
+  // would be classified stale and deleted.
   const local = new Map([['index.php', { size: 1, hash: 'a' }]]);
   const remoteSizes = new Map([
     ['index.php', 1],
     ['api-laravel/.env', 900],
     ['api-laravel/.env.example', 900],
-    ['api-laravel/storage/logs/laravel.log', 42],
+    ['api-laravel/storage/logs/laravel.log', 10],
   ]);
-  const { stale } = classifyWithList(local, remoteSizes, { 'index.php': { size: 1, hash: 'a' } }, PROTECTED);
+
+  const { stale } = classifyWithList(
+    local,
+    remoteSizes,
+    { 'index.php': { size: 1, hash: 'a' } },
+    PROTECTED_PATHS,
+  );
+
   assert.ok(!stale.includes('api-laravel/.env'), 'api-laravel/.env must never be deleted');
-  // Only the real file is spared — a differently-named neighbour still goes.
-  assert.deepEqual(stale, ['api-laravel/.env.example', 'api-laravel/storage/logs/laravel.log']);
+  // .env.example is NOT protected and does not travel in this fixture's local
+  // set, so it is correctly stale here.
+  assert.deepEqual(stale, [
+    'api-laravel/.env.example',
+    'api-laravel/storage/logs/laravel.log',
+  ]);
 });
 
-test('PROTECTED: the fast-path diff also spares api-laravel/.env', () => {
+test('PROTECTED_PATHS: the fast-path diff also spares the API .env', () => {
   const { stale } = classify(
     new Map([['index.php', { size: 1, hash: 'a' }]]),
     { 'index.php': { size: 1, hash: 'a' }, 'api-laravel/.env': { size: 900, hash: 'b' } },
-    PROTECTED
+    PROTECTED_PATHS,
   );
+
   assert.deepEqual(stale, []);
+});
+
+test('PROTECTED_PATHS: a same-named file at a different path is still deletable', () => {
+  // The inverse of the bug. `storage/robots.txt` is not the server-owned
+  // /robots.txt, and a basename match would have spared it forever.
+  const { stale } = classify(
+    new Map(),
+    { 'robots.txt': { size: 1, hash: 'a' }, 'storage/robots.txt': { size: 1, hash: 'a' } },
+    PROTECTED_PATHS,
+  );
+
+  assert.deepEqual(stale, ['storage/robots.txt']);
 });
 
 test('TARGETS: exactly test/qa/prod', () => {
