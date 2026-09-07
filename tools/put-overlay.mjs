@@ -78,7 +78,7 @@ export function hasUnsubstitutedAuthPath(text) {
  * "post-cutover" from "old front controller".
  */
 export function hasPostCutoverRules(text) {
-  return text.includes('api-laravel/public/index.php') && text.includes('index.html');
+  return text.includes('_api/public/index.php') && text.includes('index.html');
 }
 
 // .htaccess is required; robots.txt is uploaded only when the overlay emits one
@@ -286,7 +286,7 @@ async function main() {
   if (!hasPostCutoverRules(htaccess)) {
     console.error(
       `${localDir}/.htaccess does not look like a post-cutover overlay (missing the API dispatch to ` +
-        `api-laravel/public/index.php and/or the SPA fallback to index.html). It may be stale — ` +
+        `_api/public/index.php and/or the SPA fallback to index.html). It may be stale — ` +
         `regenerate it with \`npm run build:overlay ${target}\` before uploading.`
     );
     process.exit(2);

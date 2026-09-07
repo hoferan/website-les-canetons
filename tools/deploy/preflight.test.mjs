@@ -17,7 +17,7 @@ import {
 test('PROTECTED_PATHS: the server-owned files, as ROOT-RELATIVE paths', () => {
   // Paths, not basenames. The basename form protected `.htaccess` at any
   // depth, which silently dropped `api/.htaccess` and `api/public/.htaccess`
-  // — which ship as `api-laravel/.htaccess` and `api-laravel/public/.htaccess`
+  // — which ship as `_api/.htaccess` and `_api/public/.htaccess`
   // in the artifact this set actually matches against — from every upload for
   // the whole life of the project; the two files that were written to be the
   // authorization boundary around the Laravel tree.
@@ -26,7 +26,7 @@ test('PROTECTED_PATHS: the server-owned files, as ROOT-RELATIVE paths', () => {
     'robots.txt',
     'config.php',
     '.htpasswd',
-    'api-laravel/.env',
+    '_api/.env',
     '.sync-state.json',
   ]) {
     assert.ok(PROTECTED_PATHS.has(rel), `${rel} must be protected`);
@@ -42,25 +42,25 @@ test('PROTECTED_PATHS: a bare .env is NOT protected — only the one in the API 
 
 test('PROTECTED_PATHS: the nested access files are NOT protected, so they deploy', () => {
   // The entire point of this change.
-  assert.ok(!PROTECTED_PATHS.has('api-laravel/.htaccess'));
-  assert.ok(!PROTECTED_PATHS.has('api-laravel/public/.htaccess'));
+  assert.ok(!PROTECTED_PATHS.has('_api/.htaccess'));
+  assert.ok(!PROTECTED_PATHS.has('_api/public/.htaccess'));
 });
 
 test('walkBuild: uploads a nested .htaccess and skips a protected root path', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'lc-walk-'));
   try {
-    mkdirSync(path.join(root, 'api-laravel', 'public'), { recursive: true });
+    mkdirSync(path.join(root, '_api', 'public'), { recursive: true });
     writeFileSync(path.join(root, '.htaccess'), 'root — server-owned');
     writeFileSync(path.join(root, 'index.html'), 'shell');
-    writeFileSync(path.join(root, 'api-laravel', '.htaccess'), 'deny all');
-    writeFileSync(path.join(root, 'api-laravel', 'public', '.htaccess'), 'grant');
+    writeFileSync(path.join(root, '_api', '.htaccess'), 'deny all');
+    writeFileSync(path.join(root, '_api', 'public', '.htaccess'), 'grant');
 
     const rels = walkBuild(root, PROTECTED_PATHS).map((f) => f.rel);
 
     assert.ok(!rels.includes('.htaccess'), 'the root .htaccess is server-owned');
     assert.deepEqual(rels.sort(), [
-      'api-laravel/.htaccess',
-      'api-laravel/public/.htaccess',
+      '_api/.htaccess',
+      '_api/public/.htaccess',
       'index.html',
     ]);
   } finally {
@@ -69,16 +69,16 @@ test('walkBuild: uploads a nested .htaccess and skips a protected root path', ()
 });
 
 test('PROTECTED_PATHS: a --relist/bootstrap deploy never marks the API .env stale', () => {
-  // api-laravel/.env is Laravel's server-owned configuration (APP_KEY, DB
+  // _api/.env is Laravel's server-owned configuration (APP_KEY, DB
   // credentials, MIGRATE_TOKEN) and exists nowhere else. On an authoritative
   // run, deletion is grounded in the real remote tree, so an unprotected .env
   // would be classified stale and deleted.
   const local = new Map([['index.php', { size: 1, hash: 'a' }]]);
   const remoteSizes = new Map([
     ['index.php', 1],
-    ['api-laravel/.env', 900],
-    ['api-laravel/.env.example', 900],
-    ['api-laravel/storage/logs/laravel.log', 10],
+    ['_api/.env', 900],
+    ['_api/.env.example', 900],
+    ['_api/storage/logs/laravel.log', 10],
   ]);
 
   const { stale } = classifyWithList(
@@ -88,19 +88,19 @@ test('PROTECTED_PATHS: a --relist/bootstrap deploy never marks the API .env stal
     PROTECTED_PATHS,
   );
 
-  assert.ok(!stale.includes('api-laravel/.env'), 'api-laravel/.env must never be deleted');
+  assert.ok(!stale.includes('_api/.env'), '_api/.env must never be deleted');
   // .env.example is NOT protected and does not travel in this fixture's local
   // set, so it is correctly stale here.
   assert.deepEqual(stale, [
-    'api-laravel/.env.example',
-    'api-laravel/storage/logs/laravel.log',
+    '_api/.env.example',
+    '_api/storage/logs/laravel.log',
   ]);
 });
 
 test('PROTECTED_PATHS: the fast-path diff also spares the API .env', () => {
   const { stale } = classify(
     new Map([['index.php', { size: 1, hash: 'a' }]]),
-    { 'index.php': { size: 1, hash: 'a' }, 'api-laravel/.env': { size: 900, hash: 'b' } },
+    { 'index.php': { size: 1, hash: 'a' }, '_api/.env': { size: 900, hash: 'b' } },
     PROTECTED_PATHS,
   );
 

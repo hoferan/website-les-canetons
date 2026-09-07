@@ -3,35 +3,61 @@ RewriteEngine on
 # ---------------------------------------------------------------------------
 # Laravel API dispatch.
 #
-#   /api/*     -> the Laravel app in api-laravel/
+#   /api/*     -> the Laravel app in _api/
 #   /sanctum/* -> ditto. Sanctum's SPA flow needs GET /sanctum/csrf-cookie,
 #                 which is not under /api/.
 #
-# This block MUST stay above both the RedirectMatch 301 legacy-URL rules and
-# the SPA fallback below. That fallback matches every path (^),
-# so if it ran first every /api/* and /sanctum/* request would be handed to
-# the SPA shell and this dispatch would never happen at all.
+# This block MUST stay above the SPA fallback below. Both are mod_rewrite
+# rules evaluated in the same phase, in textual order, and that fallback
+# matches every path (^) — so if it ran first every /api/* and /sanctum/*
+# request would be handed to the SPA shell and this dispatch would never happen
+# at all. Nothing can usefully be ordered after a catch-all, which is why the
+# fallback comes last and everything that needs to claim a path first, this
+# block included, comes before it.
 #
-# The Laravel project sits at api-laravel/ in the document root — see
-# tools/build.mjs, which picks that name. (It originally avoided a collision
-# with the old app's own api/ endpoints; those are deleted, but the name is
-# now load-bearing for a stronger reason.) The URL path /api/* dispatches into
-# api-laravel/: ^api(/|$) CANNOT match api-laravel/..., because the hyphen
-# defeats (/|$) — which is the only reason the substitution below does not
-# re-match itself and loop. Never rename that directory without first adding a
-# REDIRECT_STATUS guard to the two dispatch rules.
+# Three RedirectMatch 301 legacy-URL rules used to sit between the two, and
+# were deleted on 2026-09-07. Their textual position was never what mattered:
+# a RedirectMatch is mod_alias, whose hooks are ordered against mod_rewrite's
+# by module load order rather than by position in an .htaccess. What actually
+# bit was the re-entry interaction — see the block that replaced them for the
+# mechanism, which is worth reading before adding any redirect here.
+#
+# The Laravel project sits at _api/ in the document root — see tools/build.mjs,
+# which picks that name. The substitution below must not match its own output,
+# because in per-directory context it re-enters the whole ruleset. It cannot:
+# ^api(/|$) matches only a path that is EXACTLY `api` or that BEGINS `api/`, so
+# _api/public/index.php does not match — and neither would any name but the
+# literal `api` itself. That is the one rename that needs a REDIRECT_STATUS
+# guard added to both dispatch rules first; every other name is loop-safe for
+# free. (The previous name, api-laravel, was safe for exactly this reason too.
+# The comment here used to credit the hyphen for defeating (/|$), which is true
+# but narrower than the rule that actually protects this.)
 # ---------------------------------------------------------------------------
 
 # Forward the Authorization and X-XSRF-Token headers into the request
 # environment BEFORE the dispatch rules below terminate the current rewrite
-# pass. Laravel ships these same rules in its own api/public/.htaccess, but
-# that file never reaches a server (the deploy CLI treats .htaccess as a
-# protected basename at any depth) and its rules would not run for a
-# dispatched request anyway, so it has to happen here. CGI-family SAPIs —
-# which is what this host and the local container both use — do not hand
-# Authorization to PHP otherwise. The X-XSRF-Token rule is the same
-# belt-and-braces Laravel ships; it is kept so this block is a faithful
-# stand-in for api/public/.htaccess, even though Apache already exports
+# pass. Laravel ships equivalent rules in its stock public/.htaccess, and the
+# reason they cannot be relied on is simply that they are no longer there:
+# _api/public/.htaccess IS read on the re-entered pass — per-directory rules in
+# the resolved file's own directory do get evaluated, and Laravel's
+# header-forwarding rules are unguarded `RewriteRule .* - [E=...]`, so they
+# would match and fire — but that whole rewrite block was deleted from the file
+# on 2026-09-07. It now carries an authorization grant and nothing else,
+# re-opening the one directory of the Laravel tree that _api/.htaccess's
+# deny-all closes. So the header forwarding has to happen here.
+#
+# Deleting that block cost nothing, which is a separate point about a separate
+# rule: Laravel's FRONT-CONTROLLER rule is guarded `RewriteCond
+# %{REQUEST_FILENAME} !-f`, and the dispatch below names public/index.php
+# outright, so by the re-entered pass the request filename IS an existing file
+# and the guard fails. That rule had nothing left to route either way.
+# (Both files do now ship to every server: the deploy CLI's protected set is
+# root-relative paths, not basenames at any depth.)
+# CGI-family SAPIs — which is what this host and the local container both use —
+# do not hand Authorization to PHP otherwise. The X-XSRF-Token rule is the same
+# belt-and-braces Laravel ships; it is kept so this block stays a faithful
+# stand-in for the rules Laravel's own stock public/.htaccess carries
+# upstream, even though Apache already exports
 # arbitrary request headers as HTTP_* (X-XSRF-Token reaches PHP without this
 # rule) and the E= value this rule sets arrives on the dispatched request as
 # REDIRECT_HTTP_X_XSRF_TOKEN, which Symfony's ServerBag doesn't read (its
@@ -59,13 +85,13 @@ RewriteRule ^(api|sanctum)(/|$) - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 #
 # [L] is correct here, not merely safe, and was verified empirically (Laravel
 # still answers its own 401 with it): on the second pass the path is
-# api-laravel/public/index.php, which ^api(/|$) cannot match (see the hyphen
-# note above), and REDIRECT_STATUS is set by then, so the SPA fallback below
+# _api/public/index.php, which ^api(/|$) cannot match (see the note above),
+# and REDIRECT_STATUS is set by then, so the SPA fallback below
 # does not match either. Hence no rewrite loop. Depending on REDIRECT_STATUS is
 # not a new liability: the fallback below already relies on it on this FastCGI
 # host.
-RewriteRule ^api(/|$) api-laravel/public/index.php [L]
-RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
+RewriteRule ^api(/|$) _api/public/index.php [L]
+RewriteRule ^sanctum(/|$) _api/public/index.php [L]
 
 # ---------------------------------------------------------------------------
 # There are deliberately NO legacy URL redirects here.
@@ -78,12 +104,13 @@ RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 # own 404 view — one extra hop to the same place.
 #
 # They also carried both of this file's negative-lookahead landmines, and each
-# had already broken something: the .php rule's `(?!.*api-laravel/)` (with the
-# `.*` missing, EVERY /api/* request 301s and the whole API is down while every
-# page still renders — only reproducible on the real host, whose FastCGI
-# wrapper prefixes /cgi-bin/php5.fcgi/ onto the re-entered path) and the .html
-# rule's `(?!index\.html$)` (without it the fallback's own output is 301'd and
-# every URL redirect-loops).
+# had already broken something: the .php rule's lookahead excluding the
+# dispatch target directory (with its `.*` prefix missing, EVERY /api/* request
+# 301s and the whole API is down while every page still renders — only
+# reproducible on the real host, whose FastCGI wrapper prefixes
+# /cgi-bin/php5.fcgi/ onto the re-entered path) and the .html rule's
+# `(?!index\.html$)` (without it the fallback's own output is 301'd and every
+# URL redirect-loops).
 #
 # If a redirect is ever needed again, note what made these dangerous: a
 # RedirectMatch is mod_alias, which runs on the re-entered pass after
@@ -102,12 +129,17 @@ RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 # real 404. Accepted deliberately: the alternative is enumerating every route
 # here, where it would drift from the router.
 #
-# This also means api-laravel/* is never reachable as raw files — every path
-# except /api/* and /sanctum/*, which the dispatch block above already claimed —
-# so a direct hit on api-laravel/.env gets the shell rather than the file, even
-# though the deny-all in api/.htaccess never gets uploaded to a server (see
-# staging/README.md). Same for the now-dead config.php still sitting on each
-# server.
+# The catch-all is also a second layer in front of the Laravel tree — no longer
+# the only one, and no longer the primary one. _api/.htaccess's deny-all now
+# ships to every server, and it is strictly stronger: Apache evaluates
+# authorization during its directory walk, BEFORE mod_rewrite's per-directory
+# rules run in the fixup phase, so a request for _api/.env is refused with a
+# real 403 and this rewrite never sees it. What the catch-all still adds is
+# coverage of anything outside the Laravel tree, where that deny-all does not
+# reach — the now-dead config.php still sitting on each server, and any future
+# stray file — plus the 200-with-the-SPA's-own-404-view behaviour described
+# above, which is why a retired path like /api-laravel/.env answers the shell
+# rather than a 404.
 #
 # Two properties are load-bearing and must survive any edit:
 #
@@ -117,9 +149,13 @@ RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]
 #     a second time. Without it the rewrite re-matches its own output and loops
 #     until Apache aborts with 500 ("Request exceeded the limit of 10 internal
 #     redirects") — on EVERY url of the site, not just one page.
-#  2. It stays a CATCH-ALL rather than an !-f/!-d guard. That is precisely what
-#     keeps api-laravel/.env, api-laravel/vendor/ and config.php unreachable: a
-#     !-f guard would serve them, because they exist.
+#  2. It stays a CATCH-ALL rather than an !-f/!-d guard. A !-f guard serves
+#     whatever exists, which is the opposite of what is wanted for files that do
+#     exist and must not be read — config.php still being the live example. It
+#     is no longer the only thing standing in front of _api/.env and
+#     _api/vendor/ (_api/.htaccess's deny-all is), so this is no longer the sole
+#     reason the Laravel tree is safe — but it is still what makes an unknown
+#     URL answer the SPA instead of whatever happens to be on disk.
 RewriteCond %{REQUEST_URI} !^/assets/
 RewriteCond %{ENV:REDIRECT_STATUS} ^$
 RewriteRule ^ index.html [L]

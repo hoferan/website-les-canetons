@@ -156,7 +156,7 @@ check("Laravel's .env is not readable over the web", async () => {
   // 404. (The comment this replaced claimed a server would 404. It never did.)
   // Distinguishing the two matters at 23:00: "the .env is exposed" and "the
   // boundary is missing but nothing leaked" call for very different panic.
-  const res = await request('/api-laravel/.env');
+  const res = await request('/_api/.env');
   const body = await res.text();
 
   if (body.includes('APP_KEY') || body.includes('DB_PASSWORD')) {
@@ -165,7 +165,7 @@ check("Laravel's .env is not readable over the web", async () => {
   if (res.status === 403) return null;
   if (res.status === 200) {
     return 'got 200 serving the SPA shell — the deny-all did not answer, so the only ' +
-      'thing protecting the Laravel tree is the catch-all rewrite. api/.htaccess is ' +
+      'thing protecting the Laravel tree is the catch-all rewrite. _api/.htaccess is ' +
       'either not being read (AllowOverride?) or did not deploy';
   }
   return `expected 403 from the deny-all, got ${res.status}`;
@@ -176,7 +176,7 @@ check("Laravel's vendor/ is not readable over the web", async () => {
   // body first, so the ComposerAutoloaderInit leak test is reachable even when
   // the status is 200. A 200 here means the SPA shell answered (the catch-all
   // fallback), not that vendor/ was served: see the .env check's comment.
-  const res = await request('/api-laravel/vendor/autoload.php');
+  const res = await request('/_api/vendor/autoload.php');
   const body = await res.text();
 
   if (body.includes('ComposerAutoloaderInit')) {
@@ -185,7 +185,7 @@ check("Laravel's vendor/ is not readable over the web", async () => {
   if (res.status === 403) return null;
   if (res.status === 200) {
     return 'got 200 serving the SPA shell — the deny-all did not answer, so the only ' +
-      'thing protecting the Laravel tree is the catch-all rewrite. api/.htaccess is ' +
+      'thing protecting the Laravel tree is the catch-all rewrite. _api/.htaccess is ' +
       'either not being read (AllowOverride?) or did not deploy';
   }
   return `expected 403 from the deny-all, got ${res.status}`;

@@ -183,18 +183,18 @@ async function main() {
     await client.ensureDir(remoteRoot);
     const shape = await checkEnvShape(client, remoteRoot);
     if (shape.skipped) {
-      ui.done('preflight', `guards OK · api-laravel/.env not fetchable — check skipped (${shape.reason})`);
+      ui.done('preflight', `guards OK · _api/.env not fetchable — check skipped (${shape.reason})`);
     } else if (shape.ok) {
       ui.done('preflight', 'guards OK · .env shape OK');
     } else {
-      shape.missing.forEach((k) => ui.info(`    api-laravel/.env on ${label} is MISSING key: ${k}`));
-      shape.extra.forEach((k) => ui.info(`    api-laravel/.env on ${label} has EXTRA key:  ${k}`));
+      shape.missing.forEach((k) => ui.info(`    _api/.env on ${label} is MISSING key: ${k}`));
+      shape.extra.forEach((k) => ui.info(`    _api/.env on ${label} has EXTRA key:  ${k}`));
       if (dryRun) {
         ui.done('preflight', `.env shape MISMATCH (${shape.missing.length} missing, ${shape.extra.length} extra) — dry-run reports only`);
       } else {
         throw new Refusal(
-          `${label}'s api-laravel/.env has drifted from api/.env.example (${shape.missing.length} missing, ${shape.extra.length} extra keys — listed above).`,
-          'Fix api-laravel/.env by hand on the server, then re-run the deploy.'
+          `${label}'s _api/.env has drifted from api/.env.example (${shape.missing.length} missing, ${shape.extra.length} extra keys — listed above).`,
+          'Fix _api/.env by hand on the server, then re-run the deploy.'
         );
       }
     }

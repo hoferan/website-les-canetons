@@ -22,7 +22,7 @@ function fixture() {
 
 // Root-relative paths, matched exactly — not basenames. See preflight.test.mjs
 // for the dedicated coverage of the path-vs-basename distinction itself (a
-// nested api-laravel/.htaccess deploys while the root one stays protected);
+// nested _api/.htaccess deploys while the root one stays protected);
 // this fixture only needs a couple of protected root-level entries to prove
 // walkBuild excludes them at all.
 const PROT = new Set(['.htaccess', 'config.php']);

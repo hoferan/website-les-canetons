@@ -18,7 +18,7 @@ export const MARKER = 'deployment.json';
 //
 // The rel path is computed BEFORE the exclusion test, not after, because the
 // test is now on the path rather than the basename — which is what lets a
-// nested api-laravel/.htaccess upload while the root .htaccess stays
+// nested _api/.htaccess upload while the root .htaccess stays
 // server-owned.
 export function walkBuild(root, protectedPaths) {
   const out = [];

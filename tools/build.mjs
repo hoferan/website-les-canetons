@@ -1,6 +1,6 @@
 // Assembles dist/build/ — the FTP-ready deploy artifact — from the SPA build in
 // web/ plus the Laravel API in api/ with a production-only Composer vendor/.
-// The deployed document root is exactly: index.html, assets/, api-laravel/.
+// The deployed document root is exactly: index.html, assets/, _api/.
 // Never hand-edit dist/build/; it's regenerated on every run.
 import { execFileSync } from 'node:child_process';
 import { cpSync, rmSync } from 'node:fs';
@@ -10,7 +10,7 @@ import path from 'node:path';
 const mount = process.cwd().split('\\').join('/');
 
 // Recursive delete that tolerates Windows' intermittent ENOTEMPTY/EPERM when
-// removing large trees (e.g. dist/build/api-laravel/vendor's thousands of files):
+// removing large trees (e.g. dist/build/_api/vendor's thousands of files):
 // the OS can still hold handles briefly (AV scanners, Docker bind-mount, async
 // unlink), so Node's maxRetries backs off and retries instead of hard-failing.
 const rmrf = (p) => rmSync(p, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
@@ -18,7 +18,7 @@ const rmrf = (p) => rmSync(p, { recursive: true, force: true, maxRetries: 10, re
 // --- Build the SPA (web/) into dist/build/ --------------------------------
 //
 // THE ORDER OF THE TWO BUILDS IN THIS FILE MATTERS AND IS NOT COSMETIC. Vite
-// empties its outDir, so building the SPA AFTER api-laravel/ has been populated
+// empties its outDir, so building the SPA AFTER _api/ has been populated
 // deletes the entire API from the artifact — a total outage that nothing
 // downstream would catch, because the upload would still succeed and only
 // /api/* would 500. Never reorder these.
@@ -40,28 +40,30 @@ rmSync('dist/build/mockServiceWorker.js', { force: true });
 console.log('Built dist/build/ (SPA shell + assets) — ready to FTP upload.');
 
 
-// --- Build the Laravel API project (api/) into dist/build/api-laravel/ ----
+// --- Build the Laravel API project (api/) into dist/build/_api/ -----------
 //
-// Deliberately NOT dist/build/api/. The name originally avoided a collision:
-// that path held the OLD app's PHP endpoints (app/api/login.php, events.php,
-// …), which Laravel had to live beside rather than on top of. Those are gone —
-// the cutover deleted app/api/ — so the collision no longer exists, but the
-// name is now load-bearing for a different and stronger reason and MUST NOT be
-// "tidied" back to api/.
+// The Laravel project's directory name inside the artifact.
 //
 // config/htaccess/site.htaccess dispatches /api/* with `RewriteRule ^api(/|$)
-// api-laravel/public/index.php [L]`. In per-directory context that
-// substitution re-enters the whole ruleset, so the rule must not match its own
-// output. It doesn't, purely because the hyphen defeats `(/|$)`:
-// `api-laravel/public/index.php` cannot match `^api(/|$)`. Rename this to
-// dist/build/api/ and the rule matches itself on every pass — Apache aborts at
-// "Request exceeded the limit of 10 internal redirects" and every /api/* call
-// 500s.
+// _api/public/index.php [L]`. In per-directory context that substitution
+// re-enters the whole ruleset, so the rule must not match its own output.
 //
-// So if this ever has to be renamed to something `^api(/|$)` can match, first
+// `^api(/|$)` matches a path that is EXACTLY `api` or that begins `api/`, so
+// every other name is safe — including this one, which begins with an
+// underscore. (The previous name, api-laravel, was safe for the same reason,
+// though the comment here used to credit the hyphen specifically, which is
+// true but narrower than the actual rule.) Rename this to dist/build/api/ and
+// the rule matches itself on every pass: Apache aborts at "Request exceeded
+// the limit of 10 internal redirects" and every /api/* call 500s.
+//
+// So if this ever has to be renamed to something `^api(/|$)` CAN match, first
 // add a `RewriteCond %{ENV:REDIRECT_STATUS} ^$` guard to BOTH dispatch rules,
-// the way the front-controller catch-all below them already carries one.
-const laravelBuild = 'dist/build/api-laravel';
+// the way the SPA fallback below them already carries one.
+//
+// The leading underscore is also the point: it reads as "not a public
+// resource" in an FTP listing, and it names no framework, so it does not have
+// to change if the stack ever does.
+const laravelBuild = 'dist/build/_api';
 
 // Paths that must not travel in the artifact, RELATIVE TO api/. Root-relative
 // on purpose, not basename-anywhere: every entry here is a thing Laravel puts
@@ -132,7 +134,7 @@ const includeInLaravelBuild = (src) => {
   return !LARAVEL_BUILD_EXCLUDES.has(rel) && !isCompiledView(rel);
 };
 
-console.log('\nBuilding api/ (Laravel) -> dist/build/api-laravel/ ...');
+console.log('\nBuilding api/ (Laravel) -> dist/build/_api/ ...');
 rmrf(laravelBuild);
 cpSync('api', laravelBuild, { recursive: true, filter: includeInLaravelBuild });
 
@@ -156,4 +158,4 @@ execFileSync(
   { stdio: 'inherit' }
 );
 
-console.log('Built dist/build/api-laravel/ — ready to FTP upload alongside dist/build/.');
+console.log('Built dist/build/_api/ — ready to FTP upload alongside dist/build/.');

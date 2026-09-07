@@ -1,7 +1,7 @@
 // tools/deploy/preflight.mjs
 // Pre-deploy safety checks: the protected-files set, the per-env target-path
 // guard (the one FTP account reaches every environment), and the
-// api-laravel/.env key-shape check.
+// _api/.env key-shape check.
 //
 // That last one used to parse each server's config.php to an AST. config.php
 // is gone with the old front end; Laravel's .env is now the only server-owned
@@ -18,8 +18,8 @@ import { STATE_FILE } from './state.mjs';
 //
 // ROOT-RELATIVE PATHS, matched exactly — NOT basenames at any depth, which is
 // what this used to be. The basename form silently dropped `api/.htaccess`
-// and `api/public/.htaccess` — which ship as `api-laravel/.htaccess` and
-// `api-laravel/public/.htaccess` in the artifact this set actually matches
+// and `api/public/.htaccess` — which ship as `_api/.htaccess` and
+// `_api/public/.htaccess` in the artifact this set actually matches
 // against — from every upload for the whole life of the project:
 // tools/build.mjs copies both into the artifact, and they are the deny/grant
 // pair that is supposed to be the authorization boundary around the Laravel
@@ -55,7 +55,7 @@ export const PROTECTED_PATHS = new Set([
   // tools/build.mjs, and it exists NOWHERE ELSE — so without this entry a
   // --relist or bootstrap deploy classifies it as stale and deletes the API's
   // entire configuration.
-  'api-laravel/.env',
+  '_api/.env',
   STATE_FILE,
 ]);
 
@@ -109,7 +109,7 @@ export function compareEnvShape(expected, actual) {
   return { ok: missing.length === 0 && extra.length === 0, missing, extra };
 }
 
-// Fetch the target's api-laravel/.env and compare its key set against
+// Fetch the target's _api/.env and compare its key set against
 // api/.env.example (the source of truth for what the deployed code expects), so
 // a deploy that would land code needing a key the server has never been given
 // fails here rather than 500ing every /api/* request afterwards. Best-effort on
@@ -122,7 +122,7 @@ export async function checkEnvShape(client, remoteRoot) {
   const tmpEnv = path.join(tmpDir, 'env');
   try {
     try {
-      await client.downloadTo(tmpEnv, `${remoteRoot}/api-laravel/.env`);
+      await client.downloadTo(tmpEnv, `${remoteRoot}/_api/.env`);
     } catch (err) {
       return { ok: true, skipped: true, reason: err.message, missing: [], extra: [] };
     }

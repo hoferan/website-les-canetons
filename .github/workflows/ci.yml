@@ -310,12 +310,12 @@ jobs:
         run: npm ci
       - name: Build deploy artifact
         run: npm run build
-      # The deployed document root is exactly the SPA shell plus api-laravel/.
+      # The deployed document root is exactly the SPA shell plus _api/.
       # Asserting both catches the build-order bug tools/build.mjs warns about:
       # if Vite ran after the Laravel copy it would empty the outDir and
-      # api-laravel/ would be missing here.
+      # _api/ would be missing here.
       - name: Verify dist/build/ was produced
-        run: test -f dist/build/index.html && test -d dist/build/api-laravel/vendor
+        run: test -f dist/build/index.html && test -d dist/build/_api/vendor
 
   # The generated client must never lag behind the API. Regenerating and diffing
   # is the only check that catches a changed response shape: types that describe

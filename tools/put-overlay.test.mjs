@@ -78,8 +78,8 @@ test('hasUnsubstitutedAuthPath: matches the real tracked staging/test/.htaccess 
 
 test('hasPostCutoverRules: a real post-cutover overlay (dispatch + SPA fallback) passes', () => {
   const text =
-    'RewriteRule ^api(/|$) api-laravel/public/index.php [L]\n' +
-    'RewriteRule ^sanctum(/|$) api-laravel/public/index.php [L]\n' +
+    'RewriteRule ^api(/|$) _api/public/index.php [L]\n' +
+    'RewriteRule ^sanctum(/|$) _api/public/index.php [L]\n' +
     'RewriteRule ^ index.html [L]\n';
   assert.equal(hasPostCutoverRules(text), true);
 });
@@ -94,7 +94,7 @@ test('hasPostCutoverRules: an old front-controller-only overlay (no SPA fallback
 });
 
 test('hasPostCutoverRules: the API dispatch alone, without the SPA fallback, still fails', () => {
-  const text = 'RewriteRule ^api(/|$) api-laravel/public/index.php [L]\n';
+  const text = 'RewriteRule ^api(/|$) _api/public/index.php [L]\n';
   assert.equal(hasPostCutoverRules(text), false);
 });
 

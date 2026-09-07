@@ -7,9 +7,9 @@
 # only for that.
 #
 # The dispatch in config/htaccess/site.htaccess rewrites /api/* to
-# api-laravel/public/index.php (_api/public/index.php after Task 5), so the
-# request that has to survive both files is exactly this one. npm run smoke
-# asserts it: a 403 on /api/me means this file is missing or not being read.
+# _api/public/index.php, so the request that has to survive both files is
+# exactly this one. npm run smoke asserts it: a 403 on /api/me means this file
+# is missing or not being read.
 #
 # Written twice for the same reason as the parent — see its comment. Both
 # halves must stay.

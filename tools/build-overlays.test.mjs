@@ -20,8 +20,8 @@ test('the docker target is the plain front controller', () => {
 test('the site .htaccess template dispatches /api and /sanctum into Laravel with [L], never the END flag', () => {
   const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
-  assert.match(frontController, /^RewriteRule \^api\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
-  assert.match(frontController, /^RewriteRule \^sanctum\(\/\|\$\) api-laravel\/public\/index\.php \[L\]$/m);
+  assert.match(frontController, /^RewriteRule \^api\(\/\|\$\) _api\/public\/index\.php \[L\]$/m);
+  assert.match(frontController, /^RewriteRule \^sanctum\(\/\|\$\) _api\/public\/index\.php \[L\]$/m);
 
   // The END flag is Apache 2.3.9+; an unknown RewriteRule flag is a syntax
   // error, so on a 2.2 host it would 500 EVERY request to the whole site.
@@ -43,10 +43,10 @@ test('the header-forwarding rules precede the dispatch rules in the template', (
 
   const authRule = frontController.match(/^RewriteRule .*E=HTTP_AUTHORIZATION.*$/m);
   const xsrfRule = frontController.match(/^RewriteRule .*E=HTTP_X_XSRF_TOKEN.*$/m);
-  const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
+  const firstDispatch = frontController.match(/^RewriteRule .*_api\/public\/index\.php.*$/m);
   assert.ok(authRule, 'the E=HTTP_AUTHORIZATION RewriteRule must be present');
   assert.ok(xsrfRule, 'the E=HTTP_X_XSRF_TOKEN RewriteRule must be present');
-  assert.ok(firstDispatch, 'a dispatch RewriteRule into api-laravel/ must be present');
+  assert.ok(firstDispatch, 'a dispatch RewriteRule into _api/ must be present');
   assert.ok(
     authRule.index < firstDispatch.index,
     'the Authorization forwarding rule must precede the first dispatch rule'
@@ -62,9 +62,9 @@ test('the dispatch rules precede the SPA fallback', () => {
   // never run at all.
   const frontController = readFileSync('config/htaccess/site.htaccess', 'utf8');
 
-  const firstDispatch = frontController.match(/^RewriteRule .*api-laravel\/public\/index\.php.*$/m);
+  const firstDispatch = frontController.match(/^RewriteRule .*_api\/public\/index\.php.*$/m);
   const fallback = frontController.match(/^RewriteRule \^ index\.html \[L\]$/m);
-  assert.ok(firstDispatch, 'a dispatch RewriteRule into api-laravel/ must be present');
+  assert.ok(firstDispatch, 'a dispatch RewriteRule into _api/ must be present');
   assert.ok(fallback, 'the SPA fallback to index.html must be present');
   assert.ok(firstDispatch.index < fallback.index, 'dispatch must precede the fallback');
 });

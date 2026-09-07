@@ -11,8 +11,8 @@
 # It is STRONGER than the SPA fallback that used to be the only layer: Apache
 # evaluates authorization during its directory walk, BEFORE mod_rewrite's
 # per-directory rules run in the fixup phase. So a request for the .env is
-# refused with a real 403 and the rewrite never sees it. (The URL is
-# /api-laravel/.env until Task 5 renames the directory to _api/.)
+# refused with a real 403 and the rewrite never sees it. (This tree ships as
+# _api/, so the URL that gets refused is /_api/.env.)
 #
 # WRITTEN TWICE, and both halves are load-bearing. `Require all denied` is
 # Apache 2.4+; `Order`/`Deny` is 2.2 and deprecated in 2.4. This host's version
