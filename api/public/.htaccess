@@ -1,56 +1,22 @@
-# Re-grant web access inside public/. The parent api/.htaccess denies the whole
-# Laravel tree (it sits inside the document root on this host — see there).
-# Apache evaluates authorization against the RESOLVED file, walking its parent
-# directories; with AuthMerging at its default of Off, the innermost section's
-# Require directives REPLACE inherited ones rather than adding to them. That is
-# why this grant overrides the parent deny at all. Today, only the local Docker
-# overlay (tools/build-overlays.mjs) dispatches requests into
-# api-laravel/public/index.php this way — no real server does yet (see the
-# NOTE in api/.htaccess); every environment gets this from sub-project 2a-ii
-# onward.
+# Re-grant the one directory in the Laravel tree that is meant to be reachable.
 #
-# WARNING for sub-project 2a-ii: that same replacement also discards the staging
-# Basic Auth. TEST/QA carry "Require valid-user" at the document root
-# (staging/*/.htaccess); once /api/* is dispatched here on a real server, this
-# grant becomes the innermost section and the API would be reachable with no
-# authentication. 2a-ii must handle it — e.g. have tools/build-overlays.mjs emit
-# a per-env api-laravel/public/.htaccess carrying the auth block, the same
-# merge-a-block pattern it already uses for the document root.
+# The parent api/.htaccess denies everything. Apache evaluates authorization
+# against the resolved file's parent directories, and with AuthMerging at its
+# default of Off the innermost Require REPLACES the inherited one rather than
+# adding to it — so this grant wins for anything resolved under public/, and
+# only for that.
 #
-# No effect locally: the Docker stack deliberately runs without Basic Auth.
+# The dispatch in config/htaccess/site.htaccess rewrites /api/* to
+# api-laravel/public/index.php (_api/public/index.php after Task 5), so the
+# request that has to survive both files is exactly this one. npm run smoke
+# asserts it: a 403 on /api/me means this file is missing or not being read.
 #
-# The host's Apache version is unresolved — see api/.htaccess for why both
-# spellings below stay guarded rather than relying on the 2.4 one alone.
+# Written twice for the same reason as the parent — see its comment. Both
+# halves must stay.
 <IfModule mod_authz_core.c>
-    Require all granted
+  Require all granted
 </IfModule>
 <IfModule !mod_authz_core.c>
-    Order allow,deny
-    Allow from all
-</IfModule>
-
-<IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
-    RewriteEngine On
-
-    # Handle Authorization Header
-    RewriteCond %{HTTP:Authorization} .
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-    # Handle X-XSRF-Token Header
-    RewriteCond %{HTTP:x-xsrf-token} .
-    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
-
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
-
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteRule ^ index.php [L]
+  Order allow,deny
+  Allow from all
 </IfModule>

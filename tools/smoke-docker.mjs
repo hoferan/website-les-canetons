@@ -140,32 +140,55 @@ check('/sanctum/* reaches Laravel and starts the SPA cookie flow', async () => {
 });
 
 check("Laravel's .env is not readable over the web", async () => {
-  // The single highest-value check in this file: api-laravel/.env holds the DB
-  // password, APP_KEY, MIGRATE_TOKEN and the Altcha HMAC secret, and it is a
-  // hand-placed server-owned file, so nothing in the build or deploy pipeline
-  // would notice it being exposed.
+  // The single highest-value check in this file: the API's .env holds the DB
+  // password, APP_KEY and MIGRATE_TOKEN, and it is a hand-placed server-owned
+  // file, so nothing in the build or deploy pipeline would notice it being
+  // exposed.
   //
-  // Locally this is 403, from api/.htaccess's deny-all: Apache evaluates
-  // authorization during the directory walk, before mod_rewrite's per-directory
-  // fixup ever runs the SPA fallback, so the deny-all wins first (see
-  // that file's own comment). On a real server it would 404 instead — not
-  // because the catch-all wins there, but because .htaccess is a protected
-  // basename never uploaded (tools/deploy/preflight.mjs's PROTECTED set), so
-  // the deny-all doesn't exist to answer first. Loose on purpose (assert "not
-  // exposed", not the exact status) so this keeps passing across that
-  // difference — but locally, expect 403 specifically; a future 404 here is
-  // worth digging into, not shrugging off.
+  // ORDER MATTERS, and an earlier draft of this check got it wrong: it
+  // returned on `status === 200` BEFORE reading the body, which made the
+  // APP_KEY leak test unreachable for the only status where it could ever
+  // matter. Read the body first, then discriminate.
+  //
+  // A 200 here does NOT mean the file was served. The site .htaccess's
+  // fallback is a deliberate catch-all that answers 200 with the SPA shell for
+  // any unknown path — so a missing deny-all shows up as the shell, not as a
+  // 404. (The comment this replaced claimed a server would 404. It never did.)
+  // Distinguishing the two matters at 23:00: "the .env is exposed" and "the
+  // boundary is missing but nothing leaked" call for very different panic.
   const res = await request('/api-laravel/.env');
-  if (res.status === 200) return 'served 200 — the .env is exposed';
   const body = await res.text();
-  return body.includes('APP_KEY') ? 'the response body leaked .env contents' : null;
+
+  if (body.includes('APP_KEY') || body.includes('DB_PASSWORD')) {
+    return `the response body leaked .env contents (status ${res.status})`;
+  }
+  if (res.status === 403) return null;
+  if (res.status === 200) {
+    return 'got 200 serving the SPA shell — the deny-all did not answer, so the only ' +
+      'thing protecting the Laravel tree is the catch-all rewrite. api/.htaccess is ' +
+      'either not being read (AllowOverride?) or did not deploy';
+  }
+  return `expected 403 from the deny-all, got ${res.status}`;
 });
 
 check("Laravel's vendor/ is not readable over the web", async () => {
+  // Same shape and the same ordering fix as the .env check above — read the
+  // body first, so the ComposerAutoloaderInit leak test is reachable even when
+  // the status is 200. A 200 here means the SPA shell answered (the catch-all
+  // fallback), not that vendor/ was served: see the .env check's comment.
   const res = await request('/api-laravel/vendor/autoload.php');
-  if (res.status === 200) return 'served 200 — vendor/ is exposed';
   const body = await res.text();
-  return body.includes('ComposerAutoloaderInit') ? 'the response body leaked PHP source' : null;
+
+  if (body.includes('ComposerAutoloaderInit')) {
+    return `the response body leaked PHP source (status ${res.status})`;
+  }
+  if (res.status === 403) return null;
+  if (res.status === 200) {
+    return 'got 200 serving the SPA shell — the deny-all did not answer, so the only ' +
+      'thing protecting the Laravel tree is the catch-all rewrite. api/.htaccess is ' +
+      'either not being read (AllowOverride?) or did not deploy';
+  }
+  return `expected 403 from the deny-all, got ${res.status}`;
 });
 
 check('the token-gated migrate route works end to end', async () => {
