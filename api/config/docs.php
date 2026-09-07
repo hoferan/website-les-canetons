@@ -18,4 +18,17 @@
  */
 return [
     'enabled' => filter_var(env('API_DOCS_ENABLED', false), FILTER_VALIDATE_BOOLEAN),
+
+    /**
+     * The OpenAPI document to serve.
+     *
+     * base_path() resolves inside the Laravel project directory, where
+     * `npm run openapi` writes it (config/scramble.php's export_path is a bare
+     * 'openapi.json', resolved against the exporting process's working
+     * directory — see tools/openapi.mjs, which cd's there for exactly this
+     * reason). It is committed and travels in the deploy artifact.
+     *
+     * Configurable so a test can point at a missing file and assert the 404.
+     */
+    'document' => base_path('openapi.json'),
 ];

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MigrateController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,7 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // the day it was installed.
 Route::middleware('docs')->group(function () {
     Route::get('/docs', fn () => response('placeholder'));
-    Route::get('/docs.json', fn () => response()->json(['placeholder' => true]));
+    Route::get('/docs.json', DocsDocumentController::class);
 });
 
 // Token-gated (not session-gated): the deploy tooling calls this server-side

@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
+
+/**
+ * Serves the committed OpenAPI document to the reference page.
+ *
+ * IT SERVES THE COMMITTED FILE, not a freshly-generated one. Scramble is a dev
+ * dependency and is not installed on any server, and CI's openapi-drift job
+ * already fails if the committed document disagrees with the code — so this is
+ * both cheaper (no static analysis over the whole app per request on shared
+ * hosting) and stronger: what the docs show is exactly the document
+ * web/src/api/generated/ was produced from, so the documentation cannot
+ * describe an API the client does not speak.
+ *
+ * THE ONE THING IT CHANGES, AND WHY. The committed document declares
+ * `servers: [{"url": "https://lescanetons.org/api"}]`. That is deliberate —
+ * config/scramble.php pins an absolute production URL so the export is
+ * byte-identical on every machine, which is what lets the drift check pass —
+ * but Scalar builds every "Send" from that list. Served untouched, the docs
+ * page on TEST would fire real requests, INCLUDING MUTATING ONES, at the live
+ * production site.
+ *
+ * The replacement is RELATIVE. OpenAPI 3.1 resolves a relative server URL
+ * against the location the document is served from, so the reader calls
+ * whatever origin it loaded the page from. It cannot name the wrong
+ * environment because it names none — which is stronger than an absolute URL
+ * built from APP_URL, a value each server sets by hand.
+ *
+ * The committed file is never written to.
+ */
+class DocsDocumentController extends Controller
+{
+    public function __invoke(): JsonResponse
+    {
+        $path = config('docs.document');
+
+        if (! is_string($path) || ! is_file($path)) {
+            // The artifact is incomplete. A docs page is not worth an error
+            // page, and a 500 on this host means reading logs over FTP.
+            abort(404);
+        }
+
+        $document = json_decode((string) file_get_contents($path), true);
+
+        if (! is_array($document)) {
+            abort(404);
+        }
+
+        $document['servers'] = [[
+            'url' => '/api',
+            'description' => 'Cet environnement',
+        ]];
+
+        // no-store: the document describes whatever code this server is
+        // running, and a proxy holding a stale copy after a deploy would
+        // describe the previous release.
+        return response()
+            ->json($document)
+            ->header('Cache-Control', 'no-store');
+    }
+}
