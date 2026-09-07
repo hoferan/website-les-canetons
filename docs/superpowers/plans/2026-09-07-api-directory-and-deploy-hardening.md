@@ -1029,16 +1029,33 @@ RewriteRule ^api(/|$) _api/public/index.php [L]
 RewriteRule ^sanctum(/|$) _api/public/index.php [L]
 ```
 
-and update every mention of `api-laravel` in that file's comments. Two need
-their *reasoning* corrected, not just the token:
+and update every mention of `api-laravel` in that file's comments. **THREE
+comments need their reasoning corrected, not just the token swapped, because
+Tasks 2 and 3 made them false.** Read each in full before editing:
 
-- the dispatch block's "the hyphen defeats `(/|$)`" becomes: `^api(/|$)`
+- **The dispatch block's** "the hyphen defeats `(/|$)`" becomes: `^api(/|$)`
   matches only exactly `api` or a path beginning `api/`, so `_api/...` cannot
-  match — and neither could any name but `api` itself.
-- the fallback block's paragraph about `api-laravel/*` never being reachable as
-  raw files must now say that the authorization boundary in `_api/.htaccess`
-  is the primary protection and the catch-all is routing, since that is the
-  whole point of Tasks 2 and 3.
+  match — and neither could any name but `api` itself. Its final sentence
+  ("Never rename that directory without first adding a REDIRECT_STATUS guard")
+  should say the guard is needed only for a name `^api(/|$)` can actually
+  match, i.e. literally `api`.
+- **The header-forwarding block** currently says Laravel ships the same rules
+  in `api/public/.htaccess` "but that file never reaches a server (the deploy
+  CLI treats .htaccess as a protected basename at any depth)". **Both halves
+  are now wrong.** Task 2 made the protected set path-based so the file does
+  reach a server, and Task 3 deleted Laravel's stock rewrite block from it
+  entirely. Rewrite it to say what is true: these rules live here because a
+  dispatched request never runs `public/`'s own per-directory rules, and
+  `_api/public/.htaccess` deliberately contains only an authorization grant.
+- **The fallback block's** paragraph claiming `api-laravel/*` "is never
+  reachable as raw files … even though the deny-all in api/.htaccess never gets
+  uploaded to a server" must now say the opposite: `_api/.htaccess` ships and is
+  the PRIMARY protection (Apache authorization, evaluated during the directory
+  walk before mod_rewrite's fixup phase), the catch-all is a useful second
+  layer and is still what makes an unknown URL answer 200 with the SPA's own
+  404 view. Its numbered property 2 should keep saying the catch-all must not
+  become an `!-f`/`!-d` guard, but no longer as the sole reason the Laravel
+  tree is safe.
 
 - [ ] **Step 4: The deploy tool's two functional paths**
 
