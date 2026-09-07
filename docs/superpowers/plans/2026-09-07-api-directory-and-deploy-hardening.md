@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > (recommended) or superpowers:executing-plans to implement this plan
-> task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** The Laravel tree gets a real Apache authorization boundary instead of
 one rewrite rule, is called `_api/` instead of `api-laravel/`, and the
@@ -144,7 +144,7 @@ Expected: `8/13 checks passed`, with these five failing:
 **Files:**
 - Modify: `tools/smoke-docker.mjs`
 
-- [ ] **Step 1: Repoint the deny-all check at a route that exists**
+- [x] **Step 1: Repoint the deny-all check at a route that exists**
 
 This is **the most important check in the file for this plan** — it is the only
 request whose resolved file sits under the denied tree, so it is what proves
@@ -194,7 +194,7 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
 });
 ```
 
-- [ ] **Step 2: Delete the four checks whose subjects no longer exist**
+- [x] **Step 2: Delete the four checks whose subjects no longer exist**
 
 Delete these blocks entirely from `tools/smoke-docker.mjs`:
 
@@ -217,7 +217,7 @@ grep -n "dockerApiEnv" tools/smoke-docker.mjs
 
 If it still has callers, leave it. If not, delete it and its import.
 
-- [ ] **Step 3: Update the file's header comment**
+- [x] **Step 3: Update the file's header comment**
 
 The header lists what the file asserts. Replace the paragraph beginning
 "Known blind spot:" — keep it — but fix the surrounding claim so it no longer
@@ -231,7 +231,7 @@ promises checks that are gone. Add, after the existing "See docs/..." line:
 // breakage would have arrived as one more red line among five.
 ```
 
-- [ ] **Step 4: Run it**
+- [x] **Step 4: Run it**
 
 ```bash
 npm run smoke
@@ -240,7 +240,7 @@ npm run smoke
 Expected: **`9/9 checks passed`**. If any check still fails, do not proceed —
 this task exists to make the instrument trustworthy.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tools/smoke-docker.mjs
@@ -280,7 +280,7 @@ nothing, and quietly make every server-owned file deletable).
   `tools/deploy/sync.mjs`, `tools/deploy/cli.mjs`
 - Modify: `tools/deploy/preflight.test.mjs`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace the three `PROTECTED` tests at the top of
 `tools/deploy/preflight.test.mjs` with these. Keep every other test in the file
@@ -404,7 +404,7 @@ and change the existing import of `PROTECTED` to `PROTECTED_PATHS`.
 > Keeping this task on the current layout means a failure here is about the
 > protected-set logic and nothing else.
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 ```bash
 npm run test:js
@@ -414,7 +414,7 @@ Expected: FAIL. `PROTECTED_PATHS` is not exported, so the import is
 `undefined` and every new test throws
 `TypeError: Cannot read properties of undefined (reading 'has')`.
 
-- [ ] **Step 3: Rewrite the set**
+- [x] **Step 3: Rewrite the set**
 
 In `tools/deploy/preflight.mjs`, replace the `PROTECTED` export and its comment
 block with:
@@ -465,7 +465,7 @@ export const PROTECTED_PATHS = new Set([
 ]);
 ```
 
-- [ ] **Step 4: Match on the path in `walkBuild`**
+- [x] **Step 4: Match on the path in `walkBuild`**
 
 In `tools/deploy/local.mjs`, replace `walkBuild`:
 
@@ -495,7 +495,7 @@ export function walkBuild(root, protectedPaths) {
 }
 ```
 
-- [ ] **Step 5: Match on the path in both diffs**
+- [x] **Step 5: Match on the path in both diffs**
 
 In `tools/deploy/sync.mjs`, update the doc comment on `classify` and the two
 `stale` filters.
@@ -527,7 +527,7 @@ signature says which it is.
 > `path` is still imported and used by `groupByDir` and
 > `emptyDirsAfterDelete`, so leave the import alone.
 
-- [ ] **Step 6: Update the caller**
+- [x] **Step 6: Update the caller**
 
 In `tools/deploy/cli.mjs`, change the import and all three uses:
 
@@ -552,7 +552,7 @@ grep -rn "PROTECTED\b" tools/ | grep -v PROTECTED_PATHS
 
 Expected: no output.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 ```bash
 npm run test:js
@@ -560,7 +560,7 @@ npm run test:js
 
 Expected: PASS, all files.
 
-- [ ] **Step 8: Mutation-test the change**
+- [x] **Step 8: Mutation-test the change**
 
 The whole task is a safety mechanism, so prove the tests can see it break.
 
@@ -574,7 +574,7 @@ The whole task is a safety mechanism, so prove the tests can see it break.
 
 Record what failed in the commit message.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add tools/deploy/preflight.mjs tools/deploy/local.mjs tools/deploy/sync.mjs \
@@ -616,7 +616,7 @@ on the next deploy.
 - Modify: `api/.htaccess`, `api/public/.htaccess`
 - Modify: `tools/smoke-docker.mjs`
 
-- [ ] **Step 1: Rewrite the deny**
+- [x] **Step 1: Rewrite the deny**
 
 Replace the whole of `api/.htaccess`:
 
@@ -657,7 +657,7 @@ Replace the whole of `api/.htaccess`:
 </IfModule>
 ```
 
-- [ ] **Step 2: Rewrite the grant**
+- [x] **Step 2: Rewrite the grant**
 
 Replace the whole of `api/public/.htaccess`:
 
@@ -693,7 +693,7 @@ Replace the whole of `api/public/.htaccess`:
 > `RewriteRule` block here would be dead configuration at best and a second
 > rewrite pass at worst.
 
-- [ ] **Step 3: Tighten the smoke check now that the file will ship**
+- [x] **Step 3: Tighten the smoke check now that the file will ship**
 
 The `.env` check is currently loose on purpose, and its comment says why: on a
 real server it would answer 404 rather than 403, because the deny file was
@@ -745,7 +745,7 @@ check("Laravel's .env is not readable over the web", async () => {
 });
 ```
 
-- [ ] **Step 4: Rebuild, restart and run smoke**
+- [x] **Step 4: Rebuild, restart and run smoke**
 
 The two files travel in the artifact, and the `web` container serves
 `dist/build/` — so a rebuild is required for the change to be visible.
@@ -762,7 +762,7 @@ If it reports the SPA shell instead, the local Apache is not reading
 `api/.htaccess` — check `AllowOverride` in `docker/web/apache-canetons.conf`
 before changing anything in this task.
 
-- [ ] **Step 5: Mutation-test both halves**
+- [x] **Step 5: Mutation-test both halves**
 
 ```
 1. Delete the <IfModule !mod_authz_core.c> block from api/.htaccess.
@@ -788,7 +788,7 @@ before changing anything in this task.
 Record all three outcomes in the commit message, including the honest one:
 step 1 cannot be verified here.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/.htaccess api/public/.htaccess tools/smoke-docker.mjs
@@ -833,7 +833,7 @@ already broken something:
 - Modify: `config/htaccess/site.htaccess`
 - Modify: `tools/build-overlays.test.mjs`
 
-- [ ] **Step 1: Delete the rules and their commentary**
+- [x] **Step 1: Delete the rules and their commentary**
 
 In `config/htaccess/site.htaccess`, delete everything from the comment block
 beginning `# Legacy URL 301s.` through the last of the three lines:
@@ -875,7 +875,7 @@ though the rules are not:
 # ---------------------------------------------------------------------------
 ```
 
-- [ ] **Step 2: Delete the assertions that test the deleted rules**
+- [x] **Step 2: Delete the assertions that test the deleted rules**
 
 Find them:
 
@@ -906,7 +906,7 @@ test('the site rules carry no legacy RedirectMatch', () => {
 > Use whatever `readFileSync`/assert imports the file already has rather than
 > adding duplicates.
 
-- [ ] **Step 3: Run the tool tests**
+- [x] **Step 3: Run the tool tests**
 
 ```bash
 npm run test:js
@@ -914,7 +914,7 @@ npm run test:js
 
 Expected: PASS.
 
-- [ ] **Step 4: Rebuild the overlay, restart, run smoke**
+- [x] **Step 4: Rebuild the overlay, restart, run smoke**
 
 ```bash
 npm run build
@@ -925,7 +925,7 @@ npm run smoke
 Expected: **`9/9`**. Note that Task 1 already deleted the check that asserted
 the `.php` rule's behaviour, so nothing here should move.
 
-- [ ] **Step 5: Verify by hand that a legacy URL now 404s rather than looping**
+- [x] **Step 5: Verify by hand that a legacy URL now 404s rather than looping**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" http://localhost:8090/historique.php
@@ -937,7 +937,7 @@ Expected: `200` with an empty redirect URL for all three — the SPA shell,
 which renders its own 404 view. **A `301` means a rule survived; a `500` means
 something loops.**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add config/htaccess/site.htaccess tools/build-overlays.test.mjs
@@ -988,7 +988,7 @@ the real rule, and both comments are corrected here.
 >
 > Run Step 1's grep and work from its output, not from this list.
 
-- [ ] **Step 1: Confirm the full list before editing anything**
+- [x] **Step 1: Confirm the full list before editing anything**
 
 ```bash
 grep -rln "api-laravel" --exclude-dir=dist --exclude-dir=node_modules \
@@ -1000,7 +1000,7 @@ and `api/storage/logs/laravel.log` are untracked artifacts to ignore. Work
 through the rest. **Do not run a blind `sed -i` over all of them** — several
 are prose comments where the sentence needs rewriting, not the token swapping.
 
-- [ ] **Step 2: The build output**
+- [x] **Step 2: The build output**
 
 In `tools/build.mjs`, replace the comment block above `laravelBuild` and the
 constant itself:
@@ -1033,7 +1033,7 @@ const laravelBuild = 'dist/build/_api';
 Then update the file's header comment (line 3) and the two `console.log` lines
 that name the directory.
 
-- [ ] **Step 3: The dispatch**
+- [x] **Step 3: The dispatch**
 
 In `config/htaccess/site.htaccess`, change both dispatch rules:
 
@@ -1074,7 +1074,7 @@ Tasks 2 and 3 made them false.** Read each in full before editing:
   become an `!-f`/`!-d` guard, but no longer as the sole reason the Laravel
   tree is safe.
 
-- [ ] **Step 4: The deploy tool's two functional paths**
+- [x] **Step 4: The deploy tool's two functional paths**
 
 In `tools/deploy/preflight.mjs`:
 
@@ -1102,14 +1102,14 @@ In `tools/put-overlay.mjs`, the overlay sanity check:
 
 and the diagnostic string near line 289 that names the same path.
 
-- [ ] **Step 5: The diagnostic message text**
+- [x] **Step 5: The diagnostic message text**
 
 `tools/deploy/cli.mjs` (four strings) and `tools/dbmigrate.mjs` (two strings)
 mention `api-laravel/.env` and the dispatch in operator-facing messages.
 Update the text. Nothing functional depends on them, and a stale path in an
 error message is how the next person edits the wrong file at 23:00.
 
-- [ ] **Step 6: The container**
+- [x] **Step 6: The container**
 
 In `docker-compose.yml`, the three nested mounts:
 
@@ -1136,7 +1136,7 @@ retry php _api/artisan db:seed --force
 chown -R www-data:www-data _api/storage _api/bootstrap/cache
 ```
 
-- [ ] **Step 7: CI**
+- [x] **Step 7: CI**
 
 In `.github/workflows/ci.yml`, the artifact assertion and its comment:
 
@@ -1152,7 +1152,7 @@ In `.github/workflows/ci.yml`, the artifact assertion and its comment:
 **This one goes red on the first push if it is missed**, which makes it the
 cheapest of the sixteen to get wrong.
 
-- [ ] **Step 8: The two request paths inside smoke**
+- [x] **Step 8: The two request paths inside smoke**
 
 `tools/smoke-docker.mjs` asks for the Laravel tree by URL, so its paths are
 functional, not cosmetic. Task 3 tightened the first of these to assert exactly
@@ -1170,7 +1170,7 @@ longer exists, get the SPA shell, and fail.
 Also update the surrounding comments in both checks, which name
 `api-laravel/.env` in prose.
 
-- [ ] **Step 9: The tests that carry the old path in fixtures**
+- [x] **Step 9: The tests that carry the old path in fixtures**
 
 `tools/deploy/preflight.test.mjs` — the fixtures Task 2 deliberately left on
 the old name, plus the `'_api/.env'` assertion.
@@ -1185,7 +1185,7 @@ npm run test:js
 
 Expected: PASS.
 
-- [ ] **Step 10: Prove nothing functional was missed**
+- [x] **Step 10: Prove nothing functional was missed**
 
 ```bash
 grep -rn "api-laravel" --exclude-dir=dist --exclude-dir=node_modules \
@@ -1199,7 +1199,7 @@ Every remaining hit must be in `CLAUDE.md`, `README.md`, `staging/README.md`,
 `docker/web/apache-canetons.conf` — all documentation, all handled in Task 6.
 Anything else is a functional file this task skipped.
 
-- [ ] **Step 11: Rebuild from scratch and bring the stack up**
+- [x] **Step 11: Rebuild from scratch and bring the stack up**
 
 The container mount paths changed, so the containers must be **recreated**, not
 restarted.
@@ -1221,7 +1221,7 @@ Expected: **`9/9`**. A 404 on the Laravel checks means the dispatch and the
 build output disagree about the name; a 500 means the entrypoint could not find
 `_api/artisan`, so check `docker compose logs web`.
 
-- [ ] **Step 12: Confirm the boundary still holds under the new name**
+- [x] **Step 12: Confirm the boundary still holds under the new name**
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8090/_api/.env
@@ -1234,7 +1234,7 @@ exists, so it falls through to the SPA shell. That third result is the one
 worth pausing on: it is the catch-all doing its job, and it is exactly what a
 server looked like for `.env` before this plan.
 
-- [ ] **Step 13: Run the Laravel suite**
+- [x] **Step 13: Run the Laravel suite**
 
 The container's working directory changed, so the documented test command
 changes with it.
@@ -1245,7 +1245,7 @@ docker compose exec -w /var/www/html/_api web php artisan test
 
 Expected: PASS. In Git Bash prefix with `MSYS_NO_PATHCONV=1`.
 
-- [ ] **Step 14: Commit**
+- [x] **Step 14: Commit**
 
 ```bash
 git add -A
@@ -1288,7 +1288,7 @@ false, and which is exactly the kind of stale claim that gets trusted.
 - Modify: `api/tests/Feature/ApiErrorVocabularyTest.php`
 - Modify: `docker/web/apache-canetons.conf`
 
-- [ ] **Step 1: `CLAUDE.md`**
+- [x] **Step 1: `CLAUDE.md`**
 
 Four places:
 
@@ -1314,7 +1314,7 @@ Also update the documented Laravel test command everywhere it appears
 (`-w /var/www/html/api-laravel` → `-w /var/www/html/_api`), including in the
 **Development Commands** section.
 
-- [ ] **Step 2: `staging/README.md`**
+- [x] **Step 2: `staging/README.md`**
 
 The layout section needs real rewriting, not a token swap. Specifically:
 
@@ -1334,11 +1334,11 @@ The layout section needs real rewriting, not a token swap. Specifically:
 - the QA/PROD bootstrap checklist: `api-laravel/.env` → `_api/.env`, and drop
   the line about the FastCGI 301 bug, since the rule that caused it is gone.
 
-- [ ] **Step 3: `README.md`**
+- [x] **Step 3: `README.md`**
 
 The project-structure section names `api-laravel/`. Update it.
 
-- [ ] **Step 4: `.gitignore`**
+- [x] **Step 4: `.gitignore`**
 
 Two edits:
 
@@ -1363,7 +1363,7 @@ Two edits:
    (they are, for the same reason) and delete them too. Nothing else in the
    tree writes to `app/`.
 
-- [ ] **Step 5: The remaining comment-only files**
+- [x] **Step 5: The remaining comment-only files**
 
 - `api/.env.example` — path comments.
 - `.env.example` (repo root) — the `MIGRATE_TOKEN` comment naming
@@ -1375,7 +1375,7 @@ Two edits:
   2026-09-07. Only the prose mentioning the container path changes.
 - `docker/web/apache-canetons.conf` — one comment.
 
-- [ ] **Step 6: Verify no functional reference survives**
+- [x] **Step 6: Verify no functional reference survives**
 
 ```bash
 grep -rn "api-laravel" --exclude-dir=dist --exclude-dir=node_modules \
@@ -1386,7 +1386,7 @@ Expected: only `docs/` (historical specs and plans, which correctly describe
 what was true when written) and any deliberate historical note left in
 `CLAUDE.md` or `staging/README.md`.
 
-- [ ] **Step 7: Full green run**
+- [x] **Step 7: Full green run**
 
 ```bash
 npm run test:js
@@ -1400,7 +1400,7 @@ npm run check
 Expected: all green. `npm run check` runs typecheck, Pint, the web suite,
 eslint, stylelint, prettier and the secret guard.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1426,7 +1426,7 @@ SPA cutover. The one live fact in that comment — the nested env mount writing 
 
 ## Task 7: One last look at the whole change
 
-- [ ] **Step 1: Rebuild from nothing and re-verify**
+- [x] **Step 1: Rebuild from nothing and re-verify**
 
 ```bash
 npm run dev:down
@@ -1439,18 +1439,20 @@ npm run test:js
 
 Expected: artifact rebuilt, stack up, **9/9**, tool tests green.
 
-- [ ] **Step 2: Confirm the artifact's shape by eye**
+- [x] **Step 2: Confirm the artifact's shape by eye**
 
 ```bash
 ls dist/build
 ls dist/build/_api/.htaccess dist/build/_api/public/.htaccess
 ```
 
-Expected: `index.html`, `assets/`, `_api/`, `deployment.json` — and **both
-access files present in the artifact**. They have always been present; what
+Expected: `index.html`, `assets/`, `_api/` — and **both access files present
+in the artifact**. (Not `deployment.json`: `tools/deploy/local.mjs` writes that
+marker at DEPLOY time, not at build time. An earlier draft of this step listed
+it; corrected during execution.) They have always been present; what
 changed is that they will now be uploaded.
 
-- [ ] **Step 3: Confirm what a deploy would actually do**
+- [x] **Step 3: Confirm what a deploy would actually do**
 
 Without deploying:
 
@@ -1462,7 +1464,7 @@ Read the output. It reports the remote tree against the local artifact. This is
 the last chance to see, before Task 8, that the plan's understanding of TEST
 matches reality.
 
-- [ ] **Step 4: Close the one coverage gap this plan exposed**
+- [x] **Step 4: Close the one coverage gap this plan exposed**
 
 Task 4's review found that the SPA fallback's two `RewriteCond` guards have
 **never** had a test — the plan's own Step 2 said to "keep every test about the
@@ -1501,12 +1503,12 @@ Run `npm run test:js` (expect 144), then **mutation-test it**: delete the
 `REDIRECT_STATUS` line from the template, confirm this test fails, restore it
 with a targeted edit, confirm green. Commit separately from the rest of Task 7.
 
-- [ ] **Step 5: Browser check**
+- [x] **Step 5: Browser check**
 
 At http://localhost:8090: the SPA shell loads, `/login` renders its form, and
 `/_api/.env` shows Apache's 403 page rather than the SPA.
 
-- [ ] **Step 6: Commit any fixes, then stop**
+- [x] **Step 6: Commit any fixes, then stop**
 
 Do not deploy. Task 8 is a hand-run runbook and needs a human at the FTP
 client.
