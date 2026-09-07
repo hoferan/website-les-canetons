@@ -1672,7 +1672,7 @@ curl -si -u "USER:PASS" https://test.lescanetons.org/sanctum/csrf-cookie | grep 
 
 Defer the browser login to R1b, which is what makes it possible.
 
-- [ ] **Step 8: Record what happened**
+- [x] **Step 8: Record what happened**
 
 Tick this plan's boxes, leave anything skipped **unticked with a note saying
 why**, and write the `AllowOverride` answer into `staging/README.md` — it is

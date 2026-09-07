@@ -102,6 +102,33 @@ arm is still untested anywhere (a host that needed it could not say so without
 500ing), and it does not resolve the Apache *version* question that forced
 `[L]` over `[END]`.
 
+**Verified on TEST the same day, with no account and no browser.** Two checks
+worth repeating after any future cutover, because between them they prove
+Laravel booted, reached its database, and is hardening its session the way the
+suite claims:
+
+```bash
+# Schema current? --dry-run is REQUIRED: this command defaults to apply.
+npm run dbmigrate:test -- --dry-run
+#   -> status ok, applied [], pending []
+
+# Session cookie flags? Starting a session is enough — no login needed.
+curl -si -u "USER:PASS" https://test.lescanetons.org/sanctum/csrf-cookie   | grep -i "^set-cookie"
+```
+
+The second answered `les-canetons-api-session` with **Secure, HttpOnly and
+SameSite=strict**, and `XSRF-TOKEN` with Secure and SameSite=strict but
+deliberately NOT HttpOnly — the SPA has to read that one to replay the header.
+The `strict` on the session cookie is the notable half: Sanctum's
+`EnsureFrontendRequestsAreStateful` forces `session.same_site` to `lax` on
+every `/api` request, and `App\Http\Middleware\EnforceAbsoluteSessionLifetime`
+restores the configured value before `StartSession` builds the header. Until
+this run that fix had only ever been proven by the test suite.
+
+(`GET /api/config` sets no cookie, which is consistent rather than odd: Sanctum
+only starts a session for a request whose `Origin` matches
+`SANCTUM_STATEFUL_DOMAINS`, and a bare curl sends none.)
+
 **That FTP delete is not durable.** Both files are in the artifact and
 deliberately *not* protected paths, so a routine state-based deploy leaves them
 alone but a `--relist`, a `--force` or any bootstrap run sees them missing from
