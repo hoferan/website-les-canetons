@@ -141,3 +141,25 @@ test('the docker run does not print the server upload hint', () => {
   const stdout = run('docker');
   assert.doesNotMatch(stdout, /Upload each env overlay/);
 });
+
+test('the SPA fallback keeps both of its guards', () => {
+  // The REDIRECT_STATUS guard is what stops the fallback re-matching its own
+  // output and looping until Apache gives up with "Request exceeded the limit
+  // of 10 internal redirects" — on EVERY url of the site, not one page. The
+  // !^/assets/ guard is what lets the hashed bundles be served as files.
+  //
+  // Neither had a test until 2026-09-07, which was found by reviewing the
+  // task that deleted this file's other assertions: the plan said to keep the
+  // REDIRECT_STATUS test and there was none to keep.
+  const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
+  const lines = template.split(/\r?\n/);
+
+  const fallback = lines.findIndex((line) => /^RewriteRule \^ index\.html \[L\]/.test(line));
+  assert.notEqual(fallback, -1, 'the SPA fallback rule is gone');
+
+  // Both guards must be the two lines IMMEDIATELY above it: a RewriteCond
+  // applies only to the rule that follows it, so a blank line or another rule
+  // in between silently detaches them.
+  assert.match(lines[fallback - 1], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
+  assert.match(lines[fallback - 2], /^RewriteCond %\{REQUEST_URI\} !\^\/assets\//);
+});
