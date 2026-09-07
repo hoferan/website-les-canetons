@@ -265,10 +265,21 @@ QA and PROD need no migration: neither has an `_api/.env` or an
 
 ## 9. Open items
 
-1. **`AllowOverride` on easy-hebergement is unverified.** §7 step 5 is the
-   test, and the fallback is documented. Worth recording the answer in
-   `staging/README.md` once known — it is the same unresolved-Apache-version
-   question that already forced `[L]` over `[END]`.
+1. **~~`AllowOverride` on easy-hebergement is unverified.~~ ANSWERED
+   2026-09-07: the host honours the directives.** The TEST cutover ran and
+   `GET /api/config` answered **200** with `GET /_api/.env` answering **403** —
+   so `AllowOverride` permits `Require`/`Order` in a `.htaccess` here, and the
+   Apache-level boundary around the Laravel tree is real on this host rather
+   than merely intended. The FTP-delete fallback in §4 and §7 was not needed
+   and stays documented only as a contingency.
+
+   Note what this does and does not settle. It proves the **2.4 arm**
+   (`mod_authz_core` present, `Require all denied`) is accepted. The 2.2 arm
+   remains untested anywhere and is still written from the documentation — as
+   it must be, since a host that needed it could not tell us so without
+   500ing. It also does not resolve the Apache **version** question that
+   forced `[L]` over `[END]`: a 2.4 server answering these directives is
+   consistent with, but not proof of, 2.4 throughout.
 2. **The post-deploy verifier is still deferred** (it predates this spec). Until
    it exists, §7 step 5 is done by hand.
 3. **The deny lands before the grant.** `tools/deploy/ftp.mjs` groups uploads by

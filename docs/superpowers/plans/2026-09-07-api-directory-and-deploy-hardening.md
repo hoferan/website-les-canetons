@@ -1532,11 +1532,11 @@ cannot see the FTP client.
 - `api-laravel/.env` — holds `APP_KEY`, the DB credentials and
   `MIGRATE_TOKEN`.
 
-- [ ] **Step 1: Download `api-laravel/.env` and keep it**
+- [x] **Step 1: Download `api-laravel/.env` and keep it**
 
 Put it somewhere git-ignored. Everything after this depends on having it.
 
-- [ ] **Step 2: Delete everything in TEST's document root EXCEPT `.htpasswd`**
+- [x] **Step 2: Delete everything in TEST's document root EXCEPT `.htpasswd`**
 
 Including `api-laravel/`, `index.html`, `assets/`, `.htaccess`, `robots.txt`,
 `.sync-state.json`, `deployment.json` and **`config.php`** — which is dead
@@ -1546,7 +1546,7 @@ the reasons this is a hard reset rather than a staged swap.
 TEST is down from here until step 5. It is private, behind Basic Auth, and
 holds synthetic data only.
 
-- [ ] **Step 3: Reconcile the saved file's key set, then upload it as `_api/.env`**
+- [x] **Step 3: Reconcile the saved file's key set, then upload it as `_api/.env`**
 
 **Do not upload it verbatim.** TEST's live `.env` dates from 2026-07-27, and
 `compareEnvShape` (`tools/deploy/preflight.mjs`) refuses on **extra** keys as
@@ -1574,13 +1574,13 @@ where you find out — but by then TEST is wiped, the real deploy after it will
 refuse with **exit 2**, and you are back in the FTP client editing `.env` with
 the site down. Reconcile here instead.
 
-- [ ] **Step 4: Place the `.htaccess` and `robots.txt`**
+- [x] **Step 4: Place the `.htaccess` and `robots.txt`**
 
 ```bash
 npm run put-overlay:test
 ```
 
-- [ ] **Step 5: Deploy**
+- [x] **Step 5: Deploy**
 
 ```bash
 npm run deploy:test -- --dry-run
@@ -1594,7 +1594,7 @@ not be mentioned. If it proposes deletions, stop: something survived step 2.
 npm run deploy:test
 ```
 
-- [ ] **Step 6: Verify, in this order**
+- [x] **Step 6: Verify, in this order**
 
 ```bash
 curl -su "USER:PASS" -o /dev/null -w "%{http_code}\n" https://test.lescanetons.org/api/config
@@ -1637,10 +1637,40 @@ Expect Basic Auth to make most checks fail — the suite sends no credentials.
 That is a known gap; the two curls above are the real verification, and
 automating them is the deferred post-deploy verifier's job, not this plan's.
 
-- [ ] **Step 7: A browser, as a human**
+- [x] **Step 7: Verify what this branch can actually be verified for**
 
-Log in at https://test.lescanetons.org. Confirm the session cookie is
-`HttpOnly` and `SameSite=Strict` in the browser's own devtools.
+> **CORRECTED 2026-09-07, after the cutover ran.** This step used to say "log
+> in at https://test.lescanetons.org and confirm the session cookie is
+> HttpOnly and SameSite=Strict in devtools". **That is impossible on this
+> branch, on two counts**, and writing it cost the operator a confused trip to
+> a blank page:
+>
+> - `web/src/pages/Login.tsx` is still R1a's one-line stub — a bare
+>   `<h1>Connexion</h1>` with no form. The real login screen is R1b's Task 12.
+> - There is no account to log in with. `db:seed` runs only from
+>   `docker/web/entrypoint.sh`; nothing on a server ever invokes a seeder, and
+>   R1b's bootstrap-administrator migration does not exist yet. TEST's
+>   `members` table exists and is empty.
+>
+> The route table is `/login` and a catch-all, so `/` renders the SPA's own
+> 404 view. A near-empty TEST is the correct post-R1a state, not a fault.
+
+Two checks that need no account, and cover what this step was actually for:
+
+```bash
+# 1. Laravel booted, reached the database, and the schema is current.
+#    --dry-run is REQUIRED: this command defaults to APPLY.
+npm run dbmigrate:test -- --dry-run
+
+# 2. The session cookie's flags, on a real server. GET /sanctum/csrf-cookie
+#    starts a session, so StartSession attaches the session cookie — no login
+#    needed. Expect the session cookie to carry Secure, HttpOnly and
+#    SameSite=Strict. XSRF-TOKEN is deliberately NOT HttpOnly: the SPA has to
+#    read it to replay the header.
+curl -si -u "USER:PASS" https://test.lescanetons.org/sanctum/csrf-cookie | grep -i "^set-cookie"
+```
+
+Defer the browser login to R1b, which is what makes it possible.
 
 - [ ] **Step 8: Record what happened**
 

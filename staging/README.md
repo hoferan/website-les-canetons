@@ -90,6 +90,18 @@ Apache-level boundary available even in principle. The one thing that settles
 it for a given server is `/_api/.env` there answering **403** rather than a 500
 or the SPA shell.
 
+**ANSWERED for this host, 2026-09-07.** The TEST cutover ran and `/api/config`
+answered **200** while `/_api/.env` answered **403**, so easy-hebergement's
+`AllowOverride` does permit `Require`/`Order` in a `.htaccess`: the
+Apache-level boundary around the Laravel tree is real here, not merely
+intended, and the FTP-delete contingency below was not needed. TEST is the only
+server this has been established on — QA and PROD inherit the same overlay and
+the same artifact, so they are expected to behave identically, but neither has
+been deployed to yet. What it does NOT settle: the `<IfModule !mod_authz_core.c>`
+arm is still untested anywhere (a host that needed it could not say so without
+500ing), and it does not resolve the Apache *version* question that forced
+`[L]` over `[END]`.
+
 **That FTP delete is not durable.** Both files are in the artifact and
 deliberately *not* protected paths, so a routine state-based deploy leaves them
 alone but a `--relist`, a `--force` or any bootstrap run sees them missing from
