@@ -199,4 +199,100 @@ class AccessIntegrityTest extends TestCase
             ->assertStatus(409)
             ->assertJson(['code' => 'cannot_delete_self']);
     }
+
+    /**
+     * A member row is a PERSON, not an account: username and password are
+     * nullable so an instructor on the public page, or a child whose parent
+     * answers, needs no login. Somebody holding members.manage who cannot log
+     * in administers nothing, so they must not be the reason a deletion is
+     * allowed.
+     */
+    private function ghostAdministrator(): Member
+    {
+        $member = Member::create([
+            'first_name' => 'Ghost',
+            'last_name' => 'Administrator',
+        ]);
+        $member->roles()->attach($this->admins);
+
+        return $member;
+    }
+
+    public function test_a_credential_less_administrator_does_not_count_as_one(): void
+    {
+        // The actor IS the last reachable administrator, deleting themselves,
+        // with a credential-less holder also present. That overlap is what
+        // discriminates: WITHOUT the credential filter the ghost keeps the
+        // count non-empty, so this falls through to cannot_delete_self and the
+        // lockout is permitted. WITH it, the orphan check wins — which is also
+        // the priority test_the_violation_carries_the_last_administrator_code
+        // pins.
+        $only = $this->member('only', $this->admins);
+        $this->ghostAdministrator();
+
+        try {
+            AccessIntegrity::assertMayDelete($only, $only);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_stripping_the_last_reachable_administrators_roles_is_refused(): void
+    {
+        // Same overlap as above: without the credential filter this is merely
+        // a self-demotion (cannot_demote_self) and is allowed to orphan
+        // administration behind a member who cannot log in.
+        $only = $this->member('only', $this->admins);
+        $this->ghostAdministrator();
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($only, $only, []);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_removing_the_credentials_of_the_last_administrator_is_refused(): void
+    {
+        // The lockout this closes: PATCH /api/members/{id} can clear a
+        // username, and no other invariant looks at credentials. Without this,
+        // "edit this person and blank their username" is a lockout with none of
+        // the ceremony deleting them would have required — and the host has no
+        // shell, so the repair is Adminer.
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayRemoveCredentials($only);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_removing_the_credentials_of_a_player_is_fine(): void
+    {
+        // An administrator must exist, or this hits wouldOrphanAdministration's
+        // documented "nobody holds members.manage at all" branch, which refuses
+        // everything. The real controller is gated on members.manage, so one
+        // always does.
+        $this->member('admin', $this->admins);
+
+        AccessIntegrity::assertMayRemoveCredentials($this->member('perrine'));
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    public function test_removing_credentials_is_fine_while_another_administrator_can_log_in(): void
+    {
+        // An outgoing committee member who stays on the public roster as a
+        // person is the legitimate case, and refusing it would be wrong.
+        $leaving = $this->member('leaving', $this->admins);
+        $this->member('staying', $this->admins);
+
+        AccessIntegrity::assertMayRemoveCredentials($leaving);
+
+        $this->expectNotToPerformAssertions();
+    }
 }

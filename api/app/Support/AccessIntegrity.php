@@ -69,14 +69,46 @@ final class AccessIntegrity
     }
 
     /**
-     * True when removing these members would leave nobody holding
-     * members.manage.
+     * Refuses to take away the login of the last person who can administer
+     * members.
+     *
+     * PATCH /api/members/{id} can clear a username, and no other invariant
+     * looks at credentials — so without this, "edit this person and blank
+     * their username" is a lockout with none of the ceremony deleting them
+     * would have required. The host has no shell; the repair would be Adminer.
+     *
+     * Only the ORPHAN case is checked. Removing your own login while another
+     * administrator can still log in is a strange thing to do, but it is
+     * recoverable by that administrator — and refusing it would also refuse
+     * the legitimate case of an outgoing committee member who stays on the
+     * public roster as a person.
+     */
+    public static function assertMayRemoveCredentials(Member $target): void
+    {
+        if (self::wouldOrphanAdministration([$target->id])) {
+            throw new AccessIntegrityViolation(
+                'cannot_remove_last_administrator',
+                'This is the last member who can administer members',
+            );
+        }
+    }
+
+    /**
+     * True when removing these members would leave nobody who can BOTH
+     * administer members and log in.
+     *
+     * THE CREDENTIAL FILTER IS THE POINT. `members` rows are people: username
+     * and password are nullable so an instructor on the public page needs no
+     * login. Counting such a row as an administrator let this sequence lock the
+     * band out while passing every invariant R1a shipped — two administrators,
+     * delete one, clear the other's username — and the host has no shell to
+     * repair it with.
      *
      * This also returns true when nobody holds members.manage in the first
-     * place — a state R1b's controller cannot reach (it is gated on
-     * members.manage), but a seeder or console command calling into
-     * AccessIntegrity against such a database would find every deletion
-     * refused. Not a guarantee that removing these members is the cause.
+     * place. R1b's controller cannot reach that state (it is gated on
+     * members.manage), but a seeder or console command calling in against such
+     * a database would find every deletion refused. Not a guarantee that
+     * removing these members is the cause.
      *
      * @param  array<int, int>  $excludedMemberIds
      */
@@ -85,7 +117,14 @@ final class AccessIntegrity
         $remaining = EffectivePermissions::memberIdsWith(Permission::MembersManage)
             ->reject(fn ($id) => in_array((int) $id, $excludedMemberIds, true));
 
-        return $remaining->isEmpty();
+        if ($remaining->isEmpty()) {
+            return true;
+        }
+
+        return ! Member::whereIn('id', $remaining->all())
+            ->whereNotNull('username')
+            ->whereNotNull('password')
+            ->exists();
     }
 
     /** @param  array<int, int>  $roleIds */

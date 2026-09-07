@@ -59,6 +59,20 @@ class Member extends Authenticatable
         return $this->section_id !== null;
     }
 
+    /**
+     * Whether this person can actually log in.
+     *
+     * A row is a PERSON, not an account, so both credentials are nullable — an
+     * instructor listed on the public page, or a child whose parent answers,
+     * needs no login. A permission held by somebody who cannot authenticate
+     * protects nobody, so AccessIntegrity's lockout invariants count only
+     * members for whom this is true.
+     */
+    public function canAuthenticate(): bool
+    {
+        return $this->username !== null && $this->password !== null;
+    }
+
     /** @return BelongsToMany<Role, $this> */
     public function roles(): BelongsToMany
     {
