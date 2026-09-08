@@ -31,9 +31,13 @@ import type {
   Config200,
   Contact200,
   ContactRequest,
+  MemberDestroy200,
+  MemberDestroyParams,
   MemberResource,
+  MemberRole200,
   MemberStore201,
   ModelNotFoundExceptionResponse,
+  ReplaceMemberRolesRequest,
   RoleResource,
   SectionResource,
   StoreMemberRequest,
@@ -955,6 +959,279 @@ export const useMemberUpdate = <
   TContext
 > => {
   return useMutation(getMemberUpdateMutationOptions(options), queryClient);
+};
+
+export type memberDestroyResponse200 = {
+  data: MemberDestroy200;
+  status: 200;
+};
+
+export type memberDestroyResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberDestroyResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberDestroyResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberDestroyResponseSuccess = memberDestroyResponse200 & {
+  headers: Headers;
+};
+export type memberDestroyResponseError = (
+  memberDestroyResponse400 | memberDestroyResponse401 | memberDestroyResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberDestroyResponse = memberDestroyResponseSuccess | memberDestroyResponseError;
+
+export const getMemberDestroyUrl = (member: number, params: MemberDestroyParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/members/${member}?${stringifiedParams}`
+    : `/members/${member}`;
+};
+
+/**
+ * Existence is the state (design D3): there is no `active` flag and no soft
+ * delete, so leaving the band is this.
+ *
+ * Same ordering rule as MemberRoleController — re-authenticate, then check
+ * the invariants, then write — and capture the name BEFORE the delete,
+ * because the row is gone by the time anyone reads the audit back.
+ * @summary Removes a person entirely
+ */
+export const memberDestroy = async (
+  member: number,
+  params: MemberDestroyParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberDestroyResponse> => {
+  return customFetch<memberDestroyResponse>(getMemberDestroyUrl(member, params), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getMemberDestroyMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberDestroy>>,
+    TError,
+    { member: number; params: MemberDestroyParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberDestroy>>,
+  TError,
+  { member: number; params: MemberDestroyParams },
+  TContext
+> => {
+  const mutationKey = ["memberDestroy"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberDestroy>>,
+    { member: number; params: MemberDestroyParams }
+  > = (props) => {
+    const { member, params } = props ?? {};
+
+    return memberDestroy(member, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof memberDestroy>>>;
+
+export type MemberDestroyMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+/**
+ * @summary Removes a person entirely
+ */
+export const useMemberDestroy = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberDestroy>>,
+      TError,
+      { member: number; params: MemberDestroyParams },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberDestroy>>,
+  TError,
+  { member: number; params: MemberDestroyParams },
+  TContext
+> => {
+  return useMutation(getMemberDestroyMutationOptions(options), queryClient);
+};
+
+export type memberRoleResponse200 = {
+  data: MemberRole200;
+  status: 200;
+};
+
+export type memberRoleResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberRoleResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberRoleResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberRoleResponseSuccess = memberRoleResponse200 & {
+  headers: Headers;
+};
+export type memberRoleResponseError = (
+  memberRoleResponse400 | memberRoleResponse401 | memberRoleResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberRoleResponse = memberRoleResponseSuccess | memberRoleResponseError;
+
+export const getMemberRoleUrl = (member: number) => {
+  return `/members/${member}/roles`;
+};
+
+/**
+ * THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS
+ * ENDPOINT:
+ *
+ *   1. re-authenticate, before anything is read or written, so a stolen
+ *      session cannot change what anybody can do;
+ *   2. check the invariants, before the write, so a refusal leaves no
+ *      trace;
+ *   3. write, then revoke, then audit.
+ *
+ * Getting 1 and 2 the other way round would leak whether a change WOULD be
+ * allowed to somebody who cannot make it — pinned by
+ * test_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.
+ * Getting 3 wrong — revoking before writing — would end the sessions and
+ * then fail, leaving the member logged out with their old permissions
+ * intact.
+ * @summary Replaces one member's roles — which is the only way any permission is
+ever granted or taken away (design §3: no direct per-member grants)
+ */
+export const memberRole = async (
+  member: number,
+  replaceMemberRolesRequest: ReplaceMemberRolesRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberRoleResponse> => {
+  return customFetch<memberRoleResponse>(getMemberRoleUrl(member), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(replaceMemberRolesRequest),
+  });
+};
+
+export const getMemberRoleMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberRole>>,
+    TError,
+    { member: number; data: ReplaceMemberRolesRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberRole>>,
+  TError,
+  { member: number; data: ReplaceMemberRolesRequest },
+  TContext
+> => {
+  const mutationKey = ["memberRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberRole>>,
+    { member: number; data: ReplaceMemberRolesRequest }
+  > = (props) => {
+    const { member, data } = props ?? {};
+
+    return memberRole(member, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberRoleMutationResult = NonNullable<Awaited<ReturnType<typeof memberRole>>>;
+export type MemberRoleMutationBody = ReplaceMemberRolesRequest;
+export type MemberRoleMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+/**
+ * @summary Replaces one member's roles — which is the only way any permission is
+ever granted or taken away (design §3: no direct per-member grants)
+ */
+export const useMemberRole = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberRole>>,
+      TError,
+      { member: number; data: ReplaceMemberRolesRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberRole>>,
+  TError,
+  { member: number; data: ReplaceMemberRolesRequest },
+  TContext
+> => {
+  return useMutation(getMemberRoleMutationOptions(options), queryClient);
 };
 
 export type roleIndexResponse200 = {

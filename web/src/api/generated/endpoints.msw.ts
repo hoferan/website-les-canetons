@@ -15,7 +15,9 @@ import type {
   AuthMe200,
   Config200,
   Contact200,
+  MemberDestroy200,
   MemberResource,
+  MemberRole200,
   MemberStore201,
   RoleResource,
   SectionResource,
@@ -143,6 +145,47 @@ export const getMemberUpdateResponseMock = (
   roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
     faker.number.int(),
   ),
+  ...overrideResponse,
+});
+
+export const getMemberDestroyResponseMock = (
+  overrideResponse: Partial<Extract<MemberDestroy200, object>> = {},
+): MemberDestroy200 => ({
+  ok: faker.datatype.boolean(),
+  sessionsEnded: faker.number.int(),
+  ...overrideResponse,
+});
+
+export const getMemberRoleResponseMock = (
+  overrideResponse: Partial<Extract<MemberRole200, object>> = {},
+): MemberRole200 => ({
+  member: {
+    id: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    username: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    mustChangePassword: faker.datatype.boolean(),
+    lastLoginAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    sectionName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isPlayer: faker.datatype.boolean(),
+    committeeTitle: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    publicVisible: faker.datatype.boolean(),
+    roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.number.int(),
+    ),
+  },
+  sessionsEnded: faker.number.int(),
   ...overrideResponse,
 });
 
@@ -348,6 +391,54 @@ export const getMemberUpdateMockHandler = (
   );
 };
 
+export const getMemberDestroyMockHandler = (
+  overrideResponse?:
+    | MemberDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<MemberDestroy200> | MemberDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/members/:member",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMemberRoleMockHandler = (
+  overrideResponse?:
+    | MemberRole200
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<MemberRole200> | MemberRole200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/members/:member/roles",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberRoleResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getRoleIndexMockHandler = (
   overrideResponse?:
     | RoleResource[]
@@ -404,6 +495,8 @@ export const getLesCanetonsAPIMock = () => [
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
+  getMemberDestroyMockHandler(),
+  getMemberRoleMockHandler(),
   getRoleIndexMockHandler(),
   getSectionIndexMockHandler(),
 ];

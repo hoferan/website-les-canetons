@@ -406,6 +406,132 @@
                         "$ref": "#/components/responses/ValidationException"
                     }
                 }
+            },
+            "delete": {
+                "operationId": "member.destroy",
+                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nSame ordering rule as MemberRoleController \u2014 re-authenticate, then check\nthe invariants, then write \u2014 and capture the name BEFORE the delete,\nbecause the row is gone by the time anyone reads the audit back.",
+                "summary": "Removes a person entirely",
+                "tags": [
+                    "Member"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "currentPassword",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer",
+                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
+                                        }
+                                    },
+                                    "required": [
+                                        "ok",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/members/{member}/roles": {
+            "put": {
+                "operationId": "memberRole",
+                "description": "THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS\nENDPOINT:\n\n  1. re-authenticate, before anything is read or written, so a stolen\n     session cannot change what anybody can do;\n  2. check the invariants, before the write, so a refusal leaves no\n     trace;\n  3. write, then revoke, then audit.\n\nGetting 1 and 2 the other way round would leak whether a change WOULD be\nallowed to somebody who cannot make it \u2014 pinned by\ntest_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.\nGetting 3 wrong \u2014 revoking before writing \u2014 would end the sessions and\nthen fail, leaving the member logged out with their old permissions\nintact.",
+                "summary": "Replaces one member's roles \u2014 which is the only way any permission is\never granted or taken away (design \u00a73: no direct per-member grants)",
+                "tags": [
+                    "MemberRole"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceMemberRolesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "member": {
+                                            "$ref": "#/components/schemas/MemberResource"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer",
+                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
+                                        }
+                                    },
+                                    "required": [
+                                        "member",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
             }
         },
         "/roles": {
@@ -579,6 +705,27 @@
                     "roleIds"
                 ],
                 "title": "MemberResource"
+            },
+            "ReplaceMemberRolesRequest": {
+                "type": "object",
+                "description": "Replacing one member's roles.\n\nPUT SEMANTICS: `roleIds` is the complete set the member will be left with,\nand an empty array means \"no roles\". That is deliberate \u2014 a PATCH-style \"add\n * this one\" API cannot express removal, and removal is the half that needs the\ninvariants.\n\n`roleIds` is `present`, not `required`: `required` rejects an empty array,\nwhich is the most important value this endpoint accepts.",
+                "properties": {
+                    "roleIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    },
+                    "currentPassword": {
+                        "type": "string",
+                        "description": "Re-authentication. Verified by App\\Support\\Reauthentication in\nthe controller, before anything is read or written."
+                    }
+                },
+                "required": [
+                    "roleIds",
+                    "currentPassword"
+                ],
+                "title": "ReplaceMemberRolesRequest"
             },
             "RoleResource": {
                 "type": "object",

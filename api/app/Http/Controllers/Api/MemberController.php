@@ -7,9 +7,13 @@ use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Http\Resources\MemberResource;
 use App\Models\Member;
+use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\GeneratedPassword;
+use App\Support\Reauthentication;
+use App\Support\SessionRevoker;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -125,5 +129,49 @@ class MemberController extends Controller
         Audit::record($request->user(), 'member.updated', 'member', $member->id, $member->fullName());
 
         return new MemberResource($member->load(['section', 'roles']));
+    }
+
+    /**
+     * Removes a person entirely.
+     *
+     * Existence is the state (design D3): there is no `active` flag and no soft
+     * delete, so leaving the band is this.
+     *
+     * Same ordering rule as MemberRoleController — re-authenticate, then check
+     * the invariants, then write — and capture the name BEFORE the delete,
+     * because the row is gone by the time anyone reads the audit back.
+     */
+    public function destroy(Request $request, Member $member): JsonResponse
+    {
+        $request->validate(['currentPassword' => ['required', 'string']]);
+
+        Reauthentication::assert($request->user(), $request->string('currentPassword')->value());
+
+        AccessIntegrity::assertMayDelete($request->user(), $member);
+
+        $label = $member->fullName();
+        $id = $member->id;
+
+        $sessionsEnded = DB::transaction(function () use ($member): int {
+            // `sessions` has NO foreign key to members, so nothing cascades
+            // into it — a deleted member stays logged in until their cookie
+            // expires unless this runs. Without it, hard-delete is theatre.
+            //
+            // BEFORE the delete, and MEASURED 2026-09-08: moving it after keeps
+            // every test green, because the delete cascades nothing into
+            // sessions either way. The ordering is about transaction safety
+            // rather than the row count — if the delete fails, nobody has been
+            // logged out of an account that still exists. Kept first
+            // deliberately, and recorded here because no test distinguishes it.
+            $ended = SessionRevoker::forMember($member->id);
+
+            $member->delete();
+
+            return $ended;
+        });
+
+        Audit::record($request->user(), 'member.deleted', 'member', $id, $label);
+
+        return response()->json(['ok' => true, 'sessionsEnded' => $sessionsEnded]);
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\MemberRoleController;
 use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
@@ -52,6 +53,19 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // on.
         Route::post('/members', [MemberController::class, 'store']);
         Route::patch('/members/{member}', [MemberController::class, 'update']);
+
+        // THE DESTRUCTIVE TWO. Both carry `currentPassword` and re-authenticate
+        // before reading anything (decision B1), both check the lockout
+        // invariants before writing, and both end the target's sessions inside
+        // the same transaction as the change — a revoked permission that waits
+        // for the next login is one the holder keeps using all evening, and a
+        // deleted member with a live session is theatre.
+        //
+        // Replacing roles is PUT, not PATCH: roleIds is the complete set, and
+        // an "add this one" API cannot express removal — which is the half the
+        // invariants exist for.
+        Route::put('/members/{member}/roles', MemberRoleController::class);
+        Route::delete('/members/{member}', [MemberController::class, 'destroy']);
     });
 });
 
