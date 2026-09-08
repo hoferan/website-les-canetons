@@ -31,6 +31,7 @@ import type {
   Config200,
   Contact200,
   ContactRequest,
+  MemberResource,
   RoleResource,
   SectionResource,
   ValidationExceptionResponse,
@@ -557,6 +558,146 @@ export const useContact = <TError = ValidationExceptionResponse, TContext = unkn
 > => {
   return useMutation(getContactMutationOptions(options), queryClient);
 };
+
+export type memberIndexResponse200 = {
+  data: MemberResource[];
+  status: 200;
+};
+
+export type memberIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberIndexResponseSuccess = memberIndexResponse200 & {
+  headers: Headers;
+};
+export type memberIndexResponseError = memberIndexResponse401 & {
+  headers: Headers;
+};
+
+export type memberIndexResponse = memberIndexResponseSuccess | memberIndexResponseError;
+
+export const getMemberIndexUrl = () => {
+  return `/members`;
+};
+
+/**
+ * Ordered by name because this screen is scanned for a person, not browsed
+ * by register. Grouping by register is the UI's business, and it has
+ * sectionName to do it with.
+ *
+ * with() is not an optimisation to revisit later: ~45 members without it is
+ * three queries each on a shared host, and the screen that administers the
+ * band is the one that would feel it. Pinned by
+ * MemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.
+ * @summary The whole roster — everyone, account or not
+ */
+export const memberIndex = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberIndexResponse> => {
+  return customFetch<memberIndexResponse>(getMemberIndexUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMemberIndexQueryKey = () => {
+  return [`/members`] as const;
+};
+
+export const getMemberIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof memberIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMemberIndexQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof memberIndex>>> = ({ signal }) =>
+    memberIndex({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof memberIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type MemberIndexQueryResult = NonNullable<Awaited<ReturnType<typeof memberIndex>>>;
+export type MemberIndexQueryError = AuthenticationExceptionResponse;
+
+export function useMemberIndex<
+  TData = Awaited<ReturnType<typeof memberIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberIndex>>,
+          TError,
+          Awaited<ReturnType<typeof memberIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberIndex<
+  TData = Awaited<ReturnType<typeof memberIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberIndex>>,
+          TError,
+          Awaited<ReturnType<typeof memberIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberIndex<
+  TData = Awaited<ReturnType<typeof memberIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The whole roster — everyone, account or not
+ */
+
+export function useMemberIndex<
+  TData = Awaited<ReturnType<typeof memberIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getMemberIndexQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type roleIndexResponse200 = {
   data: RoleResource[];

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
+use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
@@ -37,6 +38,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // R2's public band page can widen it when it has a second one.
         Route::get('/sections', [SectionController::class, 'index']);
         Route::get('/roles', [RoleController::class, 'index']);
+
+        // The roster. Everyone associated with the band, account or not — one
+        // roster (design §8), so a person with no credentials is listed here
+        // and can be given an account later rather than living on a second
+        // list somewhere else.
+        Route::get('/members', [MemberController::class, 'index']);
     });
 });
 

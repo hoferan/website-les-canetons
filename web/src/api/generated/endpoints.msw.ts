@@ -15,6 +15,7 @@ import type {
   AuthMe200,
   Config200,
   Contact200,
+  MemberResource,
   RoleResource,
   SectionResource,
 } from "./model";
@@ -55,6 +56,38 @@ export const getConfigResponseMock = (
 export const getContactResponseMock = (
   overrideResponse: Partial<Extract<Contact200, object>> = {},
 ): Contact200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getMemberIndexResponseMock = (): MemberResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    username: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    hasAccount: faker.datatype.boolean(),
+    mustChangePassword: faker.datatype.boolean(),
+    lastLoginAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    sectionName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isPlayer: faker.datatype.boolean(),
+    committeeTitle: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    publicVisible: faker.datatype.boolean(),
+    roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.number.int(),
+    ),
+  }));
 
 export const getRoleIndexResponseMock = (): RoleResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -186,6 +219,30 @@ export const getContactMockHandler = (
   );
 };
 
+export const getMemberIndexMockHandler = (
+  overrideResponse?:
+    | MemberResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<MemberResource[]> | MemberResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/members",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getRoleIndexMockHandler = (
   overrideResponse?:
     | RoleResource[]
@@ -239,6 +296,7 @@ export const getLesCanetonsAPIMock = () => [
   getAuthMeMockHandler(),
   getConfigMockHandler(),
   getContactMockHandler(),
+  getMemberIndexMockHandler(),
   getRoleIndexMockHandler(),
   getSectionIndexMockHandler(),
 ];

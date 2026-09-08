@@ -16,6 +16,7 @@ export * from "./authMe200";
 export * from "./config200";
 export * from "./contact200";
 export * from "./contactRequest";
+export * from "./memberResource";
 export * from "./roleResource";
 export * from "./sectionResource";
 export * from "./validationExceptionResponse";

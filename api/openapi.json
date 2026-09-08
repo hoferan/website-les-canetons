@@ -284,6 +284,34 @@
                 }
             }
         },
+        "/members": {
+            "get": {
+                "operationId": "member.index",
+                "description": "Ordered by name because this screen is scanned for a person, not browsed\nby register. Grouping by register is the UI's business, and it has\nsectionName to do it with.\n\nwith() is not an optimisation to revisit later: ~45 members without it is\nthree queries each on a shared host, and the screen that administers the\nband is the one that would feel it. Pinned by\nMemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.",
+                "summary": "The whole roster \u2014 everyone, account or not",
+                "tags": [
+                    "Member"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `MemberResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/MemberResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/roles": {
             "get": {
                 "operationId": "role.index",
@@ -375,6 +403,94 @@
                     "message"
                 ],
                 "title": "ContactRequest"
+            },
+            "MemberResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "username": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "hasAccount": {
+                        "type": "boolean",
+                        "description": "Not the same question as \"has a username\": both credentials must\nbe present to log in, and the lockout invariants count only\npeople for whom that is true."
+                    },
+                    "mustChangePassword": {
+                        "type": "boolean"
+                    },
+                    "lastLoginAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "sectionName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "isPlayer": {
+                        "type": "boolean",
+                        "description": "Whether they PLAY, which is the single fact that decides who is\nanswerable for an event. Derived from section_id rather than\nstored, so the two can never disagree."
+                    },
+                    "committeeTitle": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Text a person typed, so it is stored and rendered verbatim and is\nnever translated \u2014 unlike a role's name, which is a key."
+                    },
+                    "instructorOfSectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "publicVisible": {
+                        "type": "boolean"
+                    },
+                    "roleIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "firstName",
+                    "lastName",
+                    "username",
+                    "hasAccount",
+                    "mustChangePassword",
+                    "lastLoginAt",
+                    "sectionId",
+                    "sectionName",
+                    "isPlayer",
+                    "committeeTitle",
+                    "instructorOfSectionId",
+                    "publicVisible",
+                    "roleIds"
+                ],
+                "title": "MemberResource"
             },
             "RoleResource": {
                 "type": "object",
