@@ -44,12 +44,7 @@ class LoginTest extends TestCase
 
     private function member(): Member
     {
-        return Member::create([
-            'first_name' => 'Léa',
-            'last_name' => 'Keller',
-            'username' => 'lea.keller',
-            'password' => 'secret123',
-        ]);
+        return Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
     }
 
     public function test_valid_credentials_authenticate(): void
@@ -141,6 +136,9 @@ class LoginTest extends TestCase
         // credentials NOT NULL, because the roster is the people the band
         // tracks for events and all of them have an account. The defence is now
         // the schema rather than the login path.
+        // By hand, not through the factory: the factory supplies valid
+        // credentials, and a row without them is exactly what this asserts the
+        // schema refuses.
         $this->expectException(QueryException::class);
 
         Member::create([
@@ -265,9 +263,7 @@ class LoginTest extends TestCase
         // `api` group) reads auth.started_at off the request's session, so
         // this actingAs() call needs the stamp too — see MeTest for the full
         // explanation. The Origin header was already here.
-        $this->actingAs($member)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $this->actingAsMember($member)
             ->postJson('/api/logout')
             ->assertOk()->assertJson(['ok' => true]);
 

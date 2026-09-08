@@ -126,12 +126,7 @@ class BootstrapAdministratorTest extends TestCase
             'bootstrap.admin.last_name' => 'Canetons',
         ]);
 
-        Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine',
-            'password' => 'secret123',
-        ]);
+        Member::factory()->named('Perrine', 'Player', 'perrine')->create();
 
         $this->runBootstrap();
 

@@ -23,14 +23,8 @@ class MeTest extends TestCase
     public function test_it_returns_identity_and_effective_permissions(): void
     {
         $section = Section::create(['name' => 'Clarinettes', 'sort_order' => 1]);
-        $member = Member::create([
-            'first_name' => 'Léa',
-            'last_name' => 'Keller',
-            'section_id' => $section->id,
-            'username' => 'lea.keller',
-            'password' => 'secret123',
-        ]);
-        $role = Role::create(['key' => 'fixture-admins']);
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->inSection($section)->create();
+        $role = Role::factory()->create();
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
@@ -50,9 +44,7 @@ class MeTest extends TestCase
         // withSession() alone only seeds the container's session singleton,
         // not this simulated request's own session. Mirrors
         // LoginTest::spaPostJson().
-        $response = $this->actingAs($member)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $response = $this->actingAsMember($member)
             ->getJson('/api/me')->assertOk();
 
         $response->assertJson([
@@ -89,16 +81,9 @@ class MeTest extends TestCase
 
     public function test_it_never_leaks_the_password_hash(): void
     {
-        $member = Member::create([
-            'first_name' => 'Léa',
-            'last_name' => 'Keller',
-            'username' => 'lea.keller',
-            'password' => 'secret123',
-        ]);
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
 
-        $body = $this->actingAs($member->fresh())
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $body = $this->actingAsMember($member->fresh())
             ->getJson('/api/me')->assertOk()->json();
 
         $this->assertArrayNotHasKey('password', $body);
@@ -107,16 +92,9 @@ class MeTest extends TestCase
 
     public function test_a_member_with_no_register_is_not_a_player(): void
     {
-        $member = Member::create([
-            'first_name' => 'Marc',
-            'last_name' => 'Rossier',
-            'username' => 'marc.rossier',
-            'password' => 'secret123',
-        ]);
+        $member = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->create();
 
-        $response = $this->actingAs($member->fresh())
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $response = $this->actingAsMember($member->fresh())
             ->getJson('/api/me')->assertOk();
 
         // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
@@ -131,16 +109,9 @@ class MeTest extends TestCase
         // member's identity to another. Cache-Control is the only thing
         // stopping that, so its exact value is pinned here rather than
         // asserted with a loose substring match.
-        $member = Member::create([
-            'first_name' => 'Léa',
-            'last_name' => 'Keller',
-            'username' => 'lea.keller',
-            'password' => 'secret123',
-        ]);
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
 
-        $this->actingAs($member->fresh())
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $this->actingAsMember($member->fresh())
             ->getJson('/api/me')
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');

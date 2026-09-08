@@ -14,12 +14,7 @@ class AuditTest extends TestCase
 
     private function member(string $username): Member
     {
-        return Member::create([
-            'first_name' => 'Demo',
-            'last_name' => ucfirst($username),
-            'username' => $username,
-            'password' => 'secret123',
-        ]);
+        return Member::factory()->named('Demo', ucfirst($username), $username)->create();
     }
 
     public function test_it_records_who_did_what_to_whom(): void

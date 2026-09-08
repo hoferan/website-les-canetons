@@ -15,12 +15,7 @@ class EffectivePermissionsTest extends TestCase
 
     private function member(string $username = 'demo'): Member
     {
-        return Member::create([
-            'first_name' => 'Demo',
-            'last_name' => 'Person',
-            'username' => $username,
-            'password' => 'secret123',
-        ]);
+        return Member::factory()->named('Demo', 'Person', $username)->create();
     }
 
     public function test_a_member_with_no_roles_has_no_permissions(): void
@@ -31,7 +26,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_permissions_arrive_through_roles(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'fixture-admins']);
+        $role = Role::factory()->create();
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
@@ -44,10 +39,10 @@ class EffectivePermissionsTest extends TestCase
     {
         $member = $this->member();
 
-        $direction = Role::create(['key' => 'fixture-admins']);
+        $direction = Role::factory()->create();
         $direction->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
 
-        $committee = Role::create(['key' => 'fixture-plain']);
+        $committee = Role::factory()->create();
         $committee->syncPermissions([Permission::EventsManage, Permission::MembersManage]);
 
         $member->roles()->attach([$direction->id, $committee->id]);
@@ -63,7 +58,7 @@ class EffectivePermissionsTest extends TestCase
         // A permission removed from the enum must not crash authorization for
         // every member who still carries the stale row.
         $member = $this->member();
-        $role = Role::create(['key' => 'legacy']);
+        $role = Role::factory()->create();
         $member->roles()->attach($role);
 
         DB::table('role_permissions')->insert([
@@ -77,7 +72,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_revoking_a_role_revokes_its_permissions(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'fixture-admins']);
+        $role = Role::factory()->create();
         $role->syncPermissions([Permission::MembersManage]);
         $member->roles()->attach($role);
 

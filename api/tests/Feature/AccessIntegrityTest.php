@@ -31,27 +31,15 @@ class AccessIntegrityTest extends TestCase
         // events.manage, which the real committee role does not), and roles
         // are editable data — a committee changing what `direction` grants
         // must not turn this suite red.
-        $this->admins = Role::create(['key' => 'fixture-admins']);
-        $this->admins->syncPermissions([Permission::MembersManage]);
-
-        $this->plain = Role::create(['key' => 'fixture-plain']);
-        $this->plain->syncPermissions([Permission::EventsManage]);
+        $this->admins = Role::factory()->granting(Permission::MembersManage)->create();
+        $this->plain = Role::factory()->granting(Permission::EventsManage)->create();
     }
 
     private function member(string $username, ?Role $role = null): Member
     {
-        $member = Member::create([
-            'first_name' => 'Demo',
-            'last_name' => ucfirst($username),
-            'username' => $username,
-            'password' => 'secret123',
-        ]);
+        $factory = Member::factory()->named('Demo', ucfirst($username), $username);
 
-        if ($role !== null) {
-            $member->roles()->attach($role);
-        }
-
-        return $member;
+        return ($role !== null ? $factory->withRole($role) : $factory)->create();
     }
 
     public function test_the_last_administrator_cannot_be_deleted(): void

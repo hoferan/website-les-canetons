@@ -35,20 +35,10 @@ class SectionAndRoleIndexTest extends TestCase
         // Memoised: several tests below loop over both URLs and call this once
         // per URL, and creating the same username twice is a duplicate-key
         // error rather than a meaningful failure.
-        $member = $this->actor ??= tap(Member::create([
-            'first_name' => 'Dominique',
-            'last_name' => 'Direction',
-            'username' => 'dominique',
-            'password' => 'secret123',
-        ]), function (Member $member) use ($withPermission): void {
-            if ($withPermission) {
-                $member->roles()->attach(Role::where('key', 'direction')->sole());
-            }
-        });
+        $factory = Member::factory()->named('Dominique', 'Direction');
+        $member = $this->actor ??= ($withPermission ? $factory->administrator() : $factory)->create();
 
-        return $this->actingAs($member)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp]);
+        return $this->actingAsMember($member);
     }
 
     public function test_the_registers_come_back_in_their_configured_order(): void

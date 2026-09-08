@@ -34,20 +34,12 @@ class MemberWriteTest extends TestCase
     {
         parent::setUp();
 
-        $this->actor = Member::create([
-            'first_name' => 'Dominique',
-            'last_name' => 'Direction',
-            'username' => 'dominique',
-            'password' => 'secret123',
-        ]);
-        $this->actor->roles()->attach(Role::where('key', 'direction')->sole());
+        $this->actor = Member::factory()->named('Dominique', 'Direction')->administrator()->create();
     }
 
     private function acting(?Member $as = null): static
     {
-        return $this->actingAs($as ?? $this->actor)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp]);
+        return $this->actingAsMember($as ?? $this->actor);
     }
 
     private function section(string $name = 'Cloches'): Section
@@ -187,15 +179,11 @@ class MemberWriteTest extends TestCase
     {
         // Untouched, because PATCH means PATCH. A form that posts only the
         // changed field must not silently blank the rest.
-        $member = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine.player',
-            'password' => 'secret123',
-            'section_id' => $this->section()->id,
-            'committee_title' => 'Caissière',
-            'public_visible' => true,
-        ]);
+        $member = Member::factory()
+            ->named('Perrine', 'Player')
+            ->inSection($this->section())
+            ->publiclyVisible()
+            ->create(['committee_title' => 'Caissière']);
 
         $this->acting()->patchJson("/api/members/{$member->id}", ['lastName' => 'Joueuse'])
             ->assertOk();
@@ -214,14 +202,10 @@ class MemberWriteTest extends TestCase
         // The nullable columns go through exists(), not has(): has() is false
         // for an explicitly-sent null, so clearing a register would silently do
         // nothing.
-        $member = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine.player',
-            'password' => 'secret123',
-            'section_id' => $this->section()->id,
-            'committee_title' => 'Caissière',
-        ]);
+        $member = Member::factory()
+            ->named('Perrine', 'Player')
+            ->inSection($this->section())
+            ->create(['committee_title' => 'Caissière']);
 
         $this->acting()->patchJson("/api/members/{$member->id}", [
             'sectionId' => null,
@@ -238,12 +222,7 @@ class MemberWriteTest extends TestCase
         // The unique rule must ignore the row being edited, or renaming
         // somebody's surname fails because their username is "already taken"
         // by themselves.
-        $member = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine.player',
-            'password' => 'secret123',
-        ]);
+        $member = Member::factory()->named('Perrine', 'Player')->create();
 
         $this->acting()->patchJson("/api/members/{$member->id}", [
             'lastName' => 'Joueuse',
@@ -258,12 +237,7 @@ class MemberWriteTest extends TestCase
         // Under the old model this cleared the password and ended the sessions,
         // and had to be refused for the last administrator. The column is NOT
         // NULL now, so the whole branch is gone and the rule rejects it.
-        $member = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine.player',
-            'password' => 'secret123',
-        ]);
+        $member = Member::factory()->named('Perrine', 'Player')->create();
 
         $this->acting()->patchJson("/api/members/{$member->id}", ['username' => null])
             ->assertStatus(400)
@@ -288,12 +262,7 @@ class MemberWriteTest extends TestCase
 
     public function test_a_player_cannot_write_to_the_roster(): void
     {
-        $player = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine',
-            'password' => 'secret123',
-        ]);
+        $player = Member::factory()->named('Perrine', 'Player', 'perrine')->create();
 
         $this->acting($player)->postJson('/api/members', $this->payload(['username' => 'other.one']))
             ->assertStatus(403)

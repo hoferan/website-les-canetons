@@ -42,25 +42,12 @@ class MemberRolesTest extends TestCase
 
     private function administrator(string $username): Member
     {
-        $member = Member::create([
-            'first_name' => 'Admin',
-            'last_name' => ucfirst($username),
-            'username' => $username,
-            'password' => 'the-actors-password',
-        ]);
-        $member->roles()->attach($this->direction);
-
-        return $member;
+        return Member::factory()->named('Admin', ucfirst($username), $username)->administrator()->create();
     }
 
     private function player(string $username = 'perrine'): Member
     {
-        return Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => $username,
-            'password' => 'secret123',
-        ]);
+        return Member::factory()->named('Perrine', 'Player', $username)->create();
     }
 
     /** Writes a row shaped like Laravel's database session handler's. */
@@ -78,9 +65,7 @@ class MemberRolesTest extends TestCase
 
     private function acting(?Member $as = null): static
     {
-        return $this->actingAs($as ?? $this->actor)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp]);
+        return $this->actingAsMember($as ?? $this->actor);
     }
 
     public function test_it_replaces_a_members_roles(): void

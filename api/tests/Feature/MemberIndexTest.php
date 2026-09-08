@@ -25,31 +25,14 @@ class MemberIndexTest extends TestCase
 
     private ?Member $admin = null;
 
-    /** @param  array<string, mixed>  $attributes */
-    private function person(string $first, string $last, array $attributes = []): Member
-    {
-        return Member::create([
-            'first_name' => $first,
-            'last_name' => $last,
-            'username' => strtolower($first.'.'.$last),
-            'password' => 'secret123',
-            ...$attributes,
-        ]);
-    }
-
     private function administrator(): Member
     {
-        return $this->admin ??= tap(
-            $this->person('Dominique', 'Direction'),
-            fn (Member $m) => $m->roles()->attach(Role::where('key', 'direction')->sole()),
-        );
+        return $this->admin ??= Member::factory()->named('Dominique', 'Direction')->administrator()->create();
     }
 
     private function actingAsAdministrator(): static
     {
-        return $this->actingAs($this->administrator())
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp]);
+        return $this->actingAsMember($this->administrator());
     }
 
     public function test_every_member_has_an_account(): void
@@ -79,8 +62,8 @@ class MemberIndexTest extends TestCase
     {
         // Scanned for a person, not browsed by register. Grouping by register
         // is the UI's business, and it has sectionName to do it with.
-        $this->person('Zoe', 'Alpha');
-        $this->person('Anne', 'Zulu');
+        Member::factory()->named('Zoe', 'Alpha')->create();
+        Member::factory()->named('Anne', 'Zulu')->create();
 
         $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
 
@@ -91,12 +74,12 @@ class MemberIndexTest extends TestCase
     {
         $section = Section::where('name', 'Cloches')->sole();
         $role = Role::where('key', 'committee')->sole();
-        $member = $this->person('Camille', 'Committee', [
-            'section_id' => $section->id,
-            'committee_title' => 'Présidente',
-            'public_visible' => true,
-        ]);
-        $member->roles()->attach($role);
+        $member = Member::factory()
+            ->named('Camille', 'Committee')
+            ->inSection($section)
+            ->publiclyVisible()
+            ->committee()
+            ->create(['committee_title' => 'Présidente']);
 
         $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
         $camille = collect($body)->firstWhere('lastName', 'Committee');
@@ -147,9 +130,7 @@ class MemberIndexTest extends TestCase
     {
         $this->getJson('/api/members')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
 
-        $this->actingAs($this->person('Perrine', 'Player'))
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $this->actingAsMember(Member::factory()->create())
             ->getJson('/api/members')
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
@@ -162,14 +143,11 @@ class MemberIndexTest extends TestCase
         // the band is the one that feels it.
         $this->administrator();
 
-        $section = Section::where('name', 'Trompettes')->sole();
-        $role = Role::where('key', 'committee')->sole();
-        for ($i = 0; $i < 20; $i++) {
-            $member = $this->person('Person', 'Number'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), [
-                'section_id' => $section->id,
-            ]);
-            $member->roles()->attach($role);
-        }
+        Member::factory()
+            ->count(20)
+            ->inSection('Trompettes')
+            ->committee()
+            ->create();
 
         $queries = 0;
         DB::listen(function () use (&$queries): void {

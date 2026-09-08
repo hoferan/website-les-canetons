@@ -12,12 +12,7 @@ class SessionLifetimeTest extends TestCase
 
     private function member(): Member
     {
-        return Member::create([
-            'first_name' => 'Léa',
-            'last_name' => 'Keller',
-            'username' => 'lea.keller',
-            'password' => 'secret123',
-        ]);
+        return Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
     }
 
     public function test_the_session_configuration_is_secure_http_only_and_strict(): void
@@ -165,9 +160,7 @@ class SessionLifetimeTest extends TestCase
         // browser always sends one on a same-origin request; withSession() alone
         // only seeds the container's session singleton, not this simulated
         // request's own session store. Mirrors LoginTest::spaPostJson().
-        $this->actingAs($member)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp])
+        $this->actingAsMember($member)
             ->getJson('/api/me')
             ->assertOk();
     }

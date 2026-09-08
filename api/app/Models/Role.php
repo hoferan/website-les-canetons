@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Support\Permission;
+use Database\Factories\RoleFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
@@ -10,6 +12,9 @@ use Illuminate\Support\Facades\DB;
 
 class Role extends Model
 {
+    /** @use HasFactory<RoleFactory> */
+    use HasFactory;
+
     protected $fillable = ['key'];
 
     /** @return BelongsToMany<Member, $this> */

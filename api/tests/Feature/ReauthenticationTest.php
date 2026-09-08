@@ -24,12 +24,10 @@ class ReauthenticationTest extends TestCase
 
     private function actor(string $username = 'admin', ?string $password = 'correct-horse'): Member
     {
-        return Member::create([
-            'first_name' => 'Alex',
-            'last_name' => 'Actor',
-            'username' => $username,
-            'password' => $password,
-        ]);
+        return Member::factory()
+            ->named('Alex', 'Actor', $username)
+            ->withPassword($password)
+            ->create();
     }
 
     public function test_the_correct_password_passes(): void

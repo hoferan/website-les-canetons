@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\AuditEntry;
 use App\Models\Member;
-use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,23 +30,19 @@ class MemberPasswordTest extends TestCase
     {
         parent::setUp();
 
-        $this->actor = Member::create([
-            'first_name' => 'Dominique',
-            'last_name' => 'Direction',
-            'username' => 'dominique',
-            'password' => self::ACTOR_PASSWORD,
-        ]);
-        $this->actor->roles()->attach(Role::where('key', 'direction')->sole());
+        $this->actor = Member::factory()
+            ->named('Dominique', 'Direction')
+            ->withPassword(self::ACTOR_PASSWORD)
+            ->administrator()
+            ->create();
     }
 
     private function member(string $username = 'perrine'): Member
     {
-        return Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => $username,
-            'password' => 'their-old-password',
-        ]);
+        return Member::factory()
+            ->named('Perrine', 'Player', $username)
+            ->withPassword('their-old-password')
+            ->create();
     }
 
     private function sessionFor(string $id, ?int $memberId): void
@@ -64,9 +59,7 @@ class MemberPasswordTest extends TestCase
 
     private function acting(?Member $as = null): static
     {
-        return $this->actingAs($as ?? $this->actor)
-            ->withHeaders(['Origin' => 'http://localhost'])
-            ->withSession(['auth.started_at' => now()->timestamp]);
+        return $this->actingAsMember($as ?? $this->actor);
     }
 
     public function test_it_returns_a_password_once_and_stores_only_its_hash(): void

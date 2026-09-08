@@ -9,6 +9,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
+/**
+ * The model and its schema, not the API.
+ *
+ * DELIBERATELY BUILDS ROWS BY HAND rather than through MemberFactory: these
+ * tests are ABOUT the raw shape — that credentials are mandatory, that the
+ * username index is unique, that the password is hashed on save. A factory
+ * exists precisely to supply valid defaults, which is the thing these assert
+ * cannot be assumed.
+ */
 class MemberModelTest extends TestCase
 {
     use RefreshDatabase;

@@ -4,20 +4,27 @@ namespace App\Models;
 
 use App\Support\EffectivePermissions;
 use App\Support\Permission;
+use Database\Factories\MemberFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Collection;
 
 /**
- * A person associated with the band. See the members migration for why
- * credentials are nullable and why there is no email and no role column.
+ * A person the band tracks for events. Every member has an account —
+ * `username` and `password` are NOT NULL since 2026_09_08_000001; people the
+ * band merely displays are content, not rows here. See the members migration
+ * for that reasoning, and for why there is no email and no role column.
  *
  * Notifiable and MustVerifyEmail are deliberately absent: nothing here sends a
  * notification, and there is no address to verify.
  */
 class Member extends Authenticatable
 {
+    /** @use HasFactory<MemberFactory> */
+    use HasFactory;
+
     protected $fillable = [
         'first_name',
         'last_name',
