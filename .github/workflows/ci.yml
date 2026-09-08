@@ -118,6 +118,28 @@ jobs:
       - name: Larastan (api/)
         working-directory: api
         run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+      # Known-vulnerability check against composer.lock.
+      #
+      # ADDED 2026-09-08 because nobody had ever run one, and the first run
+      # found twelve advisories against two PRODUCTION dependencies of
+      # laravel/framework itself — a host-check bypass in guzzlehttp/guzzle and
+      # four DoS plus an XSS filter bypass in league/commonmark. Both were
+      # shipping. Laravel's constraints already allowed the patched versions, so
+      # the fix was a single `composer update` of those two packages.
+      #
+      # IT FAILS THE BUILD, deliberately, like every other guard in this repo —
+      # the deploy pre-flight, the mass-delete brake, the French vocabulary
+      # check. A warning nobody reads is how this went unnoticed in the first
+      # place. When a new upstream advisory lands mid-PR, the unblock is
+      # `composer update <package> --working-dir=api`; if that is genuinely
+      # impossible, `composer audit --ignore=<ADVISORY-ID>` with the reason in
+      # this file is the escape hatch, not deleting the step.
+      #
+      # Audits dev dependencies too, not just what ships: a compromised dev tool
+      # runs in this job, with this job's token.
+      - name: Composer security audit (api/)
+        working-directory: api
+        run: composer audit
 
   # The Laravel API's PHPUnit suite (api/phpunit.xml) — the only test suite with
   # a database left, now that the old app's `tests` job is gone. Kept separate
