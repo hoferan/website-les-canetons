@@ -37,3 +37,18 @@ test("an unknown field name keeps the raw field but still falls back on the reas
     { field: "nope", message: "nope Une erreur est survenue. Veuillez réessayer." },
   ]);
 });
+
+test("resolves an indexed array field to its label rather than leaking the identifier", () => {
+  // Laravel reports an array element as `roleIds.0`. Before the index was
+  // stripped, the lookup missed and the fallback printed the raw English
+  // `roleIds.0` onto a French screen. ApiErrorVocabularyTest caught it; this
+  // pins the behaviour from the display side.
+  const translated = translateApiError({
+    code: "validation_failed",
+    fields: [{ field: "roleIds.0", reason: "invalid_type" }],
+  });
+
+  // The precise path survives, so the UI can still highlight the right input,
+  // while the message a human reads carries the French label.
+  expect(translated.fields).toEqual([{ field: "roleIds.0", message: "Rôles a un type invalide" }]);
+});

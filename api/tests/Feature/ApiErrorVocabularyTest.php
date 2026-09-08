@@ -235,7 +235,16 @@ class ApiErrorVocabularyTest extends TestCase
 
             $rules = (new $class)->rules();
             self::assertNotEmpty($rules, "{$class}::rules() came back empty.");
-            $fields = array_merge($fields, array_map('strval', array_keys($rules)));
+
+            // `roleIds.*` is rule syntax, not a field name. Laravel reports the
+            // failure against `roleIds.0`, and web/src/i18n strips the index
+            // before looking the label up — so the token that must exist is
+            // `roleIds`. Asking for `roleIds.*` would demand French copy for a
+            // key nothing ever requests, while leaving the real one unchecked.
+            $fields = array_merge($fields, array_map(
+                fn (string $key): string => preg_replace('/\.(\*|\d+)(?=\.|$)/', '', $key) ?? $key,
+                array_map('strval', array_keys($rules)),
+            ));
         }
 
         return $this->normalise(array_merge(

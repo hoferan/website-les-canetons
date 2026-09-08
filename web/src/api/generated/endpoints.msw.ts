@@ -16,6 +16,7 @@ import type {
   Config200,
   Contact200,
   MemberResource,
+  MemberStore201,
   RoleResource,
   SectionResource,
 } from "./model";
@@ -81,6 +82,69 @@ export const getMemberIndexResponseMock = (): MemberResource[] =>
       () => faker.number.int(),
     ),
   }));
+
+export const getMemberStoreResponseMock = (
+  overrideResponse: Partial<Extract<MemberStore201, object>> = {},
+): MemberStore201 => ({
+  member: {
+    id: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    username: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    mustChangePassword: faker.datatype.boolean(),
+    lastLoginAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    sectionName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isPlayer: faker.datatype.boolean(),
+    committeeTitle: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+    publicVisible: faker.datatype.boolean(),
+    roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => faker.number.int(),
+    ),
+  },
+  generatedPassword: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getMemberUpdateResponseMock = (
+  overrideResponse: Partial<Extract<MemberResource, object>> = {},
+): MemberResource => ({
+  id: faker.number.int(),
+  firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  username: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  mustChangePassword: faker.datatype.boolean(),
+  lastLoginAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+  sectionName: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  isPlayer: faker.datatype.boolean(),
+  committeeTitle: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
+  publicVisible: faker.datatype.boolean(),
+  roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+    faker.number.int(),
+  ),
+  ...overrideResponse,
+});
 
 export const getRoleIndexResponseMock = (): RoleResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -236,6 +300,54 @@ export const getMemberIndexMockHandler = (
   );
 };
 
+export const getMemberStoreMockHandler = (
+  overrideResponse?:
+    | MemberStore201
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<MemberStore201> | MemberStore201),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/members",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMemberUpdateMockHandler = (
+  overrideResponse?:
+    | MemberResource
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<MemberResource> | MemberResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/members/:member",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getRoleIndexMockHandler = (
   overrideResponse?:
     | RoleResource[]
@@ -290,6 +402,8 @@ export const getLesCanetonsAPIMock = () => [
   getConfigMockHandler(),
   getContactMockHandler(),
   getMemberIndexMockHandler(),
+  getMemberStoreMockHandler(),
+  getMemberUpdateMockHandler(),
   getRoleIndexMockHandler(),
   getSectionIndexMockHandler(),
 ];

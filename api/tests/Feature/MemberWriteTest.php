@@ -1,0 +1,290 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\AuditEntry;
+use App\Models\Member;
+use App\Models\Role;
+use App\Models\Section;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
+
+/**
+ * Creating and editing a person on the roster.
+ *
+ * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001), so creating a person and
+ * giving them a login are one operation. Create mints a generated password and
+ * returns it exactly once, the same way a reset does — there is no
+ * "person without an account yet" state to fall into.
+ *
+ * That matters for more than tidiness: a member created with an unusable
+ * placeholder password could be given members.manage and then be the only
+ * administrator left after a deletion, unable to log in. That is the ghost
+ * administrator the credentials migration dissolved, and it must not come back
+ * through the create path.
+ */
+class MemberWriteTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Member $actor;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actor = Member::create([
+            'first_name' => 'Dominique',
+            'last_name' => 'Direction',
+            'username' => 'dominique',
+            'password' => 'secret123',
+        ]);
+        $this->actor->roles()->attach(Role::where('key', 'direction')->sole());
+    }
+
+    private function acting(?Member $as = null): static
+    {
+        return $this->actingAs($as ?? $this->actor)
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp]);
+    }
+
+    private function section(string $name = 'Cloches'): Section
+    {
+        return Section::where('name', $name)->sole();
+    }
+
+    /** @return array<string, mixed> */
+    private function payload(array $overrides = []): array
+    {
+        return [
+            'firstName' => 'Perrine',
+            'lastName' => 'Player',
+            'username' => 'perrine.player',
+            'publicVisible' => false,
+            ...$overrides,
+        ];
+    }
+
+    public function test_it_creates_a_person_with_a_register_and_roles(): void
+    {
+        $section = $this->section();
+        $role = Role::where('key', 'committee')->sole();
+
+        $body = $this->acting()->postJson('/api/members', $this->payload([
+            'sectionId' => $section->id,
+            'committeeTitle' => 'Présidente',
+            'publicVisible' => true,
+            'roleIds' => [$role->id],
+        ]))->assertCreated()->json();
+
+        $member = Member::where('username', 'perrine.player')->sole();
+
+        $this->assertSame('Perrine', $body['member']['firstName']);
+        $this->assertSame($section->id, $member->section_id);
+        $this->assertSame('Présidente', $member->committee_title);
+        $this->assertTrue($member->public_visible);
+        $this->assertSame([$role->id], $member->roles->pluck('id')->all());
+    }
+
+    public function test_a_created_person_can_log_in_with_the_password_it_returns(): void
+    {
+        // The whole reason create mints a credential rather than leaving the
+        // person account-less: a member who cannot log in but can hold
+        // members.manage is the ghost administrator that locked the band out.
+        $body = $this->acting()->postJson('/api/members', $this->payload())
+            ->assertCreated()->json();
+
+        $this->assertMatchesRegularExpression(
+            '/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/',
+            $body['generatedPassword'],
+            'the password is the readable, dictatable one from GeneratedPassword',
+        );
+
+        $member = Member::where('username', 'perrine.player')->sole();
+        $this->assertTrue(
+            Hash::check($body['generatedPassword'], $member->password),
+        );
+        $this->assertTrue(
+            $member->must_change_password,
+            'a password somebody read down the phone is not a secret worth keeping',
+        );
+    }
+
+    public function test_the_password_is_returned_once_and_never_read_back(): void
+    {
+        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+
+        $raw = $this->acting()->getJson('/api/members')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('generatedPassword', $raw);
+        $this->assertStringNotContainsString('argon2', $raw);
+    }
+
+    public function test_a_username_is_required_because_every_member_has_an_account(): void
+    {
+        $this->acting()->postJson('/api/members', [
+            'firstName' => 'Nadia',
+            'lastName' => 'Sansconnexion',
+            'publicVisible' => false,
+        ])->assertStatus(400)
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('fields.0.field', 'username')
+            ->assertJsonPath('fields.0.reason', 'required');
+    }
+
+    public function test_a_duplicate_username_is_reported_against_its_own_field(): void
+    {
+        // The most likely error on this whole screen, so its copy matters. An
+        // unmapped `unique` rule would render "Identifiant n'est pas dans un
+        // format valide", which is both wrong and unhelpful.
+        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+
+        $this->acting()->postJson('/api/members', $this->payload(['firstName' => 'Autre']))
+            ->assertStatus(400)
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('fields.0.field', 'username')
+            ->assertJsonPath('fields.0.reason', 'already_taken');
+    }
+
+    public function test_a_missing_name_is_a_validation_failure_not_a_500(): void
+    {
+        $this->acting()->postJson('/api/members', ['username' => 'x.y', 'publicVisible' => false])
+            ->assertStatus(400)
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('fields.0.field', 'firstName')
+            ->assertJsonPath('fields.0.reason', 'required');
+    }
+
+    public function test_creating_a_person_is_audited_with_their_name(): void
+    {
+        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+
+        $entry = AuditEntry::latest('id')->first();
+
+        $this->assertSame('member.created', $entry->action);
+        $this->assertSame($this->actor->id, $entry->actor_member_id);
+        $this->assertSame('Perrine Player', $entry->target_label);
+    }
+
+    public function test_it_updates_only_the_fields_that_were_sent(): void
+    {
+        // Untouched, because PATCH means PATCH. A form that posts only the
+        // changed field must not silently blank the rest.
+        $member = Member::create([
+            'first_name' => 'Perrine',
+            'last_name' => 'Player',
+            'username' => 'perrine.player',
+            'password' => 'secret123',
+            'section_id' => $this->section()->id,
+            'committee_title' => 'Caissière',
+            'public_visible' => true,
+        ]);
+
+        $this->acting()->patchJson("/api/members/{$member->id}", ['lastName' => 'Joueuse'])
+            ->assertOk();
+
+        $member->refresh();
+        $this->assertSame('Joueuse', $member->last_name);
+        $this->assertSame('Perrine', $member->first_name);
+        $this->assertSame('perrine.player', $member->username);
+        $this->assertSame('Caissière', $member->committee_title);
+        $this->assertTrue($member->public_visible);
+        $this->assertNotNull($member->section_id);
+    }
+
+    public function test_an_explicit_null_clears_a_nullable_field(): void
+    {
+        // The nullable columns go through exists(), not has(): has() is false
+        // for an explicitly-sent null, so clearing a register would silently do
+        // nothing.
+        $member = Member::create([
+            'first_name' => 'Perrine',
+            'last_name' => 'Player',
+            'username' => 'perrine.player',
+            'password' => 'secret123',
+            'section_id' => $this->section()->id,
+            'committee_title' => 'Caissière',
+        ]);
+
+        $this->acting()->patchJson("/api/members/{$member->id}", [
+            'sectionId' => null,
+            'committeeTitle' => null,
+        ])->assertOk();
+
+        $member->refresh();
+        $this->assertNull($member->section_id);
+        $this->assertNull($member->committee_title);
+    }
+
+    public function test_updating_a_person_keeps_their_own_username(): void
+    {
+        // The unique rule must ignore the row being edited, or renaming
+        // somebody's surname fails because their username is "already taken"
+        // by themselves.
+        $member = Member::create([
+            'first_name' => 'Perrine',
+            'last_name' => 'Player',
+            'username' => 'perrine.player',
+            'password' => 'secret123',
+        ]);
+
+        $this->acting()->patchJson("/api/members/{$member->id}", [
+            'lastName' => 'Joueuse',
+            'username' => 'perrine.player',
+        ])->assertOk();
+
+        $this->assertSame('perrine.player', $member->fresh()->username);
+    }
+
+    public function test_a_username_cannot_be_cleared_because_it_is_the_login(): void
+    {
+        // Under the old model this cleared the password and ended the sessions,
+        // and had to be refused for the last administrator. The column is NOT
+        // NULL now, so the whole branch is gone and the rule rejects it.
+        $member = Member::create([
+            'first_name' => 'Perrine',
+            'last_name' => 'Player',
+            'username' => 'perrine.player',
+            'password' => 'secret123',
+        ]);
+
+        $this->acting()->patchJson("/api/members/{$member->id}", ['username' => null])
+            ->assertStatus(400)
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('fields.0.field', 'username');
+
+        $this->assertSame('perrine.player', $member->fresh()->username);
+    }
+
+    public function test_neither_write_requires_re_authentication(): void
+    {
+        // Deliberate. Creating and editing a person are not destructive, and a
+        // password prompt on every corrected typo is a prompt people learn to
+        // type through without reading — which is worse than not having one,
+        // because it trains the reflex the destructive dialogs rely on.
+        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+
+        $member = Member::where('username', 'perrine.player')->sole();
+        $this->acting()->patchJson("/api/members/{$member->id}", ['firstName' => 'Perry'])
+            ->assertOk();
+    }
+
+    public function test_a_player_cannot_write_to_the_roster(): void
+    {
+        $player = Member::create([
+            'first_name' => 'Perrine',
+            'last_name' => 'Player',
+            'username' => 'perrine',
+            'password' => 'secret123',
+        ]);
+
+        $this->acting($player)->postJson('/api/members', $this->payload(['username' => 'other.one']))
+            ->assertStatus(403)
+            ->assertJson(['code' => 'access_denied']);
+
+        $this->acting($player)->patchJson("/api/members/{$player->id}", ['firstName' => 'X'])
+            ->assertStatus(403);
+    }
+}

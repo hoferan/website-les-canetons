@@ -32,8 +32,12 @@ import type {
   Contact200,
   ContactRequest,
   MemberResource,
+  MemberStore201,
+  ModelNotFoundExceptionResponse,
   RoleResource,
   SectionResource,
+  StoreMemberRequest,
+  UpdateMemberRequest,
   ValidationExceptionResponse,
 } from "./model";
 
@@ -698,6 +702,260 @@ export function useMemberIndex<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type memberStoreResponse201 = {
+  data: MemberStore201;
+  status: 201;
+};
+
+export type memberStoreResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberStoreResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberStoreResponseSuccess = memberStoreResponse201 & {
+  headers: Headers;
+};
+export type memberStoreResponseError = (memberStoreResponse400 | memberStoreResponse401) & {
+  headers: Headers;
+};
+
+export type memberStoreResponse = memberStoreResponseSuccess | memberStoreResponseError;
+
+export const getMemberStoreUrl = () => {
+  return `/members`;
+};
+
+/**
+ * THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a
+ * person with no credential, leaving "give this person an account" as a
+ * separate operation. That cannot survive the credentials model: a member
+ * created with an unusable placeholder could be granted members.manage and
+ * then be the only administrator left after a deletion — holding the
+ * permission and unable to log in. That is the ghost administrator the
+ * migration dissolved, and this is the door it would have come back
+ * through.
+ *
+ * The value is the same readable, dictatable one a reset produces
+ * (GeneratedPassword), and must_change_password is set, because a password
+ * an administrator read down the phone is not a secret worth keeping.
+ *
+ * No AccessIntegrity check: adding a person, with or without roles, cannot
+ * orphan administration or demote anybody.
+ * @summary Creates a person — which means creating an account, because every member
+has one (2026_09_08_000001)
+ */
+export const memberStore = async (
+  storeMemberRequest: StoreMemberRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberStoreResponse> => {
+  return customFetch<memberStoreResponse>(getMemberStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(storeMemberRequest),
+  });
+};
+
+export const getMemberStoreMutationOptions = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberStore>>,
+    TError,
+    { data: StoreMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberStore>>,
+  TError,
+  { data: StoreMemberRequest },
+  TContext
+> => {
+  const mutationKey = ["memberStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberStore>>,
+    { data: StoreMemberRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return memberStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberStoreMutationResult = NonNullable<Awaited<ReturnType<typeof memberStore>>>;
+export type MemberStoreMutationBody = StoreMemberRequest;
+export type MemberStoreMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse;
+
+/**
+ * @summary Creates a person — which means creating an account, because every member
+has one (2026_09_08_000001)
+ */
+export const useMemberStore = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberStore>>,
+      TError,
+      { data: StoreMemberRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberStore>>,
+  TError,
+  { data: StoreMemberRequest },
+  TContext
+> => {
+  return useMutation(getMemberStoreMutationOptions(options), queryClient);
+};
+
+export type memberUpdateResponse200 = {
+  data: MemberResource;
+  status: 200;
+};
+
+export type memberUpdateResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberUpdateResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberUpdateResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberUpdateResponseSuccess = memberUpdateResponse200 & {
+  headers: Headers;
+};
+export type memberUpdateResponseError = (
+  memberUpdateResponse400 | memberUpdateResponse401 | memberUpdateResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberUpdateResponse = memberUpdateResponseSuccess | memberUpdateResponseError;
+
+export const getMemberUpdateUrl = (member: number) => {
+  return `/members/${member}`;
+};
+
+/**
+ * The fields go through array_key_exists(), not isset() or has(): both are
+ * false for an explicitly-sent null, so clearing a register would silently
+ * do nothing.
+ * @summary Edits a person. Roles and passwords are elsewhere, each behind its own
+re-authentication — this is not destructive and deliberately does not
+prompt for one
+ */
+export const memberUpdate = async (
+  member: number,
+  updateMemberRequest?: UpdateMemberRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberUpdateResponse> => {
+  return customFetch<memberUpdateResponse>(getMemberUpdateUrl(member), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMemberRequest),
+  });
+};
+
+export const getMemberUpdateMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberUpdate>>,
+    TError,
+    { member: number; data?: UpdateMemberRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberUpdate>>,
+  TError,
+  { member: number; data?: UpdateMemberRequest },
+  TContext
+> => {
+  const mutationKey = ["memberUpdate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberUpdate>>,
+    { member: number; data?: UpdateMemberRequest }
+  > = (props) => {
+    const { member, data } = props ?? {};
+
+    return memberUpdate(member, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof memberUpdate>>>;
+export type MemberUpdateMutationBody = UpdateMemberRequest | undefined;
+export type MemberUpdateMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+/**
+ * @summary Edits a person. Roles and passwords are elsewhere, each behind its own
+re-authentication — this is not destructive and deliberately does not
+prompt for one
+ */
+export const useMemberUpdate = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberUpdate>>,
+      TError,
+      { member: number; data?: UpdateMemberRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberUpdate>>,
+  TError,
+  { member: number; data?: UpdateMemberRequest },
+  TContext
+> => {
+  return useMutation(getMemberUpdateMutationOptions(options), queryClient);
+};
 
 export type roleIndexResponse200 = {
   data: RoleResource[];

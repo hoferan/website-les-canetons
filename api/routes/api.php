@@ -44,6 +44,14 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // and can be given an account later rather than living on a second
         // list somewhere else.
         Route::get('/members', [MemberController::class, 'index']);
+
+        // Creating a person creates an ACCOUNT: every member has one, so this
+        // mints a generated password and returns it once. No re-authentication
+        // on either write — neither is destructive, and a password prompt on
+        // every corrected typo trains the reflex the destructive dialogs rely
+        // on.
+        Route::post('/members', [MemberController::class, 'store']);
+        Route::patch('/members/{member}', [MemberController::class, 'update']);
     });
 });
 

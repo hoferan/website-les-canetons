@@ -307,6 +307,105 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
+            },
+            "post": {
+                "operationId": "member.store",
+                "description": "THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a\nperson with no credential, leaving \"give this person an account\" as a\nseparate operation. That cannot survive the credentials model: a member\ncreated with an unusable placeholder could be granted members.manage and\nthen be the only administrator left after a deletion \u2014 holding the\npermission and unable to log in. That is the ghost administrator the\nmigration dissolved, and this is the door it would have come back\nthrough.\n\nThe value is the same readable, dictatable one a reset produces\n(GeneratedPassword), and must_change_password is set, because a password\nan administrator read down the phone is not a secret worth keeping.\n\nNo AccessIntegrity check: adding a person, with or without roles, cannot\norphan administration or demote anybody.",
+                "summary": "Creates a person \u2014 which means creating an account, because every member\nhas one (2026_09_08_000001)",
+                "tags": [
+                    "Member"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreMemberRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "A literal wrapping a Resource, deliberately: the credential is not\npart of a member and must never appear in MemberResource, where every\nlater read of the roster would carry it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "member": {
+                                            "$ref": "#/components/schemas/MemberResource"
+                                        },
+                                        "generatedPassword": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "member",
+                                        "generatedPassword"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/members/{member}": {
+            "patch": {
+                "operationId": "member.update",
+                "description": "The fields go through array_key_exists(), not isset() or has(): both are\nfalse for an explicitly-sent null, so clearing a register would silently\ndo nothing.",
+                "summary": "Edits a person. Roles and passwords are elsewhere, each behind its own\nre-authentication \u2014 this is not destructive and deliberately does not\nprompt for one",
+                "tags": [
+                    "Member"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateMemberRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`MemberResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MemberResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
             }
         },
         "/roles": {
@@ -523,6 +622,104 @@
                     "sortOrder"
                 ],
                 "title": "SectionResource"
+            },
+            "StoreMemberRequest": {
+                "type": "object",
+                "description": "Creating a person on the roster \u2014 which means creating an account, because\nevery member has one (2026_09_08_000001).\n\n`username` is REQUIRED for that reason. It used to be optional, back when a\nrow could be a person without a login; that model is what let somebody hold\nmembers.manage while being unable to authenticate, and deleting the only real\nadministrator then locked the band out.\n\nThere is deliberately no `password` field. The password is GENERATED by the\ncontroller and returned once \u2014 an administrator reads it down the phone (\u00a74.4)\n\u2014 so nobody types a credential into this form and no weak one can be chosen.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first (an empty field reports `required`, not\n`invalid_format`) and `max` precedes `unique` (an over-long username reports\n`too_long` rather than costing a database round-trip).",
+                "properties": {
+                    "firstName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "username": {
+                        "type": "string",
+                        "description": "Lower case, digits, dot, hyphen, underscore. The seeded logins\nlook like `demo.direction`, and a username that has to be\ndictated should not depend on capitalisation. The column collates\ncase-insensitively anyway, so `Lea` and `lea` would be the same\naccount \u2014 the rule makes that visible rather than surprising.",
+                        "pattern": "^[a-z0-9._-]+$",
+                        "maxLength": 255
+                    },
+                    "sectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "committeeTitle": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "instructorOfSectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "publicVisible": {
+                        "type": "boolean",
+                        "description": "Required, not defaulted: publication of a minor's name is a\ndecision somebody makes, so the form has to state it rather than\ninherit it."
+                    },
+                    "roleIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "required": [
+                    "firstName",
+                    "lastName",
+                    "username",
+                    "publicVisible"
+                ],
+                "title": "StoreMemberRequest"
+            },
+            "UpdateMemberRequest": {
+                "type": "object",
+                "description": "Editing a person on the roster.\n\nPATCH, so every rule is `sometimes`: a form that posts only the field it\nchanged must not blank the others.\n\n`sometimes` is not the same as `nullable`, and both are needed on the\nnullable columns \u2014 `sometimes` means \"skip this field if absent\", `nullable`\nmeans \"null is a legal value when present\". Without `sometimes` an absent\nfield fails `required`; without `nullable` an explicit null fails the type\nrules. Clearing a register is an explicit null, so both matter.\n\n`username` is the one field that is `sometimes` but NOT `nullable`: it is the\nlogin, and every member has one. Clearing it used to be allowed, and used to\nrequire clearing the password and ending the sessions with it \u2014 an entire\nbranch that 2026_09_08_000001 deleted by making the column NOT NULL.\n\nROLES ARE NOT HERE. Replacing them is PUT /api/members/{member}/roles, which\nneeds re-authentication and its own invariant check; folding it into the\ngeneral edit would put a privilege change behind a form that has neither.\nNeither is the password: that is its own endpoint, and its own dialog.",
+                "properties": {
+                    "firstName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "username": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9._-]+$",
+                        "maxLength": 255
+                    },
+                    "sectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "committeeTitle": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "instructorOfSectionId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "publicVisible": {
+                        "type": "boolean"
+                    }
+                },
+                "title": "UpdateMemberRequest"
             }
         },
         "responses": {
@@ -598,6 +795,25 @@
                             "required": [
                                 "error",
                                 "code"
+                            ]
+                        }
+                    }
+                }
+            },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
                             ]
                         }
                     }

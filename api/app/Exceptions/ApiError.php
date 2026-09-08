@@ -50,6 +50,16 @@ final class ApiError
     private const REASONS = [
         'required' => 'required',
         'max' => 'too_long',
+        // The likeliest failure on the roster form, so it does not get the
+        // generic fallback: an unmapped rule renders "n'est pas dans un format
+        // valide", which for a taken username is both wrong and useless.
+        //
+        // `exists` is deliberately left unmapped. It can only fail from a stale
+        // form holding a register or role that has since been deleted, and the
+        // generic sentence is survivable for a case the user fixes by
+        // reloading — adding a token would mean French copy for a message
+        // nobody should ever see.
+        'unique' => 'already_taken',
         'email' => 'invalid_format',
         'date' => 'invalid_format',
         'date_format' => 'invalid_format',
