@@ -72,6 +72,11 @@ final class Reauthentication
         // Since 2026_09_08_000001 a persisted member always has a password, so
         // this is reachable only through an unsaved or partially-hydrated
         // model — which is precisely what ReauthenticationTest constructs.
+        // Larastan types Member::$password as string because the column is NOT
+        // NULL, and for a PERSISTED member it is right. This branch exists for
+        // an unsaved or partially-hydrated model, which ReauthenticationTest
+        // constructs deliberately. Static analysis cannot see that; the test can.
+        // @phpstan-ignore identical.alwaysFalse (an unsaved model can still be null)
         if ($password === null || $password === '' || $actor->password === null) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
 

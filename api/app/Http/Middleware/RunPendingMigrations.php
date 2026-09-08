@@ -189,6 +189,7 @@ class RunPendingMigrations
      * only way to assert the thing that matters: that a missing ledger reports
      * "everything is pending" instead of throwing SQLSTATE 42S02.
      */
+    /** @phpstan-impure It queries the migrations table, so two calls in one request can legitimately disagree — which is why the check is repeated under the lock. */
     protected function hasPending(): bool
     {
         /** @var Migrator $migrator */

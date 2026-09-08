@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -19,6 +20,14 @@ use Illuminate\Support\Collection;
  *
  * Notifiable and MustVerifyEmail are deliberately absent: nothing here sends a
  * notification, and there is no address to verify.
+ *
+ * The @property tags below say what casts() already does at runtime. Static
+ * analysis cannot read casts(), so without them these read as their raw column
+ * types and every caller has to defend against a type that never occurs.
+ *
+ * @property Carbon|null $last_login_at
+ * @property bool $must_change_password
+ * @property bool $public_visible
  */
 class Member extends Authenticatable
 {

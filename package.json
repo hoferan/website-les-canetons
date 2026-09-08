@@ -26,6 +26,7 @@
     "put-overlay:prod": "node tools/put-overlay.mjs prod",
     "websession:init": "npm install && node tools/ensure-dev-stack.mjs",
     "lint:api": "node tools/pint.mjs --test",
+    "lint:types": "node tools/phpstan.mjs",
     "fix:api": "node tools/pint.mjs",
     "openapi": "node tools/openapi.mjs",
     "generate:api": "orval --config orval.config.ts",
@@ -40,7 +41,7 @@
     "format:write": "prettier --write \"web/**/*.{ts,tsx,css,html}\"",
     "guard": "node tools/secret-guard.mjs",
     "guard:images": "node tools/image-budget.mjs",
-    "check": "npm run lint:api && npm run typecheck && npm run test:js && npm run test:web && npm run lint:js && npm run lint:css && npm run format:check && npm run guard && npm run guard:images",
+    "check": "npm run lint:api && npm run lint:types && npm run typecheck && npm run test:js && npm run test:web && npm run lint:js && npm run lint:css && npm run format:check && npm run guard && npm run guard:images",
     "fix": "npm run fix:api && eslint web --fix && stylelint \"web/src/**/*.css\" --fix && npm run format:write",
     "prepare": "husky"
   },

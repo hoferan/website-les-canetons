@@ -233,7 +233,12 @@ class ApiErrorVocabularyTest extends TestCase
                 "{$class} is not a FormRequest; this derivation assumes it is."
             );
 
-            $rules = (new $class)->rules();
+            $instance = new $class;
+            self::assertTrue(
+                method_exists($instance, 'rules'),
+                "{$class} has no rules() for this derivation to read."
+            );
+            $rules = $instance->rules();
             self::assertNotEmpty($rules, "{$class}::rules() came back empty.");
 
             // `roleIds.*` is rule syntax, not a field name. Laravel reports the

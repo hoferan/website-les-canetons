@@ -100,17 +100,24 @@ jobs:
         with:
           php-version: "8.4"
           tools: composer
-      # Pint is pinned by api/composer.lock and lives in api/vendor/.
-      # --no-scripts skips Laravel's post-autoload-dump `artisan
-      # package:discover`, which Pint doesn't need.
+      # Pint and Larastan are pinned by api/composer.lock and live in
+      # api/vendor/. Scripts ARE run here, unlike the Pint-only install this
+      # used to be: Larastan boots Laravel to understand models and facades, so
+      # it needs a real autoload map and `artisan package:discover` to have run.
       - name: Install Laravel API dev tools
-        run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
-      # Same check as `npm run lint:api`, invoked natively: CI calls the binary
-      # directly, while the npm script is the local Docker-or-native wrapper
-      # (tools/pint.mjs).
+        run: composer install --no-interaction --no-progress --working-dir=api
+      # Same checks as `npm run lint:api` and `npm run lint:types`, invoked
+      # natively: CI calls the binaries directly, while the npm scripts are the
+      # local Docker-or-native wrappers (tools/pint.mjs, tools/phpstan.mjs).
       - name: Laravel Pint (api/)
         working-directory: api
         run: vendor/bin/pint --test
+      # Static analysis. Pint only formats — it will happily format a null
+      # dereference, which is how one shipped and surfaced as a PHPUnit warning
+      # nobody reads. Level 5, with api/phpstan.neon explaining why not higher.
+      - name: Larastan (api/)
+        working-directory: api
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
   # The Laravel API's PHPUnit suite (api/phpunit.xml) — the only test suite with
   # a database left, now that the old app's `tests` job is gone. Kept separate

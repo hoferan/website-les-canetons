@@ -1,0 +1,22 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - database
+        - routes
+        - tests
+
+    # LEVEL 5, not max, and that is a deliberate starting point.
+    #
+    # Level 5 catches the class of bug this was added for: passing or reading
+    # something that can be null, wrong argument types, calls to methods that do
+    # not exist. It found the null-dereference in UpdateMemberRequest that had
+    # only ever surfaced as a PHPUnit warning.
+    #
+    # Levels 6+ demand exhaustive array shapes and iterable value types across
+    # every Eloquent collection, which on this codebase means a large baseline
+    # of ignores — and a baseline nobody reads is worse than a lower level
+    # everybody passes. Raise it when the noise is worth the signal, not before.
+    level: 5

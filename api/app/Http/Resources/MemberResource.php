@@ -75,7 +75,9 @@ class MemberResource extends JsonResource
         return $this->roles->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
     }
 
-    /** Typed for the same reason as roleIds(). */
+    /**
+     * Typed for the same reason as roleIds().
+     */
     private function lastLoginAt(): ?string
     {
         return $this->last_login_at?->toIso8601String();
