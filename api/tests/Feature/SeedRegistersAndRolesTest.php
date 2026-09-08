@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\Section;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -41,11 +42,22 @@ class SeedRegistersAndRolesTest extends TestCase
         ], $names);
     }
 
+    public function test_the_roles_carry_no_display_name(): void
+    {
+        // The API is English without exception. A seeded role's name is system
+        // text — a developer chose it in a migration — so it is translatable by
+        // a fixed identifier, and `key` is that identifier. The display name
+        // lives in web/src/i18n/fr.ts, not in the schema.
+        $this->assertFalse(
+            Schema::hasColumn('roles', 'label_fr'),
+            'roles must carry no language-specific display column',
+        );
+    }
+
     public function test_the_direction_role_grants_every_permission(): void
     {
         $direction = Role::where('key', 'direction')->sole();
 
-        $this->assertSame('Team Direction', $direction->label_fr);
         $this->assertEqualsCanonicalizing(Permission::cases(), $direction->permissions()->all());
     }
 
@@ -53,7 +65,6 @@ class SeedRegistersAndRolesTest extends TestCase
     {
         $committee = Role::where('key', 'committee')->sole();
 
-        $this->assertSame('Comité', $committee->label_fr);
         $this->assertSame([Permission::RegistrationsView], $committee->permissions()->all());
     }
 

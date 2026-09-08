@@ -31,7 +31,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_permissions_arrive_through_roles(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
+        $role = Role::create(['key' => 'fixture-admins']);
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
 
@@ -44,10 +44,10 @@ class EffectivePermissionsTest extends TestCase
     {
         $member = $this->member();
 
-        $direction = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
+        $direction = Role::create(['key' => 'fixture-admins']);
         $direction->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
 
-        $committee = Role::create(['key' => 'fixture-plain', 'label_fr' => 'Fixture plain']);
+        $committee = Role::create(['key' => 'fixture-plain']);
         $committee->syncPermissions([Permission::EventsManage, Permission::MembersManage]);
 
         $member->roles()->attach([$direction->id, $committee->id]);
@@ -63,7 +63,7 @@ class EffectivePermissionsTest extends TestCase
         // A permission removed from the enum must not crash authorization for
         // every member who still carries the stale row.
         $member = $this->member();
-        $role = Role::create(['key' => 'legacy', 'label_fr' => 'Legacy']);
+        $role = Role::create(['key' => 'legacy']);
         $member->roles()->attach($role);
 
         DB::table('role_permissions')->insert([
@@ -77,7 +77,7 @@ class EffectivePermissionsTest extends TestCase
     public function test_revoking_a_role_revokes_its_permissions(): void
     {
         $member = $this->member();
-        $role = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
+        $role = Role::create(['key' => 'fixture-admins']);
         $role->syncPermissions([Permission::MembersManage]);
         $member->roles()->attach($role);
 

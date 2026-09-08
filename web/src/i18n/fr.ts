@@ -11,6 +11,28 @@
  * Ported unchanged from the old front end's app/assets/js/i18n.js.
  */
 export const fr = {
+  /**
+   * Role names and help text, keyed by the role's `key` from the API.
+   *
+   * The API carries no display name: it is English without exception, and a
+   * seeded role's name is system text a developer chose in a migration, not
+   * something a user typed. `key` is the fixed identifier this maps from.
+   *
+   * When roles become editable, a committee-typed name is user input and
+   * arrives on the role itself; the render then prefers it and falls back
+   * here for rows nobody has renamed.
+   */
+  roles: {
+    direction: {
+      label: "Team Direction",
+      hint: "Organise les événements, gère les membres et voit les réponses.",
+    },
+    committee: {
+      label: "Comité",
+      hint: "Consulte la liste des inscriptions.",
+    },
+  },
+
   errors: {
     validation_failed: "Le formulaire contient des erreurs.",
     method_not_allowed: "Méthode non autorisée",

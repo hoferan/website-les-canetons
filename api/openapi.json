@@ -385,9 +385,6 @@
                     "key": {
                         "type": "string"
                     },
-                    "labelFr": {
-                        "type": "string"
-                    },
                     "permissions": {
                         "type": "array",
                         "items": {
@@ -398,7 +395,6 @@
                 "required": [
                     "id",
                     "key",
-                    "labelFr",
                     "permissions"
                 ],
                 "title": "RoleResource"

@@ -31,10 +31,10 @@ class AccessIntegrityTest extends TestCase
         // events.manage, which the real committee role does not), and roles
         // are editable data — a committee changing what `direction` grants
         // must not turn this suite red.
-        $this->admins = Role::create(['key' => 'fixture-admins', 'label_fr' => 'Fixture admins']);
+        $this->admins = Role::create(['key' => 'fixture-admins']);
         $this->admins->syncPermissions([Permission::MembersManage]);
 
-        $this->plain = Role::create(['key' => 'fixture-plain', 'label_fr' => 'Fixture plain']);
+        $this->plain = Role::create(['key' => 'fixture-plain']);
         $this->plain->syncPermissions([Permission::EventsManage]);
     }
 

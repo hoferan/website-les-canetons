@@ -79,12 +79,22 @@ class SectionAndRoleIndexTest extends TestCase
 
         $byKey = collect($body)->keyBy('key');
 
-        $this->assertSame('Team Direction', $byKey['direction']['labelFr']);
         $this->assertEqualsCanonicalizing(
             array_map(fn (Permission $p) => $p->value, Permission::cases()),
             $byKey['direction']['permissions'],
         );
         $this->assertSame(['registrations.view'], $byKey['committee']['permissions']);
+    }
+
+    public function test_a_role_carries_no_display_name_for_the_api_to_translate(): void
+    {
+        // The whole API is English; the only untranslated text is what a user
+        // typed, and nobody typed "Team Direction" — a migration did. So the
+        // UI resolves the name from `key` through fr.ts, and this pins the
+        // response shape so a French field cannot creep back in.
+        $body = $this->actingAsAdministrator()->getJson('/api/roles')->assertOk()->json();
+
+        $this->assertSame(['id', 'key', 'permissions'], array_keys($body[0]));
     }
 
     public function test_neither_list_is_wrapped_in_a_data_envelope(): void

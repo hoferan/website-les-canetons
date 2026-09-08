@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class Role extends Model
 {
-    protected $fillable = ['key', 'label_fr'];
+    protected $fillable = ['key'];
 
     /** @return BelongsToMany<Member, $this> */
     public function members(): BelongsToMany

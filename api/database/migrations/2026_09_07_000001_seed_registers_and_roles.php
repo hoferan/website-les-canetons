@@ -3,6 +3,7 @@
 use App\Support\Permission;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * The registers and the two roles, as DATA rather than a seeder.
@@ -102,12 +103,21 @@ return new class extends Migration
         }
 
         $now = now();
-        $roleId = DB::table('roles')->insertGetId([
+        $payload = [
             'key' => $key,
-            'label_fr' => $labelFr,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ];
+
+        // On a fresh database this runs before 2026_09_07_000003 drops the
+        // column, and it is NOT NULL with no default, so it must be supplied.
+        // On an already-migrated database the column is gone — and this method
+        // is invoked directly by SeedRegistersAndRolesTest — so it must not be.
+        if (Schema::hasColumn('roles', 'label_fr')) {
+            $payload['label_fr'] = $labelFr;
+        }
+
+        $roleId = DB::table('roles')->insertGetId($payload);
 
         DB::table('role_permissions')->insert(
             collect($permissions)

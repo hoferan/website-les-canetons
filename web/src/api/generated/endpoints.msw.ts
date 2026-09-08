@@ -60,7 +60,6 @@ export const getRoleIndexResponseMock = (): RoleResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     key: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
     permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => faker.string.alpha({ length: { min: 10, max: 20 } }),
     ),

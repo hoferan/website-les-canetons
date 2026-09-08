@@ -63,6 +63,7 @@ Four questions the spec leaves open were settled on 2026-09-07 before writing:
 | **B2** | **The first administrator is created by a guarded migration reading `BOOTSTRAP_ADMIN_*` from that server's `.env`.** | The shared host has no shell: FTP plus the token-gated `POST /api/migrate` is the whole remote surface, so `artisan` cannot be run on a server and there is otherwise no way to get a first login onto TEST. |
 | **B3** | **`/members` ASSIGNS existing roles and registers; it does not edit them.** Roles, their permissions, and the register list are created by the bootstrap migration. | §3 calls roles "freely-editable data" but §4 defines no URL for editing them, and none for registers either. Naming two new URLs is a decision for when there is a screen to hang them on. |
 | **B4** | **One plan, API first then UI.** | R1a's shape, and the branch stays continuous. |
+| **B6** | **`roles` carries no display name.** `roles.label_fr` is dropped; the UI resolves the name and help text from `roles.key` through `web/src/i18n/fr.ts`. | Added 2026-09-08, after André restated the rule: the backend is 100% English, the sole exception is text a user typed, and UI text must be translatable by a fixed identifier. Nobody typed "Team Direction" — a migration did — so it is system text and `key` is the identifier. When roles become editable a committee-typed name IS user input and gets a nullable `label` rendered verbatim, with a fallback to the key's translation; that column ships with the editor, not before, so the fallback branch is never untested code. |
 | **B5** | **The current user is `/api/me` everywhere**, so changing your own password is `POST /api/me/password`, not `POST /api/account/password`. | Added 2026-09-07, after André queried `/api/me`. `/me` is the widespread convention (Spotify, Microsoft Graph) and is already built, so it stays; what changes is the sibling this plan had put under a second noun. One resource noun for one subject. The SPA **screen** is still `/account` — a page name and a resource name are different things, and only the API had two nouns for the same subject. |
 
 **A consequence of B3 to state plainly:** after this plan, adding or renaming a
@@ -75,7 +76,7 @@ deliberate, recorded limitation, not an oversight — see "Carried out of R1b".
 
 - **English everywhere except rendered UI text.** Identifiers, columns, JSON
   bodies, error codes, comments, this file. French appears only in what a
-  browser paints, and in `roles.label_fr`.
+  browser paints. NOT in `roles` — see B6.
 - **The API error contract is `{error, code, fields[]}`.** Every new `code` and
   every new `fields[].reason` MUST have French copy in `web/src/i18n/fr.ts` or
   `api/tests/Feature/ApiErrorVocabularyTest.php` fails.
@@ -248,7 +249,7 @@ web/e2e/shell.spec.ts                  the login page assertion, once it is a fo
 | Method | Path | Gate | Body → Response |
 | --- | --- | --- | --- |
 | GET | `/api/sections` | `permission:members.manage` | → `[{id, name, sortOrder}]` |
-| GET | `/api/roles` | `permission:members.manage` | → `[{id, key, labelFr, permissions[]}]` |
+| GET | `/api/roles` | `permission:members.manage` | → `[{id, key, permissions[]}]` |
 | GET | `/api/members` | `permission:members.manage` | → `[MemberResource]` |
 | POST | `/api/members` | `permission:members.manage` | person fields + `roleIds[]` → `{member, generatedPassword?}` |
 | PATCH | `/api/members/{member}` | `permission:members.manage` | person fields → `{member, generatedPassword?}` |
@@ -338,7 +339,7 @@ Shape: `extends`, `up`, `down`, `role`
 Literals to preserve verbatim:
 
 - `sort_order`, `created_at`, `updated_at`, `member_roles`, `role_id`,
-  `role_permissions`, `section_id`, `instructor_of_section_id`, `label_fr`
+  `role_permissions`, `section_id`, `instructor_of_section_id`
 
 Requirements, from the plan's own comments:
 
@@ -3302,7 +3303,7 @@ Literals to preserve verbatim:
   useMemberDestroy()`, `issuePassword = useMemberPassword()`, `members =
   roster.data?.data ?? []`, `sectionList = sections.data?.data ?? []`,
   `roleList = roles.data?.data ?? []`, `roleLabel = (id: number) =>
-  roleList.find((role) => role.id === id)?.labelFr ?? ""`, `name =
+  roleList.find((role) => role.id === id)?.key ?? ""` translated through `fr.ts.roles[key].label`, `name =
   `${deleting.firstName} ${deleting.lastName}``
 
 Requirements, from the plan's own comments:

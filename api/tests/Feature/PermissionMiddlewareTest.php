@@ -31,7 +31,7 @@ class PermissionMiddlewareTest extends TestCase
         ]);
 
         if ($permission !== null) {
-            $role = Role::create(['key' => 'test', 'label_fr' => 'Test']);
+            $role = Role::create(['key' => 'test']);
             $role->syncPermissions([$permission]);
             $member->roles()->attach($role);
         }

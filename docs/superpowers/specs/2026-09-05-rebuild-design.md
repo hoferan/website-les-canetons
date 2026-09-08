@@ -114,7 +114,7 @@ the committee page and the instructor listing. **A person is entered once.**
 
 ### `roles`, `role_permissions`, `member_roles`
 ```
-roles              id, key, label_fr
+roles              id, key
 role_permissions   role_id, permission
 member_roles       member_id, role_id
 ```

@@ -10,6 +10,12 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * A role, WITH what it grants.
  *
+ * NO DISPLAY NAME. `key` is the fixed identifier the UI translates through
+ * web/src/i18n/fr.ts; the API is English without exception, and a seeded
+ * role's name is system text rather than something a user typed. When roles
+ * become editable (decision B3 defers it), a committee-typed name is user
+ * input and gets a nullable `label` column that is rendered verbatim.
+ *
  * The permissions travel with the role because that is how the UI answers "why
  * does she have this?" — always "because she is in Team Direction", never a
  * per-member grant (design §3). The roster screen therefore needs no per-member
@@ -26,7 +32,6 @@ class RoleResource extends JsonResource
         return [
             'id' => $this->id,
             'key' => $this->key,
-            'labelFr' => $this->label_fr,
             'permissions' => $this->permissionValues(),
         ];
     }

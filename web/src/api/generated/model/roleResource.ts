@@ -8,6 +8,5 @@
 export interface RoleResource {
   id: number;
   key: string;
-  labelFr: string;
   permissions: string[];
 }
