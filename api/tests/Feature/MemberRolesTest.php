@@ -14,16 +14,15 @@ use Tests\TestCase;
  * The two destructive operations on a person: replacing their roles, and
  * deleting them.
  *
- * These are the first callers AccessIntegrity, SessionRevoker and Audit have
- * had since R1a built them. Both re-authenticate before reading anything, check
- * the invariants before writing, and revoke sessions inside the same
- * transaction as the change.
+ * These are the first callers AccessIntegrity and SessionRevoker have had since
+ * R1a built them. Neither re-authenticates — decision B7 trusts the session
+ * cookie here, as this API already does for reading the whole roster and
+ * editing anyone. Both still check the invariants before writing and revoke
+ * sessions inside the same transaction as the change.
  */
 class MemberRolesTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const ACTOR_PASSWORD = 'the-actors-password';
 
     private Member $actor;
 
@@ -47,7 +46,7 @@ class MemberRolesTest extends TestCase
             'first_name' => 'Admin',
             'last_name' => ucfirst($username),
             'username' => $username,
-            'password' => self::ACTOR_PASSWORD,
+            'password' => 'the-actors-password',
         ]);
         $member->roles()->attach($this->direction);
 
@@ -77,19 +76,10 @@ class MemberRolesTest extends TestCase
         ]);
     }
 
-    /**
-     * Re-authentication travels in the X-Reauth-Password header, never in the
-     * body and never in the query string — see App\Support\Reauthentication.
-     */
-    private function acting(?Member $as = null, ?string $reauth = self::ACTOR_PASSWORD): static
+    private function acting(?Member $as = null): static
     {
-        $headers = ['Origin' => 'http://localhost'];
-        if ($reauth !== null) {
-            $headers['X-Reauth-Password'] = $reauth;
-        }
-
         return $this->actingAs($as ?? $this->actor)
-            ->withHeaders($headers)
+            ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession(['auth.started_at' => now()->timestamp]);
     }
 
@@ -167,30 +157,6 @@ class MemberRolesTest extends TestCase
         $this->assertSame('Perrine Player', $entry->target_label);
     }
 
-    public function test_a_wrong_password_changes_nothing(): void
-    {
-        $target = $this->player();
-        $target->roles()->attach($this->committee);
-        $this->sessionFor('target-phone', $target->id);
-
-        $this->acting(reauth: 'not-the-password')->putJson("/api/members/{$target->id}/roles", [
-            'roleIds' => [],
-        ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
-
-        $this->assertSame([$this->committee->id], $target->fresh()->roles->pluck('id')->all());
-        $this->assertDatabaseHas('sessions', ['id' => 'target-phone']);
-    }
-
-    public function test_a_missing_password_is_a_validation_failure(): void
-    {
-        $target = $this->player();
-
-        $this->acting(reauth: null)->putJson("/api/members/{$target->id}/roles", ['roleIds' => []])
-            ->assertStatus(400)
-            ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'currentPassword');
-    }
-
     public function test_removing_your_own_administration_is_refused(): void
     {
         // Even with a second administrator present, so this is the
@@ -202,20 +168,6 @@ class MemberRolesTest extends TestCase
         ])->assertStatus(409)->assertJson(['code' => 'cannot_demote_self']);
 
         $this->assertTrue($this->actor->fresh()->hasPermission(Permission::MembersManage));
-    }
-
-    public function test_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule(): void
-    {
-        // THE ORDERING TEST. Re-authentication happens before the invariants
-        // are read, so a caller who cannot prove who they are never learns
-        // whether the change WOULD have been allowed. Swap the two and this
-        // answers 409 cannot_demote_self to somebody holding a stolen session
-        // and a wrong password.
-        $this->administrator('other');
-
-        $this->acting(reauth: 'not-the-password')->putJson("/api/members/{$this->actor->id}/roles", [
-            'roleIds' => [],
-        ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
     }
 
     public function test_stripping_the_last_administrator_is_refused(): void
@@ -256,15 +208,6 @@ class MemberRolesTest extends TestCase
         $this->assertSame($target->id, $entry->target_id);
     }
 
-    public function test_a_wrong_password_deletes_nobody(): void
-    {
-        $target = $this->player();
-
-        $this->acting(reauth: 'not-the-password')->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
-
-        $this->assertDatabaseHas('members', ['id' => $target->id]);
-    }
-
     public function test_deleting_yourself_is_refused(): void
     {
         $this->administrator('other');
@@ -284,11 +227,11 @@ class MemberRolesTest extends TestCase
         $player = $this->player();
         $target = $this->player('someone.else');
 
-        $this->acting($player, 'secret123')->putJson("/api/members/{$target->id}/roles", [
+        $this->acting($player)->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [],
         ])->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
-        $this->acting($player, 'secret123')->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player)->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
         $this->assertDatabaseHas('members', ['id' => $target->id]);
     }

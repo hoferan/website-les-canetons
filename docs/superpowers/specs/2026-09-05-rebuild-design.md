@@ -496,9 +496,19 @@ committing.**
 - **Anti-abuse:** honeypot + submit-timing + Altcha, applied generically to both
   public write endpoints. The Altcha implementation exists and works; it only
   needs to stop being souper-specific.
-- **Re-authentication** before destructive privileged actions. Whoever holds
-  `members.manage` can lock the band out; re-entering their own password is
-  proportionate for this audience, TOTP is not.
+- ~~**Re-authentication** before destructive privileged actions.~~ **REVERSED
+  2026-09-08 — decision B7 in the R1b plan.** The destructive roster endpoints
+  (delete, role replacement, password reset) trust the session cookie.
+  Re-authentication protected against exactly one thing — an unattended,
+  still-logged-in device — while the same cookie was already trusted to read the
+  whole roster and edit anyone, so it was an extra lock on three doors out of
+  seventeen. Mistake-prevention moves to a **type-the-name confirmation in the
+  UI**, which is where it belongs: a server cannot tell a typed confirmation
+  from an automated one, which is why GitHub enforces it in the browser only.
+  `POST /api/me/password` still requires the current password, because that is
+  the operation's own input rather than ceremony — without it a borrowed phone
+  locks the real owner out of their own account permanently. B7 writes out what
+  this accepts.
 - **Audit log** of privileged mutations (§3).
 - **Transport:** force HTTPS, HSTS, and the four security headers, in the
   `.htaccess` template.

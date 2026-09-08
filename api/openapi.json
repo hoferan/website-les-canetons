@@ -460,7 +460,7 @@
             },
             "delete": {
                 "operationId": "member.destroy",
-                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nSame ordering rule as MemberRoleController \u2014 re-authenticate, then check\nthe invariants, then write \u2014 and capture the name BEFORE the delete,\nbecause the row is gone by the time anyone reads the audit back.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
+                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nNO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is\ntrusted, as it already is for reading the whole roster and editing\nanyone. Protection against a mis-aimed tap is the type-the-name\nconfirmation in the UI, which is where mistake-prevention belongs \u2014 a\nserver cannot tell a typed confirmation from an automated one.\n\nCapture the name BEFORE the delete, because the row is gone by the time\nanyone reads the audit back.",
                 "summary": "Removes a person entirely",
                 "tags": [
                     "Member"
@@ -512,7 +512,7 @@
         "/members/{member}/password": {
             "post": {
                 "operationId": "memberPassword",
-                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
+                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.",
                 "summary": "Issues a member a new password, shown to the administrator exactly once",
                 "tags": [
                     "MemberPassword"
@@ -564,7 +564,7 @@
         "/members/{member}/roles": {
             "put": {
                 "operationId": "memberRole",
-                "description": "THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS\nENDPOINT:\n\n  1. re-authenticate, before anything is read or written, so a stolen\n     session cannot change what anybody can do;\n  2. check the invariants, before the write, so a refusal leaves no\n     trace;\n  3. write, then revoke, then audit.\n\nGetting 1 and 2 the other way round would leak whether a change WOULD be\nallowed to somebody who cannot make it \u2014 pinned by\ntest_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.\nGetting 3 wrong \u2014 revoking before writing \u2014 would end the sessions and\nthen fail, leaving the member logged out with their old permissions\nintact.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
+                "description": "NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted\nhere as it is everywhere else in this API.\n\nTHE REMAINING ORDER IS STILL LOAD-BEARING: check the invariants BEFORE\nthe write, so a refusal leaves no trace; and write, then revoke, then\naudit. Revoking before writing would end the sessions and then fail,\nleaving the member logged out with their old permissions intact.",
                 "summary": "Replaces one member's roles \u2014 which is the only way any permission is\never granted or taken away (design \u00a73: no direct per-member grants)",
                 "tags": [
                     "MemberRole"

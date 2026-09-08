@@ -1126,15 +1126,14 @@ export const getMemberDestroyUrl = (member: number) => {
  * Existence is the state (design D3): there is no `active` flag and no soft
  * delete, so leaving the band is this.
  *
- * Same ordering rule as MemberRoleController — re-authenticate, then check
- * the invariants, then write — and capture the name BEFORE the delete,
- * because the row is gone by the time anyone reads the audit back.
+ * NO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is
+ * trusted, as it already is for reading the whole roster and editing
+ * anyone. Protection against a mis-aimed tap is the type-the-name
+ * confirmation in the UI, which is where mistake-prevention belongs — a
+ * server cannot tell a typed confirmation from an automated one.
  *
- * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
- * password. Not a body field and never a query parameter: Apache logs query
- * strings in plain text, and RFC 9110 gives a DELETE body no defined
- * semantics, which is how the generated client once turned this into
- * ?currentPassword=... See App\Support\Reauthentication.
+ * Capture the name BEFORE the delete, because the row is gone by the time
+ * anyone reads the audit back.
  * @summary Removes a person entirely
  */
 export const memberDestroy = async (
@@ -1255,12 +1254,6 @@ export const getMemberPasswordUrl = (member: number) => {
  * The returned password is the only copy that will ever exist in plaintext:
  * it is hashed on the way into the database, never written to the audit
  * log, and never returned again.
- *
- * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
- * password. Not a body field and never a query parameter: Apache logs query
- * strings in plain text, and RFC 9110 gives a DELETE body no defined
- * semantics, which is how the generated client once turned this into
- * ?currentPassword=... See App\Support\Reauthentication.
  * @summary Issues a member a new password, shown to the administrator exactly once
  */
 export const memberPassword = async (
@@ -1376,27 +1369,13 @@ export const getMemberRoleUrl = (member: number) => {
 };
 
 /**
- * THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS
- * ENDPOINT:
+ * NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted
+ * here as it is everywhere else in this API.
  *
- *   1. re-authenticate, before anything is read or written, so a stolen
- *      session cannot change what anybody can do;
- *   2. check the invariants, before the write, so a refusal leaves no
- *      trace;
- *   3. write, then revoke, then audit.
- *
- * Getting 1 and 2 the other way round would leak whether a change WOULD be
- * allowed to somebody who cannot make it — pinned by
- * test_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.
- * Getting 3 wrong — revoking before writing — would end the sessions and
- * then fail, leaving the member logged out with their old permissions
- * intact.
- *
- * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
- * password. Not a body field and never a query parameter: Apache logs query
- * strings in plain text, and RFC 9110 gives a DELETE body no defined
- * semantics, which is how the generated client once turned this into
- * ?currentPassword=... See App\Support\Reauthentication.
+ * THE REMAINING ORDER IS STILL LOAD-BEARING: check the invariants BEFORE
+ * the write, so a refusal leaves no trace; and write, then revoke, then
+ * audit. Revoking before writing would end the sessions and then fail,
+ * leaving the member logged out with their old permissions intact.
  * @summary Replaces one member's roles — which is the only way any permission is
 ever granted or taken away (design §3: no direct per-member grants)
  */

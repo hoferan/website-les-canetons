@@ -62,16 +62,10 @@ class MemberPasswordTest extends TestCase
         ]);
     }
 
-    /** Re-authentication travels in a header — see App\Support\Reauthentication. */
-    private function acting(?Member $as = null, ?string $reauth = self::ACTOR_PASSWORD): static
+    private function acting(?Member $as = null): static
     {
-        $headers = ['Origin' => 'http://localhost'];
-        if ($reauth !== null) {
-            $headers['X-Reauth-Password'] = $reauth;
-        }
-
         return $this->actingAs($as ?? $this->actor)
-            ->withHeaders($headers)
+            ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession(['auth.started_at' => now()->timestamp]);
     }
 
@@ -162,33 +156,11 @@ class MemberPasswordTest extends TestCase
         $this->assertStringNotContainsString(self::ACTOR_PASSWORD, $log);
     }
 
-    public function test_a_wrong_password_issues_nothing(): void
-    {
-        $target = $this->member();
-        $before = $target->password;
-
-        $this->acting(reauth: 'not-the-password')->postJson("/api/members/{$target->id}/password")
-            ->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
-
-        $this->assertSame($before, $target->fresh()->password);
-        $this->assertFalse($target->fresh()->must_change_password);
-    }
-
-    public function test_a_missing_password_is_a_validation_failure(): void
-    {
-        $target = $this->member();
-
-        $this->acting(reauth: null)->postJson("/api/members/{$target->id}/password")
-            ->assertStatus(400)
-            ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'currentPassword');
-    }
-
     public function test_a_player_cannot_issue_a_password(): void
     {
         $player = $this->member('plain');
         $target = $this->member('someone.else');
 
-        $this->acting($player, 'their-old-password')->postJson("/api/members/{$target->id}/password")->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player)->postJson("/api/members/{$target->id}/password")->assertStatus(403)->assertJson(['code' => 'access_denied']);
     }
 }

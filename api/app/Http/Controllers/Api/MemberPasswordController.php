@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\GeneratedPassword;
-use App\Support\Reauthentication;
 use App\Support\SessionRevoker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,17 +26,9 @@ class MemberPasswordController extends Controller
      * The returned password is the only copy that will ever exist in plaintext:
      * it is hashed on the way into the database, never written to the audit
      * log, and never returned again.
-     *
-     * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
-     * password. Not a body field and never a query parameter: Apache logs query
-     * strings in plain text, and RFC 9110 gives a DELETE body no defined
-     * semantics, which is how the generated client once turned this into
-     * ?currentPassword=... See App\Support\Reauthentication.
      */
     public function __invoke(Request $request, Member $member): JsonResponse
     {
-        Reauthentication::assertFromRequest($request, $request->user());
-
         $password = GeneratedPassword::make();
 
         $sessionsEnded = DB::transaction(function () use ($request, $member, $password): int {

@@ -10,7 +10,6 @@ use App\Models\Member;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\GeneratedPassword;
-use App\Support\Reauthentication;
 use App\Support\SessionRevoker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -143,20 +142,17 @@ class MemberController extends Controller
      * Existence is the state (design D3): there is no `active` flag and no soft
      * delete, so leaving the band is this.
      *
-     * Same ordering rule as MemberRoleController — re-authenticate, then check
-     * the invariants, then write — and capture the name BEFORE the delete,
-     * because the row is gone by the time anyone reads the audit back.
+     * NO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is
+     * trusted, as it already is for reading the whole roster and editing
+     * anyone. Protection against a mis-aimed tap is the type-the-name
+     * confirmation in the UI, which is where mistake-prevention belongs — a
+     * server cannot tell a typed confirmation from an automated one.
      *
-     * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
-     * password. Not a body field and never a query parameter: Apache logs query
-     * strings in plain text, and RFC 9110 gives a DELETE body no defined
-     * semantics, which is how the generated client once turned this into
-     * ?currentPassword=... See App\Support\Reauthentication.
+     * Capture the name BEFORE the delete, because the row is gone by the time
+     * anyone reads the audit back.
      */
     public function destroy(Request $request, Member $member): JsonResponse
     {
-        Reauthentication::assertFromRequest($request, $request->user());
-
         AccessIntegrity::assertMayDelete($request->user(), $member);
 
         $label = $member->fullName();
