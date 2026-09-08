@@ -5,6 +5,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
+export * from "./accountPassword200";
+export * from "./accountPasswordRequest";
 export * from "./authenticationExceptionResponse";
 export * from "./authenticationExceptionResponseCode";
 export * from "./authLogin200";
@@ -18,6 +20,8 @@ export * from "./contact200";
 export * from "./contactRequest";
 export * from "./memberDestroy200";
 export * from "./memberDestroyParams";
+export * from "./memberPassword200";
+export * from "./memberPasswordBody";
 export * from "./memberResource";
 export * from "./memberRole200";
 export * from "./memberStore201";

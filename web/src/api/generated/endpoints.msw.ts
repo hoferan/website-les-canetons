@@ -10,18 +10,28 @@ import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
 import type {
+  AccountPassword200,
   AuthLogin200,
   AuthLogout200,
   AuthMe200,
   Config200,
   Contact200,
   MemberDestroy200,
+  MemberPassword200,
   MemberResource,
   MemberRole200,
   MemberStore201,
   RoleResource,
   SectionResource,
 } from "./model";
+
+export const getAccountPasswordResponseMock = (
+  overrideResponse: Partial<Extract<AccountPassword200, object>> = {},
+): AccountPassword200 => ({
+  ok: faker.datatype.boolean(),
+  sessionsEnded: faker.number.int(),
+  ...overrideResponse,
+});
 
 export const getAuthLoginResponseMock = (
   overrideResponse: Partial<Extract<AuthLogin200, object>> = {},
@@ -156,6 +166,14 @@ export const getMemberDestroyResponseMock = (
   ...overrideResponse,
 });
 
+export const getMemberPasswordResponseMock = (
+  overrideResponse: Partial<Extract<MemberPassword200, object>> = {},
+): MemberPassword200 => ({
+  generatedPassword: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  sessionsEnded: faker.number.int(),
+  ...overrideResponse,
+});
+
 export const getMemberRoleResponseMock = (
   overrideResponse: Partial<Extract<MemberRole200, object>> = {},
 ): MemberRole200 => ({
@@ -204,6 +222,30 @@ export const getSectionIndexResponseMock = (): SectionResource[] =>
     name: faker.string.alpha({ length: { min: 10, max: 20 } }),
     sortOrder: faker.number.int(),
   }));
+
+export const getAccountPasswordMockHandler = (
+  overrideResponse?:
+    | AccountPassword200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<AccountPassword200> | AccountPassword200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/me/password",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAccountPasswordResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
 
 export const getAuthLoginMockHandler = (
   overrideResponse?:
@@ -415,6 +457,30 @@ export const getMemberDestroyMockHandler = (
   );
 };
 
+export const getMemberPasswordMockHandler = (
+  overrideResponse?:
+    | MemberPassword200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<MemberPassword200> | MemberPassword200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/members/:member/password",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberPasswordResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getMemberRoleMockHandler = (
   overrideResponse?:
     | MemberRole200
@@ -487,6 +553,7 @@ export const getSectionIndexMockHandler = (
   );
 };
 export const getLesCanetonsAPIMock = () => [
+  getAccountPasswordMockHandler(),
   getAuthLoginMockHandler(),
   getAuthLogoutMockHandler(),
   getAuthMeMockHandler(),
@@ -496,6 +563,7 @@ export const getLesCanetonsAPIMock = () => [
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
   getMemberDestroyMockHandler(),
+  getMemberPasswordMockHandler(),
   getMemberRoleMockHandler(),
   getRoleIndexMockHandler(),
   getSectionIndexMockHandler(),

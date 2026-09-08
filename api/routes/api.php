@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\AccountPasswordController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MemberController;
+use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
 use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\RoleController;
@@ -28,6 +30,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+
+    // Any account holder may change their OWN password — no permission,
+    // because this is the screen every member needs and nobody administers,
+    // and it is where every first login lands. It re-verifies the current
+    // password itself, through the same throttled Reauthentication the
+    // destructive endpoints use.
+    Route::post('/me/password', AccountPasswordController::class);
 
     // Member administration. `permission:` never sees a role name: roles merely
     // group permissions, and which role granted this one is not a question the
@@ -66,6 +75,9 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // invariants exist for.
         Route::put('/members/{member}/roles', MemberRoleController::class);
         Route::delete('/members/{member}', [MemberController::class, 'destroy']);
+
+        // Issuing a credential and resetting one are the same operation (§4.4).
+        Route::post('/members/{member}/password', MemberPasswordController::class);
     });
 });
 

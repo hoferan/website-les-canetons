@@ -11,6 +11,57 @@
         }
     ],
     "paths": {
+        "/me/password": {
+            "post": {
+                "operationId": "accountPassword",
+                "description": "Gated on authentication alone \u2014 no permission. This is the one screen\nevery account holder needs and nobody administers, and it is where every\nfirst login lands, because a committee-issued password arrives with\nmust_change_password set.\n\nRe-authentication here is not ceremony bolted on: knowing the current\npassword is the only thing standing between a borrowed, unlocked phone\nand a permanently stolen account. It reuses Reauthentication, so the same\nper-actor throttle applies.",
+                "summary": "A member changes their own password",
+                "tags": [
+                    "AccountPassword"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AccountPasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer",
+                                            "description": "AFTER regenerate(), deliberately: the id changes, and reading it\nbeforehand would keep the row regenerate() has just destroyed\nwhile deleting the live one. See SessionRevoker. Measured 2026-09-08: no test here distinguishes this from\nforMember(). regenerate() runs first, so the new id has no row\nyet and both calls remove the same three; the actor stays logged\nin either way because the session is persisted at the end of the\nrequest. Kept as the correct call \u2014 sessionsEnded then means\n\"other sessions\", which is what the UI reports."
+                                        }
+                                    },
+                                    "required": [
+                                        "ok",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "operationId": "auth.login",
@@ -469,6 +520,79 @@
                 }
             }
         },
+        "/members/{member}/password": {
+            "post": {
+                "operationId": "memberPassword",
+                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.",
+                "summary": "Issues a member a new password, shown to the administrator exactly once",
+                "tags": [
+                    "MemberPassword"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "currentPassword": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "currentPassword"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "generatedPassword": {
+                                            "type": "string"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer",
+                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
+                                        }
+                                    },
+                                    "required": [
+                                        "generatedPassword",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/members/{member}/roles": {
             "put": {
                 "operationId": "memberRole",
@@ -592,6 +716,25 @@
     },
     "components": {
         "schemas": {
+            "AccountPasswordRequest": {
+                "type": "object",
+                "description": "A member choosing their own password.\n\nEIGHT CHARACTERS, and that is a judgement rather than a standard. The people\ntyping this are 6-16 years old, on a phone, and the account protects a\nrehearsal calendar. Login is throttled per username AND per IP with a\nfifteen-minute lockout, there is no password reset by email to phish, and the\ncommittee-issued default is ~57 bits \u2014 so the marginal value of demanding\ntwelve is small next to the number of children who would write it on the\ninside of a case lid. Raise it if the committee asks.\n\nRule order: `required` before `min`, so an empty field reports `required`\nrather than `too_short`.",
+                "properties": {
+                    "currentPassword": {
+                        "type": "string"
+                    },
+                    "newPassword": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "currentPassword",
+                    "newPassword"
+                ],
+                "title": "AccountPasswordRequest"
+            },
             "ContactRequest": {
                 "type": "object",
                 "description": "Field names are camelCase because contact.js posts the form via FormData with\nthose input names, and App\\Exceptions\\ApiError echoes them straight into\nfields[].field, where i18n.js looks them up. Renaming them silently breaks\nthe French error messages. (The signup form uses snake_case \u2014 the two forms\ngenuinely differ; do not normalise.)\n\nRule ORDER is load-bearing: ApiError reports only the first failed rule per\nfield, so `required` must come first (an empty field reports `required`, not\n`invalid_format`) and `max` must precede `email` (an over-long address\nreports `too_long`). This mirrors App\\Dto\\ContactInput's attribute order.",

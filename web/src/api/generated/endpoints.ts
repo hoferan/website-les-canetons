@@ -21,6 +21,8 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AccountPassword200,
+  AccountPasswordRequest,
   AuthLogin200,
   AuthLogin401,
   AuthLogin429,
@@ -33,6 +35,8 @@ import type {
   ContactRequest,
   MemberDestroy200,
   MemberDestroyParams,
+  MemberPassword200,
+  MemberPasswordBody,
   MemberResource,
   MemberRole200,
   MemberStore201,
@@ -62,6 +66,129 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
     });
   }
   return result;
+};
+
+export type accountPasswordResponse200 = {
+  data: AccountPassword200;
+  status: 200;
+};
+
+export type accountPasswordResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type accountPasswordResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type accountPasswordResponseSuccess = accountPasswordResponse200 & {
+  headers: Headers;
+};
+export type accountPasswordResponseError = (
+  accountPasswordResponse400 | accountPasswordResponse401
+) & {
+  headers: Headers;
+};
+
+export type accountPasswordResponse = accountPasswordResponseSuccess | accountPasswordResponseError;
+
+export const getAccountPasswordUrl = () => {
+  return `/me/password`;
+};
+
+/**
+ * Gated on authentication alone — no permission. This is the one screen
+ * every account holder needs and nobody administers, and it is where every
+ * first login lands, because a committee-issued password arrives with
+ * must_change_password set.
+ *
+ * Re-authentication here is not ceremony bolted on: knowing the current
+ * password is the only thing standing between a borrowed, unlocked phone
+ * and a permanently stolen account. It reuses Reauthentication, so the same
+ * per-actor throttle applies.
+ * @summary A member changes their own password
+ */
+export const accountPassword = async (
+  accountPasswordRequest: AccountPasswordRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<accountPasswordResponse> => {
+  return customFetch<accountPasswordResponse>(getAccountPasswordUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(accountPasswordRequest),
+  });
+};
+
+export const getAccountPasswordMutationOptions = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof accountPassword>>,
+    TError,
+    { data: AccountPasswordRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof accountPassword>>,
+  TError,
+  { data: AccountPasswordRequest },
+  TContext
+> => {
+  const mutationKey = ["accountPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof accountPassword>>,
+    { data: AccountPasswordRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return accountPassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AccountPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof accountPassword>>
+>;
+export type AccountPasswordMutationBody = AccountPasswordRequest;
+export type AccountPasswordMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse;
+
+/**
+ * @summary A member changes their own password
+ */
+export const useAccountPassword = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof accountPassword>>,
+      TError,
+      { data: AccountPasswordRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof accountPassword>>,
+  TError,
+  { data: AccountPasswordRequest },
+  TContext
+> => {
+  return useMutation(getAccountPasswordMutationOptions(options), queryClient);
 };
 
 export type authLoginResponse200 = {
@@ -1095,6 +1222,136 @@ export const useMemberDestroy = <
   TContext
 > => {
   return useMutation(getMemberDestroyMutationOptions(options), queryClient);
+};
+
+export type memberPasswordResponse200 = {
+  data: MemberPassword200;
+  status: 200;
+};
+
+export type memberPasswordResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberPasswordResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberPasswordResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberPasswordResponseSuccess = memberPasswordResponse200 & {
+  headers: Headers;
+};
+export type memberPasswordResponseError = (
+  memberPasswordResponse400 | memberPasswordResponse401 | memberPasswordResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberPasswordResponse = memberPasswordResponseSuccess | memberPasswordResponseError;
+
+export const getMemberPasswordUrl = (member: number) => {
+  return `/members/${member}/password`;
+};
+
+/**
+ * §4.4 describes ONE mechanism for a password coming into being — open a
+ * member, hit "Réinitialiser le mot de passe", read out what appears — so
+ * there is one endpoint for it. Since 2026_09_08_000001 every member
+ * already has a password, so this is always a reset; the "give this person
+ *      * an account" case is POST /api/members, which mints one at creation using
+ * the same generator and the same forced-change semantics.
+ *
+ * The returned password is the only copy that will ever exist in plaintext:
+ * it is hashed on the way into the database, never written to the audit
+ * log, and never returned again.
+ * @summary Issues a member a new password, shown to the administrator exactly once
+ */
+export const memberPassword = async (
+  member: number,
+  memberPasswordBody: MemberPasswordBody,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberPasswordResponse> => {
+  return customFetch<memberPasswordResponse>(getMemberPasswordUrl(member), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberPasswordBody),
+  });
+};
+
+export const getMemberPasswordMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberPassword>>,
+    TError,
+    { member: number; data: MemberPasswordBody },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberPassword>>,
+  TError,
+  { member: number; data: MemberPasswordBody },
+  TContext
+> => {
+  const mutationKey = ["memberPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberPassword>>,
+    { member: number; data: MemberPasswordBody }
+  > = (props) => {
+    const { member, data } = props ?? {};
+
+    return memberPassword(member, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof memberPassword>>>;
+export type MemberPasswordMutationBody = MemberPasswordBody;
+export type MemberPasswordMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+/**
+ * @summary Issues a member a new password, shown to the administrator exactly once
+ */
+export const useMemberPassword = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberPassword>>,
+      TError,
+      { member: number; data: MemberPasswordBody },
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberPassword>>,
+  TError,
+  { member: number; data: MemberPasswordBody },
+  TContext
+> => {
+  return useMutation(getMemberPasswordMutationOptions(options), queryClient);
 };
 
 export type memberRoleResponse200 = {

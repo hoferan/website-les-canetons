@@ -57,6 +57,7 @@ export const fr = {
     invalid_type: "a un type invalide",
     invalid_value: "doit être l'une des valeurs suivantes : {{allowed}}",
     already_taken: "est déjà utilisé",
+    too_short: "est trop court (minimum {{min}} caractères)",
     invalid_number: "n'est pas un nombre valide",
   },
   fields: {
@@ -73,6 +74,7 @@ export const fr = {
     publicVisible: "Visible publiquement",
     roleIds: "Rôles",
     currentPassword: "Mot de passe actuel",
+    newPassword: "Nouveau mot de passe",
     id: "Identifiant",
     lastName: "Nom",
     firstName: "Prénom",

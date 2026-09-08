@@ -70,10 +70,14 @@ final class ApiError
         'in' => 'invalid_value',
         // Laravel's `min` is polymorphic — numeric value, string length and
         // array count all report as `Min`, with nothing in failedRules to tell
-        // them apart. This mapping suits the numeric case; a string or array
-        // `min` would render "n'est pas un nombre valide" and needs its own
-        // too_short token (mirroring too_long) rather than reusing this entry.
-        'min' => 'invalid_number',
+        // them apart. This entry commits to the STRING-LENGTH reading, which is
+        // the only one this API uses (the password minimum), and mirrors
+        // too_long including its params branch in validation() below.
+        //
+        // A NUMERIC minimum must therefore use `gt` instead, which keeps
+        // 'invalid_number'. Adding `min:1` to a numeric field would tell the
+        // user their number "est trop court".
+        'min' => 'too_short',
         'gt' => 'invalid_number',
     ];
 
@@ -124,6 +128,11 @@ final class ApiError
             $entry = ['field' => (string) $field, 'reason' => $reason];
             if ($rule === 'max') {
                 $entry['params'] = ['max' => (int) $parameters[0]];
+            } elseif ($rule === 'min') {
+                // Required, not optional: 'too_short' interpolates {{min}}, and
+                // i18next prints a missing interpolation value literally — so
+                // without this the user reads "minimum {{min}} caractères".
+                $entry['params'] = ['min' => (int) $parameters[0]];
             } elseif ($rule === 'in') {
                 $entry['params'] = ['allowed' => $parameters];
             }
