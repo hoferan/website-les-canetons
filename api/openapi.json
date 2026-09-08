@@ -172,10 +172,7 @@
                                             "type": "integer"
                                         },
                                         "username": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
+                                            "type": "string"
                                         },
                                         "firstName": {
                                             "type": "string"
@@ -417,14 +414,7 @@
                         "type": "string"
                     },
                     "username": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "hasAccount": {
-                        "type": "boolean",
-                        "description": "Not the same question as \"has a username\": both credentials must\nbe present to log in, and the lockout invariants count only\npeople for whom that is true."
+                        "type": "string"
                     },
                     "mustChangePassword": {
                         "type": "boolean"
@@ -479,7 +469,6 @@
                     "firstName",
                     "lastName",
                     "username",
-                    "hasAccount",
                     "mustChangePassword",
                     "lastLoginAt",
                     "sectionId",

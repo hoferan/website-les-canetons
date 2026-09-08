@@ -69,43 +69,20 @@ final class AccessIntegrity
     }
 
     /**
-     * Refuses to take away the login of the last person who can administer
-     * members.
+     * True when removing these members would leave nobody holding
+     * members.manage.
      *
-     * PATCH /api/members/{id} can clear a username, and no other invariant
-     * looks at credentials — so without this, "edit this person and blank
-     * their username" is a lockout with none of the ceremony deleting them
-     * would have required. The host has no shell; the repair would be Adminer.
+     * No credential filter, deliberately. It had one — members rows used to
+     * allow nullable credentials, so somebody could hold members.manage while
+     * being unable to log in, and counting such a row let this sequence lock
+     * the band out: two administrators, delete one, blank the other's
+     * username. 2026_09_08_000001 made credentials NOT NULL, so every holder
+     * can authenticate by construction and the filter became a branch no test
+     * could reach. The schema is the guard now — see
+     * MemberIndexTest::test_every_member_has_an_account.
      *
-     * Only the ORPHAN case is checked. Removing your own login while another
-     * administrator can still log in is a strange thing to do, but it is
-     * recoverable by that administrator — and refusing it would also refuse
-     * the legitimate case of an outgoing committee member who stays on the
-     * public roster as a person.
-     */
-    public static function assertMayRemoveCredentials(Member $target): void
-    {
-        if (self::wouldOrphanAdministration([$target->id])) {
-            throw new AccessIntegrityViolation(
-                'cannot_remove_last_administrator',
-                'This is the last member who can administer members',
-            );
-        }
-    }
-
-    /**
-     * True when removing these members would leave nobody who can BOTH
-     * administer members and log in.
-     *
-     * THE CREDENTIAL FILTER IS THE POINT. `members` rows are people: username
-     * and password are nullable so an instructor on the public page needs no
-     * login. Counting such a row as an administrator let this sequence lock the
-     * band out while passing every invariant R1a shipped — two administrators,
-     * delete one, clear the other's username — and the host has no shell to
-     * repair it with.
-     *
-     * This also returns true when nobody holds members.manage in the first
-     * place. R1b's controller cannot reach that state (it is gated on
+     * This returns true when nobody holds members.manage in the first place. A
+     * controller cannot reach that state (every caller is gated on
      * members.manage), but a seeder or console command calling in against such
      * a database would find every deletion refused. Not a guarantee that
      * removing these members is the cause.
@@ -117,14 +94,7 @@ final class AccessIntegrity
         $remaining = EffectivePermissions::memberIdsWith(Permission::MembersManage)
             ->reject(fn ($id) => in_array((int) $id, $excludedMemberIds, true));
 
-        if ($remaining->isEmpty()) {
-            return true;
-        }
-
-        return ! Member::whereIn('id', $remaining->all())
-            ->whereNotNull('username')
-            ->whereNotNull('password')
-            ->exists();
+        return $remaining->isEmpty();
     }
 
     /** @param  array<int, int>  $roleIds */

@@ -7,10 +7,15 @@ use Illuminate\Support\Facades\Schema;
 /**
  * The single roster. Replaces `users`.
  *
- * A ROW IS A PERSON, NOT AN ACCOUNT. `username` and `password` are nullable, so
- * an instructor listed on the public page, or a young member whose parent
- * answers for them, needs no login. MariaDB permits many NULLs under one unique
- * index, which is what makes that work.
+ * A ROW IS A PERSON THE BAND TRACKS FOR EVENTS, AND EVERY ONE OF THEM HAS AN
+ * ACCOUNT. This file originally made `username` and `password` nullable so that
+ * an instructor on the public page, or a young member whose parent answers,
+ * needed no login. That conflated two populations and produced a lockout: a
+ * holder of members.manage who could not log in still counted as an
+ * administrator. 2026_09_08_000001 made both columns NOT NULL — a young
+ * member's parent uses their login on their behalf, and people the band merely
+ * DISPLAYS are content rather than rows here. Read that migration before
+ * relaxing anything below.
  *
  * There is deliberately no email column: members are children (~6-16) who often
  * have no address of their own, and passwords are admin-issued. There is also

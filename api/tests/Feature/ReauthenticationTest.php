@@ -52,17 +52,24 @@ class ReauthenticationTest extends TestCase
         }
     }
 
-    public function test_a_member_with_no_password_cannot_reauthenticate(): void
+    public function test_a_credential_less_member_cannot_reauthenticate(): void
     {
-        // A person row with no credentials is legitimate (an instructor listed
-        // publicly, a child whose parent answers). Such a row can never be the
-        // actor on a request — there is no way to log in as it — but failing
-        // CLOSED means a future caller that gets one cannot treat "no password
-        // set" as "any password matches". Hash::check() against null is also a
-        // TypeError, so this must be handled before the comparison.
+        // FAILING CLOSED. 2026_09_08_000001 made both credentials NOT NULL, so a
+        // PERSISTED member always has a password; this constructs an unsaved
+        // model to reach the branch at all.
+        //
+        // What this pins is the OUTCOME, not the mechanism. Laravel's hasher
+        // already returns false for a null hash, so the explicit guard in
+        // Reauthentication and its absence are indistinguishable from here —
+        // measured 2026-09-08. The assertion is still worth having: it says
+        // that whatever the mechanism, a member with no password never
+        // re-authenticates.
+        $actor = new Member(['first_name' => 'Ghost', 'last_name' => 'Actor']);
+        $actor->id = 9999;
+
         $this->expectException(ReauthenticationFailed::class);
 
-        Reauthentication::assert($this->actor('nologin', null), 'anything');
+        Reauthentication::assert($actor, 'anything');
     }
 
     public function test_repeated_wrong_passwords_lock_the_actor_out_with_429(): void

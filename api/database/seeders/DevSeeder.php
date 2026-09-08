@@ -57,14 +57,12 @@ class DevSeeder extends Seeder
         $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id)
             ->roles()->syncWithoutDetaching([$committee->id]);
 
-        // A person with no account at all: listed publicly, never logs in.
-        Member::firstOrCreate(
-            ['first_name' => 'Nadia', 'last_name' => 'Sansconnexion'],
-            [
-                'section_id' => $sections['Batteurs']->id,
-                'public_visible' => true,
-            ],
-        );
+        // A young member whose PARENT uses the login on their behalf. Every
+        // member has an account (2026_09_08_000001): the roster is the people
+        // the band tracks for events, and all of them are answerable. People
+        // the band merely displays — instructors, honorary members — are
+        // content and are not members at all.
+        $this->member('demo.young', 'Nadia', 'Sansconnexion', $sections['Batteurs']->id);
     }
 
     private function member(string $username, string $first, string $last, ?int $sectionId): Member

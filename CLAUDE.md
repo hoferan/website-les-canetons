@@ -413,8 +413,8 @@ raw-SQL schema. (The Laravel *test* suite uses its own throwaway
 drops every table.)
 
 **Seeded members come from `api/database/seeders/DevSeeder.php`.** There are
-five seeded members; four have logins (all password `demo`), one deliberately
-has no account at all. The **registers and roles are no longer the seeder's** —
+five seeded members, all with logins (password `demo`) — every member has an
+account, because the roster is the people the band tracks for events. The **registers and roles are no longer the seeder's** —
 they are reference data seeded by `2026_09_07_000001_seed_registers_and_roles`,
 because the shared host has no shell to run a seeder with. A sixth account,
 `comite.local`, is created by `2026_09_07_000002_bootstrap_first_administrator`
@@ -437,8 +437,10 @@ name instead:
   `committee` role, whose single permission is `registrations.view`. The role
   exists in reference data, so somebody has to hold it or its screen is never
   looked at.
-- Nadia Sansconnexion — a `Member` row with no `username`/`password` at all:
-  listed publicly (`public_visible`), never logs in.
+- `demo.young` (Nadia Sansconnexion) — plays in Batteurs. The case where a
+  **parent uses the child's login**: the account exists and is used, just not by
+  the member. People the band only *displays* — instructors, honorary members —
+  are content, not members.
 
 ## Development Commands
 

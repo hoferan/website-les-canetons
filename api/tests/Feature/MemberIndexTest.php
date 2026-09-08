@@ -7,14 +7,17 @@ use App\Models\Role;
 use App\Models\Section;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
- * The roster: everyone associated with the band, account or not.
+ * The roster: everyone the band tracks for events.
  *
- * ONE ROSTER (design §8). The screen that administers people must list people,
- * not accounts — otherwise a person with no login can never be given one, and
- * the band keeps a second list somewhere else.
+ * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001). A young member's parent uses
+ * their login on their behalf, so there is no such thing as an unused one.
+ * People the band merely DISPLAYS — instructors, honorary members, sponsors —
+ * are content, hold no permissions, appear in no attendance list, and are not
+ * rows in this table.
  */
 class MemberIndexTest extends TestCase
 {
@@ -22,14 +25,24 @@ class MemberIndexTest extends TestCase
 
     private ?Member $admin = null;
 
+    /** @param  array<string, mixed>  $attributes */
+    private function person(string $first, string $last, array $attributes = []): Member
+    {
+        return Member::create([
+            'first_name' => $first,
+            'last_name' => $last,
+            'username' => strtolower($first.'.'.$last),
+            'password' => 'secret123',
+            ...$attributes,
+        ]);
+    }
+
     private function administrator(): Member
     {
-        return $this->admin ??= tap(Member::create([
-            'first_name' => 'Dominique',
-            'last_name' => 'Direction',
-            'username' => 'dominique',
-            'password' => 'secret123',
-        ]), fn (Member $m) => $m->roles()->attach(Role::where('key', 'direction')->sole()));
+        return $this->admin ??= tap(
+            $this->person('Dominique', 'Direction'),
+            fn (Member $m) => $m->roles()->attach(Role::where('key', 'direction')->sole()),
+        );
     }
 
     private function actingAsAdministrator(): static
@@ -39,31 +52,35 @@ class MemberIndexTest extends TestCase
             ->withSession(['auth.started_at' => now()->timestamp]);
     }
 
-    public function test_it_lists_people_with_and_without_accounts(): void
+    public function test_every_member_has_an_account(): void
     {
-        // A person with no credentials at all — an instructor on the public
-        // page, or a child whose parent answers. ONE ROSTER: if this row is
-        // missing from the list, the screen is an account list wearing a
-        // roster's name, and the person can never be given an account.
-        Member::create(['first_name' => 'Nadia', 'last_name' => 'Sansconnexion']);
+        // THE SCHEMA IS THE GUARD, and it replaces five AccessIntegrity tests.
+        // Nullable credentials let somebody hold members.manage while being
+        // unable to log in, so "two administrators, delete one, blank the
+        // other's username" locked the band out with no shell to repair it.
+        // NOT NULL dissolves that rather than guarding against it; this is what
+        // keeps it dissolved.
+        $columns = collect(Schema::getColumns('members'))->keyBy('name');
+
+        $this->assertFalse($columns['username']['nullable'], 'members.username must be NOT NULL');
+        $this->assertFalse($columns['password']['nullable'], 'members.password must be NOT NULL');
 
         $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
 
-        $names = array_column($body, 'lastName');
-        $this->assertContains('Sansconnexion', $names);
-        $this->assertContains('Direction', $names);
+        foreach ($body as $row) {
+            $this->assertNotNull($row['username'], 'every member on the roster has a username');
+        }
 
-        $nadia = collect($body)->firstWhere('lastName', 'Sansconnexion');
-        $this->assertNull($nadia['username']);
-        $this->assertFalse($nadia['hasAccount']);
+        // There is no "does this person have an account?" question left to ask.
+        $this->assertArrayNotHasKey('hasAccount', $body[0]);
     }
 
     public function test_it_is_ordered_by_name_so_a_person_can_be_found(): void
     {
         // Scanned for a person, not browsed by register. Grouping by register
         // is the UI's business, and it has sectionName to do it with.
-        Member::create(['first_name' => 'Zoe', 'last_name' => 'Alpha']);
-        Member::create(['first_name' => 'Anne', 'last_name' => 'Zulu']);
+        $this->person('Zoe', 'Alpha');
+        $this->person('Anne', 'Zulu');
 
         $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
 
@@ -74,12 +91,8 @@ class MemberIndexTest extends TestCase
     {
         $section = Section::where('name', 'Cloches')->sole();
         $role = Role::where('key', 'committee')->sole();
-        $member = Member::create([
-            'first_name' => 'Camille',
-            'last_name' => 'Committee',
+        $member = $this->person('Camille', 'Committee', [
             'section_id' => $section->id,
-            'username' => 'camille',
-            'password' => 'secret123',
             'committee_title' => 'Présidente',
             'public_visible' => true,
         ]);
@@ -90,8 +103,7 @@ class MemberIndexTest extends TestCase
 
         $this->assertSame($member->id, $camille['id']);
         $this->assertSame('Camille', $camille['firstName']);
-        $this->assertSame('camille', $camille['username']);
-        $this->assertTrue($camille['hasAccount']);
+        $this->assertSame('camille.committee', $camille['username']);
         $this->assertSame($section->id, $camille['sectionId']);
         $this->assertSame('Cloches', $camille['sectionName']);
         $this->assertTrue($camille['isPlayer']);
@@ -120,7 +132,9 @@ class MemberIndexTest extends TestCase
     {
         // The single fact that decides who is answerable for events. An
         // organiser with no register must not appear in an attendance list, or
-        // every count carries a permanent phantom "sans réponse".
+        // every count carries a permanent phantom "sans réponse". Note this is
+        // a separate question from having an account — everybody has one of
+        // those.
         $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
         $dominique = collect($body)->firstWhere('lastName', 'Direction');
 
@@ -133,14 +147,7 @@ class MemberIndexTest extends TestCase
     {
         $this->getJson('/api/members')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
 
-        $plain = Member::create([
-            'first_name' => 'Perrine',
-            'last_name' => 'Player',
-            'username' => 'perrine',
-            'password' => 'secret123',
-        ]);
-
-        $this->actingAs($plain)
+        $this->actingAs($this->person('Perrine', 'Player'))
             ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession(['auth.started_at' => now()->timestamp])
             ->getJson('/api/members')
@@ -158,9 +165,7 @@ class MemberIndexTest extends TestCase
         $section = Section::where('name', 'Trompettes')->sole();
         $role = Role::where('key', 'committee')->sole();
         for ($i = 0; $i < 20; $i++) {
-            $member = Member::create([
-                'first_name' => 'Person',
-                'last_name' => 'Number'.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+            $member = $this->person('Person', 'Number'.str_pad((string) $i, 2, '0', STR_PAD_LEFT), [
                 'section_id' => $section->id,
             ]);
             $member->roles()->attach($role);

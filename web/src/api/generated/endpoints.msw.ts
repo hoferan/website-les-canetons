@@ -32,10 +32,7 @@ export const getAuthMeResponseMock = (
   overrideResponse: Partial<Extract<AuthMe200, object>> = {},
 ): AuthMe200 => ({
   id: faker.number.int(),
-  username: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
+  username: faker.string.alpha({ length: { min: 10, max: 20 } }),
   firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   isPlayer: faker.datatype.boolean(),
@@ -62,11 +59,7 @@ export const getMemberIndexResponseMock = (): MemberResource[] =>
     id: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    username: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
-    hasAccount: faker.datatype.boolean(),
+    username: faker.string.alpha({ length: { min: 10, max: 20 } }),
     mustChangePassword: faker.datatype.boolean(),
     lastLoginAt: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),

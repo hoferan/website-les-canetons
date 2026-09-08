@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Member;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -133,23 +134,21 @@ class LoginTest extends TestCase
      * 500, and never a distinct code (a distinct code would let an attacker
      * enumerate which accounts still lack a password).
      */
-    public function test_a_member_with_a_username_but_no_password_cannot_log_in(): void
+    public function test_a_member_with_a_username_but_no_password_is_impossible(): void
     {
+        // This test used to log in against a credential-less row and assert a
+        // 401. That row can no longer exist: 2026_09_08_000001 made both
+        // credentials NOT NULL, because the roster is the people the band
+        // tracks for events and all of them have an account. The defence is now
+        // the schema rather than the login path.
+        $this->expectException(QueryException::class);
+
         Member::create([
             'first_name' => 'Petit',
             'last_name' => 'Canard',
             'username' => 'petit.canard',
             'password' => null,
         ]);
-
-        $this->spaPostJson('/api/login', [
-            'username' => 'petit.canard',
-            'password' => 'whatever',
-        ])->assertStatus(401)
-            ->assertJson(['code' => 'invalid_credentials'])
-            ->assertJsonMissingPath('exception');
-
-        $this->assertGuest();
     }
 
     public function test_repeated_failures_are_throttled(): void

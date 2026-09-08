@@ -7,8 +7,7 @@
 
 export type AuthMe200 = {
   id: number;
-  /** @nullable */
-  username: string | null;
+  username: string;
   firstName: string;
   lastName: string;
   isPlayer: boolean;

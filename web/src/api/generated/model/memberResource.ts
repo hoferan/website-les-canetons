@@ -9,14 +9,7 @@ export interface MemberResource {
   id: number;
   firstName: string;
   lastName: string;
-  /** @nullable */
-  username: string | null;
-  /**
-   * Not the same question as "has a username": both credentials must
-   * be present to log in, and the lockout invariants count only
-   * people for whom that is true.
-   */
-  hasAccount: boolean;
+  username: string;
   mustChangePassword: boolean;
   /** @nullable */
   lastLoginAt: string | null;

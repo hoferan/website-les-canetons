@@ -9,10 +9,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One person on the roster.
  *
- * A ROW IS A PERSON, NOT AN ACCOUNT, and this payload has to say so: `username`
- * and `hasAccount` are separate fields precisely because a person with neither
- * still belongs on the roster, still has a register, and can still be given an
- * account later.
+ * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001). The roster is the people the
+ * band tracks for events, and all of them can log in — a young member's parent
+ * uses their login on their behalf. People the band merely displays, such as
+ * instructors or honorary members, are CONTENT and are not in this table at
+ * all, so there is no `hasAccount` question to answer.
  *
  * NO PASSWORD FIELD, AND NO PERMISSIONS FIELD.
  *
@@ -41,10 +42,6 @@ class MemberResource extends JsonResource
             'lastName' => $this->last_name,
 
             'username' => $this->username,
-            // Not the same question as "has a username": both credentials must
-            // be present to log in, and the lockout invariants count only
-            // people for whom that is true.
-            'hasAccount' => $this->canAuthenticate(),
             'mustChangePassword' => $this->must_change_password,
             'lastLoginAt' => $this->lastLoginAt(),
 

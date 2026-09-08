@@ -112,6 +112,19 @@ nullable, so:
 This table feeds the admin roster, the attendance list, the public band page,
 the committee page and the instructor listing. **A person is entered once.**
 
+**Every member has an account** (added 2026-09-08). `username` and `password`
+are NOT NULL. The roster is the people the band **tracks for events** — all of
+them are answerable, and a young member's parent uses their login on their
+behalf. People the band merely **displays** (instructors, honorary members,
+sponsors) are **content**: no credentials, no permissions, no attendance row,
+and not in this table. R2's `/band` and `/committee` therefore need a content
+source alongside the roster, rather than being generated from it alone.
+
+This replaced the original "a row is a person, not an account" model, which
+allowed a holder of `members.manage` who could not log in — and with it the
+sequence "two administrators, delete one, blank the other's username", which
+locked the band out while passing every invariant.
+
 ### `roles`, `role_permissions`, `member_roles`
 ```
 roles              id, key
