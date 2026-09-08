@@ -133,7 +133,8 @@ Three properties keep this clean:
 
 1. **Permissions are code; roles are data.** A permission is real only if some
    middleware checks it, so the set cannot be invented in the UI. Roles
-   ("direction", "comité") are edited freely by the band.
+   ("direction", "comité") are *intended* to be editable — see §3.1, which
+   records who may edit what, and states plainly that no editor exists yet.
 2. **No direct per-member grants.** Direct grants are what rots RBAC systems —
    "why does she have this?" becomes unanswerable. Permissions arrive *only*
    through roles, so the answer is always "because she is in Team Direction".
@@ -151,6 +152,71 @@ to a register (`section_id` set) — the same single fact the public roster uses
 An instructor with no register is simply not in the attendance list, so no
 spurious "sans réponse" appears in any count. This is what dissolves the
 admin-cannot-respond bug by construction.
+
+### 3.1 Who may change what, and what that costs in translation
+
+Added 2026-09-08, after the R1b build found this section promising an editor
+that does not exist. Three rows below had no owner at all; the repair for any
+of them was Adminer.
+
+| Thing | Changed by | Status |
+| --- | --- | --- |
+| The permission set | developer, code + deploy | correct and permanent — a permission is real only if middleware checks it |
+| Developer UI text | developer, `web/src/i18n/` | — |
+| Which roles exist, and what each grants | **nobody yet** | deferred editor, see below |
+| The register list | **nobody yet** | deferred editor, see below |
+| Members: identity, register, roles, password | `members.manage` | R1b |
+| One's own password | any account holder | R1b |
+| Events, attendance | `events.manage` | R1c |
+
+**The rule that decides whether a thing can be translated: who is allowed to
+name it.** A developer-defined name is a fixed key, so a second language costs
+one catalogue file. A user-typed name is content, rendered verbatim, and no
+translation layer can reach it. This is not a French-vs-English question —
+`sections.name` holds "Batteurs" today and is right to, because it is displayed
+verbatim rather than looked up.
+
+Fribourg is officially bilingual, so German is treated as **plausible, not
+planned**. That decides the shape: registers and roles keep an immutable `key`
+as identity, and their display names become **per-locale labels stored as
+data** — editable and translatable at once, which is affordable precisely
+because the editor is held by a maintainer rather than by every committee
+member.
+
+The contract is what matters, not the storage:
+
+```json
+{ "key": "direction", "labels": { "fr": "Team Direction", "de": "…" } }
+```
+
+A JSON column is the right mechanism at this scale (~8 registers, ~5 roles, one
+or two locales, no partial-translation workflow); a translation side table
+would be machinery with no requirement behind it. Because the API exposes a
+locale map either way, swapping one for the other later is a data migration
+with no client change.
+
+**Until that editor exists**, roles carry no display name at all and the SPA
+translates by `key` through `web/src/i18n/fr.ts` (decision B6 in the R1b plan).
+That is honest while the names are developer-chosen, and becomes wrong the day
+somebody else can choose them.
+
+**The deferred editor release** — after R1c, or before R2 — is five things, not
+one:
+
+1. a `system.manage` permission, plus a role holding it that `direction` does
+   **not** inherit (the seed grants `direction` every case of the enum);
+2. a register editor and a role editor;
+3. per-locale labels moved out of `fr.ts` into the DB;
+4. **a lockout invariant that does not exist today.** `AccessIntegrity` guards
+   *assigning* roles and *deleting* members. It does not guard *editing what a
+   role grants* — so a role editor shipped without it could drop
+   `members.manage` from `direction` and lock the band out of its own site,
+   with no shell to repair it;
+5. a permission catalogue with human descriptions, so the editor offers "Gère
+   les membres" rather than `members.manage`.
+
+`system.manage` is deliberately **not** added to the enum before that work: an
+unenforced permission is exactly the lie property 1 above forbids.
 
 ### `events`
 ```

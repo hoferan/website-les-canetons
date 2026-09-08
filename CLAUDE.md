@@ -501,6 +501,37 @@ done.
   Types: `feat`, `fix`, `chore`, `docs`, `build`, `ci`, `test`, `refactor`, `style`, `perf`.
 - **Body:** use `.github/PULL_REQUEST_TEMPLATE.md` — fill in every section.
 
+## Who may change what
+
+The editability ladder, and the reason it also decides what can ever be
+translated. Full version in the rebuild design §3.1.
+
+| Thing | Changed by |
+| --- | --- |
+| The permission set (`App\Support\Permission`) | developer, code + deploy — a permission is real only if middleware checks it |
+| UI text (`web/src/i18n/`) | developer, code + deploy |
+| Which roles exist, what each grants, the register list | **nobody yet — Adminer.** A deferred editor release owns this |
+| Members: identity, register, roles, password | `members.manage` |
+| One's own password | any account holder |
+| Events, attendance | `events.manage` (R1c) |
+
+**Who names a thing decides whether it can be translated.** A developer-defined
+name is a fixed key, so a second language costs one catalogue file; a user-typed
+name is content, rendered verbatim, and no translation layer reaches it. German
+is plausible (Fribourg is bilingual) but not planned, so registers and roles
+keep an immutable `key` for identity and will gain **per-locale labels stored as
+data** when their editor is built — editable and translatable at once.
+
+Until then, `roles` carries no display name and the SPA translates by `key`.
+Adding `system.manage` to the enum before its middleware exists is forbidden by
+the rule in row one.
+
+**The deferred editor release is not small**, and one part of it is a safety
+gap: `AccessIntegrity` guards *assigning* roles and *deleting* members, but not
+*editing what a role grants*. A role editor shipped without that invariant could
+strip `members.manage` from `direction` and lock the band out, with no shell to
+repair it.
+
 ## Language
 
 - **Everything is written in English** — specs and plans (`docs/`), code,
