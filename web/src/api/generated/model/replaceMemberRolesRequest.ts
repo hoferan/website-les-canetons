@@ -18,9 +18,4 @@
  */
 export interface ReplaceMemberRolesRequest {
   roleIds: number[];
-  /**
-   * Re-authentication. Verified by App\Support\Reauthentication in
-   * the controller, before anything is read or written.
-   */
-  currentPassword: string;
 }

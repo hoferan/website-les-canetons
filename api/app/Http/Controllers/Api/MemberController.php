@@ -58,8 +58,16 @@ class MemberController extends Controller
      * (GeneratedPassword), and must_change_password is set, because a password
      * an administrator read down the phone is not a secret worth keeping.
      *
-     * No AccessIntegrity check: adding a person, with or without roles, cannot
-     * orphan administration or demote anybody.
+     * IT GRANTS NO ROLES, and that is a security property rather than a
+     * simplification. Granting a permission is exactly one operation —
+     * PUT /members/{member}/roles — which re-authenticates, checks the lockout
+     * invariants and audits. Accepting roleIds here would have made the
+     * UNGUARDED path strictly easier than the guarded one: a stolen session
+     * could mint a member holding `direction` and read its password straight
+     * out of this response, a persistent backdoor needing no password at all.
+     *
+     * No AccessIntegrity check is needed for the same reason: a person with no
+     * roles cannot orphan administration or demote anybody.
      */
     public function store(StoreMemberRequest $request): JsonResponse
     {
@@ -78,8 +86,6 @@ class MemberController extends Controller
                 'instructor_of_section_id' => $data['instructorOfSectionId'] ?? null,
                 'public_visible' => $data['publicVisible'],
             ]);
-
-            $member->roles()->sync($data['roleIds'] ?? []);
 
             return $member;
         });
@@ -140,12 +146,16 @@ class MemberController extends Controller
      * Same ordering rule as MemberRoleController — re-authenticate, then check
      * the invariants, then write — and capture the name BEFORE the delete,
      * because the row is gone by the time anyone reads the audit back.
+     *
+     * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
+     * password. Not a body field and never a query parameter: Apache logs query
+     * strings in plain text, and RFC 9110 gives a DELETE body no defined
+     * semantics, which is how the generated client once turned this into
+     * ?currentPassword=... See App\Support\Reauthentication.
      */
     public function destroy(Request $request, Member $member): JsonResponse
     {
-        $request->validate(['currentPassword' => ['required', 'string']]);
-
-        Reauthentication::assert($request->user(), $request->string('currentPassword')->value());
+        Reauthentication::assertFromRequest($request, $request->user());
 
         AccessIntegrity::assertMayDelete($request->user(), $member);
 

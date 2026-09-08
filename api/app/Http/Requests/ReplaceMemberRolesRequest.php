@@ -24,9 +24,10 @@ class ReplaceMemberRolesRequest extends FormRequest
             'roleIds' => ['present', 'array'],
             'roleIds.*' => ['integer', 'exists:roles,id'],
 
-            // Re-authentication. Verified by App\Support\Reauthentication in
-            // the controller, before anything is read or written.
-            'currentPassword' => ['required', 'string'],
+            // Re-authentication is NOT here. It travels in the
+            // X-Reauth-Password header — see App\Support\Reauthentication for
+            // why — and the controller checks it before this request's rules
+            // are even reached.
         ];
     }
 }

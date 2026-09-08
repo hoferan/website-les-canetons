@@ -361,7 +361,7 @@
             },
             "post": {
                 "operationId": "member.store",
-                "description": "THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a\nperson with no credential, leaving \"give this person an account\" as a\nseparate operation. That cannot survive the credentials model: a member\ncreated with an unusable placeholder could be granted members.manage and\nthen be the only administrator left after a deletion \u2014 holding the\npermission and unable to log in. That is the ghost administrator the\nmigration dissolved, and this is the door it would have come back\nthrough.\n\nThe value is the same readable, dictatable one a reset produces\n(GeneratedPassword), and must_change_password is set, because a password\nan administrator read down the phone is not a secret worth keeping.\n\nNo AccessIntegrity check: adding a person, with or without roles, cannot\norphan administration or demote anybody.",
+                "description": "THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a\nperson with no credential, leaving \"give this person an account\" as a\nseparate operation. That cannot survive the credentials model: a member\ncreated with an unusable placeholder could be granted members.manage and\nthen be the only administrator left after a deletion \u2014 holding the\npermission and unable to log in. That is the ghost administrator the\nmigration dissolved, and this is the door it would have come back\nthrough.\n\nThe value is the same readable, dictatable one a reset produces\n(GeneratedPassword), and must_change_password is set, because a password\nan administrator read down the phone is not a secret worth keeping.\n\nIT GRANTS NO ROLES, and that is a security property rather than a\nsimplification. Granting a permission is exactly one operation \u2014\nPUT /members/{member}/roles \u2014 which re-authenticates, checks the lockout\ninvariants and audits. Accepting roleIds here would have made the\nUNGUARDED path strictly easier than the guarded one: a stolen session\ncould mint a member holding `direction` and read its password straight\nout of this response, a persistent backdoor needing no password at all.\n\nNo AccessIntegrity check is needed for the same reason: a person with no\nroles cannot orphan administration or demote anybody.",
                 "summary": "Creates a person \u2014 which means creating an account, because every member\nhas one (2026_09_08_000001)",
                 "tags": [
                     "Member"
@@ -460,7 +460,7 @@
             },
             "delete": {
                 "operationId": "member.destroy",
-                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nSame ordering rule as MemberRoleController \u2014 re-authenticate, then check\nthe invariants, then write \u2014 and capture the name BEFORE the delete,\nbecause the row is gone by the time anyone reads the audit back.",
+                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nSame ordering rule as MemberRoleController \u2014 re-authenticate, then check\nthe invariants, then write \u2014 and capture the name BEFORE the delete,\nbecause the row is gone by the time anyone reads the audit back.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
                 "summary": "Removes a person entirely",
                 "tags": [
                     "Member"
@@ -473,14 +473,6 @@
                         "description": "The member ID",
                         "schema": {
                             "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "currentPassword",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
                         }
                     }
                 ],
@@ -508,9 +500,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
@@ -523,7 +512,7 @@
         "/members/{member}/password": {
             "post": {
                 "operationId": "memberPassword",
-                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.",
+                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
                 "summary": "Issues a member a new password, shown to the administrator exactly once",
                 "tags": [
                     "MemberPassword"
@@ -539,24 +528,6 @@
                         }
                     }
                 ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "currentPassword": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "currentPassword"
-                                ]
-                            }
-                        }
-                    }
-                },
                 "responses": {
                     "200": {
                         "description": "",
@@ -581,9 +552,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
@@ -596,7 +564,7 @@
         "/members/{member}/roles": {
             "put": {
                 "operationId": "memberRole",
-                "description": "THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS\nENDPOINT:\n\n  1. re-authenticate, before anything is read or written, so a stolen\n     session cannot change what anybody can do;\n  2. check the invariants, before the write, so a refusal leaves no\n     trace;\n  3. write, then revoke, then audit.\n\nGetting 1 and 2 the other way round would leak whether a change WOULD be\nallowed to somebody who cannot make it \u2014 pinned by\ntest_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.\nGetting 3 wrong \u2014 revoking before writing \u2014 would end the sessions and\nthen fail, leaving the member logged out with their old permissions\nintact.",
+                "description": "THE ORDER OF THE FIRST THREE STEPS IS THE WHOLE SECURITY OF THIS\nENDPOINT:\n\n  1. re-authenticate, before anything is read or written, so a stolen\n     session cannot change what anybody can do;\n  2. check the invariants, before the write, so a refusal leaves no\n     trace;\n  3. write, then revoke, then audit.\n\nGetting 1 and 2 the other way round would leak whether a change WOULD be\nallowed to somebody who cannot make it \u2014 pinned by\ntest_a_wrong_password_on_a_self_demotion_reports_the_password_not_the_rule.\nGetting 3 wrong \u2014 revoking before writing \u2014 would end the sessions and\nthen fail, leaving the member logged out with their old permissions\nintact.\n\nREQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current\npassword. Not a body field and never a query parameter: Apache logs query\nstrings in plain text, and RFC 9110 gives a DELETE body no defined\nsemantics, which is how the generated client once turned this into\n?currentPassword=... See App\\Support\\Reauthentication.",
                 "summary": "Replaces one member's roles \u2014 which is the only way any permission is\never granted or taken away (design \u00a73: no direct per-member grants)",
                 "tags": [
                     "MemberRole"
@@ -858,15 +826,10 @@
                         "items": {
                             "type": "integer"
                         }
-                    },
-                    "currentPassword": {
-                        "type": "string",
-                        "description": "Re-authentication. Verified by App\\Support\\Reauthentication in\nthe controller, before anything is read or written."
                     }
                 },
                 "required": [
-                    "roleIds",
-                    "currentPassword"
+                    "roleIds"
                 ],
                 "title": "ReplaceMemberRolesRequest"
             },
@@ -915,7 +878,7 @@
             },
             "StoreMemberRequest": {
                 "type": "object",
-                "description": "Creating a person on the roster \u2014 which means creating an account, because\nevery member has one (2026_09_08_000001).\n\n`username` is REQUIRED for that reason. It used to be optional, back when a\nrow could be a person without a login; that model is what let somebody hold\nmembers.manage while being unable to authenticate, and deleting the only real\nadministrator then locked the band out.\n\nThere is deliberately no `password` field. The password is GENERATED by the\ncontroller and returned once \u2014 an administrator reads it down the phone (\u00a74.4)\n\u2014 so nobody types a credential into this form and no weak one can be chosen.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first (an empty field reports `required`, not\n`invalid_format`) and `max` precedes `unique` (an over-long username reports\n`too_long` rather than costing a database round-trip).",
+                "description": "Creating a person on the roster \u2014 which means creating an account, because\nevery member has one (2026_09_08_000001).\n\n`username` is REQUIRED for that reason. It used to be optional, back when a\nrow could be a person without a login; that model is what let somebody hold\nmembers.manage while being unable to authenticate, and deleting the only real\nadministrator then locked the band out.\n\nThere is deliberately no `roleIds` field either: granting a permission is\nexactly one operation, PUT /members/{member}/roles, which re-authenticates\nand checks the lockout invariants. Accepting roles here would let a stolen\nsession create a working administrator without ever proving who it is.\n\nThere is deliberately no `password` field. The password is GENERATED by the\ncontroller and returned once \u2014 an administrator reads it down the phone (\u00a74.4)\n\u2014 so nobody types a credential into this form and no weak one can be chosen.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first (an empty field reports `required`, not\n`invalid_format`) and `max` precedes `unique` (an over-long username reports\n`too_long` rather than costing a database round-trip).",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -953,12 +916,6 @@
                     "publicVisible": {
                         "type": "boolean",
                         "description": "Required, not defaulted: publication of a minor's name is a\ndecision somebody makes, so the form has to state it rather than\ninherit it."
-                    },
-                    "roleIds": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
                     }
                 },
                 "required": [

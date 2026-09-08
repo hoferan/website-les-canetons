@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use App\Exceptions\ApiError;
 use App\Exceptions\ReauthenticationFailed;
 use App\Models\Member;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -28,6 +31,29 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 final class Reauthentication
 {
+    /**
+     * The re-authentication password travels in a HEADER, never in the body and
+     * never in the query string.
+     *
+     * WHY NOT THE QUERY STRING: Apache logs query strings in plain text, and
+     * this project already learned that once — POST /api/migrate takes its
+     * secret in X-Migrate-Token for exactly this reason. DELETE with a body put
+     * it there anyway, because RFC 9110 §9.3.5 gives a DELETE body "no defined
+     * semantics" and Scramble therefore maps DELETE parameters to query, which
+     * the generated client faithfully turned into ?currentPassword=…
+     *
+     * WHY NOT A BODY ON THE OTHER TWO: one mechanism. A reader should not have
+     * to remember which endpoint takes it which way, and the next destructive
+     * endpoint should not have to choose.
+     *
+     * Precedent: AWS S3 carries MFA-on-delete in x-amz-mfa. The alternative
+     * standard — step-up "sudo mode" marking the session re-authenticated for a
+     * few minutes (GitHub, GitLab, Google) — was rejected by decision B1: it
+     * needs session state, and a window in which a borrowed phone acts
+     * unprompted is weaker than asking every time.
+     */
+    public const HEADER = 'X-Reauth-Password';
+
     private const MAX_ATTEMPTS = 5;
 
     private const DECAY_SECONDS = 900;
@@ -75,6 +101,33 @@ final class Reauthentication
         }
 
         RateLimiter::clear($key);
+    }
+
+    /**
+     * Reads the header and re-authenticates, reporting a missing one exactly as
+     * the body version did.
+     *
+     * The field token stays `currentPassword` even though the transport is a
+     * header: it names the FORM FIELD the user typed into, which is what
+     * web/src/i18n/fr.ts looks up to say "Mot de passe actuel est requis". The
+     * transport changed; the thing the user got wrong did not.
+     *
+     * @throws ReauthenticationFailed
+     */
+    public static function assertFromRequest(Request $request, Member $actor): void
+    {
+        $password = $request->header(self::HEADER);
+
+        if (blank($password)) {
+            throw new HttpResponseException(ApiError::json(
+                400,
+                'validation_failed',
+                'Invalid form submission',
+                [['field' => 'currentPassword', 'reason' => 'required']],
+            ));
+        }
+
+        self::assert($actor, $password);
     }
 
     private static function throttleKey(Member $actor): string

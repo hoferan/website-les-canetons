@@ -34,9 +34,7 @@ import type {
   Contact200,
   ContactRequest,
   MemberDestroy200,
-  MemberDestroyParams,
   MemberPassword200,
-  MemberPasswordBody,
   MemberResource,
   MemberRole200,
   MemberStore201,
@@ -876,8 +874,16 @@ export const getMemberStoreUrl = () => {
  * (GeneratedPassword), and must_change_password is set, because a password
  * an administrator read down the phone is not a secret worth keeping.
  *
- * No AccessIntegrity check: adding a person, with or without roles, cannot
- * orphan administration or demote anybody.
+ * IT GRANTS NO ROLES, and that is a security property rather than a
+ * simplification. Granting a permission is exactly one operation —
+ * PUT /members/{member}/roles — which re-authenticates, checks the lockout
+ * invariants and audits. Accepting roleIds here would have made the
+ * UNGUARDED path strictly easier than the guarded one: a stolen session
+ * could mint a member holding `direction` and read its password straight
+ * out of this response, a persistent backdoor needing no password at all.
+ *
+ * No AccessIntegrity check is needed for the same reason: a person with no
+ * roles cannot orphan administration or demote anybody.
  * @summary Creates a person — which means creating an account, because every member
 has one (2026_09_08_000001)
  */
@@ -1093,11 +1099,6 @@ export type memberDestroyResponse200 = {
   status: 200;
 };
 
-export type memberDestroyResponse400 = {
-  data: ValidationExceptionResponse;
-  status: 400;
-};
-
 export type memberDestroyResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
@@ -1111,28 +1112,14 @@ export type memberDestroyResponse404 = {
 export type memberDestroyResponseSuccess = memberDestroyResponse200 & {
   headers: Headers;
 };
-export type memberDestroyResponseError = (
-  memberDestroyResponse400 | memberDestroyResponse401 | memberDestroyResponse404
-) & {
+export type memberDestroyResponseError = (memberDestroyResponse401 | memberDestroyResponse404) & {
   headers: Headers;
 };
 
 export type memberDestroyResponse = memberDestroyResponseSuccess | memberDestroyResponseError;
 
-export const getMemberDestroyUrl = (member: number, params: MemberDestroyParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : String(value));
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/members/${member}?${stringifiedParams}`
-    : `/members/${member}`;
+export const getMemberDestroyUrl = (member: number) => {
+  return `/members/${member}`;
 };
 
 /**
@@ -1142,35 +1129,39 @@ export const getMemberDestroyUrl = (member: number, params: MemberDestroyParams)
  * Same ordering rule as MemberRoleController — re-authenticate, then check
  * the invariants, then write — and capture the name BEFORE the delete,
  * because the row is gone by the time anyone reads the audit back.
+ *
+ * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
+ * password. Not a body field and never a query parameter: Apache logs query
+ * strings in plain text, and RFC 9110 gives a DELETE body no defined
+ * semantics, which is how the generated client once turned this into
+ * ?currentPassword=... See App\Support\Reauthentication.
  * @summary Removes a person entirely
  */
 export const memberDestroy = async (
   member: number,
-  params: MemberDestroyParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<memberDestroyResponse> => {
-  return customFetch<memberDestroyResponse>(getMemberDestroyUrl(member, params), {
+  return customFetch<memberDestroyResponse>(getMemberDestroyUrl(member), {
     ...options,
     method: "DELETE",
   });
 };
 
 export const getMemberDestroyMutationOptions = <
-  TError =
-    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof memberDestroy>>,
     TError,
-    { member: number; params: MemberDestroyParams },
+    { member: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof memberDestroy>>,
   TError,
-  { member: number; params: MemberDestroyParams },
+  { member: number },
   TContext
 > => {
   const mutationKey = ["memberDestroy"];
@@ -1182,11 +1173,11 @@ export const getMemberDestroyMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof memberDestroy>>,
-    { member: number; params: MemberDestroyParams }
+    { member: number }
   > = (props) => {
-    const { member, params } = props ?? {};
+    const { member } = props ?? {};
 
-    return memberDestroy(member, params, requestOptions);
+    return memberDestroy(member, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -1195,21 +1186,20 @@ export const getMemberDestroyMutationOptions = <
 export type MemberDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof memberDestroy>>>;
 
 export type MemberDestroyMutationError =
-  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
 
 /**
  * @summary Removes a person entirely
  */
 export const useMemberDestroy = <
-  TError =
-    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof memberDestroy>>,
       TError,
-      { member: number; params: MemberDestroyParams },
+      { member: number },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1218,7 +1208,7 @@ export const useMemberDestroy = <
 ): UseMutationResult<
   Awaited<ReturnType<typeof memberDestroy>>,
   TError,
-  { member: number; params: MemberDestroyParams },
+  { member: number },
   TContext
 > => {
   return useMutation(getMemberDestroyMutationOptions(options), queryClient);
@@ -1227,11 +1217,6 @@ export const useMemberDestroy = <
 export type memberPasswordResponse200 = {
   data: MemberPassword200;
   status: 200;
-};
-
-export type memberPasswordResponse400 = {
-  data: ValidationExceptionResponse;
-  status: 400;
 };
 
 export type memberPasswordResponse401 = {
@@ -1248,7 +1233,7 @@ export type memberPasswordResponseSuccess = memberPasswordResponse200 & {
   headers: Headers;
 };
 export type memberPasswordResponseError = (
-  memberPasswordResponse400 | memberPasswordResponse401 | memberPasswordResponse404
+  memberPasswordResponse401 | memberPasswordResponse404
 ) & {
   headers: Headers;
 };
@@ -1270,37 +1255,39 @@ export const getMemberPasswordUrl = (member: number) => {
  * The returned password is the only copy that will ever exist in plaintext:
  * it is hashed on the way into the database, never written to the audit
  * log, and never returned again.
+ *
+ * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
+ * password. Not a body field and never a query parameter: Apache logs query
+ * strings in plain text, and RFC 9110 gives a DELETE body no defined
+ * semantics, which is how the generated client once turned this into
+ * ?currentPassword=... See App\Support\Reauthentication.
  * @summary Issues a member a new password, shown to the administrator exactly once
  */
 export const memberPassword = async (
   member: number,
-  memberPasswordBody: MemberPasswordBody,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<memberPasswordResponse> => {
   return customFetch<memberPasswordResponse>(getMemberPasswordUrl(member), {
     ...options,
     method: "POST",
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(memberPasswordBody),
   });
 };
 
 export const getMemberPasswordMutationOptions = <
-  TError =
-    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof memberPassword>>,
     TError,
-    { member: number; data: MemberPasswordBody },
+    { member: number },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof memberPassword>>,
   TError,
-  { member: number; data: MemberPasswordBody },
+  { member: number },
   TContext
 > => {
   const mutationKey = ["memberPassword"];
@@ -1312,34 +1299,33 @@ export const getMemberPasswordMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof memberPassword>>,
-    { member: number; data: MemberPasswordBody }
+    { member: number }
   > = (props) => {
-    const { member, data } = props ?? {};
+    const { member } = props ?? {};
 
-    return memberPassword(member, data, requestOptions);
+    return memberPassword(member, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
 export type MemberPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof memberPassword>>>;
-export type MemberPasswordMutationBody = MemberPasswordBody;
+
 export type MemberPasswordMutationError =
-  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
 
 /**
  * @summary Issues a member a new password, shown to the administrator exactly once
  */
 export const useMemberPassword = <
-  TError =
-    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof memberPassword>>,
       TError,
-      { member: number; data: MemberPasswordBody },
+      { member: number },
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
@@ -1348,7 +1334,7 @@ export const useMemberPassword = <
 ): UseMutationResult<
   Awaited<ReturnType<typeof memberPassword>>,
   TError,
-  { member: number; data: MemberPasswordBody },
+  { member: number },
   TContext
 > => {
   return useMutation(getMemberPasswordMutationOptions(options), queryClient);
@@ -1405,6 +1391,12 @@ export const getMemberRoleUrl = (member: number) => {
  * Getting 3 wrong — revoking before writing — would end the sessions and
  * then fail, leaving the member logged out with their old permissions
  * intact.
+ *
+ * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
+ * password. Not a body field and never a query parameter: Apache logs query
+ * strings in plain text, and RFC 9110 gives a DELETE body no defined
+ * semantics, which is how the generated client once turned this into
+ * ?currentPassword=... See App\Support\Reauthentication.
  * @summary Replaces one member's roles — which is the only way any permission is
 ever granted or taken away (design §3: no direct per-member grants)
  */

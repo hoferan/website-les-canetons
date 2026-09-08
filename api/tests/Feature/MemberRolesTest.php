@@ -77,10 +77,19 @@ class MemberRolesTest extends TestCase
         ]);
     }
 
-    private function acting(?Member $as = null): static
+    /**
+     * Re-authentication travels in the X-Reauth-Password header, never in the
+     * body and never in the query string — see App\Support\Reauthentication.
+     */
+    private function acting(?Member $as = null, ?string $reauth = self::ACTOR_PASSWORD): static
     {
+        $headers = ['Origin' => 'http://localhost'];
+        if ($reauth !== null) {
+            $headers['X-Reauth-Password'] = $reauth;
+        }
+
         return $this->actingAs($as ?? $this->actor)
-            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withHeaders($headers)
             ->withSession(['auth.started_at' => now()->timestamp]);
     }
 
@@ -92,7 +101,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [$this->direction->id],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertOk();
 
         $this->assertSame([$this->direction->id], $target->fresh()->roles->pluck('id')->all());
@@ -108,7 +116,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertOk();
 
         $this->assertSame([], $target->fresh()->roles->pluck('id')->all());
@@ -125,7 +132,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertOk();
 
         $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
@@ -141,7 +147,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [$this->committee->id],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertOk();
 
         $this->assertDatabaseHas('sessions', ['id' => 'bystander-phone']);
@@ -154,7 +159,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [$this->committee->id],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
@@ -169,9 +173,8 @@ class MemberRolesTest extends TestCase
         $target->roles()->attach($this->committee);
         $this->sessionFor('target-phone', $target->id);
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting(reauth: 'not-the-password')->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => 'not-the-password',
         ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
 
         $this->assertSame([$this->committee->id], $target->fresh()->roles->pluck('id')->all());
@@ -182,7 +185,7 @@ class MemberRolesTest extends TestCase
     {
         $target = $this->player();
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", ['roleIds' => []])
+        $this->acting(reauth: null)->putJson("/api/members/{$target->id}/roles", ['roleIds' => []])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('fields.0.field', 'currentPassword');
@@ -196,7 +199,6 @@ class MemberRolesTest extends TestCase
 
         $this->acting()->putJson("/api/members/{$this->actor->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertStatus(409)->assertJson(['code' => 'cannot_demote_self']);
 
         $this->assertTrue($this->actor->fresh()->hasPermission(Permission::MembersManage));
@@ -211,9 +213,8 @@ class MemberRolesTest extends TestCase
         // and a wrong password.
         $this->administrator('other');
 
-        $this->acting()->putJson("/api/members/{$this->actor->id}/roles", [
+        $this->acting(reauth: 'not-the-password')->putJson("/api/members/{$this->actor->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => 'not-the-password',
         ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
     }
 
@@ -223,7 +224,6 @@ class MemberRolesTest extends TestCase
         // "you would lock everyone out" is the more informative answer.
         $this->acting()->putJson("/api/members/{$this->actor->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => self::ACTOR_PASSWORD,
         ])->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
     }
 
@@ -233,9 +233,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('target-phone', $target->id);
         $this->sessionFor('anonymous', null);
 
-        $this->acting()->deleteJson("/api/members/{$target->id}", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk();
+        $this->acting()->deleteJson("/api/members/{$target->id}")->assertOk();
 
         $this->assertDatabaseMissing('members', ['id' => $target->id]);
         // `sessions` has NO foreign key to members, so without the explicit
@@ -250,9 +248,7 @@ class MemberRolesTest extends TestCase
         // the row is gone by the time anyone reads it back.
         $target = $this->player();
 
-        $this->acting()->deleteJson("/api/members/{$target->id}", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk();
+        $this->acting()->deleteJson("/api/members/{$target->id}")->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
         $this->assertSame('member.deleted', $entry->action);
@@ -264,9 +260,7 @@ class MemberRolesTest extends TestCase
     {
         $target = $this->player();
 
-        $this->acting()->deleteJson("/api/members/{$target->id}", [
-            'currentPassword' => 'not-the-password',
-        ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
+        $this->acting(reauth: 'not-the-password')->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
 
         $this->assertDatabaseHas('members', ['id' => $target->id]);
     }
@@ -275,18 +269,14 @@ class MemberRolesTest extends TestCase
     {
         $this->administrator('other');
 
-        $this->acting()->deleteJson("/api/members/{$this->actor->id}", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertStatus(409)->assertJson(['code' => 'cannot_delete_self']);
+        $this->acting()->deleteJson("/api/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_delete_self']);
 
         $this->assertDatabaseHas('members', ['id' => $this->actor->id]);
     }
 
     public function test_deleting_the_last_administrator_is_refused(): void
     {
-        $this->acting()->deleteJson("/api/members/{$this->actor->id}", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
+        $this->acting()->deleteJson("/api/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
     }
 
     public function test_a_player_can_do_neither(): void
@@ -294,14 +284,11 @@ class MemberRolesTest extends TestCase
         $player = $this->player();
         $target = $this->player('someone.else');
 
-        $this->acting($player)->putJson("/api/members/{$target->id}/roles", [
+        $this->acting($player, 'secret123')->putJson("/api/members/{$target->id}/roles", [
             'roleIds' => [],
-            'currentPassword' => 'secret123',
         ])->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
-        $this->acting($player)->deleteJson("/api/members/{$target->id}", [
-            'currentPassword' => 'secret123',
-        ])->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player, 'secret123')->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
         $this->assertDatabaseHas('members', ['id' => $target->id]);
     }

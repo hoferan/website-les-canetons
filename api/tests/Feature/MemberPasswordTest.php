@@ -62,10 +62,16 @@ class MemberPasswordTest extends TestCase
         ]);
     }
 
-    private function acting(?Member $as = null): static
+    /** Re-authentication travels in a header — see App\Support\Reauthentication. */
+    private function acting(?Member $as = null, ?string $reauth = self::ACTOR_PASSWORD): static
     {
+        $headers = ['Origin' => 'http://localhost'];
+        if ($reauth !== null) {
+            $headers['X-Reauth-Password'] = $reauth;
+        }
+
         return $this->actingAs($as ?? $this->actor)
-            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withHeaders($headers)
             ->withSession(['auth.started_at' => now()->timestamp]);
     }
 
@@ -73,9 +79,7 @@ class MemberPasswordTest extends TestCase
     {
         $target = $this->member();
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk()->json();
+        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
 
         // The returned value is the only copy that will ever exist in plaintext.
         $this->assertMatchesRegularExpression('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', $body['generatedPassword']);
@@ -89,9 +93,7 @@ class MemberPasswordTest extends TestCase
         // and must not survive first use.
         $target = $this->member();
 
-        $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk();
+        $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk();
 
         $this->assertTrue($target->fresh()->must_change_password);
     }
@@ -104,9 +106,7 @@ class MemberPasswordTest extends TestCase
         $this->sessionFor('target-laptop', $target->id);
         $this->sessionFor('bystander-phone', $bystander->id);
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk()->json();
+        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
 
         $this->assertSame(2, $body['sessionsEnded']);
         $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
@@ -131,9 +131,7 @@ class MemberPasswordTest extends TestCase
         // observable from here.
         $this->sessionFor('actor-other-device', $this->actor->id);
 
-        $this->acting()->postJson("/api/members/{$this->actor->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk();
+        $this->acting()->postJson("/api/members/{$this->actor->id}/password")->assertOk();
 
         $this->acting()->getJson('/api/me')->assertOk();
         $this->assertDatabaseMissing('sessions', ['id' => 'actor-other-device']);
@@ -144,9 +142,7 @@ class MemberPasswordTest extends TestCase
     {
         $target = $this->member();
 
-        $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk();
+        $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
         $this->assertSame('member.password_reset', $entry->action);
@@ -159,9 +155,7 @@ class MemberPasswordTest extends TestCase
         // The one place a credential could plausibly get written down forever.
         $target = $this->member();
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => self::ACTOR_PASSWORD,
-        ])->assertOk()->json();
+        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
 
         $log = AuditEntry::all()->toJson();
         $this->assertStringNotContainsString($body['generatedPassword'], $log);
@@ -173,9 +167,8 @@ class MemberPasswordTest extends TestCase
         $target = $this->member();
         $before = $target->password;
 
-        $this->acting()->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => 'not-the-password',
-        ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
+        $this->acting(reauth: 'not-the-password')->postJson("/api/members/{$target->id}/password")
+            ->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
 
         $this->assertSame($before, $target->fresh()->password);
         $this->assertFalse($target->fresh()->must_change_password);
@@ -185,7 +178,7 @@ class MemberPasswordTest extends TestCase
     {
         $target = $this->member();
 
-        $this->acting()->postJson("/api/members/{$target->id}/password", [])
+        $this->acting(reauth: null)->postJson("/api/members/{$target->id}/password")
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('fields.0.field', 'currentPassword');
@@ -196,8 +189,6 @@ class MemberPasswordTest extends TestCase
         $player = $this->member('plain');
         $target = $this->member('someone.else');
 
-        $this->acting($player)->postJson("/api/members/{$target->id}/password", [
-            'currentPassword' => 'their-old-password',
-        ])->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player, 'their-old-password')->postJson("/api/members/{$target->id}/password")->assertStatus(403)->assertJson(['code' => 'access_denied']);
     }
 }

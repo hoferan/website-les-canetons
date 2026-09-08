@@ -34,10 +34,16 @@ class MemberRoleController extends Controller
      * Getting 3 wrong — revoking before writing — would end the sessions and
      * then fail, leaving the member logged out with their old permissions
      * intact.
+     *
+     * REQUIRES THE `X-Reauth-Password` HEADER carrying the caller's own current
+     * password. Not a body field and never a query parameter: Apache logs query
+     * strings in plain text, and RFC 9110 gives a DELETE body no defined
+     * semantics, which is how the generated client once turned this into
+     * ?currentPassword=... See App\Support\Reauthentication.
      */
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {
-        Reauthentication::assert($request->user(), $request->string('currentPassword')->value());
+        Reauthentication::assertFromRequest($request, $request->user());
 
         /** @var array<int, int> $roleIds */
         $roleIds = array_map('intval', $request->validated('roleIds'));

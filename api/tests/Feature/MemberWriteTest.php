@@ -67,16 +67,14 @@ class MemberWriteTest extends TestCase
         ];
     }
 
-    public function test_it_creates_a_person_with_a_register_and_roles(): void
+    public function test_it_creates_a_person_with_a_register_but_never_a_role(): void
     {
         $section = $this->section();
-        $role = Role::where('key', 'committee')->sole();
 
         $body = $this->acting()->postJson('/api/members', $this->payload([
             'sectionId' => $section->id,
             'committeeTitle' => 'Présidente',
             'publicVisible' => true,
-            'roleIds' => [$role->id],
         ]))->assertCreated()->json();
 
         $member = Member::where('username', 'perrine.player')->sole();
@@ -85,7 +83,24 @@ class MemberWriteTest extends TestCase
         $this->assertSame($section->id, $member->section_id);
         $this->assertSame('Présidente', $member->committee_title);
         $this->assertTrue($member->public_visible);
-        $this->assertSame([$role->id], $member->roles->pluck('id')->all());
+        $this->assertSame([], $member->roles->pluck('id')->all());
+    }
+
+    public function test_creating_a_person_cannot_grant_a_role_even_if_asked(): void
+    {
+        // THE HOLE THIS CLOSES. PUT /members/{id}/roles re-authenticates; this
+        // endpoint does not. Accepting roleIds here would have made the
+        // unguarded path strictly easier than the guarded one — a stolen
+        // session could mint a member holding `direction` and read its password
+        // straight out of the 201 response, a backdoor needing no password.
+        $role = Role::where('key', 'direction')->sole();
+
+        $this->acting()->postJson('/api/members', $this->payload([
+            'roleIds' => [$role->id],
+        ]))->assertCreated();
+
+        $member = Member::where('username', 'perrine.player')->sole();
+        $this->assertSame([], $member->roles->pluck('id')->all(), 'create must never grant a role');
     }
 
     public function test_a_created_person_can_log_in_with_the_password_it_returns(): void
