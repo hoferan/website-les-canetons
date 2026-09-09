@@ -512,6 +512,21 @@ const overrides = [
       return refusal;
     }
     const body = (await request.json()) as Partial<MemberResource>;
+
+    // Mirrors StoreMemberRequest's `unique:members,username`. The rule the
+    // screen most needs a mock for: a duplicate has to land on the username
+    // field, in French, without closing the form the administrator is typing in.
+    if (members.some((member) => member.username === body.username)) {
+      return HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: [{ field: "username", reason: "already_taken" }],
+        },
+        { status: 400 },
+      );
+    }
+
     const member: MemberResource = {
       id: nextMemberId++,
       firstName: body.firstName ?? "",

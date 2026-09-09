@@ -49,3 +49,29 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
     fields,
   };
 }
+
+/**
+ * A role's French name and help text, resolved from its `key`.
+ *
+ * The API carries NO display name (decision B6): it is English without
+ * exception, and a seeded role's name is system text a developer chose in a
+ * migration rather than something a user typed. `key` is the fixed identifier,
+ * and this is the only place it becomes French — the same rule
+ * translateApiError follows for error tokens.
+ *
+ * An unknown key falls back to the key itself rather than to i18next's miss
+ * behaviour, which returns the lookup path ("roles.whatever.label") and would
+ * print that on screen. A key with no copy is a role somebody added in Adminer;
+ * showing its key is honest and legible, and it is what the deferred role
+ * editor replaces.
+ */
+export function roleLabel(key: string): string {
+  const path = `roles.${key}.label`;
+  return i18next.exists(path) ? i18next.t(path) : key;
+}
+
+/** The one-line explanation of what a role grants. Empty when there is none. */
+export function roleHint(key: string): string {
+  const path = `roles.${key}.hint`;
+  return i18next.exists(path) ? i18next.t(path) : "";
+}
