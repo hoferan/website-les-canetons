@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
 > (recommended) or superpowers:executing-plans to implement this plan
-> task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 >
 > **This plan states requirements, not code.** Its verbatim PHP/TS/TSX was
 > removed on 2026-09-07, deliberately. Transcribing it is what produced every
@@ -16,6 +16,37 @@
 > then write the implementation. Keep the test names and the literals exactly;
 > everything else is yours to derive. Commands, mutation-test recipes and
 > expected outcomes are unchanged and are still to be followed literally.
+
+> ### Completed 2026-09-09. Where this plan and the code disagreed
+>
+> Tasks 1-10 (the API) were built in an earlier session. Tasks 11-16 (the SPA)
+> were built on 2026-09-09, and four of this plan's own steps had been overtaken
+> by decisions recorded further down it. Each was resolved in favour of the code
+> as it actually is, per the preamble above:
+>
+> - **Task 11 Steps 1-3 were a no-op.** `npm run openapi` and
+>   `npm run generate:api` both came back byte-identical: Tasks 6-10 had already
+>   committed a current client, and `roleIds` was already `number[]`.
+> - **Task 11 and Task 15 assume a person with no account.** 2026_09_08_000001
+>   made `username`/`password` NOT NULL, so that row cannot exist. Every "Pas de
+>   compte" state, and the optional username on the member form, is gone.
+> - **Task 15's `ConfirmWithPassword` is `ConfirmByTypingName`.** Decision B7
+>   removed re-authentication from the roster writes and, in the same entry,
+>   said a type-the-name confirmation replaces it and that Task 15 must build
+>   it. It is now the only guard on a delete, and it is mutation-tested.
+> - **Task 15 builds role assignment**, which its own step list omitted while
+>   the goal below and decision B3 both require it. Without it
+>   `PUT /members/{member}/roles` would have shipped with no caller.
+> - **Task 16 Step 5 names `AccessIntegrity::assertMayRemoveCredentials()`,
+>   which no longer exists** — the credentials model dissolved it. The
+>   equivalent surviving guard, `assertMayDelete()` in
+>   `MemberController::destroy()`, was commented out instead: two tests failed
+>   (`test_deleting_yourself_is_refused`,
+>   `test_deleting_the_last_administrator_is_refused`) and it was restored.
+>
+> Verified 2026-09-09: Laravel **226 passed** in Docker, `npm run check` exit 0,
+> `npm run openapi && npm run generate:api` left the tree clean, and the whole
+> of Step 4's browser checklist passed against the built artifact on :8090.
 
 **Goal:** The committee can administer the roster from a real screen — create a
 person, give them an account, assign their register and their roles, reset a
@@ -286,7 +317,7 @@ migration because the shared host has no shell.
 - Modify: `api/.env.example`, `docker/api/env.docker`
 - Modify: `api/database/seeders/DevSeeder.php`, `api/tests/Feature/DevSeederTest.php`
 
-- [ ] **Step 1: Write the failing test for the reference data**
+- [x] **Step 1: Write the failing test for the reference data**
 
 Create `api/tests/Feature/SeedRegistersAndRolesTest.php`:
 
@@ -318,7 +349,7 @@ Requirements, from the plan's own comments:
   — the "roles are editable data" capability this rebuild exists to add.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SeedRegistersAndRolesTest
@@ -328,7 +359,7 @@ Expected: FAIL. `Section::orderBy(...)->pluck('name')` returns `[]`, and
 `Role::where('key','direction')->sole()` throws
 `Illuminate\Database\Eloquent\ModelNotFoundException`.
 
-- [ ] **Step 3: Write the reference-data migration**
+- [x] **Step 3: Write the reference-data migration**
 
 Create `api/database/migrations/2026_09_07_000001_seed_registers_and_roles.php`:
 
@@ -372,7 +403,7 @@ Requirements, from the plan's own comments:
   now. Do not re-sync them.
 
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SeedRegistersAndRolesTest
@@ -380,7 +411,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=SeedRegi
 
 Expected: PASS, 4 tests.
 
-- [ ] **Step 5: Write the failing test for the first administrator**
+- [x] **Step 5: Write the failing test for the first administrator**
 
 Create `api/tests/Feature/BootstrapAdministratorTest.php`:
 
@@ -416,7 +447,7 @@ Requirements, from the plan's own comments:
   migration to run.
 
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=BootstrapAdministratorTest
@@ -425,7 +456,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=Bootstra
 Expected: FAIL — the migration file does not exist, so `require` raises
 `failed to open stream: No such file or directory`.
 
-- [ ] **Step 7: Add the config the migration reads**
+- [x] **Step 7: Add the config the migration reads**
 
 Create `api/config/bootstrap.php`:
 
@@ -447,7 +478,7 @@ Requirements, from the plan's own comments:
   must never be one.
 
 
-- [ ] **Step 8: Write the bootstrap migration**
+- [x] **Step 8: Write the bootstrap migration**
 
 Create `api/database/migrations/2026_09_07_000002_bootstrap_first_administrator.php`:
 
@@ -490,7 +521,7 @@ Requirements, from the plan's own comments:
   can administer members, which is the state it exists to prevent.
 
 
-- [ ] **Step 9: Run it to verify it passes**
+- [x] **Step 9: Run it to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=BootstrapAdministratorTest
@@ -498,7 +529,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=Bootstra
 
 Expected: PASS, 5 tests.
 
-- [ ] **Step 10: Document the environment keys**
+- [x] **Step 10: Document the environment keys**
 
 Add to `api/.env.example`, after the `SESSION_*` block:
 
@@ -532,7 +563,7 @@ BOOTSTRAP_ADMIN_FIRST_NAME=Comité
 BOOTSTRAP_ADMIN_LAST_NAME=Local
 ```
 
-- [ ] **Step 11: Check the secret guard is content**
+- [x] **Step 11: Check the secret guard is content**
 
 ```bash
 node tools/secret-guard.mjs
@@ -543,7 +574,7 @@ docker value is a self-describing non-secret. **If the guard flags either,
 do not weaken the guard** — rename the docker value until it is obviously not
 a credential.
 
-- [ ] **Step 12: Point DevSeeder at the migration's registers**
+- [x] **Step 12: Point DevSeeder at the migration's registers**
 
 The registers are now reference data, so the seeder must stop inventing its
 own — `DevSeederTest` currently asserts the four synthetic ones, and with both
@@ -608,7 +639,7 @@ Requirements, from the plan's own comments:
 >             ->roles()->syncWithoutDetaching([$committee->id]);
 > ```
 
-- [ ] **Step 13: Update DevSeederTest to the real register list**
+- [x] **Step 13: Update DevSeederTest to the real register list**
 
 In `api/tests/Feature/DevSeederTest.php`, replace
 `test_the_sections_are_ordered`:
@@ -633,7 +664,7 @@ Keep `test_a_hand_edited_roles_permissions_survive_a_reseed` exactly as it is �
 it now guards the seeder's *reading* of the roles rather than its writing of
 them, and it must still pass.
 
-- [ ] **Step 14: Run the whole suite**
+- [x] **Step 14: Run the whole suite**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -643,7 +674,7 @@ Expected: PASS. If `DevSeederTest` fails on `$sections['Cloches']` being
 undefined, the seeder ran against a database where migration 000001 had not —
 check the migration's filename ordering.
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add api/config/bootstrap.php api/database/migrations api/database/seeders \
@@ -687,7 +718,7 @@ exactly that reason.
 - Create: `api/tests/Feature/ReauthenticationTest.php`
 - Modify: `api/bootstrap/app.php`, `web/src/i18n/fr.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/ReauthenticationTest.php`:
 
@@ -714,7 +745,7 @@ Requirements, from the plan's own comments:
   administering the band.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=ReauthenticationTest
@@ -722,7 +753,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=Reauthen
 
 Expected: FAIL — `Class "App\Exceptions\ReauthenticationFailed" not found`.
 
-- [ ] **Step 3: Write the exception**
+- [x] **Step 3: Write the exception**
 
 Create `api/app/Exceptions/ReauthenticationFailed.php`:
 
@@ -742,7 +773,7 @@ Requirements, from the plan's own comments:
   read that class's comment before renaming anything here.
 
 
-- [ ] **Step 4: Write the support class**
+- [x] **Step 4: Write the support class**
 
 Create `api/app/Support/Reauthentication.php`:
 
@@ -775,7 +806,7 @@ Requirements, from the plan's own comments:
   hash raises a TypeError; treating it as a match would be very much worse.
 
 
-- [ ] **Step 5: Render it inside the error contract**
+- [x] **Step 5: Render it inside the error contract**
 
 In `api/bootstrap/app.php`, immediately after the `AccessIntegrityViolation`
 render callback and **before** the catch-all `HttpException` one:
@@ -799,7 +830,7 @@ and add the import `use App\Exceptions\ReauthenticationFailed;`.
 > closure explains why the order is maintained anyway: so that widening either
 > one later cannot silently pick the wrong winner.
 
-- [ ] **Step 6: Add the French copy**
+- [x] **Step 6: Add the French copy**
 
 In `web/src/i18n/fr.ts`, add to `errors`:
 
@@ -815,7 +846,7 @@ and to `fields`:
 
 `too_many_attempts` already exists and needs nothing.
 
-- [ ] **Step 7: Run the test and the vocabulary guard**
+- [x] **Step 7: Run the test and the vocabulary guard**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=ReauthenticationTest
@@ -824,7 +855,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=ApiError
 
 Expected: PASS, 6 tests, and the guard green.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/app/Exceptions/ReauthenticationFailed.php api/app/Support/Reauthentication.php \
@@ -849,7 +880,7 @@ for an administrator resetting somebody *else's* password, or deleting them.
 - Modify: `api/app/Support/SessionRevoker.php`
 - Modify: `api/tests/Feature/SessionRevocationTest.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `api/tests/Feature/SessionRevocationTest.php`, inside the class:
 
@@ -867,7 +898,7 @@ Literals to preserve verbatim:
 > — `$this->insertSession()` is the name to expect. If it differs, use the real
 > one rather than adding a second.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SessionRevocationTest
@@ -875,7 +906,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=SessionR
 
 Expected: FAIL — `Call to undefined method App\Support\SessionRevoker::forMemberExcept()`.
 
-- [ ] **Step 3: Add the method**
+- [x] **Step 3: Add the method**
 
 In `api/app/Support/SessionRevoker.php`, below `forMember()`:
 
@@ -900,7 +931,7 @@ Requirements, from the plan's own comments:
   keep. @return int the number of sessions ended
 
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SessionRevocationTest
@@ -908,7 +939,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=SessionR
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/app/Support/SessionRevoker.php api/tests/Feature/SessionRevocationTest.php
@@ -929,7 +960,7 @@ phone call, not a breach.
 - Create: `api/app/Support/GeneratedPassword.php`
 - Create: `api/tests/Unit/GeneratedPasswordTest.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Unit/GeneratedPasswordTest.php`:
 
@@ -951,7 +982,7 @@ Requirements, from the plan's own comments:
   class.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=GeneratedPasswordTest
@@ -959,7 +990,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=Generate
 
 Expected: FAIL — `Class "App\Support\GeneratedPassword" not found`.
 
-- [ ] **Step 3: Write the class**
+- [x] **Step 3: Write the class**
 
 Create `api/app/Support/GeneratedPassword.php`:
 
@@ -996,7 +1027,7 @@ Requirements, from the plan's own comments:
 > does not need editing — but the comment must not claim a figure the string
 > does not support.
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=GeneratedPasswordTest
@@ -1004,7 +1035,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=Generate
 
 Expected: PASS, 4 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/app/Support/GeneratedPassword.php api/tests/Unit/GeneratedPasswordTest.php
@@ -1038,7 +1069,7 @@ an administrator.**
 - Modify: `api/app/Support/AccessIntegrity.php`, `api/app/Models/Member.php`
 - Modify: `api/tests/Feature/AccessIntegrityTest.php`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `api/tests/Feature/AccessIntegrityTest.php`, inside the class:
 
@@ -1065,7 +1096,7 @@ Requirements, from the plan's own comments:
 > expect. If it differs, use the real one rather than adding a second. It must
 > create members WITH credentials; if it does not, these tests are meaningless.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=AccessIntegrityTest
@@ -1075,7 +1106,7 @@ Expected: FAIL. The first two fail because a credential-less holder still
 counts, so no exception is thrown; the third fails with
 `Call to undefined method …::assertMayRemoveCredentials()`.
 
-- [ ] **Step 3: Give Member the question to answer**
+- [x] **Step 3: Give Member the question to answer**
 
 In `api/app/Models/Member.php`, below `isPlayer()`:
 
@@ -1092,7 +1123,7 @@ Requirements, from the plan's own comments:
   lockout invariants count only members for whom this is true.
 
 
-- [ ] **Step 4: Count only reachable administrators**
+- [x] **Step 4: Count only reachable administrators**
 
 In `api/app/Support/AccessIntegrity.php`, replace `wouldOrphanAdministration()`
 entirely:
@@ -1118,7 +1149,7 @@ Requirements, from the plan's own comments:
   array<int, int>  $excludedMemberIds
 
 
-- [ ] **Step 5: Add the credentials invariant**
+- [x] **Step 5: Add the credentials invariant**
 
 In the same file, below `assertMayReplaceRoles()`:
 
@@ -1146,7 +1177,7 @@ Requirements, from the plan's own comments:
 
 `use App\Models\Member;` is already imported in this file.
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=AccessIntegrityTest
@@ -1154,7 +1185,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=AccessIn
 
 Expected: PASS, including the five new tests.
 
-- [ ] **Step 7: Mutation-test the change**
+- [x] **Step 7: Mutation-test the change**
 
 This project has shipped four tests that asserted nothing. Prove these do not.
 
@@ -1169,7 +1200,7 @@ This project has shipped four tests that asserted nothing. Prove these do not.
 
 Record in the commit message what failed at each step.
 
-- [ ] **Step 8: Run the whole suite**
+- [x] **Step 8: Run the whole suite**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -1180,7 +1211,7 @@ credentials, so the tightened count does not move them. If any existing test
 DOES move, read it before changing it — it may be describing the old, wrong
 behaviour.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add api/app/Support/AccessIntegrity.php api/app/Models/Member.php \
@@ -1265,7 +1296,7 @@ Opening it now would be guessing at R2's requirements.
 - Create: `api/tests/Feature/SectionAndRoleIndexTest.php`
 - Modify: `api/app/Providers/AppServiceProvider.php`, `api/bootstrap/app.php`, `api/routes/api.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/SectionAndRoleIndexTest.php`:
 
@@ -1298,7 +1329,7 @@ Requirements, from the plan's own comments:
   ConfigEndpointTest::test_it_is_not_cacheable for the full reasoning.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SectionAndRoleIndexTest
@@ -1308,7 +1339,7 @@ Expected: FAIL — every test 404s, because the routes do not exist. (The
 anonymous test may *appear* to pass for the wrong reason: a 404 is not a 401.
 Read the failure output rather than the summary line.)
 
-- [ ] **Step 3: Turn off resource wrapping**
+- [x] **Step 3: Turn off resource wrapping**
 
 In `api/app/Providers/AppServiceProvider.php`:
 
@@ -1333,7 +1364,7 @@ Requirements, from the plan's own comments:
   each other.
 
 
-- [ ] **Step 4: Write the no-store middleware**
+- [x] **Step 4: Write the no-store middleware**
 
 Create `api/app/Http/Middleware/NoStoreResponse.php`:
 
@@ -1357,7 +1388,7 @@ Requirements, from the plan's own comments:
   therefore assert the DIRECTIVE, not the header's exact string.
 
 
-- [ ] **Step 5: Alias it**
+- [x] **Step 5: Alias it**
 
 In `api/bootstrap/app.php`, extend the existing alias array:
 
@@ -1367,7 +1398,7 @@ In `api/bootstrap/app.php`, extend the existing alias array:
 
 and add `use App\Http\Middleware\NoStoreResponse;`.
 
-- [ ] **Step 6: Write the two Resources**
+- [x] **Step 6: Write the two Resources**
 
 Create `api/app/Http/Resources/SectionResource.php`:
 
@@ -1405,7 +1436,7 @@ Requirements, from the plan's own comments:
   string[]. @return list<string>
 
 
-- [ ] **Step 7: Write the two controllers**
+- [x] **Step 7: Write the two controllers**
 
 Create `api/app/Http/Controllers/Api/SectionController.php`:
 
@@ -1443,7 +1474,7 @@ Requirements, from the plan's own comments:
 - `index()`, not `__invoke()` — see SectionController for why.
 
 
-- [ ] **Step 8: Add the routes**
+- [x] **Step 8: Add the routes**
 
 Replace the `auth:sanctum` group in `api/routes/api.php` with:
 
@@ -1469,7 +1500,7 @@ Requirements, from the plan's own comments:
 
 and add the two imports.
 
-- [ ] **Step 9: Run the test to verify it passes**
+- [x] **Step 9: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=SectionAndRoleIndexTest
@@ -1477,7 +1508,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=SectionA
 
 Expected: PASS, 6 tests.
 
-- [ ] **Step 10: Confirm the middleware did not disturb `/api/me`**
+- [x] **Step 10: Confirm the middleware did not disturb `/api/me`**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MeTest
@@ -1490,7 +1521,7 @@ test fails, do not loosen it.** Delete the inline `->header('Cache-Control',
 …)` from `AuthController::me()` instead, with a comment pointing at the
 middleware, and re-run.
 
-- [ ] **Step 11: Run the whole suite, then commit**
+- [x] **Step 11: Run the whole suite, then commit**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -1518,7 +1549,7 @@ middleware so the tenth identity-dependent endpoint cannot forget it."
 - Create: `api/tests/Feature/MemberIndexTest.php`
 - Modify: `api/routes/api.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/MemberIndexTest.php`:
 
@@ -1549,7 +1580,7 @@ Requirements, from the plan's own comments:
   band is the one that feels it.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberIndexTest
@@ -1557,7 +1588,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberIn
 
 Expected: FAIL — 404 on every request.
 
-- [ ] **Step 3: Write the Resource**
+- [x] **Step 3: Write the Resource**
 
 Create `api/app/Http/Resources/MemberResource.php`:
 
@@ -1596,7 +1627,7 @@ Requirements, from the plan's own comments:
   `number[]`. @return list<int>
 
 
-- [ ] **Step 4: Write the controller's index**
+- [x] **Step 4: Write the controller's index**
 
 Create `api/app/Http/Controllers/Api/MemberController.php`:
 
@@ -1618,7 +1649,7 @@ Requirements, from the plan's own comments:
   three queries each on a shared host.
 
 
-- [ ] **Step 5: Add the route**
+- [x] **Step 5: Add the route**
 
 Inside the `permission:members.manage` group in `api/routes/api.php`:
 
@@ -1626,7 +1657,7 @@ Inside the `permission:members.manage` group in `api/routes/api.php`:
 **Implement `api/routes/api.php`.** _(verbatim php removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 6: Run the test to verify it passes**
+- [x] **Step 6: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberIndexTest
@@ -1636,7 +1667,7 @@ Expected: PASS, 7 tests. If the query-count test fails, `with(['section',
 'roles'])` is missing or a Resource method is touching a relation it did not
 eager-load.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/app/Http/Resources/MemberResource.php \
@@ -1682,7 +1713,7 @@ Three reasons, in order of weight:
 - Modify: `api/app/Http/Controllers/Api/MemberController.php`, `api/routes/api.php`
 - Modify: `api/app/Exceptions/ApiError.php`, `web/src/i18n/fr.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/MemberWriteTest.php`:
 
@@ -1722,7 +1753,7 @@ Requirements, from the plan's own comments:
   trains the reflex that the destructive dialogs rely on.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberWriteTest
@@ -1730,7 +1761,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberWr
 
 Expected: FAIL — 404 on POST and PATCH.
 
-- [ ] **Step 3: Map the `unique` rule to a token worth reading**
+- [x] **Step 3: Map the `unique` rule to a token worth reading**
 
 In `api/app/Exceptions/ApiError.php`, add to the `REASONS` map, after
 `'max' => 'too_long',`:
@@ -1761,7 +1792,7 @@ In `web/src/i18n/fr.ts`, add to `validation`:
 **Implement `web/src/i18n/fr.ts`.** _(verbatim ts removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 4: Write the two Form Requests**
+- [x] **Step 4: Write the two Form Requests**
 
 Create `api/app/Http/Requests/StoreMemberRequest.php`:
 
@@ -1816,7 +1847,7 @@ Requirements, from the plan's own comments:
   because their username is "already taken" by themselves.
 
 
-- [ ] **Step 5: Write store() and update()**
+- [x] **Step 5: Write store() and update()**
 
 Add to `api/app/Http/Controllers/Api/MemberController.php`:
 
@@ -1861,7 +1892,7 @@ with these imports added at the top of the file:
 > separately below it. If you add another non-nullable field, put it in the
 > `fill()`; anything nullable goes in the `foreach`.
 
-- [ ] **Step 6: Add the routes**
+- [x] **Step 6: Add the routes**
 
 Inside the `permission:members.manage` group:
 
@@ -1869,7 +1900,7 @@ Inside the `permission:members.manage` group:
 **Implement the php described here.** _(verbatim php removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 7: Run the test to verify it passes**
+- [x] **Step 7: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberWriteTest
@@ -1878,7 +1909,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=ApiError
 
 Expected: PASS, 12 tests, and the vocabulary guard green.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/app/Http/Requests/StoreMemberRequest.php api/app/Http/Requests/UpdateMemberRequest.php \
@@ -1906,7 +1937,7 @@ Both are destructive, both need re-authentication, and both are the reason
 - Create: `api/tests/Feature/MemberRolesTest.php`
 - Modify: `api/app/Http/Controllers/Api/MemberController.php`, `api/routes/api.php`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `api/tests/Feature/MemberRolesTest.php`:
 
@@ -1935,7 +1966,7 @@ Requirements, from the plan's own comments:
   is gone by the time anyone reads it back.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberRolesTest
@@ -1943,7 +1974,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberRo
 
 Expected: FAIL — 404 on PUT and DELETE.
 
-- [ ] **Step 3: Write the roles request**
+- [x] **Step 3: Write the roles request**
 
 Create `api/app/Http/Requests/ReplaceMemberRolesRequest.php`:
 
@@ -1963,7 +1994,7 @@ Requirements, from the plan's own comments:
 - @return array<string, array<int, mixed>>
 
 
-- [ ] **Step 4: Write the roles controller**
+- [x] **Step 4: Write the roles controller**
 
 Create `api/app/Http/Controllers/Api/MemberRoleController.php`:
 
@@ -1992,7 +2023,7 @@ Requirements, from the plan's own comments:
   all evening.
 
 
-- [ ] **Step 5: Write destroy()**
+- [x] **Step 5: Write destroy()**
 
 Add to `api/app/Http/Controllers/Api/MemberController.php`:
 
@@ -2017,7 +2048,7 @@ Requirements, from the plan's own comments:
 and add the imports `use App\Support\Reauthentication;` and
 `use Illuminate\Http\Request;`.
 
-- [ ] **Step 6: Add the routes**
+- [x] **Step 6: Add the routes**
 
 Inside the `permission:members.manage` group:
 
@@ -2025,7 +2056,7 @@ Inside the `permission:members.manage` group:
 **Implement the php described here.** _(verbatim php removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 7: Run the test to verify it passes**
+- [x] **Step 7: Run the test to verify it passes**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberRolesTest
@@ -2033,7 +2064,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberRo
 
 Expected: PASS, 13 tests.
 
-- [ ] **Step 8: Mutation-test the ordering claims**
+- [x] **Step 8: Mutation-test the ordering claims**
 
 The class comment asserts that the call order is the security of the endpoint.
 Prove the tests can tell.
@@ -2054,7 +2085,7 @@ Prove the tests can tell.
    delete anyway, and record that the test does not distinguish it.
 4. Revert all three.
 
-- [ ] **Step 9: Run the whole suite, then commit**
+- [x] **Step 9: Run the whole suite, then commit**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -2093,7 +2124,7 @@ Two endpoints that look similar and differ in every detail that matters:
 - Create: `api/tests/Feature/MemberPasswordTest.php`, `AccountPasswordTest.php`
 - Modify: `api/app/Exceptions/ApiError.php`, `api/routes/api.php`, `web/src/i18n/fr.ts`
 
-- [ ] **Step 1: Write the failing test for issuing a password**
+- [x] **Step 1: Write the failing test for issuing a password**
 
 Create `api/tests/Feature/MemberPasswordTest.php`:
 
@@ -2125,7 +2156,7 @@ Requirements, from the plan's own comments:
 - The one place a credential could plausibly get written down forever.
 
 
-- [ ] **Step 2: Write the failing test for changing your own password**
+- [x] **Step 2: Write the failing test for changing your own password**
 
 Create `api/tests/Feature/AccountPasswordTest.php`:
 
@@ -2166,7 +2197,7 @@ Requirements, from the plan's own comments:
 > quietly does not, and an auth test that is accidentally authenticated passes
 > for the wrong reason.
 
-- [ ] **Step 3: Run both to verify they fail**
+- [x] **Step 3: Run both to verify they fail**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberPasswordTest
@@ -2175,7 +2206,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=AccountP
 
 Expected: FAIL, 404 throughout.
 
-- [ ] **Step 4: Give the `min` rule a token that means what it says**
+- [x] **Step 4: Give the `min` rule a token that means what it says**
 
 In `api/app/Exceptions/ApiError.php`, in the `REASONS` map, **replace**:
 
@@ -2239,7 +2270,7 @@ and to `fields`:
 **Implement `web/src/i18n/fr.ts`.** _(verbatim ts removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 5: Write the member password controller**
+- [x] **Step 5: Write the member password controller**
 
 Create `api/app/Http/Controllers/Api/MemberPasswordController.php`:
 
@@ -2276,7 +2307,7 @@ Requirements, from the plan's own comments:
   e_generated_password_never_appears_in_the_audit_log.
 
 
-- [ ] **Step 6: Write the account password request and controller**
+- [x] **Step 6: Write the account password request and controller**
 
 Create `api/app/Http/Requests/AccountPasswordRequest.php`:
 
@@ -2327,7 +2358,7 @@ Requirements, from the plan's own comments:
   deleting the live one. See SessionRevoker.
 
 
-- [ ] **Step 7: Add the routes**
+- [x] **Step 7: Add the routes**
 
 In `api/routes/api.php`, inside the `['auth:sanctum', 'no-store']` group but
 **outside** the `permission:members.manage` group:
@@ -2352,7 +2383,7 @@ Requirements, from the plan's own comments:
 - Issuing a credential and resetting one are the same operation (§4.4).
 
 
-- [ ] **Step 8: Run both tests, and the vocabulary guard**
+- [x] **Step 8: Run both tests, and the vocabulary guard**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test --filter=MemberPasswordTest
@@ -2362,7 +2393,7 @@ docker compose exec -w /var/www/html/_api web php artisan test --filter=ApiError
 
 Expected: PASS — 10, 8 and the guard.
 
-- [ ] **Step 9: Run the whole suite**
+- [x] **Step 9: Run the whole suite**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -2373,7 +2404,7 @@ Expected: PASS. **Watch for `ApiErrorContractTest`** — it may pin the old
 behaviour this task deliberately changed: update it to `too_short` with its
 `params`, and say so in the commit.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add api/app/Http/Controllers/Api/MemberPasswordController.php \
@@ -2445,14 +2476,14 @@ before rendering picks the identity.
 - Modify: `web/src/mocks/handlers.ts`, `web/src/session/SessionProvider.tsx`
 - Modify: `web/src/mocks/handlers.test.ts`
 
-- [ ] **Step 1: Regenerate**
+- [x] **Step 1: Regenerate**
 
 ```bash
 npm run openapi
 npm run generate:api
 ```
 
-- [ ] **Step 2: Read the generated names and write them down**
+- [x] **Step 2: Read the generated names and write them down**
 
 ```bash
 grep -n "^export const use" web/src/api/generated/endpoints.ts
@@ -2479,7 +2510,7 @@ observed examples, not a guarantee, and the rest of this plan's imports assume
 it. If a name differs, use the real one — do not rename the controller to force
 the guess to be right.
 
-- [ ] **Step 3: Check the generated types are not loose**
+- [x] **Step 3: Check the generated types are not loose**
 
 ```bash
 grep -n "MemberResource\|SectionResource\|RoleResource" web/src/api/generated/model/index.ts
@@ -2493,7 +2524,7 @@ inline `->pluck()` or `->map()` and move it into a private method with a
 `/** @return list<int> */` docblock, then regenerate. This plan's preamble has
 the measurement.
 
-- [ ] **Step 4: Add `can()` to the session**
+- [x] **Step 4: Add `can()` to the session**
 
 In `web/src/session/SessionProvider.tsx`, extend the `Session` type and value:
 
@@ -2516,7 +2547,7 @@ and, where `value` is built:
 **Implement the tsx described here.** _(verbatim tsx removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 5: Teach the mocked backend the roster**
+- [x] **Step 5: Teach the mocked backend the roster**
 
 The mocked backend is what `npm run dev:mock` and every component test run
 against, and it is deliberately a real little backend rather than a fixture
@@ -2594,7 +2625,7 @@ Requirements, from the plan's own comments:
   all.
 
 
-- [ ] **Step 6: Pin the mock's own behaviour**
+- [x] **Step 6: Pin the mock's own behaviour**
 
 `web/src/mocks/handlers.test.ts` exists because a mock that silently drifts from
 the API is worse than no mock. Add:
@@ -2617,7 +2648,7 @@ Requirements, from the plan's own comments:
   and a count assertion fails only when the whole file runs.
 
 
-- [ ] **Step 7: Run the web suite and commit**
+- [x] **Step 7: Run the web suite and commit**
 
 ```powershell
 npm run test:web
@@ -2646,7 +2677,7 @@ below it is new.
 - Create: `web/src/pages/Login.test.tsx`
 - Modify: `web/e2e/shell.spec.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `web/src/pages/Login.test.tsx`:
 
@@ -2673,7 +2704,7 @@ Requirements, from the plan's own comments:
   <body> and throws focus away mid-submit.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```powershell
 npm run test:web -- Login
@@ -2682,7 +2713,7 @@ npm run test:web -- Login
 Expected: FAIL — `getByLabelText("Identifiant")` finds nothing; the stub renders
 only a heading.
 
-- [ ] **Step 3: Write the login screen**
+- [x] **Step 3: Write the login screen**
 
 Replace `web/src/pages/Login.tsx`:
 
@@ -2723,7 +2754,7 @@ Requirements, from the plan's own comments:
 > `web/src/api/generated/endpoints.ts` exports (`grep "QueryKey" `). orval
 > generates a key helper per query; use the real name.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 ```powershell
 npm run test:web -- Login
@@ -2731,7 +2762,7 @@ npm run test:web -- Login
 
 Expected: PASS, 5 tests.
 
-- [ ] **Step 5: Update the e2e spec**
+- [x] **Step 5: Update the e2e spec**
 
 `web/e2e/shell.spec.ts` asserts the login page renders an `<h1>` reading
 "Connexion", which still holds. Add the form to it:
@@ -2742,7 +2773,7 @@ Expected: PASS, 5 tests.
 Shape: `the login page renders a usable form`
 
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add web/src/pages/Login.tsx web/src/pages/Login.test.tsx web/e2e/shell.spec.ts
@@ -2764,7 +2795,7 @@ password is committee-issued."
 - Create: `web/src/pages/Account.tsx`, `web/src/pages/Account.test.tsx`
 - Create: `web/src/components/MustChangePassword.tsx`, `MustChangePassword.test.tsx`
 
-- [ ] **Step 1: Write the failing test for the page**
+- [x] **Step 1: Write the failing test for the page**
 
 Create `web/src/pages/Account.test.tsx`:
 
@@ -2797,7 +2828,7 @@ Requirements, from the plan's own comments:
   has nothing to do with the notice.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```powershell
 npm run test:web -- Account
@@ -2805,7 +2836,7 @@ npm run test:web -- Account
 
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Write the page**
+- [x] **Step 3: Write the page**
 
 Create `web/src/pages/Account.tsx`:
 
@@ -2837,7 +2868,7 @@ Requirements, from the plan's own comments:
   page after succeeding.
 
 
-- [ ] **Step 4: Write the failing test for the gate**
+- [x] **Step 4: Write the failing test for the gate**
 
 Create `web/src/components/MustChangePassword.test.tsx`:
 
@@ -2868,7 +2899,7 @@ Requirements, from the plan's own comments:
 >   },
 > ```
 
-- [ ] **Step 5: Write the gate**
+- [x] **Step 5: Write the gate**
 
 Create `web/src/components/MustChangePassword.tsx`:
 
@@ -2892,7 +2923,7 @@ Requirements, from the plan's own comments:
   the layout chrome, not a route.
 
 
-- [ ] **Step 6: Run both tests**
+- [x] **Step 6: Run both tests**
 
 ```powershell
 npm run test:web -- Account MustChangePassword
@@ -2900,7 +2931,7 @@ npm run test:web -- Account MustChangePassword
 
 Expected: PASS, 5 + 4 tests.
 
-- [ ] **Step 7: Mutation-test the gate**
+- [x] **Step 7: Mutation-test the gate**
 
 1. Delete the `pathname !== "/account"` condition. Re-run. **Expect**
    `does not redirect /account to itself` to FAIL (the test renders nothing, or
@@ -2909,7 +2940,7 @@ Expected: PASS, 5 + 4 tests.
    `lets an ordinary member through` to FAIL.
 3. Revert both.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add web/src/pages/Account.tsx web/src/pages/Account.test.tsx \
@@ -2933,7 +2964,7 @@ redirect."
 - Modify: `web/src/routes.tsx`, `web/src/routes.test.tsx`
 - Modify: `web/src/components/Layout.tsx`, `web/src/components/Layout.test.tsx`
 
-- [ ] **Step 1: Write the failing test for the guard**
+- [x] **Step 1: Write the failing test for the guard**
 
 Create `web/src/components/guards.test.tsx`:
 
@@ -2955,7 +2986,7 @@ Requirements, from the plan's own comments:
 - The shell, which is what carries the gutter.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```powershell
 npm run test:web -- guards
@@ -2963,7 +2994,7 @@ npm run test:web -- guards
 
 Expected: FAIL — the module does not exist.
 
-- [ ] **Step 3: Write the guard**
+- [x] **Step 3: Write the guard**
 
 Create `web/src/components/guards.tsx`:
 
@@ -3005,7 +3036,7 @@ Requirements, from the plan's own comments:
   nothing has no idea why the page they asked for is not there.
 
 
-- [ ] **Step 4: Wire the routes**
+- [x] **Step 4: Wire the routes**
 
 Replace `web/src/routes.tsx`:
 
@@ -3037,7 +3068,7 @@ Requirements, from the plan's own comments:
 > them to `/account` is right. It cannot trap anyone, because logging out is a
 > button in the chrome rather than a route.
 
-- [ ] **Step 5: Add the nav entries**
+- [x] **Step 5: Add the nav entries**
 
 In `web/src/components/Layout.tsx`, replace the empty `NAV` constant and its
 comment:
@@ -3077,7 +3108,7 @@ rather than the login form:
 **Implement the tsx described here.** _(verbatim tsx removed — derive it from these requirements and the code as it actually is)_
 
 
-- [ ] **Step 6: Test the nav's gating**
+- [x] **Step 6: Test the nav's gating**
 
 Add to `web/src/components/Layout.test.tsx`:
 
@@ -3092,7 +3123,7 @@ Requirements, from the plan's own comments:
   that parts of the site are broken for them.
 
 
-- [ ] **Step 7: Update the route table's test**
+- [x] **Step 7: Update the route table's test**
 
 `web/src/routes.test.tsx` asserts the R1a table. Add:
 
@@ -3107,7 +3138,7 @@ Requirements, from the plan's own comments:
   for every unknown path by design, so this view IS the site's 404.
 
 
-- [ ] **Step 8: Run the suite**
+- [x] **Step 8: Run the suite**
 
 ```powershell
 npm run test:web
@@ -3117,7 +3148,7 @@ Expected: PASS. This step will fail until Task 15 creates `Members.tsx` — writ
 a one-line placeholder (`export function Members() { return <h1>Membres</h1>; }`)
 to get the routes green, and Task 15 replaces it.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add web/src/components/guards.tsx web/src/components/guards.test.tsx \
@@ -3155,7 +3186,7 @@ Four rules from §4 govern it:
 - Create: `web/src/members/GeneratedPasswordDialog.tsx`
 - Create: `web/src/pages/Members.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `web/src/pages/Members.test.tsx`:
 
@@ -3193,7 +3224,7 @@ Requirements, from the plan's own comments:
   the server owns the invariant and the screen reports what it says.
 
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```powershell
 npm run test:web -- Members
@@ -3201,7 +3232,7 @@ npm run test:web -- Members
 
 Expected: FAIL — the placeholder renders only a heading.
 
-- [ ] **Step 3: Write the destructive-confirmation dialog**
+- [x] **Step 3: Write the destructive-confirmation dialog**
 
 Create `web/src/members/ConfirmWithPassword.tsx`:
 
@@ -3230,7 +3261,7 @@ Requirements, from the plan's own comments:
   The caller closes it on success.
 
 
-- [ ] **Step 4: Write the once-only password dialog**
+- [x] **Step 4: Write the once-only password dialog**
 
 Create `web/src/members/GeneratedPasswordDialog.tsx`:
 
@@ -3251,7 +3282,7 @@ Requirements, from the plan's own comments:
   again, because it will not: the server keeps only the hash.
 
 
-- [ ] **Step 5: Write the member form**
+- [x] **Step 5: Write the member form**
 
 Create `web/src/members/MemberForm.tsx`:
 
@@ -3284,7 +3315,7 @@ Requirements, from the plan's own comments:
 > stop it being toggled. Keep the explanatory copy beneath it — an inert control
 > with no explanation is worse than either.
 
-- [ ] **Step 6: Write the roster screen**
+- [x] **Step 6: Write the roster screen**
 
 Replace `web/src/pages/Members.tsx` entirely:
 
@@ -3360,7 +3391,7 @@ Requirements, from the plan's own comments:
 >   a mutation's return. Not the double `.data` a query has.
 >
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 ```powershell
 npm run test:web -- Members
@@ -3368,7 +3399,7 @@ npm run test:web -- Members
 
 Expected: PASS, 13 tests.
 
-- [ ] **Step 8: Check it on a phone-width viewport**
+- [x] **Step 8: Check it on a phone-width viewport**
 
 A green suite is not a rendered page — this project's defects hide from
 assertions. Run the mocked app and look:
@@ -3382,7 +3413,7 @@ no horizontal scrollbar anywhere on the page; every button reachable with a
 thumb; the delete dialog's text not clipped; the generated password legible at
 arm's length. Then at **1280px** confirm the table appears and the cards do not.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add web/src/pages/Members.tsx web/src/pages/Members.test.tsx web/src/members
@@ -3404,7 +3435,7 @@ Invariant refusals are reported from the server rather than duplicated here."
 that passed every test and failed in Chrome, and four tests that asserted
 nothing at all. This task is not a formality.
 
-- [ ] **Step 1: The whole API suite, in Docker**
+- [x] **Step 1: The whole API suite, in Docker**
 
 ```bash
 docker compose exec -w /var/www/html/_api web php artisan test
@@ -3414,7 +3445,7 @@ Expected: PASS, no skips. **In Docker specifically** — a Claude Code web sessi
 runs natively against a different `.env`, and that difference has already
 shipped two red tests to this branch (see "Running the tests").
 
-- [ ] **Step 2: Everything else**
+- [x] **Step 2: Everything else**
 
 ```powershell
 npm run check
@@ -3423,7 +3454,7 @@ npm run check
 That is typecheck, Pint, the web suite, eslint, stylelint, prettier and the
 secret guard. All green, no exceptions.
 
-- [ ] **Step 3: Confirm the generated client is not stale**
+- [x] **Step 3: Confirm the generated client is not stale**
 
 ```bash
 npm run openapi
@@ -3434,7 +3465,7 @@ git status --porcelain api/openapi.json web/src/api/generated
 Expected: **no output.** Anything listed means the committed artifacts drifted
 from the controllers, which is exactly what CI's `openapi-drift` job fails on.
 
-- [ ] **Step 4: Rebuild the stack and log in as a human**
+- [x] **Step 4: Rebuild the stack and log in as a human**
 
 ```bash
 npm run build
@@ -3456,7 +3487,7 @@ Then at http://localhost:8090, with a real browser:
    nav**, and that typing `/members` gives the refusal page with a heading and a
    way out — not a redirect to the login form.
 
-- [ ] **Step 5: Prove one guard can actually fail**
+- [x] **Step 5: Prove one guard can actually fail**
 
 Pick the guard that matters most and break it on purpose:
 
@@ -3472,7 +3503,7 @@ Restore it.
 If it still passes, the test is not testing what it claims and must be fixed
 before this task is done.
 
-- [ ] **Step 6: Tick this plan's boxes and commit the record**
+- [x] **Step 6: Tick this plan's boxes and commit the record**
 
 Update the checkboxes in this file to reflect what was actually done, leaving
 anything genuinely skipped **unticked with a note saying why**. R1a's plan was
