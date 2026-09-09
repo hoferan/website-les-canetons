@@ -85,7 +85,7 @@ class EventIndexTest extends TestCase
 
     public function test_the_resource_carries_what_the_card_renders(): void
     {
-        Event::factory()->create([
+        $event = Event::factory()->create([
             'title' => 'Répétition',
             'location' => 'Werkhof',
             'attire' => 'Libre',
@@ -93,9 +93,23 @@ class EventIndexTest extends TestCase
             'is_public' => false,
         ]);
 
-        $this->actingAsMember($this->member)->getJson('/api/events')
+        $response = $this->actingAsMember($this->member)->getJson('/api/events')
             ->assertOk()
             ->assertJsonStructure([['id', 'title', 'startsAt', 'endsAt', 'location', 'attire', 'isPublic', 'notes']]);
+
+        $row = $response->json()[0];
+
+        // assertJsonStructure above pins the KEY SET; it would pass just as
+        // well with location and attire swapped, or isPublic hardcoded true.
+        // These pin the VALUES, which is what the test's name promises.
+        $this->assertSame($event->id, $row['id']);
+        $this->assertSame('Répétition', $row['title']);
+        $this->assertSame($event->starts_at->toIso8601String(), $row['startsAt']);
+        $this->assertSame($event->ends_at->toIso8601String(), $row['endsAt']);
+        $this->assertSame('Werkhof', $row['location']);
+        $this->assertSame('Libre', $row['attire']);
+        $this->assertFalse($row['isPublic']);
+        $this->assertNull($row['notes']);
     }
 
     public function test_the_response_is_never_cached(): void
@@ -128,7 +142,16 @@ class EventIndexTest extends TestCase
 
     public function test_an_unknown_event_is_a_404(): void
     {
-        $this->actingAsMember($this->member)->getJson('/api/events/99999')->assertStatus(404);
+        // assertStatus(404) alone cannot tell "route-model binding refused an
+        // unknown id" from "there is no such route at all" — both answer 404.
+        // The message is unique to route-model binding failing to resolve the
+        // model, and (verified against both APP_DEBUG=true and =false) it is
+        // present in the JSON body either way: Illuminate's exception handler
+        // always includes an HttpException's own getMessage(), debug or not —
+        // only the trace/exception/file keys are debug-gated.
+        $this->actingAsMember($this->member)->getJson('/api/events/99999')
+            ->assertStatus(404)
+            ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
     }
 
     public function test_listing_the_planning_costs_a_fixed_number_of_queries(): void

@@ -29,10 +29,12 @@ class EventController extends Controller
      * with its `mode` parameter: a missing, misspelled or truncated value
      * must never be the one that hides events.
      *
-     * No eager loads: there are no relations yet. Pinned by
-     * test_listing_the_planning_costs_a_fixed_number_of_queries, which is a
-     * FLOOR for R1c-2 — that release adds one relation and one query, not an
-     * N+1.
+     * No eager loads: there are no relations yet. MEASURED 2026-09-09: this
+     * costs exactly 1 query today — the events query alone, since this route
+     * carries no permission lookup. Pinned by
+     * test_listing_the_planning_costs_a_fixed_number_of_queries at a budget
+     * of 3, which is a FLOOR for R1c-2 — that release adds one relation and
+     * one query, not an N+1, and the spare room is deliberate.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
