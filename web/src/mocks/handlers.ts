@@ -100,6 +100,19 @@ const USERS = {
     mustChangePassword: false,
     permissions: ["registrations.view"],
   },
+  // A FIRST LOGIN: a committee-issued password that must be replaced. A
+  // session fixture with no roster row, deliberately — the five above mirror
+  // DevSeeder, and what this one represents is a state of the SESSION. Its id
+  // is outside the roster's range so it can never collide with a real row.
+  "demo.mustchange": {
+    id: 6,
+    username: "demo.mustchange",
+    firstName: "Marceau",
+    lastName: "Nouveau",
+    isPlayer: true,
+    mustChangePassword: true,
+    permissions: [],
+  },
   // A young member whose parent uses the login on their behalf. Plays, holds
   // nothing.
   "demo.young": {
@@ -660,6 +673,13 @@ const overrides = [
       return unauthenticated();
     }
     const body = (await request.json()) as { currentPassword?: string; newPassword?: string };
+    // Mirrors AccountPasswordRequest's `min:8`, and its rule ORDER: the
+    // current password is verified first, so a wrong one is reported as
+    // reauth_failed rather than being masked by a length complaint.
+    //
+    // params.min is REQUIRED, not decorative: 'too_short' interpolates {{min}},
+    // and i18next prints a missing interpolation value literally — a mock that
+    // omitted it would let a screen ship reading "minimum {{min}} caractères".
     if (body.currentPassword !== ACTOR_PASSWORD) {
       return HttpResponse.json(
         {
@@ -668,6 +688,16 @@ const overrides = [
           fields: [],
         },
         { status: 403 },
+      );
+    }
+    if ((body.newPassword ?? "").length < 8) {
+      return HttpResponse.json(
+        {
+          error: "Invalid form submission",
+          code: "validation_failed",
+          fields: [{ field: "newPassword", reason: "too_short", params: { min: 8 } }],
+        },
+        { status: 400 },
       );
     }
     setCurrentUser({ ...currentUser, mustChangePassword: false });
