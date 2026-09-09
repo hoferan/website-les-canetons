@@ -68,11 +68,14 @@ three decisions below:
 | **C3** | **Serial events are a generator, not an entity.** Creating a series writes N independent `events` rows and stores no rule, no `series_id`, nothing linking them. | This is the decision that answers "how does a player attend one event of a series?" — they attend an ordinary event, because after creation that is all it is. `UNIQUE(event_id, member_id)` needs no special case, "this event or the whole series?" is never asked on any edit or delete screen, and the two rehearsal variants in the live data are just rows edited afterwards. The cost is real and accepted: renaming Werkhof is 13 edits. That happens roughly never; unticking four holidays happens every season. |
 | **C4** | **`/events` shows upcoming events by default**, with past ones revealed on demand, newest first. | "The planning" means what is ahead. By next carnival the full list is a hundred rehearsals to scroll past on the phone this design keeps optimising for. But "how many came to the last three rehearsals?" is a question a direction actually asks, so the history stays reachable rather than being dropped. |
 | **C5** | **`attendance_enabled` is not built.** Every event needs an answer. | See §1. The flag's only use case — the committee meeting — is out of scope by choice. A column with no case is a branch no test can reach and a question every form has to ask for no reason. |
-| **C6** | **`ends_at` is nullable**, where §3 has it required. | A carnival gig finishes when it finishes. The live data shows the committee typing "horaires à confirmer" into the *title* while filling in an invented 09:30–11:00, which is the schema forcing a lie. The event card already renders a range only when the dates differ, so a null end simply renders a start. |
+| **C6** | **`ends_at` is REQUIRED**, as §3 has it. | Decided by André on 2026-09-09, overruling a nullable version proposed here. Every event has a start and an end, and having both is what dissolves the old `weekend` boolean: an event running 3–4 October is simply one whose start and end fall on different days, and the card renders a range whenever they do. The live data's "horaires à confirmer" titles are accepted as the committee entering a best guess and correcting it later, which is what editing is for. |
 | **C7** | **The three `registration_*` columns are not created.** | They are R3's, and this project already carries two columns nothing reads (`public_visible`, `instructor_of_section_id`) as known debts from R1b. R3's own migration adds them, next to the code that reads them. |
 | **C8** | **The calendar is an additive, feature-flagged view that exists only at `md` and up.** | A month grid cannot carry the primary interaction: seven columns at 390px give ~50px cells, and §4 demands two ≥44px targets per unanswered event. Rather than compromise the answering flow, the calendar is simply absent on phones — it serves somebody planning a season at a desk, which is never the bus case. It is an overview, not a second way to do the main job. |
 | **C9** | **Feature flags are added to `GET /api/config`.** | `CLAUDE.md` already states that endpoint "drives the non-prod corner ribbon and the feature flags", and `ConfigController` returns only `env`. The mechanism has to exist before C8 can hide behind it, and it is infrastructure worth having on its own. |
 | **C10** | **Two plans: events first, attendance second.** | Attendance genuinely depends on events existing, so the seam is real rather than administrative. It also puts a browser-verification checkpoint in the middle instead of at the end of ~24 tasks, which is where this project's defects have historically been caught. |
+| **C11** | **Withdrawing a commitment requires a reason.** A member changing their own answer from `yes` to `no` must supply a note; the server refuses without one. A first answer in either direction needs nothing, and `no` → `yes` needs nothing. | The direction has already counted on that person. "Who dropped out, and why" is the difference between a headcount and something the committee can act on — three people saying "malade" in the same week is information. The reverse edge is deliberately free: saying yes late is good news, and asking a 13-year-old to justify it is friction that buys nothing. Recording on someone's behalf is also exempt (C13). |
+| **C12** | **Undo is time-bounded: an answer can be deleted only within five minutes of being recorded.** | Without this, C11 is decorative — a member could undo their `yes` and then tap `no` as a fresh, reason-free answer. The window separates the two things honestly: a mis-tap is corrected in seconds, a change of mind happens days later. After it closes the answer is settled, and the only way out is a change **with** a reason. Unanswered is therefore not a state a member returns to, which is right: the chase list wants an answer, not a retraction. |
+| **C13** | **Recording on someone's behalf never requires a reason.** | Whoever holds `attendance.record_for_others` is writing down what they were told in the corridor. They frequently do not know why, and blocking the entry until they invent one loses the answer entirely — which is the opposite of what the chase list is for. |
 
 ---
 
@@ -84,7 +87,7 @@ three decisions below:
 id
 title           string
 starts_at       datetime
-ends_at         datetime NULL
+ends_at         datetime
 location        string
 attire          string NULL
 is_public       boolean  default FALSE
@@ -95,8 +98,16 @@ created_at, updated_at
 `starts_at`/`ends_at` as datetimes replace the old `date` plus two `TIME`
 columns **and** the `weekend` boolean. The current schema cannot express an
 event crossing midnight — which for a carnival Guggenmusik is most gigs — and
-`weekend` exists only to make the card render a date range. Both problems
-vanish: the card renders a range when the dates differ.
+`weekend` exists only to make the card render a date range.
+
+**Both are required, and that is what dissolves `weekend`** (C6). A multi-day
+event is one whose start and end fall on different days; the card renders a
+range exactly when they do, and there is no flag to keep in step with the dates.
+"Weekend musical, 3–4 October" needs no special case and no second concept.
+
+A validation rule the form and the API both enforce: **`ends_at` must be after
+`starts_at`.** Without it a mistyped time silently produces an event of negative
+length, which sorts and renders in ways nobody has designed for.
 
 **`is_public` defaults to FALSE.** §3 of the 2026-09-05 spec records a live
 defect where `/planning_repet` shows rehearsals to strangers. A default of false
@@ -130,6 +141,12 @@ never delete the answer.
 
 **There is no "maybe".** Two states, two buttons, two ≥44px targets. A third
 option is what makes a chase list unanswerable.
+
+**`note` is optional except on one transition.** A member changing their own
+answer from `yes` to `no` must supply it (C11); everywhere else it is free text
+that expands in place. One column, conditionally required — not a second
+"reason" column, because it is the same sentence either way and the chase list
+renders it the same.
 
 ### Who is answerable
 
@@ -220,9 +237,26 @@ PUT    /api/events/{event}/attendance/{member}   answer for someone  attendance.
 create-versus-update branch in the client and cannot race itself into two rows —
 `UNIQUE(event_id, member_id)` is the backstop.
 
-**`DELETE` exists because of undo.** §4 requires an answer to be "immediately
-undoable", and undoing a *first* answer must return the event to unanswered
-rather than to *Non*.
+**`PUT` refuses a reason-free withdrawal.** When the member is answering for
+themselves, the stored answer is `yes` and the incoming one is `no`, a blank
+`note` comes back as an ordinary validation failure —
+`400 {"code":"validation_failed","fields":[{"field":"note","reason":"required"}]}`
+— so it lands against the field in the dialog with no new error vocabulary
+invented. `fields.note` needs French copy in `web/src/i18n/fr.ts`, which
+`ApiErrorVocabularyTest` enforces. Recording on somebody else's behalf skips the
+rule entirely (C13).
+
+**`DELETE` exists because of undo, and it expires.** §4 requires an answer to be
+"immediately undoable", and undoing a *first* answer must return the event to
+unanswered rather than to *Non*. But an unlimited undo makes C11 decorative — a
+member could erase their `yes` and re-answer `no` for free — so the server
+accepts a deletion only **within five minutes** of the answer being recorded.
+After that it answers `409 {"code":"answer_already_settled"}`, and the member
+changes their answer with a reason instead. That token needs French copy too.
+
+Five minutes rather than the toast's few seconds: the toast is the only way to
+reach undo, so the window merely has to outlast it comfortably, and a member
+whose phone lost signal mid-tap should not be punished for the reconnect.
 
 **`GET /api/events/{event}/attendance` returns every answerable member**, not
 just those who replied. Each carries their id, name, register and
@@ -258,6 +292,14 @@ Two rules from §4 of the 2026-09-05 spec govern it, and neither is negotiable:
 13-year-old on a phone on a bus. Two ≥44px targets per unanswered event, an
 optimistic update, no page change, and an undo. A note expands in place and
 never gates the answer — requiring a reason is how you get no answers.
+
+**Withdrawing asks why, once it matters.** Tapping *Non* on an unanswered event
+is still one tap. Changing an existing *Oui* to *Non* opens a small dialog that
+names the event and asks for a reason before it will submit — the same
+name-the-damage shape R1b's delete dialog uses. Past the five-minute undo window
+this is the only route, and the chase list shows the reason beside the name, so
+the direction reads *"Perrine Player — non — « malade »"* rather than a bare
+count that dropped by one.
 
 **The list is ordered by urgency, not by date.** An "À répondre" block pins
 unanswered upcoming events to the top, soonest first; the planning follows
@@ -341,13 +383,15 @@ design stays readable as what was approved.
 | Where | Correction |
 | --- | --- |
 | §3 `events` | **`attendance_enabled` is not built** (C5). Its only case, the committee meeting, is out of scope by choice. |
-| §3 `events` | **`ends_at` is nullable** (C6). |
+| §3 `events` | **`ends_at` stays required** (C6), and that is what dissolves `weekend` — a multi-day event is one whose start and end differ. A nullable version was proposed during this design and rejected. |
 | §3 `events` | **The `registration_*` columns are R3's** (C7) and are not created here. |
 | §3 `events` | The "three independent facets" table is down to one live facet in R1c, `is_public`, which nothing reads until R2. |
 | D6 / §8 | **The per-event attendance deadline is deferred, not cancelled** (C2). §8's R1 row lists it as shipping; it does not ship here. §4's "deadline-first" ordering becomes start-date-first. |
 | §4 | **A serial-event generator is added** (C3). The 2026-09-05 spec never mentions recurrence, and the live planning is 13 rehearsals with four holiday gaps. |
 | §4 | **Past events** get an explicit rule (C4); the spec described "the planning" without saying where it ends. |
 | §8 | The R1 row bundles the members' tool with `/`, `/events` public and `/contact`. **R1c delivers the members' half only** (C1); the public pages move to R2. |
+| §4 | **"A note expands in place and never gates the answer" gains one exception** (C11): withdrawing a `yes` does gate on it. The sentence holds for every other transition, and a first answer is still one tap. |
+| §4 | **"Immediately undoable" gains a time limit** (C12): five minutes, or the reason rule above can be walked around by undoing and re-answering. |
 
 ---
 
@@ -388,7 +432,7 @@ written knowing this would come.
 - **No series editing.** By C3 there is no series to edit — a season-wide change
   is N edits. If that ever hurts enough, the fix is a bulk-edit screen, not a
   recurrence model retro-fitted under existing rows.
-- **No "peut-être".** Two states only.
+- **No "peut-être".** Two states only, and withdrawing one costs a sentence.
 - **Contact-form anti-abuse still has no owner.** Unchanged by this release, and
   now the third spec to say so.
 - **`npm run smoke` is still broken on this branch** — `tools/smoke-docker.mjs`
@@ -417,6 +461,15 @@ travelling.
 that half-succeeds must leave nothing behind. Twenty rows is also the first
 place in this project where a single request writes more than a handful, so it
 gets a query-count test like the roster's.
+
+**The reason rule is a guard, so it must be mutation-tested.** Drop the
+conditional `required` and a test has to go red; leave the undo window
+unbounded and a test has to go red. Four tests on this branch once asserted
+nothing at all, and a rule that only looks enforced is worse than an absent one.
+
+**Five minutes is a clock, and clocks are the classic flaky test.** Freeze time
+rather than sleeping — Laravel's `travel()` — and pin both edges: a deletion at
+four minutes succeeds, one at six is refused.
 
 **The plan will be stale in places by the time it is executed.** R1b's was, in
 four separate ways, each recorded at the head of that plan file. Verify every
