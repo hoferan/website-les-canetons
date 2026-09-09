@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Support\Environment;
+use App\Support\Features;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -25,6 +26,7 @@ class ConfigController extends Controller
     {
         return response()->json([
             'env' => $this->env(),
+            'features' => Features::all(),
         ])->header('Cache-Control', 'no-store');
     }
 

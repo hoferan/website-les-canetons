@@ -16,6 +16,7 @@ export * from "./authLoginBody";
 export * from "./authLogout200";
 export * from "./authMe200";
 export * from "./config200";
+export * from "./config200Features";
 export * from "./contact200";
 export * from "./contactRequest";
 export * from "./memberDestroy200";

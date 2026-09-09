@@ -99,7 +99,7 @@ class ConfigEndpointTest extends TestCase
     {
         $body = $this->getJson('/api/config')->json();
 
-        $this->assertSame(['env'], array_keys($body));
+        $this->assertSame(['env', 'features'], array_keys($body));
 
         $serialised = (string) json_encode($body);
         foreach (['password', 'secret', 'token', 'DB_', 'MAIL_', 'hmac'] as $needle) {
@@ -109,6 +109,45 @@ class ConfigEndpointTest extends TestCase
                 "The public config response looks like it leaked a credential ({$needle})."
             );
         }
+    }
+
+    /**
+     * The KEY SET is fixed in code, not read from the environment. This
+     * response is public and unauthenticated, and the config it draws from
+     * also carries database and mail secrets — so the shape is a reviewed
+     * list, never a dump.
+     */
+    public function test_it_reports_every_known_feature_flag(): void
+    {
+        $this->getJson('/api/config')
+            ->assertOk()
+            ->assertJsonStructure(['env', 'features' => ['calendar']]);
+    }
+
+    public function test_a_flag_is_off_when_the_environment_says_nothing(): void
+    {
+        config(['features.calendar' => null]);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    public function test_a_flag_is_on_only_when_the_environment_turns_it_on(): void
+    {
+        config(['features.calendar' => true]);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', true);
+    }
+
+    /**
+     * .env values arrive as strings. Without a cast, "false" is truthy in
+     * JavaScript and the flag is permanently on wherever somebody wrote it out
+     * longhand.
+     */
+    public function test_the_flags_are_booleans_not_strings(): void
+    {
+        config(['features.calendar' => 'false']);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
     }
 
     /**

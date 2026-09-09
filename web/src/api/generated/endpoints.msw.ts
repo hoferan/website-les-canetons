@@ -60,6 +60,7 @@ export const getConfigResponseMock = (
   overrideResponse: Partial<Extract<Config200, object>> = {},
 ): Config200 => ({
   env: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  features: { calendar: faker.datatype.boolean() },
   ...overrideResponse,
 });
 

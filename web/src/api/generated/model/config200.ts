@@ -4,7 +4,9 @@
  * Les Canetons API
  * OpenAPI spec version: 0.0.1
  */
+import type { Config200Features } from "./config200Features";
 
 export type Config200 = {
   env: string;
+  features: Config200Features;
 };

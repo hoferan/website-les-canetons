@@ -279,10 +279,22 @@
                                     "properties": {
                                         "env": {
                                             "type": "string"
+                                        },
+                                        "features": {
+                                            "type": "object",
+                                            "properties": {
+                                                "calendar": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "calendar"
+                                            ]
                                         }
                                     },
                                     "required": [
-                                        "env"
+                                        "env",
+                                        "features"
                                     ]
                                 }
                             }
