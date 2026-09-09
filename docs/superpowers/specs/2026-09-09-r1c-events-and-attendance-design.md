@@ -76,6 +76,7 @@ three decisions below:
 | **C11** | **Withdrawing a commitment requires a reason.** A member changing their own answer from `yes` to `no` must supply a note; the server refuses without one. A first answer in either direction needs nothing, and `no` → `yes` needs nothing. | The direction has already counted on that person. "Who dropped out, and why" is the difference between a headcount and something the committee can act on — three people saying "malade" in the same week is information. The reverse edge is deliberately free: saying yes late is good news, and asking a 13-year-old to justify it is friction that buys nothing. Recording on someone's behalf is also exempt (C13). |
 | **C12** | **Undo is time-bounded: an answer can be deleted only within five minutes of being recorded.** | Without this, C11 is decorative — a member could undo their `yes` and then tap `no` as a fresh, reason-free answer. The window separates the two things honestly: a mis-tap is corrected in seconds, a change of mind happens days later. After it closes the answer is settled, and the only way out is a change **with** a reason. Unanswered is therefore not a state a member returns to, which is right: the chase list wants an answer, not a retraction. |
 | **C13** | **Recording on someone's behalf never requires a reason.** | Whoever holds `attendance.record_for_others` is writing down what they were told in the corridor. They frequently do not know why, and blocking the entry until they invent one loses the answer entirely — which is the opposite of what the chase list is for. |
+| **C14** | **The on-behalf route refuses to write the caller's own answer.** `PUT /events/{event}/attendance/{member}` answers `409 cannot_record_for_self` when the target is the caller. | Found by André on 2026-09-09 while checking C13, and it closes two holes at once. Bastien Both plays *and* holds `direction` — the case R1b built the roster around — so without this he could withdraw his own `yes` through the exempt route and C11 would bind every player except the ones able to bypass it. Worse, `recorded_by_member_id` would then point at Bastien for Bastien's own answer, and the screen would announce *"réponse saisie par la direction"* about something he did himself, which is the exact confusion that column exists to prevent. One subject per endpoint; nothing becomes unreachable, because the chase list renders the ordinary answer control on the caller's own row. |
 
 ---
 
@@ -167,11 +168,15 @@ either/or role matrix could not express.
 | Create, edit, delete an event | `events.manage` |
 | Answer for yourself | none — `auth` plus `isPlayer()` |
 | See the chase list | `attendance.view_all` |
-| Answer on someone's behalf | `attendance.record_for_others` |
+| Answer on someone's behalf | `attendance.record_for_others` — **never on your own row** (C14) |
 
 All four already exist in `App\Support\Permission` and are granted by the
-`direction` role. R1c is the release that gives three of them their first
+`direction` role, so today the holders are Dominique Direction, Bastien Both and
+`comite.local`. R1c is the release that gives three of them their first
 enforcement point.
+
+Every gated route pairs its permission with `auth:sanctum`, so an anonymous
+caller gets 401 rather than 403 — the project's standing rule.
 
 ---
 
@@ -244,7 +249,9 @@ themselves, the stored answer is `yes` and the incoming one is `no`, a blank
 — so it lands against the field in the dialog with no new error vocabulary
 invented. `fields.note` needs French copy in `web/src/i18n/fr.ts`, which
 `ApiErrorVocabularyTest` enforces. Recording on somebody else's behalf skips the
-rule entirely (C13).
+rule entirely (C13) — and cannot be aimed at yourself to evade it, because the
+on-behalf route refuses its own caller with `409 cannot_record_for_self` (C14).
+That token needs French copy.
 
 **`DELETE` exists because of undo, and it expires.** §4 requires an answer to be
 "immediately undoable", and undoing a *first* answer must return the event to
@@ -464,7 +471,11 @@ gets a query-count test like the roster's.
 
 **The reason rule is a guard, so it must be mutation-tested.** Drop the
 conditional `required` and a test has to go red; leave the undo window
-unbounded and a test has to go red. Four tests on this branch once asserted
+unbounded and a test has to go red; remove the self-refusal on the on-behalf
+route and a test has to go red. That third one needs a member who both plays
+and holds `direction` — `demo.both` exists precisely for cases like this, and
+a test written against `demo.direction` would pass while proving nothing,
+because she has no register and never appears in an attendance list at all. Four tests on this branch once asserted
 nothing at all, and a rule that only looks enforced is worse than an absent one.
 
 **Five minutes is a clock, and clocks are the classic flaky test.** Freeze time
