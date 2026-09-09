@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
+use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
@@ -79,6 +80,14 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // Issuing a credential and resetting one are the same operation (§4.4).
         Route::post('/members/{member}/password', MemberPasswordController::class);
     });
+
+    // The planning. NO PERMISSION: reading it is something everybody in the
+    // band does, not something the committee administers — gating it would
+    // be the same mistake as gating the ability to answer for an event.
+    // auth:sanctum alone (inherited from the group) is enough to keep it
+    // members-only.
+    Route::get('/events', [EventController::class, 'index']);
+    Route::get('/events/{event}', [EventController::class, 'show']);
 });
 
 // The API reference, for developers. PUBLIC BUT GATED: no session is required
