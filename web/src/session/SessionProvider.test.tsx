@@ -53,3 +53,38 @@ test("useSession outside the provider fails loudly rather than returning undefin
   // property access somewhere far away from the actual mistake.
   expect(() => render(<Probe />)).toThrow(/outside SessionProvider/);
 });
+
+/**
+ * can() is UX only — Laravel's `permission:` middleware is the sole
+ * enforcement. These tests pin that it reads the permission STRINGS the API
+ * sends and never a role name: which role granted a permission is not a
+ * question any part of the UI may ask (design §3), the same rule the
+ * middleware follows.
+ */
+function CanProbe() {
+  const { can } = useSession();
+  return (
+    <div>
+      <span data-testid="manage">{String(can("members.manage"))}</span>
+      <span data-testid="registrations">{String(can("registrations.view"))}</span>
+    </div>
+  );
+}
+
+test("an anonymous visitor can do nothing", async () => {
+  await renderWithSession(<CanProbe />);
+  expect(await screen.findByTestId("manage")).toHaveTextContent("false");
+});
+
+test("a permission the member holds is granted", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<CanProbe />);
+  expect(await screen.findByTestId("manage")).toHaveTextContent("true");
+});
+
+test("a permission the member does not hold is refused", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<CanProbe />);
+  expect(await screen.findByTestId("manage")).toHaveTextContent("false");
+  expect(screen.getByTestId("registrations")).toHaveTextContent("false");
+});

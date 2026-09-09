@@ -93,3 +93,207 @@ test("logging out clears the mocked session", async () => {
   const error = (await authMe().catch((thrown: unknown) => thrown)) as ApiError;
   expect(error.status).toBe(401);
 });
+
+/* -------------------------------------------------------------------------- *
+ * The roster
+ * -------------------------------------------------------------------------- */
+
+test("lists the roster ordered by name, not in insertion order", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/members");
+  const roster = (await response.json()) as { lastName: string }[];
+
+  expect(response.status).toBe(200);
+  expect(roster.map((member) => member.lastName)).toEqual([
+    "Both",
+    "Committee",
+    "Direction",
+    "Player",
+    "Sansconnexion",
+  ]);
+});
+
+test("every member on the roster has an account", async () => {
+  setMockUser("demo.direction");
+  const roster = (await (await fetch("/api/members")).json()) as { username: string }[];
+
+  // 2026_09_08_000001 made credentials NOT NULL: people the band merely
+  // displays are content, not members. A mock carrying a login-less row would
+  // let a screen be built around a state the database cannot hold.
+  expect(roster.every((member) => member.username.length > 0)).toBe(true);
+});
+
+test("refuses the roster to a member without members.manage", async () => {
+  setMockUser("demo.player");
+  const response = await fetch("/api/members");
+
+  // 403, not 401: they ARE logged in. The real routes get this split by pairing
+  // auth:sanctum with permission:, and the SPA's guards depend on it.
+  expect(response.status).toBe(403);
+  expect(((await response.json()) as { code: string }).code).toBe("access_denied");
+});
+
+test("refuses the roster to an anonymous caller with 401, not 403", async () => {
+  const response = await fetch("/api/members");
+  expect(response.status).toBe(401);
+});
+
+test("creating a member never mints them a role", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/members", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      firstName: "Lea",
+      lastName: "Nouvelle",
+      username: "lea.nouvelle",
+      sectionId: 4,
+      publicVisible: false,
+    }),
+  });
+  const created = (await response.json()) as {
+    member: {
+      roleIds: number[];
+      sectionName: string;
+      isPlayer: boolean;
+      mustChangePassword: boolean;
+    };
+    generatedPassword: string;
+  };
+
+  expect(response.status).toBe(201);
+  expect(created.member.roleIds).toEqual([]);
+  // Derived from sectionId in the real Resource, so they can never disagree.
+  expect(created.member.sectionName).toBe("Cloches");
+  expect(created.member.isPlayer).toBe(true);
+  expect(created.member.mustChangePassword).toBe(true);
+  expect(created.generatedPassword).toMatch(/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+});
+
+test("forgets a created member between tests", async () => {
+  setMockUser("demo.direction");
+  const before = ((await (await fetch("/api/members")).json()) as unknown[]).length;
+
+  // The assertion that makes every other test in the suite trustworthy: if
+  // resetMockState() misses the roster, one test's member leaks into the next
+  // and a count assertion fails only when the whole file runs.
+  expect(before).toBe(5);
+});
+
+test("refuses to delete the last member who can administer members", async () => {
+  setMockUser("demo.direction");
+  // demo.both holds `direction` too, so remove them first — then Dominique is
+  // the last holder and deleting anyone who holds it is refused.
+  await fetch("/api/members/3", { method: "DELETE" });
+  const response = await fetch("/api/members/1", { method: "DELETE" });
+
+  // 409, not 403: the caller HAS the permission. The request conflicts with
+  // the state of the system.
+  expect(response.status).toBe(409);
+  expect(((await response.json()) as { code: string }).code).toBe(
+    "cannot_remove_last_administrator",
+  );
+});
+
+test("refuses to delete yourself, once someone else can still administer", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/members/1", { method: "DELETE" });
+
+  expect(response.status).toBe(409);
+  expect(((await response.json()) as { code: string }).code).toBe("cannot_delete_self");
+});
+
+test("refuses to remove your own administration", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/members/1/roles", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ roleIds: [] }),
+  });
+
+  expect(response.status).toBe(409);
+  expect(((await response.json()) as { code: string }).code).toBe("cannot_demote_self");
+});
+
+test("a destructive roster call needs no password, only the session", async () => {
+  setMockUser("demo.direction");
+  // Decision B7: the cookie is trusted here, as it already is for reading the
+  // whole roster and editing anyone. Mistake-prevention is the type-the-name
+  // confirmation in the UI. If re-authentication is ever reintroduced on the
+  // roster, this test is what says so.
+  const response = await fetch("/api/members/2", { method: "DELETE" });
+
+  expect(response.status).toBe(200);
+});
+
+test("changing your own password does need the current one", async () => {
+  setMockUser("demo.direction");
+  const refused = await fetch("/api/me/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword: "wrong", newPassword: "un-mot-de-passe-long" }),
+  });
+
+  expect(refused.status).toBe(403);
+  expect(((await refused.json()) as { code: string }).code).toBe("reauth_failed");
+
+  const accepted = await fetch("/api/me/password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currentPassword: "demo", newPassword: "un-mot-de-passe-long" }),
+  });
+
+  expect(accepted.status).toBe(200);
+});
+
+test("the register list is the one the migration seeds", async () => {
+  setMockUser("demo.direction");
+  const sections = (await (await fetch("/api/sections")).json()) as { name: string }[];
+
+  // Mirrors 2026_09_07_000001 exactly. A synthetic list here would mean every
+  // mocked screenshot showed pupitres no server has.
+  expect(sections.map((section) => section.name)).toEqual([
+    "Batteurs",
+    "Grosses-caisses",
+    "Lyre",
+    "Cloches",
+    "Trompettes",
+    "Trombones",
+  ]);
+});
+
+test("roles carry a key and their permissions, and no display name", async () => {
+  setMockUser("demo.direction");
+  const roles = (await (await fetch("/api/roles")).json()) as Record<string, unknown>[];
+
+  // Decision B6: the UI resolves the French from `key`. A label here would let
+  // a screen render a name the real API never sends.
+  expect(roles.map((role) => role.key)).toEqual(["direction", "committee"]);
+  expect(roles.every((role) => !("label" in role) && !("labelFr" in role))).toBe(true);
+});
+
+test("editing a member changes only what the real request validates", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/members/2", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    // roleIds is not an editable field — it has its own endpoint, its own
+    // invariants and its own audit. Laravel's validated() drops it silently,
+    // so the mock must too, or a screen could be built on a write that does
+    // nothing at all in production.
+    body: JSON.stringify({ sectionId: null, roleIds: [1] }),
+  });
+  const member = (await response.json()) as {
+    sectionId: number | null;
+    sectionName: string | null;
+    isPlayer: boolean;
+    roleIds: number[];
+  };
+
+  expect(response.status).toBe(200);
+  // Clearing a register is an explicit null, not an absent field.
+  expect(member.sectionId).toBeNull();
+  expect(member.sectionName).toBeNull();
+  expect(member.isPlayer).toBe(false);
+  expect(member.roleIds).toEqual([]);
+});

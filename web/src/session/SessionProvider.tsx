@@ -7,6 +7,18 @@ import { ApiError } from "../api/http";
 type Session = {
   config: Config200;
   user: AuthMe200 | null;
+  /**
+   * UX ONLY. Laravel's `permission:` middleware is the sole enforcement — a
+   * mistake here shows a wrong button, it does not open a hole. That is not a
+   * licence to be sloppy: a member shown an admin form that then 403s is a bug
+   * report either way.
+   *
+   * It takes the permission STRING the API sends, never a role name. Roles
+   * merely group permissions, and nothing in the UI may branch on WHICH role
+   * granted one (design §3) — the same rule the middleware follows, which is
+   * what keeps "why can she do this?" answerable in one place.
+   */
+  can: (permission: string) => boolean;
 };
 
 const SessionContext = createContext<Session | null>(null);
@@ -71,6 +83,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // inner one is orval's { data, status, headers } envelope. See http.ts.
     config: config.data.data,
     user: currentUser,
+    // An anonymous visitor holds nothing, so this answers false rather than
+    // throwing: every caller is a render deciding whether to draw a control,
+    // and the logged-out case is the common one on the public pages.
+    can: (permission) => currentUser?.permissions.includes(permission) ?? false,
   };
 
   return <SessionContext value={value}>{children}</SessionContext>;

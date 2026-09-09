@@ -1,7 +1,13 @@
 import { HttpResponse, http } from "msw";
 
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
-import type { AuthMe200, ContactRequest } from "../api/generated/model";
+import type {
+  AuthMe200,
+  ContactRequest,
+  MemberResource,
+  RoleResource,
+  SectionResource,
+} from "../api/generated/model";
 
 /**
  * The mocked backend, so the SPA can be developed and tested with no Docker.
@@ -13,7 +19,7 @@ import type { AuthMe200, ContactRequest } from "../api/generated/model";
  * copy fits.
  *
  * Authentication is deliberately real rather than a dev-only role switcher:
- * POST /login accepts the same three seeded accounts DevSeeder creates
+ * POST /login accepts the same five seeded accounts DevSeeder creates
  * (api/database/seeders/DevSeeder.php), and GET /me reports whoever logged in
  * with the same shape AuthController::me returns. So the mocked app exercises
  * the actual login flow and the actual guards — a switcher would leave both
@@ -23,11 +29,14 @@ import type { AuthMe200, ContactRequest } from "../api/generated/model";
  * OpenAPI document's title, which is why tools/openapi.mjs pins APP_NAME. An
  * unpinned title renames this export between machines.
  *
- * During the R1a rebuild this file only covers what the API still has:
- * /api/config, /api/contact, and auth (/api/login, /api/logout, /api/me). The
- * event/signup/response/altcha handlers and the Occasion fixture that used to
- * live here modeled the domain Task 1 deleted; later tasks bring their mocked
- * replacements back alongside the real endpoints.
+ * During the R1a rebuild this file only covered what the API still had:
+ * /api/config, /api/contact, and auth. R1b adds the roster — reference data,
+ * /api/members and the account password — and it is a real little backend
+ * rather than a fixture dump: a screen that creates a member and then lists
+ * them must see what it created, or the test is asserting against a fixture
+ * instead of a flow. The event/signup/response/altcha handlers that used to
+ * live here modeled the domain R1a deleted; R1c brings their replacements back
+ * alongside the real endpoints.
  */
 
 // Tied to the generated model, not retyped by hand: a shape change in
@@ -78,6 +87,29 @@ const USERS = {
       "members.manage",
       "registrations.view",
     ],
+  },
+  // The `committee` role's single permission. Somebody has to hold it, or the
+  // one screen it opens is never looked at — and it is the case that proves
+  // the guards read a PERMISSION rather than "is this person privileged".
+  "demo.committee": {
+    id: 4,
+    username: "demo.committee",
+    firstName: "Camille",
+    lastName: "Committee",
+    isPlayer: true,
+    mustChangePassword: false,
+    permissions: ["registrations.view"],
+  },
+  // A young member whose parent uses the login on their behalf. Plays, holds
+  // nothing.
+  "demo.young": {
+    id: 5,
+    username: "demo.young",
+    firstName: "Nadia",
+    lastName: "Sansconnexion",
+    isPlayer: true,
+    mustChangePassword: false,
+    permissions: [],
   },
 } satisfies Record<string, MockUser>;
 
@@ -130,16 +162,240 @@ export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
-/** Test seam: every mock store is module state, so every test must reset them all. */
-export function resetMockState(): void {
-  setCurrentUser(null);
-}
-
 const unauthenticated = () =>
   HttpResponse.json(
     { error: "Not authenticated", code: "not_authenticated", fields: [] },
     { status: 401 },
   );
+
+/* ------------------------------------------------------------------------ *
+ * The roster
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The registers, mirroring the 2026_09_07_000001 migration EXACTLY — the band's
+ * own order, ids in insertion order.
+ *
+ * A synthetic register list here would mean every mocked screenshot and every
+ * component test showed a set of pupitres no server has, which is the one thing
+ * a mocked screen is supposed to rule out.
+ */
+const SECTIONS: SectionResource[] = [
+  { id: 1, name: "Batteurs", sortOrder: 1 },
+  { id: 2, name: "Grosses-caisses", sortOrder: 2 },
+  { id: 3, name: "Lyre", sortOrder: 3 },
+  { id: 4, name: "Cloches", sortOrder: 4 },
+  { id: 5, name: "Trompettes", sortOrder: 5 },
+  { id: 6, name: "Trombones", sortOrder: 6 },
+];
+
+/**
+ * The two roles the same migration seeds, with what each grants.
+ *
+ * No display name, deliberately (decision B6): the API is English without
+ * exception, and the UI resolves the French from `key` through
+ * web/src/i18n/fr.ts. A `label` here would let a screen render a name the real
+ * API never sends.
+ */
+const ROLES: RoleResource[] = [
+  {
+    id: 1,
+    key: "direction",
+    permissions: [
+      "events.manage",
+      "attendance.view_all",
+      "attendance.record_for_others",
+      "members.manage",
+      "registrations.view",
+    ],
+  },
+  { id: 2, key: "committee", permissions: ["registrations.view"] },
+];
+
+/** The password the seeded accounts use, and so the one re-authentication takes. */
+const ACTOR_PASSWORD = "demo";
+
+/**
+ * A FIXED value, deliberately. A random one would make a screenshot diff-noisy
+ * and leave a test unable to assert what it shows. It still matches
+ * App\Support\GeneratedPassword's shape — three groups of four, hyphenated,
+ * drawn from an alphabet with every confusable character removed — which is
+ * what the UI formats and what an administrator reads down the phone.
+ */
+const GENERATED_PASSWORD = "kanu-7rex-mp34";
+
+/**
+ * The seeded roster, mirroring DevSeeder, in ITS insertion order rather than
+ * the order the screen shows: the real GET /api/members sorts by name, so a
+ * mock that stored them pre-sorted would hide a sorting bug in the endpoint's
+ * mocked stand-in and in any screen that re-sorted them itself.
+ *
+ * EVERY MEMBER HAS AN ACCOUNT (2026_09_08_000001). There is no
+ * person-without-a-login row here, because there can be none in the database:
+ * people the band merely displays are content, not members.
+ *
+ * A function, not a constant, so resetRoster() hands out a fresh clone each
+ * time. A shared array would let one test's edit reach the next.
+ */
+function initialMembers(): MemberResource[] {
+  return [
+    {
+      id: 1,
+      firstName: "Dominique",
+      lastName: "Direction",
+      username: "demo.direction",
+      mustChangePassword: false,
+      // The one non-null lastLoginAt, so the roster renders BOTH branches —
+      // "last seen" and "never". DevSeeder leaves the column null, but the
+      // column is written by logging in and no endpoint can set it, so a mock
+      // that mirrored the seeder byte-for-byte would leave the populated branch
+      // unrenderable. A fixed instant, for the same reason the password is
+      // fixed: a moving one makes every screenshot differ.
+      lastLoginAt: "2026-09-01T19:30:00+02:00",
+      // Organises, does not play — so never in an attendance list.
+      sectionId: null,
+      sectionName: null,
+      isPlayer: false,
+      committeeTitle: null,
+      instructorOfSectionId: null,
+      publicVisible: true,
+      roleIds: [1],
+    },
+    {
+      id: 2,
+      firstName: "Perrine",
+      lastName: "Player",
+      username: "demo.player",
+      mustChangePassword: false,
+      lastLoginAt: null,
+      sectionId: 4,
+      sectionName: "Cloches",
+      isPlayer: true,
+      committeeTitle: null,
+      instructorOfSectionId: null,
+      publicVisible: true,
+      roleIds: [],
+    },
+    {
+      // BOTH — plays and organises. The case the old either/or role matrix
+      // could not express; if someone reintroduces one, this row is what breaks.
+      id: 3,
+      firstName: "Bastien",
+      lastName: "Both",
+      username: "demo.both",
+      mustChangePassword: false,
+      lastLoginAt: null,
+      sectionId: 5,
+      sectionName: "Trompettes",
+      isPlayer: true,
+      committeeTitle: null,
+      instructorOfSectionId: null,
+      publicVisible: true,
+      roleIds: [1],
+    },
+    {
+      id: 4,
+      firstName: "Camille",
+      lastName: "Committee",
+      username: "demo.committee",
+      mustChangePassword: false,
+      lastLoginAt: null,
+      sectionId: 6,
+      sectionName: "Trombones",
+      isPlayer: true,
+      committeeTitle: null,
+      instructorOfSectionId: null,
+      publicVisible: true,
+      roleIds: [2],
+    },
+    {
+      // Their parent uses the login on their behalf, so the account is used —
+      // just not by the member.
+      id: 5,
+      firstName: "Nadia",
+      lastName: "Sansconnexion",
+      username: "demo.young",
+      mustChangePassword: false,
+      lastLoginAt: null,
+      sectionId: 1,
+      sectionName: "Batteurs",
+      isPlayer: true,
+      committeeTitle: null,
+      instructorOfSectionId: null,
+      publicVisible: true,
+      roleIds: [],
+    },
+  ];
+}
+
+/**
+ * MUTABLE MODULE STATE, reset by resetMockState() between tests — the same
+ * pattern as the mocked session above, and for the same reason.
+ */
+let members: MemberResource[] = initialMembers();
+
+/** The next id, mirroring an auto-increment: never reuses a deleted one. */
+let nextMemberId = 6;
+
+function resetRoster(): void {
+  members = initialMembers();
+  nextMemberId = 6;
+}
+
+function sectionOf(sectionId: number | null): string | null {
+  return SECTIONS.find((section) => section.id === sectionId)?.name ?? null;
+}
+
+/**
+ * Mirrors `auth:sanctum` + `permission:members.manage`, so the SPA's guards are
+ * exercised rather than assumed: 401 when nobody is logged in, 403 when they
+ * are but hold nothing — the split the real routes get by pairing the two
+ * middlewares, and the reason an anonymous caller is not told the endpoint
+ * exists at all.
+ *
+ * Returns the refusal, or null when the caller may proceed.
+ */
+function refuseWithoutMembersManage() {
+  if (!currentUser) {
+    return unauthenticated();
+  }
+  if (!currentUser.permissions.includes("members.manage")) {
+    return HttpResponse.json(
+      { error: "Access denied", code: "access_denied", fields: [] },
+      { status: 403 },
+    );
+  }
+  return null;
+}
+
+/** Route-model binding's own answer for an id nothing matches. */
+const notFound = () =>
+  HttpResponse.json({ error: "Not found", code: "not_found", fields: [] }, { status: 404 });
+
+/**
+ * Mirrors App\Support\AccessIntegrity: 409, not 403 — the caller HAS the
+ * permission, the request conflicts with the state of the system.
+ */
+function conflict(code: string, error: string) {
+  return HttpResponse.json({ error, code, fields: [] }, { status: 409 });
+}
+
+/** True when removing these members would leave nobody holding members.manage. */
+function wouldOrphanAdministration(excludedMemberIds: number[]): boolean {
+  return !members.some(
+    (member) =>
+      !excludedMemberIds.includes(member.id) &&
+      member.roleIds.some((roleId) =>
+        ROLES.find((role) => role.id === roleId)?.permissions.includes("members.manage"),
+      ),
+  );
+}
+
+/** Test seam: every mock store is module state, so every test must reset them all. */
+export function resetMockState(): void {
+  setCurrentUser(null);
+  resetRoster();
+}
 
 /** Tied to the model, not retyped as a bare string[]: a field rename in
  * ContactRequest is a compile error here rather than a mock silently rejecting
@@ -210,6 +466,217 @@ const overrides = [
   http.post("/api/logout", () => {
     setCurrentUser(null);
     return HttpResponse.json({ ok: true });
+  }),
+
+  /* ---------------------------------------------------------------------- *
+   * The roster. Every one of these mirrors a refusal the real API makes, so
+   * the screens' guards are exercised rather than assumed.
+   * ---------------------------------------------------------------------- */
+
+  http.get("/api/sections", () => refuseWithoutMembersManage() ?? HttpResponse.json(SECTIONS)),
+
+  http.get("/api/roles", () => refuseWithoutMembersManage() ?? HttpResponse.json(ROLES)),
+
+  // Ordered by name, like the real endpoint: this screen is scanned for a
+  // person, and a mock answering in insertion order would hide a sorting bug.
+  http.get("/api/members", () => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const ordered = [...members].sort(
+      (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+    );
+    return HttpResponse.json(ordered);
+  }),
+
+  // Creating a person creates an ACCOUNT and mints its password, returned once.
+  // IT GRANTS NO ROLES — the real API does not either, and a mock that did
+  // would hide the second, separately-guarded step from every test.
+  http.post("/api/members", async ({ request }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as Partial<MemberResource>;
+    const member: MemberResource = {
+      id: nextMemberId++,
+      firstName: body.firstName ?? "",
+      lastName: body.lastName ?? "",
+      username: body.username ?? "",
+      // A password an administrator read down the phone is not a secret worth
+      // keeping, so the real API forces a change. Mirrored here.
+      mustChangePassword: true,
+      lastLoginAt: null,
+      sectionId: body.sectionId ?? null,
+      sectionName: sectionOf(body.sectionId ?? null),
+      isPlayer: (body.sectionId ?? null) !== null,
+      committeeTitle: body.committeeTitle ?? null,
+      instructorOfSectionId: body.instructorOfSectionId ?? null,
+      publicVisible: body.publicVisible ?? false,
+      roleIds: [],
+    };
+    members.push(member);
+    return HttpResponse.json({ member, generatedPassword: GENERATED_PASSWORD }, { status: 201 });
+  }),
+
+  http.patch("/api/members/:id", async ({ request, params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const index = members.findIndex((member) => member.id === Number(params.id));
+    // Reading the row IS the existence check: noUncheckedIndexedAccess types
+    // members[index] as possibly undefined, and findIndex's -1 lands there too.
+    const existing = members[index];
+    if (!existing) {
+      return notFound();
+    }
+    const body = (await request.json()) as Partial<MemberResource>;
+    // PATCH, so spread over what is there: a form posting only the field it
+    // changed must not blank the others.
+    //
+    // An ALLOW-LIST, not a blanket spread, because Laravel's validated()
+    // returns only the fields UpdateMemberRequest declares rules for and
+    // silently drops the rest. A mock that applied everything would let a
+    // screen appear to change roleIds, username's uniqueness, or the id itself
+    // here — and then do nothing at all against the real API.
+    const editable = [
+      "firstName",
+      "lastName",
+      "username",
+      "sectionId",
+      "committeeTitle",
+      "instructorOfSectionId",
+      "publicVisible",
+    ] as const;
+    const updated = { ...existing };
+    for (const field of editable) {
+      // in, not a truthiness test: clearing a register is an explicit null,
+      // which the real request accepts and `body.sectionId ?? existing` would
+      // silently discard.
+      if (field in body) {
+        Object.assign(updated, { [field]: body[field] });
+      }
+    }
+    // Both are DERIVED from section_id in the real Resource, so they can never
+    // disagree with it. Recomputing them is what keeps that true here.
+    updated.sectionName = sectionOf(updated.sectionId);
+    updated.isPlayer = updated.sectionId !== null;
+    members[index] = updated;
+    return HttpResponse.json(updated);
+  }),
+
+  // Mirrors AccessIntegrity, INCLUDING its ordering: orphaning administration
+  // outranks self-deletion when both apply, because it is the more informative
+  // refusal. Without these the mocked app would let flows through that the real
+  // API answers 409 to.
+  http.delete("/api/members/:id", ({ params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const id = Number(params.id);
+    const index = members.findIndex((member) => member.id === id);
+    // Reading the row IS the existence check: noUncheckedIndexedAccess types
+    // members[index] as possibly undefined, and findIndex's -1 lands there too.
+    const existing = members[index];
+    if (!existing) {
+      return notFound();
+    }
+    if (wouldOrphanAdministration([id])) {
+      return conflict(
+        "cannot_remove_last_administrator",
+        "This is the last member who can administer members",
+      );
+    }
+    if (currentUser?.id === id) {
+      return conflict("cannot_delete_self", "A member cannot delete their own account");
+    }
+    members.splice(index, 1);
+    return HttpResponse.json({ ok: true, sessionsEnded: 1 });
+  }),
+
+  // Replacing roles is PUT, not PATCH: roleIds is the complete set, and an
+  // "add this one" API cannot express removal — which is the half the
+  // invariants exist for.
+  http.put("/api/members/:id/roles", async ({ request, params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const id = Number(params.id);
+    const index = members.findIndex((member) => member.id === id);
+    // Reading the row IS the existence check: noUncheckedIndexedAccess types
+    // members[index] as possibly undefined, and findIndex's -1 lands there too.
+    const existing = members[index];
+    if (!existing) {
+      return notFound();
+    }
+    const body = (await request.json()) as { roleIds?: number[] };
+    const roleIds = body.roleIds ?? [];
+    const keepsAdministration = roleIds.some((roleId) =>
+      ROLES.find((role) => role.id === roleId)?.permissions.includes("members.manage"),
+    );
+    // Same priority as the delete above, and for the same reason.
+    if (!keepsAdministration && wouldOrphanAdministration([id])) {
+      return conflict(
+        "cannot_remove_last_administrator",
+        "This is the last member who can administer members",
+      );
+    }
+    if (currentUser?.id === id && !keepsAdministration) {
+      return conflict(
+        "cannot_demote_self",
+        "A member cannot remove their own member administration",
+      );
+    }
+    const member = { ...existing, roleIds };
+    members[index] = member;
+    return HttpResponse.json({ member, sessionsEnded: 1 });
+  }),
+
+  http.post("/api/members/:id/password", ({ params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const index = members.findIndex((member) => member.id === Number(params.id));
+    // Reading the row IS the existence check: noUncheckedIndexedAccess types
+    // members[index] as possibly undefined, and findIndex's -1 lands there too.
+    const existing = members[index];
+    if (!existing) {
+      return notFound();
+    }
+    members[index] = { ...existing, mustChangePassword: true };
+    return HttpResponse.json({ generatedPassword: GENERATED_PASSWORD, sessionsEnded: 1 });
+  }),
+
+  // The ONE endpoint that still re-authenticates (decision B7). Knowing the
+  // current password is this operation's own input, not ceremony: without it a
+  // borrowed, unlocked phone locks the real owner out of their own account.
+  http.post("/api/me/password", async ({ request }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const body = (await request.json()) as { currentPassword?: string; newPassword?: string };
+    if (body.currentPassword !== ACTOR_PASSWORD) {
+      return HttpResponse.json(
+        {
+          error: "Password confirmation failed",
+          code: "reauth_failed",
+          fields: [],
+        },
+        { status: 403 },
+      );
+    }
+    setCurrentUser({ ...currentUser, mustChangePassword: false });
+    // Their roster row carries the same flag, so the screen that lists it
+    // agrees with the session the moment the change lands.
+    members = members.map((member) =>
+      member.id === currentUser?.id ? { ...member, mustChangePassword: false } : member,
+    );
+    return HttpResponse.json({ ok: true, sessionsEnded: 1 });
   }),
 ];
 
