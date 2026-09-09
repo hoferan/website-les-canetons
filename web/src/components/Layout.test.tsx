@@ -55,6 +55,31 @@ test("the auth link shows the username once logged in", async () => {
   expect(screen.getByRole("link", { name: "demo.direction" })).toBeInTheDocument();
 });
 
+test("points a logged-in member at their own account, not back at the login form", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(screen.getByRole("link", { name: "demo.direction" })).toHaveAttribute("href", "/account");
+});
+
+test("shows the Membres entry to a member who can administer members", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(screen.getByRole("link", { name: "Membres" })).toHaveAttribute("href", "/members");
+});
+
+test("hides the Membres entry entirely from a member who cannot", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  // ABSENT, not refused: a link that leads to "Accès refusé" teaches people
+  // that parts of the site are broken for them.
+  expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
+});
+
+test("hides it from an anonymous visitor", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
+});
+
 test("the hamburger toggles the menu and reports its state", async () => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 

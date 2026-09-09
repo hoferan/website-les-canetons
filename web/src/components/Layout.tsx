@@ -10,14 +10,29 @@ import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * The content nav, during the R1a rebuild: deliberately empty. The old link
- * set (Accueil, Commencer les Canetons, Contact Canetons, …) pointed at pages
- * the domain deletion removed along with their routes (see web/src/routes.tsx)
- * — every one of them would 404 today. R1b/R1c bring real pages back on
- * English URLs and repopulate this list; until then the only working
- * destination is the auth item below.
+ * The content nav. Still short: R1b adds the members' tool below, and the
+ * public pages arrive with R2 (/band, /committee, /join, /history) and R1c
+ * (/events).
+ *
+ * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
+ * than a missing one.
  */
 const NAV: Array<{ to: string; label: string }> = [];
+
+/**
+ * Screens grouped under "Direction", each gated by the permission that gates
+ * the API route behind it.
+ *
+ * THE GROUP IS ABSENT, NOT REFUSED (design §4). A member who cannot use
+ * /members never sees the word: showing a link that leads to "Accès refusé"
+ * teaches people that parts of the site are broken for them.
+ *
+ * Gated on a PERMISSION, never a role name — the same rule the middleware and
+ * the route guards follow.
+ */
+const DIRECTION_NAV: Array<{ to: string; label: string; permission: string }> = [
+  { to: "/members", label: "Membres", permission: "members.manage" },
+];
 
 /**
  * One nav row. On a phone this is a 48px full-width row on the dark stage
@@ -43,7 +58,7 @@ const NAV_ROW_IDLE = "text-white/80 hover:text-white md:text-ink-muted md:hover:
 const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
 
 export function Layout() {
-  const { config, user } = useSession();
+  const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const active = pathname;
@@ -100,6 +115,19 @@ export function Layout() {
               </li>
             ))}
 
+            {DIRECTION_NAV.filter((item) => can(item.permission)).map((item) => (
+              <li key={item.to} className={NAV_ITEM}>
+                <Link
+                  to={item.to}
+                  onClick={() => setOpen(false)}
+                  aria-current={active === item.to ? "page" : undefined}
+                  className={`${NAV_ROW} ${active === item.to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+
             <li className={NAV_ITEM}>
               {/* External: a plain anchor, not a NavLink. */}
               <a
@@ -127,9 +155,12 @@ export function Layout() {
             </li>
             */}
 
+            {/* Points at /account once somebody is logged in: their own name
+                leading back to a login form is a dead end, and /account is the
+                one screen every account holder has. */}
             <li className={`nav-auth ${NAV_ITEM} md:ml-auto`}>
               <NavLink
-                to="/login"
+                to={user ? "/account" : "/login"}
                 onClick={() => setOpen(false)}
                 className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
               >
