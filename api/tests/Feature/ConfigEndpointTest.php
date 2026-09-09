@@ -151,6 +151,27 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
+     * The other two falsy strings PHP's boolean cast gets wrong: (bool) '0'
+     * and (bool) '' both mean something different from what filter_var()
+     * reports here. Pinned separately from 'false' above so the fail-closed
+     * rule is proven on all three shapes a longhand .env value can take, not
+     * assumed from the one string that happens to spell out the word.
+     */
+    public function test_the_digit_zero_string_reads_as_false(): void
+    {
+        config(['features.calendar' => '0']);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    public function test_the_empty_string_reads_as_false(): void
+    {
+        config(['features.calendar' => '']);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    /**
      * A stale ribbon would survive a server-side change, so this must never be
      * cached — the old app re-read config.php on every request.
      *
