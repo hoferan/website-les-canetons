@@ -28,6 +28,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Idempotent, like every migration here: App\Http\Middleware\
+        // RunPendingMigrations re-checks for pending work on every request, so
+        // a partial failure mid-deploy can re-enter this file against a
+        // database where `events` already exists. Guard first rather than
+        // let Schema::create fail on a table that is already there.
         if (Schema::hasTable('events')) {
             return;
         }

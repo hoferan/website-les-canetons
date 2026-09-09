@@ -40,6 +40,15 @@ class EventModelTest extends TestCase
         // The live defect this default exists to prevent: /planning_repet
         // showed rehearsals to strangers. The accident can now only fall the
         // safe way.
+        //
+        // DELIBERATELY BYPASSES EventFactory here: EventFactory::definition()
+        // hard-codes is_public => false as one of its own defaults, so a row
+        // built through Event::factory()->create() would keep passing even if
+        // the model/column default were deleted outright — the factory would
+        // only be asserting on itself. Building the row by hand through
+        // Event::query()->create() is what makes this test able to catch a
+        // regression in that default. See MemberModelTest's docblock for the
+        // same reasoning applied to a whole file of these.
         $event = Event::query()->create([
             'title' => 'Répétition',
             'starts_at' => '2026-09-05 08:00:00',
