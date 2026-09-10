@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Putting a rehearsal or a gig on the planning.
+ *
+ * `endsAt` is REQUIRED and must come AFTER `startsAt`. Required because the
+ * column is (C6, 2026_09_09_000001): a nullable end is what would let the
+ * `weekend` boolean creep back, since without an end there is nothing to read
+ * "this runs over two days" off. After, because nothing else enforced it and a
+ * mistyped hour produces an event of negative length — it sorts and renders in
+ * ways nobody has designed for.
+ *
+ * The rule is `after`, not `same day` plus an hour comparison: "Weekend
+ * musical, 3-4 October" is a real row on the live planning, and spanning two
+ * days is precisely the case C6 dissolved the flag for.
+ *
+ * `attire` and `notes` are nullable because half the planning has neither —
+ * a rehearsal in ordinary clothes with nothing to add is the common row, and
+ * requiring the committee to type something into both is how "-" ends up on
+ * the screen.
+ *
+ * `isPublic` is required rather than defaulted, the same call StoreMemberRequest
+ * makes for `publicVisible`: showing an event to strangers is a decision
+ * somebody makes per event, so the form states it instead of inheriting it.
+ *
+ * Field names are camelCase, matching what the SPA sends and what
+ * App\Exceptions\ApiError echoes into fields[].field, where web/src/i18n/fr.ts
+ * looks them up. Renaming one silently breaks its French error message.
+ *
+ * RULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per
+ * field, so `required` comes first everywhere (an empty title reports
+ * `required`, not `invalid_type`) and `date` precedes `after` on `endsAt` — an
+ * unparseable end is a format problem, and comparing it to anything would
+ * report the wrong thing.
+ */
+class StoreEventRequest extends FormRequest
+{
+    /** @return array<string, array<int, mixed>> */
+    public function rules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:255'],
+            'startsAt' => ['required', 'date'],
+            'endsAt' => ['required', 'date', 'after:startsAt'],
+            'location' => ['required', 'string', 'max:255'],
+            'attire' => ['nullable', 'string', 'max:255'],
+            'isPublic' => ['required', 'boolean'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+}

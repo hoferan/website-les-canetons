@@ -88,6 +88,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // members-only.
     Route::get('/events', [EventController::class, 'index']);
     Route::get('/events/{event}', [EventController::class, 'show']);
+
+    // Writing the planning IS administration, unlike reading it. Nested
+    // inside the auth:sanctum group above so an anonymous caller gets 401
+    // rather than 403 — the same pairing the members.manage group makes, and
+    // for the same reason: "log in" and "you may not" are different answers
+    // and the SPA acts on each differently.
+    Route::middleware('permission:events.manage')->group(function () {
+        Route::post('/events', [EventController::class, 'store']);
+    });
 });
 
 // The API reference, for developers. PUBLIC BUT GATED: no session is required

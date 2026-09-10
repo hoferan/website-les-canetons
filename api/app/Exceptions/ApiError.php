@@ -79,6 +79,17 @@ final class ApiError
         // user their number "est trop court".
         'min' => 'too_short',
         'gt' => 'invalid_number',
+        // `after:<other field>` on the event form's end time. Without an entry
+        // it would land on the fallback and tell the committee that a
+        // perfectly well-formed timestamp "n'est pas dans un format valide",
+        // which sends them re-typing the one thing that was right.
+        //
+        // Paramless on purpose, so it needs no branch in validation() below:
+        // `after`'s single parameter is the OTHER FIELD's name — 'startsAt',
+        // an English identifier — and interpolating that into French copy
+        // would put a raw column name on the user's screen. The French names
+        // the start in words instead.
+        'after' => 'must_be_after',
     ];
 
     /**

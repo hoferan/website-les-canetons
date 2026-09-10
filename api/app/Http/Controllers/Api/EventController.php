@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Support\Audit;
 use App\Support\BandTime;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -65,5 +69,66 @@ class EventController extends Controller
     public function show(Event $event): EventResource
     {
         return new EventResource($event);
+    }
+
+    /**
+     * Puts a rehearsal or a gig on the planning.
+     *
+     * 201 with the created row, not 204: the SPA drops the response straight
+     * into the list it is already showing, and a second GET to learn the id
+     * would race the next writer.
+     *
+     * Audited, like every other privileged mutation, with the title captured
+     * as the label — see App\Support\Audit for why the CALLER reads it.
+     */
+    public function store(StoreEventRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $event = Event::create([
+            'title' => $data['title'],
+            'starts_at' => self::instant($data['startsAt']),
+            'ends_at' => self::instant($data['endsAt']),
+            'location' => $data['location'],
+            'attire' => $data['attire'] ?? null,
+            'is_public' => $data['isPublic'],
+            'notes' => $data['notes'] ?? null,
+        ]);
+
+        Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
+
+        return response()->json(new EventResource($event), 201);
+    }
+
+    /**
+     * An offset-bearing timestamp from the SPA, as the UTC instant the column
+     * stores.
+     *
+     * THE ->utc() IS LOAD-BEARING, and it is not what the `datetime` cast does.
+     * MEASURED 2026-09-10 against this stack: handing Event::create() the raw
+     * string '2026-09-05T10:00:00+02:00' persists `2026-09-05 10:00:00`. The
+     * cast parses it into a Carbon that KEEPS the +02:00 offset and then
+     * formats it with the model's date format, which has no offset in it — so
+     * the wall-clock hour is written into a column every reader treats as UTC,
+     * and a 10:00 Fribourg rehearsal reads back as 12:00. Every comparison in
+     * index() is against a real UTC instant from BandTime, so the row would
+     * also fall on the wrong side of the upcoming/past split for two hours a
+     * day. Pinned by
+     * EventWriteTest::test_the_wall_clock_time_survives_the_round_trip.
+     *
+     * Not BandTime::compose(): that is for a date and a wall-clock time typed
+     * separately, where the band's zone is the missing piece. Here the offset
+     * arrives in the payload, so this needs to know nothing about Fribourg —
+     * it only has to stop the offset being thrown away.
+     *
+     * It does assume the offset IS there. `date` accepts an offsetless string
+     * too, and CarbonImmutable::parse() would then read it as UTC — two hours
+     * early, silently. Every caller today is the SPA, which sends ISO-8601
+     * with an offset; a second client would need that pinned by the Form
+     * Request rather than assumed here.
+     */
+    private static function instant(string $value): CarbonImmutable
+    {
+        return CarbonImmutable::parse($value)->utc();
     }
 }
