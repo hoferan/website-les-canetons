@@ -59,6 +59,13 @@ export const fr = {
     already_taken: "est déjà utilisé",
     too_short: "est trop court (minimum {{min}} caractères)",
     invalid_number: "n'est pas un nombre valide",
+    // FIELD-PAIR-SPECIFIC, unlike every other line here: it names the start
+    // because `after:startsAt` on the event form is the only `after:` rule in
+    // the system. A second one against a different pair — R3's registration
+    // window is the obvious candidate — cannot reuse this sentence, and the
+    // reason token carries no parameters to fill in the other field's name
+    // (see App\Exceptions\ApiError's REASONS map for why it must not). That
+    // rule needs its own token and its own copy.
     must_be_after: "doit être après le début",
   },
   fields: {

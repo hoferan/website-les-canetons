@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\Member;
+use App\Models\Role;
+use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -57,6 +59,43 @@ class EventWriteTest extends TestCase
         $this->assertDatabaseCount('events', 0);
     }
 
+    public function test_a_role_holder_without_events_manage_is_refused(): void
+    {
+        // The player above holds NO role at all, so they cannot tell
+        // `permission:events.manage` apart from a gate reading "is in some
+        // role" or "holds some permission". `committee` grants exactly one
+        // permission, registrations.view: this member passes every weaker
+        // reading of the check and must still be refused.
+        $this->actingAsMember(Member::factory()->committee()->create())
+            ->postJson('/api/events', $this->validPayload())
+            ->assertStatus(403)
+            ->assertJson(['code' => 'access_denied']);
+
+        $this->assertDatabaseCount('events', 0);
+    }
+
+    public function test_events_manage_alone_is_enough_to_create(): void
+    {
+        // PINS THE PERMISSION STRING ITSELF. The organiser holds `direction`,
+        // which the seed grants Permission::cases() — every permission — so
+        // any string at all in that middleware separates them from a player
+        // with none, and swapping events.manage for members.manage left the
+        // whole file green. This member holds a fixture role granting exactly
+        // events.manage and nothing else, so only the right string admits
+        // them. It is also the realistic case: roles are editable data, and
+        // "runs the planning, does not administer members" is a role the band
+        // may well create.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $this->actingAsMember($organiserOnly)
+            ->postJson('/api/events', $this->validPayload())
+            ->assertStatus(201);
+
+        $this->assertDatabaseCount('events', 1);
+    }
+
     public function test_an_anonymous_caller_gets_401_not_403(): void
     {
         // The code as well as the status, the same pairing EventIndexTest
@@ -72,22 +111,39 @@ class EventWriteTest extends TestCase
 
     public function test_an_organiser_creates_an_event(): void
     {
+        // isPublic and notes are sent NON-DEFAULT, here and only here. With
+        // the payload's own `false`/`null` a controller that never writes
+        // those two columns is indistinguishable from one that does: false is
+        // both the column default and Event::$attributes', and null is the
+        // column's. Dropping either from Event::create() left this whole file
+        // green until this test sent something else. The other tests keep the
+        // default shape, which is the one the plan pinned.
         $response = $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload())
+            ->postJson('/api/events', $this->validPayload([
+                'isPublic' => true,
+                'notes' => 'Apporter la partition de Carnaval.',
+            ]))
             ->assertStatus(201)
             ->assertJsonPath('title', 'Répétition');
 
         $this->assertDatabaseHas('events', ['title' => 'Répétition', 'location' => 'Werkhof']);
 
-        // The 201 body is what the SPA puts straight into its list, so every
-        // field the form sent has to come back — and come back as the type
-        // EventResource declares, not as whatever the request carried.
+        // On the stored row first: this is what the next reader of the
+        // planning gets, and is_public in particular is the column that
+        // decides whether the rehearsal schedule is visible to strangers.
         $event = Event::query()->sole();
+        $this->assertSame('Werkhof', $event->location);
+        $this->assertSame('Libre', $event->attire);
+        $this->assertTrue($event->is_public);
+        $this->assertSame('Apporter la partition de Carnaval.', $event->notes);
+
+        // Then on the 201 body, which the SPA puts straight into the list it
+        // is already showing rather than re-fetching.
         $this->assertSame($event->id, $response->json('id'));
         $this->assertSame('Werkhof', $response->json('location'));
         $this->assertSame('Libre', $response->json('attire'));
-        $this->assertFalse($response->json('isPublic'));
-        $this->assertNull($response->json('notes'));
+        $this->assertTrue($response->json('isPublic'));
+        $this->assertSame('Apporter la partition de Carnaval.', $response->json('notes'));
     }
 
     public function test_the_end_must_come_after_the_start(): void
@@ -109,6 +165,22 @@ class EventWriteTest extends TestCase
             ->assertJsonPath('fields.0.reason', 'must_be_after');
 
         $this->assertDatabaseCount('events', 0);
+    }
+
+    public function test_an_unparseable_end_is_reported_as_a_format_error(): void
+    {
+        // PINS THE RULE ORDER on endsAt, which StoreEventRequest calls
+        // load-bearing and nothing else checked. ApiError reports only the
+        // FIRST failed rule per field; measured 2026-09-10 on this stack, the
+        // shipped `date`-then-`after` order reports Date for this payload and
+        // the reversed order reports After. So with the rules the other way
+        // round the committee is told that 'pas une date' "doit être après le
+        // début" — sent to fix the one thing that was not wrong.
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/events', $this->validPayload(['endsAt' => 'pas une date']))
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'endsAt')
+            ->assertJsonPath('fields.0.reason', 'invalid_format');
     }
 
     public function test_an_event_may_span_two_days(): void

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Casts\UtcDateTime;
+use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
 
 /**
  * A rehearsal or gig on the planning. The committee enters it, every member
@@ -22,8 +23,8 @@ use Illuminate\Support\Carbon;
  * raw column types and every caller has to defend against a type that never
  * occurs. Member.php carries the same block for the same reason.
  *
- * @property Carbon $starts_at
- * @property Carbon $ends_at
+ * @property CarbonImmutable $starts_at
+ * @property CarbonImmutable $ends_at
  * @property bool $is_public
  */
 class Event extends Model
@@ -57,8 +58,14 @@ class Event extends Model
     protected function casts(): array
     {
         return [
-            'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
+            // NOT 'datetime'. That cast keeps an incoming offset and then
+            // formats it away, storing a Fribourg wall-clock hour in a column
+            // every reader treats as UTC — measured, with numbers, in
+            // App\Casts\UtcDateTime's docblock. It sits on the column rather
+            // than on the endpoint that happens to write it today, so the
+            // next writer is correct without knowing any of this.
+            'starts_at' => UtcDateTime::class,
+            'ends_at' => UtcDateTime::class,
             'is_public' => 'boolean',
         ];
     }

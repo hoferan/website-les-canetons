@@ -89,6 +89,13 @@ final class ApiError
         // an English identifier — and interpolating that into French copy
         // would put a raw column name on the user's screen. The French names
         // the start in words instead.
+        //
+        // WHICH MAKES THE COPY FIELD-PAIR-SPECIFIC: "doit être après le début"
+        // is right only because `after:startsAt` on the event form is the only
+        // `after:` rule in the system. A second one against a different pair
+        // cannot share this token — being paramless, it has no way to say
+        // which field — so it needs its own. Noted in fr.ts too, next to the
+        // sentence.
         'after' => 'must_be_after',
     ];
 
