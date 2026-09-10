@@ -297,3 +297,149 @@ test("editing a member changes only what the real request validates", async () =
   expect(member.isPlayer).toBe(false);
   expect(member.roleIds).toEqual([]);
 });
+
+// ---------------------------------------------------------------- the planning
+
+test("lists the planning soonest first, and hides the past", async () => {
+  setMockUser("demo.player");
+  const response = await fetch("/api/events");
+  const planning = (await response.json()) as { title: string; startsAt: string }[];
+
+  expect(response.status).toBe(200);
+  expect(planning.length).toBeGreaterThan(0);
+
+  const times = planning.map((event) => Date.parse(event.startsAt));
+  expect(times).toEqual([...times].sort((a, b) => a - b));
+  expect(Math.min(...times)).toBeGreaterThan(Date.now());
+});
+
+test("the past is the other half of the list, newest first", async () => {
+  setMockUser("demo.player");
+  const past = (await (await fetch("/api/events?past=1")).json()) as { startsAt: string }[];
+
+  const times = past.map((event) => Date.parse(event.startsAt));
+  expect(times).toEqual([...times].sort((a, b) => b - a));
+  expect(Math.max(...times)).toBeLessThan(Date.now());
+});
+
+test("reading the planning needs no permission", async () => {
+  // Everybody in the band needs to know when the next rehearsal is.
+  setMockUser("demo.player");
+  expect((await fetch("/api/events")).status).toBe(200);
+});
+
+test("refuses to create an event for somebody who does not organise", async () => {
+  setMockUser("demo.player");
+  const response = await fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Non", location: "X" }),
+  });
+
+  expect(response.status).toBe(403);
+  expect(((await response.json()) as { code: string }).code).toBe("access_denied");
+});
+
+test("tells an anonymous caller 401, not 403", async () => {
+  // The split the real routes get by pairing auth:sanctum with permission:.
+  // A 403 here would tell a stranger the endpoint exists and that they merely
+  // lack a grant.
+  setMockUser(null);
+  expect((await fetch("/api/events")).status).toBe(401);
+  expect((await fetch("/api/events", { method: "POST", body: "{}" })).status).toBe(401);
+});
+
+test("refuses an end before the start, against its own field", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      title: "À l'envers",
+      startsAt: "2026-09-05T12:00:00+02:00",
+      endsAt: "2026-09-05T10:00:00+02:00",
+      location: "Werkhof",
+      attire: null,
+      isPublic: false,
+      notes: null,
+    }),
+  });
+
+  expect(response.status).toBe(400);
+  const body = (await response.json()) as { code: string; fields: { field: string }[] };
+  expect(body.code).toBe("validation_failed");
+  expect(body.fields[0]?.field).toBe("endsAt");
+});
+
+test("patching only the end still compares against the stored start", async () => {
+  // The sharp case, and the one the real UpdateEventRequest exists for: the
+  // request carries no startsAt, so a mock comparing input against input
+  // would pass it vacuously.
+  setMockUser("demo.direction");
+  const planning = (await (await fetch("/api/events")).json()) as { id: number }[];
+  const target = planning[0];
+
+  const response = await fetch(`/api/events/${target?.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endsAt: new Date(Date.now() - 86_400_000).toISOString() }),
+  });
+
+  expect(response.status).toBe(400);
+});
+
+test("a series creates one independent event per date", async () => {
+  setMockUser("demo.direction");
+  const before = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+
+  const response = await fetch("/api/events/series", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      template: {
+        title: "Répétition",
+        location: "Werkhof",
+        attire: "Libre",
+        isPublic: false,
+        notes: null,
+        startTime: "10:00",
+        endTime: "12:00",
+      },
+      dates: [40, 47, 54].map((offset) =>
+        new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10),
+      ),
+    }),
+  });
+
+  expect(response.status).toBe(201);
+  const created = (await response.json()) as { id: number }[];
+  expect(created).toHaveLength(3);
+  // Distinct ids: they are three events, not one repeated.
+  expect(new Set(created.map((event) => event.id)).size).toBe(3);
+
+  const after = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+  expect(after).toBe(before + 3);
+});
+
+test("deleting an event takes it off the planning", async () => {
+  setMockUser("demo.direction");
+  const planning = (await (await fetch("/api/events")).json()) as { id: number }[];
+  const target = planning[0];
+
+  const response = await fetch(`/api/events/${target?.id}`, { method: "DELETE" });
+  expect(response.status).toBe(200);
+
+  const after = (await (await fetch("/api/events")).json()) as { id: number }[];
+  expect(after.some((event) => event.id === target?.id)).toBe(false);
+});
+
+test("forgets a created event between tests", async () => {
+  setMockUser("demo.direction");
+  const before = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+
+  // If resetMockState() misses the events store, an event created by an
+  // earlier test leaks into this count and it fails only when the whole file
+  // runs — which reads as flakiness and is not.
+  // Five upcoming of the six seeded; the sixth is the past one.
+  expect(before).toBe(5);
+});

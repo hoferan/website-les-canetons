@@ -4,6 +4,7 @@ import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
 import type {
   AuthMe200,
   ContactRequest,
+  EventResource,
   MemberResource,
   RoleResource,
   SectionResource,
@@ -360,19 +361,24 @@ function sectionOf(sectionId: number | null): string | null {
 }
 
 /**
- * Mirrors `auth:sanctum` + `permission:members.manage`, so the SPA's guards are
+ * Mirrors `auth:sanctum` + `permission:<permission>`, so the SPA's guards are
  * exercised rather than assumed: 401 when nobody is logged in, 403 when they
- * are but hold nothing — the split the real routes get by pairing the two
+ * are but do not hold it — the split the real routes get by pairing the two
  * middlewares, and the reason an anonymous caller is not told the endpoint
  * exists at all.
  *
+ * Takes the permission rather than hard-coding one, because the planning is
+ * gated on `events.manage` and a near-copy of this function is how the two
+ * would drift: the 401-before-403 ordering is the part that matters and it
+ * should exist once.
+ *
  * Returns the refusal, or null when the caller may proceed.
  */
-function refuseWithoutMembersManage() {
+function refuseWithout(permission: string) {
   if (!currentUser) {
     return unauthenticated();
   }
-  if (!currentUser.permissions.includes("members.manage")) {
+  if (!currentUser.permissions.includes(permission)) {
     return HttpResponse.json(
       { error: "Access denied", code: "access_denied", fields: [] },
       { status: 403 },
@@ -380,6 +386,8 @@ function refuseWithoutMembersManage() {
   }
   return null;
 }
+
+const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 
 /** Route-model binding's own answer for an id nothing matches. */
 const notFound = () =>
@@ -404,10 +412,135 @@ function wouldOrphanAdministration(excludedMemberIds: number[]): boolean {
   );
 }
 
+/**
+ * An instant this many days from now, at a Fribourg wall-clock time.
+ *
+ * RELATIVE TO NOW, NEVER FIXED. A seeded season written as literal dates falls
+ * into the past the moment it is a month old, and `/events` then renders empty
+ * for every future reader — including every screenshot and every demo.
+ */
+function at(dayOffset: number, time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  const when = new Date();
+  when.setDate(when.getDate() + dayOffset);
+  when.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+  return when.toISOString();
+}
+
+/**
+ * The seeded planning, mirroring the real season recorded in the R1c spec §1
+ * rather than inventing one: Saturday rehearsals at the Werkhof, the Christmas
+ * one that runs an hour long, the two-day musical weekend, a gig, and one
+ * rehearsal already past.
+ *
+ * SIX EVENTS, so the count is assertable. Five upcoming and one past, which is
+ * what gives `?past=1` something to return and keeps the default list from
+ * being the whole store.
+ */
+function initialEvents(): EventResource[] {
+  return [
+    {
+      id: 1,
+      title: "Répétition",
+      startsAt: at(7, "10:00"),
+      endsAt: at(7, "12:00"),
+      location: "Werkhof",
+      attire: "Libre",
+      isPublic: false,
+      notes: null,
+    },
+    {
+      id: 2,
+      title: "Répétition",
+      startsAt: at(14, "10:00"),
+      endsAt: at(14, "12:00"),
+      location: "Werkhof",
+      attire: "Libre",
+      isPublic: false,
+      notes: null,
+    },
+    {
+      id: 3,
+      title: "Répétition + apéritif de Noël",
+      startsAt: at(21, "10:00"),
+      endsAt: at(21, "13:00"),
+      location: "Werkhof",
+      attire: "Libre",
+      isPublic: false,
+      notes: null,
+    },
+    {
+      // The two-day case, which is the whole reason `ends_at` is a datetime
+      // rather than a time beside a `weekend` boolean (C6).
+      id: 4,
+      title: "Weekend musical",
+      startsAt: at(28, "09:00"),
+      endsAt: at(29, "16:00"),
+      location: "Campus, Lac Noir",
+      attire: "Libre",
+      isPublic: false,
+      notes: "Repas et logement compris.",
+    },
+    {
+      // The missing-attire case: the card has to render without one.
+      id: 5,
+      title: "Vendanges Cheyres",
+      startsAt: at(35, "11:00"),
+      endsAt: at(35, "16:30"),
+      location: "Cheyres",
+      attire: null,
+      isPublic: false,
+      notes: null,
+    },
+    {
+      // The only past one.
+      id: 6,
+      title: "Répétition",
+      startsAt: at(-7, "10:00"),
+      endsAt: at(-7, "12:00"),
+      location: "Werkhof",
+      attire: "Libre",
+      isPublic: false,
+      notes: null,
+    },
+  ];
+}
+
+let events: EventResource[] = initialEvents();
+
+/** Mirrors an auto-increment: never reuses a deleted id. */
+let nextEventId = 7;
+
+function resetEvents(): void {
+  events = initialEvents();
+  nextEventId = 7;
+}
+
+/**
+ * The API's `endsAt`-after-`startsAt` refusal, in the shape ApiError renders.
+ * Returns the refusal, or null when the pair is fine.
+ */
+function refuseIfEndsBeforeStart(startsAt: string, endsAt: string) {
+  if (Date.parse(endsAt) > Date.parse(startsAt)) {
+    return null;
+  }
+  return HttpResponse.json(
+    {
+      error: "Invalid form submission",
+      code: "validation_failed",
+      fields: [{ field: "endsAt", reason: "must_be_after" }],
+    },
+    { status: 400 },
+  );
+}
+
 /** Test seam: every mock store is module state, so every test must reset them all. */
 export function resetMockState(): void {
   setCurrentUser(null);
   resetRoster();
+  // Dropping this line fails tests only when the WHOLE FILE runs, which reads
+  // as flakiness and is not — R1b proved it on the roster store.
+  resetEvents();
 }
 
 /** Tied to the model, not retyped as a bare string[]: a field rename in
@@ -722,6 +855,147 @@ const overrides = [
       member.id === currentUser?.id ? { ...member, mustChangePassword: false } : member,
     );
     return HttpResponse.json({ ok: true, sessionsEnded: 1 });
+  }),
+  // THE PLANNING. Reading it needs no permission — everybody in the band needs
+  // to know when the next rehearsal is — so this one is gated on nothing but
+  // being logged in, exactly like the real route.
+  http.get("/api/events", ({ request }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+
+    // The split is on the START OF TODAY, not on now: a rehearsal that began
+    // an hour ago stays in the planning of somebody running late. Mirrors
+    // EventController::index and BandTime::startOfToday.
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const boundary = startOfToday.getTime();
+
+    // Anything that is not exactly '1' is the default upcoming view, the same
+    // fail-safe direction the real endpoint takes: a truncated or misspelled
+    // value must never be the one that hides events.
+    const past = new URL(request.url).searchParams.get("past") === "1";
+
+    const planning = events
+      .filter((event) =>
+        past ? Date.parse(event.startsAt) < boundary : Date.parse(event.startsAt) >= boundary,
+      )
+      .sort((a, b) =>
+        past
+          ? Date.parse(b.startsAt) - Date.parse(a.startsAt)
+          : Date.parse(a.startsAt) - Date.parse(b.startsAt),
+      );
+
+    return HttpResponse.json(planning);
+  }),
+
+  // BEFORE /api/events/:id, so `series` is never read as an id. MSW matches
+  // the first handler whose path matches, and `:id` would happily bind the
+  // literal string.
+  http.post("/api/events/series", async ({ request }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const body = (await request.json()) as {
+      template: Omit<EventResource, "id" | "startsAt" | "endsAt"> & {
+        startTime: string;
+        endTime: string;
+      };
+      dates: string[];
+    };
+
+    // One event per date, each independent — no series_id, nothing linking
+    // them (C3). The generator is the only thing that knows they arrived
+    // together, and it forgets immediately.
+    const created = body.dates.map((date) => {
+      const day = new Date(`${date}T00:00:00`);
+      const offset = Math.round((day.getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
+      return {
+        id: nextEventId++,
+        title: body.template.title,
+        startsAt: at(offset, body.template.startTime),
+        endsAt: at(offset, body.template.endTime),
+        location: body.template.location,
+        attire: body.template.attire,
+        isPublic: body.template.isPublic,
+        notes: body.template.notes,
+      };
+    });
+
+    events = [...events, ...created];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.post("/api/events", async ({ request }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const body = (await request.json()) as Omit<EventResource, "id">;
+    const invalid = refuseIfEndsBeforeStart(body.startsAt, body.endsAt);
+    if (invalid) {
+      return invalid;
+    }
+
+    const event: EventResource = { ...body, id: nextEventId++ };
+    events = [...events, event];
+    return HttpResponse.json(event, { status: 201 });
+  }),
+
+  http.get("/api/events/:id", ({ params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+    return event ? HttpResponse.json(event) : notFound();
+  }),
+
+  http.patch("/api/events/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const index = events.findIndex((candidate) => candidate.id === Number(params.id));
+    const existing = events[index];
+    // Reading the row IS the existence check: noUncheckedIndexedAccess makes
+    // events[index] `EventResource | undefined`, which replaces the
+    // index === -1 branch rather than sitting after it.
+    if (!existing) {
+      return notFound();
+    }
+
+    const patch = (await request.json()) as Partial<Omit<EventResource, "id">>;
+    const updated: EventResource = { ...existing, ...patch };
+
+    // The comparison reaches for the STORED start when the patch does not
+    // carry one — the real Form Request's whole subtlety, mirrored so the
+    // screen meets the same refusal.
+    const invalid = refuseIfEndsBeforeStart(updated.startsAt, updated.endsAt);
+    if (invalid) {
+      return invalid;
+    }
+
+    events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
+    return HttpResponse.json(updated);
+  }),
+
+  http.delete("/api/events/:id", ({ params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const id = Number(params.id);
+    if (!events.some((candidate) => candidate.id === id)) {
+      return notFound();
+    }
+
+    events = events.filter((candidate) => candidate.id !== id);
+    return HttpResponse.json({ ok: true });
   }),
 ];
 

@@ -16,6 +16,8 @@ import type {
   AuthMe200,
   Config200,
   Contact200,
+  EventDestroy200,
+  EventResource,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
@@ -67,6 +69,82 @@ export const getConfigResponseMock = (
 export const getContactResponseMock = (
   overrideResponse: Partial<Extract<Contact200, object>> = {},
 ): Contact200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getEventIndexResponseMock = (): EventResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    attire: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isPublic: faker.datatype.boolean(),
+    notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  }));
+
+export const getEventStoreResponseMock = (
+  overrideResponse: Partial<Extract<EventResource, object>> = {},
+): EventResource => ({
+  id: faker.number.int(),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  isPublic: faker.datatype.boolean(),
+  notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  ...overrideResponse,
+});
+
+export const getEventShowResponseMock = (
+  overrideResponse: Partial<Extract<EventResource, object>> = {},
+): EventResource => ({
+  id: faker.number.int(),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  isPublic: faker.datatype.boolean(),
+  notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  ...overrideResponse,
+});
+
+export const getEventUpdateResponseMock = (
+  overrideResponse: Partial<Extract<EventResource, object>> = {},
+): EventResource => ({
+  id: faker.number.int(),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  isPublic: faker.datatype.boolean(),
+  notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  ...overrideResponse,
+});
+
+export const getEventDestroyResponseMock = (
+  overrideResponse: Partial<Extract<EventDestroy200, object>> = {},
+): EventDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getEventSeriesResponseMock = (): EventResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    attire: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    isPublic: faker.datatype.boolean(),
+    notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  }));
 
 export const getMemberIndexResponseMock = (): MemberResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -362,6 +440,150 @@ export const getContactMockHandler = (
   );
 };
 
+export const getEventIndexMockHandler = (
+  overrideResponse?:
+    | EventResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<EventResource[]> | EventResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventStoreMockHandler = (
+  overrideResponse?:
+    | EventResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<EventResource> | EventResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/events",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventShowMockHandler = (
+  overrideResponse?:
+    | EventResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<EventResource> | EventResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events/:event",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventUpdateMockHandler = (
+  overrideResponse?:
+    | EventResource
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<EventResource> | EventResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/events/:event",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventDestroyMockHandler = (
+  overrideResponse?:
+    | EventDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<EventDestroy200> | EventDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/events/:event",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventSeriesMockHandler = (
+  overrideResponse?:
+    | EventResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<EventResource[]> | EventResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/events/series",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventSeriesResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
 export const getMemberIndexMockHandler = (
   overrideResponse?:
     | MemberResource[]
@@ -560,6 +782,12 @@ export const getLesCanetonsAPIMock = () => [
   getAuthMeMockHandler(),
   getConfigMockHandler(),
   getContactMockHandler(),
+  getEventIndexMockHandler(),
+  getEventStoreMockHandler(),
+  getEventShowMockHandler(),
+  getEventUpdateMockHandler(),
+  getEventDestroyMockHandler(),
+  getEventSeriesMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),

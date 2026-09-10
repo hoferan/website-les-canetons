@@ -344,6 +344,242 @@
                 }
             }
         },
+        "/events": {
+            "get": {
+                "operationId": "event.index",
+                "description": "`?past=1` is the OTHER HALF of the list, not a superset of it \u2014 by next\ncarnival the full list is a hundred rehearsals to scroll past on a\nphone. It also reverses the order, because history is read backwards\nfrom now, while the planning ahead is read soonest-first.\n\nThe split is on BandTime::startOfToday(), not now(): a rehearsal that\nbegan an hour ago must stay in the planning of somebody running late.\nPinned by EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,\nand mutation-tested by hand against now() \u2014 see Task 4 step 7.\n\nAnything that is not exactly the magic word '1' is the default,\nupcoming view \u2014 the same fail-safe direction MigrateController takes\nwith its `mode` parameter: a missing, misspelled or truncated value\nmust never be the one that hides events.\n\nNo eager loads: there are no relations yet. MEASURED 2026-09-09: this\ncosts exactly 1 query today \u2014 the events query alone, since this route\ncarries no permission lookup. Pinned by\ntest_listing_the_planning_costs_a_fixed_number_of_queries at a budget\nof 3, which is a FLOOR for R1c-2 \u2014 that release adds one relation and\none query, not an N+1, and the spare room is deliberate.",
+                "summary": "The planning: upcoming by default, or the history behind `?past=1`",
+                "tags": [
+                    "Event"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/EventResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "event.store",
+                "description": "201 with the created row, not 204: the SPA drops the response straight\ninto the list it is already showing, and a second GET to learn the id\nwould race the next writer.\n\nAudited, like every other privileged mutation, with the title captured\nas the label \u2014 see App\\Support\\Audit for why the CALLER reads it.\n\nThe two timestamps go in as the SPA sent them, offset and all. Turning\nthem into UTC instants is App\\Casts\\UtcDateTime's job, on the column \u2014\nthis endpoint deliberately knows nothing about it, which is what makes\nevery other writer of these columns correct too.",
+                "summary": "Puts a rehearsal or a gig on the planning",
+                "tags": [
+                    "Event"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreEventRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventResource"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}": {
+            "get": {
+                "operationId": "event.show",
+                "description": "Not redundant with index(): the edit form loads through this rather\nthan hunting the list, because a past event is absent from the default\nlist entirely \u2014 finding it there would work right up until somebody\nedited last month's rehearsal. Route-model binding turns an unknown id\ninto a ModelNotFoundException; Laravel's own exception handler rewrites\nthat into a 404 before any render() closure sees it (checked against\nbootstrap/app.php \u2014 no closure there is typed on it, so this 404 is the\nFRAMEWORK's default JSON shape, not App\\Exceptions\\ApiError's\n{error, code, fields[]} contract; EventIndexTest only asserts the\nstatus for that reason).",
+                "summary": "One event, by id",
+                "tags": [
+                    "Event"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "event.update",
+                "description": "The fields go through array_key_exists(), not isset(): isset() is false\nfor an explicitly-sent null, so clearing the attire or the notes \u2014 the\ncommittee deciding a gig is in ordinary clothes after all \u2014 would answer\n200 and silently change nothing. MemberController::update() carries the\nsame loop for the same reason.\n\n(That comment there also names $request->has(). MEASURED 2026-09-10:\nhas() is in fact TRUE for an explicitly-sent null \u2014 Arr::has() is\narray_key_exists underneath, and it is filled() that reads false. So\nhas() would work here; array_key_exists is still the right shape,\nbecause it asks the question of validated() \u2014 the array the rules have\nalready vetted \u2014 rather than of the raw input.)\n\nThe two timestamps go in as the SPA sent them, offset and all \u2014 see\nstore(), and App\\Casts\\UtcDateTime for why no endpoint converts them.\n\nAudited with the NEW title: a row still labelled with the old one names\nan event that no longer exists under that name.",
+                "summary": "Corrects one already on it",
+                "tags": [
+                    "Event"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateEventRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "event.destroy",
+                "description": "NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has no\nlockout invariant to violate, and nothing references `events` yet.\n\nThe title and the id are captured BEFORE the delete, because the row is\ngone by the time anybody reads the audit back \u2014 the label is then the\nonly part of that entry that still means anything.\n\nNO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving\nboth reads after $event->delete(): all 25 tests stay green, because\nEloquent leaves the deleted model's attributes in memory. It is kept\nfirst for the reason MemberController::destroy() keeps its own ordering\n\u2014 the audit must not depend on what a soft delete, a cascading delete\nor a refreshed model would leave behind.\n\n{ok: true} rather than 204, so R1c-2 has somewhere to put the count of\nanswers that went with the event: a member who had said yes deserves to\nbe told how many responses were discarded, and a 204 has no body to say\nit in.",
+                "summary": "Takes one off the planning",
+                "tags": [
+                    "Event"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/series": {
+            "post": {
+                "operationId": "eventSeries",
+                "tags": [
+                    "EventSeries"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreEventSeriesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The same shape GET /api/events returns, so the SPA refreshes its\nlist from this response rather than guessing what it just made.\n\n\n\nArray of `EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/EventResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/members": {
             "get": {
                 "operationId": "member.index",
@@ -749,6 +985,52 @@
                 ],
                 "title": "ContactRequest"
             },
+            "EventResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "startsAt": {
+                        "type": "string"
+                    },
+                    "endsAt": {
+                        "type": "string"
+                    },
+                    "location": {
+                        "type": "string"
+                    },
+                    "attire": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "isPublic": {
+                        "type": "boolean"
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "startsAt",
+                    "endsAt",
+                    "location",
+                    "attire",
+                    "isPublic",
+                    "notes"
+                ],
+                "title": "EventResource"
+            },
             "MemberResource": {
                 "type": "object",
                 "properties": {
@@ -888,6 +1170,117 @@
                 ],
                 "title": "SectionResource"
             },
+            "StoreEventRequest": {
+                "type": "object",
+                "description": "Putting a rehearsal or a gig on the planning.\n\n`endsAt` is REQUIRED and must come AFTER `startsAt`. Required because the\ncolumn is (C6, 2026_09_09_000001): a nullable end is what would let the\n`weekend` boolean creep back, since without an end there is nothing to read\n\"this runs over two days\" off. After, because nothing else enforced it and a\nmistyped hour produces an event of negative length \u2014 it sorts and renders in\nways nobody has designed for.\n\nThe rule is `after`, not `same day` plus an hour comparison: \"Weekend\n * musical, 3-4 October\" is a real row on the live planning, and spanning two\ndays is precisely the case C6 dissolved the flag for.\n\n`attire` and `notes` are nullable because half the planning has neither \u2014\na rehearsal in ordinary clothes with nothing to add is the common row, and\nrequiring the committee to type something into both is how \"-\" ends up on\nthe screen.\n\n`isPublic` is required rather than defaulted, the same call StoreMemberRequest\nmakes for `publicVisible`: showing an event to strangers is a decision\nsomebody makes per event, so the form states it instead of inheriting it.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first everywhere (an empty title reports\n`required`, not `invalid_type`) and `date` precedes `after` on `endsAt` \u2014 an\nunparseable end is a format problem, and comparing it to anything would\nreport the wrong thing.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "location": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "attire": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "isPublic": {
+                        "type": "boolean"
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "title",
+                    "startsAt",
+                    "endsAt",
+                    "location",
+                    "isPublic"
+                ],
+                "title": "StoreEventRequest"
+            },
+            "StoreEventSeriesRequest": {
+                "type": "object",
+                "description": "Generating a season: one template plus the list of dates it happens on.\n\nA LIST OF DATES, NOT A RECURRENCE RULE (decision C3). The browser computes\nthe candidate dates, the committee unticks the ones that fall in school\nholidays, and what arrives here is exactly the rows they looked at. No rule\nengine exists on either side of the wire, and after the request there is no\nseries \u2014 just N ordinary events.\n\nThe template carries `startTime`/`endTime` as `H:i` wall-clock strings\nrather than the `startsAt`/`endsAt` instants StoreEventRequest takes, and\nthat difference is the whole point: a season spans the daylight-saving\nchange, so the one thing every event in it shares is the time on the clock\nin Fribourg, not an offset. App\\Support\\BandTime::compose() turns each\n(date, time) pair into the right instant; see\nEventSeriesTest::test_the_wall_clock_time_is_the_same_in_summer_and_winter.\n\nRULE ORDER: `required` leads every list, because ApiError reports only the\nFIRST failed rule per field and an empty field must report `required`\nrather than a format complaint.\n\nThe format-before-comparison order on `template.endTime` is kept for\nconsistency with StoreEventRequest, but \u2014 MEASURED 2026-09-10 \u2014 it is NOT\nload-bearing here, unlike there. Reversing it on `endsAt` changes that\nfield's reported reason from `invalid_format` to `must_be_after`; reversing\nit here does not, and '25:00' still reports `invalid_format` either way.\nDifferent rule pair (`date_format:H:i` + `after:<field>` rather than `date`\n+ `after:<field>`), different behaviour. So do not copy the claim from one\nfile to the other without re-measuring, and do not read\ntest_an_unparseable_end_time_is_a_format_error_not_a_comparison as pinning\nan ordering \u2014 it pins the reported reason, which is what the committee\nactually reads.",
+                "properties": {
+                    "template": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string",
+                                "maxLength": 255
+                            },
+                            "location": {
+                                "type": "string",
+                                "maxLength": 255
+                            },
+                            "attire": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "maxLength": 255
+                            },
+                            "isPublic": {
+                                "type": "boolean"
+                            },
+                            "notes": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "startTime": {
+                                "type": "string",
+                                "description": "H:i, because these are wall-clock times and not instants \u2014 see\nthe class docblock. date_format rather than a regex so '25:00'\nand '10:70' are refused rather than composed into nonsense."
+                            },
+                            "endTime": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "location",
+                            "isPublic",
+                            "startTime",
+                            "endTime"
+                        ]
+                    },
+                    "dates": {
+                        "type": "array",
+                        "description": "NO `min:1`, deliberately. Laravel's `required` already refuses an\nempty array, and it reports the reason a French reader can act on\n(\"Dates est requis\"). `min` would report `too_short`, whose copy\ninterpolates a character count \u2014 ApiError's REASONS docblock\nrecords that `min` is committed to the string-length reading, so\nan array minimum here would tell the committee their list of\ndates \"est trop court (minimum 1 caract\u00e8res)\".",
+                        "items": {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Y-m-d only. An ISO instant would carry an offset, and the whole\npoint of this endpoint is that the offset is derived per date\nfrom the band's zone rather than sent."
+                        },
+                        "minItems": 1,
+                        "maxItems": 60
+                    }
+                },
+                "required": [
+                    "template",
+                    "dates"
+                ],
+                "title": "StoreEventSeriesRequest"
+            },
             "StoreMemberRequest": {
                 "type": "object",
                 "description": "Creating a person on the roster \u2014 which means creating an account, because\nevery member has one (2026_09_08_000001).\n\n`username` is REQUIRED for that reason. It used to be optional, back when a\nrow could be a person without a login; that model is what let somebody hold\nmembers.manage while being unable to authenticate, and deleting the only real\nadministrator then locked the band out.\n\nThere is deliberately no `roleIds` field either: granting a permission is\nexactly one operation, PUT /members/{member}/roles, which re-authenticates\nand checks the lockout invariants. Accepting roles here would let a stolen\nsession create a working administrator without ever proving who it is.\n\nThere is deliberately no `password` field. The password is GENERATED by the\ncontroller and returned once \u2014 an administrator reads it down the phone (\u00a74.4)\n\u2014 so nobody types a credential into this form and no weak one can be chosen.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first (an empty field reports `required`, not\n`invalid_format`) and `max` precedes `unique` (an over-long username reports\n`too_long` rather than costing a database round-trip).",
@@ -937,6 +1330,45 @@
                     "publicVisible"
                 ],
                 "title": "StoreMemberRequest"
+            },
+            "UpdateEventRequest": {
+                "type": "object",
+                "description": "Editing one row of the planning.\n\nPATCH, so every rule is `sometimes`: a form posting only the field it\nchanged must not blank the others.\n\n`sometimes` is not the same as `nullable`, and the two nullable columns need\nboth \u2014 `sometimes` means \"skip this field if absent\", `nullable` means \"null\n * is a legal value when present\". Without `sometimes` an absent field fails\n`required`; without `nullable` an explicit null fails the type rules.\nClearing the attire is an explicit null, so both matter. UpdateMemberRequest\nmakes the same call at more length, for the same situation.\n\nRULE ORDER IS LOAD-BEARING, exactly as StoreEventRequest documents: ApiError\nreports only the FIRST failed rule per field, so `required` comes before the\ntype rules and `date` before the comparison \u2014 an unparseable end is a format\nproblem, and comparing it to anything reports the wrong thing. Pinned by\nEventWriteTest::test_editing_reports_an_unparseable_end_as_a_format_error.",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "location": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "attire": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "isPublic": {
+                        "type": "boolean"
+                    },
+                    "notes": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "title": "UpdateEventRequest"
             },
             "UpdateMemberRequest": {
                 "type": "object",

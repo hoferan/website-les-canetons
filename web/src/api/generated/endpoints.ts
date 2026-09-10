@@ -33,6 +33,8 @@ import type {
   Config200,
   Contact200,
   ContactRequest,
+  EventDestroy200,
+  EventResource,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
@@ -42,7 +44,10 @@ import type {
   ReplaceMemberRolesRequest,
   RoleResource,
   SectionResource,
+  StoreEventRequest,
+  StoreEventSeriesRequest,
   StoreMemberRequest,
+  UpdateEventRequest,
   UpdateMemberRequest,
   ValidationExceptionResponse,
 } from "./model";
@@ -758,6 +763,874 @@ export const useContact = <TError = ValidationExceptionResponse, TContext = unkn
   TContext
 > => {
   return useMutation(getContactMutationOptions(options), queryClient);
+};
+
+export type eventIndexResponse200 = {
+  data: EventResource[];
+  status: 200;
+};
+
+export type eventIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventIndexResponseSuccess = eventIndexResponse200 & {
+  headers: Headers;
+};
+export type eventIndexResponseError = eventIndexResponse401 & {
+  headers: Headers;
+};
+
+export type eventIndexResponse = eventIndexResponseSuccess | eventIndexResponseError;
+
+export const getEventIndexUrl = () => {
+  return `/events`;
+};
+
+/**
+ * `?past=1` is the OTHER HALF of the list, not a superset of it — by next
+ * carnival the full list is a hundred rehearsals to scroll past on a
+ * phone. It also reverses the order, because history is read backwards
+ * from now, while the planning ahead is read soonest-first.
+ *
+ * The split is on BandTime::startOfToday(), not now(): a rehearsal that
+ * began an hour ago must stay in the planning of somebody running late.
+ * Pinned by EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,
+ * and mutation-tested by hand against now() — see Task 4 step 7.
+ *
+ * Anything that is not exactly the magic word '1' is the default,
+ * upcoming view — the same fail-safe direction MigrateController takes
+ * with its `mode` parameter: a missing, misspelled or truncated value
+ * must never be the one that hides events.
+ *
+ * No eager loads: there are no relations yet. MEASURED 2026-09-09: this
+ * costs exactly 1 query today — the events query alone, since this route
+ * carries no permission lookup. Pinned by
+ * test_listing_the_planning_costs_a_fixed_number_of_queries at a budget
+ * of 3, which is a FLOOR for R1c-2 — that release adds one relation and
+ * one query, not an N+1, and the spare room is deliberate.
+ * @summary The planning: upcoming by default, or the history behind `?past=1`
+ */
+export const eventIndex = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventIndexResponse> => {
+  return customFetch<eventIndexResponse>(getEventIndexUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getEventIndexQueryKey = () => {
+  return [`/events`] as const;
+};
+
+export const getEventIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof eventIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof eventIndex>>> = ({ signal }) =>
+    eventIndex({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof eventIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
+export type EventIndexQueryError = AuthenticationExceptionResponse;
+
+export function useEventIndex<
+  TData = Awaited<ReturnType<typeof eventIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventIndex>>,
+          TError,
+          Awaited<ReturnType<typeof eventIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventIndex<
+  TData = Awaited<ReturnType<typeof eventIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventIndex>>,
+          TError,
+          Awaited<ReturnType<typeof eventIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventIndex<
+  TData = Awaited<ReturnType<typeof eventIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The planning: upcoming by default, or the history behind `?past=1`
+ */
+
+export function useEventIndex<
+  TData = Awaited<ReturnType<typeof eventIndex>>,
+  TError = AuthenticationExceptionResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getEventIndexQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type eventStoreResponse201 = {
+  data: EventResource;
+  status: 201;
+};
+
+export type eventStoreResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type eventStoreResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventStoreResponseSuccess = eventStoreResponse201 & {
+  headers: Headers;
+};
+export type eventStoreResponseError = (eventStoreResponse400 | eventStoreResponse401) & {
+  headers: Headers;
+};
+
+export type eventStoreResponse = eventStoreResponseSuccess | eventStoreResponseError;
+
+export const getEventStoreUrl = () => {
+  return `/events`;
+};
+
+/**
+ * 201 with the created row, not 204: the SPA drops the response straight
+ * into the list it is already showing, and a second GET to learn the id
+ * would race the next writer.
+ *
+ * Audited, like every other privileged mutation, with the title captured
+ * as the label — see App\Support\Audit for why the CALLER reads it.
+ *
+ * The two timestamps go in as the SPA sent them, offset and all. Turning
+ * them into UTC instants is App\Casts\UtcDateTime's job, on the column —
+ * this endpoint deliberately knows nothing about it, which is what makes
+ * every other writer of these columns correct too.
+ * @summary Puts a rehearsal or a gig on the planning
+ */
+export const eventStore = async (
+  storeEventRequest: StoreEventRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<eventStoreResponse>(getEventStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeEventRequest),
+  });
+};
+
+export const getEventStoreMutationKey = () => ["eventStore"] as const;
+
+export const getEventStoreMutationOptions = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventStore>>,
+    TError,
+    EventStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventStore>>,
+  TError,
+  EventStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventStore>>,
+    EventStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return eventStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventStoreMutationResult = NonNullable<Awaited<ReturnType<typeof eventStore>>>;
+export type EventStoreMutationBody = StoreEventRequest;
+export type EventStoreMutationError = ValidationExceptionResponse | AuthenticationExceptionResponse;
+export type EventStoreMutationVariables = { data: StoreEventRequest };
+
+/**
+ * @summary Puts a rehearsal or a gig on the planning
+ */
+export const useEventStore = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventStore>>,
+      TError,
+      EventStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventStore>>,
+  TError,
+  EventStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventStoreMutationOptions(options), queryClient);
+};
+
+export type eventShowResponse200 = {
+  data: EventResource;
+  status: 200;
+};
+
+export type eventShowResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventShowResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type eventShowResponseSuccess = eventShowResponse200 & {
+  headers: Headers;
+};
+export type eventShowResponseError = (eventShowResponse401 | eventShowResponse404) & {
+  headers: Headers;
+};
+
+export type eventShowResponse = eventShowResponseSuccess | eventShowResponseError;
+
+export const getEventShowUrl = (event: number) => {
+  return `/events/${event}`;
+};
+
+/**
+ * Not redundant with index(): the edit form loads through this rather
+ * than hunting the list, because a past event is absent from the default
+ * list entirely — finding it there would work right up until somebody
+ * edited last month's rehearsal. Route-model binding turns an unknown id
+ * into a ModelNotFoundException; Laravel's own exception handler rewrites
+ * that into a 404 before any render() closure sees it (checked against
+ * bootstrap/app.php — no closure there is typed on it, so this 404 is the
+ * FRAMEWORK's default JSON shape, not App\Exceptions\ApiError's
+ * {error, code, fields[]} contract; EventIndexTest only asserts the
+ * status for that reason).
+ * @summary One event, by id
+ */
+export const eventShow = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventShowResponse> => {
+  return customFetch<eventShowResponse>(getEventShowUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getEventShowQueryKey = (event: number) => {
+  return [`/events/${event}`] as const;
+};
+
+export const getEventShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof eventShow>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getEventShowQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof eventShow>>> = ({ signal }) =>
+    eventShow(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type EventShowQueryResult = NonNullable<Awaited<ReturnType<typeof eventShow>>>;
+export type EventShowQueryError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+export function useEventShow<
+  TData = Awaited<ReturnType<typeof eventShow>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventShow>>,
+          TError,
+          Awaited<ReturnType<typeof eventShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventShow<
+  TData = Awaited<ReturnType<typeof eventShow>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventShow>>,
+          TError,
+          Awaited<ReturnType<typeof eventShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventShow<
+  TData = Awaited<ReturnType<typeof eventShow>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary One event, by id
+ */
+
+export function useEventShow<
+  TData = Awaited<ReturnType<typeof eventShow>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getEventShowQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type eventUpdateResponse200 = {
+  data: EventResource;
+  status: 200;
+};
+
+export type eventUpdateResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type eventUpdateResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventUpdateResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type eventUpdateResponseSuccess = eventUpdateResponse200 & {
+  headers: Headers;
+};
+export type eventUpdateResponseError = (
+  eventUpdateResponse400 | eventUpdateResponse401 | eventUpdateResponse404
+) & {
+  headers: Headers;
+};
+
+export type eventUpdateResponse = eventUpdateResponseSuccess | eventUpdateResponseError;
+
+export const getEventUpdateUrl = (event: number) => {
+  return `/events/${event}`;
+};
+
+/**
+ * The fields go through array_key_exists(), not isset(): isset() is false
+ * for an explicitly-sent null, so clearing the attire or the notes — the
+ * committee deciding a gig is in ordinary clothes after all — would answer
+ * 200 and silently change nothing. MemberController::update() carries the
+ * same loop for the same reason.
+ *
+ * (That comment there also names $request->has(). MEASURED 2026-09-10:
+ * has() is in fact TRUE for an explicitly-sent null — Arr::has() is
+ * array_key_exists underneath, and it is filled() that reads false. So
+ * has() would work here; array_key_exists is still the right shape,
+ * because it asks the question of validated() — the array the rules have
+ * already vetted — rather than of the raw input.)
+ *
+ * The two timestamps go in as the SPA sent them, offset and all — see
+ * store(), and App\Casts\UtcDateTime for why no endpoint converts them.
+ *
+ * Audited with the NEW title: a row still labelled with the old one names
+ * an event that no longer exists under that name.
+ * @summary Corrects one already on it
+ */
+export const eventUpdate = async (
+  event: number,
+  updateEventRequest?: UpdateEventRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<eventUpdateResponse>(getEventUpdateUrl(event), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateEventRequest),
+  });
+};
+
+export const getEventUpdateMutationKey = () => ["eventUpdate"] as const;
+
+export const getEventUpdateMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventUpdate>>,
+    TError,
+    EventUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventUpdate>>,
+  TError,
+  EventUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventUpdate>>,
+    EventUpdateMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return eventUpdate(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof eventUpdate>>>;
+export type EventUpdateMutationBody = UpdateEventRequest | undefined;
+export type EventUpdateMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type EventUpdateMutationVariables = { event: number; data?: UpdateEventRequest };
+
+/**
+ * @summary Corrects one already on it
+ */
+export const useEventUpdate = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventUpdate>>,
+      TError,
+      EventUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventUpdate>>,
+  TError,
+  EventUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventUpdateMutationOptions(options), queryClient);
+};
+
+export type eventDestroyResponse200 = {
+  data: EventDestroy200;
+  status: 200;
+};
+
+export type eventDestroyResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventDestroyResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type eventDestroyResponseSuccess = eventDestroyResponse200 & {
+  headers: Headers;
+};
+export type eventDestroyResponseError = (eventDestroyResponse401 | eventDestroyResponse404) & {
+  headers: Headers;
+};
+
+export type eventDestroyResponse = eventDestroyResponseSuccess | eventDestroyResponseError;
+
+export const getEventDestroyUrl = (event: number) => {
+  return `/events/${event}`;
+};
+
+/**
+ * NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has no
+ * lockout invariant to violate, and nothing references `events` yet.
+ *
+ * The title and the id are captured BEFORE the delete, because the row is
+ * gone by the time anybody reads the audit back — the label is then the
+ * only part of that entry that still means anything.
+ *
+ * NO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving
+ * both reads after $event->delete(): all 25 tests stay green, because
+ * Eloquent leaves the deleted model's attributes in memory. It is kept
+ * first for the reason MemberController::destroy() keeps its own ordering
+ * — the audit must not depend on what a soft delete, a cascading delete
+ * or a refreshed model would leave behind.
+ *
+ * {ok: true} rather than 204, so R1c-2 has somewhere to put the count of
+ * answers that went with the event: a member who had said yes deserves to
+ * be told how many responses were discarded, and a 204 has no body to say
+ * it in.
+ * @summary Takes one off the planning
+ */
+export const eventDestroy = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventDestroyResponse> => {
+  return customFetch<eventDestroyResponse>(getEventDestroyUrl(event), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getEventDestroyMutationKey = () => ["eventDestroy"] as const;
+
+export const getEventDestroyMutationOptions = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventDestroy>>,
+    TError,
+    EventDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventDestroy>>,
+  TError,
+  EventDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventDestroy>>,
+    EventDestroyMutationVariables
+  > = (props) => {
+    const { event } = props ?? {};
+
+    return eventDestroy(event, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof eventDestroy>>>;
+
+export type EventDestroyMutationError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type EventDestroyMutationVariables = { event: number };
+
+/**
+ * @summary Takes one off the planning
+ */
+export const useEventDestroy = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventDestroy>>,
+      TError,
+      EventDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventDestroy>>,
+  TError,
+  EventDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventDestroyMutationOptions(options), queryClient);
+};
+
+export type eventSeriesResponse201 = {
+  data: EventResource[];
+  status: 201;
+};
+
+export type eventSeriesResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type eventSeriesResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type eventSeriesResponseSuccess = eventSeriesResponse201 & {
+  headers: Headers;
+};
+export type eventSeriesResponseError = (eventSeriesResponse400 | eventSeriesResponse401) & {
+  headers: Headers;
+};
+
+export type eventSeriesResponse = eventSeriesResponseSuccess | eventSeriesResponseError;
+
+export const getEventSeriesUrl = () => {
+  return `/events/series`;
+};
+
+export const eventSeries = async (
+  storeEventSeriesRequest: StoreEventSeriesRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventSeriesResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<eventSeriesResponse>(getEventSeriesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeEventSeriesRequest),
+  });
+};
+
+export const getEventSeriesMutationKey = () => ["eventSeries"] as const;
+
+export const getEventSeriesMutationOptions = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventSeries>>,
+    TError,
+    EventSeriesMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventSeries>>,
+  TError,
+  EventSeriesMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventSeriesMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventSeries>>,
+    EventSeriesMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return eventSeries(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof eventSeries>>>;
+export type EventSeriesMutationBody = StoreEventSeriesRequest;
+export type EventSeriesMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse;
+export type EventSeriesMutationVariables = { data: StoreEventSeriesRequest };
+
+export const useEventSeries = <
+  TError = ValidationExceptionResponse | AuthenticationExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventSeries>>,
+      TError,
+      EventSeriesMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventSeries>>,
+  TError,
+  EventSeriesMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventSeriesMutationOptions(options), queryClient);
 };
 
 export type memberIndexResponse200 = {
