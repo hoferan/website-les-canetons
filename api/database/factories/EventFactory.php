@@ -66,4 +66,38 @@ class EventFactory extends Factory
     {
         return $this->state(fn (): array => ['is_public' => true]);
     }
+
+    /**
+     * An event whose registration form is OPEN.
+     *
+     * Registration is enabled iff `registration_closes_at` is set (D9), so
+     * setting the close date is the whole switch. `opens_at` is left null,
+     * which means open immediately — the common case, and the one a test
+     * that says nothing about dates wants.
+     */
+    public function takingRegistrations(?int $maxGuests = null): static
+    {
+        return $this->state(fn (): array => [
+            'registration_closes_at' => Carbon::now()->addWeeks(2),
+            'registration_max_guests' => $maxGuests,
+        ]);
+    }
+
+    /** Enabled, but the form has not opened yet. */
+    public function registrationNotYetOpen(): static
+    {
+        return $this->state(fn (): array => [
+            'registration_opens_at' => Carbon::now()->addWeek(),
+            'registration_closes_at' => Carbon::now()->addWeeks(3),
+        ]);
+    }
+
+    /** Enabled, but the deadline has passed. */
+    public function registrationClosed(): static
+    {
+        return $this->state(fn (): array => [
+            'registration_opens_at' => Carbon::now()->subWeeks(3),
+            'registration_closes_at' => Carbon::now()->subDay(),
+        ]);
+    }
 }

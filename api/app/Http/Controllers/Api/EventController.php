@@ -13,6 +13,7 @@ use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class EventController extends Controller
 {
@@ -223,14 +224,20 @@ class EventController extends Controller
         // and one that merely asks again — see the R1c-1 plan Task 12, and
         // the R3 spec §4 which adds registrationsDeleted beside it.
         $attendanceDeleted = $event->attendance()->count();
+        $registrationsDeleted = $event->registrations()->count();
 
-        $event->delete();
+        // ONE TRANSACTION: the delete now spans four tables — the choices
+        // Event::booted() clears first, then the cascades into registrations,
+        // options and attendance. A failure part-way through would leave a
+        // half-deleted event whose bookings point at nothing.
+        DB::transaction(fn () => $event->delete());
 
         Audit::record($request->user(), 'event.deleted', 'event', $id, $label);
 
         return response()->json([
             'ok' => true,
             'attendanceDeleted' => $attendanceDeleted,
+            'registrationsDeleted' => $registrationsDeleted,
         ]);
     }
 }

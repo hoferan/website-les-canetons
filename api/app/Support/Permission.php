@@ -21,4 +21,16 @@ enum Permission: string
     case AttendanceRecordForOthers = 'attendance.record_for_others';
     case MembersManage = 'members.manage';
     case RegistrationsView = 'registrations.view';
+
+    /**
+     * Editing or cancelling somebody's booking, as opposed to reading the
+     * guest list.
+     *
+     * A separate case from RegistrationsView on purpose: guests get no
+     * self-service (G2), so the committee corrects mistakes — but `committee`
+     * holds RegistrationsView as its only permission, and widening that token
+     * would hand the role that merely looks at the list the power to delete
+     * from it.
+     */
+    case RegistrationsManage = 'registrations.manage';
 }

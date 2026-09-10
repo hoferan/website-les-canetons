@@ -1,0 +1,139 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Exceptions\ApiError;
+use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Support\GuestList;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Writer;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+/**
+ * The guest list as a file: XLSX, CSV, Markdown or JSON.
+ *
+ * ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The formats
+ * must not be able to disagree about what a guest list contains, and a test
+ * asserts they do not.
+ *
+ * XLSX IS THE ONE THAT MATTERS, because a committee member opens the file in
+ * Excel. CSV exists as the dependency-free fallback: openspout needs
+ * ext-zip, and MEASURED 2026-09-10 that extension was absent even from this
+ * project's own php:8.4-fpm image (now added in docker/web/Dockerfile) and
+ * remains unverified on the shared host. If it is missing there, this
+ * endpoint says so in words rather than dying with "Class ZipArchive not
+ * found".
+ *
+ * Markdown is for pasting a list into notes or a message; JSON is the same
+ * rows the screen already has, offered as a file for completeness.
+ */
+class GuestListExportController extends Controller
+{
+    public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
+    {
+        $list = GuestList::for($event);
+
+        return match ($format) {
+            'xlsx' => $this->xlsx($list),
+            'csv' => $this->csv($list),
+            'md' => $this->markdown($list),
+            'json' => $this->json($list),
+            // Unreachable through the route, whose {format} is constrained —
+            // kept so a widened constraint cannot silently fall through to a
+            // 500.
+            default => ApiError::json(404, 'not_found', 'Unknown export format'),
+        };
+    }
+
+    private function xlsx(GuestList $list): JsonResponse|StreamedResponse
+    {
+        if (! extension_loaded('zip')) {
+            // A named refusal rather than a fatal. An operator reading this
+            // knows exactly what to ask the host for, and CSV still works.
+            return ApiError::json(
+                503,
+                'xlsx_unavailable',
+                'XLSX export needs the PHP zip extension, which this server does not have. Use CSV.',
+            );
+        }
+
+        return response()->streamDownload(function () use ($list): void {
+            $writer = new Writer;
+            $writer->openToFile('php://output');
+
+            $writer->addRow(Row::fromValues($list->headers()));
+            foreach ($list->rows() as $row) {
+                $writer->addRow(Row::fromValues($row));
+            }
+            $writer->addRow(Row::fromValues($list->totals()));
+
+            $writer->close();
+        }, $list->filename().'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    private function csv(GuestList $list): Response
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        // A UTF-8 BOM, deliberately. Excel on Windows reads a BOM-less UTF-8
+        // CSV as the system codepage and renders every accent as mojibake —
+        // "Répétition" becomes "RÃ©pÃ©tition" — which for a French guest list
+        // full of names is the difference between a usable file and a
+        // useless one.
+        fwrite($handle, "\xEF\xBB\xBF");
+
+        // Semicolons, not commas: Swiss and French Excel treat ';' as the
+        // field separator, and a comma-delimited file opens as one column.
+        fputcsv($handle, $list->headers(), ';');
+        foreach ($list->rows() as $row) {
+            fputcsv($handle, $row, ';');
+        }
+        fputcsv($handle, $list->totals(), ';');
+
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$list->filename().'.csv"',
+        ]);
+    }
+
+    private function markdown(GuestList $list): Response
+    {
+        $line = fn (array $cells): string => '| '.implode(' | ', array_map(
+            fn ($cell): string => str_replace('|', '\\|', (string) ($cell ?? '')),
+            $cells
+        )).' |';
+
+        $lines = [$line($list->headers())];
+        $lines[] = '| '.implode(' | ', array_fill(0, count($list->headers()), '---')).' |';
+
+        foreach ($list->rows() as $row) {
+            $lines[] = $line($row);
+        }
+        $lines[] = $line($list->totals());
+
+        return response(implode("\n", $lines)."\n", 200, [
+            'Content-Type' => 'text/markdown; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="'.$list->filename().'.md"',
+        ]);
+    }
+
+    private function json(GuestList $list): JsonResponse
+    {
+        return response()->json([
+            'headers' => $list->headers(),
+            'rows' => $list->rows(),
+            'totals' => $list->totals(),
+        ], 200, [
+            'Content-Disposition' => 'attachment; filename="'.$list->filename().'.json"',
+        ]);
+    }
+}

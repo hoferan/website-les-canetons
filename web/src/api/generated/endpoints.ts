@@ -39,6 +39,8 @@ import type {
   EventDestroy200,
   EventIndexParams,
   EventResource,
+  FormToken200,
+  GuestListExport200One,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
@@ -47,14 +49,23 @@ import type {
   ModelNotFoundExceptionResponse,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
+  RegistrationDestroy200,
+  RegistrationFormResource,
+  RegistrationOption409,
+  RegistrationOptionResource,
+  RegistrationResource,
+  RegistrationStore200,
   ReplaceMemberRolesRequest,
+  ReplaceRegistrationOptionsRequest,
   RoleResource,
   SectionResource,
   StoreEventRequest,
   StoreEventSeriesRequest,
   StoreMemberRequest,
+  StoreRegistrationRequest,
   UpdateEventRequest,
   UpdateMemberRequest,
+  UpdateRegistrationRequest,
   ValidationExceptionResponse,
 } from "./model";
 
@@ -2095,6 +2106,276 @@ export const useEventSeries = <
   return useMutation(getEventSeriesMutationOptions(options), queryClient);
 };
 
+export type formTokenResponse200 = {
+  data: FormToken200;
+  status: 200;
+};
+
+export type formTokenResponseSuccess = formTokenResponse200 & {
+  headers: Headers;
+};
+export type formTokenResponse = formTokenResponseSuccess;
+
+export const getFormTokenUrl = () => {
+  return `/form-token`;
+};
+
+export const formToken = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<formTokenResponse> => {
+  return customFetch<formTokenResponse>(getFormTokenUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getFormTokenQueryKey = () => {
+  return [`/form-token`] as const;
+};
+
+export const getFormTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof formToken>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getFormTokenQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof formToken>>> = ({ signal }) =>
+    formToken({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof formToken>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type FormTokenQueryResult = NonNullable<Awaited<ReturnType<typeof formToken>>>;
+export type FormTokenQueryError = unknown;
+
+export function useFormToken<TData = Awaited<ReturnType<typeof formToken>>, TError = unknown>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof formToken>>,
+          TError,
+          Awaited<ReturnType<typeof formToken>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFormToken<TData = Awaited<ReturnType<typeof formToken>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof formToken>>,
+          TError,
+          Awaited<ReturnType<typeof formToken>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFormToken<TData = Awaited<ReturnType<typeof formToken>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useFormToken<TData = Awaited<ReturnType<typeof formToken>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getFormTokenQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type guestListExportResponse200ApplicationJson = {
+  data: GuestListExport200One;
+  status: 200;
+};
+
+export type guestListExportResponse200TextCsvCharsetUTF8 = {
+  data: string;
+  status: 200;
+};
+
+export type guestListExportResponse200TextMarkdownCharsetUTF8 = {
+  data: string;
+  status: 200;
+};
+
+export type guestListExportResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type guestListExportResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type guestListExportResponseSuccess = (
+  | guestListExportResponse200ApplicationJson
+  | guestListExportResponse200TextCsvCharsetUTF8
+  | guestListExportResponse200TextMarkdownCharsetUTF8
+) & {
+  headers: Headers;
+};
+export type guestListExportResponseError = (
+  guestListExportResponse401 | guestListExportResponse404
+) & {
+  headers: Headers;
+};
+
+export type guestListExportResponse = guestListExportResponseSuccess | guestListExportResponseError;
+
+export const getGuestListExportUrl = (event: number, format: string) => {
+  return `/events/${event}/registrations.${format}`;
+};
+
+export const guestListExport = async (
+  event: number,
+  format: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<guestListExportResponse> => {
+  return customFetch<guestListExportResponse>(getGuestListExportUrl(event, format), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGuestListExportQueryKey = (event: number, format: string) => {
+  return [`/events/${event}/registrations.${format}`] as const;
+};
+
+export const getGuestListExportQueryOptions = <
+  TData = Awaited<ReturnType<typeof guestListExport>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  format: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGuestListExportQueryKey(event, format);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof guestListExport>>> = ({ signal }) =>
+    guestListExport(event, format, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined && format !== null && format !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GuestListExportQueryResult = NonNullable<Awaited<ReturnType<typeof guestListExport>>>;
+export type GuestListExportQueryError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+export function useGuestListExport<
+  TData = Awaited<ReturnType<typeof guestListExport>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  format: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof guestListExport>>,
+          TError,
+          Awaited<ReturnType<typeof guestListExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGuestListExport<
+  TData = Awaited<ReturnType<typeof guestListExport>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  format: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof guestListExport>>,
+          TError,
+          Awaited<ReturnType<typeof guestListExport>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGuestListExport<
+  TData = Awaited<ReturnType<typeof guestListExport>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  format: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+export function useGuestListExport<
+  TData = Awaited<ReturnType<typeof guestListExport>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  format: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGuestListExportQueryOptions(event, format, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type memberIndexResponse200 = {
   data: MemberResource[];
   status: 200;
@@ -3079,6 +3360,897 @@ export const useMemberRole = <
   TContext
 > => {
   return useMutation(getMemberRoleMutationOptions(options), queryClient);
+};
+
+export type registrationStoreResponse200 = {
+  data: RegistrationStore200;
+  status: 200;
+};
+
+export type registrationStoreResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type registrationStoreResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationStoreResponseSuccess = registrationStoreResponse200 & {
+  headers: Headers;
+};
+export type registrationStoreResponseError = (
+  registrationStoreResponse400 | registrationStoreResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationStoreResponse =
+  registrationStoreResponseSuccess | registrationStoreResponseError;
+
+export const getRegistrationStoreUrl = (event: number) => {
+  return `/events/${event}/registrations`;
+};
+
+/**
+ * Behind PublicWriteGuard — honeypot plus a signed timestamp — which is
+ * the only thing between this and the open internet.
+ *
+ * NO CAPACITY CHECK (decision G1), and that absence is what keeps this
+ * lock-free. A count-then-insert would need a locking read on the one
+ * endpoint strangers can hammer; the committee watches the guest list
+ * and closes the date early instead.
+ *
+ * ONE TRANSACTION for the booking and its choices: a booking whose
+ * choices half-landed is a guest the cook cannot count.
+ * @summary PUBLIC. Books a place
+ */
+export const registrationStore = async (
+  event: number,
+  storeRegistrationRequest: StoreRegistrationRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<registrationStoreResponse>(getRegistrationStoreUrl(event), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeRegistrationRequest),
+  });
+};
+
+export const getRegistrationStoreMutationKey = () => ["registrationStore"] as const;
+
+export const getRegistrationStoreMutationOptions = <
+  TError = ValidationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registrationStore>>,
+    TError,
+    RegistrationStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registrationStore>>,
+  TError,
+  RegistrationStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRegistrationStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registrationStore>>,
+    RegistrationStoreMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return registrationStore(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegistrationStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registrationStore>>
+>;
+export type RegistrationStoreMutationBody = StoreRegistrationRequest;
+export type RegistrationStoreMutationError =
+  ValidationExceptionResponse | ModelNotFoundExceptionResponse;
+export type RegistrationStoreMutationVariables = { event: number; data: StoreRegistrationRequest };
+
+/**
+ * @summary PUBLIC. Books a place
+ */
+export const useRegistrationStore = <
+  TError = ValidationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof registrationStore>>,
+      TError,
+      RegistrationStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof registrationStore>>,
+  TError,
+  RegistrationStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getRegistrationStoreMutationOptions(options), queryClient);
+};
+
+export type registrationIndexResponse200 = {
+  data: RegistrationResource[];
+  status: 200;
+};
+
+export type registrationIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type registrationIndexResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationIndexResponseSuccess = registrationIndexResponse200 & {
+  headers: Headers;
+};
+export type registrationIndexResponseError = (
+  registrationIndexResponse401 | registrationIndexResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationIndexResponse =
+  registrationIndexResponseSuccess | registrationIndexResponseError;
+
+export const getRegistrationIndexUrl = (event: number) => {
+  return `/events/${event}/registrations`;
+};
+
+/**
+ * Eager-loads the choices and their options in two queries, not one per
+ * booking: a souper is ~100 bookings and this screen is also what the
+ * exports read.
+ * @summary The guest list. `registrations.view`
+ */
+export const registrationIndex = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationIndexResponse> => {
+  return customFetch<registrationIndexResponse>(getRegistrationIndexUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationIndexQueryKey = (event: number) => {
+  return [`/events/${event}/registrations`] as const;
+};
+
+export const getRegistrationIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationIndexQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationIndex>>> = ({ signal }) =>
+    registrationIndex(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof registrationIndex>>
+>;
+export type RegistrationIndexQueryError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+export function useRegistrationIndex<
+  TData = Awaited<ReturnType<typeof registrationIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationIndex<
+  TData = Awaited<ReturnType<typeof registrationIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationIndex<
+  TData = Awaited<ReturnType<typeof registrationIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary The guest list. `registrations.view`
+ */
+
+export function useRegistrationIndex<
+  TData = Awaited<ReturnType<typeof registrationIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationIndexQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type registrationFormResponse200 = {
+  data: RegistrationFormResource;
+  status: 200;
+};
+
+export type registrationFormResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationFormResponseSuccess = registrationFormResponse200 & {
+  headers: Headers;
+};
+export type registrationFormResponseError = registrationFormResponse404 & {
+  headers: Headers;
+};
+
+export type registrationFormResponse =
+  registrationFormResponseSuccess | registrationFormResponseError;
+
+export const getRegistrationFormUrl = (event: number) => {
+  return `/events/${event}/registration`;
+};
+
+/**
+ * 404, NOT 403, for an event that takes no registrations. A stranger
+ * should not be able to learn that an event exists but is not taking
+ * bookings — that is a fact about the band's private planning, and this
+ * endpoint is reachable without a session.
+ *
+ * An event that is enabled but outside its window DOES answer, with
+ * `open: false`, because the form has something worth saying then:
+ * "inscriptions dès le 3 janvier" or "les inscriptions sont closes".
+ * @summary PUBLIC. What the booking form needs to render itself
+ */
+export const registrationForm = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationFormResponse> => {
+  return customFetch<registrationFormResponse>(getRegistrationFormUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationFormQueryKey = (event: number) => {
+  return [`/events/${event}/registration`] as const;
+};
+
+export const getRegistrationFormQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationForm>>,
+  TError = ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationFormQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationForm>>> = ({ signal }) =>
+    registrationForm(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationFormQueryResult = NonNullable<Awaited<ReturnType<typeof registrationForm>>>;
+export type RegistrationFormQueryError = ModelNotFoundExceptionResponse;
+
+export function useRegistrationForm<
+  TData = Awaited<ReturnType<typeof registrationForm>>,
+  TError = ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationForm>>,
+          TError,
+          Awaited<ReturnType<typeof registrationForm>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationForm<
+  TData = Awaited<ReturnType<typeof registrationForm>>,
+  TError = ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationForm>>,
+          TError,
+          Awaited<ReturnType<typeof registrationForm>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationForm<
+  TData = Awaited<ReturnType<typeof registrationForm>>,
+  TError = ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary PUBLIC. What the booking form needs to render itself
+ */
+
+export function useRegistrationForm<
+  TData = Awaited<ReturnType<typeof registrationForm>>,
+  TError = ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationForm>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationFormQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type registrationUpdateResponse200 = {
+  data: RegistrationResource;
+  status: 200;
+};
+
+export type registrationUpdateResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type registrationUpdateResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type registrationUpdateResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationUpdateResponseSuccess = registrationUpdateResponse200 & {
+  headers: Headers;
+};
+export type registrationUpdateResponseError = (
+  registrationUpdateResponse400 | registrationUpdateResponse401 | registrationUpdateResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationUpdateResponse =
+  registrationUpdateResponseSuccess | registrationUpdateResponseError;
+
+export const getRegistrationUpdateUrl = (registration: number) => {
+  return `/registrations/${registration}`;
+};
+
+/**
+ * Guests get no self-service (G2), so this is how a misspelled name or
+ * a wrong table gets fixed. The CHOICES are deliberately not editable
+ * here: changing what somebody ordered is a different act from fixing
+ * their details, it would need the guest cap re-checked and the
+ * confirmation re-sent, and nobody has asked for it. A wrong order is
+ * cancelled and re-booked.
+ *
+ * array_key_exists, not isset: both are false for an explicitly-sent
+ * null, so clearing an address would silently do nothing.
+ * @summary Correcting a booking. `registrations.manage`
+ */
+export const registrationUpdate = async (
+  registration: number,
+  updateRegistrationRequest?: UpdateRegistrationRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<registrationUpdateResponse>(getRegistrationUpdateUrl(registration), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateRegistrationRequest),
+  });
+};
+
+export const getRegistrationUpdateMutationKey = () => ["registrationUpdate"] as const;
+
+export const getRegistrationUpdateMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registrationUpdate>>,
+    TError,
+    RegistrationUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registrationUpdate>>,
+  TError,
+  RegistrationUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRegistrationUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registrationUpdate>>,
+    RegistrationUpdateMutationVariables
+  > = (props) => {
+    const { registration, data } = props ?? {};
+
+    return registrationUpdate(registration, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegistrationUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registrationUpdate>>
+>;
+export type RegistrationUpdateMutationBody = UpdateRegistrationRequest | undefined;
+export type RegistrationUpdateMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type RegistrationUpdateMutationVariables = {
+  registration: number;
+  data?: UpdateRegistrationRequest;
+};
+
+/**
+ * @summary Correcting a booking. `registrations.manage`
+ */
+export const useRegistrationUpdate = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof registrationUpdate>>,
+      TError,
+      RegistrationUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof registrationUpdate>>,
+  TError,
+  RegistrationUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getRegistrationUpdateMutationOptions(options), queryClient);
+};
+
+export type registrationDestroyResponse200 = {
+  data: RegistrationDestroy200;
+  status: 200;
+};
+
+export type registrationDestroyResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type registrationDestroyResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationDestroyResponseSuccess = registrationDestroyResponse200 & {
+  headers: Headers;
+};
+export type registrationDestroyResponseError = (
+  registrationDestroyResponse401 | registrationDestroyResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationDestroyResponse =
+  registrationDestroyResponseSuccess | registrationDestroyResponseError;
+
+export const getRegistrationDestroyUrl = (registration: number) => {
+  return `/registrations/${registration}`;
+};
+
+/**
+ * The label is captured BEFORE the delete, because the row is gone by
+ * the time anybody reads the audit back — see App\Support\Audit.
+ * @summary Cancelling on a guest's behalf. `registrations.manage`
+ */
+export const registrationDestroy = async (
+  registration: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationDestroyResponse> => {
+  return customFetch<registrationDestroyResponse>(getRegistrationDestroyUrl(registration), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRegistrationDestroyMutationKey = () => ["registrationDestroy"] as const;
+
+export const getRegistrationDestroyMutationOptions = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registrationDestroy>>,
+    TError,
+    RegistrationDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registrationDestroy>>,
+  TError,
+  RegistrationDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRegistrationDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registrationDestroy>>,
+    RegistrationDestroyMutationVariables
+  > = (props) => {
+    const { registration } = props ?? {};
+
+    return registrationDestroy(registration, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegistrationDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registrationDestroy>>
+>;
+
+export type RegistrationDestroyMutationError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type RegistrationDestroyMutationVariables = { registration: number };
+
+/**
+ * @summary Cancelling on a guest's behalf. `registrations.manage`
+ */
+export const useRegistrationDestroy = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof registrationDestroy>>,
+      TError,
+      RegistrationDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof registrationDestroy>>,
+  TError,
+  RegistrationDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getRegistrationDestroyMutationOptions(options), queryClient);
+};
+
+export type registrationOptionResponse200 = {
+  data: RegistrationOptionResource[];
+  status: 200;
+};
+
+export type registrationOptionResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type registrationOptionResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type registrationOptionResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type registrationOptionResponse409 = {
+  data: RegistrationOption409;
+  status: 409;
+};
+
+export type registrationOptionResponseSuccess = registrationOptionResponse200 & {
+  headers: Headers;
+};
+export type registrationOptionResponseError = (
+  | registrationOptionResponse400
+  | registrationOptionResponse401
+  | registrationOptionResponse404
+  | registrationOptionResponse409
+) & {
+  headers: Headers;
+};
+
+export type registrationOptionResponse =
+  registrationOptionResponseSuccess | registrationOptionResponseError;
+
+export const getRegistrationOptionUrl = (event: number) => {
+  return `/events/${event}/registration-options`;
+};
+
+export const registrationOption = async (
+  event: number,
+  replaceRegistrationOptionsRequest: ReplaceRegistrationOptionsRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationOptionResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<registrationOptionResponse>(getRegistrationOptionUrl(event), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(replaceRegistrationOptionsRequest),
+  });
+};
+
+export const getRegistrationOptionMutationKey = () => ["registrationOption"] as const;
+
+export const getRegistrationOptionMutationOptions = <
+  TError =
+    | ValidationExceptionResponse
+    | AuthenticationExceptionResponse
+    | ModelNotFoundExceptionResponse
+    | RegistrationOption409,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof registrationOption>>,
+    TError,
+    RegistrationOptionMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof registrationOption>>,
+  TError,
+  RegistrationOptionMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRegistrationOptionMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof registrationOption>>,
+    RegistrationOptionMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return registrationOption(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegistrationOptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registrationOption>>
+>;
+export type RegistrationOptionMutationBody = ReplaceRegistrationOptionsRequest;
+export type RegistrationOptionMutationError =
+  | ValidationExceptionResponse
+  | AuthenticationExceptionResponse
+  | ModelNotFoundExceptionResponse
+  | RegistrationOption409;
+export type RegistrationOptionMutationVariables = {
+  event: number;
+  data: ReplaceRegistrationOptionsRequest;
+};
+
+export const useRegistrationOption = <
+  TError =
+    | ValidationExceptionResponse
+    | AuthenticationExceptionResponse
+    | ModelNotFoundExceptionResponse
+    | RegistrationOption409,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof registrationOption>>,
+      TError,
+      RegistrationOptionMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof registrationOption>>,
+  TError,
+  RegistrationOptionMutationVariables,
+  TContext
+> => {
+  return useMutation(getRegistrationOptionMutationOptions(options), queryClient);
 };
 
 export type roleIndexResponse200 = {

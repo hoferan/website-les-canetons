@@ -9,11 +9,15 @@ use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
+use App\Http\Controllers\Api\FormTokenController;
+use App\Http\Controllers\Api\GuestListExportController;
 use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Controllers\Api\RegistrationController;
+use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
 use Illuminate\Support\Facades\Route;
@@ -22,8 +26,29 @@ use Illuminate\Support\Facades\Route;
 // environment (ribbon). It carries no secrets — see ConfigController.
 Route::get('/config', ConfigController::class);
 
+// Public: the signed stamp every anonymous form must send back. Ungated by
+// necessity — it is fetched before the visitor has submitted anything — and
+// it grants nothing on its own. See App\Support\FormToken.
+Route::get('/form-token', FormTokenController::class);
+
 // Public: the contact form is open to anonymous visitors.
-Route::post('/contact', ContactController::class);
+//
+// NOW GUARDED, after three release slicings left it unprotected. §6 of the
+// rebuild spec required honeypot + submit-timing on "both public write
+// endpoints" and no release ever claimed this one; R3 adds the second such
+// endpoint and the middleware that covers them both.
+Route::middleware('public-write')->group(function () {
+    Route::post('/contact', ContactController::class);
+
+    // Public event registration — the souper, generalised (D9). Anonymous
+    // by design: the people booking a place are not band members.
+    Route::post('/events/{event}/registrations', [RegistrationController::class, 'store']);
+});
+
+// Public: what the booking form needs to render itself. A GET, so it is not
+// behind the write guard — but it answers 404 for an event that takes no
+// registrations, so it cannot be used to enumerate the band's planning.
+Route::get('/events/{event}/registration', [RegistrationController::class, 'form']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -144,6 +169,36 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // may well grant one without the other. Refuses its own caller (C14).
     Route::middleware('permission:attendance.record_for_others')->group(function () {
         Route::put('/events/{event}/attendance/{member}', MemberAttendanceController::class);
+    });
+
+    // THE GUEST LIST, and reading it is all this grants. `committee` holds
+    // registrations.view as its ONLY permission — the role exists so
+    // somebody can look at the list — so this token must not also authorise
+    // deleting from it.
+    Route::middleware('permission:registrations.view')->group(function () {
+        Route::get('/events/{event}/registrations', [RegistrationController::class, 'index']);
+
+        // The same list as a file. `{format}` is constrained here rather
+        // than validated in the controller, so an unknown one is a 404 from
+        // the router instead of reaching code at all.
+        Route::get('/events/{event}/registrations.{format}', GuestListExportController::class)
+            ->where('format', 'xlsx|csv|md|json');
+    });
+
+    // Correcting and cancelling a booking. A SEPARATE permission from
+    // reading the list: guests get no self-service (G2), so this is the
+    // committee acting on somebody's personal data.
+    Route::middleware('permission:registrations.manage')->group(function () {
+        Route::patch('/registrations/{registration}', [RegistrationController::class, 'update']);
+        Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
+    });
+
+    // What an event OFFERS is part of the event, so this is events.manage
+    // rather than a registration permission — the same act as setting its
+    // date. PUT and replace-all, matching /members/{member}/roles: an "add
+    // one" API cannot express removal.
+    Route::middleware('permission:events.manage')->group(function () {
+        Route::put('/events/{event}/registration-options', RegistrationOptionController::class);
     });
 });
 

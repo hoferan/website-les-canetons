@@ -56,6 +56,16 @@ export const fr = {
     cannot_record_for_self:
       "Pour vous-même, répondez depuis le planning : une réponse retirée demande une raison.",
     answer_already_settled: "Ce délai est passé. Modifiez votre réponse plutôt que de l'annuler.",
+    // Registration. `spam_suspected` is deliberately vague to the reader as
+    // well as to a bot: naming which check failed tells a script how to pass
+    // next time, and a real person only needs to know to try again.
+    spam_suspected: "Envoi refusé. Rechargez la page et réessayez.",
+    registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
+    registration_closed: "Les inscriptions sont closes.",
+    option_has_registrations:
+      "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
+    xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
+    not_found: "Introuvable",
   },
   validation: {
     required: "est requis",
@@ -74,6 +84,11 @@ export const fr = {
     // (see App\Exceptions\ApiError's REASONS map for why it must not). That
     // rule needs its own token and its own copy.
     must_be_after: "doit être après le début",
+    // PARAMLESS, and it has to be: the per-booking cap is raised from a
+    // closure validator, and App\Exceptions\ApiError's closure-added branch
+    // emits `field` and `reason` only — a token whose French interpolated
+    // would print a literal {{max}} on a guest's screen.
+    too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
   },
   fields: {
     date: "Date",
@@ -123,5 +138,18 @@ export const fr = {
     // that dialog.
     status: "Réponse",
     note: "Raison",
+    // Registration. The nested paths cost one entry each rather than one
+    // per level: translateApiError falls back to a path's last segment, so
+    // `choices.0.optionId` resolves to `optionId` and
+    // `options.2.priceCents` to `priceCents`.
+    tableName: "Table",
+    choices: "Choix",
+    optionId: "Option",
+    quantity: "Quantité",
+    options: "Options",
+    label: "Intitulé",
+    description: "Description",
+    priceCents: "Prix",
+    sortOrder: "Ordre",
   },
 };

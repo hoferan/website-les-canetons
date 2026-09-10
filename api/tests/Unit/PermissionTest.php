@@ -38,6 +38,7 @@ class PermissionTest extends TestCase
                 'attendance.record_for_others',
                 'members.manage',
                 'registrations.view',
+                'registrations.manage',
             ],
             array_column(Permission::cases(), 'value'),
         );

@@ -20,7 +20,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_stores_a_message(): void
     {
-        $this->postJson('/api/contact', self::VALID)
+        $this->postJson('/api/contact', self::VALID, $this->publicWriteHeaders())
             ->assertOk()
             ->assertExactJson(['ok' => true]);
 
@@ -35,7 +35,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_reports_missing_fields_with_camelcase_names(): void
     {
-        $response = $this->postJson('/api/contact', []);
+        $response = $this->postJson('/api/contact', [], $this->publicWriteHeaders());
 
         $response->assertStatus(400)->assertJsonPath('code', 'validation_failed');
 
@@ -46,7 +46,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_rejects_a_malformed_email(): void
     {
-        $response = $this->postJson('/api/contact', ['email' => 'not-an-email'] + self::VALID);
+        $response = $this->postJson('/api/contact', ['email' => 'not-an-email'] + self::VALID, $this->publicWriteHeaders());
 
         $response->assertStatus(400)->assertJsonPath('fields.0', [
             'field' => 'email',
@@ -57,7 +57,7 @@ class ContactEndpointTest extends TestCase
     public function test_it_stores_raw_input_without_escaping(): void
     {
         // Escaping happens at output time, not storage time.
-        $this->postJson('/api/contact', ['message' => '<b>hi</b>'] + self::VALID)->assertOk();
+        $this->postJson('/api/contact', ['message' => '<b>hi</b>'] + self::VALID, $this->publicWriteHeaders())->assertOk();
 
         $this->assertSame('<b>hi</b>', ContactMessage::latest('id')->first()->message);
     }

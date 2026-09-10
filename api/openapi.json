@@ -675,11 +675,16 @@
                                         "attendanceDeleted": {
                                             "type": "integer",
                                             "minimum": 0
+                                        },
+                                        "registrationsDeleted": {
+                                            "type": "integer",
+                                            "minimum": 0
                                         }
                                     },
                                     "required": [
                                         "ok",
-                                        "attendanceDeleted"
+                                        "attendanceDeleted",
+                                        "registrationsDeleted"
                                     ]
                                 }
                             }
@@ -729,6 +734,125 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/form-token": {
+            "get": {
+                "operationId": "formToken",
+                "tags": [
+                    "FormToken"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "token"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/events/{event}/registrations.{format}": {
+            "get": {
+                "operationId": "guestListExport",
+                "tags": [
+                    "GuestListExport"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "format",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "headers": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "rows": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "array",
+                                                        "items": {}
+                                                    }
+                                                },
+                                                "totals": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "headers",
+                                                "rows",
+                                                "totals"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            },
+                            "text/csv; charset=UTF-8": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "text/markdown; charset=UTF-8": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Content-Disposition": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1069,6 +1193,308 @@
                                     "required": [
                                         "member",
                                         "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/registrations": {
+            "post": {
+                "operationId": "registration.store",
+                "description": "Behind PublicWriteGuard \u2014 honeypot plus a signed timestamp \u2014 which is\nthe only thing between this and the open internet.\n\nNO CAPACITY CHECK (decision G1), and that absence is what keeps this\nlock-free. A count-then-insert would need a locking read on the one\nendpoint strangers can hammer; the committee watches the guest list\nand closes the date early instead.\n\nONE TRANSACTION for the booking and its choices: a booking whose\nchoices half-landed is a guest the cook cannot count.",
+                "summary": "PUBLIC. Books a place",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "get": {
+                "operationId": "registration.index",
+                "description": "Eager-loads the choices and their options in two queries, not one per\nbooking: a souper is ~100 bookings and this screen is also what the\nexports read.",
+                "summary": "The guest list. `registrations.view`",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `RegistrationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RegistrationResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/registration": {
+            "get": {
+                "operationId": "registration.form",
+                "description": "404, NOT 403, for an event that takes no registrations. A stranger\nshould not be able to learn that an event exists but is not taking\nbookings \u2014 that is a fact about the band's private planning, and this\nendpoint is reachable without a session.\n\nAn event that is enabled but outside its window DOES answer, with\n`open: false`, because the form has something worth saying then:\n\"inscriptions d\u00e8s le 3 janvier\" or \"les inscriptions sont closes\".",
+                "summary": "PUBLIC. What the booking form needs to render itself",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`RegistrationFormResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationFormResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                }
+            }
+        },
+        "/registrations/{registration}": {
+            "patch": {
+                "operationId": "registration.update",
+                "description": "Guests get no self-service (G2), so this is how a misspelled name or\na wrong table gets fixed. The CHOICES are deliberately not editable\nhere: changing what somebody ordered is a different act from fixing\ntheir details, it would need the guest cap re-checked and the\nconfirmation re-sent, and nobody has asked for it. A wrong order is\ncancelled and re-booked.\n\narray_key_exists, not isset: both are false for an explicitly-sent\nnull, so clearing an address would silently do nothing.",
+                "summary": "Correcting a booking. `registrations.manage`",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "registration",
+                        "in": "path",
+                        "required": true,
+                        "description": "The registration ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`RegistrationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "registration.destroy",
+                "description": "The label is captured BEFORE the delete, because the row is gone by\nthe time anybody reads the audit back \u2014 see App\\Support\\Audit.",
+                "summary": "Cancelling on a guest's behalf. `registrations.manage`",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "registration",
+                        "in": "path",
+                        "required": true,
+                        "description": "The registration ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/registration-options": {
+            "put": {
+                "operationId": "registrationOption",
+                "tags": [
+                    "RegistrationOption"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceRegistrationOptionsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Array of `RegistrationOptionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RegistrationOptionResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string"
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "const": "option_has_registrations"
+                                        },
+                                        "fields": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "code",
+                                        "fields"
                                     ]
                                 }
                             }
@@ -1444,6 +1870,188 @@
                 ],
                 "title": "RecordOwnAttendanceRequest"
             },
+            "RegistrationFormResource": {
+                "type": "object",
+                "properties": {
+                    "event": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string"
+                            },
+                            "startsAt": {
+                                "type": "string"
+                            },
+                            "endsAt": {
+                                "type": "string"
+                            },
+                            "location": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "title",
+                            "startsAt",
+                            "endsAt",
+                            "location"
+                        ]
+                    },
+                    "options": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RegistrationOptionResource"
+                        }
+                    },
+                    "maxGuests": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "opensAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "closesAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "open": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "event",
+                    "options",
+                    "maxGuests",
+                    "opensAt",
+                    "closesAt",
+                    "open"
+                ],
+                "title": "RegistrationFormResource"
+            },
+            "RegistrationOptionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "label": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "priceCents": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "sortOrder": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "id",
+                    "label",
+                    "description",
+                    "priceCents",
+                    "sortOrder"
+                ],
+                "title": "RegistrationOptionResource"
+            },
+            "RegistrationResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "phone": {
+                        "type": "string"
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tableName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "choices": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "optionId": {
+                                    "type": "integer"
+                                },
+                                "label": {
+                                    "type": "string"
+                                },
+                                "quantity": {
+                                    "type": "integer"
+                                },
+                                "priceCents": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "optionId",
+                                "label",
+                                "quantity",
+                                "priceCents"
+                            ]
+                        }
+                    },
+                    "guestCount": {
+                        "type": "string"
+                    },
+                    "totalCents": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "firstName",
+                    "lastName",
+                    "email",
+                    "phone",
+                    "address",
+                    "tableName",
+                    "choices",
+                    "guestCount",
+                    "totalCents",
+                    "createdAt"
+                ],
+                "title": "RegistrationResource"
+            },
             "ReplaceMemberRolesRequest": {
                 "type": "object",
                 "description": "Replacing one member's roles.\n\nPUT SEMANTICS: `roleIds` is the complete set the member will be left with,\nand an empty array means \"no roles\". That is deliberate \u2014 a PATCH-style \"add\n * this one\" API cannot express removal, and removal is the half that needs the\ninvariants.\n\n`roleIds` is `present`, not `required`: `required` rejects an empty array,\nwhich is the most important value this endpoint accepts.",
@@ -1459,6 +2067,60 @@
                     "roleIds"
                 ],
                 "title": "ReplaceMemberRolesRequest"
+            },
+            "ReplaceRegistrationOptionsRequest": {
+                "type": "object",
+                "description": "The committee editing an event's bookable options, as a complete set.\n\nREPLACE-ALL, matching PUT /members/{member}/roles rather than three\nper-option endpoints: the committee edits the list as a set in one form,\nand an \"add one\" API cannot express removal \u2014 which is the half the\nbooked-option invariant exists for.\n\nEntries carrying an `id` are updated, entries without one are created, and\nanything absent is deleted \u2014 unless somebody has booked it, which is\nrefused with `option_has_registrations` rather than allowed to rewrite\nwhat that person ordered.\n\n`priceCents` is an INTEGER and nullable: 4500 is CHF 45.-, and null is a\nfree option or one whose price lives in the description. Never a float \u2014\nbinary floating point cannot represent 0.1, and this is money.",
+                "properties": {
+                    "options": {
+                        "type": "array",
+                        "description": "`present`, not `required`: an event may legitimately have no\noptions, and `required` refuses an empty array.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "Nullable rather than absent-or-int: the client sends the whole\nlist back, and a new row has no id yet."
+                                },
+                                "label": {
+                                    "type": "string",
+                                    "maxLength": 255
+                                },
+                                "description": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "maxLength": 255
+                                },
+                                "priceCents": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ],
+                                    "description": "gte:0 rather than gt:0 \u2014 an option really can cost nothing,\nand that is different from having no price at all (null)."
+                                },
+                                "sortOrder": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "label"
+                            ]
+                        },
+                        "maxItems": 50
+                    }
+                },
+                "required": [
+                    "options"
+                ],
+                "title": "ReplaceRegistrationOptionsRequest"
             },
             "RoleResource": {
                 "type": "object",
@@ -1664,6 +2326,71 @@
                 ],
                 "title": "StoreMemberRequest"
             },
+            "StoreRegistrationRequest": {
+                "type": "object",
+                "description": "A stranger booking a place at an event.\n\nTHE ONLY ANONYMOUS WRITE THIS RELEASE ADDS, and the second in the whole\nAPI. It sits behind PublicWriteGuard.\n\nName, email and phone are required (G4): a Swiss committee reaches\nsomebody by phone the evening before, and every required field past that\nis a reason to abandon the form. Address and table are optional.\n\nRULE ORDER IS LOAD-BEARING, as everywhere: ApiError reports only the FIRST\nfailed rule per field, so `required` leads each list.\n\nThe per-booking guest cap is checked in after(), not by a rule, because it\nis a property of the WHOLE choices array against a number stored on the\nevent \u2014 no single field is wrong.",
+                "properties": {
+                    "firstName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "maxLength": 64
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "tableName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "choices": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "optionId": {
+                                    "type": "integer",
+                                    "description": "Scoped to THIS event's options. Without the where clause a\nbooking could reference an option belonging to a different\nevent entirely, which the foreign key would happily accept."
+                                },
+                                "quantity": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "optionId",
+                                "quantity"
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "firstName",
+                    "lastName",
+                    "email",
+                    "phone",
+                    "choices"
+                ],
+                "title": "StoreRegistrationRequest"
+            },
             "UpdateEventRequest": {
                 "type": "object",
                 "description": "Editing one row of the planning.\n\nPATCH, so every rule is `sometimes`: a form posting only the field it\nchanged must not blank the others.\n\n`sometimes` is not the same as `nullable`, and the two nullable columns need\nboth \u2014 `sometimes` means \"skip this field if absent\", `nullable` means \"null\n * is a legal value when present\". Without `sometimes` an absent field fails\n`required`; without `nullable` an explicit null fails the type rules.\nClearing the attire is an explicit null, so both matter. UpdateMemberRequest\nmakes the same call at more length, for the same situation.\n\nRULE ORDER IS LOAD-BEARING, exactly as StoreEventRequest documents: ApiError\nreports only the FIRST failed rule per field, so `required` comes before the\ntype rules and `date` before the comparison \u2014 an unparseable end is a format\nproblem, and comparing it to anything reports the wrong thing. Pinned by\nEventWriteTest::test_editing_reports_an_unparseable_end_as_a_format_error.",
@@ -1744,6 +2471,44 @@
                     }
                 },
                 "title": "UpdateMemberRequest"
+            },
+            "UpdateRegistrationRequest": {
+                "type": "object",
+                "description": "The committee correcting a booking's details.\n\nEvery rule is `sometimes`, so a form posting only what changed does not\nblank the rest. `sometimes` and `nullable` are not the same thing and the\ntwo optional columns need both \u2014 see UpdateEventRequest and\nUpdateMemberRequest, which make the same call at more length.\n\nNO `choices` FIELD, deliberately. Changing what somebody ordered is a\ndifferent act from fixing their name: it would need the per-booking guest\ncap re-checked and arguably the confirmation re-sent, and nobody has asked\nfor it. A wrong order is cancelled and re-booked, which is one click for\nthe committee and leaves an honest audit trail.",
+                "properties": {
+                    "firstName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "lastName": {
+                        "type": "string",
+                        "maxLength": 255
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "maxLength": 64
+                    },
+                    "address": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    },
+                    "tableName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    }
+                },
+                "title": "UpdateRegistrationRequest"
             }
         },
         "responses": {
@@ -1797,6 +2562,25 @@
                     }
                 }
             },
+            "ModelNotFoundException": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Error overview."
+                                }
+                            },
+                            "required": [
+                                "message"
+                            ]
+                        }
+                    }
+                }
+            },
             "AuthenticationException": {
                 "description": "Not authenticated.",
                 "content": {
@@ -1819,25 +2603,6 @@
                             "required": [
                                 "error",
                                 "code"
-                            ]
-                        }
-                    }
-                }
-            },
-            "ModelNotFoundException": {
-                "description": "Not found",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "message": {
-                                    "type": "string",
-                                    "description": "Error overview."
-                                }
-                            },
-                            "required": [
-                                "message"
                             ]
                         }
                     }

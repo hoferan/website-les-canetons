@@ -21,11 +21,18 @@ import type {
   Contact200,
   EventDestroy200,
   EventResource,
+  FormToken200,
+  GuestListExport200One,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
   MemberRole200,
   MemberStore201,
+  RegistrationDestroy200,
+  RegistrationFormResource,
+  RegistrationOptionResource,
+  RegistrationResource,
+  RegistrationStore200,
   RoleResource,
   SectionResource,
 } from "./model";
@@ -214,6 +221,7 @@ export const getEventDestroyResponseMock = (
 ): EventDestroy200 => ({
   ok: faker.datatype.boolean(),
   attendanceDeleted: faker.number.int({ min: 0 }),
+  registrationsDeleted: faker.number.int({ min: 0 }),
   ...overrideResponse,
 });
 
@@ -242,6 +250,35 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
       null,
     ]),
   }));
+
+export const getFormTokenResponseMock = (
+  overrideResponse: Partial<Extract<FormToken200, object>> = {},
+): FormToken200 => ({
+  token: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getGuestListExportResponseMock = (): GuestListExport200One | string =>
+  faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        headers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+          () => ({}),
+        ),
+        rows: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+          () =>
+            Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+              () => ({}),
+            ),
+        ),
+        totals: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+          () => ({}),
+        ),
+      },
+    ]),
+    faker.word.sample(),
+    faker.word.sample(),
+  ]);
 
 export const getMemberIndexResponseMock = (): MemberResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -391,6 +428,110 @@ export const getMemberRoleResponseMock = (
   sessionsEnded: faker.number.int(),
   ...overrideResponse,
 });
+
+export const getRegistrationStoreResponseMock = (): RegistrationStore200 => ({});
+
+export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    address: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    tableName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        optionId: faker.number.int(),
+        label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        quantity: faker.number.int(),
+        priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
+      }),
+    ),
+    guestCount: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    totalCents: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  }));
+
+export const getRegistrationFormResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationFormResource, object>> = {},
+): RegistrationFormResource => ({
+  event: {
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  },
+  options: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      id: faker.number.int(),
+      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      description: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
+      sortOrder: faker.number.int(),
+    }),
+  ),
+  maxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  opensAt: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  closesAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  open: faker.datatype.boolean(),
+  ...overrideResponse,
+});
+
+export const getRegistrationUpdateResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationResource, object>> = {},
+): RegistrationResource => ({
+  id: faker.number.int(),
+  firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  address: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  tableName: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      optionId: faker.number.int(),
+      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      quantity: faker.number.int(),
+      priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
+    }),
+  ),
+  guestCount: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  totalCents: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getRegistrationDestroyResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationDestroy200, object>> = {},
+): RegistrationDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getRegistrationOptionResponseMock = (): RegistrationOptionResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    description: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
+    sortOrder: faker.number.int(),
+  }));
 
 export const getRoleIndexResponseMock = (): RoleResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -762,6 +903,59 @@ export const getEventSeriesMockHandler = (
   );
 };
 
+export const getFormTokenMockHandler = (
+  overrideResponse?:
+    | FormToken200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<FormToken200> | FormToken200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/form-token",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getFormTokenResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getGuestListExportMockHandler = (
+  overrideResponse?:
+    | GuestListExport200One
+    | string
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<GuestListExport200One | string> | GuestListExport200One | string),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events/:event/registrations.:format",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      const resolvedBody =
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getGuestListExportResponseMock();
+      return typeof resolvedBody === "string"
+        ? HttpResponse.text(resolvedBody, {
+            status: 200,
+            headers: { "Content-Type": "text/csv; charset=UTF-8" },
+          })
+        : HttpResponse.json(resolvedBody, { status: 200 });
+    },
+    options,
+  );
+};
+
 export const getMemberIndexMockHandler = (
   overrideResponse?:
     | MemberResource[]
@@ -930,6 +1124,150 @@ export const getMemberRoleMockHandler = (
   );
 };
 
+export const getRegistrationStoreMockHandler = (
+  overrideResponse?:
+    | RegistrationStore200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<RegistrationStore200> | RegistrationStore200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/events/:event/registrations",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationStoreResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRegistrationIndexMockHandler = (
+  overrideResponse?:
+    | RegistrationResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<RegistrationResource[]> | RegistrationResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events/:event/registrations",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRegistrationFormMockHandler = (
+  overrideResponse?:
+    | RegistrationFormResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<RegistrationFormResource> | RegistrationFormResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events/:event/registration",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationFormResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRegistrationUpdateMockHandler = (
+  overrideResponse?:
+    | RegistrationResource
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<RegistrationResource> | RegistrationResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/registrations/:registration",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRegistrationDestroyMockHandler = (
+  overrideResponse?:
+    | RegistrationDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<RegistrationDestroy200> | RegistrationDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/registrations/:registration",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getRegistrationOptionMockHandler = (
+  overrideResponse?:
+    | RegistrationOptionResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<RegistrationOptionResource[]> | RegistrationOptionResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/events/:event/registration-options",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getRegistrationOptionResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getRoleIndexMockHandler = (
   overrideResponse?:
     | RoleResource[]
@@ -993,6 +1331,8 @@ export const getLesCanetonsAPIMock = () => [
   getEventUpdateMockHandler(),
   getEventDestroyMockHandler(),
   getEventSeriesMockHandler(),
+  getFormTokenMockHandler(),
+  getGuestListExportMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
@@ -1000,6 +1340,12 @@ export const getLesCanetonsAPIMock = () => [
   getMemberAttendanceMockHandler(),
   getMemberPasswordMockHandler(),
   getMemberRoleMockHandler(),
+  getRegistrationStoreMockHandler(),
+  getRegistrationIndexMockHandler(),
+  getRegistrationFormMockHandler(),
+  getRegistrationUpdateMockHandler(),
+  getRegistrationDestroyMockHandler(),
+  getRegistrationOptionMockHandler(),
   getRoleIndexMockHandler(),
   getSectionIndexMockHandler(),
 ];

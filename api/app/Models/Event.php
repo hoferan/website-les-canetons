@@ -27,6 +27,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonImmutable $starts_at
  * @property CarbonImmutable $ends_at
  * @property bool $is_public
+ * @property CarbonImmutable|null $registration_opens_at
+ * @property CarbonImmutable|null $registration_closes_at
+ * @property int|null $registration_max_guests
  */
 class Event extends Model
 {
@@ -54,6 +57,9 @@ class Event extends Model
         'attire',
         'is_public',
         'notes',
+        'registration_opens_at',
+        'registration_closes_at',
+        'registration_max_guests',
     ];
 
     /**
@@ -71,6 +77,82 @@ class Event extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    /**
+     * Clears the booking choices before the database cascades run.
+     *
+     * WHY THIS IS NEEDED, MEASURED 2026-09-10. Deleting an event cascades
+     * into BOTH `registrations` and `event_registration_options`, and
+     * `registration_choices.option_id` is ON DELETE RESTRICT. MySQL does not
+     * order the two cascades, so it can try to remove an option while the
+     * choices still point at it, and the whole delete fails with a foreign
+     * key violation — which is what
+     * RegistrationSchemaTest::test_deleting_the_event_takes_the_whole_booking_tree
+     * caught.
+     *
+     * RESTRICT IS STILL RIGHT and is not the bug. It guards the case that
+     * matters: deleting an option somebody has already booked, while the
+     * event lives, would silently rewrite what that person ordered. SQL
+     * simply cannot express "restrict, unless the parent is going too", so
+     * the application says it here — on the model rather than in the
+     * controller, so a seeder, an import or a future endpoint cannot forget.
+     * The same argument App\Casts\UtcDateTime is on the column for.
+     *
+     * One extra DELETE, on a path that already writes several, and only for
+     * events that have bookings at all.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (Event $event): void {
+            RegistrationChoice::query()
+                ->whereIn('registration_id', $event->registrations()->select('id'))
+                ->delete();
+        });
+    }
+
+    /** @return HasMany<RegistrationOption, $this> */
+    public function registrationOptions(): HasMany
+    {
+        return $this->hasMany(RegistrationOption::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /** @return HasMany<Registration, $this> */
+    public function registrations(): HasMany
+    {
+        return $this->hasMany(Registration::class);
+    }
+
+    /**
+     * Whether this event takes public registrations at all.
+     *
+     * IFF `registration_closes_at IS NOT NULL` (D9). No separate boolean —
+     * a flag beside a date is a flag that drifts out of step with it, which
+     * is exactly what the retired `weekend` column did.
+     */
+    public function takesRegistrations(): bool
+    {
+        return $this->registration_closes_at !== null;
+    }
+
+    /**
+     * Whether the form is accepting bookings RIGHT NOW.
+     *
+     * A missing `registration_opens_at` means open immediately, so the
+     * committee can enable an event without also having to decide when the
+     * form should appear.
+     */
+    public function registrationIsOpen(): bool
+    {
+        if (! $this->takesRegistrations()) {
+            return false;
+        }
+
+        if ($this->registration_opens_at !== null && $this->registration_opens_at->isFuture()) {
+            return false;
+        }
+
+        return $this->registration_closes_at->isFuture();
+    }
+
     protected function casts(): array
     {
         return [
@@ -83,6 +165,13 @@ class Event extends Model
             'starts_at' => UtcDateTime::class,
             'ends_at' => UtcDateTime::class,
             'is_public' => 'boolean',
+            // The same cast as the event's own times, and for the same
+            // measured reason: a closing date typed as 23:59 in Fribourg
+            // must not be stored as 23:59 UTC, or the form shuts an hour
+            // early in summer.
+            'registration_opens_at' => UtcDateTime::class,
+            'registration_closes_at' => UtcDateTime::class,
+            'registration_max_guests' => 'integer',
         ];
     }
 }

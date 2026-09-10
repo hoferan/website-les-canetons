@@ -10,6 +10,7 @@
         "laravel/framework": "^13.8",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
+        "openspout/openspout": "^5.11",
         "shuchkin/simplexlsxgen": "^1.5"
     },
     "require-dev": {

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Http\Middleware\PublicWriteGuard;
 use App\Models\Member;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
@@ -28,5 +29,26 @@ abstract class TestCase extends BaseTestCase
         return $this->actingAs($member)
             ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession(['auth.started_at' => now()->timestamp]);
+    }
+
+    /**
+     * Headers that satisfy App\Http\Middleware\PublicWriteGuard.
+     *
+     * The token is built by SIGNING A PAST TIMESTAMP rather than by issuing
+     * one and waiting. The guard's whole point is that a real form takes
+     * seconds to fill in, so a suite that actually slept would add two
+     * seconds to every public-write test — and the thing worth testing is
+     * the signature and the window, not the clock.
+     *
+     * @return array<string, string>
+     */
+    protected function publicWriteHeaders(int $ageSeconds = 30): array
+    {
+        $issuedAt = (string) (time() - $ageSeconds);
+
+        return [
+            PublicWriteGuard::TOKEN_HEADER => $issuedAt.'.'
+                .hash_hmac('sha256', $issuedAt, (string) config('app.key')),
+        ];
     }
 }

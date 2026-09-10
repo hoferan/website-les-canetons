@@ -9,4 +9,6 @@ export type EventDestroy200 = {
   ok: boolean;
   /** @minimum 0 */
   attendanceDeleted: number;
+  /** @minimum 0 */
+  registrationsDeleted: number;
 };
