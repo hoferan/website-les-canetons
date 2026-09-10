@@ -7,16 +7,46 @@
  *
  * ## Authenticating
  *
- * Session cookies, not tokens. The browser and the API share one origin, so
- * there is no CORS and no `Authorization` header.
+ * A server-side session in a cookie. There is no bearer token, no
+ * `Authorization` header, and nothing for a client to store.
  *
- * 1. `GET /sanctum/csrf-cookie` once per page load. It sets `XSRF-TOKEN`.
- * 2. `POST /api/login` with `username` and `password`.
- * 3. Send the `XSRF-TOKEN` cookie value back as an `X-XSRF-TOKEN` header on
- *    every request that writes. Without it a write answers
- *    `419 invalid_session`.
+ * The browser and the API are served from one origin, so there is no CORS
+ * either. From a browser this is close to automatic:
  *
- * Reads that need a session answer `401 not_authenticated` without one.
+ * ```js
+ * await fetch("/api/login", {
+ *   method: "POST",
+ *   credentials: "include",
+ *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf },
+ *   body: JSON.stringify({ username, password }),
+ * });
+ * ```
+ *
+ * `credentials: "include"` is what sends and stores the cookie. After that,
+ * reads need nothing at all.
+ *
+ * The one manual step is the `X-XSRF-TOKEN` header on requests that write. Its
+ * value is the `XSRF-TOKEN` cookie, which is readable from JavaScript by
+ * design; `GET /sanctum/csrf-cookie` sets it, once per page load. Axios does
+ * this for you and needs no code. A write without the header answers
+ * `419 invalid_session`, which means "prime the cookie and retry", not "log in
+ * again".
+ *
+ * Reads that need a session and do not have one answer
+ * `401 not_authenticated`.
+ *
+ * ### Why a cookie rather than a token
+ *
+ * The session cookie is `HttpOnly`, `Secure` and `SameSite=Strict`. Being
+ * unreadable from JavaScript is the point: a token kept in `localStorage` is
+ * exfiltrable by any script that manages to run on the page, and it cannot be
+ * revoked server-side without keeping a list of live tokens, which is a
+ * session by another name. Logging out here ends the session on the server.
+ *
+ * `SameSite=Strict` is also the real defence against cross-site request
+ * forgery: a request originating from another site never carries the cookie,
+ * so it arrives unauthenticated whatever else it sends. The CSRF token is
+ * defence in depth on top of that, not the mechanism holding the door shut.
  *
  * ## Errors
  *
