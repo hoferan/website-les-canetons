@@ -103,5 +103,13 @@ export const fr = {
     password: "Mot de passe",
     eventId: "Événement",
     participation: "Participation",
+    // POST /api/events/series: the list of dates a season is generated from,
+    // and the event those dates all share. `template`'s own SUB-fields need no
+    // entries — Laravel reports them as `template.endTime` and
+    // translateApiError falls back to the last segment, which is already
+    // here. This entry is for the parent itself, reachable only if the SPA
+    // sends no template at all or sends something that is not an object.
+    dates: "Dates",
+    template: "Modèle",
   },
 };

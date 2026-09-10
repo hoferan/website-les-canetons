@@ -37,7 +37,20 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
     // human, but the UI needs the precise path to highlight the right input.
     const lookupField = entry.field.replace(/\.\d+(?=\.|$)/g, "");
     const fieldKey = `fields.${lookupField}`;
-    const label = i18next.exists(fieldKey) ? i18next.t(fieldKey) : entry.field;
+    // A NESTED path falls back to its last segment. POST /api/events/series
+    // takes its event under a `template` object, so Laravel reports
+    // `template.endTime` — and the French label for that is "Heure de fin",
+    // exactly as it is for a bare `endTime`. Trying the full path first keeps
+    // the override available for the day two parents need different words for
+    // the same leaf; without the fallback every nested field would have to be
+    // spelled out twice, and a miss prints the RAW ENGLISH IDENTIFIER on a
+    // French screen. Same failure the index-stripping above prevents.
+    const leafKey = `fields.${lookupField.split(".").pop() ?? lookupField}`;
+    const label = i18next.exists(fieldKey)
+      ? i18next.t(fieldKey)
+      : i18next.exists(leafKey)
+        ? i18next.t(leafKey)
+        : entry.field;
     const reasonKey = `validation.${entry.reason}`;
     const reason = i18next.exists(reasonKey) ? i18next.t(reasonKey, entry.params ?? {}) : FALLBACK;
     return { field: entry.field, message: `${label} ${reason}` };

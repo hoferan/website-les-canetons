@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\EventController;
+use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
@@ -96,6 +97,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // and the SPA acts on each differently.
     Route::middleware('permission:events.manage')->group(function () {
         Route::post('/events', [EventController::class, 'store']);
+
+        // BEFORE the parameterised routes, deliberately. Nothing collides
+        // today — `series` is a POST and `/events/{event}` is not — but a
+        // literal segment and a parameter sharing a prefix is worth keeping in
+        // an order that stays correct if either ever gains the other's verb.
+        //
+        // A GENERATOR, not a resource (C3): it writes N independent events and
+        // stores no rule and no series_id, so there is nothing here to GET.
+        Route::post('/events/series', EventSeriesController::class);
 
         Route::patch('/events/{event}', [EventController::class, 'update']);
 

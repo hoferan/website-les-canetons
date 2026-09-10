@@ -241,13 +241,27 @@ class ApiErrorVocabularyTest extends TestCase
             $rules = $instance->rules();
             self::assertNotEmpty($rules, "{$class}::rules() came back empty.");
 
-            // `roleIds.*` is rule syntax, not a field name. Laravel reports the
-            // failure against `roleIds.0`, and web/src/i18n strips the index
-            // before looking the label up — so the token that must exist is
-            // `roleIds`. Asking for `roleIds.*` would demand French copy for a
-            // key nothing ever requests, while leaving the real one unchecked.
+            // Two reductions, each mirroring exactly what translateApiError
+            // does before it looks a label up. Asking for a token the SPA
+            // never requests would demand French copy for a key nothing reads,
+            // while leaving the real one unchecked.
+            //
+            // 1. `roleIds.*` is rule syntax, not a field name. Laravel reports
+            //    the failure against `roleIds.0`, and the SPA strips the index
+            //    — so the token that must exist is `roleIds`.
+            // 2. A NESTED path resolves to its last segment.
+            //    StoreEventSeriesRequest nests the event under `template`, so
+            //    Laravel reports `template.endTime`; the SPA tries that whole
+            //    path, then falls back to `endTime`, whose French is the same
+            //    words. This checks the fallback target, which is the one the
+            //    catalogue actually carries.
             $fields = array_merge($fields, array_map(
-                fn (string $key): string => preg_replace('/\.(\*|\d+)(?=\.|$)/', '', $key) ?? $key,
+                function (string $key): string {
+                    $stripped = preg_replace('/\.(\*|\d+)(?=\.|$)/', '', $key) ?? $key;
+                    $segments = explode('.', $stripped);
+
+                    return end($segments) ?: $stripped;
+                },
                 array_map('strval', array_keys($rules)),
             ));
         }

@@ -52,3 +52,20 @@ test("resolves an indexed array field to its label rather than leaking the ident
   // while the message a human reads carries the French label.
   expect(translated.fields).toEqual([{ field: "roleIds.0", message: "Rôles a un type invalide" }]);
 });
+
+test("resolves a nested field to its last segment rather than leaking the identifier", () => {
+  // POST /api/events/series nests the event under a `template` object, so
+  // Laravel reports `template.endTime`. There is deliberately no
+  // `fields.template.endTime` in the catalogue — the French for it is the
+  // same words as for a bare `endTime`, and spelling every nested field out
+  // twice is how one of them eventually gets missed. Without the fallback
+  // this prints the raw English `template.endTime` on a French screen.
+  const translated = translateApiError({
+    code: "validation_failed",
+    fields: [{ field: "template.endTime", reason: "must_be_after" }],
+  });
+
+  expect(translated.fields).toEqual([
+    { field: "template.endTime", message: "Heure de fin doit être après le début" },
+  ]);
+});
