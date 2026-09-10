@@ -22,9 +22,13 @@ class AttendanceResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            /** Whether the member is coming. One of `yes` or `no`. */
             'status' => $this->status->value,
+            /** Free text the member or the committee added. Required when a member changes their own answer from `yes` to `no`. */
             'note' => $this->note,
+            /** True when the committee entered this answer for the member rather than the member answering themselves. */
             'recordedByDirection' => $this->wasRecordedByDirection(),
+            /** When the answer was last written. A member may withdraw their own answer entirely for five minutes after this. */
             'recordedAt' => $this->recordedAt(),
         ];
     }

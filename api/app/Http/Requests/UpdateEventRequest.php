@@ -6,29 +6,43 @@ use App\Models\Event;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Editing one row of the planning.
+ * Changes to one entry on the planning.
  *
- * PATCH, so every rule is `sometimes`: a form posting only the field it
- * changed must not blank the others.
+ * A PATCH: send only the fields that change. An omitted field is left as it
+ * is, and an explicit `null` clears one of the optional fields.
  *
- * `sometimes` is not the same as `nullable`, and the two nullable columns need
- * both — `sometimes` means "skip this field if absent", `nullable` means "null
- * is a legal value when present". Without `sometimes` an absent field fails
- * `required`; without `nullable` an explicit null fails the type rules.
- * Clearing the attire is an explicit null, so both matter. UpdateMemberRequest
- * makes the same call at more length, for the same situation.
+ * The two date comparisons still hold when only one half is sent. A request
+ * carrying `endsAt` but not `startsAt` is compared against the start already
+ * stored, so an end cannot be moved before a beginning it did not send; the
+ * same goes for `registrationClosesAt` against a stored
+ * `registrationOpensAt`.
  *
- * RULE ORDER IS LOAD-BEARING, exactly as StoreEventRequest documents: ApiError
- * reports only the FIRST failed rule per field, so `required` comes before the
- * type rules and `date` before the comparison — an unparseable end is a format
- * problem, and comparing it to anything reports the wrong thing. Pinned by
- * EventWriteTest::test_editing_reports_an_unparseable_end_as_a_format_error.
+ * Clearing `registrationClosesAt` with an explicit `null` is how public
+ * registration is switched off again; the bookings already taken are kept.
  */
 class UpdateEventRequest extends FormRequest
 {
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
+        // PATCH, so every rule is `sometimes`: a form posting only the field
+        // it changed must not blank the others.
+        //
+        // `sometimes` is not the same as `nullable`, and the nullable columns
+        // need both — `sometimes` means "skip this field if absent",
+        // `nullable` means "null is a legal value when present". Without
+        // `sometimes` an absent field fails `required`; without `nullable` an
+        // explicit null fails the type rules. Clearing the attire is an
+        // explicit null, so both matter. UpdateMemberRequest makes the same
+        // call at more length, for the same situation.
+        //
+        // RULE ORDER IS LOAD-BEARING, exactly as StoreEventRequest documents:
+        // ApiError reports only the FIRST failed rule per field, so `required`
+        // comes before the type rules and `date` before the comparison — an
+        // unparseable end is a format problem, and comparing it to anything
+        // reports the wrong thing. Pinned by
+        // EventWriteTest::test_editing_reports_an_unparseable_end_as_a_format_error.
+        //
         // Null-safe deliberately, the same call UpdateMemberRequest makes:
         // ApiErrorVocabularyTest instantiates every FormRequest outside a
         // request to read its rules() keys, so there is no bound route model
@@ -39,19 +53,28 @@ class UpdateEventRequest extends FormRequest
 
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
+            /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
             'startsAt' => ['sometimes', 'required', 'date'],
+            /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. */
             'endsAt' => ['sometimes', 'required', 'date', ...$this->afterTheStart($event)],
+            /** Where it happens, as free text. */
             'location' => ['sometimes', 'required', 'string', 'max:255'],
+            /** What to wear. Send `null` to clear it. */
             'attire' => ['sometimes', 'nullable', 'string', 'max:255'],
+            /** Whether the event appears on the public agenda. Members see it either way. */
             'isPublic' => ['sometimes', 'boolean'],
+            /** Anything else members should read. Send `null` to clear it. */
             'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
 
             // The registration window. Nullable throughout, and clearing
             // registrationClosesAt is how registration is switched OFF —
-            // which is why these need  AND , like every
+            // which is why these need `sometimes` AND `nullable`, like every
             // other optional column on this form.
+            /** When public bookings start. Send `null` for bookings that are open as soon as the close date is set. */
             'registrationOpensAt' => ['sometimes', 'nullable', 'date'],
+            /** When public bookings stop. Send `null` to switch public registration off; bookings already taken are kept. Must fall after the opening, whether that is sent here or already stored. */
             'registrationClosesAt' => ['sometimes', 'nullable', 'date', ...$this->afterTheOpening($event)],
+            /** The largest number of people one booking may cover, 1 to 100. Send `null` for no cap. */
             'registrationMaxGuests' => ['sometimes', 'nullable', 'integer', 'gt:0', 'max:100'],
         ];
     }

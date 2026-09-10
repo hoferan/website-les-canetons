@@ -26,10 +26,13 @@ class ChaseListEntryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            /** The member this row is about. */
             'memberId' => $this->id,
             'firstName' => $this->first_name,
             'lastName' => $this->last_name,
+            /** The register they play in. Everyone on this list has one; that is what makes them answerable. */
             'sectionName' => $this->sectionName(),
+            /** Their answer, or null if they have not replied. The nulls are what this list is read for. */
             'attendance' => $this->answer(),
         ];
     }

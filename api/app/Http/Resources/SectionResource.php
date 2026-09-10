@@ -18,7 +18,9 @@ class SectionResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            /** The register's name, as the band writes it. */
             'name' => $this->name,
+            /** Ascending display order. */
             'sortOrder' => $this->sort_order,
         ];
     }

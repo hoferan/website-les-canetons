@@ -33,9 +33,13 @@ class RegistrationResource extends JsonResource
             'email' => $this->email,
             'phone' => $this->phone,
             'address' => $this->address,
+            /** Seating preference the guest gave, or null. */
             'tableName' => $this->table_name,
+            /** What was booked: one entry per option, each with its quantity. */
             'choices' => $this->choices(),
+            /** How many people this booking covers, summed across its choices. */
             'guestCount' => $this->guest_count,
+            /** What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero. */
             'totalCents' => $this->total_cents,
             'createdAt' => $this->created_at->toIso8601String(),
         ];

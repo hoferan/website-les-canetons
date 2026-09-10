@@ -7,28 +7,42 @@ use App\Models\Member;
 use App\Support\Audit;
 use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+#[Group('Members', weight: 50)]
 class MemberPasswordController extends Controller
 {
     /**
-     * Issues a member a new password, shown to the administrator exactly once.
+     * Reset a member's password.
      *
-     * §4.4 describes ONE mechanism for a password coming into being — open a
-     * member, hit "Réinitialiser le mot de passe", read out what appears — so
-     * there is one endpoint for it. Since 2026_09_08_000001 every member
-     * already has a password, so this is always a reset; the "give this person
-     * an account" case is POST /api/members, which mints one at creation using
-     * the same generator and the same forced-change semantics.
+     * Requires `members.manage`. Mints a readable password an administrator
+     * can dictate over the phone, replaces the member's own with it, and ends
+     * every session that member has open. Takes no body. Answers
+     * `{"generatedPassword": "...", "sessionsEnded": n}`.
      *
-     * The returned password is the only copy that will ever exist in plaintext:
-     * it is hashed on the way into the database, never written to the audit
-     * log, and never returned again.
+     * `generatedPassword` is shown in this response and nowhere else: it is
+     * hashed on the way into the database, is never written to the audit log,
+     * and no later call returns it. A lost one is replaced by calling this
+     * again. The member is required to change it at their next login, through
+     * `POST /api/me/password`.
+     *
+     * A member resetting their own password this way keeps the session they
+     * are calling from, and `sessionsEnded` then counts their other ones. The
+     * ordinary route for that is `POST /api/me/password`, which lets them
+     * choose the password instead.
      */
     public function __invoke(Request $request, Member $member): JsonResponse
     {
+        // §4.4 describes ONE mechanism for a password coming into being — open
+        // a member, hit "Réinitialiser le mot de passe", read out what appears
+        // — so there is one endpoint for it. Since 2026_09_08_000001 every
+        // member already has a password, so this is always a reset; the "give
+        // this person an account" case is POST /api/members, which mints one at
+        // creation using the same generator and the same forced-change
+        // semantics.
         $password = GeneratedPassword::make();
 
         $sessionsEnded = DB::transaction(function () use ($request, $member, $password): int {
@@ -50,9 +64,11 @@ class MemberPasswordController extends Controller
             // so forMember() would delete the same set. SessionRevocationTest
             // covers what forMemberExcept() itself does. Kept because it is the
             // correct call and makes sessionsEnded mean "other sessions".
-            return $request->user()->is($member)
+            $ended = $request->user()->is($member)
                 ? SessionRevoker::forMemberExcept($member->id, $request->session()->getId())
                 : SessionRevoker::forMember($member->id);
+
+            return $ended;
         });
 
         // No password in the audit log, ever — pinned by

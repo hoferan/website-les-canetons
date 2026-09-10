@@ -2,7 +2,8 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Les Canetons API",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "description": "The API behind the members' area and the public forms of the Guggenmusik\n**Les Canetons de Fribourg**.\n\n## Authenticating\n\nSession cookies, not tokens. The browser and the API share one origin, so\nthere is no CORS and no `Authorization` header.\n\n1. `GET /sanctum/csrf-cookie` once per page load. It sets `XSRF-TOKEN`.\n2. `POST /api/login` with `username` and `password`.\n3. Send the `XSRF-TOKEN` cookie value back as an `X-XSRF-TOKEN` header on\n   every request that writes. Without it a write answers\n   `419 invalid_session`.\n\nReads that need a session answer `401 not_authenticated` without one.\n\n## Errors\n\nEvery failure uses one shape:\n\n```json\n{\n  \"error\": \"Invalid form submission\",\n  \"code\": \"validation_failed\",\n  \"fields\": [{ \"field\": \"endsAt\", \"reason\": \"must_be_after\" }]\n}\n```\n\n`code` and `fields[].reason` are stable machine tokens, never prose to show\na user. The front end maps them to French; any other client should do the\nsame rather than displaying `error`, which is English and meant for logs.\n\n`fields` is present only on `400 validation_failed`. A `reason` may carry\n`params` (for example `{\"max\": 255}`) when the sentence needs a number.\n\n## Status codes\n\n| Code | Means |\n| --- | --- |\n| `400` | The submitted fields are wrong. See `fields`. |\n| `401` | No session. Log in. |\n| `403` | Logged in, but not allowed to do this. |\n| `404` | No such thing, or nothing you may know exists. |\n| `409` | Allowed, but it conflicts with the current state. |\n| `419` | The session or CSRF token expired. Prime the cookie and retry. |\n| `422` | The submission looks automated. See *Public forms*. |\n| `429` | Rate limited. |\n| `503` | The service is temporarily refusing to serve. |\n\n## Permissions\n\nAuthorisation is by permission, never by role. Roles are editable data that\ngroup permissions; which role granted one is not a question the API answers.\n`GET /api/me` returns the caller's effective permissions.\n\n`events.manage`, `attendance.view_all`, `attendance.record_for_others`,\n`members.manage`, `registrations.view`, `registrations.manage`.\n\nAnswering an event deliberately needs **no** permission: anyone in a register\nanswers for themselves.\n\n## Conventions\n\n- Field names are `camelCase` in both directions.\n- Timestamps are ISO 8601 with an offset (`2026-09-05T10:00:00+02:00`).\n  Events happen in Europe/Zurich whatever the reader's timezone; send an\n  offset and one will be honoured.\n- Money is an integer number of centimes. `4500` is CHF 45.00.\n- Collections are returned as bare JSON arrays, with no `data` envelope.\n\n## Public forms\n\n`POST /api/contact` and `POST /api/events/{event}/registrations` are open to\nanonymous callers and are protected against automated submission. Both\nrequire:\n\n- an `X-Form-Token` header, from `GET /api/form-token`, at least two seconds\n  and at most two hours old, and\n- a `website` field, present and empty.\n\nFailing either answers `422 spam_suspected`. Both endpoints are rate limited\nto 10 requests a minute per IP."
     },
     "servers": [
         {
@@ -10,200 +11,37 @@
             "description": "Production"
         }
     ],
+    "tags": [
+        {
+            "name": "Session"
+        },
+        {
+            "name": "Events"
+        },
+        {
+            "name": "Attendance"
+        },
+        {
+            "name": "Registration"
+        },
+        {
+            "name": "Members"
+        },
+        {
+            "name": "Public forms"
+        },
+        {
+            "name": "Service"
+        }
+    ],
     "paths": {
-        "/me/password": {
-            "post": {
-                "operationId": "accountPassword",
-                "description": "Gated on authentication alone \u2014 no permission. This is the one screen\nevery account holder needs and nobody administers, and it is where every\nfirst login lands, because a committee-issued password arrives with\nmust_change_password set.\n\nRe-authentication here is not ceremony bolted on: knowing the current\npassword is the only thing standing between a borrowed, unlocked phone\nand a permanently stolen account. It reuses Reauthentication, so the same\nper-actor throttle applies.",
-                "summary": "A member changes their own password",
-                "tags": [
-                    "AccountPassword"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/AccountPasswordRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        },
-                                        "sessionsEnded": {
-                                            "type": "integer",
-                                            "description": "AFTER regenerate(), deliberately: the id changes, and reading it\nbeforehand would keep the row regenerate() has just destroyed\nwhile deleting the live one. See SessionRevoker. Measured 2026-09-08: no test here distinguishes this from\nforMember(). regenerate() runs first, so the new id has no row\nyet and both calls remove the same three; the actor stays logged\nin either way because the session is persisted at the end of the\nrequest. Kept as the correct call \u2014 sessionsEnded then means\n\"other sessions\", which is what the UI reports."
-                                        }
-                                    },
-                                    "required": [
-                                        "ok",
-                                        "sessionsEnded"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/events/{event}/attendance": {
-            "put": {
-                "operationId": "attendance.update",
-                "description": "PUT, so it is an IDEMPOTENT UPSERT: tapping Oui and then Non needs no\ncreate-versus-update branch in the client and cannot race itself into\ntwo rows \u2014 UNIQUE(event_id, member_id) is the backstop.\n\nNOT AUDITED, deliberately. The audit log records privileged mutations,\nand answering for yourself is the one write in this release that\neverybody makes and nobody administers. The on-behalf route IS audited,\nbecause that one is a person acting for another person.",
-                "summary": "A member's own answer",
-                "tags": [
-                    "Attendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RecordOwnAttendanceRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "`AttendanceResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AttendanceResource"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "attendance.destroy",
-                "description": "The window is AttendanceIntegrity's (C12).",
-                "summary": "UNDO. Removes the answer entirely, returning the event to unanswered \u2014\nwhich is what a second PUT cannot express, and the whole reason this\nendpoint exists rather than the client sending the opposite answer",
-                "tags": [
-                    "Attendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            },
-            "get": {
-                "operationId": "attendance.index",
-                "description": "Returning only the answers would push \"who has not replied?\" \u2014 the\nentire point of this screen \u2014 into a client-side diff against a\nseparately-fetched roster, which is two requests that can disagree.\n\nAnswerable means Member::isPlayer(): having a register. There is\ndeliberately no permission for being answerable \u2014 making it a grant is\nwhat produced the old bug where an admin could not say whether they\nwere coming, and left the \"Pas de r\u00e9ponse\" counts meaningless.\n\nTWO QUERIES WHATEVER THE ROSTER SIZE: the players with their register,\nand this event's answers keyed by member. Pinned by\ntest_the_chase_list_costs_a_fixed_number_of_queries \u2014 the roster is ~45\npeople and this screen is read on a phone at a rehearsal.",
-                "summary": "THE CHASE LIST \u2014 every answerable member, not just those who replied",
-                "tags": [
-                    "Attendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Array of `ChaseListEntryResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ChaseListEntryResource"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
         "/login": {
             "post": {
                 "operationId": "auth.login",
+                "description": "Anonymous. Send `username` and `password`. A successful call answers\n`{\"ok\": true}` and establishes the session cookie every authenticated\nendpoint reads. It deliberately carries no identity of its own: call\n`GET /api/me` afterwards for who you are and what you may do.\n\nA username that does not exist and a wrong password both answer\n`401 invalid_credentials`, the same code for each, so that neither can\nbe used to discover which accounts exist.\n\nAfter five failures for one username from one address, further attempts\nanswer `429 too_many_attempts` for fifteen minutes, counted from the\nfirst failure. A correct password during the lockout is still refused,\nand attempts made while locked out do not extend it.",
+                "summary": "Log in",
                 "tags": [
-                    "Auth"
+                    "Session"
                 ],
                 "requestBody": {
                     "required": true,
@@ -230,7 +68,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Deliberately no role or permissions in this body. The client asks\nGET /api/me for identity, so there is exactly one shape describing\nwho you are and one place to change it.",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -248,7 +86,7 @@
                         }
                     },
                     "401": {
-                        "description": "One generic code, never per-field: saying which of username or\npassword was wrong enables enumeration. A member with no username\nnever reaches here \u2014 the `required` rule above rejects an empty\none, and a NULL username matches nothing.",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -314,8 +152,10 @@
         "/logout": {
             "post": {
                 "operationId": "auth.logout",
+                "description": "Any logged-in member. Ends the current session, discards its cookie and\nissues a fresh CSRF token, so the page that called this can go straight\non to log in again. Answers `{\"ok\": true}`.\n\nAn anonymous caller answers `401 not_authenticated`.",
+                "summary": "Log out",
                 "tags": [
-                    "Auth"
+                    "Session"
                 ],
                 "responses": {
                     "200": {
@@ -345,8 +185,10 @@
         "/me": {
             "get": {
                 "operationId": "auth.me",
+                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they play in a register (`isPlayer`, the single fact that\ndecides who is answerable for an event), whether they must change their\npassword before anything else (`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on. Roles are\nnot sent, because nothing in this API is authorised by role name.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
+                "summary": "Read the current member and what they may do",
                 "tags": [
-                    "Auth"
+                    "Session"
                 ],
                 "responses": {
                     "200": {
@@ -400,58 +242,20 @@
                 }
             }
         },
-        "/config": {
-            "get": {
-                "operationId": "config",
-                "tags": [
-                    "Config"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "env": {
-                                            "type": "string"
-                                        },
-                                        "features": {
-                                            "type": "object",
-                                            "properties": {
-                                                "calendar": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "calendar"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "env",
-                                        "features"
-                                    ]
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/contact": {
+        "/me/password": {
             "post": {
-                "operationId": "contact",
+                "operationId": "accountPassword",
+                "description": "Any logged-in account holder, for their own account. No permission is\nneeded: this is the screen every member has and nobody administers, and\nit is where a member sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`.",
+                "summary": "Change your own password",
                 "tags": [
-                    "Contact"
+                    "Session"
                 ],
                 "requestBody": {
                     "required": true,
                     "content": {
                         "application/json": {
                             "schema": {
-                                "$ref": "#/components/schemas/ContactRequest"
+                                "$ref": "#/components/schemas/AccountPasswordRequest"
                             }
                         }
                     }
@@ -466,14 +270,21 @@
                                     "properties": {
                                         "ok": {
                                             "type": "boolean"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer"
                                         }
                                     },
                                     "required": [
-                                        "ok"
+                                        "ok",
+                                        "sessionsEnded"
                                     ]
                                 }
                             }
                         }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
@@ -484,10 +295,10 @@
         "/events": {
             "get": {
                 "operationId": "event.index",
-                "description": "`?past=1` is the OTHER HALF of the list, not a superset of it \u2014 by next\ncarnival the full list is a hundred rehearsals to scroll past on a\nphone. It also reverses the order, because history is read backwards\nfrom now, while the planning ahead is read soonest-first.\n\nThe split is on BandTime::startOfToday(), not now(): a rehearsal that\nbegan an hour ago must stay in the planning of somebody running late.\nPinned by EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,\nand mutation-tested by hand against now() \u2014 see Task 4 step 7.\n\nAnything that is not exactly the magic word '1' is the default,\nupcoming view \u2014 the same fail-safe direction MigrateController takes\nwith its `mode` parameter: a missing, misspelled or truncated value\nmust never be the one that hides events.\n\nONE eager load, and it is the one R1c-2 was given room for: the\ncaller's own answer, constrained to them in the query. MEASURED\n2026-09-09 at exactly 1 query before attendance existed; the join\nmakes it 2, against the budget of 3 that\ntest_listing_the_planning_costs_a_fixed_number_of_queries has always\nasserted. The spare room was deliberate and is now spent.",
-                "summary": "The planning: upcoming by default, or the history behind `?past=1`",
+                "description": "Any logged-in member; no permission is needed. Returns the events still\nto come, soonest first, each carrying `myAttendance`: the caller's own\nanswer, or `null` where they have not given one.\n\n`?past=1` returns the history instead, the events that have already\nhappened, newest first. Any other value, or none, gives the upcoming\nplanning. The two are halves of the list rather than a list and a\nsuperset of it.\n\nAn event taking place today stays in the planning for the whole of that\nday; it does not move to the history the moment it starts.",
+                "summary": "List the planning",
                 "tags": [
-                    "Event"
+                    "Events"
                 ],
                 "parameters": [
                     {
@@ -521,10 +332,10 @@
             },
             "post": {
                 "operationId": "event.store",
-                "description": "201 with the created row, not 204: the SPA drops the response straight\ninto the list it is already showing, and a second GET to learn the id\nwould race the next writer.\n\nAudited, like every other privileged mutation, with the title captured\nas the label \u2014 see App\\Support\\Audit for why the CALLER reads it.\n\nThe two timestamps go in as the SPA sent them, offset and all. Turning\nthem into UTC instants is App\\Casts\\UtcDateTime's job, on the column \u2014\nthis endpoint deliberately knows nothing about it, which is what makes\nevery other writer of these columns correct too.",
-                "summary": "Puts a rehearsal or a gig on the planning",
+                "description": "Requires `events.manage`. Answers `201` with the created event.\n\n`startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and\n`endsAt` must come after `startsAt` or it fails validation against that\nfield with `must_be_after`. An event spanning two days is an ordinary\nrow, not an error. `title`, `location`, `startsAt`, `endsAt` and\n`isPublic` are required; a missing one fails validation against itself\nwith `required`.\n\nSetting `registrationClosesAt` is what opens the event to public\nregistration. It must come after `registrationOpensAt`, which may be\nleft null to mean the form opens as soon as the closing date is set,\nand `registrationMaxGuests` caps how many people one booking may cover.",
+                "summary": "Put a rehearsal or a gig on the planning",
                 "tags": [
-                    "Event"
+                    "Events"
                 ],
                 "requestBody": {
                     "required": true,
@@ -559,10 +370,10 @@
         "/events/{event}": {
             "get": {
                 "operationId": "event.show",
-                "description": "Not redundant with index(): the edit form loads through this rather\nthan hunting the list, because a past event is absent from the default\nlist entirely \u2014 finding it there would work right up until somebody\nedited last month's rehearsal. Route-model binding turns an unknown id\ninto a ModelNotFoundException; Laravel's own exception handler rewrites\nthat into a 404 before any render() closure sees it (checked against\nbootstrap/app.php \u2014 no closure there is typed on it, so this 404 is the\nFRAMEWORK's default JSON shape, not App\\Exceptions\\ApiError's\n{error, code, fields[]} contract; EventIndexTest only asserts the\nstatus for that reason).",
-                "summary": "One event, by id",
+                "description": "Any logged-in member; no permission is needed. Returns the event with\n`myAttendance`, the caller's own answer or `null`.\n\nWorks for a past event as well as an upcoming one, unlike the default\nlist. An unknown id answers `404`.",
+                "summary": "Read one event",
                 "tags": [
-                    "Event"
+                    "Events"
                 ],
                 "parameters": [
                     {
@@ -596,10 +407,10 @@
             },
             "patch": {
                 "operationId": "event.update",
-                "description": "The fields go through array_key_exists(), not isset(): isset() is false\nfor an explicitly-sent null, so clearing the attire or the notes \u2014 the\ncommittee deciding a gig is in ordinary clothes after all \u2014 would answer\n200 and silently change nothing. MemberController::update() carries the\nsame loop for the same reason.\n\n(That comment there also names $request->has(). MEASURED 2026-09-10:\nhas() is in fact TRUE for an explicitly-sent null \u2014 Arr::has() is\narray_key_exists underneath, and it is filled() that reads false. So\nhas() would work here; array_key_exists is still the right shape,\nbecause it asks the question of validated() \u2014 the array the rules have\nalready vetted \u2014 rather than of the raw input.)\n\nThe two timestamps go in as the SPA sent them, offset and all \u2014 see\nstore(), and App\\Casts\\UtcDateTime for why no endpoint converts them.\n\nAudited with the NEW title: a row still labelled with the old one names\nan event that no longer exists under that name.",
-                "summary": "Corrects one already on it",
+                "description": "Requires `events.manage`. Send only the fields that change: an omitted\nfield is left alone, and an explicit `null` clears an optional one such\nas `attire` or `notes`. Returns the updated event, including the\ncaller's own `myAttendance`.\n\n`endsAt` must still come after the start. A request that sends a new end\nand no new start is compared against the stored `startsAt`, and fails\nagainst `endsAt` with `must_be_after` if it falls before it.\n\nClearing `registrationClosesAt` switches public registration off again.",
+                "summary": "Correct an event already on the planning",
                 "tags": [
-                    "Event"
+                    "Events"
                 ],
                 "parameters": [
                     {
@@ -623,7 +434,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Loaded explicitly: an organiser who also plays has their own answer\non this event, and a response reporting myAttendance as null would\nreset the buttons on their own screen. See EventResource.\n\n\n\n`EventResource`",
+                        "description": "`EventResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -645,10 +456,10 @@
             },
             "delete": {
                 "operationId": "event.destroy",
-                "description": "NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has no\nlockout invariant to violate, and nothing references `events` yet.\n\nThe title and the id are captured BEFORE the delete, because the row is\ngone by the time anybody reads the audit back \u2014 the label is then the\nonly part of that entry that still means anything.\n\nNO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving\nboth reads after $event->delete(): all 25 tests stay green, because\nEloquent leaves the deleted model's attributes in memory. It is kept\nfirst for the reason MemberController::destroy() keeps its own ordering\n\u2014 the audit must not depend on what a soft delete, a cascading delete\nor a refreshed model would leave behind.\n\n{ok: true} rather than 204, so R1c-2 has somewhere to put the count of\nanswers that went with the event: a member who had said yes deserves to\nbe told how many responses were discarded, and a 204 has no body to say\nit in.",
-                "summary": "Takes one off the planning",
+                "description": "Requires `events.manage`. Deletes the event and everything attached to\nit: every attendance answer given for it, and every public registration\nbooked for it.\n\nAnswers `{\"ok\": true, \"attendanceDeleted\": n, \"registrationsDeleted\": n}`\nwith the counts of what went with it, so a confirmation can say what is\nabout to be discarded rather than merely asking again.",
+                "summary": "Take an event off the planning",
                 "tags": [
-                    "Event"
+                    "Events"
                 ],
                 "parameters": [
                     {
@@ -702,8 +513,10 @@
         "/events/series": {
             "post": {
                 "operationId": "eventSeries",
+                "description": "Requires `events.manage`. Takes a `template` and a list of `Y-m-d`\n`dates`, at most 60 of them, and creates one event per date. Answers\n`201` with the created events, in the same shape `GET /api/events`\nreturns, so a client can refresh its list straight from the response.\n\nThe events are independent, and there is no series afterwards: nothing\nlinks them, and each one is edited, answered and deleted on its own.\n\nThe template carries `startTime` and `endTime` as `H:i` wall-clock\nstrings rather than instants, applied in Europe/Zurich for each date.\nA season that crosses the daylight-saving change therefore keeps the\nsame time on the clock throughout. `endTime` must be after `startTime`.\n\n`title`, `location`, `isPublic`, `startTime` and `endTime` are required\non the template; `attire` and `notes` are optional. An empty date list\nfails validation against `dates` with `required`, more than 60 dates\nwith `too_long`, and a date that is not `Y-m-d` against its own entry\nwith `invalid_format`. A refused request writes nothing at all.",
+                "summary": "Generate a season of events from one template",
                 "tags": [
-                    "EventSeries"
+                    "Events"
                 ],
                 "requestBody": {
                     "required": true,
@@ -717,7 +530,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "The same shape GET /api/events returns, so the SPA refreshes its\nlist from this response rather than guessing what it just made.\n\n\n\nArray of `EventResource`",
+                        "description": "Array of `EventResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -738,11 +551,74 @@
                 }
             }
         },
-        "/form-token": {
-            "get": {
-                "operationId": "formToken",
+        "/events/{event}/attendance": {
+            "put": {
+                "operationId": "attendance.update",
+                "description": "Any logged-in member who is in a register; no permission is needed.\nAnswering is idempotent: sending an answer again replaces the previous\none rather than adding a second, and the response is always `200` with\nthe answer as it now stands, including its `recordedAt`.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`, which lists what is accepted.\n\nTaking back a `yes` costs a reason: if the stored answer is `yes` and\nthe incoming one is `no`, `note` is required, and a blank one fails\nvalidation against `note` with `required`. A first answer of `no`, and\na change from `no` to `yes`, cost nothing. Recording on somebody else's\nbehalf is exempt from this rule.\n\nA member who is in no register is refused with `403 not_answerable`:\nnothing is being asked of them, and no permission would change that.\n\nAnswering for yourself clears any mark saying the direction entered the\nanswer.",
+                "summary": "Record your own answer for an event",
                 "tags": [
-                    "FormToken"
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordOwnAttendanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AttendanceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "attendance.destroy",
+                "description": "Any logged-in member; no permission is needed. Removes the answer\nentirely and returns the event to unanswered, which is a state a second\n`PUT` cannot express. Answers `{\"ok\": true}`, and taking back an answer\nthat is not there is not an error.\n\nThe window closes five minutes after the answer was last recorded;\nafter that it answers `409 answer_already_settled`. `recordedAt` on the\nanswer is what tells a client whether the window is still open, so it\ncan offer the undo or not rather than finding out from a refusal.",
+                "summary": "Take back your own answer",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
                 ],
                 "responses": {
                     "200": {
@@ -752,16 +628,302 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "token": {
-                                            "type": "string"
+                                        "ok": {
+                                            "type": "boolean"
                                         }
                                     },
                                     "required": [
-                                        "token"
+                                        "ok"
                                     ]
                                 }
                             }
                         }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "get": {
+                "operationId": "attendance.index",
+                "description": "Requires `attendance.view_all`. Returns every member who is answerable\nfor the event, ordered by name, whether or not they have replied: an\nentry's `attendance` is `null` for somebody who has not, which is what\nthis list is read for.\n\nAnswerable means being in a register. A member who is in none, such as\nsomebody who only organises, never appears here.\n\nEach entry carries the member's name and register alongside their\nanswer, and an answer says whether the direction entered it rather than\nthe member giving it themselves.",
+                "summary": "List who is coming to an event",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ChaseListEntryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ChaseListEntryResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/attendance/{member}": {
+            "put": {
+                "operationId": "memberAttendance.update",
+                "description": "Requires `attendance.record_for_others`, for the member who telephones\nthe committee instead of answering themselves. Idempotent: sending an\nanswer again replaces the previous one, and the response is always\n`200` with the answer as it now stands. It is marked as recorded by the\ndirection, so a list does not imply the member replied.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`. `note` is free text for whatever the member\nsaid, and stays optional even when the answer takes back a `yes`. A\nmember answering for themselves owes a reason for that; inventing one\non somebody else's behalf would put words in their mouth.\n\nRefuses `409 cannot_record_for_self` when the member named is the\ncaller, whose own answer has its own endpoint, and `403 not_answerable`\nwhen that member is in no register.",
+                "summary": "Record an answer on a member's behalf",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordMemberAttendanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AttendanceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "memberAttendance.destroy",
+                "description": "Requires `attendance.record_for_others`. Removes that member's answer\nfor the event entirely, returning them to unanswered. Answers\n`{\"ok\": true}`, and taking back an answer that is not there is not an\nerror.\n\nUnlike a member undoing their own answer, this is not limited to five\nminutes: correcting a mis-aimed entry an hour later is the case it\nexists for.\n\nRefuses `409 cannot_record_for_self` when the member named is the\ncaller. Use `DELETE /api/events/{event}/attendance` for your own\nanswer.",
+                "summary": "Take back a member's answer",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/registrations": {
+            "post": {
+                "operationId": "registration.store",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/form-token` and a `website` field\nthat is present and empty, or the request answers\n`422 spam_suspected`. Rate limited to 10 a minute per IP.\n\nReturns the booking with its line items, the number of people it\ncovers and what it comes to in centimes. A confirmation email is sent\nto the address given; a mail failure does not fail the booking.\n\nRefuses with `registration_not_open` before the window opens and\n`registration_closed` after it shuts, both `409`. A booking larger\nthan the event's per-booking cap fails validation against `choices`\nwith `too_many_guests`. Options must belong to this event, and each\nmay appear at most once.",
+                "summary": "Book a place at an event",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreRegistrationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "get": {
+                "operationId": "registration.index",
+                "description": "Requires `registrations.view`. Returns every booking oldest first,\neach with its line items, the number of people it covers and its\ntotal in centimes.\n\nThis contains personal data supplied by members of the public. The\nsame list is available as a file from\n`GET /api/events/{event}/registrations.{format}`.",
+                "summary": "List everyone booked for an event",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `RegistrationResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/RegistrationResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/events/{event}/registration": {
+            "get": {
+                "operationId": "registration.form",
+                "description": "Anonymous. Returns what a public form needs: the event's title, dates\nand location, the options that can be booked, the maximum number of\npeople one booking may cover, and whether the form is open right now.\n\n`open` is computed by the server. Do not derive it from `opensAt` and\n`closesAt` on the client, whose clock may be wrong.\n\nAn event that takes no registrations answers `404`, whether or not it\nexists. An event that is enabled but outside its window answers `200`\nwith `open: false`, so the form can say when bookings start or that\nthey have closed.",
+                "summary": "Read a booking form",
+                "tags": [
+                    "Registration"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`RegistrationFormResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationFormResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     }
                 }
             }
@@ -769,8 +931,10 @@
         "/events/{event}/registrations.{format}": {
             "get": {
                 "operationId": "guestListExport",
+                "description": "Requires `registrations.view`. `{format}` is `xlsx`, `csv`, `md` or\n`json`; any other value is a `404` from the router.\n\nReturns the list as an attachment named after the event: one row per\nbooking with the guest's details, a column for each of the event's\nbookable options holding how many of it that booking took, the number\nof people it covers, its total in francs and when it was made, then a\nclosing totals row for the caterer. Every format carries the same rows\nin the same order.\n\nThe CSV is semicolon-separated and carries a UTF-8 byte order mark, so\nExcel opens it in columns and with accents intact.\n\nXLSX needs the PHP `zip` extension. A server without it answers\n`503 xlsx_unavailable`, and CSV still works there.",
+                "summary": "Download the guest list as a file",
                 "tags": [
-                    "GuestListExport"
+                    "Registration"
                 ],
                 "parameters": [
                     {
@@ -856,7 +1020,7 @@
                         }
                     },
                     "503": {
-                        "description": "A named refusal rather than a fatal. An operator reading this\nknows exactly what to ask the host for, and CSV still works.",
+                        "description": "",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -893,543 +1057,11 @@
                 }
             }
         },
-        "/members": {
-            "get": {
-                "operationId": "member.index",
-                "description": "Ordered by name because this screen is scanned for a person, not browsed\nby register. Grouping by register is the UI's business, and it has\nsectionName to do it with.\n\nwith() is not an optimisation to revisit later: ~45 members without it is\nthree queries each on a shared host, and the screen that administers the\nband is the one that would feel it. Pinned by\nMemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.",
-                "summary": "The whole roster \u2014 everyone, account or not",
-                "tags": [
-                    "Member"
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Array of `MemberResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/MemberResource"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            },
-            "post": {
-                "operationId": "member.store",
-                "description": "THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a\nperson with no credential, leaving \"give this person an account\" as a\nseparate operation. That cannot survive the credentials model: a member\ncreated with an unusable placeholder could be granted members.manage and\nthen be the only administrator left after a deletion \u2014 holding the\npermission and unable to log in. That is the ghost administrator the\nmigration dissolved, and this is the door it would have come back\nthrough.\n\nThe value is the same readable, dictatable one a reset produces\n(GeneratedPassword), and must_change_password is set, because a password\nan administrator read down the phone is not a secret worth keeping.\n\nIT GRANTS NO ROLES, and that is a security property rather than a\nsimplification. Granting a permission is exactly one operation \u2014\nPUT /members/{member}/roles \u2014 which re-authenticates, checks the lockout\ninvariants and audits. Accepting roleIds here would have made the\nUNGUARDED path strictly easier than the guarded one: a stolen session\ncould mint a member holding `direction` and read its password straight\nout of this response, a persistent backdoor needing no password at all.\n\nNo AccessIntegrity check is needed for the same reason: a person with no\nroles cannot orphan administration or demote anybody.",
-                "summary": "Creates a person \u2014 which means creating an account, because every member\nhas one (2026_09_08_000001)",
-                "tags": [
-                    "Member"
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreMemberRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "201": {
-                        "description": "A literal wrapping a Resource, deliberately: the credential is not\npart of a member and must never appear in MemberResource, where every\nlater read of the roster would carry it.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "member": {
-                                            "$ref": "#/components/schemas/MemberResource"
-                                        },
-                                        "generatedPassword": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": [
-                                        "member",
-                                        "generatedPassword"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/members/{member}": {
-            "patch": {
-                "operationId": "member.update",
-                "description": "The fields go through array_key_exists(), not isset() or has(): both are\nfalse for an explicitly-sent null, so clearing a register would silently\ndo nothing.",
-                "summary": "Edits a person. Roles and passwords are elsewhere, each behind its own\nre-authentication \u2014 this is not destructive and deliberately does not\nprompt for one",
-                "tags": [
-                    "Member"
-                ],
-                "parameters": [
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/UpdateMemberRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "`MemberResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/MemberResource"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "member.destroy",
-                "description": "Existence is the state (design D3): there is no `active` flag and no soft\ndelete, so leaving the band is this.\n\nNO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is\ntrusted, as it already is for reading the whole roster and editing\nanyone. Protection against a mis-aimed tap is the type-the-name\nconfirmation in the UI, which is where mistake-prevention belongs \u2014 a\nserver cannot tell a typed confirmation from an automated one.\n\nCapture the name BEFORE the delete, because the row is gone by the time\nanyone reads the audit back.",
-                "summary": "Removes a person entirely",
-                "tags": [
-                    "Member"
-                ],
-                "parameters": [
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        },
-                                        "sessionsEnded": {
-                                            "type": "integer",
-                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
-                                        }
-                                    },
-                                    "required": [
-                                        "ok",
-                                        "sessionsEnded"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/events/{event}/attendance/{member}": {
-            "put": {
-                "operationId": "memberAttendance.update",
-                "tags": [
-                    "MemberAttendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/RecordMemberAttendanceRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "`AttendanceResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/AttendanceResource"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "memberAttendance.destroy",
-                "description": "Without this a mis-aimed on-behalf write is permanent from the\ncommittee's side, and worse from the member's: C12 measures the undo\nwindow from `updated_at`, so the five minutes start ticking when the\nDIRECTION wrote it, and once they lapse C11 can demand a written\nreason from the member for a commitment they never made.\n\nNOT subject to C12 itself. The window exists to stop a member erasing\ntheir own yes and re-answering for free; a committee correcting its\nown typo an hour later is the case it was never aimed at, and they\ncan overwrite the row at will anyway.\n\nRefuses its own caller, like the write does (C14): undoing your own\nanswer through the exempt route would sidestep C11 exactly as\nwriting it would.",
-                "summary": "Takes back an answer the committee entered for somebody",
-                "tags": [
-                    "MemberAttendance"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "ok": {
-                                            "type": "boolean"
-                                        }
-                                    },
-                                    "required": [
-                                        "ok"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/members/{member}/password": {
-            "post": {
-                "operationId": "memberPassword",
-                "description": "\u00a74.4 describes ONE mechanism for a password coming into being \u2014 open a\nmember, hit \"R\u00e9initialiser le mot de passe\", read out what appears \u2014 so\nthere is one endpoint for it. Since 2026_09_08_000001 every member\nalready has a password, so this is always a reset; the \"give this person\n     * an account\" case is POST /api/members, which mints one at creation using\nthe same generator and the same forced-change semantics.\n\nThe returned password is the only copy that will ever exist in plaintext:\nit is hashed on the way into the database, never written to the audit\nlog, and never returned again.",
-                "summary": "Issues a member a new password, shown to the administrator exactly once",
-                "tags": [
-                    "MemberPassword"
-                ],
-                "parameters": [
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "generatedPassword": {
-                                            "type": "string"
-                                        },
-                                        "sessionsEnded": {
-                                            "type": "integer",
-                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
-                                        }
-                                    },
-                                    "required": [
-                                        "generatedPassword",
-                                        "sessionsEnded"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/members/{member}/roles": {
-            "put": {
-                "operationId": "memberRole",
-                "description": "NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted\nhere as it is everywhere else in this API.\n\nTHE REMAINING ORDER IS STILL LOAD-BEARING: check the invariants BEFORE\nthe write, so a refusal leaves no trace; and write, then revoke, then\naudit. Revoking before writing would end the sessions and then fail,\nleaving the member logged out with their old permissions intact.",
-                "summary": "Replaces one member's roles \u2014 which is the only way any permission is\never granted or taken away (design \u00a73: no direct per-member grants)",
-                "tags": [
-                    "MemberRole"
-                ],
-                "parameters": [
-                    {
-                        "name": "member",
-                        "in": "path",
-                        "required": true,
-                        "description": "The member ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/ReplaceMemberRolesRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "member": {
-                                            "$ref": "#/components/schemas/MemberResource"
-                                        },
-                                        "sessionsEnded": {
-                                            "type": "integer",
-                                            "description": "In the SAME transaction as the change (\u00a76). A revoked permission\nthat only takes effect at the next login is a permission the\nholder can keep using all evening."
-                                        }
-                                    },
-                                    "required": [
-                                        "member",
-                                        "sessionsEnded"
-                                    ]
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            }
-        },
-        "/events/{event}/registrations": {
-            "post": {
-                "operationId": "registration.store",
-                "description": "Behind PublicWriteGuard \u2014 honeypot plus a signed timestamp \u2014 which is\nthe only thing between this and the open internet.\n\nNO CAPACITY CHECK (decision G1), and that absence is what keeps this\nlock-free. A count-then-insert would need a locking read on the one\nendpoint strangers can hammer; the committee watches the guest list\nand closes the date early instead.\n\nONE TRANSACTION for the booking and its choices: a booking whose\nchoices half-landed is a guest the cook cannot count.",
-                "summary": "PUBLIC. Books a place",
-                "tags": [
-                    "Registration"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/StoreRegistrationRequest"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
-                    }
-                }
-            },
-            "get": {
-                "operationId": "registration.index",
-                "description": "Eager-loads the choices and their options in two queries, not one per\nbooking: a souper is ~100 bookings and this screen is also what the\nexports read.",
-                "summary": "The guest list. `registrations.view`",
-                "tags": [
-                    "Registration"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Array of `RegistrationResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/RegistrationResource"
-                                    }
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/AuthenticationException"
-                    }
-                }
-            }
-        },
-        "/events/{event}/registration": {
-            "get": {
-                "operationId": "registration.form",
-                "description": "404, NOT 403, for an event that takes no registrations. A stranger\nshould not be able to learn that an event exists but is not taking\nbookings \u2014 that is a fact about the band's private planning, and this\nendpoint is reachable without a session.\n\nAn event that is enabled but outside its window DOES answer, with\n`open: false`, because the form has something worth saying then:\n\"inscriptions d\u00e8s le 3 janvier\" or \"les inscriptions sont closes\".",
-                "summary": "PUBLIC. What the booking form needs to render itself",
-                "tags": [
-                    "Registration"
-                ],
-                "parameters": [
-                    {
-                        "name": "event",
-                        "in": "path",
-                        "required": true,
-                        "description": "The event ID",
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "`RegistrationFormResource`",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/RegistrationFormResource"
-                                }
-                            }
-                        }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/ModelNotFoundException"
-                    }
-                }
-            }
-        },
         "/registrations/{registration}": {
             "patch": {
                 "operationId": "registration.update",
-                "description": "Guests get no self-service (G2), so this is how a misspelled name or\na wrong table gets fixed. The CHOICES are deliberately not editable\nhere: changing what somebody ordered is a different act from fixing\ntheir details, it would need the guest cap re-checked and the\nconfirmation re-sent, and nobody has asked for it. A wrong order is\ncancelled and re-booked.\n\narray_key_exists, not isset: both are false for an explicitly-sent\nnull, so clearing an address would silently do nothing.",
-                "summary": "Correcting a booking. `registrations.manage`",
+                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number or a\nseating change is fixed.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\nWhat was ordered cannot be changed here. Cancel the booking and make\na new one instead.",
+                "summary": "Correct a booking's details",
                 "tags": [
                     "Registration"
                 ],
@@ -1477,8 +1109,8 @@
             },
             "delete": {
                 "operationId": "registration.destroy",
-                "description": "The label is captured BEFORE the delete, because the row is gone by\nthe time anybody reads the audit back \u2014 see App\\Support\\Audit.",
-                "summary": "Cancelling on a guest's behalf. `registrations.manage`",
+                "description": "Requires `registrations.manage`. Removes the booking and everything\nit ordered. The guest is not notified.\n\nAnswers `{\"ok\": true}`.",
+                "summary": "Cancel a booking",
                 "tags": [
                     "Registration"
                 ],
@@ -1524,8 +1156,10 @@
         "/events/{event}/registration-options": {
             "put": {
                 "operationId": "registrationOption",
+                "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.",
+                "summary": "Replace an event's bookable options",
                 "tags": [
-                    "RegistrationOption"
+                    "Registration"
                 ],
                 "parameters": [
                     {
@@ -1602,12 +1236,41 @@
                 }
             }
         },
+        "/sections": {
+            "get": {
+                "operationId": "section.index",
+                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every register (\"pupitre\") with its name, in the order the\nband has configured. A member's register is what makes them a player,\nand therefore answerable for an event.",
+                "summary": "List the registers",
+                "tags": [
+                    "Members"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `SectionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/SectionResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/roles": {
             "get": {
                 "operationId": "role.index",
-                "summary": "`index()`, not `__invoke()` \u2014 see SectionController for why",
+                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every role with the permissions it grants. A role carries no\ndisplay name: `key` is the fixed identifier and the client translates\nit.",
+                "summary": "List the roles",
                 "tags": [
-                    "Role"
+                    "Members"
                 ],
                 "responses": {
                     "200": {
@@ -1629,23 +1292,23 @@
                 }
             }
         },
-        "/sections": {
+        "/members": {
             "get": {
-                "operationId": "section.index",
-                "description": "The return type is AnonymousResourceCollection rather than JsonResponse\ndeliberately: it is what lets Scramble emit a $ref to a named schema.\nWrapping this in response()->json() would erase the type and generate\n`string[]` in the client \u2014 measured, not inferred.\n\n`index()` rather than `__invoke()`, even though this controller has one\naction: Scramble names the operation after controller + method and drops\nthe method for a single-action controller, so `__invoke` would generate\nthe hook `useSection` for something that returns a list. `index` gives\n`useSectionIndex`.",
-                "summary": "The registers, in their configured order",
+                "operationId": "member.index",
+                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/roles` and\njoin on `roleIds`.",
+                "summary": "List the roster",
                 "tags": [
-                    "Section"
+                    "Members"
                 ],
                 "responses": {
                     "200": {
-                        "description": "Array of `SectionResource`",
+                        "description": "Array of `MemberResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/components/schemas/SectionResource"
+                                        "$ref": "#/components/schemas/MemberResource"
                                     }
                                 }
                             }
@@ -1655,6 +1318,384 @@
                         "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
+            },
+            "post": {
+                "operationId": "member.store",
+                "description": "Requires `members.manage`. Creating a person creates their account:\nevery member has one. Send `firstName`, `lastName`, `username` and\n`publicVisible`, and optionally `sectionId`, `committeeTitle` and\n`instructorOfSectionId`.\n\nAnswers `201` with `member` and `generatedPassword`, a readable password\nthe server minted for the new account. It is shown in this response and\nnowhere else: it is hashed on the way into the database, is never\nwritten to the audit log, and no later call returns it. An administrator\nwho loses it issues a new one at\n`POST /api/members/{member}/password`. The new member is required to\nchange it before doing anything else.\n\nNo roles are granted. Roles are `PUT /api/members/{member}/roles`, and\nno password may be chosen here.\n\nA missing required field answers `400 validation_failed` naming the\nfield with `required`. A username already in use answers the same with\n`already_taken`; one containing anything but lower-case letters, digits,\ndot, hyphen or underscore answers `invalid_format`.",
+                "summary": "Add a member to the roster",
+                "tags": [
+                    "Members"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreMemberRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "member": {
+                                            "$ref": "#/components/schemas/MemberResource"
+                                        },
+                                        "generatedPassword": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "member",
+                                        "generatedPassword"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/members/{member}": {
+            "patch": {
+                "operationId": "member.update",
+                "description": "Requires `members.manage`. Send only the fields that change: an omitted\nfield is left alone, and an explicit `null` clears an optional one such\nas the register or the committee title. Returns the updated member.\n\nRoles and passwords are not editable here. They are\n`PUT /api/members/{member}/roles` and\n`POST /api/members/{member}/password`, each of which also ends the\nmember's sessions.\n\nA username already in use answers `400 validation_failed` with\n`already_taken` against `username`, and one that is not lower-case\nletters, digits, dot, hyphen or underscore answers `invalid_format`.",
+                "summary": "Correct a member's details",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateMemberRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`MemberResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MemberResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "member.destroy",
+                "description": "Requires `members.manage`. Deletes the person outright and ends every\nsession they have open, so a deleted member stops being logged in at\nonce. There is no deactivation flag and no undo: leaving the band is\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\n\nRefuses with `409 cannot_remove_last_administrator` when the target is\nthe only member left who could administer members, and\n`409 cannot_delete_self` when the target is the caller. Both are `409`\nrather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. When both apply, the\nlast-administrator refusal is the one returned.",
+                "summary": "Remove a member from the roster",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/members/{member}/roles": {
+            "put": {
+                "operationId": "memberRole",
+                "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep; an empty array removes\nall of them. Read the roles that exist from `GET /api/roles`.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 cannot_remove_last_administrator` when the new set\nwould leave nobody able to administer members, and\n`409 cannot_demote_self` when callers would strip their own member\nadministration. Both are `409` rather than `403` because the caller does\nhold the permission; the request conflicts with the state of the roster.\nWhen both apply, the last-administrator refusal is the one returned. An\nunknown role id answers `400 validation_failed` against `roleIds`.",
+                "summary": "Replace a member's roles",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceMemberRolesRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "member": {
+                                            "$ref": "#/components/schemas/MemberResource"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "member",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/members/{member}/password": {
+            "post": {
+                "operationId": "memberPassword",
+                "description": "Requires `members.manage`. Mints a readable password an administrator\ncan dictate over the phone, replaces the member's own with it, and ends\nevery session that member has open. Takes no body. Answers\n`{\"generatedPassword\": \"...\", \"sessionsEnded\": n}`.\n\n`generatedPassword` is shown in this response and nowhere else: it is\nhashed on the way into the database, is never written to the audit log,\nand no later call returns it. A lost one is replaced by calling this\nagain. The member is required to change it at their next login, through\n`POST /api/me/password`.\n\nA member resetting their own password this way keeps the session they\nare calling from, and `sessionsEnded` then counts their other ones. The\nordinary route for that is `POST /api/me/password`, which lets them\nchoose the password instead.",
+                "summary": "Reset a member's password",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "generatedPassword": {
+                                            "type": "string"
+                                        },
+                                        "sessionsEnded": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "generatedPassword",
+                                        "sessionsEnded"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/form-token": {
+            "get": {
+                "operationId": "formToken",
+                "description": "Anonymous, and no session is required. Rate limited to 10 a minute per\nIP.\n\nReturns `{\"token\": \"...\"}`, to be sent back as the `X-Form-Token`\nheader on a public write: `POST /api/contact` and\n`POST /api/events/{event}/registrations`.\n\nFetch it when the form is rendered, not when it is submitted. The\nsubmission guard refuses a token less than two seconds old, so\nrequesting one at submit time would refuse every real person. A token\nstays valid for two hours and may be sent more than once, so a\nsubmission that fails validation can be retried with the token already\nin hand.",
+                "summary": "Issue a form token for a public form",
+                "tags": [
+                    "Public forms"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "token"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/contact": {
+            "post": {
+                "operationId": "contact",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message for the committee to read and answers\n`{\"ok\": true}`. Nothing is sent back to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
+                "summary": "Send a message to the committee",
+                "tags": [
+                    "Public forms"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ContactRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
+        "/config": {
+            "get": {
+                "operationId": "config",
+                "description": "Anonymous, and no session is required. The SPA fetches this before its\nfirst render to learn which environment it is talking to and which\nfeature flags are on.\n\nReturns `env`, one of `dev`, `test`, `qa` or `prod`, and `features`, a\nmap of flag name to boolean. A flag the server says nothing about\nreads as `false`, and an environment the server does not recognise\nreads as `prod`.\n\nCarries no secrets and depends on nothing about the caller. The\nresponse is `no-store`, so a value changed on the server is picked up\non the next page load.",
+                "summary": "Read the runtime configuration",
+                "tags": [
+                    "Service"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "env": {
+                                            "type": "string"
+                                        },
+                                        "features": {
+                                            "type": "object",
+                                            "properties": {
+                                                "calendar": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "calendar"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "env",
+                                        "features"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     },
@@ -1662,13 +1703,15 @@
         "schemas": {
             "AccountPasswordRequest": {
                 "type": "object",
-                "description": "A member choosing their own password.\n\nEIGHT CHARACTERS, and that is a judgement rather than a standard. The people\ntyping this are 6-16 years old, on a phone, and the account protects a\nrehearsal calendar. Login is throttled per username AND per IP with a\nfifteen-minute lockout, there is no password reset by email to phish, and the\ncommittee-issued default is ~57 bits \u2014 so the marginal value of demanding\ntwelve is small next to the number of children who would write it on the\ninside of a case lid. Raise it if the committee asks.\n\nRule order: `required` before `min`, so an empty field reports `required`\nrather than `too_short`.",
+                "description": "The credentials for changing your own password.\n\nSend the password the account is using now and the one to replace it with.\nThe current password is checked again server-side before anything is\nwritten, so knowing it is what separates a borrowed session from a\npermanently stolen account.\n\nThe only requirement on the new password is a minimum of eight characters.\nThere is no complexity rule, no reuse check and no expiry.",
                 "properties": {
                     "currentPassword": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The password the account is using right now. Re-verified before the change is applied; a wrong one answers `403 reauth_failed`."
                     },
                     "newPassword": {
                         "type": "string",
+                        "description": "The replacement. At least 8 characters; a shorter one fails with `too_short`.",
                         "minLength": 8,
                         "maxLength": 255
                     }
@@ -1683,19 +1726,23 @@
                 "type": "object",
                 "properties": {
                     "status": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Whether the member is coming. One of `yes` or `no`."
                     },
                     "note": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Free text the member or the committee added. Required when a member changes their own answer from `yes` to `no`."
                     },
                     "recordedByDirection": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True when the committee entered this answer for the member rather than the member answering themselves."
                     },
                     "recordedAt": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "When the answer was last written. A member may withdraw their own answer entirely for five minutes after this."
                     }
                 },
                 "required": [
@@ -1710,7 +1757,8 @@
                 "type": "object",
                 "properties": {
                     "memberId": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "The member this row is about."
                     },
                     "firstName": {
                         "type": "string"
@@ -1722,11 +1770,13 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "The register they play in. Everyone on this list has one; that is what makes them answerable."
                     },
                     "attendance": {
                         "anyOf": [
                             {
+                                "description": "Their answer, or null if they have not replied. The nulls are what this list is read for.",
                                 "$ref": "#/components/schemas/AttendanceResource"
                             },
                             {
@@ -1746,7 +1796,7 @@
             },
             "ContactRequest": {
                 "type": "object",
-                "description": "Field names are camelCase because contact.js posts the form via FormData with\nthose input names, and App\\Exceptions\\ApiError echoes them straight into\nfields[].field, where i18n.js looks them up. Renaming them silently breaks\nthe French error messages. (The signup form uses snake_case \u2014 the two forms\ngenuinely differ; do not normalise.)\n\nRule ORDER is load-bearing: ApiError reports only the first failed rule per\nfield, so `required` must come first (an empty field reports `required`, not\n`invalid_format`) and `max` must precede `email` (an over-long address\nreports `too_long`). This mirrors App\\Dto\\ContactInput's attribute order.",
+                "description": "A message sent through the public contact form.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nEvery field here is required. The body is capped at 5000 characters, which\nis a long letter; anything longer is refused rather than truncated.",
                 "properties": {
                     "lastName": {
                         "type": "string",
@@ -1759,6 +1809,7 @@
                     "email": {
                         "type": "string",
                         "format": "email",
+                        "description": "Where the committee will reply. Nothing is sent to it automatically.",
                         "maxLength": 255
                     },
                     "subject": {
@@ -1767,7 +1818,7 @@
                     },
                     "message": {
                         "type": "string",
-                        "description": "max:5000 against a TEXT column of 65535 BYTES. Without it a\n~70 KB body overflows in MySQL strict mode and answers 500 to\nan anonymous caller. 5000 characters is a long letter.",
+                        "description": "The message body, up to 5000 characters. Plain text; no markup is rendered.",
                         "maxLength": 5000
                     }
                 },
@@ -1790,10 +1841,12 @@
                         "type": "string"
                     },
                     "startsAt": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich."
                     },
                     "endsAt": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "ISO 8601 with an offset. Always after `startsAt`, and may fall on a later day."
                     },
                     "location": {
                         "type": "string"
@@ -1802,16 +1855,19 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "What to wear, or null when nothing was specified."
                     },
                     "isPublic": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether the event may be shown to people outside the band."
                     },
                     "notes": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Free text for members. Not shown to the public."
                     },
                     "registrationOpensAt": {
                         "type": [
@@ -1832,11 +1888,13 @@
                         ]
                     },
                     "takesRegistrations": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set."
                     },
                     "myAttendance": {
                         "anyOf": [
                             {
+                                "description": "The CALLING member's own answer for this event, or null if they have not replied. Never anybody else's.",
                                 "$ref": "#/components/schemas/AttendanceResource"
                             },
                             {
@@ -1878,7 +1936,8 @@
                         "type": "string"
                     },
                     "mustChangePassword": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "True after a committee-issued password. Every screen but /account is blocked until they change it."
                     },
                     "lastLoginAt": {
                         "type": [
@@ -1900,7 +1959,7 @@
                     },
                     "isPlayer": {
                         "type": "boolean",
-                        "description": "Whether they PLAY, which is the single fact that decides who is\nanswerable for an event. Derived from section_id rather than\nstored, so the two can never disagree."
+                        "description": "Whether they play in a register. Only players are answerable for events."
                     },
                     "committeeTitle": {
                         "type": [
@@ -1920,6 +1979,7 @@
                     },
                     "roleIds": {
                         "type": "array",
+                        "description": "The roles they hold. Call GET /api/roles to learn what each one grants.",
                         "items": {
                             "type": "integer"
                         }
@@ -1944,10 +2004,11 @@
             },
             "RecordMemberAttendanceRequest": {
                 "type": "object",
-                "description": "Somebody holding attendance.record_for_others answering for a member.\n\nNO C11 REASON RULE, deliberately (decision C13). The member phoned the\ncommittee to say they cannot come; making the committee invent a written\nreason on their behalf would put words in their mouth, and the note is free\ntext here for whatever they actually said.\n\nThat exemption is exactly why the route refuses its own caller (C14): a\nmember who both plays and manages \u2014 demo.both \u2014 could otherwise withdraw\ntheir own yes through this endpoint and never supply the reason C11 asks\nfor. The refusal is in the controller, not here, because it is a conflict\nwith the state of the system rather than a malformed field.",
+                "description": "One member's answer, entered on their behalf by the committee.\n\nThe same payload a member sends for themselves, with one rule missing:\n`note` is always optional here, even when the answer changes from `yes` to\n`no`. The committee is writing down what somebody told them on the phone,\nnot justifying a decision of their own.\n\nThe route refuses a caller who aims it at their own membership, so a member\nwho both plays and manages still has to answer for themselves through\n`PUT /api/events/{event}/attendance`.",
                 "properties": {
                     "status": {
                         "type": "string",
+                        "description": "Whether the member is coming. One of `yes` or `no`.",
                         "enum": [
                             "yes",
                             "no"
@@ -1958,6 +2019,7 @@
                             "string",
                             "null"
                         ],
+                        "description": "What the member said, in their words. Always optional on this endpoint, including when an earlier `yes` is being withdrawn.",
                         "maxLength": 255
                     }
                 },
@@ -1968,10 +2030,11 @@
             },
             "RecordOwnAttendanceRequest": {
                 "type": "object",
-                "description": "A member answering for THEMSELVES.\n\nWITHDRAWING A YES COSTS A REASON (decision C11). If the stored answer is\n`yes` and the incoming one is `no`, `note` becomes required and a blank one\ncomes back as an ordinary validation failure against that field \u2014 no new\nerror vocabulary invented, and it lands in the dialog beside the box the\nmember has to fill in.\n\nThe rule is asymmetric on purpose. Saying yes late costs nothing; taking a\nyes back is what leaves the cook with a headcount that is wrong and the\ncommittee with a gap in a Guggenmusik's front row. Recording on somebody's\nbehalf is exempt (C13) and uses RecordMemberAttendanceRequest instead \u2014\nwhich is also why C14 makes the on-behalf route refuse its own caller,\nbecause otherwise this rule would be one request away from evadable.",
+                "description": "A member's own answer to an event.\n\n`status` is `yes` or `no`; there is no \"maybe\". The endpoint is idempotent,\nso sending the same answer twice is fine and answering again replaces the\nprevious answer.\n\nOne conditional rule: taking back a `yes` costs a reason. If the stored\nanswer is `yes` and this request sends `no`, `note` becomes required and an\nempty one fails validation against `note` with `required`. Saying yes late,\nor repeating a `no`, needs no note.\n\nRecording an answer on somebody else's behalf uses\n`PUT /api/events/{event}/attendance/{member}`, which does not ask for the\nreason.",
                 "properties": {
                     "status": {
                         "type": "string",
+                        "description": "Whether the member is coming. One of `yes` or `no`.",
                         "enum": [
                             "yes",
                             "no"
@@ -1982,7 +2045,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "`required` rather than `nullable` only on the withdrawal, and\n`required` leads the list because ApiError reports the FIRST\nfailed rule per field.",
+                        "description": "Free text. Required when this request changes the member's own stored `yes` into a `no`; optional otherwise.",
                         "maxLength": 255
                     }
                 },
@@ -2074,10 +2137,12 @@
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description."
                     },
                     "sortOrder": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Ascending display order."
                     }
                 },
                 "required": [
@@ -2117,10 +2182,12 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "description": "Seating preference the guest gave, or null."
                     },
                     "choices": {
                         "type": "array",
+                        "description": "What was booked: one entry per option, each with its quantity.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -2149,13 +2216,15 @@
                         }
                     },
                     "guestCount": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "How many people this booking covers, summed across its choices."
                     },
                     "totalCents": {
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero."
                     },
                     "createdAt": {
                         "type": "string"
@@ -2178,10 +2247,11 @@
             },
             "ReplaceMemberRolesRequest": {
                 "type": "object",
-                "description": "Replacing one member's roles.\n\nPUT SEMANTICS: `roleIds` is the complete set the member will be left with,\nand an empty array means \"no roles\". That is deliberate \u2014 a PATCH-style \"add\n * this one\" API cannot express removal, and removal is the half that needs the\ninvariants.\n\n`roleIds` is `present`, not `required`: `required` rejects an empty array,\nwhich is the most important value this endpoint accepts.",
+                "description": "The complete set of roles a member is to be left with.\n\nThis is a replacement, not a partial update: send every role the member\nshould hold afterwards, including the ones they already have. Anything left\nout is removed, and an empty array removes all of them.\n\n`roleIds` must be sent, even when empty. Read the ids that exist from\n`GET /api/roles`; an unknown one fails validation against `roleIds`.",
                 "properties": {
                     "roleIds": {
                         "type": "array",
+                        "description": "Every role the member should hold afterwards. Send `[]` to leave them with none.",
                         "items": {
                             "type": "integer"
                         }
@@ -2194,11 +2264,11 @@
             },
             "ReplaceRegistrationOptionsRequest": {
                 "type": "object",
-                "description": "The committee editing an event's bookable options, as a complete set.\n\nREPLACE-ALL, matching PUT /members/{member}/roles rather than three\nper-option endpoints: the committee edits the list as a set in one form,\nand an \"add one\" API cannot express removal \u2014 which is the half the\nbooked-option invariant exists for.\n\nEntries carrying an `id` are updated, entries without one are created, and\nanything absent is deleted \u2014 unless somebody has booked it, which is\nrefused with `option_has_registrations` rather than allowed to rewrite\nwhat that person ordered.\n\n`priceCents` is an INTEGER and nullable: 4500 is CHF 45.-, and null is a\nfree option or one whose price lives in the description. Never a float \u2014\nbinary floating point cannot represent 0.1, and this is money.",
+                "description": "The complete list of things that can be booked at one event.\n\nThis is a replacement, not a partial update. Send the whole list every\ntime: an entry carrying an `id` updates that option, an entry without one\ncreates a new option, and any existing option missing from the list is\ndeleted. Deleting an option somebody has already booked is refused with\n`option_has_registrations` rather than rewriting what that person ordered.\n\nSend `options: []` to leave the event with nothing bookable. At most 50\nentries. An `id` must belong to this event.\n\n`priceCents` is an integer number of centimes, so 4500 is CHF 45.00. Zero\nis a free option; `null` means the option carries no price at all, for\ninstance when the price is spelled out in the description.",
                 "properties": {
                     "options": {
                         "type": "array",
-                        "description": "`present`, not `required`: an event may legitimately have no\noptions, and `required` refuses an empty array.",
+                        "description": "The whole list, replacing whatever the event offered before. Send `[]` to offer nothing.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -2207,10 +2277,11 @@
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "Nullable rather than absent-or-int: the client sends the whole\nlist back, and a new row has no id yet.\nScoped to THIS event. An unscoped id updates zero rows and\nthe controller moves on, so the committee submits three\noptions, gets 200, and sees two \u2014 silent loss rather than a\nrefusal."
+                                    "description": "The id of an existing option of this event, to update it. Omit or send `null` to create a new one."
                                 },
                                 "label": {
                                     "type": "string",
+                                    "description": "What the guest sees on the booking form, for example \"Repas adulte\".",
                                     "maxLength": 255
                                 },
                                 "description": {
@@ -2225,7 +2296,7 @@
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "gte:0 rather than gt:0 \u2014 an option really can cost nothing,\nand that is different from having no price at all (null).",
+                                    "description": "Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.",
                                     "maximum": 1000000
                                 },
                                 "sortOrder": {
@@ -2233,6 +2304,7 @@
                                         "integer",
                                         "null"
                                     ],
+                                    "description": "Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send.",
                                     "maximum": 1000
                                 }
                             },
@@ -2255,10 +2327,12 @@
                         "type": "integer"
                     },
                     "key": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Stable identifier. Roles carry no display name; clients translate by this key."
                     },
                     "permissions": {
                         "type": "array",
+                        "description": "Everything this role grants, as permission strings.",
                         "items": {
                             "type": "string"
                         }
@@ -2278,10 +2352,12 @@
                         "type": "integer"
                     },
                     "name": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The register's name, as the band writes it."
                     },
                     "sortOrder": {
-                        "type": "integer"
+                        "type": "integer",
+                        "description": "Ascending display order."
                     }
                 },
                 "required": [
@@ -2293,7 +2369,7 @@
             },
             "StoreEventRequest": {
                 "type": "object",
-                "description": "Putting a rehearsal or a gig on the planning.\n\n`endsAt` is REQUIRED and must come AFTER `startsAt`. Required because the\ncolumn is (C6, 2026_09_09_000001): a nullable end is what would let the\n`weekend` boolean creep back, since without an end there is nothing to read\n\"this runs over two days\" off. After, because nothing else enforced it and a\nmistyped hour produces an event of negative length \u2014 it sorts and renders in\nways nobody has designed for.\n\nThe rule is `after`, not `same day` plus an hour comparison: \"Weekend\n * musical, 3-4 October\" is a real row on the live planning, and spanning two\ndays is precisely the case C6 dissolved the flag for.\n\n`attire` and `notes` are nullable because half the planning has neither \u2014\na rehearsal in ordinary clothes with nothing to add is the common row, and\nrequiring the committee to type something into both is how \"-\" ends up on\nthe screen.\n\n`isPublic` is required rather than defaulted, the same call StoreMemberRequest\nmakes for `publicVisible`: showing an event to strangers is a decision\nsomebody makes per event, so the form states it instead of inheriting it.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first everywhere (an empty title reports\n`required`, not `invalid_type`) and `date` precedes `after` on `endsAt` \u2014 an\nunparseable end is a format problem, and comparing it to anything would\nreport the wrong thing.",
+                "description": "A new entry on the planning: a rehearsal, a gig or a concert.\n\n`startsAt` and `endsAt` are both required, and the end must come strictly\nafter the start. The end may fall on a later day; a two-day event such as a\ncarnival weekend is an ordinary row here, not a special case.\n\n`isPublic` is required rather than defaulted, because showing an event to\nstrangers is a decision somebody makes per event. `attire` and `notes` are\noptional and stay empty for the many rows that need neither.\n\nThe three `registration*` fields open the event to public bookings. Setting\n`registrationClosesAt` is what switches registration on at all; leave it\nnull and the public form answers `404`.",
                 "properties": {
                     "title": {
                         "type": "string",
@@ -2301,14 +2377,17 @@
                     },
                     "startsAt": {
                         "type": "string",
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich."
                     },
                     "endsAt": {
                         "type": "string",
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "ISO 8601 with an offset, strictly after `startsAt`. May fall on a later day; a two-day event is normal."
                     },
                     "location": {
                         "type": "string",
+                        "description": "Where it happens, as free text. Nothing geocodes it.",
                         "maxLength": 255
                     },
                     "attire": {
@@ -2316,16 +2395,19 @@
                             "string",
                             "null"
                         ],
+                        "description": "What to wear, for example \"Costume complet\". Optional.",
                         "maxLength": 255
                     },
                     "isPublic": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether the event appears on the public agenda. Members see it either way."
                     },
                     "notes": {
                         "type": [
                             "string",
                             "null"
                         ],
+                        "description": "Anything else members should read. Optional, up to 5000 characters.",
                         "maxLength": 5000
                     },
                     "registrationOpensAt": {
@@ -2334,20 +2416,22 @@
                             "null"
                         ],
                         "format": "date-time",
-                        "description": "The registration window. Setting a close date is what enables\npublic registration at all (D9), so these three are how a\nsouper is switched on without touching the database."
+                        "description": "When public bookings start. Null means bookings are open as soon as `registrationClosesAt` is set."
                     },
                     "registrationClosesAt": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "When public bookings stop. Setting this is what opens the event to public registration at all; null means it takes no bookings."
                     },
                     "registrationMaxGuests": {
                         "type": [
                             "integer",
                             "null"
                         ],
+                        "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
                         "maximum": 100
                     }
                 },
@@ -2362,10 +2446,11 @@
             },
             "StoreEventSeriesRequest": {
                 "type": "object",
-                "description": "Generating a season: one template plus the list of dates it happens on.\n\nA LIST OF DATES, NOT A RECURRENCE RULE (decision C3). The browser computes\nthe candidate dates, the committee unticks the ones that fall in school\nholidays, and what arrives here is exactly the rows they looked at. No rule\nengine exists on either side of the wire, and after the request there is no\nseries \u2014 just N ordinary events.\n\nThe template carries `startTime`/`endTime` as `H:i` wall-clock strings\nrather than the `startsAt`/`endsAt` instants StoreEventRequest takes, and\nthat difference is the whole point: a season spans the daylight-saving\nchange, so the one thing every event in it shares is the time on the clock\nin Fribourg, not an offset. App\\Support\\BandTime::compose() turns each\n(date, time) pair into the right instant; see\nEventSeriesTest::test_the_wall_clock_time_is_the_same_in_summer_and_winter.\n\nRULE ORDER: `required` leads every list, because ApiError reports only the\nFIRST failed rule per field and an empty field must report `required`\nrather than a format complaint.\n\nThe format-before-comparison order on `template.endTime` is kept for\nconsistency with StoreEventRequest, but \u2014 MEASURED 2026-09-10 \u2014 it is NOT\nload-bearing here, unlike there. Reversing it on `endsAt` changes that\nfield's reported reason from `invalid_format` to `must_be_after`; reversing\nit here does not, and '25:00' still reports `invalid_format` either way.\nDifferent rule pair (`date_format:H:i` + `after:<field>` rather than `date`\n+ `after:<field>`), different behaviour. So do not copy the claim from one\nfile to the other without re-measuring, and do not read\ntest_an_unparseable_end_time_is_a_format_error_not_a_comparison as pinning\nan ordering \u2014 it pins the reported reason, which is what the committee\nactually reads.",
+                "description": "A season, as one template plus the list of dates it happens on.\n\nThere is no recurrence rule. Send exactly the dates you want, as `Y-m-d`\nstrings, up to 60 of them; the caller is what decides which weeks are\nskipped for school holidays. One independent event is created per date, and\nafterwards nothing links them: editing or deleting one leaves the rest\nalone.\n\nThe template carries `startTime` and `endTime` as `H:i` wall-clock strings\nrather than the instants a single event takes. Each date is combined with\nthose times in Europe/Zurich, so a season spanning the daylight-saving\nchange keeps the same time on the clock throughout.",
                 "properties": {
                     "template": {
                         "type": "object",
+                        "description": "The event every date is stamped out from.",
                         "properties": {
                             "title": {
                                 "type": "string",
@@ -2373,6 +2458,7 @@
                             },
                             "location": {
                                 "type": "string",
+                                "description": "Where it happens, as free text. The same for every date.",
                                 "maxLength": 255
                             },
                             "attire": {
@@ -2380,10 +2466,12 @@
                                     "string",
                                     "null"
                                 ],
+                                "description": "What to wear. Optional.",
                                 "maxLength": 255
                             },
                             "isPublic": {
-                                "type": "boolean"
+                                "type": "boolean",
+                                "description": "Whether the generated events appear on the public agenda. Applies to all of them."
                             },
                             "notes": {
                                 "type": [
@@ -2393,10 +2481,11 @@
                             },
                             "startTime": {
                                 "type": "string",
-                                "description": "H:i, because these are wall-clock times and not instants \u2014 see\nthe class docblock. date_format rather than a regex so '25:00'\nand '10:70' are refused rather than composed into nonsense."
+                                "description": "Start time as `H:i`, for example `20:00`. Read as a wall-clock time in Europe/Zurich on each date."
                             },
                             "endTime": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "End time as `H:i`, strictly after `startTime`. Every generated event begins and ends on its own date."
                             }
                         },
                         "required": [
@@ -2409,11 +2498,11 @@
                     },
                     "dates": {
                         "type": "array",
-                        "description": "NO `min:1`, deliberately. Laravel's `required` already refuses an\nempty array, and it reports the reason a French reader can act on\n(\"Dates est requis\"). `min` would report `too_short`, whose copy\ninterpolates a character count \u2014 ApiError's REASONS docblock\nrecords that `min` is committed to the string-length reading, so\nan array minimum here would tell the committee their list of\ndates \"est trop court (minimum 1 caract\u00e8res)\".",
+                        "description": "The dates to generate, at least one and at most 60. Order does not matter.",
                         "items": {
                             "type": "string",
                             "format": "date",
-                            "description": "Y-m-d only. An ISO instant would carry an offset, and the whole\npoint of this endpoint is that the offset is derived per date\nfrom the band's zone rather than sent."
+                            "description": "One calendar date as `Y-m-d`, for example `2026-11-14`. No time and no offset: both come from the template."
                         },
                         "minItems": 1,
                         "maxItems": 60
@@ -2427,7 +2516,7 @@
             },
             "StoreMemberRequest": {
                 "type": "object",
-                "description": "Creating a person on the roster \u2014 which means creating an account, because\nevery member has one (2026_09_08_000001).\n\n`username` is REQUIRED for that reason. It used to be optional, back when a\nrow could be a person without a login; that model is what let somebody hold\nmembers.manage while being unable to authenticate, and deleting the only real\nadministrator then locked the band out.\n\nThere is deliberately no `roleIds` field either: granting a permission is\nexactly one operation, PUT /members/{member}/roles, which re-authenticates\nand checks the lockout invariants. Accepting roles here would let a stolen\nsession create a working administrator without ever proving who it is.\n\nThere is deliberately no `password` field. The password is GENERATED by the\ncontroller and returned once \u2014 an administrator reads it down the phone (\u00a74.4)\n\u2014 so nobody types a credential into this form and no weak one can be chosen.\n\nField names are camelCase, matching what the SPA sends and what\nApp\\Exceptions\\ApiError echoes into fields[].field, where web/src/i18n/fr.ts\nlooks them up. Renaming one silently breaks its French error message.\n\nRULE ORDER IS LOAD-BEARING: ApiError reports only the FIRST failed rule per\nfield, so `required` comes first (an empty field reports `required`, not\n`invalid_format`) and `max` precedes `unique` (an over-long username reports\n`too_long` rather than costing a database round-trip).",
+                "description": "A new person on the roster, which is also a new account: every member has a\nlogin.\n\n`username` is therefore required, must be unique, and may hold only lower\ncase letters, digits, dot, hyphen and underscore. It gets dictated over the\nphone, so it is deliberately narrow.\n\nThere is no `password` field. The API generates one and returns it in the\nresponse exactly once, for an administrator to pass on; it is never\nretrievable afterwards.\n\nThere is no `roleIds` field either. A new member starts with no roles and\nno permissions; granting any is a separate call to\n`PUT /api/members/{member}/roles`.\n\n`sectionId` is the register the member plays in. A member with no register\nis not answerable for events and never appears in an attendance list, which\nis how somebody who organises but does not play is recorded.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -2439,7 +2528,7 @@
                     },
                     "username": {
                         "type": "string",
-                        "description": "Lower case, digits, dot, hyphen, underscore. The seeded logins\nlook like `demo.direction`, and a username that has to be\ndictated should not depend on capitalisation. The column collates\ncase-insensitively anyway, so `Lea` and `lea` would be the same\naccount \u2014 the rule makes that visible rather than surprising.",
+                        "description": "The login, unique across the roster. Lower case letters, digits, dot, hyphen and underscore only, for example `marie.dupont`.",
                         "pattern": "^[a-z0-9._-]+$",
                         "maxLength": 255
                     },
@@ -2447,24 +2536,27 @@
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "The register the member plays in, from `GET /api/sections`. Null for somebody who organises but does not play; they are then never listed for attendance."
                     },
                     "committeeTitle": {
                         "type": [
                             "string",
                             "null"
                         ],
+                        "description": "The member's function on the committee, shown on the public committee page. Free text, null for most members.",
                         "maxLength": 255
                     },
                     "instructorOfSectionId": {
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "The register this member instructs, if any. Separate from `sectionId`: an instructor need not play in the register they teach."
                     },
                     "publicVisible": {
                         "type": "boolean",
-                        "description": "Required, not defaulted: publication of a minor's name is a\ndecision somebody makes, so the form has to state it rather than\ninherit it."
+                        "description": "Whether the member's name may appear on the public site. Required rather than defaulted, because many members are minors and this is decided per person."
                     }
                 },
                 "required": [
@@ -2477,7 +2569,7 @@
             },
             "StoreRegistrationRequest": {
                 "type": "object",
-                "description": "A stranger booking a place at an event.\n\nTHE ONLY ANONYMOUS WRITE THIS RELEASE ADDS, and the second in the whole\nAPI. It sits behind PublicWriteGuard.\n\nName, email and phone are required (G4): a Swiss committee reaches\nsomebody by phone the evening before, and every required field past that\nis a reason to abandon the form. Address and table are optional.\n\nRULE ORDER IS LOAD-BEARING, as everywhere: ApiError reports only the FIRST\nfailed rule per field, so `required` leads each list.\n\nThe per-booking guest cap is checked in after(), not by a rule, because it\nis a property of the WHOLE choices array against a number stored on the\nevent \u2014 no single field is wrong.",
+                "description": "An anonymous booking for one event.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nName, email and phone are required, because a Swiss committee reaches\nsomebody by telephone the evening before. Address and table name are\noptional.\n\n`choices` is what is being ordered: a non-empty list of `{optionId,\nquantity}`, at most 20 entries, each option appearing at most once and\nbelonging to this event. Read the options from\n`GET /api/events/{event}/registration`. When the event sets a per-booking\nguest cap, a booking whose quantities add up to more than that cap fails\nvalidation against `choices` with `too_many_guests`.\n\nAn event that takes no bookings answers `404`, whether or not it exists.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -2490,10 +2582,12 @@
                     "email": {
                         "type": "string",
                         "format": "email",
+                        "description": "Where the confirmation is sent. A mail failure does not fail the booking.",
                         "maxLength": 255
                     },
                     "phone": {
                         "type": "string",
+                        "description": "A telephone number, in whatever form the guest writes it. Required: this is how the committee reaches them the evening before.",
                         "maxLength": 64
                     },
                     "address": {
@@ -2508,21 +2602,22 @@
                             "string",
                             "null"
                         ],
+                        "description": "Who the guest would like to sit with, as free text. Nothing enforces it; the committee reads it when seating the room.",
                         "maxLength": 255
                     },
                     "choices": {
                         "type": "array",
-                        "description": "max:20 because the array is the only one an ANONYMOUS caller\ncontrols, and each element costs an exists query during\nvalidation. Twenty option lines is already more than any\nsouper offers.",
+                        "description": "What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.",
                         "items": {
                             "type": "object",
                             "properties": {
                                 "optionId": {
                                     "type": "integer",
-                                    "description": "Scoped to THIS event's options. Without the where clause a\nbooking could reference an option belonging to a different\nevent entirely, which the foreign key would happily accept."
+                                    "description": "An option offered by this event, from `GET /api/events/{event}/registration`. Each option may appear at most once in `choices`."
                                 },
                                 "quantity": {
                                     "type": "integer",
-                                    "description": "max, because the column is an unsignedInteger and an\nout-of-range value is a 500 rather than a validation failure.",
+                                    "description": "How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
                                     "maximum": 50
                                 }
                             },
@@ -2546,7 +2641,7 @@
             },
             "UpdateEventRequest": {
                 "type": "object",
-                "description": "Editing one row of the planning.\n\nPATCH, so every rule is `sometimes`: a form posting only the field it\nchanged must not blank the others.\n\n`sometimes` is not the same as `nullable`, and the two nullable columns need\nboth \u2014 `sometimes` means \"skip this field if absent\", `nullable` means \"null\n * is a legal value when present\". Without `sometimes` an absent field fails\n`required`; without `nullable` an explicit null fails the type rules.\nClearing the attire is an explicit null, so both matter. UpdateMemberRequest\nmakes the same call at more length, for the same situation.\n\nRULE ORDER IS LOAD-BEARING, exactly as StoreEventRequest documents: ApiError\nreports only the FIRST failed rule per field, so `required` comes before the\ntype rules and `date` before the comparison \u2014 an unparseable end is a format\nproblem, and comparing it to anything reports the wrong thing. Pinned by\nEventWriteTest::test_editing_reports_an_unparseable_end_as_a_format_error.",
+                "description": "Changes to one entry on the planning.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\nThe two date comparisons still hold when only one half is sent. A request\ncarrying `endsAt` but not `startsAt` is compared against the start already\nstored, so an end cannot be moved before a beginning it did not send; the\nsame goes for `registrationClosesAt` against a stored\n`registrationOpensAt`.\n\nClearing `registrationClosesAt` with an explicit `null` is how public\nregistration is switched off again; the bookings already taken are kept.",
                 "properties": {
                     "title": {
                         "type": "string",
@@ -2554,14 +2649,17 @@
                     },
                     "startsAt": {
                         "type": "string",
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich."
                     },
                     "endsAt": {
                         "type": "string",
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise."
                     },
                     "location": {
                         "type": "string",
+                        "description": "Where it happens, as free text.",
                         "maxLength": 255
                     },
                     "attire": {
@@ -2569,16 +2667,19 @@
                             "string",
                             "null"
                         ],
+                        "description": "What to wear. Send `null` to clear it.",
                         "maxLength": 255
                     },
                     "isPublic": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether the event appears on the public agenda. Members see it either way."
                     },
                     "notes": {
                         "type": [
                             "string",
                             "null"
                         ],
+                        "description": "Anything else members should read. Send `null` to clear it.",
                         "maxLength": 5000
                     },
                     "registrationOpensAt": {
@@ -2587,20 +2688,22 @@
                             "null"
                         ],
                         "format": "date-time",
-                        "description": "The registration window. Nullable throughout, and clearing\nregistrationClosesAt is how registration is switched OFF \u2014\nwhich is why these need  AND , like every\nother optional column on this form."
+                        "description": "When public bookings start. Send `null` for bookings that are open as soon as the close date is set."
                     },
                     "registrationClosesAt": {
                         "type": [
                             "string",
                             "null"
                         ],
-                        "format": "date-time"
+                        "format": "date-time",
+                        "description": "When public bookings stop. Send `null` to switch public registration off; bookings already taken are kept. Must fall after the opening, whether that is sent here or already stored."
                     },
                     "registrationMaxGuests": {
                         "type": [
                             "integer",
                             "null"
                         ],
+                        "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
                         "maximum": 100
                     }
                 },
@@ -2608,7 +2711,7 @@
             },
             "UpdateMemberRequest": {
                 "type": "object",
-                "description": "Editing a person on the roster.\n\nPATCH, so every rule is `sometimes`: a form that posts only the field it\nchanged must not blank the others.\n\n`sometimes` is not the same as `nullable`, and both are needed on the\nnullable columns \u2014 `sometimes` means \"skip this field if absent\", `nullable`\nmeans \"null is a legal value when present\". Without `sometimes` an absent\nfield fails `required`; without `nullable` an explicit null fails the type\nrules. Clearing a register is an explicit null, so both matter.\n\n`username` is the one field that is `sometimes` but NOT `nullable`: it is the\nlogin, and every member has one. Clearing it used to be allowed, and used to\nrequire clearing the password and ending the sessions with it \u2014 an entire\nbranch that 2026_09_08_000001 deleted by making the column NOT NULL.\n\nROLES ARE NOT HERE. Replacing them is PUT /api/members/{member}/roles, which\nneeds re-authentication and its own invariant check; folding it into the\ngeneral edit would put a privilege change behind a form that has neither.\nNeither is the password: that is its own endpoint, and its own dialog.",
+                "description": "Changes to a person already on the roster.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\n`username` is the exception. It may be changed but not cleared, because it\nis the login and every member has one. It keeps the same shape as at\ncreation, and must stay unique across the roster.\n\nRoles are not here: replacing them is `PUT /api/members/{member}/roles`,\nwhich checks the roster's lockout invariants and ends the member's open\nsessions. Neither is the password, which has its own endpoint.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -2620,6 +2723,7 @@
                     },
                     "username": {
                         "type": "string",
+                        "description": "The login. May be changed but never cleared. Lower case letters, digits, dot, hyphen and underscore only, and unique across the roster.",
                         "pattern": "^[a-z0-9._-]+$",
                         "maxLength": 255
                     },
@@ -2627,30 +2731,34 @@
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "The register the member plays in, from `GET /api/sections`. Send `null` to take them out of every register, which also takes them off attendance lists."
                     },
                     "committeeTitle": {
                         "type": [
                             "string",
                             "null"
                         ],
+                        "description": "The member's function on the committee. Send `null` to clear it.",
                         "maxLength": 255
                     },
                     "instructorOfSectionId": {
                         "type": [
                             "integer",
                             "null"
-                        ]
+                        ],
+                        "description": "The register this member instructs, if any. Send `null` to clear it."
                     },
                     "publicVisible": {
-                        "type": "boolean"
+                        "type": "boolean",
+                        "description": "Whether the member's name may appear on the public site."
                     }
                 },
                 "title": "UpdateMemberRequest"
             },
             "UpdateRegistrationRequest": {
                 "type": "object",
-                "description": "The committee correcting a booking's details.\n\nEvery rule is `sometimes`, so a form posting only what changed does not\nblank the rest. `sometimes` and `nullable` are not the same thing and the\ntwo optional columns need both \u2014 see UpdateEventRequest and\nUpdateMemberRequest, which make the same call at more length.\n\nNO `choices` FIELD, deliberately. Changing what somebody ordered is a\ndifferent act from fixing their name: it would need the per-booking guest\ncap re-checked and arguably the confirmation re-sent, and nobody has asked\nfor it. A wrong order is cancelled and re-booked, which is one click for\nthe committee and leaves an honest audit trail.",
+                "description": "Corrections to a booking's contact details.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\nWhat was ordered cannot be changed here; there is no `choices` field.\nCancel the booking and make a new one instead. No mail is sent when a\nbooking is corrected.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -2663,10 +2771,12 @@
                     "email": {
                         "type": "string",
                         "format": "email",
+                        "description": "Where the confirmation went. Correcting it does not send a new one.",
                         "maxLength": 255
                     },
                     "phone": {
                         "type": "string",
+                        "description": "A telephone number, in whatever form the guest gave it.",
                         "maxLength": 64
                     },
                     "address": {
@@ -2674,6 +2784,7 @@
                             "string",
                             "null"
                         ],
+                        "description": "Send `null` to clear it.",
                         "maxLength": 255
                     },
                     "tableName": {
@@ -2681,6 +2792,7 @@
                             "string",
                             "null"
                         ],
+                        "description": "Who the guest sits with, as free text. Send `null` to clear it.",
                         "maxLength": 255
                     }
                 },

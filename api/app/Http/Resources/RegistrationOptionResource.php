@@ -27,7 +27,9 @@ class RegistrationOptionResource extends JsonResource
             'id' => $this->id,
             'label' => $this->label,
             'description' => $this->description,
+            /** Price in centimes: 4500 is CHF 45.00. Null when the option is free or priced in its description. */
             'priceCents' => $this->price_cents,
+            /** Ascending display order. */
             'sortOrder' => $this->sort_order,
         ];
     }

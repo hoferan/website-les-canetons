@@ -11,65 +11,103 @@ use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
+#[Group('Members', weight: 50)]
 class MemberController extends Controller
 {
     /**
-     * The whole roster — everyone, account or not.
+     * List the roster.
      *
-     * Ordered by name because this screen is scanned for a person, not browsed
-     * by register. Grouping by register is the UI's business, and it has
-     * sectionName to do it with.
+     * Requires `members.manage`. Returns everyone the band tracks, ordered by
+     * last name then first name. Each entry carries the person's register
+     * (`sectionId` and `sectionName`), whether they play (`isPlayer`), their
+     * committee title, whether they may be shown on the public site, and
+     * `roleIds`, the roles they hold.
      *
-     * with() is not an optimisation to revisit later: ~45 members without it is
-     * three queries each on a shared host, and the screen that administers the
-     * band is the one that would feel it. Pinned by
-     * MemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.
+     * No password and no hash is ever included, and neither are effective
+     * permissions: a role is what grants them, so read `GET /api/roles` and
+     * join on `roleIds`.
      */
     public function index(): AnonymousResourceCollection
     {
-        return MemberResource::collection(
-            Member::with(['section', 'roles'])
-                ->orderBy('last_name')
-                ->orderBy('first_name')
-                ->get()
-        );
+        // Ordered by name because this screen is scanned for a person, not
+        // browsed by register. Grouping by register is the UI's business, and
+        // it has sectionName to do it with.
+        //
+        // with() is not an optimisation to revisit later: ~45 members without
+        // it is three queries each on a shared host, and the screen that
+        // administers the band is the one that would feel it. Pinned by
+        // MemberIndexTest::test_listing_the_roster_costs_a_fixed_number_of_queries.
+        //
+        // The assignment below is load-bearing, and a blank line is NOT
+        // enough. Scramble publishes the comment block preceding a return as
+        // that operation's 200 response description, and it walks back past
+        // blank lines to find it. Measured 2026-09-10: this paragraph, test
+        // name included, was being served at /api/docs. An intervening
+        // statement is what breaks the association.
+        $roster = Member::with(['section', 'roles'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+
+        return MemberResource::collection($roster);
     }
 
     /**
-     * Creates a person — which means creating an account, because every member
-     * has one (2026_09_08_000001).
+     * Add a member to the roster.
      *
-     * THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create make a
-     * person with no credential, leaving "give this person an account" as a
-     * separate operation. That cannot survive the credentials model: a member
-     * created with an unusable placeholder could be granted members.manage and
-     * then be the only administrator left after a deletion — holding the
-     * permission and unable to log in. That is the ghost administrator the
-     * migration dissolved, and this is the door it would have come back
-     * through.
+     * Requires `members.manage`. Creating a person creates their account:
+     * every member has one. Send `firstName`, `lastName`, `username` and
+     * `publicVisible`, and optionally `sectionId`, `committeeTitle` and
+     * `instructorOfSectionId`.
      *
-     * The value is the same readable, dictatable one a reset produces
-     * (GeneratedPassword), and must_change_password is set, because a password
-     * an administrator read down the phone is not a secret worth keeping.
+     * Answers `201` with `member` and `generatedPassword`, a readable password
+     * the server minted for the new account. It is shown in this response and
+     * nowhere else: it is hashed on the way into the database, is never
+     * written to the audit log, and no later call returns it. An administrator
+     * who loses it issues a new one at
+     * `POST /api/members/{member}/password`. The new member is required to
+     * change it before doing anything else.
      *
-     * IT GRANTS NO ROLES, and that is a security property rather than a
-     * simplification. Granting a permission is exactly one operation —
-     * PUT /members/{member}/roles — which re-authenticates, checks the lockout
-     * invariants and audits. Accepting roleIds here would have made the
-     * UNGUARDED path strictly easier than the guarded one: a stolen session
-     * could mint a member holding `direction` and read its password straight
-     * out of this response, a persistent backdoor needing no password at all.
+     * No roles are granted. Roles are `PUT /api/members/{member}/roles`, and
+     * no password may be chosen here.
      *
-     * No AccessIntegrity check is needed for the same reason: a person with no
-     * roles cannot orphan administration or demote anybody.
+     * A missing required field answers `400 validation_failed` naming the
+     * field with `required`. A username already in use answers the same with
+     * `already_taken`; one containing anything but lower-case letters, digits,
+     * dot, hyphen or underscore answers `invalid_format`.
      */
     public function store(StoreMemberRequest $request): JsonResponse
     {
+        // THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create
+        // make a person with no credential, leaving "give this person an
+        // account" as a separate operation. That cannot survive the credentials
+        // model: a member created with an unusable placeholder could be granted
+        // members.manage and then be the only administrator left after a
+        // deletion — holding the permission and unable to log in. That is the
+        // ghost administrator 2026_09_08_000001 dissolved, and this is the door
+        // it would have come back through.
+        //
+        // The value is the same readable, dictatable one a reset produces
+        // (GeneratedPassword), and must_change_password is set, because a
+        // password an administrator read down the phone is not a secret worth
+        // keeping.
+        //
+        // IT GRANTS NO ROLES, and that is a security property rather than a
+        // simplification. Granting a permission is exactly one operation —
+        // PUT /members/{member}/roles — which checks the lockout invariants,
+        // ends the target's sessions and audits. Accepting roleIds here would
+        // have made the UNGUARDED path strictly easier than the guarded one: a
+        // stolen session could mint a member holding `direction` and read its
+        // password straight out of this response, a persistent backdoor.
+        //
+        // No AccessIntegrity check is needed for the same reason: a person with
+        // no roles cannot orphan administration or demote anybody.
         $data = $request->validated();
         $password = GeneratedPassword::make();
 
@@ -94,23 +132,37 @@ class MemberController extends Controller
         // A literal wrapping a Resource, deliberately: the credential is not
         // part of a member and must never appear in MemberResource, where every
         // later read of the roster would carry it.
-        return response()->json([
+        $body = [
             'member' => new MemberResource($member->load(['section', 'roles'])),
             'generatedPassword' => $password,
-        ], 201);
+        ];
+
+        return response()->json($body, 201);
     }
 
     /**
-     * Edits a person. Roles and passwords are elsewhere, each behind its own
-     * re-authentication — this is not destructive and deliberately does not
-     * prompt for one.
+     * Correct a member's details.
      *
-     * The fields go through array_key_exists(), not isset() or has(): both are
-     * false for an explicitly-sent null, so clearing a register would silently
-     * do nothing.
+     * Requires `members.manage`. Send only the fields that change: an omitted
+     * field is left alone, and an explicit `null` clears an optional one such
+     * as the register or the committee title. Returns the updated member.
+     *
+     * Roles and passwords are not editable here. They are
+     * `PUT /api/members/{member}/roles` and
+     * `POST /api/members/{member}/password`, each of which also ends the
+     * member's sessions.
+     *
+     * A username already in use answers `400 validation_failed` with
+     * `already_taken` against `username`, and one that is not lower-case
+     * letters, digits, dot, hyphen or underscore answers `invalid_format`.
      */
     public function update(UpdateMemberRequest $request, Member $member): MemberResource
     {
+        // Not destructive, so it deliberately does not prompt for a password.
+        //
+        // The fields go through array_key_exists(), not isset() or has(): both
+        // are false for an explicitly-sent null, so clearing a register would
+        // silently do nothing.
         $data = $request->validated();
 
         $columns = [
@@ -137,24 +189,34 @@ class MemberController extends Controller
     }
 
     /**
-     * Removes a person entirely.
+     * Remove a member from the roster.
      *
-     * Existence is the state (design D3): there is no `active` flag and no soft
-     * delete, so leaving the band is this.
+     * Requires `members.manage`. Deletes the person outright and ends every
+     * session they have open, so a deleted member stops being logged in at
+     * once. There is no deactivation flag and no undo: leaving the band is
+     * this call. Answers `{"ok": true, "sessionsEnded": n}`.
      *
-     * NO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is
-     * trusted, as it already is for reading the whole roster and editing
-     * anyone. Protection against a mis-aimed tap is the type-the-name
-     * confirmation in the UI, which is where mistake-prevention belongs — a
-     * server cannot tell a typed confirmation from an automated one.
-     *
-     * Capture the name BEFORE the delete, because the row is gone by the time
-     * anyone reads the audit back.
+     * Refuses with `409 cannot_remove_last_administrator` when the target is
+     * the only member left who could administer members, and
+     * `409 cannot_delete_self` when the target is the caller. Both are `409`
+     * rather than `403` because the caller does hold the permission; the
+     * request conflicts with the state of the roster. When both apply, the
+     * last-administrator refusal is the one returned.
      */
     public function destroy(Request $request, Member $member): JsonResponse
     {
+        // Existence is the state (design D3): there is no `active` flag and no
+        // soft delete.
+        //
+        // NO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is
+        // trusted, as it already is for reading the whole roster and editing
+        // anyone. Protection against a mis-aimed tap is the type-the-name
+        // confirmation in the UI, which is where mistake-prevention belongs — a
+        // server cannot tell a typed confirmation from an automated one.
         AccessIntegrity::assertMayDelete($request->user(), $member);
 
+        // Captured BEFORE the delete, because the row is gone by the time
+        // anyone reads the audit back.
         $label = $member->fullName();
         $id = $member->id;
 

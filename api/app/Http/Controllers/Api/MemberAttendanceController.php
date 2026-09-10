@@ -10,45 +10,51 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\AttendanceIntegrity;
 use App\Support\Audit;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/**
- * Answering on somebody else's behalf — the phone call to the committee.
- *
- * Two verbs, so not single-action: PUT records an answer and DELETE takes
- * one back. The generated hooks are therefore useMemberAttendanceUpdate and
- * useMemberAttendanceDestroy.
- *
- * REFUSES ITS OWN CALLER (decision C14). This route is exempt from C11's
- * reason-for-a-withdrawal rule (C13), because making the committee invent a
- * reason on a member's behalf puts words in their mouth. That exemption is
- * exactly why aiming it at yourself has to be refused: demo.both plays and
- * holds attendance.record_for_others, and could otherwise take back his own
- * yes for free.
- */
+#[Group('Attendance', weight: 30)]
 class MemberAttendanceController extends Controller
 {
     /**
-     * Takes back an answer the committee entered for somebody.
+     * Take back a member's answer.
      *
-     * Without this a mis-aimed on-behalf write is permanent from the
-     * committee's side, and worse from the member's: C12 measures the undo
-     * window from `updated_at`, so the five minutes start ticking when the
-     * DIRECTION wrote it, and once they lapse C11 can demand a written
-     * reason from the member for a commitment they never made.
+     * Requires `attendance.record_for_others`. Removes that member's answer
+     * for the event entirely, returning them to unanswered. Answers
+     * `{"ok": true}`, and taking back an answer that is not there is not an
+     * error.
      *
-     * NOT subject to C12 itself. The window exists to stop a member erasing
-     * their own yes and re-answering for free; a committee correcting its
-     * own typo an hour later is the case it was never aimed at, and they
-     * can overwrite the row at will anyway.
+     * Unlike a member undoing their own answer, this is not limited to five
+     * minutes: correcting a mis-aimed entry an hour later is the case it
+     * exists for.
      *
-     * Refuses its own caller, like the write does (C14): undoing your own
-     * answer through the exempt route would sidestep C11 exactly as
-     * writing it would.
+     * Refuses `409 cannot_record_for_self` when the member named is the
+     * caller. Use `DELETE /api/events/{event}/attendance` for your own
+     * answer.
      */
     public function destroy(Request $request, Event $event, Member $member): JsonResponse
     {
+        // Answering on somebody else's behalf — the phone call to the
+        // committee. Two verbs, so this controller is not single-action: PUT
+        // records an answer and DELETE takes one back. The generated hooks
+        // are therefore useMemberAttendanceUpdate and
+        // useMemberAttendanceDestroy.
+        //
+        // Without this endpoint a mis-aimed on-behalf write is permanent from
+        // the committee's side, and worse from the member's: C12 measures the
+        // undo window from `updated_at`, so the five minutes start ticking
+        // when the DIRECTION wrote it, and once they lapse C11 can demand a
+        // written reason from the member for a commitment they never made.
+        //
+        // NOT subject to C12 itself. The window exists to stop a member
+        // erasing their own yes and re-answering for free; a committee
+        // correcting its own typo an hour later is the case it was never
+        // aimed at, and they can overwrite the row at will anyway.
+        //
+        // Refuses its own caller, like the write does (C14): undoing your own
+        // answer through the exempt route would sidestep C11 exactly as
+        // writing it would.
         /** @var Member $actor */
         $actor = $request->user();
 
@@ -79,11 +85,41 @@ class MemberAttendanceController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Record an answer on a member's behalf.
+     *
+     * Requires `attendance.record_for_others`, for the member who telephones
+     * the committee instead of answering themselves. Idempotent: sending an
+     * answer again replaces the previous one, and the response is always
+     * `200` with the answer as it now stands. It is marked as recorded by the
+     * direction, so a list does not imply the member replied.
+     *
+     * `status` is `yes` or `no`; anything else fails validation against that
+     * field with `invalid_value`. `note` is free text for whatever the member
+     * said, and stays optional even when the answer takes back a `yes`. A
+     * member answering for themselves owes a reason for that; inventing one
+     * on somebody else's behalf would put words in their mouth.
+     *
+     * Refuses `409 cannot_record_for_self` when the member named is the
+     * caller, whose own answer has its own endpoint, and `403 not_answerable`
+     * when that member is in no register.
+     */
     public function update(
         RecordMemberAttendanceRequest $request,
         Event $event,
         Member $member,
     ): AttendanceResource {
+        // REFUSES ITS OWN CALLER (decision C14). This route is exempt from
+        // C11's reason-for-a-withdrawal rule (C13), because making the
+        // committee invent a reason on a member's behalf puts words in their
+        // mouth. That exemption is exactly why aiming it at yourself has to
+        // be refused: demo.both plays and holds
+        // attendance.record_for_others, and could otherwise take back his own
+        // yes for free.
+        //
+        // The self-refusal is checked FIRST, so it outranks being
+        // unanswerable — pinned by
+        // test_the_self_refusal_outranks_being_unanswerable.
         /** @var Member $actor */
         $actor = $request->user();
 

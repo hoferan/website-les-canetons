@@ -72,14 +72,16 @@ class MigrateController extends Controller
             // Non-2xx AND status 'error': the caller accepts either as failure,
             // and a migration that fails while reporting success would let a
             // broken deploy through the CI gate.
-            return $this->respond($mode, 500, [
+            $body = [
                 'status' => 'error',
                 'ok' => false,
                 'error' => $e->getMessage(),
                 'applied' => [],
                 'pending' => [],
                 'output' => Artisan::output(),
-            ]);
+            ];
+
+            return $this->respond($mode, 500, $body);
         }
     }
 

@@ -9,28 +9,53 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Writes a whole season in one request — thirteen rehearsals, the gigs, the AG.
- *
- * A GENERATOR, NOT AN ENTITY (decision C3). This endpoint stores no rule and
- * no `series_id`: it writes N independent events and forgets they arrived
- * together. That is what makes "how does a player attend one occurrence?" a
- * non-question — each row is an ordinary event, edited and answered like any
- * other. EventSeriesTest asserts the absence of the column directly, because
- * the cheapest way for that decision to erode is for somebody to add one.
- *
- * Single-action, matching MemberRoleController and MemberPasswordController.
- * That is not only style: Scramble names the generated operation after the
- * controller and drops the method for single-action ones, which is what makes
- * the client hook `useEventSeries` rather than `useEventSeriesStore`.
- */
+#[Group('Events', weight: 20)]
 class EventSeriesController extends Controller
 {
+    /**
+     * Generate a season of events from one template.
+     *
+     * Requires `events.manage`. Takes a `template` and a list of `Y-m-d`
+     * `dates`, at most 60 of them, and creates one event per date. Answers
+     * `201` with the created events, in the same shape `GET /api/events`
+     * returns, so a client can refresh its list straight from the response.
+     *
+     * The events are independent, and there is no series afterwards: nothing
+     * links them, and each one is edited, answered and deleted on its own.
+     *
+     * The template carries `startTime` and `endTime` as `H:i` wall-clock
+     * strings rather than instants, applied in Europe/Zurich for each date.
+     * A season that crosses the daylight-saving change therefore keeps the
+     * same time on the clock throughout. `endTime` must be after `startTime`.
+     *
+     * `title`, `location`, `isPublic`, `startTime` and `endTime` are required
+     * on the template; `attire` and `notes` are optional. An empty date list
+     * fails validation against `dates` with `required`, more than 60 dates
+     * with `too_long`, and a date that is not `Y-m-d` against its own entry
+     * with `invalid_format`. A refused request writes nothing at all.
+     */
     public function __invoke(StoreEventSeriesRequest $request): JsonResponse
     {
+        // Writes a whole season in one request — thirteen rehearsals, the
+        // gigs, the AG.
+        //
+        // A GENERATOR, NOT AN ENTITY (decision C3). This endpoint stores no
+        // rule and no `series_id`: it writes N independent events and forgets
+        // they arrived together. That is what makes "how does a player attend
+        // one occurrence?" a non-question — each row is an ordinary event,
+        // edited and answered like any other. EventSeriesTest asserts the
+        // absence of the column directly, because the cheapest way for that
+        // decision to erode is for somebody to add one.
+        //
+        // Single-action, matching MemberRoleController and
+        // MemberPasswordController. That is not only style: Scramble names the
+        // generated operation after the controller and drops the method for
+        // single-action ones, which is what makes the client hook
+        // `useEventSeries` rather than `useEventSeriesStore`.
         $data = $request->validated();
 
         /** @var array<string, mixed> $template */
@@ -87,6 +112,8 @@ class EventSeriesController extends Controller
 
         // The same shape GET /api/events returns, so the SPA refreshes its
         // list from this response rather than guessing what it just made.
-        return response()->json(EventResource::collection($events), 201);
+        $planning = EventResource::collection($events);
+
+        return response()->json($planning, 201);
     }
 }

@@ -7,9 +7,19 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One row on the planning — a rehearsal or a gig.
+ * One row on the planning: a rehearsal or a gig.
  *
- * NO ATTENDANCE. R1c-2 adds `myAttendance` here; this release is read-only.
+ * Carries `myAttendance`, the CALLER's own answer and never anybody else's.
+ * The controller scopes that relation to the current member inside the
+ * query, so another member's answer is not loaded at all; see
+ * EventController::myAttendance(). An unloaded relation reports null, which
+ * is why the write paths that need it load it explicitly.
+ *
+ * Scramble does NOT publish this class docblock. Measured 2026-09-10: a
+ * Resource's schema description comes from nothing, while a `/** ... *\/`
+ * above an entry in toArray() below becomes that property's description in
+ * the reference. So the notes here stay internal, and anything a caller
+ * needs goes on the field.
  *
  * @mixin Event
  */
@@ -21,16 +31,23 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
             'startsAt' => $this->startsAt(),
+            /** ISO 8601 with an offset. Always after `startsAt`, and may fall on a later day. */
             'endsAt' => $this->endsAt(),
             'location' => $this->location,
+            /** What to wear, or null when nothing was specified. */
             'attire' => $this->attire,
+            /** Whether the event may be shown to people outside the band. */
             'isPublic' => $this->is_public,
+            /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
             'registrationOpensAt' => $this->registration_opens_at?->toIso8601String(),
             'registrationClosesAt' => $this->registration_closes_at?->toIso8601String(),
             'registrationMaxGuests' => $this->registration_max_guests,
+            /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
+            /** The CALLING member's own answer for this event, or null if they have not replied. Never anybody else's. */
             'myAttendance' => $this->myAttendance(),
         ];
     }

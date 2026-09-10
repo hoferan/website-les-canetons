@@ -13,6 +13,7 @@ use App\Models\Event;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Support\Audit;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,22 +21,30 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
+#[Group('Registration', weight: 40)]
 class RegistrationController extends Controller
 {
     /**
-     * PUBLIC. What the booking form needs to render itself.
+     * Read a booking form.
      *
-     * 404, NOT 403, for an event that takes no registrations. A stranger
-     * should not be able to learn that an event exists but is not taking
-     * bookings — that is a fact about the band's private planning, and this
-     * endpoint is reachable without a session.
+     * Anonymous. Returns what a public form needs: the event's title, dates
+     * and location, the options that can be booked, the maximum number of
+     * people one booking may cover, and whether the form is open right now.
      *
-     * An event that is enabled but outside its window DOES answer, with
-     * `open: false`, because the form has something worth saying then:
-     * "inscriptions dès le 3 janvier" or "les inscriptions sont closes".
+     * `open` is computed by the server. Do not derive it from `opensAt` and
+     * `closesAt` on the client, whose clock may be wrong.
+     *
+     * An event that takes no registrations answers `404`, whether or not it
+     * exists. An event that is enabled but outside its window answers `200`
+     * with `open: false`, so the form can say when bookings start or that
+     * they have closed.
      */
     public function form(Event $event): RegistrationFormResource
     {
+        // 404 rather than 403, deliberately: a stranger must not be able to
+        // learn that an event exists but is not taking bookings. That is a
+        // fact about the band's private planning and this endpoint needs no
+        // session.
         if (! $event->takesRegistrations()) {
             abort(404);
         }
@@ -44,24 +53,33 @@ class RegistrationController extends Controller
     }
 
     /**
-     * PUBLIC. Books a place.
+     * Book a place at an event.
      *
-     * Behind PublicWriteGuard — honeypot plus a signed timestamp — which is
-     * the only thing between this and the open internet.
+     * Anonymous, and protected against automated submission: send the
+     * `X-Form-Token` header from `GET /api/form-token` and a `website` field
+     * that is present and empty, or the request answers
+     * `422 spam_suspected`. Rate limited to 10 a minute per IP.
      *
-     * NO CAPACITY CHECK (decision G1), and that absence is what keeps this
-     * lock-free. A count-then-insert would need a locking read on the one
-     * endpoint strangers can hammer; the committee watches the guest list
-     * and closes the date early instead.
+     * Returns the booking with its line items, the number of people it
+     * covers and what it comes to in centimes. A confirmation email is sent
+     * to the address given; a mail failure does not fail the booking.
      *
-     * ONE TRANSACTION for the booking and its choices: a booking whose
-     * choices half-landed is a guest the cook cannot count.
+     * Refuses with `registration_not_open` before the window opens and
+     * `registration_closed` after it shuts, both `409`. A booking larger
+     * than the event's per-booking cap fails validation against `choices`
+     * with `too_many_guests`. Options must belong to this event, and each
+     * may appear at most once.
      */
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
         // The takesRegistrations() 404 lives in the Form Request's
         // prepareForValidation(), not here: it has to run BEFORE validation
         // or the caller gets a 400 about option ids instead. See there.
+        //
+        // NO CAPACITY CHECK (decision G1), and that absence is what keeps
+        // this lock-free: a count-then-insert would need a locking read on
+        // the one endpoint strangers can hammer. The committee watches the
+        // guest list and closes the date early instead.
         $refusal = self::refuseUnlessOpen($event);
         if ($refusal !== null) {
             return $refusal;
@@ -99,34 +117,47 @@ class RegistrationController extends Controller
     }
 
     /**
-     * The guest list. `registrations.view`.
+     * List everyone booked for an event.
      *
-     * Eager-loads the choices and their options in two queries, not one per
-     * booking: a souper is ~100 bookings and this screen is also what the
-     * exports read.
+     * Requires `registrations.view`. Returns every booking oldest first,
+     * each with its line items, the number of people it covers and its
+     * total in centimes.
+     *
+     * This contains personal data supplied by members of the public. The
+     * same list is available as a file from
+     * `GET /api/events/{event}/registrations.{format}`.
      */
     public function index(Event $event): AnonymousResourceCollection
     {
-        return RegistrationResource::collection(
-            $event->registrations()->with('choices.option')->orderBy('created_at')->get()
-        );
+        // Two queries whatever the guest count, not one per booking: a
+        // souper is ~100 bookings and this is also what the exports read.
+        $bookings = $event->registrations()->with('choices.option')->orderBy('created_at')->get();
+
+        return RegistrationResource::collection($bookings);
     }
 
     /**
-     * Correcting a booking. `registrations.manage`.
+     * Correct a booking's details.
      *
-     * Guests get no self-service (G2), so this is how a misspelled name or
-     * a wrong table gets fixed. The CHOICES are deliberately not editable
-     * here: changing what somebody ordered is a different act from fixing
-     * their details, it would need the guest cap re-checked and the
-     * confirmation re-sent, and nobody has asked for it. A wrong order is
-     * cancelled and re-booked.
+     * Requires `registrations.manage`. Guests cannot amend their own
+     * booking, so this is how a misspelled name, a wrong number or a
+     * seating change is fixed.
      *
-     * array_key_exists, not isset: both are false for an explicitly-sent
-     * null, so clearing an address would silently do nothing.
+     * Send only the fields that change. An explicit `null` clears an
+     * optional field; an omitted field is left alone.
+     *
+     * What was ordered cannot be changed here. Cancel the booking and make
+     * a new one instead.
      */
     public function update(UpdateRegistrationRequest $request, Registration $registration): RegistrationResource
     {
+        // The choices are deliberately not editable: changing an order
+        // would need the per-booking cap re-checked and arguably the
+        // confirmation re-sent, and nobody has asked for it.
+        //
+        // array_key_exists, not isset: both are false for an
+        // explicitly-sent null, so clearing an address would silently do
+        // nothing.
         $data = $request->validated();
 
         $columns = [
@@ -158,13 +189,17 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Cancelling on a guest's behalf. `registrations.manage`.
+     * Cancel a booking.
      *
-     * The label is captured BEFORE the delete, because the row is gone by
-     * the time anybody reads the audit back — see App\Support\Audit.
+     * Requires `registrations.manage`. Removes the booking and everything
+     * it ordered. The guest is not notified.
+     *
+     * Answers `{"ok": true}`.
      */
     public function destroy(Request $request, Registration $registration): JsonResponse
     {
+        // Captured BEFORE the delete: the row is gone by the time anybody
+        // reads the audit back. See App\Support\Audit.
         $label = $registration->fullName();
         $id = $registration->id;
 

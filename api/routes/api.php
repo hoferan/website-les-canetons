@@ -104,12 +104,20 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::post('/members', [MemberController::class, 'store']);
         Route::patch('/members/{member}', [MemberController::class, 'update']);
 
-        // THE DESTRUCTIVE TWO. Both carry `currentPassword` and re-authenticate
-        // before reading anything (decision B1), both check the lockout
-        // invariants before writing, and both end the target's sessions inside
-        // the same transaction as the change — a revoked permission that waits
-        // for the next login is one the holder keeps using all evening, and a
-        // deleted member with a live session is theatre.
+        // THE DESTRUCTIVE TWO. Both check the lockout invariants before
+        // writing, and both end the target's sessions inside the same
+        // transaction as the change — a revoked permission that waits for the
+        // next login is one the holder keeps using all evening, and a deleted
+        // member with a live session is theatre.
+        //
+        // NEITHER RE-AUTHENTICATES, and this comment said the opposite until
+        // 2026-09-10. Decision B1 did require `currentPassword` on both;
+        // decision B7 removed it, and the guard on a delete is now the
+        // type-the-name confirmation in the UI. Verified rather than assumed:
+        // `currentPassword` appears nowhere in app/ outside
+        // AccountPasswordController, and App\Support\Reauthentication has
+        // exactly one caller. The stale claim was believed by a documentation
+        // pass and nearly published to /api/docs.
         //
         // Replacing roles is PUT, not PATCH: roleIds is the complete set, and
         // an "add this one" API cannot express removal — which is the half the

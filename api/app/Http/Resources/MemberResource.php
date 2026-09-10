@@ -42,6 +42,7 @@ class MemberResource extends JsonResource
             'lastName' => $this->last_name,
 
             'username' => $this->username,
+            /** True after a committee-issued password. Every screen but /account is blocked until they change it. */
             'mustChangePassword' => $this->must_change_password,
             'lastLoginAt' => $this->lastLoginAt(),
 
@@ -50,6 +51,7 @@ class MemberResource extends JsonResource
             // Whether they PLAY, which is the single fact that decides who is
             // answerable for an event. Derived from section_id rather than
             // stored, so the two can never disagree.
+            /** Whether they play in a register. Only players are answerable for events. */
             'isPlayer' => $this->isPlayer(),
 
             // Text a person typed, so it is stored and rendered verbatim and is
@@ -58,6 +60,7 @@ class MemberResource extends JsonResource
             'instructorOfSectionId' => $this->instructor_of_section_id,
             'publicVisible' => $this->public_visible,
 
+            /** The roles they hold. Call GET /api/roles to learn what each one grants. */
             'roleIds' => $this->roleIds(),
         ];
     }

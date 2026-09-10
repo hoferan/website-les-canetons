@@ -9,25 +9,48 @@ use App\Http\Resources\RegistrationOptionResource;
 use App\Models\Event;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-/**
- * An event's bookable options, edited as a complete set.
- *
- * Single-action and PUT, matching MemberRoleController: the committee fills
- * in one form listing every option, and an "add one" API cannot express
- * removal.
- *
- * GATED ON `events.manage`, NOT on a registration permission. Configuring
- * what an event offers is configuring the event — the same act as setting
- * its date and its dress code. `registrations.view` and
- * `registrations.manage` are about the people who booked.
- */
+#[Group('Registration', weight: 40)]
 class RegistrationOptionController extends Controller
 {
+    /**
+     * Replace an event's bookable options.
+     *
+     * Requires `events.manage`, because configuring what an event offers is
+     * configuring the event.
+     *
+     * Send the complete list. An entry carrying an `id` updates that option,
+     * an entry without one creates it, and an option missing from the list
+     * is deleted. Replaying the same body converges on the same list, so a
+     * retry after a timeout is safe.
+     *
+     * `priceCents` is a whole number of centimes and may be null, for an
+     * option that is free or whose price lives in its description.
+     * `sortOrder` may be left out, in which case the entry's position in the
+     * list is used.
+     *
+     * Returns the event's options as they now stand, in sort order.
+     *
+     * Removing an option somebody has already booked answers
+     * `409 option_has_registrations`, names the options in the way, and
+     * changes nothing. An `id` belonging to another event's option, more
+     * than 50 entries, or a missing label answers `400 validation_failed`.
+     */
     public function __invoke(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
     {
+        // SINGLE-ACTION AND PUT, matching MemberRoleController: the committee
+        // fills in one form listing every option, and an "add one" API cannot
+        // express removal.
+        //
+        // GATED ON `events.manage`, NOT on a registration permission.
+        // Configuring what an event offers is configuring the event — the
+        // same act as setting its date and its dress code.
+        // `registrations.view` and `registrations.manage` are about the
+        // people who booked.
+
         /** @var list<array<string, mixed>> $incoming */
         $incoming = $request->validated()['options'];
 

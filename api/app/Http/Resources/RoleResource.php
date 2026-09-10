@@ -31,7 +31,9 @@ class RoleResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            /** Stable identifier. Roles carry no display name; clients translate by this key. */
             'key' => $this->key,
+            /** Everything this role grants, as permission strings. */
             'permissions' => $this->permissionValues(),
         ];
     }

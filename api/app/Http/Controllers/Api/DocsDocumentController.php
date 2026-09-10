@@ -77,8 +77,10 @@ class DocsDocumentController extends Controller
         // no-store: the document describes whatever code this server is
         // running, and a proxy holding a stale copy after a deploy would
         // describe the previous release.
-        return response()
+        $response = response()
             ->json($document)
             ->header('Cache-Control', 'no-store');
+
+        return $response;
     }
 }

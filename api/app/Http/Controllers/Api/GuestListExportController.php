@@ -6,34 +6,52 @@ use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Support\GuestList;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-/**
- * The guest list as a file: XLSX, CSV, Markdown or JSON.
- *
- * ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The formats
- * must not be able to disagree about what a guest list contains, and a test
- * asserts they do not.
- *
- * XLSX IS THE ONE THAT MATTERS, because a committee member opens the file in
- * Excel. CSV exists as the dependency-free fallback: openspout needs
- * ext-zip, and MEASURED 2026-09-10 that extension was absent even from this
- * project's own php:8.4-fpm image (now added in docker/web/Dockerfile) and
- * remains unverified on the shared host. If it is missing there, this
- * endpoint says so in words rather than dying with "Class ZipArchive not
- * found".
- *
- * Markdown is for pasting a list into notes or a message; JSON is the same
- * rows the screen already has, offered as a file for completeness.
- */
+#[Group('Registration', weight: 40)]
 class GuestListExportController extends Controller
 {
+    /**
+     * Download the guest list as a file.
+     *
+     * Requires `registrations.view`. `{format}` is `xlsx`, `csv`, `md` or
+     * `json`; any other value is a `404` from the router.
+     *
+     * Returns the list as an attachment named after the event: one row per
+     * booking with the guest's details, a column for each of the event's
+     * bookable options holding how many of it that booking took, the number
+     * of people it covers, its total in francs and when it was made, then a
+     * closing totals row for the caterer. Every format carries the same rows
+     * in the same order.
+     *
+     * The CSV is semicolon-separated and carries a UTF-8 byte order mark, so
+     * Excel opens it in columns and with accents intact.
+     *
+     * XLSX needs the PHP `zip` extension. A server without it answers
+     * `503 xlsx_unavailable`, and CSV still works there.
+     */
     public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
     {
+        // ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The
+        // formats must not be able to disagree about what a guest list
+        // contains, and a test asserts they do not.
+        //
+        // XLSX IS THE ONE THAT MATTERS, because a committee member opens the
+        // file in Excel. CSV exists as the dependency-free fallback:
+        // openspout needs ext-zip, and MEASURED 2026-09-10 that extension was
+        // absent even from this project's own php:8.4-fpm image (now added in
+        // docker/web/Dockerfile) and remains unverified on the shared host.
+        // If it is missing there, this endpoint says so in words rather than
+        // dying with "Class ZipArchive not found".
+        //
+        // Markdown is for pasting a list into notes or a message; JSON is the
+        // same rows the screen already has, offered as a file for
+        // completeness.
         $list = GuestList::for($event);
 
         return match ($format) {
@@ -50,9 +68,9 @@ class GuestListExportController extends Controller
 
     private function xlsx(GuestList $list): JsonResponse|StreamedResponse
     {
+        // A named refusal rather than a fatal. An operator reading this
+        // knows exactly what to ask the host for, and CSV still works.
         if (! extension_loaded('zip')) {
-            // A named refusal rather than a fatal. An operator reading this
-            // knows exactly what to ask the host for, and CSV still works.
             return ApiError::json(
                 503,
                 'xlsx_unavailable',
