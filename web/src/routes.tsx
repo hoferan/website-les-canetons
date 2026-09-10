@@ -2,8 +2,9 @@ import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
-import { RequirePermission } from "./components/guards";
+import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { Events } from "./pages/Events";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
@@ -42,6 +43,14 @@ export function AppRoutes() {
         <Route element={<MustChangePassword />}>
           <Route path="/login" element={<Login />} />
           <Route path="/account" element={<Account />} />
+
+          {/* Needs a SESSION and nothing more — reading the planning is
+              something everybody in the band does. It still sits behind
+              login: R1c is the members' tool, and a public planning is R2's
+              (C1). */}
+          <Route element={<RequireSession />}>
+            <Route path="/events" element={<Events />} />
+          </Route>
 
           <Route element={<RequirePermission permission="members.manage" />}>
             <Route path="/members" element={<Members />} />

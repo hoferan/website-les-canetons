@@ -92,3 +92,15 @@ test("the hamburger toggles the menu and reports its state", async () => {
   await userEvent.click(toggle);
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
+
+test("shows Événements to any logged-in member, whatever they can do", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("href", "/events");
+});
+
+test("hides Événements from an anonymous visitor", async () => {
+  // R1c is the members' tool (C1). The public planning is R2's.
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(screen.queryByRole("link", { name: "Événements" })).toBeNull();
+});

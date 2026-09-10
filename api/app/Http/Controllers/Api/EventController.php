@@ -9,6 +9,7 @@ use App\Http\Resources\EventResource;
 use App\Models\Event;
 use App\Support\Audit;
 use App\Support\BandTime;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -40,6 +41,13 @@ class EventController extends Controller
      * of 3, which is a FLOOR for R1c-2 — that release adds one relation and
      * one query, not an N+1, and the spare room is deliberate.
      */
+    #[QueryParameter(
+        'past',
+        'Set to `1` for the history — past events, newest first — instead of the upcoming planning. Any other value, or none, gives the planning.',
+        required: false,
+        type: 'string',
+        example: '1',
+    )]
     public function index(Request $request): AnonymousResourceCollection
     {
         $past = $request->query('past') === '1';

@@ -35,6 +35,21 @@ const DIRECTION_NAV: Array<{ to: string; label: string; permission: string }> = 
 ];
 
 /**
+ * THE THIRD NAV CATEGORY: needs a session and nothing more.
+ *
+ * Neither public like Galerie nor permission-gated like Membres. Reading the
+ * planning is something everybody in the band does, so gating it on a
+ * permission would be the same mistake as gating the ability to answer for an
+ * event — but it is not for strangers either, because R1c is the members' tool
+ * and the public planning is R2's (C1).
+ *
+ * An array rather than an entry special-cased inside the map, for the reason
+ * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
+ * item is added.
+ */
+const MEMBER_NAV: Array<{ to: string; label: string }> = [{ to: "/events", label: "Événements" }];
+
+/**
  * One nav row. On a phone this is a 48px full-width row on the dark stage
  * surface, with a divider; above `md` it collapses back to an inline item on
  * the light bar.
@@ -57,11 +72,46 @@ const NAV_ROW_IDLE = "text-white/80 hover:text-white md:text-ink-muted md:hover:
 /** The divider between phone rows, gone above `md`. */
 const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
 
+/**
+ * One internal nav row. Extracted when the third category arrived and the
+ * same nine lines would have been written a third time — see NAV_ROW's own
+ * comment on rules applied by hand.
+ *
+ * Link, not NavLink: NavLink's own aria-current is gated by its internal
+ * isActive, which matches `to` literally against the URL. Link leaves
+ * aria-current and className to us instead.
+ */
+function NavItem({
+  to,
+  label,
+  active,
+  close,
+}: {
+  to: string;
+  label: string;
+  active: string;
+  close: () => void;
+}) {
+  return (
+    <li className={NAV_ITEM}>
+      <Link
+        to={to}
+        onClick={close}
+        aria-current={active === to ? "page" : undefined}
+        className={`${NAV_ROW} ${active === to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
+      >
+        {label}
+      </Link>
+    </li>
+  );
+}
+
 export function Layout() {
   const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const active = pathname;
+  const close = () => setOpen(false);
 
   return (
     <>
@@ -98,34 +148,36 @@ export function Layout() {
             className={`${open ? "block" : "hidden"} animate-reveal border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
           >
             {NAV.map((item) => (
-              <li key={item.to} className={NAV_ITEM}>
-                {/*
-                  Link, not NavLink: NavLink's own aria-current is gated by its
-                  internal isActive, which matches `to` literally against the
-                  URL. Link leaves aria-current and className to us instead.
-                */}
-                <Link
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  aria-current={active === item.to ? "page" : undefined}
-                  className={`${NAV_ROW} ${active === item.to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-                >
-                  {item.label}
-                </Link>
-              </li>
+              <NavItem
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                active={active}
+                close={close}
+              />
             ))}
 
+            {/* Logged in, whatever they can do. */}
+            {user
+              ? MEMBER_NAV.map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    active={active}
+                    close={close}
+                  />
+                ))
+              : null}
+
             {DIRECTION_NAV.filter((item) => can(item.permission)).map((item) => (
-              <li key={item.to} className={NAV_ITEM}>
-                <Link
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  aria-current={active === item.to ? "page" : undefined}
-                  className={`${NAV_ROW} ${active === item.to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-                >
-                  {item.label}
-                </Link>
-              </li>
+              <NavItem
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                active={active}
+                close={close}
+              />
             ))}
 
             <li className={NAV_ITEM}>

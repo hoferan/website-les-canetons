@@ -34,6 +34,7 @@ import type {
   Contact200,
   ContactRequest,
   EventDestroy200,
+  EventIndexParams,
   EventResource,
   MemberDestroy200,
   MemberPassword200,
@@ -784,8 +785,18 @@ export type eventIndexResponseError = eventIndexResponse401 & {
 
 export type eventIndexResponse = eventIndexResponseSuccess | eventIndexResponseError;
 
-export const getEventIndexUrl = () => {
-  return `/events`;
+export const getEventIndexUrl = (params?: EventIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/events?${stringifiedParams}` : `/events`;
 };
 
 /**
@@ -813,31 +824,35 @@ export const getEventIndexUrl = () => {
  * @summary The planning: upcoming by default, or the history behind `?past=1`
  */
 export const eventIndex = async (
+  params?: EventIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<eventIndexResponse> => {
-  return customFetch<eventIndexResponse>(getEventIndexUrl(), {
+  return customFetch<eventIndexResponse>(getEventIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getEventIndexQueryKey = () => {
-  return [`/events`] as const;
+export const getEventIndexQueryKey = (params?: EventIndexParams) => {
+  return [`/events`, ...(params ? [params] : [])] as const;
 };
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = AuthenticationExceptionResponse,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: EventIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getEventIndexQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof eventIndex>>> = ({ signal }) =>
-    eventIndex({ signal, ...requestOptions });
+    eventIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof eventIndex>>,
@@ -853,6 +868,7 @@ export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = AuthenticationExceptionResponse,
 >(
+  params: undefined | EventIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
       Pick<
@@ -871,6 +887,7 @@ export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = AuthenticationExceptionResponse,
 >(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>> &
       Pick<
@@ -889,6 +906,7 @@ export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = AuthenticationExceptionResponse,
 >(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -903,13 +921,14 @@ export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
   TError = AuthenticationExceptionResponse,
 >(
+  params?: EventIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getEventIndexQueryOptions(options);
+  const queryOptions = getEventIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

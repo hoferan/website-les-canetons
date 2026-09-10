@@ -1,10 +1,20 @@
 import { screen } from "@testing-library/react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
 
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
-import { RequirePermission } from "./guards";
+import { RequirePermission, RequireSession } from "./guards";
+
+/**
+ * Stands in for the login page, and reports the router STATE it was handed.
+ * `from` never appears in a URL — it is state, so nobody can craft it — which
+ * also means it is not observable from the path alone.
+ */
+function Whereabouts() {
+  const { state } = useLocation();
+  return <p data-testid="from">{(state as { from?: string } | null)?.from ?? ""}</p>;
+}
 
 /**
  * A miniature route table. The guard is a layout route, so what it does is
@@ -66,4 +76,35 @@ test("gives the refusal a heading, a gutter and a way out", async () => {
 
   // The shell, which is what carries the gutter.
   expect(container.querySelector("section.px-4")).not.toBeNull();
+});
+
+test("RequireSession lets a logged-in member through, whatever they can do", async () => {
+  // demo.player holds no permission at all — that is the point: a session is
+  // the whole requirement.
+  setMockUser("demo.player");
+  await renderWithSession(
+    <Routes>
+      <Route element={<RequireSession />}>
+        <Route path="/planning" element={<p>Le planning</p>} />
+      </Route>
+      <Route path="/login" element={<h1>Connexion</h1>} />
+    </Routes>,
+    { route: "/planning" },
+  );
+
+  expect(await screen.findByText("Le planning")).toBeInTheDocument();
+});
+
+test("RequireSession redirects an anonymous visitor, and remembers where they were going", async () => {
+  await renderWithSession(
+    <Routes>
+      <Route element={<RequireSession />}>
+        <Route path="/planning" element={<p>Le planning</p>} />
+      </Route>
+      <Route path="/login" element={<Whereabouts />} />
+    </Routes>,
+    { route: "/planning" },
+  );
+
+  expect(await screen.findByTestId("from")).toHaveTextContent("/planning");
 });

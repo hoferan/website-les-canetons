@@ -57,3 +57,16 @@ test("still answers an unknown path with the 404 view", async () => {
   await renderWithSession(<AppRoutes />, { route: "/rien-du-tout" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
+
+test("renders the planning at /events for any logged-in member", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Planning" })).toBeInTheDocument();
+});
+
+test("sends an anonymous visitor from /events to the login page", async () => {
+  // RequireSession REDIRECTS rather than refusing in place: logging in is a
+  // thing this visitor can actually do, unlike the permission case.
+  await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
+});

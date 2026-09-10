@@ -352,6 +352,17 @@
                 "tags": [
                     "Event"
                 ],
+                "parameters": [
+                    {
+                        "name": "past",
+                        "in": "query",
+                        "description": "Set to `1` for the history \u2014 past events, newest first \u2014 instead of the upcoming planning. Any other value, or none, gives the planning.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "1"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Array of `EventResource`",

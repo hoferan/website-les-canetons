@@ -20,6 +20,7 @@ export * from "./config200Features";
 export * from "./contact200";
 export * from "./contactRequest";
 export * from "./eventDestroy200";
+export * from "./eventIndexParams";
 export * from "./eventResource";
 export * from "./memberDestroy200";
 export * from "./memberPassword200";
