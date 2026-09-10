@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\Member;
+use App\Support\BandTime;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -69,6 +71,16 @@ class EventIndexTest extends TestCase
 
     public function test_an_event_happening_today_stays_in_the_planning_all_day(): void
     {
+        // Time frozen to mid-morning Fribourg. Without this the test builds
+        // an event at now()->subHour() and asserts it is still upcoming —
+        // true except between 00:00 and 01:00 local, when the hour before
+        // now genuinely belongs to yesterday and BandTime::startOfToday()
+        // is right to exclude it. A once-a-day red bar for a reason that
+        // has nothing to do with what this asserts.
+        // Mid-morning TODAY, not a fixed calendar date: travelling to a
+        // literal date invalidates the session actingAsMember() just
+        // created and every request answers 401.
+        $this->travelTo(CarbonImmutable::now(BandTime::ZONE)->setTime(10, 0));
         // "Past" is measured from the START OF TODAY in Fribourg, not from
         // now(). A rehearsal that began an hour ago must not vanish from the
         // planning of somebody running late.

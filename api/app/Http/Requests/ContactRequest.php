@@ -28,7 +28,10 @@ class ContactRequest extends FormRequest
             'firstName' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'max:255', 'email'],
             'subject' => ['required', 'string', 'max:255'],
-            'message' => ['required', 'string'],
+            // max:5000 against a TEXT column of 65535 BYTES. Without it a
+            // ~70 KB body overflows in MySQL strict mode and answers 500 to
+            // an anonymous caller. 5000 characters is a long letter.
+            'message' => ['required', 'string', 'max:5000'],
         ];
     }
 }

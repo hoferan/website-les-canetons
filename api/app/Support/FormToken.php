@@ -61,6 +61,17 @@ final class FormToken
      */
     public static function isValid(?string $token): bool
     {
+        // FAIL CLOSED ON A BLANK APP_KEY. MEASURED 2026-09-10: PHP hash_hmac
+        // accepts an empty key and returns a digest anybody can recompute
+        // offline, and api/.env.example ships APP_KEY empty for the operator
+        // to fill. Nothing else catches it on this path either — an
+        // anonymous request carries no Origin, so Sanctum never starts a
+        // session and the encrypter is never resolved. A server missing that
+        // one line of .env would look healthy while its only anti-abuse
+        // token was public knowledge.
+        if (self::secret() === '') {
+            return false;
+        }
         if ($token === null || ! str_contains($token, '.')) {
             return false;
         }
@@ -86,6 +97,12 @@ final class FormToken
 
     private static function sign(string $issuedAt): string
     {
-        return hash_hmac('sha256', $issuedAt, (string) Config::get('app.key'));
+        return hash_hmac('sha256', $issuedAt, self::secret());
+    }
+
+    /** The signing key, or an empty string when this server has none. */
+    private static function secret(): string
+    {
+        return (string) Config::get('app.key');
     }
 }

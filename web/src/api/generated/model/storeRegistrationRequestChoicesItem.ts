@@ -12,5 +12,10 @@ export type StoreRegistrationRequestChoicesItem = {
    * event entirely, which the foreign key would happily accept.
    */
   optionId: number;
+  /**
+   * max, because the column is an unsignedInteger and an
+   * out-of-range value is a 500 rather than a validation failure.
+   * @maximum 50
+   */
   quantity: number;
 };

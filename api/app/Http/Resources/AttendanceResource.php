@@ -25,7 +25,25 @@ class AttendanceResource extends JsonResource
             'status' => $this->status->value,
             'note' => $this->note,
             'recordedByDirection' => $this->wasRecordedByDirection(),
+            'recordedAt' => $this->recordedAt(),
         ];
+    }
+
+    /**
+     * When this answer was last written, so a client can tell whether the
+     * five-minute undo window (C12) is still open.
+     *
+     * Without it the only way to find out is to fire the DELETE and render
+     * a 409 answer_already_settled as a surprise, which means the planning
+     * cannot honestly decide whether to offer undo at all after the toast
+     * has gone.
+     *
+     * A typed private method for the reason every Resource here has one:
+     * Scramble types an inline ->toIso8601String() as an untyped object.
+     */
+    private function recordedAt(): string
+    {
+        return $this->updated_at->toIso8601String();
     }
 
     /**

@@ -29,7 +29,12 @@ Route::get('/config', ConfigController::class);
 // Public: the signed stamp every anonymous form must send back. Ungated by
 // necessity — it is fetched before the visitor has submitted anything — and
 // it grants nothing on its own. See App\Support\FormToken.
-Route::get('/form-token', FormTokenController::class);
+// THROTTLED, like everything anonymous below it. Minting a stamp is cheap,
+// but it is the first step of the loop the write limiter exists to stop, and
+// leaving it open lets a caller bank tokens.
+Route::middleware('throttle:public-write')->group(function () {
+    Route::get('/form-token', FormTokenController::class);
+});
 
 // Public: the contact form is open to anonymous visitors.
 //
@@ -37,7 +42,14 @@ Route::get('/form-token', FormTokenController::class);
 // rebuild spec required honeypot + submit-timing on "both public write
 // endpoints" and no release ever claimed this one; R3 adds the second such
 // endpoint and the middleware that covers them both.
-Route::middleware('public-write')->group(function () {
+// THROTTLED AS WELL AS GUARDED, and the throttle is the half that matters.
+// PublicWriteGuard costs an attacker one extra GET and a two-second wait:
+// the stamp is not bound to a caller and is deliberately replayable for two
+// hours, so without a limiter one token buys unlimited submissions. Each
+// registration sends mail INLINE to an address the caller chose, through the
+// band's own authenticated mailbox — an open relay whose cost is a
+// blacklisted sending domain, which the committee cannot repair.
+Route::middleware(['throttle:public-write', 'public-write'])->group(function () {
     Route::post('/contact', ContactController::class);
 
     // Public event registration — the souper, generalised (D9). Anonymous
@@ -168,7 +180,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // speaking for them are different acts, and roles are editable data that
     // may well grant one without the other. Refuses its own caller (C14).
     Route::middleware('permission:attendance.record_for_others')->group(function () {
-        Route::put('/events/{event}/attendance/{member}', MemberAttendanceController::class);
+        Route::put('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'update']);
+
+        // Taking one back. A mis-aimed on-behalf write was otherwise
+        // permanent, and it starts the member's own five-minute undo clock
+        // (C12) from the moment the DIRECTION wrote it.
+        Route::delete('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'destroy']);
     });
 
     // THE GUEST LIST, and reading it is all this grants. `committee` holds

@@ -51,6 +51,23 @@ export interface StoreEventRequest {
    */
   attire?: string | null;
   isPublic: boolean;
-  /** @nullable */
+  /**
+   * @maxLength 5000
+   * @nullable
+   */
   notes?: string | null;
+  /**
+   * The registration window. Setting a close date is what enables
+   * public registration at all (D9), so these three are how a
+   * souper is switched on without touching the database.
+   * @nullable
+   */
+  registrationOpensAt?: string | null;
+  /** @nullable */
+  registrationClosesAt?: string | null;
+  /**
+   * @maximum 100
+   * @nullable
+   */
+  registrationMaxGuests?: number | null;
 }

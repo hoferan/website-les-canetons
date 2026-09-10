@@ -42,9 +42,16 @@ class RegistrationOptionController extends Controller
         // with a 500 halfway through the transaction. Refusing here is what
         // lets the committee be told WHICH option is in use, before their
         // other edits are lost.
+        // An option survives if the request names its id, OR if an entry
+        // with no id carries its label — the same adoption the write below
+        // performs. Checking only the ids would refuse a plain retry of the
+        // first save, which is exactly the request the adoption exists for.
+        $incomingLabels = array_column($incoming, 'label');
+
         $booked = $event->registrationOptions()
             ->whereNotIn('id', $keptIds)
             ->get()
+            ->reject(fn (RegistrationOption $option) => in_array($option->label, $incomingLabels, true))
             ->filter(fn (RegistrationOption $option) => $option->isBooked());
 
         if ($booked->isNotEmpty()) {
@@ -57,7 +64,27 @@ class RegistrationOptionController extends Controller
         }
 
         DB::transaction(function () use ($event, $incoming, $keptIds): void {
-            $event->registrationOptions()->whereNotIn('id', $keptIds)->delete();
+            // IDEMPOTENT, and getting there takes the label match below.
+            //
+            // The obvious version — delete what is missing, update what has
+            // an id, create the rest — is NOT idempotent for the request
+            // that matters most: the committee's FIRST save, where no entry
+            // has an id yet. Replaying it (a retry after a timeout, on a
+            // host these deploy notes call flaky) deletes what the first
+            // call created and re-creates it under new ids. If a booking
+            // landed in between, the retry then answers
+            // option_has_registrations and the whole edit is lost.
+            //
+            // Matching an id-less entry against an existing option with the
+            // same label makes the operation converge: the second identical
+            // request updates the row the first one created, and PUT means
+            // what it says.
+            $existingByLabel = $event->registrationOptions()
+                ->whereNotIn('id', $keptIds)
+                ->get()
+                ->keyBy('label');
+
+            $claimed = [];
 
             foreach ($incoming as $index => $option) {
                 $attributes = [
@@ -65,23 +92,33 @@ class RegistrationOptionController extends Controller
                     'description' => $option['description'] ?? null,
                     'price_cents' => $option['priceCents'] ?? null,
                     // Falls back to the position in the submitted array, so
-                    // a client that simply sends the list in order gets the
-                    // order it sent without having to number it.
+                    // a client that sends the list in order gets the order
+                    // it sent without having to number it.
                     'sort_order' => $option['sortOrder'] ?? $index,
                 ];
 
-                if (($option['id'] ?? null) !== null) {
+                $id = $option['id'] ?? null;
+
+                if ($id === null) {
+                    $id = $existingByLabel->get($option['label'])?->id;
+                }
+
+                if ($id !== null) {
                     // Scoped to this event, so an id belonging to another
                     // event's option cannot be hijacked into this one.
-                    $event->registrationOptions()
-                        ->whereKey($option['id'])
-                        ->update($attributes);
+                    $event->registrationOptions()->whereKey($id)->update($attributes);
+                    $claimed[] = $id;
 
                     continue;
                 }
 
-                $event->registrationOptions()->create($attributes);
+                $claimed[] = $event->registrationOptions()->create($attributes)->id;
             }
+
+            // Deleted LAST, and against what survived rather than against
+            // the ids the client sent, so a row adopted by label above is
+            // not then removed for having been absent from the request.
+            $event->registrationOptions()->whereNotIn('id', $claimed)->delete();
         });
 
         Audit::record(

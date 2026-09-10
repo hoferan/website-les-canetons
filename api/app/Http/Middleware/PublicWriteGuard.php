@@ -52,9 +52,16 @@ class PublicWriteGuard
 
     public function handle(Request $request, Closure $next): Response
     {
+        // PRESENT AND EMPTY, not merely empty. MEASURED 2026-09-10:
+        // filled(null) is false, so checking only whether the field has a
+        // value let a caller pass by OMITTING it entirely — which is what
+        // any script that posts a hand-written body does, and exactly the
+        // case a honeypot is supposed to catch. A real form always sends
+        // the field, so requiring its presence costs a browser nothing.
+        $honeypotMissing = ! $request->has(self::HONEYPOT_FIELD);
         $honeypotFilled = filled($request->input(self::HONEYPOT_FIELD));
 
-        if ($honeypotFilled || ! FormToken::isValid($request->header(self::TOKEN_HEADER))) {
+        if ($honeypotMissing || $honeypotFilled || ! FormToken::isValid($request->header(self::TOKEN_HEADER))) {
             return ApiError::json(422, 'spam_suspected', 'This submission looks automated');
         }
 

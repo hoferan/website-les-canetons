@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
+use App\Support\AttendanceIntegrity;
 use App\Support\AttendanceStatus;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -97,6 +98,18 @@ class AttendanceSchemaTest extends TestCase
         // third status could not silently pass validation while the UI knew
         // nothing about it.
         $this->assertSame(['yes', 'no'], AttendanceStatus::values());
+    }
+
+    public function test_the_undo_window_is_five_minutes(): void
+    {
+        // PINNED TO THE LITERAL, deliberately. Every other test in this
+        // suite builds its fixture from UNDO_WINDOW_MINUTES itself, so it
+        // pins the comparison operator and not the policy: found by
+        // mutation on 2026-09-10, widening the window to 24 hours left 25
+        // tests green. C11's reason-for-a-withdrawal rule is decorative the
+        // moment this number gets large, because a member can erase a yes
+        // and re-answer no for free.
+        $this->assertSame(5, AttendanceIntegrity::UNDO_WINDOW_MINUTES);
         $this->assertSame('in:yes,no', AttendanceStatus::rule());
     }
 }

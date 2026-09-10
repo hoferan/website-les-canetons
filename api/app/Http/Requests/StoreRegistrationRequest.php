@@ -63,7 +63,11 @@ class StoreRegistrationRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'tableName' => ['nullable', 'string', 'max:255'],
 
-            'choices' => ['required', 'array', 'min:1'],
+            // max:20 because the array is the only one an ANONYMOUS caller
+            // controls, and each element costs an exists query during
+            // validation. Twenty option lines is already more than any
+            // souper offers.
+            'choices' => ['required', 'array', 'min:1', 'max:20'],
 
             // Scoped to THIS event's options. Without the where clause a
             // booking could reference an option belonging to a different
@@ -71,9 +75,16 @@ class StoreRegistrationRequest extends FormRequest
             'choices.*.optionId' => [
                 'required',
                 'integer',
+                // distinct, or a repeated option violates
+                // UNIQUE(registration_id, option_id) INSIDE the transaction
+                // and answers 500 to an anonymous caller. A client that
+                // appends rather than replaces sends this by accident.
+                'distinct',
                 Rule::exists('event_registration_options', 'id')->where('event_id', $eventId),
             ],
-            'choices.*.quantity' => ['required', 'integer', 'gt:0'],
+            // max, because the column is an unsignedInteger and an
+            // out-of-range value is a 500 rather than a validation failure.
+            'choices.*.quantity' => ['required', 'integer', 'gt:0', 'max:50'],
         ];
     }
 

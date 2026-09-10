@@ -42,6 +42,13 @@ export interface StoreRegistrationRequest {
    * @nullable
    */
   tableName?: string | null;
-  /** @minItems 1 */
+  /**
+   * max:20 because the array is the only one an ANONYMOUS caller
+   * controls, and each element costs an exists query during
+   * validation. Twenty option lines is already more than any
+   * souper offers.
+   * @minItems 1
+   * @maxItems 20
+   */
   choices: StoreRegistrationRequestChoicesItem[];
 }

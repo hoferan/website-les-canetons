@@ -55,7 +55,7 @@ class RegistrationPublicTest extends TestCase
     /** @return array<string, mixed> */
     private function payload(array $overrides = []): array
     {
-        return array_merge([
+        return array_merge($this->publicWriteBody([
             'firstName' => 'Delphine',
             'lastName' => 'Maillard',
             'email' => 'delphine@example.test',
@@ -65,7 +65,7 @@ class RegistrationPublicTest extends TestCase
             'choices' => [
                 ['optionId' => $this->meat->id, 'quantity' => 2],
             ],
-        ], $overrides);
+        ]), $overrides);
     }
 
     private function url(?Event $event = null): string
@@ -331,6 +331,18 @@ class RegistrationPublicTest extends TestCase
         ])->assertStatus(422);
     }
 
+    public function test_the_timing_window_is_two_seconds_to_two_hours(): void
+    {
+        // PINNED TO THE LITERALS. The other tests here derive their
+        // fixtures from these constants, so they pin the comparison and not
+        // the policy: found by mutation on 2026-09-10, shrinking the window
+        // to 25s-45s left 30 tests green. Both ends matter — the lower one
+        // must never refuse a real person, and the upper one is what lets
+        // somebody fill a form at their own pace.
+        $this->assertSame(2, FormToken::MIN_AGE_SECONDS);
+        $this->assertSame(7200, FormToken::MAX_AGE_SECONDS);
+    }
+
     public function test_the_token_endpoint_issues_a_usable_one(): void
     {
         $token = $this->getJson('/api/form-token')->assertOk()->json('token');
@@ -344,7 +356,7 @@ class RegistrationPublicTest extends TestCase
     {
         // The orphan this middleware finally adopts: POST /api/contact
         // shipped with no protection of any kind and still had none when R3
-        // was designed.
+        // was designed. No token AND no decoy field: both must refuse.
         $this->postJson('/api/contact', [
             'firstName' => 'A',
             'lastName' => 'B',
@@ -358,12 +370,43 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_contact_form_still_works_with_a_token(): void
     {
-        $this->postJson('/api/contact', [
+        $this->postJson('/api/contact', $this->publicWriteBody([
             'firstName' => 'A',
             'lastName' => 'B',
             'email' => 'a@example.test',
             'subject' => 'Bonjour',
             'message' => 'Coucou',
-        ], $this->headers())->assertSuccessful();
+        ]), $this->headers())->assertSuccessful();
+    }
+
+    public function test_omitting_the_decoy_field_is_refused(): void
+    {
+        // MEASURED 2026-09-10: filled(null) is false, so a guard that only
+        // checked whether the decoy had a VALUE let a caller through by not
+        // sending it at all — which is what a script posting a hand-written
+        // body does, and precisely the case a honeypot exists to catch. The
+        // payload below is otherwise perfectly valid.
+        $payload = $this->payload();
+        unset($payload[PublicWriteGuard::HONEYPOT_FIELD]);
+
+        $this->postJson($this->url(), $payload, $this->headers())
+            ->assertStatus(422)
+            ->assertJson(['code' => 'spam_suspected']);
+
+        $this->assertSame(0, Registration::query()->count());
+    }
+
+    public function test_a_blank_app_key_refuses_every_submission(): void
+    {
+        // FAILS CLOSED. PHP hash_hmac accepts an empty key and returns a
+        // digest anybody can recompute offline, and api/.env.example ships
+        // APP_KEY empty for the operator to fill. Nothing else on this path
+        // catches it: an anonymous request carries no Origin, so Sanctum
+        // never starts a session and the encrypter is never resolved.
+        config(['app.key' => '']);
+
+        $this->postJson($this->url(), $this->payload(), $this->headers())
+            ->assertStatus(422)
+            ->assertJson(['code' => 'spam_suspected']);
     }
 }

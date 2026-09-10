@@ -795,38 +795,9 @@
                     "200": {
                         "description": "",
                         "content": {
-                            "application/json": {
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                                 "schema": {
-                                    "anyOf": [
-                                        {
-                                            "type": "object"
-                                        },
-                                        {
-                                            "type": "object",
-                                            "properties": {
-                                                "headers": {
-                                                    "type": "array",
-                                                    "items": {}
-                                                },
-                                                "rows": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "type": "array",
-                                                        "items": {}
-                                                    }
-                                                },
-                                                "totals": {
-                                                    "type": "array",
-                                                    "items": {}
-                                                }
-                                            },
-                                            "required": [
-                                                "headers",
-                                                "rows",
-                                                "totals"
-                                            ]
-                                        }
-                                    ]
+                                    "type": "string"
                                 }
                             },
                             "text/csv; charset=UTF-8": {
@@ -838,12 +809,77 @@
                                 "schema": {
                                     "type": "string"
                                 }
+                            },
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "headers": {
+                                            "type": "array",
+                                            "items": {}
+                                        },
+                                        "rows": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "array",
+                                                "items": {}
+                                            }
+                                        },
+                                        "totals": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "headers",
+                                        "rows",
+                                        "totals"
+                                    ]
+                                }
                             }
                         },
                         "headers": {
+                            "Transfer-Encoding": {
+                                "required": true,
+                                "schema": {
+                                    "type": "string",
+                                    "enum": [
+                                        "chunked"
+                                    ]
+                                }
+                            },
                             "Content-Disposition": {
                                 "schema": {
                                     "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A named refusal rather than a fatal. An operator reading this\nknows exactly what to ask the host for, and CSV still works.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "const": "XLSX export needs the PHP zip extension, which this server does not have. Use CSV."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "const": "xlsx_unavailable"
+                                        },
+                                        "fields": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "required": [
+                                        "error",
+                                        "code",
+                                        "fields"
+                                    ]
                                 }
                             }
                         }
@@ -1036,7 +1072,7 @@
         },
         "/events/{event}/attendance/{member}": {
             "put": {
-                "operationId": "memberAttendance",
+                "operationId": "memberAttendance.update",
                 "tags": [
                     "MemberAttendance"
                 ],
@@ -1089,6 +1125,60 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "memberAttendance.destroy",
+                "description": "Without this a mis-aimed on-behalf write is permanent from the\ncommittee's side, and worse from the member's: C12 measures the undo\nwindow from `updated_at`, so the five minutes start ticking when the\nDIRECTION wrote it, and once they lapse C11 can demand a written\nreason from the member for a commitment they never made.\n\nNOT subject to C12 itself. The window exists to stop a member erasing\ntheir own yes and re-answering for free; a committee correcting its\nown typo an hour later is the case it was never aimed at, and they\ncan overwrite the row at will anyway.\n\nRefuses its own caller, like the write does (C14): undoing your own\nanswer through the exempt route would sidestep C11 exactly as\nwriting it would.",
+                "summary": "Takes back an answer the committee entered for somebody",
+                "tags": [
+                    "MemberAttendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
                     }
                 }
             }
@@ -1603,12 +1693,16 @@
                     },
                     "recordedByDirection": {
                         "type": "boolean"
+                    },
+                    "recordedAt": {
+                        "type": "string"
                     }
                 },
                 "required": [
                     "status",
                     "note",
-                    "recordedByDirection"
+                    "recordedByDirection",
+                    "recordedAt"
                 ],
                 "title": "AttendanceResource"
             },
@@ -1672,7 +1766,9 @@
                         "maxLength": 255
                     },
                     "message": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "max:5000 against a TEXT column of 65535 BYTES. Without it a\n~70 KB body overflows in MySQL strict mode and answers 500 to\nan anonymous caller. 5000 characters is a long letter.",
+                        "maxLength": 5000
                     }
                 },
                 "required": [
@@ -1717,6 +1813,27 @@
                             "null"
                         ]
                     },
+                    "registrationOpensAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "registrationClosesAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "registrationMaxGuests": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "takesRegistrations": {
+                        "type": "boolean"
+                    },
                     "myAttendance": {
                         "anyOf": [
                             {
@@ -1737,6 +1854,10 @@
                     "attire",
                     "isPublic",
                     "notes",
+                    "registrationOpensAt",
+                    "registrationClosesAt",
+                    "registrationMaxGuests",
+                    "takesRegistrations",
                     "myAttendance"
                 ],
                 "title": "EventResource"
@@ -2028,10 +2149,13 @@
                         }
                     },
                     "guestCount": {
-                        "type": "string"
+                        "type": "integer"
                     },
                     "totalCents": {
-                        "type": "string"
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "createdAt": {
                         "type": "string"
@@ -2083,7 +2207,7 @@
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "Nullable rather than absent-or-int: the client sends the whole\nlist back, and a new row has no id yet."
+                                    "description": "Nullable rather than absent-or-int: the client sends the whole\nlist back, and a new row has no id yet.\nScoped to THIS event. An unscoped id updates zero rows and\nthe controller moves on, so the committee submits three\noptions, gets 200, and sees two \u2014 silent loss rather than a\nrefusal."
                                 },
                                 "label": {
                                     "type": "string",
@@ -2101,13 +2225,15 @@
                                         "integer",
                                         "null"
                                     ],
-                                    "description": "gte:0 rather than gt:0 \u2014 an option really can cost nothing,\nand that is different from having no price at all (null)."
+                                    "description": "gte:0 rather than gt:0 \u2014 an option really can cost nothing,\nand that is different from having no price at all (null).",
+                                    "maximum": 1000000
                                 },
                                 "sortOrder": {
                                     "type": [
                                         "integer",
                                         "null"
-                                    ]
+                                    ],
+                                    "maximum": 1000
                                 }
                             },
                             "required": [
@@ -2199,7 +2325,30 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 5000
+                    },
+                    "registrationOpensAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "The registration window. Setting a close date is what enables\npublic registration at all (D9), so these three are how a\nsouper is switched on without touching the database."
+                    },
+                    "registrationClosesAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "registrationMaxGuests": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "maximum": 100
                     }
                 },
                 "required": [
@@ -2363,6 +2512,7 @@
                     },
                     "choices": {
                         "type": "array",
+                        "description": "max:20 because the array is the only one an ANONYMOUS caller\ncontrols, and each element costs an exists query during\nvalidation. Twenty option lines is already more than any\nsouper offers.",
                         "items": {
                             "type": "object",
                             "properties": {
@@ -2371,7 +2521,9 @@
                                     "description": "Scoped to THIS event's options. Without the where clause a\nbooking could reference an option belonging to a different\nevent entirely, which the foreign key would happily accept."
                                 },
                                 "quantity": {
-                                    "type": "integer"
+                                    "type": "integer",
+                                    "description": "max, because the column is an unsignedInteger and an\nout-of-range value is a 500 rather than a validation failure.",
+                                    "maximum": 50
                                 }
                             },
                             "required": [
@@ -2379,7 +2531,8 @@
                                 "quantity"
                             ]
                         },
-                        "minItems": 1
+                        "minItems": 1,
+                        "maxItems": 20
                     }
                 },
                 "required": [
@@ -2425,7 +2578,30 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "maxLength": 5000
+                    },
+                    "registrationOpensAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "The registration window. Nullable throughout, and clearing\nregistrationClosesAt is how registration is switched OFF \u2014\nwhich is why these need  AND , like every\nother optional column on this form."
+                    },
+                    "registrationClosesAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    },
+                    "registrationMaxGuests": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "maximum": 100
                     }
                 },
                 "title": "UpdateEventRequest"

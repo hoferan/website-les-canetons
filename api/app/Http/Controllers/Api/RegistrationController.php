@@ -217,7 +217,13 @@ class RegistrationController extends Controller
         try {
             Mail::to($registration->email)->send(new RegistrationConfirmation($registration, $event));
         } catch (\Throwable $e) {
-            Log::warning('Registration confirmation mail failed', [
+            // error, not warning. MEASURED 2026-09-10: .env.example sets
+            // LOG_LEVEL=error, and warning sits below it in Monolog, so
+            // this line was never written on any server — the docblock's
+            // claim that a broken mail server 'says so somewhere' was
+            // false. Guests would book, get no confirmation, and nobody
+            // would find out.
+            Log::error('Registration confirmation mail failed', [
                 'registration_id' => $registration->id,
                 'error' => $e->getMessage(),
             ]);

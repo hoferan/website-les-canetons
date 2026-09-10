@@ -27,6 +27,10 @@ class EventResource extends JsonResource
             'attire' => $this->attire,
             'isPublic' => $this->is_public,
             'notes' => $this->notes,
+            'registrationOpensAt' => $this->registration_opens_at?->toIso8601String(),
+            'registrationClosesAt' => $this->registration_closes_at?->toIso8601String(),
+            'registrationMaxGuests' => $this->registration_max_guests,
+            'takesRegistrations' => $this->takesRegistrations(),
             'myAttendance' => $this->myAttendance(),
         ];
     }

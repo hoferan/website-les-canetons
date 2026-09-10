@@ -10,4 +10,5 @@ export interface AttendanceResource {
   /** @nullable */
   note: string | null;
   recordedByDirection: boolean;
+  recordedAt: string;
 }

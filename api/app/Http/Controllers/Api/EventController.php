@@ -132,6 +132,9 @@ class EventController extends Controller
             'attire' => $data['attire'] ?? null,
             'is_public' => $data['isPublic'],
             'notes' => $data['notes'] ?? null,
+            'registration_opens_at' => $data['registrationOpensAt'] ?? null,
+            'registration_closes_at' => $data['registrationClosesAt'] ?? null,
+            'registration_max_guests' => $data['registrationMaxGuests'] ?? null,
         ]);
 
         Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
@@ -173,6 +176,9 @@ class EventController extends Controller
             'attire' => 'attire',
             'isPublic' => 'is_public',
             'notes' => 'notes',
+            'registrationOpensAt' => 'registration_opens_at',
+            'registrationClosesAt' => 'registration_closes_at',
+            'registrationMaxGuests' => 'registration_max_guests',
         ];
 
         foreach ($columns as $field => $column) {

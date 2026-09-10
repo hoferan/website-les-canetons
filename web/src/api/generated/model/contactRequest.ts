@@ -26,5 +26,11 @@ export interface ContactRequest {
   email: string;
   /** @maxLength 255 */
   subject: string;
+  /**
+   * max:5000 against a TEXT column of 65535 BYTES. Without it a
+   * ~70 KB body overflows in MySQL strict mode and answers 500 to
+   * an anonymous caller. 5000 characters is a long letter.
+   * @maxLength 5000
+   */
   message: string;
 }

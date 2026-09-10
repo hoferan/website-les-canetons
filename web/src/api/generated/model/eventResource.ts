@@ -17,5 +17,12 @@ export interface EventResource {
   isPublic: boolean;
   /** @nullable */
   notes: string | null;
+  /** @nullable */
+  registrationOpensAt: string | null;
+  /** @nullable */
+  registrationClosesAt: string | null;
+  /** @nullable */
+  registrationMaxGuests: number | null;
+  takesRegistrations: boolean;
   myAttendance: AttendanceResource | null;
 }

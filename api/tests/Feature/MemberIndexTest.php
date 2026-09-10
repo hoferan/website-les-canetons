@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
+use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -160,5 +161,56 @@ class MemberIndexTest extends TestCase
         // relation — a small constant. What must NOT happen is growth with the
         // roster: 21 members here, and an N+1 would be far past this ceiling.
         $this->assertLessThan(15, $queries, "listing 21 members took {$queries} queries");
+    }
+
+    /**
+     * PINS THE PERMISSION STRING on the whole member-administration group.
+     *
+     * Found by mutation on 2026-09-10: swapping this group's
+     * `permission:members.manage` for `permission:events.manage` left 47
+     * tests green. Every positive test in the roster suites acts as
+     * `administrator()`, which holds the seeded `direction` role and
+     * therefore Permission::cases() — every permission there is — while
+     * every negative test uses a member with no role at all. Between those
+     * two actors, any string in that middleware separates them, so none of
+     * them could see the swap.
+     *
+     * The events, attendance and registration groups all got a
+     * single-permission fixture when the same bug was found there. The
+     * roster is the group that was missed.
+     */
+    public function test_members_manage_alone_admits_and_nothing_else_does(): void
+    {
+        $exactly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::MembersManage)->create())
+            ->create();
+
+        $this->actingAsMember($exactly)->getJson('/api/members')->assertOk();
+    }
+
+    public function test_a_different_permission_does_not_admit(): void
+    {
+        // The other half, and the half that actually kills the mutation: a
+        // member who holds a real permission, just not this one.
+        $organiser = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $this->actingAsMember($organiser)
+            ->getJson('/api/members')
+            ->assertStatus(403)
+            ->assertJson(['code' => 'access_denied']);
+    }
+
+    public function test_the_reference_data_needs_the_same_permission(): void
+    {
+        // /sections and /roles ride in the same group and were equally
+        // unpinned.
+        $organiser = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $this->actingAsMember($organiser)->getJson('/api/sections')->assertStatus(403);
+        $this->actingAsMember($organiser)->getJson('/api/roles')->assertStatus(403);
     }
 }

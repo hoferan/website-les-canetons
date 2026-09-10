@@ -38,6 +38,8 @@ class GuestListTest extends TestCase
             ->create(['event_id' => $this->event->id, 'sort_order' => 1]);
     }
 
+    private ?Registration $lastBooking = null;
+
     private function book(string $last = 'Maillard', int $meat = 2, int $child = 0): Registration
     {
         $booking = Registration::factory()->create([
@@ -60,7 +62,7 @@ class GuestListTest extends TestCase
             ]);
         }
 
-        return $booking->load('choices.option');
+        return $this->lastBooking = $booking->load('choices.option');
     }
 
     // ------------------------------------------------------- the list
@@ -409,6 +411,178 @@ class GuestListTest extends TestCase
 
         foreach (['xlsx', 'csv', 'md', 'json'] as $format) {
             $this->actingAsMember($player)
+                ->get("/api/events/{$this->event->id}/registrations.{$format}")
+                ->assertStatus(403);
+        }
+    }
+
+    public function test_the_export_rows_are_positional_and_carry_the_right_values(): void
+    {
+        // THE CONTRACT GuestList EXISTS FOR. Its docblock says the four
+        // formats must not disagree and that rows() is "positional against
+        // headers()", and until 2026-09-10 nothing checked either: swapping
+        // Nom and Prénom, hard-coding the guest total to 0, and a 100x
+        // money error (round($cents, 2) instead of $cents / 100) all left
+        // this file green, because the assertions only looked for strings
+        // somewhere in the output.
+        $this->book('Maillard', 3, 1);
+
+        $json = $this->actingAsMember($this->organiser)
+            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
+
+        $at = fn (string $header): int => (int) array_search($header, $json['headers'], true);
+        $row = $json['rows'][0];
+
+        // Identity, in the right columns and the right way round.
+        $this->assertSame('Maillard', $row[$at('Nom')]);
+        $this->assertSame($this->lastBooking->first_name, $row[$at('Prénom')]);
+        $this->assertSame($this->lastBooking->email, $row[$at('E-mail')]);
+        $this->assertSame('079 322 12 57', $row[$at('Téléphone')]);
+
+        // Quantities under their own option's column.
+        $this->assertSame(3, $row[$at('Menu viande')]);
+        $this->assertSame(1, $row[$at('Menu enfant')]);
+
+        // Four people, and 3 x 45.- plus 1 x 20.- in FRANCS, not centimes.
+        $this->assertSame(4, $row[$at('Personnes')]);
+        // (float) because JSON has no int/float distinction: a whole
+        // 155.0 decodes as int(155), which assertSame rejects on type.
+        $this->assertSame(155.0, (float) $row[$at('Total CHF')]);
+    }
+
+    public function test_the_totals_row_is_what_the_caterer_is_told(): void
+    {
+        $this->book('Maillard', 3, 1);
+        $this->book('Rossier', 1, 0);
+
+        $json = $this->actingAsMember($this->organiser)
+            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
+
+        $at = fn (string $header): int => (int) array_search($header, $json['headers'], true);
+        $totals = $json['totals'];
+
+        $this->assertSame(4, $totals[$at('Menu viande')]);
+        $this->assertSame(1, $totals[$at('Menu enfant')]);
+        $this->assertSame(5, $totals[$at('Personnes')]);
+        // 155.- plus 45.- .
+        $this->assertSame(200.0, (float) $totals[$at('Total CHF')]);
+    }
+
+    public function test_the_csv_and_markdown_carry_the_same_values_in_the_same_order(): void
+    {
+        // Presence is not agreement: the formats could each contain every
+        // header and still put them in a different order, or read a
+        // different column. This compares the rendered first data row
+        // against the JSON row, cell for cell.
+        $this->book('Maillard', 3, 1);
+
+        $json = $this->actingAsMember($this->organiser)
+            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
+
+        $csv = $this->actingAsMember($this->organiser)
+            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->assertOk()
+            ->getContent();
+
+        $md = $this->actingAsMember($this->organiser)
+            ->get("/api/events/{$this->event->id}/registrations.md")
+            ->assertOk()
+            ->getContent();
+
+        $csvRow = str_getcsv(explode("\n", trim($csv))[1], ';');
+        $mdRow = array_map('trim', explode('|', trim(explode("\n", trim($md))[2], "| \r")));
+
+        foreach ($json['rows'][0] as $index => $value) {
+            $expected = $value === null ? '' : (string) $value;
+            $this->assertSame($expected, $csvRow[$index], "CSV column {$index} disagrees");
+            $this->assertSame($expected, $mdRow[$index], "Markdown column {$index} disagrees");
+        }
+    }
+
+    public function test_replacing_the_options_twice_converges(): void
+    {
+        // PUT MEANS IDEMPOTENT, and the first save is where that is hard:
+        // no entry carries an id yet. A naive delete-then-create renumbers
+        // every option on a retry, and if a booking landed in between the
+        // retry answers option_has_registrations and loses the whole edit.
+        $body = ['options' => [
+            ['label' => 'Menu carnivore', 'priceCents' => 4800],
+            ['label' => 'Menu végétarien', 'priceCents' => 4200],
+        ]];
+
+        $first = $this->actingAsMember($this->organiser)
+            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->assertOk()
+            ->json();
+
+        $second = $this->actingAsMember($this->organiser)
+            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->assertOk()
+            ->json();
+
+        // Same rows, same ids, same count. A retry changes nothing.
+        $this->assertSame(array_column($first, 'id'), array_column($second, 'id'));
+        $this->assertSame(2, RegistrationOption::query()->count());
+    }
+
+    public function test_a_retried_first_save_does_not_orphan_a_booking(): void
+    {
+        // The failure the idempotence exists to prevent, end to end.
+        $body = ['options' => [['label' => 'Menu unique', 'priceCents' => 4500]]];
+
+        $created = $this->actingAsMember($this->organiser)
+            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->assertOk()
+            ->json();
+
+        $option = RegistrationOption::query()->findOrFail($created[0]['id']);
+        Registration::factory()->withChoice($option)->create(['event_id' => $this->event->id]);
+
+        // The client never saw the first response and sends it again.
+        $this->actingAsMember($this->organiser)
+            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->assertOk();
+
+        $this->assertSame(1, RegistrationOption::query()->count());
+        $this->assertSame(1, RegistrationChoice::query()->count());
+    }
+
+    public function test_a_formula_in_a_guest_name_is_defused_in_the_csv(): void
+    {
+        // Every identity column comes from the PUBLIC form and is validated
+        // only as a string, so a booking under this name is a live formula
+        // the moment a committee member opens the file.
+        Registration::factory()->create([
+            'event_id' => $this->event->id,
+            'last_name' => '=HYPERLINK("https://evil.example","cliquez")',
+        ]);
+
+        $csv = $this->actingAsMember($this->organiser)
+            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('\'=HYPERLINK', $csv);
+        $this->assertStringNotContainsString(';=HYPERLINK', $csv);
+    }
+
+    public function test_the_exports_need_registrations_view_specifically(): void
+    {
+        // PINS THE PERMISSION STRING. The old test only proved a member
+        // with NO permissions is refused, which cannot tell one string
+        // from another.
+        $organiser = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        foreach (['xlsx', 'csv', 'md', 'json'] as $format) {
+            $this->actingAsMember($organiser)
                 ->get("/api/events/{$this->event->id}/registrations.{$format}")
                 ->assertStatus(403);
         }

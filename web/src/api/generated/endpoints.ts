@@ -40,7 +40,9 @@ import type {
   EventIndexParams,
   EventResource,
   FormToken200,
-  GuestListExport200One,
+  GuestListExport200Four,
+  GuestListExport503,
+  MemberAttendanceDestroy200,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
@@ -2211,10 +2213,11 @@ export function useFormToken<TData = Awaited<ReturnType<typeof formToken>>, TErr
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type guestListExportResponse200ApplicationJson = {
-  data: GuestListExport200One;
-  status: 200;
-};
+export type guestListExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet =
+  {
+    data: string;
+    status: 200;
+  };
 
 export type guestListExportResponse200TextCsvCharsetUTF8 = {
   data: string;
@@ -2223,6 +2226,11 @@ export type guestListExportResponse200TextCsvCharsetUTF8 = {
 
 export type guestListExportResponse200TextMarkdownCharsetUTF8 = {
   data: string;
+  status: 200;
+};
+
+export type guestListExportResponse200ApplicationJson = {
+  data: GuestListExport200Four;
   status: 200;
 };
 
@@ -2236,15 +2244,21 @@ export type guestListExportResponse404 = {
   status: 404;
 };
 
+export type guestListExportResponse503 = {
+  data: GuestListExport503;
+  status: 503;
+};
+
 export type guestListExportResponseSuccess = (
-  | guestListExportResponse200ApplicationJson
+  | guestListExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet
   | guestListExportResponse200TextCsvCharsetUTF8
   | guestListExportResponse200TextMarkdownCharsetUTF8
+  | guestListExportResponse200ApplicationJson
 ) & {
   headers: Headers;
 };
 export type guestListExportResponseError = (
-  guestListExportResponse401 | guestListExportResponse404
+  guestListExportResponse401 | guestListExportResponse404 | guestListExportResponse503
 ) & {
   headers: Headers;
 };
@@ -2272,7 +2286,7 @@ export const getGuestListExportQueryKey = (event: number, format: string) => {
 
 export const getGuestListExportQueryOptions = <
   TData = Awaited<ReturnType<typeof guestListExport>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503,
 >(
   event: number,
   format: string,
@@ -2300,11 +2314,11 @@ export const getGuestListExportQueryOptions = <
 
 export type GuestListExportQueryResult = NonNullable<Awaited<ReturnType<typeof guestListExport>>>;
 export type GuestListExportQueryError =
-  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503;
 
 export function useGuestListExport<
   TData = Awaited<ReturnType<typeof guestListExport>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503,
 >(
   event: number,
   format: string,
@@ -2324,7 +2338,7 @@ export function useGuestListExport<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGuestListExport<
   TData = Awaited<ReturnType<typeof guestListExport>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503,
 >(
   event: number,
   format: string,
@@ -2344,7 +2358,7 @@ export function useGuestListExport<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useGuestListExport<
   TData = Awaited<ReturnType<typeof guestListExport>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503,
 >(
   event: number,
   format: string,
@@ -2357,7 +2371,7 @@ export function useGuestListExport<
 
 export function useGuestListExport<
   TData = Awaited<ReturnType<typeof guestListExport>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | GuestListExport503,
 >(
   event: number,
   format: string,
@@ -2944,48 +2958,50 @@ export const useMemberDestroy = <
   return useMutation(getMemberDestroyMutationOptions(options), queryClient);
 };
 
-export type memberAttendanceResponse200 = {
+export type memberAttendanceUpdateResponse200 = {
   data: AttendanceResource;
   status: 200;
 };
 
-export type memberAttendanceResponse400 = {
+export type memberAttendanceUpdateResponse400 = {
   data: ValidationExceptionResponse;
   status: 400;
 };
 
-export type memberAttendanceResponse401 = {
+export type memberAttendanceUpdateResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type memberAttendanceResponse404 = {
+export type memberAttendanceUpdateResponse404 = {
   data: ModelNotFoundExceptionResponse;
   status: 404;
 };
 
-export type memberAttendanceResponseSuccess = memberAttendanceResponse200 & {
+export type memberAttendanceUpdateResponseSuccess = memberAttendanceUpdateResponse200 & {
   headers: Headers;
 };
-export type memberAttendanceResponseError = (
-  memberAttendanceResponse400 | memberAttendanceResponse401 | memberAttendanceResponse404
+export type memberAttendanceUpdateResponseError = (
+  | memberAttendanceUpdateResponse400
+  | memberAttendanceUpdateResponse401
+  | memberAttendanceUpdateResponse404
 ) & {
   headers: Headers;
 };
 
-export type memberAttendanceResponse =
-  memberAttendanceResponseSuccess | memberAttendanceResponseError;
+export type memberAttendanceUpdateResponse =
+  memberAttendanceUpdateResponseSuccess | memberAttendanceUpdateResponseError;
 
-export const getMemberAttendanceUrl = (event: number, member: number) => {
+export const getMemberAttendanceUpdateUrl = (event: number, member: number) => {
   return `/events/${event}/attendance/${member}`;
 };
 
-export const memberAttendance = async (
+export const memberAttendanceUpdate = async (
   event: number,
   member: number,
   recordMemberAttendanceRequest: RecordMemberAttendanceRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<memberAttendanceResponse> => {
+): Promise<memberAttendanceUpdateResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -3005,7 +3021,7 @@ export const memberAttendance = async (
     }
     return headers;
   };
-  return customFetch<memberAttendanceResponse>(getMemberAttendanceUrl(event, member), {
+  return customFetch<memberAttendanceUpdateResponse>(getMemberAttendanceUpdateUrl(event, member), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
@@ -3013,27 +3029,27 @@ export const memberAttendance = async (
   });
 };
 
-export const getMemberAttendanceMutationKey = () => ["memberAttendance"] as const;
+export const getMemberAttendanceUpdateMutationKey = () => ["memberAttendanceUpdate"] as const;
 
-export const getMemberAttendanceMutationOptions = <
+export const getMemberAttendanceUpdateMutationOptions = <
   TError =
     ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof memberAttendance>>,
+    Awaited<ReturnType<typeof memberAttendanceUpdate>>,
     TError,
-    MemberAttendanceMutationVariables,
+    MemberAttendanceUpdateMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof memberAttendance>>,
+  Awaited<ReturnType<typeof memberAttendanceUpdate>>,
   TError,
-  MemberAttendanceMutationVariables,
+  MemberAttendanceUpdateMutationVariables,
   TContext
 > => {
-  const mutationKey = getMemberAttendanceMutationKey();
+  const mutationKey = getMemberAttendanceUpdateMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -3041,51 +3057,185 @@ export const getMemberAttendanceMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof memberAttendance>>,
-    MemberAttendanceMutationVariables
+    Awaited<ReturnType<typeof memberAttendanceUpdate>>,
+    MemberAttendanceUpdateMutationVariables
   > = (props) => {
     const { event, member, data } = props ?? {};
 
-    return memberAttendance(event, member, data, requestOptions);
+    return memberAttendanceUpdate(event, member, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type MemberAttendanceMutationResult = NonNullable<
-  Awaited<ReturnType<typeof memberAttendance>>
+export type MemberAttendanceUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof memberAttendanceUpdate>>
 >;
-export type MemberAttendanceMutationBody = RecordMemberAttendanceRequest;
-export type MemberAttendanceMutationError =
+export type MemberAttendanceUpdateMutationBody = RecordMemberAttendanceRequest;
+export type MemberAttendanceUpdateMutationError =
   ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
-export type MemberAttendanceMutationVariables = {
+export type MemberAttendanceUpdateMutationVariables = {
   event: number;
   member: number;
   data: RecordMemberAttendanceRequest;
 };
 
-export const useMemberAttendance = <
+export const useMemberAttendanceUpdate = <
   TError =
     ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof memberAttendance>>,
+      Awaited<ReturnType<typeof memberAttendanceUpdate>>,
       TError,
-      MemberAttendanceMutationVariables,
+      MemberAttendanceUpdateMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof memberAttendance>>,
+  Awaited<ReturnType<typeof memberAttendanceUpdate>>,
   TError,
-  MemberAttendanceMutationVariables,
+  MemberAttendanceUpdateMutationVariables,
   TContext
 > => {
-  return useMutation(getMemberAttendanceMutationOptions(options), queryClient);
+  return useMutation(getMemberAttendanceUpdateMutationOptions(options), queryClient);
+};
+
+export type memberAttendanceDestroyResponse200 = {
+  data: MemberAttendanceDestroy200;
+  status: 200;
+};
+
+export type memberAttendanceDestroyResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberAttendanceDestroyResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberAttendanceDestroyResponseSuccess = memberAttendanceDestroyResponse200 & {
+  headers: Headers;
+};
+export type memberAttendanceDestroyResponseError = (
+  memberAttendanceDestroyResponse401 | memberAttendanceDestroyResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberAttendanceDestroyResponse =
+  memberAttendanceDestroyResponseSuccess | memberAttendanceDestroyResponseError;
+
+export const getMemberAttendanceDestroyUrl = (event: number, member: number) => {
+  return `/events/${event}/attendance/${member}`;
+};
+
+/**
+ * Without this a mis-aimed on-behalf write is permanent from the
+ * committee's side, and worse from the member's: C12 measures the undo
+ * window from `updated_at`, so the five minutes start ticking when the
+ * DIRECTION wrote it, and once they lapse C11 can demand a written
+ * reason from the member for a commitment they never made.
+ *
+ * NOT subject to C12 itself. The window exists to stop a member erasing
+ * their own yes and re-answering for free; a committee correcting its
+ * own typo an hour later is the case it was never aimed at, and they
+ * can overwrite the row at will anyway.
+ *
+ * Refuses its own caller, like the write does (C14): undoing your own
+ * answer through the exempt route would sidestep C11 exactly as
+ * writing it would.
+ * @summary Takes back an answer the committee entered for somebody
+ */
+export const memberAttendanceDestroy = async (
+  event: number,
+  member: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberAttendanceDestroyResponse> => {
+  return customFetch<memberAttendanceDestroyResponse>(
+    getMemberAttendanceDestroyUrl(event, member),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getMemberAttendanceDestroyMutationKey = () => ["memberAttendanceDestroy"] as const;
+
+export const getMemberAttendanceDestroyMutationOptions = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberAttendanceDestroy>>,
+    TError,
+    MemberAttendanceDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberAttendanceDestroy>>,
+  TError,
+  MemberAttendanceDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getMemberAttendanceDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberAttendanceDestroy>>,
+    MemberAttendanceDestroyMutationVariables
+  > = (props) => {
+    const { event, member } = props ?? {};
+
+    return memberAttendanceDestroy(event, member, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberAttendanceDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof memberAttendanceDestroy>>
+>;
+
+export type MemberAttendanceDestroyMutationError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type MemberAttendanceDestroyMutationVariables = { event: number; member: number };
+
+/**
+ * @summary Takes back an answer the committee entered for somebody
+ */
+export const useMemberAttendanceDestroy = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberAttendanceDestroy>>,
+      TError,
+      MemberAttendanceDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberAttendanceDestroy>>,
+  TError,
+  MemberAttendanceDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getMemberAttendanceDestroyMutationOptions(options), queryClient);
 };
 
 export type memberPasswordResponse200 = {

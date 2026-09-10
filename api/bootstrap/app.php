@@ -101,6 +101,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // resolved, so it must run after StartSession and Authenticate rather
         // than in front of them like RunPendingMigrations.
         $middleware->appendToGroup('api', EnforceAbsoluteSessionLifetime::class);
+
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // This governs only Laravel's DEFAULT renderer — whether it falls back

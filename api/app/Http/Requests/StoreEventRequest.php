@@ -49,7 +49,14 @@ class StoreEventRequest extends FormRequest
             'location' => ['required', 'string', 'max:255'],
             'attire' => ['nullable', 'string', 'max:255'],
             'isPublic' => ['required', 'boolean'],
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+
+            // The registration window. Setting a close date is what enables
+            // public registration at all (D9), so these three are how a
+            // souper is switched on without touching the database.
+            'registrationOpensAt' => ['nullable', 'date'],
+            'registrationClosesAt' => ['nullable', 'date', 'after:registrationOpensAt'],
+            'registrationMaxGuests' => ['nullable', 'integer', 'gt:0', 'max:100'],
         ];
     }
 }

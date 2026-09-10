@@ -32,6 +32,21 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * A body that satisfies PublicWriteGuard, merged over the caller"s own.
+     *
+     * The decoy field must be PRESENT and empty. A real form always renders
+     * it, so sending it costs a browser nothing; omitting it is what a
+     * script does, and that is the case the guard exists to catch.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    protected function publicWriteBody(array $payload = []): array
+    {
+        return array_merge([PublicWriteGuard::HONEYPOT_FIELD => ''], $payload);
+    }
+
+    /**
      * Headers that satisfy App\Http\Middleware\PublicWriteGuard.
      *
      * The token is built by SIGNING A PAST TIMESTAMP rather than by issuing

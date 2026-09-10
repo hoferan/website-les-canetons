@@ -17,7 +17,8 @@ export interface RegistrationResource {
   /** @nullable */
   tableName: string | null;
   choices: RegistrationResourceChoicesItem[];
-  guestCount: string;
-  totalCents: string;
+  guestCount: number;
+  /** @nullable */
+  totalCents: number | null;
   createdAt: string;
 }

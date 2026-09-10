@@ -9,6 +9,10 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
   /**
    * Nullable rather than absent-or-int: the client sends the whole
    * list back, and a new row has no id yet.
+   * Scoped to THIS event. An unscoped id updates zero rows and
+   * the controller moves on, so the committee submits three
+   * options, gets 200, and sees two — silent loss rather than a
+   * refusal.
    * @nullable
    */
   id?: number | null;
@@ -22,9 +26,13 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
   /**
    * gte:0 rather than gt:0 — an option really can cost nothing,
    * and that is different from having no price at all (null).
+   * @maximum 1000000
    * @nullable
    */
   priceCents?: number | null;
-  /** @nullable */
+  /**
+   * @maximum 1000
+   * @nullable
+   */
   sortOrder?: number | null;
 };

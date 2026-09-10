@@ -448,6 +448,10 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
     {
@@ -459,6 +463,10 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
     {
@@ -470,6 +478,10 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
     {
@@ -483,6 +495,10 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: "Repas et logement compris.",
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
     {
@@ -495,6 +511,10 @@ function initialEvents(): EventResource[] {
       attire: null,
       isPublic: false,
       notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
     {
@@ -507,6 +527,10 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
       myAttendance: null,
     },
   ];
@@ -927,6 +951,10 @@ const overrides = [
         attire: body.template.attire,
         isPublic: body.template.isPublic,
         notes: body.template.notes,
+        registrationOpensAt: null,
+        registrationClosesAt: null,
+        registrationMaxGuests: null,
+        takesRegistrations: false,
         myAttendance: null,
       };
     });

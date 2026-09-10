@@ -37,6 +37,24 @@ export interface UpdateEventRequest {
    */
   attire?: string | null;
   isPublic?: boolean;
-  /** @nullable */
+  /**
+   * @maxLength 5000
+   * @nullable
+   */
   notes?: string | null;
+  /**
+   * The registration window. Nullable throughout, and clearing
+   * registrationClosesAt is how registration is switched OFF —
+   * which is why these need  AND , like every
+   * other optional column on this form.
+   * @nullable
+   */
+  registrationOpensAt?: string | null;
+  /** @nullable */
+  registrationClosesAt?: string | null;
+  /**
+   * @maximum 100
+   * @nullable
+   */
+  registrationMaxGuests?: number | null;
 }

@@ -44,8 +44,44 @@ class UpdateEventRequest extends FormRequest
             'location' => ['sometimes', 'required', 'string', 'max:255'],
             'attire' => ['sometimes', 'nullable', 'string', 'max:255'],
             'isPublic' => ['sometimes', 'boolean'],
-            'notes' => ['sometimes', 'nullable', 'string'],
+            'notes' => ['sometimes', 'nullable', 'string', 'max:5000'],
+
+            // The registration window. Nullable throughout, and clearing
+            // registrationClosesAt is how registration is switched OFF —
+            // which is why these need  AND , like every
+            // other optional column on this form.
+            'registrationOpensAt' => ['sometimes', 'nullable', 'date'],
+            'registrationClosesAt' => ['sometimes', 'nullable', 'date', ...$this->afterTheOpening($event)],
+            'registrationMaxGuests' => ['sometimes', 'nullable', 'integer', 'gt:0', 'max:100'],
         ];
+    }
+
+    /**
+     * What `registrationClosesAt` must come after.
+     *
+     * The same PATCH trap `afterTheStart()` documents, on the other date
+     * pair: `after:registrationOpensAt` compares against another INPUT
+     * field, so a request that changes only the close date would be
+     * compared against nothing and pass. Falls back to the stored opening.
+     *
+     * An event with no opening date has no lower bound at all, because a
+     * null opening means "open as soon as the close date is set".
+     *
+     * @return array<int, string>
+     */
+    private function afterTheOpening(?Event $event): array
+    {
+        if ($this->has('registrationOpensAt')) {
+            return $this->input('registrationOpensAt') === null
+                ? []
+                : ['after:registrationOpensAt'];
+        }
+
+        if ($event?->registration_opens_at === null) {
+            return [];
+        }
+
+        return ['after:'.$event->registration_opens_at->toIso8601String()];
     }
 
     /**

@@ -45,10 +45,10 @@ export const fr = {
     cannot_delete_self: "Vous ne pouvez pas supprimer votre propre compte.",
     cannot_demote_self: "Vous ne pouvez pas retirer vos propres droits d'administration.",
     cannot_remove_last_administrator: "C'est la dernière personne pouvant administrer les membres.",
-    event_not_found: "Événement introuvable",
+
     invalid_session: "Session invalide",
     service_unavailable: "Service indisponible",
-    captcha_failed: "Vérification anti-robot échouée, veuillez réessayer.",
+
     // Attendance. `not_answerable` is a 403 that is NOT about a missing
     // permission — there is none for answering — so it must not read like
     // one, or the reader goes looking for a right nobody can grant them.
@@ -102,6 +102,11 @@ export const fr = {
     weekend: "Week-end",
     isPublic: "Visible publiquement",
     notes: "Remarques",
+    // The registration window on an event. Setting the close date is what
+    // turns public registration on at all.
+    registrationOpensAt: "Ouverture des inscriptions",
+    registrationClosesAt: "Clôture des inscriptions",
+    registrationMaxGuests: "Personnes par inscription",
     sectionId: "Pupitre",
     committeeTitle: "Fonction au comité",
     instructorOfSectionId: "Moniteur du pupitre",

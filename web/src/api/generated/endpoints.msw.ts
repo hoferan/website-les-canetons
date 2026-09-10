@@ -22,7 +22,8 @@ import type {
   EventDestroy200,
   EventResource,
   FormToken200,
-  GuestListExport200One,
+  GuestListExport200Four,
+  MemberAttendanceDestroy200,
   MemberDestroy200,
   MemberPassword200,
   MemberResource,
@@ -51,6 +52,7 @@ export const getAttendanceUpdateResponseMock = (
   status: faker.string.alpha({ length: { min: 10, max: 20 } }),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
+  recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
 
@@ -75,6 +77,7 @@ export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
+        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
       },
       null,
     ]),
@@ -128,6 +131,16 @@ export const getEventIndexResponseMock = (): EventResource[] =>
     ]),
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    registrationOpensAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    registrationClosesAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+    takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
         status: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -136,6 +149,7 @@ export const getEventIndexResponseMock = (): EventResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
+        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
       },
       null,
     ]),
@@ -152,6 +166,16 @@ export const getEventStoreResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  registrationOpensAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationClosesAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
       status: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -160,6 +184,7 @@ export const getEventStoreResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
+      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
     },
     null,
   ]),
@@ -177,6 +202,16 @@ export const getEventShowResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  registrationOpensAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationClosesAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
       status: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -185,6 +220,7 @@ export const getEventShowResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
+      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
     },
     null,
   ]),
@@ -202,6 +238,16 @@ export const getEventUpdateResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  registrationOpensAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationClosesAt: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
       status: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -210,6 +256,7 @@ export const getEventUpdateResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
+      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
     },
     null,
   ]),
@@ -238,6 +285,16 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
     ]),
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    registrationOpensAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    registrationClosesAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+    takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
         status: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -246,6 +303,7 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
+        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
       },
       null,
     ]),
@@ -258,26 +316,27 @@ export const getFormTokenResponseMock = (
   ...overrideResponse,
 });
 
-export const getGuestListExportResponseMock = (): GuestListExport200One | string =>
+export const getGuestListExportResponseMock = (
+  overrideResponse: Partial<Extract<string | GuestListExport200Four, object>> = {},
+): string | GuestListExport200Four =>
   faker.helpers.arrayElement([
-    faker.helpers.arrayElement([
-      {
-        headers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-          () => ({}),
-        ),
-        rows: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-          () =>
-            Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-              () => ({}),
-            ),
-        ),
-        totals: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-          () => ({}),
-        ),
-      },
-    ]),
     faker.word.sample(),
     faker.word.sample(),
+    faker.word.sample(),
+    {
+      headers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({}),
+      ),
+      rows: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
+        Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+          () => ({}),
+        ),
+      ),
+      totals: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({}),
+      ),
+      ...overrideResponse,
+    },
   ]);
 
 export const getMemberIndexResponseMock = (): MemberResource[] =>
@@ -379,14 +438,19 @@ export const getMemberDestroyResponseMock = (
   ...overrideResponse,
 });
 
-export const getMemberAttendanceResponseMock = (
+export const getMemberAttendanceUpdateResponseMock = (
   overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
 ): AttendanceResource => ({
   status: faker.string.alpha({ length: { min: 10, max: 20 } }),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
+  recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
+
+export const getMemberAttendanceDestroyResponseMock = (
+  overrideResponse: Partial<Extract<MemberAttendanceDestroy200, object>> = {},
+): MemberAttendanceDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
 export const getMemberPasswordResponseMock = (
   overrideResponse: Partial<Extract<MemberPassword200, object>> = {},
@@ -454,8 +518,8 @@ export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
         priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
       }),
     ),
-    guestCount: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    totalCents: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    guestCount: faker.number.int(),
+    totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
     createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
   }));
 
@@ -511,8 +575,8 @@ export const getRegistrationUpdateResponseMock = (
       priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     }),
   ),
-  guestCount: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  totalCents: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  guestCount: faker.number.int(),
+  totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
   createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
@@ -929,11 +993,11 @@ export const getFormTokenMockHandler = (
 
 export const getGuestListExportMockHandler = (
   overrideResponse?:
-    | GuestListExport200One
     | string
+    | GuestListExport200Four
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<GuestListExport200One | string> | GuestListExport200One | string),
+      ) => Promise<string | GuestListExport200Four> | string | GuestListExport200Four),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1052,7 +1116,7 @@ export const getMemberDestroyMockHandler = (
   );
 };
 
-export const getMemberAttendanceMockHandler = (
+export const getMemberAttendanceUpdateMockHandler = (
   overrideResponse?:
     | AttendanceResource
     | ((
@@ -1068,7 +1132,31 @@ export const getMemberAttendanceMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getMemberAttendanceResponseMock(),
+          : getMemberAttendanceUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getMemberAttendanceDestroyMockHandler = (
+  overrideResponse?:
+    | MemberAttendanceDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<MemberAttendanceDestroy200> | MemberAttendanceDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/events/:event/attendance/:member",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberAttendanceDestroyResponseMock(),
         { status: 200 },
       );
     },
@@ -1337,7 +1425,8 @@ export const getLesCanetonsAPIMock = () => [
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
   getMemberDestroyMockHandler(),
-  getMemberAttendanceMockHandler(),
+  getMemberAttendanceUpdateMockHandler(),
+  getMemberAttendanceDestroyMockHandler(),
   getMemberPasswordMockHandler(),
   getMemberRoleMockHandler(),
   getRegistrationStoreMockHandler(),

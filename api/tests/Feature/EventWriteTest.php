@@ -499,4 +499,80 @@ class EventWriteTest extends TestCase
             ->assertStatus(404)
             ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
     }
+
+    public function test_an_organiser_switches_registration_on_and_off(): void
+    {
+        // THE HOLE THIS CLOSES. registration_closes_at is the enable switch
+        // for the whole R3 feature, and until 2026-09-10 no endpoint wrote
+        // it — the only way to run a souper was an Adminer edit, on a host
+        // with no shell, which is the constraint the release exists to work
+        // around.
+        $event = Event::factory()->create();
+        $this->assertFalse($event->takesRegistrations());
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", [
+                'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
+                'registrationMaxGuests' => 6,
+            ])
+            ->assertOk()
+            ->assertJsonPath('takesRegistrations', true)
+            ->assertJsonPath('registrationMaxGuests', 6);
+
+        $this->assertTrue($event->fresh()->takesRegistrations());
+
+        // And off again: clearing the close date is how it is switched off,
+        // which is why the rule needs `sometimes` AND `nullable`.
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['registrationClosesAt' => null])
+            ->assertOk()
+            ->assertJsonPath('takesRegistrations', false);
+
+        $this->assertFalse($event->fresh()->takesRegistrations());
+    }
+
+    public function test_registration_can_be_enabled_at_creation(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/events', $this->validPayload([
+                'registrationOpensAt' => '2026-10-01T00:00:00+02:00',
+                'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
+                'registrationMaxGuests' => 6,
+            ]))
+            ->assertStatus(201)
+            ->assertJsonPath('takesRegistrations', true);
+
+        $event = Event::query()->sole();
+        $this->assertNotNull($event->registration_opens_at);
+        $this->assertSame(6, $event->registration_max_guests);
+    }
+
+    public function test_the_registration_window_cannot_close_before_it_opens(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/events', $this->validPayload([
+                'registrationOpensAt' => '2026-11-30T00:00:00+01:00',
+                'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
+            ]))
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'registrationClosesAt');
+    }
+
+    public function test_patching_only_the_close_date_compares_against_the_stored_opening(): void
+    {
+        // The same PATCH trap UpdateEventRequest::afterTheStart() exists
+        // for, on the other date pair: `after:registrationOpensAt` compares
+        // against an INPUT field, and the request below sends no opening.
+        $event = Event::factory()->create([
+            'registration_opens_at' => '2026-11-01 00:00:00',
+            'registration_closes_at' => '2026-11-30 00:00:00',
+        ]);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", [
+                'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'registrationClosesAt');
+    }
 }
