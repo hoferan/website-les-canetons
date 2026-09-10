@@ -97,11 +97,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     Route::middleware('permission:events.manage')->group(function () {
         Route::post('/events', [EventController::class, 'store']);
 
+        Route::patch('/events/{event}', [EventController::class, 'update']);
+
         // No re-authentication on the delete, unlike the roster's — the call
         // MemberController::destroy() documents (decision B7), and an event
         // carries none of a member's account state. Protection against a
         // mis-aimed tap is the confirmation in the UI.
-        Route::patch('/events/{event}', [EventController::class, 'update']);
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
     });
 });
