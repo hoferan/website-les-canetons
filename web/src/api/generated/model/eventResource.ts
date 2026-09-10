@@ -4,6 +4,7 @@
  * Les Canetons API
  * OpenAPI spec version: 0.0.1
  */
+import type { AttendanceResource } from "./attendanceResource";
 
 export interface EventResource {
   id: number;
@@ -16,4 +17,5 @@ export interface EventResource {
   isPublic: boolean;
   /** @nullable */
   notes: string | null;
+  myAttendance: AttendanceResource | null;
 }

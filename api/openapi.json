@@ -62,6 +62,143 @@
                 }
             }
         },
+        "/events/{event}/attendance": {
+            "put": {
+                "operationId": "attendance.update",
+                "description": "PUT, so it is an IDEMPOTENT UPSERT: tapping Oui and then Non needs no\ncreate-versus-update branch in the client and cannot race itself into\ntwo rows \u2014 UNIQUE(event_id, member_id) is the backstop.\n\nNOT AUDITED, deliberately. The audit log records privileged mutations,\nand answering for yourself is the one write in this release that\neverybody makes and nobody administers. The on-behalf route IS audited,\nbecause that one is a person acting for another person.",
+                "summary": "A member's own answer",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordOwnAttendanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AttendanceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "attendance.destroy",
+                "description": "The window is AttendanceIntegrity's (C12).",
+                "summary": "UNDO. Removes the answer entirely, returning the event to unanswered \u2014\nwhich is what a second PUT cannot express, and the whole reason this\nendpoint exists rather than the client sending the opposite answer",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "get": {
+                "operationId": "attendance.index",
+                "description": "Returning only the answers would push \"who has not replied?\" \u2014 the\nentire point of this screen \u2014 into a client-side diff against a\nseparately-fetched roster, which is two requests that can disagree.\n\nAnswerable means Member::isPlayer(): having a register. There is\ndeliberately no permission for being answerable \u2014 making it a grant is\nwhat produced the old bug where an admin could not say whether they\nwere coming, and left the \"Pas de r\u00e9ponse\" counts meaningless.\n\nTWO QUERIES WHATEVER THE ROSTER SIZE: the players with their register,\nand this event's answers keyed by member. Pinned by\ntest_the_chase_list_costs_a_fixed_number_of_queries \u2014 the roster is ~45\npeople and this screen is read on a phone at a rehearsal.",
+                "summary": "THE CHASE LIST \u2014 every answerable member, not just those who replied",
+                "tags": [
+                    "Attendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ChaseListEntryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/components/schemas/ChaseListEntryResource"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "operationId": "auth.login",
@@ -347,7 +484,7 @@
         "/events": {
             "get": {
                 "operationId": "event.index",
-                "description": "`?past=1` is the OTHER HALF of the list, not a superset of it \u2014 by next\ncarnival the full list is a hundred rehearsals to scroll past on a\nphone. It also reverses the order, because history is read backwards\nfrom now, while the planning ahead is read soonest-first.\n\nThe split is on BandTime::startOfToday(), not now(): a rehearsal that\nbegan an hour ago must stay in the planning of somebody running late.\nPinned by EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,\nand mutation-tested by hand against now() \u2014 see Task 4 step 7.\n\nAnything that is not exactly the magic word '1' is the default,\nupcoming view \u2014 the same fail-safe direction MigrateController takes\nwith its `mode` parameter: a missing, misspelled or truncated value\nmust never be the one that hides events.\n\nNo eager loads: there are no relations yet. MEASURED 2026-09-09: this\ncosts exactly 1 query today \u2014 the events query alone, since this route\ncarries no permission lookup. Pinned by\ntest_listing_the_planning_costs_a_fixed_number_of_queries at a budget\nof 3, which is a FLOOR for R1c-2 \u2014 that release adds one relation and\none query, not an N+1, and the spare room is deliberate.",
+                "description": "`?past=1` is the OTHER HALF of the list, not a superset of it \u2014 by next\ncarnival the full list is a hundred rehearsals to scroll past on a\nphone. It also reverses the order, because history is read backwards\nfrom now, while the planning ahead is read soonest-first.\n\nThe split is on BandTime::startOfToday(), not now(): a rehearsal that\nbegan an hour ago must stay in the planning of somebody running late.\nPinned by EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,\nand mutation-tested by hand against now() \u2014 see Task 4 step 7.\n\nAnything that is not exactly the magic word '1' is the default,\nupcoming view \u2014 the same fail-safe direction MigrateController takes\nwith its `mode` parameter: a missing, misspelled or truncated value\nmust never be the one that hides events.\n\nONE eager load, and it is the one R1c-2 was given room for: the\ncaller's own answer, constrained to them in the query. MEASURED\n2026-09-09 at exactly 1 query before attendance existed; the join\nmakes it 2, against the budget of 3 that\ntest_listing_the_planning_costs_a_fixed_number_of_queries has always\nasserted. The spare room was deliberate and is now spent.",
                 "summary": "The planning: upcoming by default, or the history behind `?past=1`",
                 "tags": [
                     "Event"
@@ -486,7 +623,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "`EventResource`",
+                        "description": "Loaded explicitly: an organiser who also plays has their own answer\non this event, and a response reporting myAttendance as null would\nreset the buttons on their own screen. See EventResource.\n\n\n\n`EventResource`",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -534,10 +671,15 @@
                                     "properties": {
                                         "ok": {
                                             "type": "boolean"
+                                        },
+                                        "attendanceDeleted": {
+                                            "type": "integer",
+                                            "minimum": 0
                                         }
                                     },
                                     "required": [
-                                        "ok"
+                                        "ok",
+                                        "attendanceDeleted"
                                     ]
                                 }
                             }
@@ -768,6 +910,65 @@
                 }
             }
         },
+        "/events/{event}/attendance/{member}": {
+            "put": {
+                "operationId": "memberAttendance",
+                "tags": [
+                    "MemberAttendance"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "member",
+                        "in": "path",
+                        "required": true,
+                        "description": "The member ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecordMemberAttendanceRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`AttendanceResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttendanceResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                }
+            }
+        },
         "/members/{member}/password": {
             "post": {
                 "operationId": "memberPassword",
@@ -962,6 +1163,67 @@
                 ],
                 "title": "AccountPasswordRequest"
             },
+            "AttendanceResource": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "recordedByDirection": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "status",
+                    "note",
+                    "recordedByDirection"
+                ],
+                "title": "AttendanceResource"
+            },
+            "ChaseListEntryResource": {
+                "type": "object",
+                "properties": {
+                    "memberId": {
+                        "type": "integer"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "sectionName": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "attendance": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AttendanceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "required": [
+                    "memberId",
+                    "firstName",
+                    "lastName",
+                    "sectionName",
+                    "attendance"
+                ],
+                "title": "ChaseListEntryResource"
+            },
             "ContactRequest": {
                 "type": "object",
                 "description": "Field names are camelCase because contact.js posts the form via FormData with\nthose input names, and App\\Exceptions\\ApiError echoes them straight into\nfields[].field, where i18n.js looks them up. Renaming them silently breaks\nthe French error messages. (The signup form uses snake_case \u2014 the two forms\ngenuinely differ; do not normalise.)\n\nRule ORDER is load-bearing: ApiError reports only the first failed rule per\nfield, so `required` must come first (an empty field reports `required`, not\n`invalid_format`) and `max` must precede `email` (an over-long address\nreports `too_long`). This mirrors App\\Dto\\ContactInput's attribute order.",
@@ -1028,6 +1290,16 @@
                             "string",
                             "null"
                         ]
+                    },
+                    "myAttendance": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AttendanceResource"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
                     }
                 },
                 "required": [
@@ -1038,7 +1310,8 @@
                     "location",
                     "attire",
                     "isPublic",
-                    "notes"
+                    "notes",
+                    "myAttendance"
                 ],
                 "title": "EventResource"
             },
@@ -1121,6 +1394,55 @@
                     "roleIds"
                 ],
                 "title": "MemberResource"
+            },
+            "RecordMemberAttendanceRequest": {
+                "type": "object",
+                "description": "Somebody holding attendance.record_for_others answering for a member.\n\nNO C11 REASON RULE, deliberately (decision C13). The member phoned the\ncommittee to say they cannot come; making the committee invent a written\nreason on their behalf would put words in their mouth, and the note is free\ntext here for whatever they actually said.\n\nThat exemption is exactly why the route refuses its own caller (C14): a\nmember who both plays and manages \u2014 demo.both \u2014 could otherwise withdraw\ntheir own yes through this endpoint and never supply the reason C11 asks\nfor. The refusal is in the controller, not here, because it is a conflict\nwith the state of the system rather than a malformed field.",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "yes",
+                            "no"
+                        ]
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "status"
+                ],
+                "title": "RecordMemberAttendanceRequest"
+            },
+            "RecordOwnAttendanceRequest": {
+                "type": "object",
+                "description": "A member answering for THEMSELVES.\n\nWITHDRAWING A YES COSTS A REASON (decision C11). If the stored answer is\n`yes` and the incoming one is `no`, `note` becomes required and a blank one\ncomes back as an ordinary validation failure against that field \u2014 no new\nerror vocabulary invented, and it lands in the dialog beside the box the\nmember has to fill in.\n\nThe rule is asymmetric on purpose. Saying yes late costs nothing; taking a\nyes back is what leaves the cook with a headcount that is wrong and the\ncommittee with a gap in a Guggenmusik's front row. Recording on somebody's\nbehalf is exempt (C13) and uses RecordMemberAttendanceRequest instead \u2014\nwhich is also why C14 makes the on-behalf route refuse its own caller,\nbecause otherwise this rule would be one request away from evadable.",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "yes",
+                            "no"
+                        ]
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "`required` rather than `nullable` only on the withdrawal, and\n`required` leads the list because ApiError reports the FIRST\nfailed rule per field.",
+                        "maxLength": 255
+                    }
+                },
+                "required": [
+                    "status"
+                ],
+                "title": "RecordOwnAttendanceRequest"
             },
             "ReplaceMemberRolesRequest": {
                 "type": "object",

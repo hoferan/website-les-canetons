@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountPasswordController;
+use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
+use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
@@ -114,6 +116,34 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // carries none of a member's account state. Protection against a
         // mis-aimed tap is the confirmation in the UI.
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
+    });
+
+    // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a
+    // decision rather than an oversight (design §3). Making it a grant is
+    // what produced the old bug where an admin could not say whether they
+    // were coming, and left the "Pas de réponse" counts meaningless. What
+    // gates it instead is Member::isPlayer() — being in a register — checked
+    // in App\Support\AttendanceIntegrity, because it is a fact about the
+    // person rather than something anybody granted them.
+    //
+    // PUT so the answer is an idempotent upsert; DELETE is undo, and it
+    // expires after five minutes (C12) so C11's reason rule is not
+    // decorative.
+    Route::put('/events/{event}/attendance', [AttendanceController::class, 'update']);
+    Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy']);
+
+    // The chase list. Answering is everybody's; reading who has NOT answered
+    // is the committee's, so unlike answering this one is gated.
+    Route::middleware('permission:attendance.view_all')->group(function () {
+        Route::get('/events/{event}/attendance', [AttendanceController::class, 'index']);
+    });
+
+    // Answering on somebody's behalf — the phone call to the committee. A
+    // SEPARATE permission from viewing the list: seeing who is missing and
+    // speaking for them are different acts, and roles are editable data that
+    // may well grant one without the other. Refuses its own caller (C14).
+    Route::middleware('permission:attendance.record_for_others')->group(function () {
+        Route::put('/events/{event}/attendance/{member}', MemberAttendanceController::class);
     });
 });
 

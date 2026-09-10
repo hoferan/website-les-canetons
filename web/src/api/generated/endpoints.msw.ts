@@ -11,9 +11,12 @@ import type { RequestHandlerOptions } from "msw";
 
 import type {
   AccountPassword200,
+  AttendanceDestroy200,
+  AttendanceResource,
   AuthLogin200,
   AuthLogout200,
   AuthMe200,
+  ChaseListEntryResource,
   Config200,
   Contact200,
   EventDestroy200,
@@ -34,6 +37,41 @@ export const getAccountPasswordResponseMock = (
   sessionsEnded: faker.number.int(),
   ...overrideResponse,
 });
+
+export const getAttendanceUpdateResponseMock = (
+  overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
+): AttendanceResource => ({
+  status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  recordedByDirection: faker.datatype.boolean(),
+  ...overrideResponse,
+});
+
+export const getAttendanceDestroyResponseMock = (
+  overrideResponse: Partial<Extract<AttendanceDestroy200, object>> = {},
+): AttendanceDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
+  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    memberId: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    sectionName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    attendance: faker.helpers.arrayElement([
+      {
+        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        note: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        recordedByDirection: faker.datatype.boolean(),
+      },
+      null,
+    ]),
+  }));
 
 export const getAuthLoginResponseMock = (
   overrideResponse: Partial<Extract<AuthLogin200, object>> = {},
@@ -83,6 +121,17 @@ export const getEventIndexResponseMock = (): EventResource[] =>
     ]),
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    myAttendance: faker.helpers.arrayElement([
+      {
+        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        note: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        recordedByDirection: faker.datatype.boolean(),
+      },
+      null,
+    ]),
   }));
 
 export const getEventStoreResponseMock = (
@@ -96,6 +145,17 @@ export const getEventStoreResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  myAttendance: faker.helpers.arrayElement([
+    {
+      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      note: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      recordedByDirection: faker.datatype.boolean(),
+    },
+    null,
+  ]),
   ...overrideResponse,
 });
 
@@ -110,6 +170,17 @@ export const getEventShowResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  myAttendance: faker.helpers.arrayElement([
+    {
+      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      note: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      recordedByDirection: faker.datatype.boolean(),
+    },
+    null,
+  ]),
   ...overrideResponse,
 });
 
@@ -124,12 +195,27 @@ export const getEventUpdateResponseMock = (
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  myAttendance: faker.helpers.arrayElement([
+    {
+      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      note: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      recordedByDirection: faker.datatype.boolean(),
+    },
+    null,
+  ]),
   ...overrideResponse,
 });
 
 export const getEventDestroyResponseMock = (
   overrideResponse: Partial<Extract<EventDestroy200, object>> = {},
-): EventDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+): EventDestroy200 => ({
+  ok: faker.datatype.boolean(),
+  attendanceDeleted: faker.number.int({ min: 0 }),
+  ...overrideResponse,
+});
 
 export const getEventSeriesResponseMock = (): EventResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -144,6 +230,17 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
     ]),
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    myAttendance: faker.helpers.arrayElement([
+      {
+        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        note: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        recordedByDirection: faker.datatype.boolean(),
+      },
+      null,
+    ]),
   }));
 
 export const getMemberIndexResponseMock = (): MemberResource[] =>
@@ -245,6 +342,15 @@ export const getMemberDestroyResponseMock = (
   ...overrideResponse,
 });
 
+export const getMemberAttendanceResponseMock = (
+  overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
+): AttendanceResource => ({
+  status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  recordedByDirection: faker.datatype.boolean(),
+  ...overrideResponse,
+});
+
 export const getMemberPasswordResponseMock = (
   overrideResponse: Partial<Extract<MemberPassword200, object>> = {},
 ): MemberPassword200 => ({
@@ -319,6 +425,78 @@ export const getAccountPasswordMockHandler = (
             ? await overrideResponse(info)
             : overrideResponse
           : getAccountPasswordResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAttendanceUpdateMockHandler = (
+  overrideResponse?:
+    | AttendanceResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<AttendanceResource> | AttendanceResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/events/:event/attendance",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAttendanceUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAttendanceDestroyMockHandler = (
+  overrideResponse?:
+    | AttendanceDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<AttendanceDestroy200> | AttendanceDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/events/:event/attendance",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAttendanceDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getAttendanceIndexMockHandler = (
+  overrideResponse?:
+    | ChaseListEntryResource[]
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ChaseListEntryResource[]> | ChaseListEntryResource[]),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/events/:event/attendance",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAttendanceIndexResponseMock(),
         { status: 200 },
       );
     },
@@ -680,6 +858,30 @@ export const getMemberDestroyMockHandler = (
   );
 };
 
+export const getMemberAttendanceMockHandler = (
+  overrideResponse?:
+    | AttendanceResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<AttendanceResource> | AttendanceResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/events/:event/attendance/:member",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getMemberAttendanceResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getMemberPasswordMockHandler = (
   overrideResponse?:
     | MemberPassword200
@@ -777,6 +979,9 @@ export const getSectionIndexMockHandler = (
 };
 export const getLesCanetonsAPIMock = () => [
   getAccountPasswordMockHandler(),
+  getAttendanceUpdateMockHandler(),
+  getAttendanceDestroyMockHandler(),
+  getAttendanceIndexMockHandler(),
   getAuthLoginMockHandler(),
   getAuthLogoutMockHandler(),
   getAuthMeMockHandler(),
@@ -792,6 +997,7 @@ export const getLesCanetonsAPIMock = () => [
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
   getMemberDestroyMockHandler(),
+  getMemberAttendanceMockHandler(),
   getMemberPasswordMockHandler(),
   getMemberRoleMockHandler(),
   getRoleIndexMockHandler(),

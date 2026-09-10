@@ -34,12 +34,12 @@ class EventController extends Controller
      * with its `mode` parameter: a missing, misspelled or truncated value
      * must never be the one that hides events.
      *
-     * No eager loads: there are no relations yet. MEASURED 2026-09-09: this
-     * costs exactly 1 query today — the events query alone, since this route
-     * carries no permission lookup. Pinned by
-     * test_listing_the_planning_costs_a_fixed_number_of_queries at a budget
-     * of 3, which is a FLOOR for R1c-2 — that release adds one relation and
-     * one query, not an N+1, and the spare room is deliberate.
+     * ONE eager load, and it is the one R1c-2 was given room for: the
+     * caller's own answer, constrained to them in the query. MEASURED
+     * 2026-09-09 at exactly 1 query before attendance existed; the join
+     * makes it 2, against the budget of 3 that
+     * test_listing_the_planning_costs_a_fixed_number_of_queries has always
+     * asserted. The spare room was deliberate and is now spent.
      */
     #[QueryParameter(
         'past',
@@ -57,7 +57,32 @@ class EventController extends Controller
             ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
             : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
 
-        return EventResource::collection($query->get());
+        return EventResource::collection(
+            $query->with(self::myAttendance($request))->get()
+        );
+    }
+
+    /**
+     * The eager load that puts the CALLER's own answer on an event, and only
+     * theirs.
+     *
+     * One extra query for a whole list, not one per row — and constrained to
+     * the caller inside the QUERY rather than filtered afterwards, so
+     * another member's answer is never loaded into memory at all. That is
+     * the half a post-hoc filter gets wrong: it works, until somebody reads
+     * `$event->attendance` for a different purpose and quietly gets
+     * everybody's. Pinned by
+     * MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
+     *
+     * @return array<string, \Closure>
+     */
+    private static function myAttendance(Request $request): array
+    {
+        $memberId = $request->user()?->id;
+
+        return [
+            'attendance' => fn ($query) => $query->where('member_id', $memberId),
+        ];
     }
 
     /**
@@ -74,9 +99,9 @@ class EventController extends Controller
      * {error, code, fields[]} contract; EventIndexTest only asserts the
      * status for that reason).
      */
-    public function show(Event $event): EventResource
+    public function show(Request $request, Event $event): EventResource
     {
-        return new EventResource($event);
+        return new EventResource($event->load(self::myAttendance($request)));
     }
 
     /**
@@ -159,7 +184,10 @@ class EventController extends Controller
 
         Audit::record($request->user(), 'event.updated', 'event', $event->id, $event->title);
 
-        return new EventResource($event);
+        // Loaded explicitly: an organiser who also plays has their own answer
+        // on this event, and a response reporting myAttendance as null would
+        // reset the buttons on their own screen. See EventResource.
+        return new EventResource($event->load(self::myAttendance($request)));
     }
 
     /**
@@ -189,10 +217,20 @@ class EventController extends Controller
         $label = $event->title;
         $id = $event->id;
 
+        // COUNTED BEFORE THE DELETE, because the cascade removes the rows
+        // this counts. Deleting an event destroys every answer given for it,
+        // and saying so is the difference between a confirmation that warns
+        // and one that merely asks again — see the R1c-1 plan Task 12, and
+        // the R3 spec §4 which adds registrationsDeleted beside it.
+        $attendanceDeleted = $event->attendance()->count();
+
         $event->delete();
 
         Audit::record($request->user(), 'event.deleted', 'event', $id, $label);
 
-        return response()->json(['ok' => true]);
+        return response()->json([
+            'ok' => true,
+            'attendanceDeleted' => $attendanceDeleted,
+        ]);
     }
 }

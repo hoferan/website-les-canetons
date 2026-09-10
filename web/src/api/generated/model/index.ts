@@ -7,6 +7,8 @@
 
 export * from "./accountPassword200";
 export * from "./accountPasswordRequest";
+export * from "./attendanceDestroy200";
+export * from "./attendanceResource";
 export * from "./authenticationExceptionResponse";
 export * from "./authenticationExceptionResponseCode";
 export * from "./authLogin200";
@@ -15,6 +17,7 @@ export * from "./authLogin429";
 export * from "./authLoginBody";
 export * from "./authLogout200";
 export * from "./authMe200";
+export * from "./chaseListEntryResource";
 export * from "./config200";
 export * from "./config200Features";
 export * from "./contact200";
@@ -28,6 +31,10 @@ export * from "./memberResource";
 export * from "./memberRole200";
 export * from "./memberStore201";
 export * from "./modelNotFoundExceptionResponse";
+export * from "./recordMemberAttendanceRequest";
+export * from "./recordMemberAttendanceRequestStatus";
+export * from "./recordOwnAttendanceRequest";
+export * from "./recordOwnAttendanceRequestStatus";
 export * from "./replaceMemberRolesRequest";
 export * from "./roleResource";
 export * from "./sectionResource";

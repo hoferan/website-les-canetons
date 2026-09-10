@@ -23,6 +23,8 @@ import type {
 import type {
   AccountPassword200,
   AccountPasswordRequest,
+  AttendanceDestroy200,
+  AttendanceResource,
   AuthLogin200,
   AuthLogin401,
   AuthLogin429,
@@ -30,6 +32,7 @@ import type {
   AuthLogout200,
   AuthMe200,
   AuthenticationExceptionResponse,
+  ChaseListEntryResource,
   Config200,
   Contact200,
   ContactRequest,
@@ -42,6 +45,8 @@ import type {
   MemberRole200,
   MemberStore201,
   ModelNotFoundExceptionResponse,
+  RecordMemberAttendanceRequest,
+  RecordOwnAttendanceRequest,
   ReplaceMemberRolesRequest,
   RoleResource,
   SectionResource,
@@ -216,6 +221,444 @@ export const useAccountPassword = <
 > => {
   return useMutation(getAccountPasswordMutationOptions(options), queryClient);
 };
+
+export type attendanceUpdateResponse200 = {
+  data: AttendanceResource;
+  status: 200;
+};
+
+export type attendanceUpdateResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type attendanceUpdateResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type attendanceUpdateResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type attendanceUpdateResponseSuccess = attendanceUpdateResponse200 & {
+  headers: Headers;
+};
+export type attendanceUpdateResponseError = (
+  attendanceUpdateResponse400 | attendanceUpdateResponse401 | attendanceUpdateResponse404
+) & {
+  headers: Headers;
+};
+
+export type attendanceUpdateResponse =
+  attendanceUpdateResponseSuccess | attendanceUpdateResponseError;
+
+export const getAttendanceUpdateUrl = (event: number) => {
+  return `/events/${event}/attendance`;
+};
+
+/**
+ * PUT, so it is an IDEMPOTENT UPSERT: tapping Oui and then Non needs no
+ * create-versus-update branch in the client and cannot race itself into
+ * two rows — UNIQUE(event_id, member_id) is the backstop.
+ *
+ * NOT AUDITED, deliberately. The audit log records privileged mutations,
+ * and answering for yourself is the one write in this release that
+ * everybody makes and nobody administers. The on-behalf route IS audited,
+ * because that one is a person acting for another person.
+ * @summary A member's own answer
+ */
+export const attendanceUpdate = async (
+  event: number,
+  recordOwnAttendanceRequest: RecordOwnAttendanceRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<attendanceUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<attendanceUpdateResponse>(getAttendanceUpdateUrl(event), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(recordOwnAttendanceRequest),
+  });
+};
+
+export const getAttendanceUpdateMutationKey = () => ["attendanceUpdate"] as const;
+
+export const getAttendanceUpdateMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof attendanceUpdate>>,
+    TError,
+    AttendanceUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof attendanceUpdate>>,
+  TError,
+  AttendanceUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getAttendanceUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof attendanceUpdate>>,
+    AttendanceUpdateMutationVariables
+  > = (props) => {
+    const { event, data } = props ?? {};
+
+    return attendanceUpdate(event, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AttendanceUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof attendanceUpdate>>
+>;
+export type AttendanceUpdateMutationBody = RecordOwnAttendanceRequest;
+export type AttendanceUpdateMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type AttendanceUpdateMutationVariables = { event: number; data: RecordOwnAttendanceRequest };
+
+/**
+ * @summary A member's own answer
+ */
+export const useAttendanceUpdate = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof attendanceUpdate>>,
+      TError,
+      AttendanceUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof attendanceUpdate>>,
+  TError,
+  AttendanceUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getAttendanceUpdateMutationOptions(options), queryClient);
+};
+
+export type attendanceDestroyResponse200 = {
+  data: AttendanceDestroy200;
+  status: 200;
+};
+
+export type attendanceDestroyResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type attendanceDestroyResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type attendanceDestroyResponseSuccess = attendanceDestroyResponse200 & {
+  headers: Headers;
+};
+export type attendanceDestroyResponseError = (
+  attendanceDestroyResponse401 | attendanceDestroyResponse404
+) & {
+  headers: Headers;
+};
+
+export type attendanceDestroyResponse =
+  attendanceDestroyResponseSuccess | attendanceDestroyResponseError;
+
+export const getAttendanceDestroyUrl = (event: number) => {
+  return `/events/${event}/attendance`;
+};
+
+/**
+ * The window is AttendanceIntegrity's (C12).
+ * @summary UNDO. Removes the answer entirely, returning the event to unanswered —
+which is what a second PUT cannot express, and the whole reason this
+endpoint exists rather than the client sending the opposite answer
+ */
+export const attendanceDestroy = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<attendanceDestroyResponse> => {
+  return customFetch<attendanceDestroyResponse>(getAttendanceDestroyUrl(event), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getAttendanceDestroyMutationKey = () => ["attendanceDestroy"] as const;
+
+export const getAttendanceDestroyMutationOptions = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof attendanceDestroy>>,
+    TError,
+    AttendanceDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof attendanceDestroy>>,
+  TError,
+  AttendanceDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getAttendanceDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof attendanceDestroy>>,
+    AttendanceDestroyMutationVariables
+  > = (props) => {
+    const { event } = props ?? {};
+
+    return attendanceDestroy(event, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AttendanceDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof attendanceDestroy>>
+>;
+
+export type AttendanceDestroyMutationError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type AttendanceDestroyMutationVariables = { event: number };
+
+/**
+ * @summary UNDO. Removes the answer entirely, returning the event to unanswered —
+which is what a second PUT cannot express, and the whole reason this
+endpoint exists rather than the client sending the opposite answer
+ */
+export const useAttendanceDestroy = <
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof attendanceDestroy>>,
+      TError,
+      AttendanceDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof attendanceDestroy>>,
+  TError,
+  AttendanceDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getAttendanceDestroyMutationOptions(options), queryClient);
+};
+
+export type attendanceIndexResponse200 = {
+  data: ChaseListEntryResource[];
+  status: 200;
+};
+
+export type attendanceIndexResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type attendanceIndexResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type attendanceIndexResponseSuccess = attendanceIndexResponse200 & {
+  headers: Headers;
+};
+export type attendanceIndexResponseError = (
+  attendanceIndexResponse401 | attendanceIndexResponse404
+) & {
+  headers: Headers;
+};
+
+export type attendanceIndexResponse = attendanceIndexResponseSuccess | attendanceIndexResponseError;
+
+export const getAttendanceIndexUrl = (event: number) => {
+  return `/events/${event}/attendance`;
+};
+
+/**
+ * Returning only the answers would push "who has not replied?" — the
+ * entire point of this screen — into a client-side diff against a
+ * separately-fetched roster, which is two requests that can disagree.
+ *
+ * Answerable means Member::isPlayer(): having a register. There is
+ * deliberately no permission for being answerable — making it a grant is
+ * what produced the old bug where an admin could not say whether they
+ * were coming, and left the "Pas de réponse" counts meaningless.
+ *
+ * TWO QUERIES WHATEVER THE ROSTER SIZE: the players with their register,
+ * and this event's answers keyed by member. Pinned by
+ * test_the_chase_list_costs_a_fixed_number_of_queries — the roster is ~45
+ * people and this screen is read on a phone at a rehearsal.
+ * @summary THE CHASE LIST — every answerable member, not just those who replied
+ */
+export const attendanceIndex = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<attendanceIndexResponse> => {
+  return customFetch<attendanceIndexResponse>(getAttendanceIndexUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAttendanceIndexQueryKey = (event: number) => {
+  return [`/events/${event}/attendance`] as const;
+};
+
+export const getAttendanceIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof attendanceIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAttendanceIndexQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof attendanceIndex>>> = ({ signal }) =>
+    attendanceIndex(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type AttendanceIndexQueryResult = NonNullable<Awaited<ReturnType<typeof attendanceIndex>>>;
+export type AttendanceIndexQueryError =
+  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+
+export function useAttendanceIndex<
+  TData = Awaited<ReturnType<typeof attendanceIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof attendanceIndex>>,
+          TError,
+          Awaited<ReturnType<typeof attendanceIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAttendanceIndex<
+  TData = Awaited<ReturnType<typeof attendanceIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof attendanceIndex>>,
+          TError,
+          Awaited<ReturnType<typeof attendanceIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAttendanceIndex<
+  TData = Awaited<ReturnType<typeof attendanceIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary THE CHASE LIST — every answerable member, not just those who replied
+ */
+
+export function useAttendanceIndex<
+  TData = Awaited<ReturnType<typeof attendanceIndex>>,
+  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+>(
+  event: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getAttendanceIndexQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type authLoginResponse200 = {
   data: AuthLogin200;
@@ -815,12 +1258,12 @@ export const getEventIndexUrl = (params?: EventIndexParams) => {
  * with its `mode` parameter: a missing, misspelled or truncated value
  * must never be the one that hides events.
  *
- * No eager loads: there are no relations yet. MEASURED 2026-09-09: this
- * costs exactly 1 query today — the events query alone, since this route
- * carries no permission lookup. Pinned by
- * test_listing_the_planning_costs_a_fixed_number_of_queries at a budget
- * of 3, which is a FLOOR for R1c-2 — that release adds one relation and
- * one query, not an N+1, and the spare room is deliberate.
+ * ONE eager load, and it is the one R1c-2 was given room for: the
+ * caller's own answer, constrained to them in the query. MEASURED
+ * 2026-09-09 at exactly 1 query before attendance existed; the join
+ * makes it 2, against the budget of 3 that
+ * test_listing_the_planning_costs_a_fixed_number_of_queries has always
+ * asserted. The spare room was deliberate and is now spent.
  * @summary The planning: upcoming by default, or the history behind `?past=1`
  */
 export const eventIndex = async (
@@ -2218,6 +2661,150 @@ export const useMemberDestroy = <
   TContext
 > => {
   return useMutation(getMemberDestroyMutationOptions(options), queryClient);
+};
+
+export type memberAttendanceResponse200 = {
+  data: AttendanceResource;
+  status: 200;
+};
+
+export type memberAttendanceResponse400 = {
+  data: ValidationExceptionResponse;
+  status: 400;
+};
+
+export type memberAttendanceResponse401 = {
+  data: AuthenticationExceptionResponse;
+  status: 401;
+};
+
+export type memberAttendanceResponse404 = {
+  data: ModelNotFoundExceptionResponse;
+  status: 404;
+};
+
+export type memberAttendanceResponseSuccess = memberAttendanceResponse200 & {
+  headers: Headers;
+};
+export type memberAttendanceResponseError = (
+  memberAttendanceResponse400 | memberAttendanceResponse401 | memberAttendanceResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberAttendanceResponse =
+  memberAttendanceResponseSuccess | memberAttendanceResponseError;
+
+export const getMemberAttendanceUrl = (event: number, member: number) => {
+  return `/events/${event}/attendance/${member}`;
+};
+
+export const memberAttendance = async (
+  event: number,
+  member: number,
+  recordMemberAttendanceRequest: RecordMemberAttendanceRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberAttendanceResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<memberAttendanceResponse>(getMemberAttendanceUrl(event, member), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(recordMemberAttendanceRequest),
+  });
+};
+
+export const getMemberAttendanceMutationKey = () => ["memberAttendance"] as const;
+
+export const getMemberAttendanceMutationOptions = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof memberAttendance>>,
+    TError,
+    MemberAttendanceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof memberAttendance>>,
+  TError,
+  MemberAttendanceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getMemberAttendanceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof memberAttendance>>,
+    MemberAttendanceMutationVariables
+  > = (props) => {
+    const { event, member, data } = props ?? {};
+
+    return memberAttendance(event, member, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MemberAttendanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof memberAttendance>>
+>;
+export type MemberAttendanceMutationBody = RecordMemberAttendanceRequest;
+export type MemberAttendanceMutationError =
+  ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type MemberAttendanceMutationVariables = {
+  event: number;
+  member: number;
+  data: RecordMemberAttendanceRequest;
+};
+
+export const useMemberAttendance = <
+  TError =
+    ValidationExceptionResponse | AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof memberAttendance>>,
+      TError,
+      MemberAttendanceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof memberAttendance>>,
+  TError,
+  MemberAttendanceMutationVariables,
+  TContext
+> => {
+  return useMutation(getMemberAttendanceMutationOptions(options), queryClient);
 };
 
 export type memberPasswordResponse200 = {

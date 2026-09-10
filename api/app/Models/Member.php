@@ -8,6 +8,7 @@ use Database\Factories\MemberFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -73,6 +74,23 @@ class Member extends Authenticatable
     public function isPlayer(): bool
     {
         return $this->section_id !== null;
+    }
+
+    /**
+     * This member's answers, across every event.
+     *
+     * The chase list does NOT load it through this relation — it fetches one
+     * event's answers in a single query and setRelation()s them onto the
+     * roster, because a hasMany per row is the N+1 that screen would
+     * otherwise grow. The relation exists so that assignment has somewhere to
+     * land, and for the `attendance` singular accessor a chase-list row
+     * reads.
+     *
+     * @return HasMany<Attendance, $this>
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
     }
 
     /** @return BelongsToMany<Role, $this> */

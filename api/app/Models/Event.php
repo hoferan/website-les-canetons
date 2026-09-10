@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A rehearsal or gig on the planning. The committee enters it, every member
@@ -54,6 +55,21 @@ class Event extends Model
         'is_public',
         'notes',
     ];
+
+    /**
+     * Every answer for this event.
+     *
+     * GET /api/events loads it CONSTRAINED TO THE CALLER, which is what
+     * makes `myAttendance` one extra query for the whole list rather than
+     * one per row. The chase list does not use this relation at all — it
+     * fetches the answers once and setRelation()s them onto the roster.
+     *
+     * @return HasMany<Attendance, $this>
+     */
+    public function attendance(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
 
     protected function casts(): array
     {

@@ -49,6 +49,13 @@ export const fr = {
     invalid_session: "Session invalide",
     service_unavailable: "Service indisponible",
     captcha_failed: "Vérification anti-robot échouée, veuillez réessayer.",
+    // Attendance. `not_answerable` is a 403 that is NOT about a missing
+    // permission — there is none for answering — so it must not read like
+    // one, or the reader goes looking for a right nobody can grant them.
+    not_answerable: "Vous ne faites partie d'aucun pupitre : aucune réponse ne vous est demandée.",
+    cannot_record_for_self:
+      "Pour vous-même, répondez depuis le planning : une réponse retirée demande une raison.",
+    answer_already_settled: "Ce délai est passé. Modifiez votre réponse plutôt que de l'annuler.",
   },
   validation: {
     required: "est requis",
@@ -111,5 +118,10 @@ export const fr = {
     // sends no template at all or sends something that is not an object.
     dates: "Dates",
     template: "Modèle",
+    // Attendance. `note` carries the reason a member owes when they take
+    // back a yes (C11), so it is the field a validation failure lands on in
+    // that dialog.
+    status: "Réponse",
+    note: "Raison",
   },
 };

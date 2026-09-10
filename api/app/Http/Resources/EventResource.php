@@ -27,7 +27,37 @@ class EventResource extends JsonResource
             'attire' => $this->attire,
             'isPublic' => $this->is_public,
             'notes' => $this->notes,
+            'myAttendance' => $this->myAttendance(),
         ];
+    }
+
+    /**
+     * The CALLER's own answer, or null when they have not given one.
+     *
+     * One request renders the whole planning with both buttons already in
+     * the right state; a per-event fetch would defeat one-tap answering on a
+     * bus with poor signal.
+     *
+     * READS A PRE-LOADED, CALLER-CONSTRAINED RELATION and never queries. The
+     * controller is what scopes `attendance` to the current member, so this
+     * cannot leak somebody else's answer and cannot become an N+1 — which is
+     * the trap, because both failures would be silent.
+     *
+     * An unloaded relation reports null, so a write path that forgets to
+     * load it says "no answer" rather than throwing. That is deliberate for
+     * store() and the series generator, where a freshly created event
+     * genuinely has none, and it is why update() loads it explicitly —
+     * pinned by test_editing_an_event_still_reports_my_own_answer.
+     */
+    private function myAttendance(): ?AttendanceResource
+    {
+        if (! $this->relationLoaded('attendance')) {
+            return null;
+        }
+
+        $mine = $this->attendance->first();
+
+        return $mine === null ? null : new AttendanceResource($mine);
     }
 
     /**

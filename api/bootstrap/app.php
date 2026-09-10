@@ -2,6 +2,7 @@
 
 use App\Exceptions\AccessIntegrityViolation;
 use App\Exceptions\ApiError;
+use App\Exceptions\AttendanceRefused;
 use App\Exceptions\ReauthenticationFailed;
 use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
@@ -175,6 +176,16 @@ return Application::configure(basePath: dirname(__DIR__))
         // catch-all HttpException closure below so the specific case wins.
         $exceptions->render(fn (AccessIntegrityViolation $e, Request $request) => $request->is('api/*')
             ? ApiError::json(409, $e->errorCode, $e->getMessage())
+            : null);
+
+        // 403 or 409. An answer was refused for a reason about the STATE of
+        // things rather than a missing grant — see App\Support\
+        // AttendanceIntegrity. The status travels on the exception because
+        // "you are in no register" is not a conflict while C12's closed undo
+        // window and C14's self-refusal are; hard-coding either here would
+        // make one of the three lie.
+        $exceptions->render(fn (AttendanceRefused $e, Request $request) => $request->is('api/*')
+            ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
             : null);
 
         // 403 or 429. A destructive privileged action was refused because the

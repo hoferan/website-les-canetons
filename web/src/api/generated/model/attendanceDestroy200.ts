@@ -5,8 +5,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type EventDestroy200 = {
+export type AttendanceDestroy200 = {
   ok: boolean;
-  /** @minimum 0 */
-  attendanceDeleted: number;
 };

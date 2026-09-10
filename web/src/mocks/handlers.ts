@@ -448,6 +448,7 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      myAttendance: null,
     },
     {
       id: 2,
@@ -458,6 +459,7 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      myAttendance: null,
     },
     {
       id: 3,
@@ -468,6 +470,7 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      myAttendance: null,
     },
     {
       // The two-day case, which is the whole reason `ends_at` is a datetime
@@ -480,6 +483,7 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: "Repas et logement compris.",
+      myAttendance: null,
     },
     {
       // The missing-attire case: the card has to render without one.
@@ -491,6 +495,7 @@ function initialEvents(): EventResource[] {
       attire: null,
       isPublic: false,
       notes: null,
+      myAttendance: null,
     },
     {
       // The only past one.
@@ -502,6 +507,7 @@ function initialEvents(): EventResource[] {
       attire: "Libre",
       isPublic: false,
       notes: null,
+      myAttendance: null,
     },
   ];
 }
@@ -921,6 +927,7 @@ const overrides = [
         attire: body.template.attire,
         isPublic: body.template.isPublic,
         notes: body.template.notes,
+        myAttendance: null,
       };
     });
 
