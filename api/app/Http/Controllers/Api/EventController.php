@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
 use App\Support\Audit;
@@ -102,5 +103,88 @@ class EventController extends Controller
         Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
 
         return response()->json(new EventResource($event), 201);
+    }
+
+    /**
+     * Corrects one already on it.
+     *
+     * The fields go through array_key_exists(), not isset(): isset() is false
+     * for an explicitly-sent null, so clearing the attire or the notes — the
+     * committee deciding a gig is in ordinary clothes after all — would answer
+     * 200 and silently change nothing. MemberController::update() carries the
+     * same loop for the same reason.
+     *
+     * (That comment there also names $request->has(). MEASURED 2026-09-10:
+     * has() is in fact TRUE for an explicitly-sent null — Arr::has() is
+     * array_key_exists underneath, and it is filled() that reads false. So
+     * has() would work here; array_key_exists is still the right shape,
+     * because it asks the question of validated() — the array the rules have
+     * already vetted — rather than of the raw input.)
+     *
+     * The two timestamps go in as the SPA sent them, offset and all — see
+     * store(), and App\Casts\UtcDateTime for why no endpoint converts them.
+     *
+     * Audited with the NEW title: a row still labelled with the old one names
+     * an event that no longer exists under that name.
+     */
+    public function update(UpdateEventRequest $request, Event $event): EventResource
+    {
+        $data = $request->validated();
+
+        $columns = [
+            'title' => 'title',
+            'startsAt' => 'starts_at',
+            'endsAt' => 'ends_at',
+            'location' => 'location',
+            'attire' => 'attire',
+            'isPublic' => 'is_public',
+            'notes' => 'notes',
+        ];
+
+        foreach ($columns as $field => $column) {
+            if (array_key_exists($field, $data)) {
+                $event->{$column} = $data[$field];
+            }
+        }
+
+        $event->save();
+
+        Audit::record($request->user(), 'event.updated', 'event', $event->id, $event->title);
+
+        return new EventResource($event);
+    }
+
+    /**
+     * Takes one off the planning.
+     *
+     * NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has no
+     * lockout invariant to violate, and nothing references `events` yet.
+     *
+     * The title and the id are captured BEFORE the delete, because the row is
+     * gone by the time anybody reads the audit back — the label is then the
+     * only part of that entry that still means anything.
+     *
+     * NO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving
+     * both reads after $event->delete(): all 25 tests stay green, because
+     * Eloquent leaves the deleted model's attributes in memory. It is kept
+     * first for the reason MemberController::destroy() keeps its own ordering
+     * — the audit must not depend on what a soft delete, a cascading delete
+     * or a refreshed model would leave behind.
+     *
+     * {ok: true} rather than 204, so R1c-2 has somewhere to put the count of
+     * answers that went with the event: a member who had said yes deserves to
+     * be told how many responses were discarded, and a 204 has no body to say
+     * it in.
+     */
+    public function destroy(Request $request, Event $event): JsonResponse
+    {
+        $label = $event->title;
+        $id = $event->id;
+
+        $event->delete();
+
+        Audit::record($request->user(), 'event.deleted', 'event', $id, $label);
+
+        return response()->json(['ok' => true]);
     }
 }

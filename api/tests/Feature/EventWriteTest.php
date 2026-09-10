@@ -239,4 +239,264 @@ class EventWriteTest extends TestCase
         $event = Event::query()->sole();
         $this->assertSame('08:00', $event->starts_at->utc()->format('H:i'));
     }
+    // -------------------------------------------------- editing and deleting
+
+    public function test_an_organiser_edits_one_field_without_blanking_the_others(): void
+    {
+        // PATCH, so every rule is `sometimes`: a form posting only what changed
+        // must not clear everything else.
+        $event = Event::factory()->create(['title' => 'Répétition', 'location' => 'Werkhof']);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition + apéritif'])
+            ->assertOk()
+            ->assertJsonPath('title', 'Répétition + apéritif');
+
+        // The STORED title as well as the echoed one. A handler that assigned
+        // the attribute and never called save() answers 200 with the new title
+        // and leaves the planning exactly as it was — and the location
+        // assertion below would pass right alongside it.
+        $event->refresh();
+        $this->assertSame('Répétition + apéritif', $event->title);
+        $this->assertSame('Werkhof', $event->location);
+    }
+
+    public function test_every_editable_field_can_be_changed(): void
+    {
+        // Every value here is one the factory does NOT produce, which is the
+        // whole point: `isPublic` false and `attire`/`notes` null coincide with
+        // the column defaults, so a PATCH that silently drops a field is
+        // indistinguishable from one that writes it unless the test sends
+        // something else. Task 5 lost `is_public` out of its insert with all
+        // eight tests green for exactly that reason (see 6250d7f).
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", [
+                'title' => 'Cortège du Carnaval',
+                'startsAt' => '2027-02-13T14:00:00+01:00',
+                'endsAt' => '2027-02-13T18:00:00+01:00',
+                'location' => 'Place Georges-Python',
+                'attire' => 'Costume complet',
+                'isPublic' => true,
+                'notes' => 'Rendez-vous une heure avant.',
+            ])
+            ->assertOk();
+
+        $event->refresh();
+        $this->assertSame('Cortège du Carnaval', $event->title);
+        $this->assertSame('2027-02-13 13:00', $event->starts_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('2027-02-13 17:00', $event->ends_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('Place Georges-Python', $event->location);
+        $this->assertSame('Costume complet', $event->attire);
+        $this->assertTrue($event->is_public);
+        $this->assertSame('Rendez-vous une heure avant.', $event->notes);
+    }
+
+    public function test_clearing_a_nullable_field_stores_null(): void
+    {
+        // THE array_key_exists() CASE, and the only one in this file: isset()
+        // reads false for an explicitly-sent null, so clearing the attire —
+        // the committee deciding a gig is in ordinary clothes after all —
+        // would answer 200 and change nothing. Every other test here sends a
+        // value, which is how that stays invisible.
+        $event = Event::factory()->create([
+            'attire' => 'Costume complet',
+            'notes' => 'Rendez-vous une heure avant.',
+        ]);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['attire' => null, 'notes' => null])
+            ->assertOk()
+            ->assertJsonPath('attire', null)
+            ->assertJsonPath('notes', null);
+
+        $event->refresh();
+        $this->assertNull($event->attire);
+        $this->assertNull($event->notes);
+    }
+
+    public function test_editing_still_refuses_an_end_before_the_start(): void
+    {
+        // The rule has to hold on PATCH too, and this is the sharp case: only the
+        // END is sent, so the comparison must reach for the STORED start rather
+        // than a startsAt that is not in the request.
+        $event = Event::factory()->create([
+            'starts_at' => '2026-09-05 08:00:00',
+            'ends_at' => '2026-09-05 10:00:00',
+        ]);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'endsAt')
+            // The token as well as the field, for the reason the POST's own
+            // test gives: `after` would otherwise fall back to
+            // 'invalid_format' and call a well-formed timestamp malformed.
+            ->assertJsonPath('fields.0.reason', 'must_be_after');
+
+        // 400 does not by itself prove nothing was written.
+        $this->assertSame('2026-09-05 10:00', $event->fresh()->ends_at->utc()->format('Y-m-d H:i'));
+    }
+
+    public function test_editing_reports_an_unparseable_end_as_a_format_error(): void
+    {
+        // PINS THE RULE ORDER on the PATCH's endsAt, the same load-bearing
+        // order StoreEventRequest documents and for the same reason: ApiError
+        // reports only the FIRST failed rule per field. Measured 2026-09-10 on
+        // this stack — with `date` moved after the comparison, this payload is
+        // reported as must_be_after, so the committee is told that 'pas une
+        // date' "doit être après le début", about the one thing that was not
+        // wrong.
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['endsAt' => 'pas une date'])
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'endsAt')
+            ->assertJsonPath('fields.0.reason', 'invalid_format');
+    }
+
+    public function test_editing_cannot_blank_the_title(): void
+    {
+        // `sometimes` on its own would let this through: it skips an ABSENT
+        // field, and '' is present and a string. The `required` paired with it
+        // is what refuses an emptied title, and nothing else in this file
+        // would notice if it were dropped.
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['title' => ''])
+            ->assertStatus(400)
+            ->assertJsonPath('fields.0.field', 'title')
+            ->assertJsonPath('fields.0.reason', 'required');
+
+        $this->assertSame('Répétition', $event->fresh()->title);
+    }
+
+    public function test_a_player_cannot_edit(): void
+    {
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->player)
+            ->patchJson("/api/events/{$event->id}", ['title' => 'Non'])
+            ->assertStatus(403);
+
+        // As with creating: a gate that answered 403 after writing would pass
+        // the status assertion and still have edited everybody's planning.
+        $this->assertSame('Répétition', $event->fresh()->title);
+    }
+
+    public function test_events_manage_alone_is_enough_to_edit(): void
+    {
+        // PINS THE PERMISSION STRING ON THIS ROUTE. The middleware argument is
+        // written once per route, so the create test's pin says nothing about
+        // this one: the organiser holds `direction` (every permission) and the
+        // player holds none, so any string at all separates them and a typo
+        // here would be caught by nothing. A member holding a fixture role
+        // that grants exactly events.manage admits only the right string.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($organiserOnly)
+            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition avancée'])
+            ->assertOk();
+
+        $this->assertSame('Répétition avancée', $event->fresh()->title);
+    }
+
+    public function test_editing_is_audited(): void
+    {
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition + apéritif']);
+
+        $this->assertDatabaseHas('audit_log', [
+            'actor_member_id' => $this->organiser->id,
+            'action' => 'event.updated',
+            'target_type' => 'event',
+            'target_id' => $event->id,
+            // The NEW title: a row still labelled with the old one names an
+            // event that no longer exists under that name.
+            'target_label' => 'Répétition + apéritif',
+        ]);
+    }
+
+    public function test_an_organiser_deletes_an_event(): void
+    {
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->deleteJson("/api/events/{$event->id}")
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        // {ok: true} is exactly what a handler that deleted nothing would also
+        // answer; this line is the one that says the row is gone.
+        $this->assertDatabaseMissing('events', ['id' => $event->id]);
+    }
+
+    public function test_a_player_cannot_delete(): void
+    {
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->player)
+            ->deleteJson("/api/events/{$event->id}")
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('events', ['id' => $event->id]);
+    }
+
+    public function test_events_manage_alone_is_enough_to_delete(): void
+    {
+        // The DELETE route carries its own copy of the middleware string, so
+        // it needs its own pin — see the edit case above for why neither the
+        // organiser nor the player can supply one.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($organiserOnly)
+            ->deleteJson("/api/events/{$event->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('events', ['id' => $event->id]);
+    }
+
+    public function test_deleting_is_audited_with_the_title_it_had(): void
+    {
+        // Captured BEFORE the delete: the row is gone by the time anybody reads
+        // the audit back.
+        $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
+
+        $this->actingAsMember($this->organiser)->deleteJson("/api/events/{$event->id}");
+
+        $this->assertDatabaseHas('audit_log', [
+            'actor_member_id' => $this->organiser->id,
+            'action' => 'event.deleted',
+            'target_type' => 'event',
+            'target_id' => $event->id,
+            'target_label' => 'Vendanges Cheyres',
+        ]);
+    }
+
+    public function test_an_unknown_event_is_a_404_not_a_500(): void
+    {
+        // assertStatus(404) alone cannot tell "route-model binding refused an
+        // unknown id" from "there is no such route": in Task 4 that bare
+        // assertion passed with the route deleted outright. The message is
+        // unique to the binding failing to resolve, and is in the JSON body
+        // whether or not APP_DEBUG is on — only trace/exception/file are
+        // debug-gated. Same pairing as
+        // EventIndexTest::test_an_unknown_event_is_a_404.
+        $this->actingAsMember($this->organiser)->patchJson('/api/events/99999', ['title' => 'X'])
+            ->assertStatus(404)
+            ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
+    }
 }
