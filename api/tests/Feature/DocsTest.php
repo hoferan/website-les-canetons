@@ -26,12 +26,23 @@ class DocsTest extends TestCase
         $this->getJson('/api/docs.json')->assertNotFound();
     }
 
-    public function test_the_flag_defaults_to_off(): void
+    /**
+     * REVERSED on 2026-09-11. This asserted the flag defaulted to OFF, on the
+     * grounds that exposing the API surface was itself a risk.
+     *
+     * It is not, and that default was security through obscurity:
+     * web/src/api/generated/endpoints.ts ships inside the SPA bundle every
+     * visitor downloads, carrying every path, method and type more
+     * machine-readably than the reference does. What protects this API is
+     * auth:sanctum and the permission middleware, and documenting it weakens
+     * neither.
+     *
+     * What WAS real about the old restriction is the console, not the content —
+     * and that is now gated on its own, by the test below. Read config/docs.php
+     * before reversing this again.
+     */
+    public function test_the_reference_defaults_to_on(): void
     {
-        // The property that matters on a server: a PROD .env that sets the key
-        // to nothing, or a host provisioned before the key existed, must not
-        // serve an interactive console over the whole API surface.
-        //
         // Read from the config FILE with the variable absent, not from
         // config('docs.enabled') — phpunit.xml or the container may have set
         // it, and this asserts the default rather than the ambient value. Same
@@ -46,7 +57,7 @@ class DocsTest extends TestCase
 
         try {
             $config = require config_path('docs.php');
-            $this->assertFalse($config['enabled']);
+            $this->assertTrue($config['enabled']);
         } finally {
             if ($fromEnv !== null) {
                 $_ENV[$variable] = $fromEnv;
@@ -66,6 +77,77 @@ class DocsTest extends TestCase
 
         $this->get('/api/docs')->assertOk();
         $this->getJson('/api/docs.json')->assertOk();
+    }
+
+    /**
+     * The console is the half that is actually dangerous on a live site.
+     *
+     * The page primes the CSRF cookie and sends credentials so that "Send"
+     * genuinely performs the request — which is the point of it on a local
+     * stack, and one click from DELETE /api/v1/events/{event} against real data
+     * for anyone reading the reference while logged in as the committee.
+     *
+     * Asserted on the RENDERED PAGE rather than on config('docs.interactive'),
+     * because the config value is only worth anything if the view reads it. A
+     * test through the config would pass with the Blade expression deleted.
+     */
+    public function test_the_try_it_console_is_hidden_in_production(): void
+    {
+        config(['docs.enabled' => true, 'docs.interactive' => false]);
+
+        $this->get('/api/docs')
+            ->assertOk()
+            ->assertSee('hideTestRequestButton: true', escape: false);
+    }
+
+    public function test_the_try_it_console_is_available_everywhere_else(): void
+    {
+        config(['docs.enabled' => true, 'docs.interactive' => true]);
+
+        $this->get('/api/docs')
+            ->assertOk()
+            ->assertSee('hideTestRequestButton: false', escape: false);
+    }
+
+    /**
+     * The default the flag lands on when a server has never heard of the key.
+     *
+     * Read from the config FILE, like the enabled default above. APP_ENV unset
+     * must read as production and turn the console OFF — the same fail-safe
+     * direction App\Support\Environment takes for the staging ribbon, and the
+     * one that matters, because the unsafe answer here is silent.
+     */
+    public function test_the_console_defaults_to_off_when_the_environment_is_unknown(): void
+    {
+        $keys = ['API_DOCS_INTERACTIVE', 'APP_ENV'];
+        $saved = [];
+
+        foreach ($keys as $key) {
+            $saved[$key] = [
+                'env' => array_key_exists($key, $_ENV) ? $_ENV[$key] : null,
+                'server' => array_key_exists($key, $_SERVER) ? $_SERVER[$key] : null,
+                'process' => getenv($key),
+            ];
+            unset($_ENV[$key], $_SERVER[$key]);
+            putenv($key);
+        }
+
+        try {
+            $config = require config_path('docs.php');
+            $this->assertFalse($config['interactive']);
+        } finally {
+            foreach ($keys as $key) {
+                if ($saved[$key]['env'] !== null) {
+                    $_ENV[$key] = $saved[$key]['env'];
+                }
+                if ($saved[$key]['server'] !== null) {
+                    $_SERVER[$key] = $saved[$key]['server'];
+                }
+                if ($saved[$key]['process'] !== false) {
+                    putenv("{$key}={$saved[$key]['process']}");
+                }
+            }
+        }
     }
 
     public function test_the_docs_need_no_login(): void

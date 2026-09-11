@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\DocsController;
 use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\MigrateController;
+use App\Http\Controllers\Api\ProblemController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,6 +33,19 @@ Route::middleware('docs')->group(function () {
     Route::get('/docs', DocsController::class);
     Route::get('/docs.json', DocsDocumentController::class);
 });
+
+// The problem types every error's `type` URI points at. PUBLIC AND UNGATED,
+// unlike /api/docs above: that reference describes the whole schema, this
+// describes what one error token means — and that vocabulary already ships to
+// every visitor inside the SPA bundle (web/src/i18n/fr.ts). A `type` URI that
+// resolved only where API_DOCS_ENABLED happened to be on would be worse than
+// one that never resolved at all.
+//
+// Unversioned for the same reason as everything else in this file, and here it
+// is the strongest case: clients BRANCH on `type`, so it can never change once
+// anything depends on it. See App\Support\ErrorVocabulary::TYPE_BASE.
+Route::get('/problems', [ProblemController::class, 'index']);
+Route::get('/problems/{slug}', [ProblemController::class, 'show']);
 
 // Token-gated (not session-gated): the deploy tooling calls this server-side
 // with the shared MIGRATE_TOKEN. Excluded from the OpenAPI document — nothing

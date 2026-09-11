@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\ApiError;
+use App\Support\ErrorVocabulary;
 use Illuminate\Foundation\Http\FormRequest;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -78,20 +79,27 @@ class ApiErrorVocabularyTest extends TestCase
     private const EXTRA_FIELDS = ['username', 'password'];
 
     /**
-     * Codes no `::json(<status>, '<code>'` scan of app/ can see.
+     * The second way a code reaches a response: carried on an exception.
      *
-     * - cannot_remove_last_administrator, cannot_demote_self,
-     *   cannot_delete_self: raised by App\Support\AccessIntegrity, but never
-     *   through a direct ApiError::json() call — they are thrown as an
-     *   AccessIntegrityViolation and rendered by an exception-renderer closure
-     *   in bootstrap/app.php, which sits outside APP_DIR entirely. Without this
-     *   entry the scan simply never encounters them, and this guard would pass
-     *   whether or not fr.ts carried their French copy.
+     * These four classes take the code as a constructor argument and are
+     * rendered by closures in bootstrap/app.php, which sits outside APP_DIR —
+     * so a scan for `::json(<status>, '<code>'` never encounters them.
+     *
+     * THIS REPLACED A HAND-WRITTEN EXTRA_CODES LIST, and the replacement is the
+     * point. That list named the three AccessIntegrityViolation codes and was
+     * never extended when AttendanceRefused and ReauthenticationFailed arrived,
+     * so `answer_already_settled`, `cannot_record_for_self`, `not_answerable`
+     * and `reauth_failed` were invisible to the scan — and
+     * test_every_emittable_code_has_french_copy was quietly not checking any of
+     * them. They happened to have French. A list that must be remembered is a
+     * list that will not be; a pattern that matches the CONSTRUCT covers every
+     * future one for free.
      */
-    private const EXTRA_CODES = [
-        'cannot_remove_last_administrator',
-        'cannot_demote_self',
-        'cannot_delete_self',
+    private const CODE_CARRYING_EXCEPTIONS = [
+        'AccessIntegrityViolation',
+        'AttendanceRefused',
+        'ReauthenticationFailed',
+        'SchemaUnavailable',
     ];
 
     /**
@@ -110,6 +118,10 @@ class ApiErrorVocabularyTest extends TestCase
         'method_not_allowed', 'invalid_session', 'invalid_credentials',
         'service_unavailable', 'cannot_remove_last_administrator',
         'cannot_demote_self', 'cannot_delete_self',
+        // One from each code-carrying exception class, so a regex that stops
+        // matching that construct fails here rather than silently shrinking the
+        // derived set — which is exactly how these four went unchecked before.
+        'not_answerable', 'reauth_failed', 'answer_already_settled',
     ];
 
     private const MUST_INCLUDE_FIELDS = [
@@ -142,6 +154,65 @@ class ApiErrorVocabularyTest extends TestCase
     public function test_every_emittable_field_has_french_copy(): void
     {
         $this->assertVocabularyCovered('fields', 'fields', $this->emittableFields());
+    }
+
+    /**
+     * App\Support\ErrorVocabulary is CHECKED against the source scan, in both
+     * directions, rather than trusted.
+     *
+     * That is what makes it a description of the API rather than a wish about
+     * it. It feeds three readers — the OpenAPI `code` enum, the problem-type
+     * pages at /api/problems, and the French-coverage test above — and a
+     * hand-maintained list feeding three readers is exactly the sort of thing
+     * that rots six months after the person who wrote it moved on.
+     *
+     * Both directions matter, and they catch opposite mistakes. A code the
+     * source emits but the vocabulary omits ships a problem type with no
+     * documentation, and a `type` URI that 404s. A code the vocabulary
+     * documents but nothing emits publishes a page for an error that cannot
+     * happen, which is worse than no page: a developer reads it and writes a
+     * branch that never runs.
+     */
+    public function test_the_error_vocabulary_matches_what_the_code_emits(): void
+    {
+        $emitted = $this->emittableCodes();
+        $documented = ErrorVocabulary::codes();
+
+        sort($emitted);
+        sort($documented);
+
+        self::assertSame($documented, $emitted, sprintf(
+            "App\\Support\\ErrorVocabulary and the codes app/ actually emits disagree.\n"
+            ."Emitted but undocumented: %s\n"
+            ."Documented but never emitted: %s\n"
+            .'Every code needs a status, a title and a detail sentence there — '
+            .'it is what /api/problems/{code} serves, and what the `type` URI in '
+            .'every problem document points at.',
+            implode(', ', array_diff($emitted, $documented)) ?: '(none)',
+            implode(', ', array_diff($documented, $emitted)) ?: '(none)',
+        ));
+    }
+
+    /**
+     * The reasons half of the same guarantee.
+     *
+     * Derived from ApiError::REASONS plus EXTRA_REASONS by emittableReasons(),
+     * so this catches a rule mapped to a reason token nobody listed.
+     */
+    public function test_the_error_vocabulary_lists_every_emittable_reason(): void
+    {
+        $emitted = $this->emittableReasons();
+        $documented = ErrorVocabulary::REASONS;
+
+        sort($emitted);
+        sort($documented);
+
+        self::assertSame($documented, $emitted, sprintf(
+            "App\\Support\\ErrorVocabulary::REASONS and the reasons app/ can emit disagree.\n"
+            ."Emitted but unlisted: %s\nListed but never emitted: %s",
+            implode(', ', array_diff($emitted, $documented)) ?: '(none)',
+            implode(', ', array_diff($documented, $emitted)) ?: '(none)',
+        ));
     }
 
     // ----------------------------------------------------------- the assertion
@@ -205,9 +276,19 @@ class ApiErrorVocabularyTest extends TestCase
      */
     private function emittableCodes(): array
     {
+        // `new SomeRefusal(..., 'the_code', ...)` — the code is not always the
+        // first argument (AttendanceRefused and ReauthenticationFailed put the
+        // status first, because theirs varies), so this takes the first
+        // snake_case string literal inside the constructor call rather than
+        // assuming a position. [^)]* keeps it inside that call.
+        $carried = sprintf(
+            "/new\s+(?:%s)\(\s*[^)]*?'([a-z_]{4,})'/",
+            implode('|', self::CODE_CARRYING_EXCEPTIONS),
+        );
+
         return $this->normalise(array_merge(
             $this->scanAppFor("/::json\(\s*\d+\s*,\s*'([a-z_]+)'/"),
-            self::EXTRA_CODES,
+            $this->scanAppFor($carried),
         ), self::MUST_INCLUDE_CODES, 'codes');
     }
 

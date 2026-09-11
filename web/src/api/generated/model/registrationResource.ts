@@ -131,6 +131,138 @@
  *
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
+ *
+ * ## Problem types
+ *
+ * Every failure this API can answer with, and what each one means. The headings
+ * are the `code` member; the link is the `type` URI, which resolves to the same
+ * entry as a standalone page on whichever host answered you.
+ *
+ * ### `validation_failed`
+ *
+ * **400** · `Invalid form submission` · [/api/problems/validation-failed](/api/problems/validation-failed)
+ *
+ * One or more submitted fields were rejected. `errors` names each one and why, as machine tokens: read `errors[].field` and `errors[].reason` rather than `title`. A `reason` carries `params` when its sentence needs a number, for example `{"max": 255}`.
+ *
+ * ### `not_authenticated`
+ *
+ * **401** · `Not authenticated` · [/api/problems/not-authenticated](/api/problems/not-authenticated)
+ *
+ * No session cookie was sent, or it has expired. Call POST /api/v1/login. This is NOT the same as 419 invalid_session, which means you are still logged in and only the CSRF token needs re-priming — retrying a login there is the wrong move.
+ *
+ * ### `invalid_credentials`
+ *
+ * **401** · `Incorrect username or password` · [/api/problems/invalid-credentials](/api/problems/invalid-credentials)
+ *
+ * The username does not exist, or the password is wrong. Deliberately the same answer for both, so this endpoint cannot be used to discover which accounts exist.
+ *
+ * ### `invalid_session`
+ *
+ * **419** · `Invalid session` · [/api/problems/invalid-session](/api/problems/invalid-session)
+ *
+ * A mutating request arrived without a valid X-XSRF-TOKEN header. You are still logged in: call GET /sanctum/csrf-cookie and retry the request. Sending the user back to the login screen on this code is a bug, and a common one.
+ *
+ * ### `too_many_attempts`
+ *
+ * **429** · `Too many attempts` · [/api/problems/too-many-attempts](/api/problems/too-many-attempts)
+ *
+ * Rate limited after repeated failures. Applies to logging in and to re-entering your own password. Attempts made while locked out do not extend the lockout, and a correct password during it is still refused.
+ *
+ * ### `reauth_failed`
+ *
+ * **403** · `Password confirmation failed` · [/api/problems/reauth-failed](/api/problems/reauth-failed)
+ *
+ * The current password sent alongside a sensitive change was wrong. The session is untouched and still valid — this is a re-proof of identity, not a session failure.
+ *
+ * ### `access_denied`
+ *
+ * **403** · `Access denied` · [/api/problems/access-denied](/api/problems/access-denied)
+ *
+ * You are authenticated but hold no role granting the permission this route requires. Permissions are the only thing enforced; role names are not. GET /api/v1/me returns the caller's effective permissions.
+ *
+ * ### `not_answerable`
+ *
+ * **403** · `Not answerable for this event` · [/api/problems/not-answerable](/api/problems/not-answerable)
+ *
+ * Only members who play in a register are asked to answer for events, and this member is in none. A 403 that is NOT about a missing permission: there is no permission for answering, and no grant would change this. Somebody who organises but does not play is the ordinary case.
+ *
+ * ### `not_found`
+ *
+ * **404** · `Not found` · [/api/problems/not-found](/api/problems/not-found)
+ *
+ * No such route, or no such record. One answer for both on purpose: distinguishing them would let a caller enumerate which records exist, which is exactly what a 404 is for.
+ *
+ * ### `method_not_allowed`
+ *
+ * **405** · `Method not allowed` · [/api/problems/method-not-allowed](/api/problems/method-not-allowed)
+ *
+ * The route exists but not for this HTTP method. Usually a POST where the API expects PUT or PATCH.
+ *
+ * ### `cannot_delete_self`
+ *
+ * **409** · `You cannot delete your own account` · [/api/problems/cannot-delete-self](/api/problems/cannot-delete-self)
+ *
+ * Refused regardless of permission. Removing yourself is the one deletion nobody can undo from the outside, because the account that would repair it is the one being removed.
+ *
+ * ### `cannot_demote_self`
+ *
+ * **409** · `You cannot remove your own administration rights` · [/api/problems/cannot-demote-self](/api/problems/cannot-demote-self)
+ *
+ * Refused regardless of permission. Taking members.manage from yourself is the fastest way to lock the band out of its own roster, and this host has no shell to repair it with.
+ *
+ * ### `cannot_remove_last_administrator`
+ *
+ * **409** · `This is the last member who can administer members` · [/api/problems/cannot-remove-last-administrator](/api/problems/cannot-remove-last-administrator)
+ *
+ * The write would leave nobody holding members.manage. Grant it to somebody else first. The same guard covers deleting that member and stripping their roles.
+ *
+ * ### `cannot_record_for_self`
+ *
+ * **409** · `Use your own attendance endpoint` · [/api/problems/cannot-record-for-self](/api/problems/cannot-record-for-self)
+ *
+ * An answer recorded on somebody's behalf was aimed at the caller. Use PUT /api/v1/events/{event}/attendance instead. This matters for a member who both plays and organises: answering for yourself through the on-behalf route would sidestep the rule that withdrawing a yes costs a reason.
+ *
+ * ### `answer_already_settled`
+ *
+ * **409** · `The undo window has closed` · [/api/problems/answer-already-settled](/api/problems/answer-already-settled)
+ *
+ * An answer can be withdrawn entirely for five minutes after it was last recorded; after that it can only be changed. `recordedAt` on the answer is what tells a client whether to offer the undo, so this should be reachable only by a client racing its own clock.
+ *
+ * ### `registration_not_open`
+ *
+ * **409** · `Registration has not opened yet` · [/api/problems/registration-not-open](/api/problems/registration-not-open)
+ *
+ * The event takes public bookings, but the window has not started. GET /api/v1/events/{event}/registration reports `open` — computed by the server, because the visitor's clock may be wrong — along with when it starts.
+ *
+ * ### `registration_closed`
+ *
+ * **409** · `Registration has closed` · [/api/problems/registration-closed](/api/problems/registration-closed)
+ *
+ * The event takes public bookings and the window has ended. Bookings already taken are unaffected.
+ *
+ * ### `option_has_registrations`
+ *
+ * **409** · `That option has already been booked` · [/api/problems/option-has-registrations](/api/problems/option-has-registrations)
+ *
+ * Deleting a bookable option somebody has ordered is refused rather than silently rewriting what they ordered. Cancel the bookings that reference it first.
+ *
+ * ### `spam_suspected`
+ *
+ * **422** · `This submission looks automated` · [/api/problems/spam-suspected](/api/problems/spam-suspected)
+ *
+ * A public form was submitted without a valid X-Form-Token header, or without the empty `website` field, or faster than a person could fill it in. Which check failed is deliberately not reported: naming it tells a script how to pass next time, and a real person only needs to reload and retry.
+ *
+ * ### `service_unavailable`
+ *
+ * **503** · `Service unavailable` · [/api/problems/service-unavailable](/api/problems/service-unavailable)
+ *
+ * The database schema is not known to be current, so the request was refused rather than served against a possibly half-applied schema. Temporary, and not something a client can fix — retry shortly.
+ *
+ * ### `xlsx_unavailable`
+ *
+ * **503** · `XLSX export needs the PHP zip extension` · [/api/problems/xlsx-unavailable](/api/problems/xlsx-unavailable)
+ *
+ * This server has no zip extension, so the spreadsheet export cannot be built. Every other export format still works; request csv instead.
  * OpenAPI spec version: 1.0.0
  */
 import type { RegistrationResourceChoicesItem } from "./registrationResourceChoicesItem";

@@ -44,7 +44,9 @@ class ApiErrorContractTest extends TestCase
 
         $body = $response->json();
 
-        $this->assertSame('https://lescanetons.org/problems/validation-failed', $body['type']);
+        // Under /api/problems, where ProblemController actually serves a
+        // document for it — ProblemPagesTest fetches this exact URI.
+        $this->assertSame('/api/problems/validation-failed', $body['type']);
         $this->assertSame('Invalid form submission', $body['title']);
         $this->assertSame(400, $body['status']);
         $this->assertSame('/api/v1/_contract_probe', $body['instance']);

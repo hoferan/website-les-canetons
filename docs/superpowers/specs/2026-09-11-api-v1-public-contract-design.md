@@ -139,8 +139,41 @@ Served as `application/problem+json` on every failure.
   inbound `X-Request-Id` when it is a well-formed ULID, echoed on **every** response,
   attached to the log context, and carried in the problem body. A member reporting a
   failure then hands over a string that finds the log line.
-- The `type` URI is `https://lescanetons.org/problems/<code-with-hyphens>`. It does
-  not have to resolve to be valid, and this program does not publish those pages.
+- The `type` URI is **`/api/problems/<code-with-hyphens>`, a relative reference**,
+  and it resolves — see the amendment below.
+
+### Amended 2026-09-11: `type` resolves, and it is relative
+
+The original text above said `type` would be an absolute production URL that did not
+resolve, calling the pages "a deliberate deferral". Both halves were wrong, and
+André found the flaw in the second.
+
+**It resolves.** A `type` that looks fetchable and 404s is a small lie told to every
+developer who pastes it into a browser, and it is expensive to correct later: the
+moment a client branches on `type`, changing it is a breaking change. `/api/problems`
+and `/api/problems/{code}` now serve it — unversioned in `routes/meta.php`, because a
+problem type outlives a contract version; ungated, unlike `/api/docs`, because the
+vocabulary already ships to every visitor inside the SPA bundle and a `type` that
+resolved only where `API_DOCS_ENABLED` happened to be on would be worse than one that
+never resolved; and content-negotiated, so a browser gets a page and a tool gets JSON.
+
+**It is relative, not absolute.** The absolute form had a fault beyond not resolving
+locally: a server running a newer build emits codes production does not have yet, so
+its error documents pointed at a production page that 404s for a type which genuinely
+exists on the machine that answered. A relative URI reference — which RFC 9457 permits,
+typing `type` as a URI *reference* — keeps the property the absolute form was chosen
+for, since the string is byte-identical everywhere and therefore still a stable key a
+client can branch on, while resolving against whichever host served the document. Per-host
+absolute URLs would have given one problem type three identities and broken that
+branching on promotion.
+
+**The reference lives inside Scalar too.** `ErrorVocabulary::markdown()` generates the
+whole section into `info.description`, which Scalar parses into a collapsible sidebar
+group beside Session and Events. That answers the styling question by dissolving it:
+there is no plugin that makes a hand-built page look like Scalar, and a hand-matched
+copy would drift on every Scalar release — content inside the document cannot. The
+standalone pages remain, because a `type` URI must resolve to something and a JS
+renderer cannot serve a per-token URL, but they stop being where people browse.
 
 **404 stops escaping the contract.** Today `NotFoundHttpException` falls through the
 catch-all `HttpException` renderer — which returns null for anything but 419 — to
@@ -245,6 +278,21 @@ it to contradict the code.
 **CI.** `redocly lint` joins the `openapi-drift` job, so the document is checked for
 validity and not only for currency. That job would have caught the empty success
 schema, the undeclared statuses and the unconstrained `{format}` mechanically.
+
+**The reference is public, the console is not.** Decided 2026-09-11, reversing
+`API_DOCS_ENABLED`'s default from off to on. The old default was security through
+obscurity: `web/src/api/generated/endpoints.ts` ships inside the SPA bundle every
+visitor downloads, carrying every path, method and type more machine-readably than the
+reference does, and what protects this API is `auth:sanctum` and the permission
+middleware. A public API with a hidden reference is close to a contradiction.
+
+What *was* real about the old restriction is the try-it console, not the content.
+`docs.blade.php` primes the CSRF cookie so "Send" genuinely performs the request —
+deliberately, because a reference you cannot try is half a reference — which on
+production puts a committee member one click from `DELETE /api/v1/events/{event}`
+against live data. So `docs.interactive` gates the console separately, defaulting off
+in production and on everywhere else, which is where poking at endpoints belongs. An
+unset or unrecognised `APP_ENV` reads as production and turns it off.
 
 ---
 

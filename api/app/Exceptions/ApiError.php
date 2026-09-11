@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use App\Http\Middleware\RequestId;
+use App\Support\ErrorVocabulary;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -50,16 +51,6 @@ final class ApiError
 {
     /** RFC 9457 §3. Not application/json — that is the point of the media type. */
     public const MEDIA_TYPE = 'application/problem+json';
-
-    /**
-     * The namespace every `type` URI is built under.
-     *
-     * A URI identifies the problem type; it is not required to be fetchable, and
-     * the host here is a name rather than a promise. Keeping it absolute (rather
-     * than a relative URI reference, which RFC 9457 also permits) means a `type`
-     * copied out of a log is unambiguous about which system produced it.
-     */
-    private const TYPE_BASE = 'https://lescanetons.org/problems/';
 
     /**
      * Laravel rule name => legacy reason token.
@@ -343,19 +334,15 @@ final class ApiError
     /**
      * The `type` URI for a code.
      *
-     * Hyphenated, because a URI path segment conventionally is, while the `code`
-     * beside it stays snake_case like every other machine token in this API.
-     *
-     * RFC 9457 §3.1 says a `type` URI "is encouraged to" resolve to
-     * human-readable documentation, and is valid whether or not it does. These
-     * do not resolve today. That is a deliberate deferral, not an oversight: a
-     * page per error token is worth writing when somebody outside this
-     * repository is integrating, and the tokens are already documented in the
-     * OpenAPI reference until then.
+     * Built by App\Support\ErrorVocabulary, which also owns the pages served at
+     * the other end — so a `type` cannot point somewhere nothing answers.
+     * RFC 9457 §3.1 only encourages a `type` to resolve; here it does, because
+     * a URI that looks fetchable and 404s is a small lie told to every
+     * developer who pastes it into a browser.
      */
     private static function type(string $code): string
     {
-        return self::TYPE_BASE.str_replace('_', '-', $code);
+        return ErrorVocabulary::typeUri($code);
     }
 
     /**

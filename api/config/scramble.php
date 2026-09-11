@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\ErrorVocabulary;
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
 use App\Support\Scramble\ValidationExceptionResponse;
@@ -77,6 +78,19 @@ return [
          * cannot be discovered from an endpoint list: how to authenticate,
          * what an error looks like, and the conventions every response
          * follows.
+         */
+        /*
+         * The problem-type section at the end is APPENDED FROM CODE, by
+         * App\Support\ErrorVocabulary::markdown(), rather than written here.
+         * One list feeds the OpenAPI enum, the pages at /api/problems and this
+         * reference, so a prose copy cannot go stale behind the others.
+         *
+         * Calling a class from a config file is safe; calling the CONTAINER is
+         * not. The composer autoloader is registered before config is loaded,
+         * so a plain class with constants resolves — whereas app() or a facade
+         * fails with "Target class [env] does not exist" while booting, which
+         * takes down every route including the ones that would explain why.
+         * config/docs.php carries the same warning next to the same trap.
          */
         'description' => <<<'MARKDOWN'
 The API behind the members' area and the public forms of the Guggenmusik
@@ -208,7 +222,14 @@ require:
 
 Failing either answers `422 spam_suspected`. Both endpoints are rate limited
 to 10 requests a minute per IP.
-MARKDOWN,
+
+## Problem types
+
+Every failure this API can answer with, and what each one means. The headings
+are the `code` member; the link is the `type` URI, which resolves to the same
+entry as a standalone page on whichever host answered you.
+
+MARKDOWN.ErrorVocabulary::markdown(),
     ],
 
     'ui' => [
@@ -236,7 +257,12 @@ MARKDOWN,
          */
         'scalar' => [
             'view' => 'scramble::scalar',
-            'cdn' => 'https://cdn.jsdelivr.net/npm/@scalar/api-reference',
+            // Pinned, and matching resources/views/docs.blade.php exactly —
+            // DocsTest asserts the two agree. The bare package path resolves to
+            // whatever Scalar publishes as `latest`, which is how a toolbar full
+            // of features nobody chose appeared on this page. See that view for
+            // the full argument and for how to upgrade.
+            'cdn' => 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.68.0/dist/browser/standalone.min.js',
             'theme' => 'laravel',
             'proxyUrl' => 'https://proxy.scalar.com',
             'darkMode' => false,
