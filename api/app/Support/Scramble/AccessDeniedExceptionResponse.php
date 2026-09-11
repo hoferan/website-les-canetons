@@ -45,7 +45,7 @@ final class AccessDeniedExceptionResponse extends ExceptionToResponseExtension
     public function toResponse(Type $type)
     {
         return Response::make(403)
-            ->setDescription('Access denied.')
+            ->setDescription('Authenticated, but not permitted to do this.')
             ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema(['access_denied'])));
     }
 

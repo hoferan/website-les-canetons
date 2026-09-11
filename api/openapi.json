@@ -2881,7 +2881,7 @@
         },
         "responses": {
             "ValidationException": {
-                "description": "Validation failed. See App\\Exceptions\\ApiError::validation().",
+                "description": "The submitted fields were rejected. `errors` names each one and why.",
                 "content": {
                     "application/problem+json": {
                         "schema": {
@@ -2971,7 +2971,7 @@
                 }
             },
             "AuthenticationException": {
-                "description": "Not authenticated.",
+                "description": "No session, or it has expired. Log in and retry.",
                 "content": {
                     "application/problem+json": {
                         "schema": {

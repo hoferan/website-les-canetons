@@ -241,6 +241,56 @@ class DocsTest extends TestCase
         $this->assertStringNotContainsString('lescanetons.org', $url);
     }
 
+    /**
+     * The published contract names nothing internal.
+     *
+     * A third party reading this document should never learn that it is a
+     * Laravel application, let alone which class raised a particular error.
+     * That is not secrecy for its own sake — it is that an internal name is
+     * useless to the reader and becomes a lie the moment the class moves.
+     *
+     * It had leaked: the 400 component's description read "Validation failed.
+     * See App\Exceptions\ApiError::validation()", published to everyone,
+     * until a documentation review on 2026-09-11. Descriptions are prose that
+     * nothing else checks, which is exactly where this recurs.
+     *
+     * Scanned over the WHOLE document rather than the descriptions alone, so a
+     * leak into a schema title, an example or an operation summary is caught
+     * too.
+     */
+    public function test_the_document_names_nothing_internal(): void
+    {
+        config(['docs.enabled' => true]);
+
+        $document = (string) $this->getJson('/api/docs.json')->assertOk()->getContent();
+
+        $forbidden = [
+            'App\\' => 'an application namespace',
+            'Illuminate\\' => 'a framework namespace',
+            '.php' => 'a source file',
+            'Laravel' => 'the framework',
+            'Eloquent' => 'the ORM',
+            'Scramble' => 'the document generator',
+            'artisan' => 'the console tool',
+        ];
+
+        foreach ($forbidden as $needle => $what) {
+            $this->assertStringNotContainsString(
+                $needle,
+                $document,
+                "The published contract names {$what} (\"{$needle}\"). Readers cannot use it, "
+                .'and it goes stale the moment that code moves.'
+            );
+        }
+
+        // `::method()` in prose, which is how the leak above was written.
+        $this->assertDoesNotMatchRegularExpression(
+            '/[A-Za-z]+::[a-zA-Z]+\(\)/',
+            $document,
+            'The published contract references a PHP method.'
+        );
+    }
+
     public function test_the_document_is_the_committed_one_and_not_an_empty_object(): void
     {
         // Proves the file was actually read. A controller that failed to load

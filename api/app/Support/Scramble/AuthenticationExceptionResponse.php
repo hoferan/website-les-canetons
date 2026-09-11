@@ -23,7 +23,7 @@ final class AuthenticationExceptionResponse extends ExceptionToResponseExtension
     public function toResponse(Type $type)
     {
         return Response::make(401)
-            ->setDescription('Not authenticated.')
+            ->setDescription('No session, or it has expired. Log in and retry.')
             ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema(['not_authenticated'])));
     }
 

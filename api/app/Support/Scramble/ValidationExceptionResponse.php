@@ -26,7 +26,7 @@ final class ValidationExceptionResponse extends ExceptionToResponseExtension
     public function toResponse(Type $type)
     {
         return Response::make(400)
-            ->setDescription('Validation failed. See App\Exceptions\ApiError::validation().')
+            ->setDescription('The submitted fields were rejected. `errors` names each one and why.')
             ->setContent(
                 ApiError::MEDIA_TYPE,
                 Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withErrors: true))
