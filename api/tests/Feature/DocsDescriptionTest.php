@@ -56,13 +56,12 @@ class DocsDescriptionTest extends TestCase
             .'Fix the ```json block under "## Errors" in config/scramble.php.'
         );
 
-        // The two members a reader is most likely to copy into their own code.
+        // The member a reader is most likely to follow.
         $this->assertSame(
-            ErrorVocabulary::typeUri('validation_failed'),
-            $documented['type'],
-            'The documented `type` is not the one this API emits for that code.'
+            ErrorVocabulary::documentationFor('validation_failed'),
+            $documented['documentation'],
+            'The documented `documentation` link is not the one this API emits for that code.'
         );
-
         $this->assertSame($real['documentation'], $documented['documentation']);
         $this->assertSame($real['code'], $documented['code']);
         $this->assertSame($real['status'], $documented['status']);
@@ -79,12 +78,15 @@ class DocsDescriptionTest extends TestCase
         $description = $this->description();
 
         foreach (ErrorVocabulary::codes() as $code) {
+            // NO BACKTICKS: Scalar builds each heading's route from its plain
+            // text, so a code span there collapses every one of these to the
+            // same empty slug and none is addressable. This assertion is what
+            // keeps them routable, which is what `documentation` depends on.
             $this->assertStringContainsString(
-                '### `'.$code.'`',
+                '### '.$code.PHP_EOL,
                 $description,
-                "The reference documents no problem type `{$code}`."
+                "The reference documents no problem type `{$code}` as a plain-text heading."
             );
-            $this->assertStringContainsString(ErrorVocabulary::typeUri($code), $description);
         }
     }
 
@@ -102,12 +104,14 @@ class DocsDescriptionTest extends TestCase
 
         $retired = [
             // The absolute production URL, which never resolved off production.
-            'https://lescanetons.org/problems/' => 'the `type` is a URN now, not an absolute URL',
+            'https://lescanetons.org/problems/' => 'there is no `type` member at all now',
             // Asserted while the section below it linked them.
-            'not currently documents you can fetch' => 'a URN is not "not currently" fetchable, it is never fetchable',
+            'not currently documents you can fetch' => 'that sentence described URIs that no longer exist',
             // The relative-URL endpoint, deleted with its controller.
             '/api/problems/' => 'the /api/problems endpoint no longer exists',
             'standalone page' => 'there is no page; this section is the documentation',
+            // The URN, which replaced the URLs and was then deleted itself.
+            'urn:lescanetons:problem:' => '`type` was removed: it was a constant prefix in front of `code`',
         ];
 
         foreach ($retired as $claim => $why) {
@@ -127,16 +131,24 @@ class DocsDescriptionTest extends TestCase
      * this asserts the part that can be checked here: that the heading it names
      * exists at all.
      */
-    public function test_the_documentation_member_names_a_section_that_exists(): void
+    public function test_every_documentation_link_names_a_heading_that_exists(): void
     {
-        $fragment = parse_url(ErrorVocabulary::DOCUMENTATION, PHP_URL_FRAGMENT);
-        $heading = str_replace('-', ' ', basename((string) $fragment));
+        $description = $this->description();
 
-        $this->assertStringContainsString(
-            '## '.ucfirst($heading),
-            $this->description(),
-            'The `documentation` member points at a section the reference does not have.'
-        );
+        foreach (ErrorVocabulary::codes() as $code) {
+            $fragment = parse_url(ErrorVocabulary::documentationFor($code), PHP_URL_FRAGMENT);
+
+            // Scalar's route for a `### <code>` heading is the description
+            // path plus the heading slugified — lowercased, underscores and
+            // spaces to hyphens. Measured in a browser, not assumed.
+            $this->assertSame(
+                'description/'.str_replace('_', '-', $code),
+                $fragment,
+                "The documentation link for `{$code}` does not match Scalar's slug for its heading."
+            );
+
+            $this->assertStringContainsString('### '.$code.PHP_EOL, $description);
+        }
     }
 
     /**

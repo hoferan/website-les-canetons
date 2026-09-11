@@ -55,33 +55,30 @@
  *
  * ```json
  * {
- *   "type": "urn:lescanetons:problem:validation_failed",
  *   "title": "Invalid form submission",
  *   "status": 400,
  *   "instance": "/api/v1/events/42",
  *   "code": "validation_failed",
  *   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
  *   "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P",
- *   "documentation": "/api/docs#description/problem-types"
+ *   "documentation": "/api/docs#description/validation-failed"
  * }
  * ```
  *
- * `type`, `title`, `status` and `instance` are the standard members. `code`,
- * `errors`, `requestId` and `documentation` are this API's extensions, which
- * RFC 9457 permits.
+ * `title`, `status` and `instance` are RFC 9457's own members. `code`, `errors`,
+ * `requestId` and `documentation` are this API's extensions, which the RFC
+ * permits.
  *
- * **Branch on `code`, not on `title`.** `code` and `errors[].reason` are stable
- * machine tokens; `title` is English prose meant for a log, and it may be
- * reworded without notice. The front end maps the tokens to French, and any
- * other client should do the same.
+ * **Branch on `code`.** `code` and `errors[].reason` are stable machine tokens;
+ * `title` is English prose meant for a log and may be reworded without notice.
+ * The front end maps the tokens to French, and any other client should do the
+ * same.
  *
- * `type` is the same token as `code` with a namespace in front, for a client
- * that discriminates on `type` as RFC 9457 intends. It is a **URN and resolves
- * to nothing on purpose**: its only job is to identify the problem type, and an
- * identifier that also tried to be a fetchable address would be one more thing
- * that can move, 404, or differ between environments. What you click instead is
- * `documentation`, which points at the *Problem types* section below — the same
- * list, and free to move precisely because nothing branches on it.
+ * There is deliberately **no `type` member**. RFC 9457 makes it optional, and
+ * here it could only ever have been a constant prefix in front of `code` —
+ * carrying no information the document did not already have. `code` is the
+ * discriminator; `documentation` is where to read about that particular
+ * problem, and it links straight to its entry under *Problem types* below.
  *
  * `errors` is always present, and empty for a failure with nothing field-level
  * to say. A `reason` may carry `params` (for example `{"max": 255}`) when the
@@ -143,134 +140,136 @@
  * ## Problem types
  *
  * Every failure this API can answer with, and what each one means. The heading is
- * the `code` member, and beside each one is the status it answers with, its
- * English `title`, and the `type` URN that identifies it.
+ * the `code` member, and beside it the status it answers with and its English
+ * `title`.
  *
- * This section is what every problem document's `documentation` member points at.
+ * Each entry is individually addressable, and a problem document's
+ * `documentation` member links straight to its own — so an error you cannot make
+ * sense of is one click from the paragraph explaining it.
  *
- * ### `validation_failed`
+ * ### validation_failed
  *
- * **400** · `Invalid form submission` · `urn:lescanetons:problem:validation_failed`
+ * **400** · `Invalid form submission`
  *
  * One or more submitted fields were rejected. `errors` names each one and why, as machine tokens: read `errors[].field` and `errors[].reason` rather than `title`. A `reason` carries `params` when its sentence needs a number, for example `{"max": 255}`.
  *
- * ### `not_authenticated`
+ * ### not_authenticated
  *
- * **401** · `Not authenticated` · `urn:lescanetons:problem:not_authenticated`
+ * **401** · `Not authenticated`
  *
  * No session cookie was sent, or it has expired. Call POST /api/v1/login. This is NOT the same as 419 invalid_session, which means you are still logged in and only the CSRF token needs re-priming — retrying a login there is the wrong move.
  *
- * ### `invalid_credentials`
+ * ### invalid_credentials
  *
- * **401** · `Incorrect username or password` · `urn:lescanetons:problem:invalid_credentials`
+ * **401** · `Incorrect username or password`
  *
  * The username does not exist, or the password is wrong. Deliberately the same answer for both, so this endpoint cannot be used to discover which accounts exist.
  *
- * ### `invalid_session`
+ * ### invalid_session
  *
- * **419** · `Invalid session` · `urn:lescanetons:problem:invalid_session`
+ * **419** · `Invalid session`
  *
  * A mutating request arrived without a valid X-XSRF-TOKEN header. You are still logged in: call GET /sanctum/csrf-cookie and retry the request. Sending the user back to the login screen on this code is a bug, and a common one.
  *
- * ### `too_many_attempts`
+ * ### too_many_attempts
  *
- * **429** · `Too many attempts` · `urn:lescanetons:problem:too_many_attempts`
+ * **429** · `Too many attempts`
  *
  * Rate limited after repeated failures. Applies to logging in and to re-entering your own password. Attempts made while locked out do not extend the lockout, and a correct password during it is still refused.
  *
- * ### `reauth_failed`
+ * ### reauth_failed
  *
- * **403** · `Password confirmation failed` · `urn:lescanetons:problem:reauth_failed`
+ * **403** · `Password confirmation failed`
  *
  * The current password sent alongside a sensitive change was wrong. The session is untouched and still valid — this is a re-proof of identity, not a session failure.
  *
- * ### `access_denied`
+ * ### access_denied
  *
- * **403** · `Access denied` · `urn:lescanetons:problem:access_denied`
+ * **403** · `Access denied`
  *
  * You are authenticated but hold no role granting the permission this route requires. Permissions are the only thing enforced; role names are not. GET /api/v1/me returns the caller's effective permissions.
  *
- * ### `not_answerable`
+ * ### not_answerable
  *
- * **403** · `Not answerable for this event` · `urn:lescanetons:problem:not_answerable`
+ * **403** · `Not answerable for this event`
  *
  * Only members who play in a register are asked to answer for events, and this member is in none. A 403 that is NOT about a missing permission: there is no permission for answering, and no grant would change this. Somebody who organises but does not play is the ordinary case.
  *
- * ### `not_found`
+ * ### not_found
  *
- * **404** · `Not found` · `urn:lescanetons:problem:not_found`
+ * **404** · `Not found`
  *
  * No such route, or no such record. One answer for both on purpose: distinguishing them would let a caller enumerate which records exist, which is exactly what a 404 is for.
  *
- * ### `method_not_allowed`
+ * ### method_not_allowed
  *
- * **405** · `Method not allowed` · `urn:lescanetons:problem:method_not_allowed`
+ * **405** · `Method not allowed`
  *
  * The route exists but not for this HTTP method. Usually a POST where the API expects PUT or PATCH.
  *
- * ### `cannot_delete_self`
+ * ### cannot_delete_self
  *
- * **409** · `You cannot delete your own account` · `urn:lescanetons:problem:cannot_delete_self`
+ * **409** · `You cannot delete your own account`
  *
  * Refused regardless of permission. Removing yourself is the one deletion nobody can undo from the outside, because the account that would repair it is the one being removed.
  *
- * ### `cannot_demote_self`
+ * ### cannot_demote_self
  *
- * **409** · `You cannot remove your own administration rights` · `urn:lescanetons:problem:cannot_demote_self`
+ * **409** · `You cannot remove your own administration rights`
  *
  * Refused regardless of permission. Taking members.manage from yourself is the fastest way to lock the band out of its own roster, and this host has no shell to repair it with.
  *
- * ### `cannot_remove_last_administrator`
+ * ### cannot_remove_last_administrator
  *
- * **409** · `This is the last member who can administer members` · `urn:lescanetons:problem:cannot_remove_last_administrator`
+ * **409** · `This is the last member who can administer members`
  *
  * The write would leave nobody holding members.manage. Grant it to somebody else first. The same guard covers deleting that member and stripping their roles.
  *
- * ### `cannot_record_for_self`
+ * ### cannot_record_for_self
  *
- * **409** · `Use your own attendance endpoint` · `urn:lescanetons:problem:cannot_record_for_self`
+ * **409** · `Use your own attendance endpoint`
  *
  * An answer recorded on somebody's behalf was aimed at the caller. Use PUT /api/v1/events/{event}/attendance instead. This matters for a member who both plays and organises: answering for yourself through the on-behalf route would sidestep the rule that withdrawing a yes costs a reason.
  *
- * ### `answer_already_settled`
+ * ### answer_already_settled
  *
- * **409** · `The undo window has closed` · `urn:lescanetons:problem:answer_already_settled`
+ * **409** · `The undo window has closed`
  *
  * An answer can be withdrawn entirely for five minutes after it was last recorded; after that it can only be changed. `recordedAt` on the answer is what tells a client whether to offer the undo, so this should be reachable only by a client racing its own clock.
  *
- * ### `registration_not_open`
+ * ### registration_not_open
  *
- * **409** · `Registration has not opened yet` · `urn:lescanetons:problem:registration_not_open`
+ * **409** · `Registration has not opened yet`
  *
  * The event takes public bookings, but the window has not started. GET /api/v1/events/{event}/registration reports `open` — computed by the server, because the visitor's clock may be wrong — along with when it starts.
  *
- * ### `registration_closed`
+ * ### registration_closed
  *
- * **409** · `Registration has closed` · `urn:lescanetons:problem:registration_closed`
+ * **409** · `Registration has closed`
  *
  * The event takes public bookings and the window has ended. Bookings already taken are unaffected.
  *
- * ### `option_has_registrations`
+ * ### option_has_registrations
  *
- * **409** · `That option has already been booked` · `urn:lescanetons:problem:option_has_registrations`
+ * **409** · `That option has already been booked`
  *
  * Deleting a bookable option somebody has ordered is refused rather than silently rewriting what they ordered. Cancel the bookings that reference it first.
  *
- * ### `spam_suspected`
+ * ### spam_suspected
  *
- * **422** · `This submission looks automated` · `urn:lescanetons:problem:spam_suspected`
+ * **422** · `This submission looks automated`
  *
  * A public form was submitted without a valid X-Form-Token header, or without the empty `website` field, or faster than a person could fill it in. Which check failed is deliberately not reported: naming it tells a script how to pass next time, and a real person only needs to reload and retry.
  *
- * ### `service_unavailable`
+ * ### service_unavailable
  *
- * **503** · `Service unavailable` · `urn:lescanetons:problem:service_unavailable`
+ * **503** · `Service unavailable`
  *
  * The database schema is not known to be current, so the request was refused rather than served against a possibly half-applied schema. Temporary, and not something a client can fix — retry shortly.
  *
- * ### `xlsx_unavailable`
+ * ### xlsx_unavailable
  *
- * **503** · `XLSX export needs the PHP zip extension` · `urn:lescanetons:problem:xlsx_unavailable`
+ * **503** · `XLSX export needs the PHP zip extension`
  *
  * This server has no zip extension, so the spreadsheet export cannot be built. Every other export format still works; request csv instead.
  * OpenAPI spec version: 1.0.0
@@ -279,8 +278,6 @@ import type { AuthenticationExceptionResponseCode } from "./authenticationExcept
 import type { AuthenticationExceptionResponseErrorsItem } from "./authenticationExceptionResponseErrorsItem";
 
 export type AuthenticationExceptionResponse = {
-  /** RFC 9457 problem type URI. Identifies the problem; it is not required to resolve. The same token as `code`, hyphenated. */
-  type: string;
   /** English message. Never displayed: the front end renders `code`. */
   title: string;
   /** The HTTP status code, repeated in the body as RFC 9457 intends. */
@@ -293,6 +290,6 @@ export type AuthenticationExceptionResponse = {
   errors: AuthenticationExceptionResponseErrorsItem[];
   /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
   requestId: string;
-  /** Where a human reads what this means. `type` is a URN and resolves to nothing by design; this is the member to follow. */
+  /** Where this particular problem type is documented in the API reference. */
   documentation: string;
 };

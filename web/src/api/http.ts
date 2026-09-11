@@ -135,16 +135,16 @@ async function toApiError(response: Response): Promise<ApiError> {
     return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
   }
 
-  // An RFC 9457 problem document. `type` and `title` are the standard members;
-  // `code`, `errors`, `requestId` and `documentation` are this API's extensions
-  // — see App\Exceptions\ApiError. Only `code` is load-bearing here: it is the
-  // token the French layer maps, and a body without one is not our contract.
+  // An RFC 9457 problem document. `title`, `status` and `instance` are the
+  // standard members; `code`, `errors`, `requestId` and `documentation` are
+  // this API's extensions — see App\Exceptions\ApiError. There is no `type`:
+  // it could only have been a constant prefix in front of `code`.
   //
-  // `type` and `documentation` are declared but deliberately not carried onto
-  // ApiError. `type` is a URN saying the same thing as `code`, and
-  // `documentation` points at the English developer reference — neither belongs
-  // on a French screen. They are typed so the shape here stays an honest
-  // description of the wire.
+  // Only `code` is load-bearing here — it is the token the French layer maps,
+  // and a body without one is not our contract at all. `documentation` is
+  // declared but deliberately not carried onto ApiError: it points at the
+  // English developer reference, which does not belong on a French screen. It
+  // is typed so this stays an honest description of the wire.
   const problem = body as {
     title?: string;
     code?: string;

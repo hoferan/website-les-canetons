@@ -18,13 +18,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *     Content-Type: application/problem+json
  *
  *     {
- *       "type":      "https://lescanetons.org/problems/validation-failed",
- *       "title":     "Invalid form submission",
- *       "status":    400,
- *       "instance":  "/api/v1/events/42",
- *       "code":      "validation_failed",
- *       "errors":    [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
- *       "requestId": "01JB3K7QW8ZX..."
+ *       "title":         "Invalid form submission",
+ *       "status":        400,
+ *       "instance":      "/api/v1/events/42",
+ *       "code":          "validation_failed",
+ *       "errors":        [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
+ *       "requestId":     "01JB3K7QW8ZX...",
+ *       "documentation": "/api/docs#description/validation-failed"
  *     }
  *
  * This deliberately replaces Laravel's native {message, errors:{}} shape.
@@ -45,7 +45,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * unchanged; only the envelope around them moved, which is why no French copy
  * was rewritten when it did.
  *
- * `type` and `code` say the same thing twice, on purpose. See json().
+ * NO `type` MEMBER, which RFC 9457 allows — it is optional, and an absent one
+ * formally reads as `about:blank`. It went through three designs here (an
+ * absolute URL, a relative URL with an endpoint behind it, a URN) before André
+ * ended the argument with the observation that settled it: every one of them
+ * was a constant prefix plus the `code`, so it carried exactly zero information
+ * the document did not already have. `code` is the discriminator, and
+ * `documentation` — per code — is where to read about it.
  */
 final class ApiError
 {
@@ -282,19 +288,17 @@ final class ApiError
      * RFC 9457 members first, then the two extensions this API adds. Extension
      * members are explicitly allowed by §3.2, and both earn their place:
      *
-     *   `code`      is redundant with `type` — it is the same token, without the
-     *               URI around it — and it is what web/src/i18n/ maps to French.
-     *               Making the translation layer parse a URI to recover a token
-     *               we already have would buy nothing.
+     *   `code`      is the discriminator: the stable machine token
+     *               web/src/i18n/ maps to French, and the member any client
+     *               should branch on.
      *
      *   `requestId` is what a member reads out over the telephone. See
      *               App\Http\Middleware\RequestId.
      *
-     *   `documentation` is where a human reads what any of this means. It
-     *               exists because `type` is a URN and deliberately resolves to
-     *               nothing: identifier and locator are different jobs, and the
-     *               member that can be clicked has to be the one nothing
-     *               branches on, so that it stays free to move.
+     *   `documentation` is where a human reads what THIS problem means —
+     *               per code, not one link for every error, which is what makes
+     *               it worth carrying at all. It may move freely precisely
+     *               because nothing branches on it.
      *
      * `errors` is ALWAYS present, empty where there is nothing field-level to
      * say. The previous contract omitted `fields` when empty, which made it
@@ -320,14 +324,13 @@ final class ApiError
         $orderedErrors = array_values($errors);
 
         $body = [
-            'type' => self::type($code),
             'title' => $message,
             'status' => $status,
             'instance' => self::instance(),
             'code' => $code,
             'errors' => $orderedErrors,
             'requestId' => RequestId::current(),
-            'documentation' => ErrorVocabulary::DOCUMENTATION,
+            'documentation' => ErrorVocabulary::documentationFor($code),
         ];
 
         return response()
@@ -336,20 +339,6 @@ final class ApiError
             // the whole point: it is what tells a standards-aware client that
             // this body is a problem document and not the resource it asked for.
             ->header('Content-Type', self::MEDIA_TYPE);
-    }
-
-    /**
-     * The `type` URI for a code.
-     *
-     * Built by App\Support\ErrorVocabulary, which also owns the pages served at
-     * the other end — so a `type` cannot point somewhere nothing answers.
-     * RFC 9457 §3.1 only encourages a `type` to resolve; here it does, because
-     * a URI that looks fetchable and 404s is a small lie told to every
-     * developer who pastes it into a browser.
-     */
-    private static function type(string $code): string
-    {
-        return ErrorVocabulary::typeUri($code);
     }
 
     /**

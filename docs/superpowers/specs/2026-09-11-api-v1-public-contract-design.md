@@ -109,14 +109,13 @@ rather than an archaeology project.
 
 ```json
 {
-  "type": "urn:lescanetons:problem:validation_failed",
   "title": "Invalid form submission",
   "status": 400,
   "instance": "/api/v1/events/42",
   "code": "validation_failed",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
   "requestId": "01JB3K7QW8ZX...",
-  "documentation": "/api/docs#description/problem-types"
+  "documentation": "/api/docs#description/validation-failed"
 }
 ```
 
@@ -143,61 +142,48 @@ Served as `application/problem+json` on every failure.
 - **`type` is a URN** and **`documentation`** is what a human clicks — see the
   amendment below, which replaced two earlier attempts at a fetchable `type`.
 
-### Amended 2026-09-11: `type` is a URN, and there is no endpoint
+### Amended 2026-09-11: there is no `type`, and `documentation` is per code
 
-This section was rewritten twice in one day, and the final answer is smaller
-than either attempt. Both earlier ones conflated two jobs that RFC 9457 keeps
-apart: `type` **identifies** a problem type; something else **locates** the
-documentation.
+`type` went through four designs in one day and ended up deleted. Recording why,
+because the reasoning generalises.
 
-The first attempt made `type` an absolute production URL that did not resolve.
-The second made it a relative URL served by a real endpoint at `/api/problems`.
-Both were answers to "how do we make `type` fetchable", which turned out to be
-the wrong question — pursued through a Blade page that answered `curl` with
-HTML, a versioning argument, and a second human surface for words that already
-had a good home.
+An absolute production URL never resolved off production, and pointed at a page
+that 404s for codes a newer build emits. A relative URL fixed that by adding an
+endpoint — a controller, two routes, a test file, a versioning question, and a
+Blade page that answered `curl` with HTML. A URN fixed *that* by promising
+nothing, at which point André asked the question that ended it: the value was
+always a constant prefix in front of `code`, so it carried **exactly zero
+information** the document did not already have. A constant prefix on a value you
+already hold is not an identifier; it is ceremony.
 
-**`type` is now `urn:lescanetons:problem:<code>`.** A URN cannot 404, cannot
-differ between environments, cannot drift, and needs no route. The code goes in
-verbatim, which also deleted the hyphen/underscore seam: one token, one
-spelling, no conversion functions and no route accepting both.
+RFC 9457 makes `type` optional, and an absent one formally reads as
+`about:blank`. That is the one real cost — it nominally says "no semantics beyond
+the status code" while `code` says otherwise — and it is accepted, because the
+alternative is a member that is pure derivation.
 
-**`documentation` is the locator**, carried on every problem document, pointing
-at the *Problem types* section of the reference. It can move freely precisely
-because nothing branches on it — which is the property `type` must never have.
+**`documentation` survived the same objection by being fixed rather than
+deleted.** It pointed at one section for every error, which is no more useful
+than no link. It is now per code, and links to that problem's own entry in the
+reference — the one thing `type` never did.
 
-**`/api/problems` is deleted**, with its controller, its routes and its test
-file. It bought nothing in availability (same Laravel app, same middleware group
-as `/api/v1/*` — if the API is down it is down), and its human-readable content
-lives in the Scalar reference, generated from the same `ErrorVocabulary`.
+That was enabled by a one-character finding: Scalar builds each heading's route
+from its **plain text**, so `### \`validation_failed\`` (wrapped in a code span)
+collapsed every problem type to the same empty slug and none was addressable.
+Written as `### validation_failed`, each gets its own route —
+`#description/validation-failed` — and `documentation` can point straight at it.
+`DocsDescriptionTest` pins both the plain-text headings and the slug shape.
 
-**Removing `type` altogether was considered and rejected.** RFC 9457 §4.2.1
-defines an absent `type` as `about:blank`, meaning "no semantics beyond the
-status code" — untrue of an API with three distinct 409s. It would have kept
-RFC 9457's shape while making `code` a proprietary discriminator, which is the
-arrangement adopting the RFC was meant to avoid. Once `type` is a URN its cost
-is one line, so deleting it would have spent conformance for no remaining saving.
+**The remaining coupling is deliberate and asymmetric.** `documentation` depends
+on Scalar's slugifier; `type` never could have. A locator fails softly — the
+reader lands on the reference and does not scroll — while a broken identifier
+breaks a client's branching. Which member may depend on a third party is exactly
+the identifier/locator distinction, made concrete.
 
-**The reference lives inside Scalar. `ErrorVocabulary::markdown()` generates the
-whole section into `info.description`, which Scalar parses into a collapsible sidebar
-group beside Session and Events. That answers the styling question by dissolving it:
-there is no plugin that makes a hand-built page look like Scalar, and a hand-matched
-copy would drift on every Scalar release — content inside the document cannot. The
-standalone pages remain, because a `type` URI must resolve to something and a JS
-renderer cannot serve a per-token URL, but they stop being where people browse.
-
-**404 stops escaping the contract.** Today `NotFoundHttpException` falls through the
-catch-all `HttpException` renderer — which returns null for anything but 419 — to
-Laravel's default, producing `{message}`: a body with no `code`, which
-`translateApiError()` can only answer with the generic French fallback. A dedicated
-renderer gives it `code: not_found`. Every other status gets the same audit: 400,
-401, 403, 404, 405, 409, 412, 419, 422, 428, 429, 503.
-
-**Blast radius, accepted.** `App\Exceptions\ApiError`, every renderer in
-`bootstrap/app.php`, every API test asserting an error body,
-`ApiErrorVocabularyTest`, `web/src/i18n/index.ts`, `web/src/api/http.ts`'s `ApiError`
-type, and `web/src/mocks/handlers.ts`. **`web/src/i18n/fr.ts` is not rewritten** —
-the tokens are unchanged, only the envelope around them.
+**The reference lives inside Scalar.** `ErrorVocabulary::markdown()` generates the
+whole section into `info.description`, which Scalar renders as a collapsible
+sidebar group beside Session and Events. That answers "can we style a page like
+Scalar" by dissolving it: a hand-matched copy drifts on every Scalar release;
+content inside the document cannot.
 
 ---
 

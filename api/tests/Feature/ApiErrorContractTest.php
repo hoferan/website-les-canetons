@@ -45,10 +45,6 @@ class ApiErrorContractTest extends TestCase
 
         $body = $response->json();
 
-        // A URN, which resolves to nothing by design: `type` identifies the
-        // problem type and nothing more. `documentation` below is the member a
-        // human clicks — see App\Support\ErrorVocabulary::TYPE_BASE.
-        $this->assertSame('urn:lescanetons:problem:validation_failed', $body['type']);
         $this->assertSame('Invalid form submission', $body['title']);
         $this->assertSame(400, $body['status']);
         $this->assertSame('/api/v1/_contract_probe', $body['instance']);
@@ -63,10 +59,21 @@ class ApiErrorContractTest extends TestCase
         // middleware uses to decide whether to trust an inbound one.
         $this->assertTrue(Str::isUlid($body['requestId']), 'requestId is not a ULID.');
 
-        $this->assertSame(ErrorVocabulary::DOCUMENTATION, $body['documentation']);
+        // PER CODE, not one link for every error — which is the whole reason
+        // this member survived while `type` did not. A constant pointer carries
+        // no more information than no pointer at all.
+        $this->assertSame(
+            '/api/docs#description/validation-failed',
+            $body['documentation'],
+        );
+        $this->assertSame(ErrorVocabulary::documentationFor('validation_failed'), $body['documentation']);
+
+        // No `type`. RFC 9457 makes it optional, and here it could only have
+        // been a constant prefix in front of `code`.
+        $this->assertArrayNotHasKey('type', $body);
 
         $this->assertSame(
-            ['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation'],
+            ['title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation'],
             array_keys($body),
             'The problem document gained or lost a member. Three things have to move with '
             .'it: web/src/api/http.ts, the OpenAPI components, and the worked example in '

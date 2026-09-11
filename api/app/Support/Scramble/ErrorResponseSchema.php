@@ -8,7 +8,7 @@ use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
  * Builds the OpenAPI schema for App\Exceptions\ApiError's response body — an
  * RFC 9457 problem document:
  *
- *     {"type", "title", "status", "instance", "code", "errors":[…], "requestId",
+ *     {"title", "status", "instance", "code", "errors":[…], "requestId",
  *      "documentation"}
  *
  * One builder, every extension, so the documented contract cannot differ between
@@ -38,11 +38,6 @@ final class ErrorResponseSchema
         $errorEntry = $withErrors ? self::entry() : new OpenApiTypes\ObjectType;
 
         return (new OpenApiTypes\ObjectType)
-            ->addProperty('type', (new OpenApiTypes\StringType)
-                ->setDescription(
-                    'RFC 9457 problem type URI. Identifies the problem; it is not '
-                    .'required to resolve. The same token as `code`, hyphenated.'
-                ))
             ->addProperty('title', (new OpenApiTypes\StringType)
                 ->setDescription('English message. Never displayed: the front end renders `code`.'))
             ->addProperty('status', (new OpenApiTypes\IntegerType)
@@ -62,11 +57,8 @@ final class ErrorResponseSchema
             ->addProperty('requestId', (new OpenApiTypes\StringType)
                 ->setDescription('ULID identifying this request. Echoed as the X-Request-Id header, and in the logs.'))
             ->addProperty('documentation', (new OpenApiTypes\StringType)
-                ->setDescription(
-                    'Where a human reads what this means. `type` is a URN and resolves to '
-                    .'nothing by design; this is the member to follow.'
-                ))
-            ->setRequired(['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation']);
+                ->setDescription('Where this particular problem type is documented in the API reference.'))
+            ->setRequired(['title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation']);
     }
 
     /**

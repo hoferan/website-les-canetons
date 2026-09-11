@@ -146,33 +146,30 @@ problem document, served as `application/problem+json`:
 
 ```json
 {
-  "type": "urn:lescanetons:problem:validation_failed",
   "title": "Invalid form submission",
   "status": 400,
   "instance": "/api/v1/events/42",
   "code": "validation_failed",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
   "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P",
-  "documentation": "/api/docs#description/problem-types"
+  "documentation": "/api/docs#description/validation-failed"
 }
 ```
 
-`type`, `title`, `status` and `instance` are the standard members. `code`,
-`errors`, `requestId` and `documentation` are this API's extensions, which
-RFC 9457 permits.
+`title`, `status` and `instance` are RFC 9457's own members. `code`, `errors`,
+`requestId` and `documentation` are this API's extensions, which the RFC
+permits.
 
-**Branch on `code`, not on `title`.** `code` and `errors[].reason` are stable
-machine tokens; `title` is English prose meant for a log, and it may be
-reworded without notice. The front end maps the tokens to French, and any
-other client should do the same.
+**Branch on `code`.** `code` and `errors[].reason` are stable machine tokens;
+`title` is English prose meant for a log and may be reworded without notice.
+The front end maps the tokens to French, and any other client should do the
+same.
 
-`type` is the same token as `code` with a namespace in front, for a client
-that discriminates on `type` as RFC 9457 intends. It is a **URN and resolves
-to nothing on purpose**: its only job is to identify the problem type, and an
-identifier that also tried to be a fetchable address would be one more thing
-that can move, 404, or differ between environments. What you click instead is
-`documentation`, which points at the *Problem types* section below — the same
-list, and free to move precisely because nothing branches on it.
+There is deliberately **no `type` member**. RFC 9457 makes it optional, and
+here it could only ever have been a constant prefix in front of `code` —
+carrying no information the document did not already have. `code` is the
+discriminator; `documentation` is where to read about that particular
+problem, and it links straight to its entry under *Problem types* below.
 
 `errors` is always present, and empty for a failure with nothing field-level
 to say. A `reason` may carry `params` (for example `{"max": 255}`) when the
@@ -234,10 +231,12 @@ to 10 requests a minute per IP.
 ## Problem types
 
 Every failure this API can answer with, and what each one means. The heading is
-the `code` member, and beside each one is the status it answers with, its
-English `title`, and the `type` URN that identifies it.
+the `code` member, and beside it the status it answers with and its English
+`title`.
 
-This section is what every problem document's `documentation` member points at.
+Each entry is individually addressable, and a problem document's
+`documentation` member links straight to its own — so an error you cannot make
+sense of is one click from the paragraph explaining it.
 
 MARKDOWN.ErrorVocabulary::markdown(),
     ],

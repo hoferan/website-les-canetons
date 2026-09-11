@@ -6,7 +6,7 @@ namespace App\Support;
  * Every problem type this API can answer with, and what each one means.
  *
  * THREE READERS, ONE LIST. This feeds the `code` enum in the exported OpenAPI
- * document, the endpoint at /api/problems, and
+ * document, the *Problem types* section of the reference, and
  * Tests\Feature\ApiErrorVocabularyTest. Adding a token in one place makes it
  * appear in all three.
  *
@@ -18,68 +18,40 @@ namespace App\Support;
  * description of the API rather than a wish about it.
  *
  * `detail` is documentation, not a response member: ApiError never sends it.
- * It is what /api/problems/{code} serves, and it is where the things a status
- * code cannot say are written down — above all the pairs of codes that look
- * interchangeable and are not. English, like every other machine-facing string
- * here; the French a member reads lives in web/src/i18n/fr.ts, keyed by the
- * same token.
+ * It is rendered into the reference by markdown() below, and it is where the
+ * things a status code cannot say are written down — above all the pairs of
+ * codes that look interchangeable and are not. English, like every other
+ * machine-facing string here; the French a member reads lives in
+ * web/src/i18n/fr.ts, keyed by the same token.
  */
 final class ErrorVocabulary
 {
     /**
-     * The namespace every `type` is built under.
+     * Where a human reads about one problem type. Carried on every problem
+     * document, per code.
      *
-     * A URN, and it is deliberately NOT FETCHABLE. `type` has exactly one job —
-     * identify the problem type, which RFC 9457 calls the primary identifier a
-     * consumer branches on — and a URN does that job while promising nothing
-     * else. Identifier and locator are separate concerns, and conflating them
-     * is what made every earlier attempt here wrong:
+     * THIS IS THE ONLY POINTER THE CONTRACT CARRIES, and it replaced a `type`
+     * member that went through three designs before being deleted outright.
+     * André's argument ended it: `type` was always this namespace plus the
+     * `code`, so it carried exactly zero information that `code` did not. A
+     * constant prefix on a value you already have is not an identifier, it is
+     * ceremony.
      *
-     *   An absolute https://lescanetons.org/problems/... URL never resolved on
-     *   a developer's machine, and — worse — a server running a newer build
-     *   emits codes production does not have, so its errors pointed at a
-     *   production page that 404s for a type which genuinely exists on the
-     *   machine that answered.
+     * The same objection nearly sank this member too — it pointed at one
+     * section for every error, which is no more useful than no link. It is
+     * per-code now, and that is what earns its place: `documentation` says
+     * where to read about THIS problem, which is the one thing `type` never
+     * did.
      *
-     *   A relative /api/problems/... URL fixed that by being served from an
-     *   endpoint of its own, at the cost of a controller, two routes, a test
-     *   file, an ongoing "should it be versioned" question, and a second human
-     *   surface for words that already live in the Scalar reference.
-     *
-     * A URN has none of those failure modes because it makes no promise to
-     * resolve: it cannot 404, cannot differ between environments, cannot drift,
-     * and needs no route. What a human clicks is DOCUMENTATION below, carried
-     * on the same document — the locator, free to move, because nothing
-     * branches on it.
-     *
-     * Strictly, RFC 8141 wants an IANA-registered namespace identifier and
-     * `lescanetons` is not one; an unregistered NID is very widely used in
-     * practice, and `tag:lescanetons.org,2026:problem/...` (RFC 4151) is the
-     * pedantically correct alternative if that ever matters.
-     *
-     * UNVERSIONED, and with a URN that is free rather than argued for. A
-     * problem type outlives a contract version — `not_found` means the same
-     * thing in v1 and v2 — and clients branch on this, so it can never change
-     * once anything depends on it.
+     * The slug is Scalar's own, derived from the `###` heading that
+     * markdown() writes. That coupling is acceptable HERE and would not have
+     * been on `type`: this is a locator, so a stale slug fails softly — the
+     * reader still lands on the reference and merely fails to scroll — whereas
+     * a broken identifier breaks a client's branching. Which member may depend
+     * on a third party's slugifier is exactly the identifier/locator
+     * distinction, made concrete.
      */
-    public const TYPE_BASE = 'urn:lescanetons:problem:';
-
-    /**
-     * Where a human reads these. Carried on every problem document.
-     *
-     * This is the locator half of the pair, and it exists because `type` is
-     * deliberately unfetchable: a developer who wants prose needs somewhere to
-     * click, and it should not be `type`. The Scalar reference renders the
-     * whole vocabulary from the same source — see markdown() below — as a
-     * sidebar group.
-     *
-     * The fragment is Scalar's own heading slug, the one string here their
-     * upgrade could invalidate. Used anyway because the failure is SOFT: a
-     * stale fragment still lands the reader on the reference and merely fails
-     * to scroll. `type` could not take that risk; this can, which is precisely
-     * why the two are separate members.
-     */
-    public const DOCUMENTATION = '/api/docs#description/problem-types';
+    public const DOCUMENTATION_BASE = '/api/docs#description/';
 
     /**
      * code => [status, title, detail]
@@ -252,19 +224,15 @@ final class ErrorVocabulary
     }
 
     /**
-     * The `type` a problem document carries for this code.
+     * Where this particular problem type is documented.
      *
-     * The code goes in VERBATIM, underscores and all. The URL form needed a
-     * hyphenated spelling — a URI path segment conventionally is — which meant
-     * one token had two spellings and a pair of functions to convert between
-     * them, plus a route that had to accept both so a developer typing the code
-     * they could see was not met with a 404. A URN has no such convention, so
-     * that entire seam is gone: `type` is the prefix plus the code, and the two
-     * can be read off each other by eye.
+     * Hyphenated, because that is what Scalar's slugifier makes of the `###`
+     * heading markdown() writes — measured, not assumed. Getting it wrong is a
+     * soft failure: the reader lands on the reference and does not scroll.
      */
-    public static function typeUri(string $code): string
+    public static function documentationFor(string $code): string
     {
-        return self::TYPE_BASE.$code;
+        return self::DOCUMENTATION_BASE.str_replace('_', '-', $code);
     }
 
     /**
@@ -274,7 +242,7 @@ final class ErrorVocabulary
      * fetched one of these can match it against the `type` of a problem
      * document it holds without knowing how the URI is built.
      *
-     * @return array{code: string, type: string, status: int, title: string, detail: string, documentation: string}|null
+     * @return array{code: string, status: int, title: string, detail: string, documentation: string}|null
      */
     public static function describe(string $code): ?array
     {
@@ -286,11 +254,10 @@ final class ErrorVocabulary
 
         return [
             'code' => $code,
-            'type' => self::typeUri($code),
             'status' => $status,
             'title' => $title,
             'detail' => $detail,
-            'documentation' => self::DOCUMENTATION,
+            'documentation' => self::documentationFor($code),
         ];
     }
 
@@ -321,18 +288,19 @@ final class ErrorVocabulary
         $lines = [''];
 
         foreach (self::all() as $problem) {
-            $lines[] = sprintf('### `%s`', $problem['code']);
+            // NO BACKTICKS around the code, and that is load-bearing rather
+            // than a style choice. Scalar builds each heading's route from the
+            // heading's PLAIN TEXT; wrapped in a code span there is none, so
+            // every one of these collapsed to the same empty slug
+            // (`api-1/description/`) and none of them was addressable. Measured
+            // in a browser — `### Why a cookie rather than a token` two
+            // sections above routes correctly, which is what made the
+            // difference visible.
+            $lines[] = sprintf('### %s', $problem['code']);
             $lines[] = '';
-            // The `type` as code, NOT as a link: it is a URN and resolves to
-            // nothing by design. Rendering it as a link would recreate the
-            // broken promise the URN exists to avoid — this section IS the
-            // documentation those identifiers refer to.
-            $lines[] = sprintf(
-                '**%d** · `%s` · `%s`',
-                $problem['status'],
-                $problem['title'],
-                $problem['type'],
-            );
+            // No link here: this section IS what `documentation` points at,
+            // so linking each entry to itself would be circular.
+            $lines[] = sprintf('**%d** · `%s`', $problem['status'], $problem['title']);
             $lines[] = '';
             $lines[] = $problem['detail'];
             $lines[] = '';
@@ -349,7 +317,7 @@ final class ErrorVocabulary
      * server — rather than alphabetically or by status, because an index is
      * read by somebody who does not yet know which code they want.
      *
-     * @return list<array{code: string, type: string, status: int, title: string, detail: string, documentation: string}>
+     * @return list<array{code: string, status: int, title: string, detail: string, documentation: string}>
      */
     public static function all(): array
     {

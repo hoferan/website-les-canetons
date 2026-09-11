@@ -180,8 +180,8 @@ export function setMockUser(username: keyof typeof USERS | null): void {
 /** A valid ULID, so anything that validates the shape of one still passes. */
 export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
 
-/** Mirrors App\Support\ErrorVocabulary::DOCUMENTATION. */
-export const MOCK_DOCUMENTATION = "/api/docs#description/problem-types";
+/** Mirrors App\Support\ErrorVocabulary::documentationFor(). */
+const documentationFor = (code: string) => `/api/docs#description/${code.replace(/_/g, "-")}`;
 
 /**
  * The one place this mocked backend builds a failure, mirroring
@@ -206,7 +206,6 @@ export function problem(
 ) {
   return HttpResponse.json(
     {
-      type: `urn:lescanetons:problem:${code}`,
       title,
       status,
       instance,
@@ -215,7 +214,7 @@ export function problem(
       // Fixed, not random: a mocked screenshot or a snapshot that changed on
       // every run because of an identifier nobody asserts would be noise.
       requestId: MOCK_REQUEST_ID,
-      documentation: MOCK_DOCUMENTATION,
+      documentation: documentationFor(code),
     },
     { status, headers: { "Content-Type": "application/problem+json" } },
   );
