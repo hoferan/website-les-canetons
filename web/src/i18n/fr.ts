@@ -47,6 +47,10 @@ export const fr = {
     cannot_remove_last_administrator: "C'est la dernière personne pouvant administrer les membres.",
 
     invalid_session: "Session invalide",
+    // Une requête qui ne peut pas ouvrir de session : réessayer ne sert
+    // à rien, contrairement à invalid_session.
+    stateful_request_required: "Cette requête ne peut pas ouvrir de session.",
+    rate_limited: "Trop de requêtes. Veuillez patienter avant de réessayer.",
     service_unavailable: "Service indisponible",
 
     // Attendance. `not_answerable` is a 403 that is NOT about a missing

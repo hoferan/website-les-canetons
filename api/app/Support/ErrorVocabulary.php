@@ -72,6 +72,15 @@ final class ErrorVocabulary
         // probing it exactly what they are up against.
         'invalid_credentials' => 'The username or the password is wrong.',
 
+        // A request Sanctum did not treat as stateful reached an endpoint that
+        // needs a session. Distinct from invalid_session on purpose: that one
+        // means "prime the cookie and retry", which here would loop forever —
+        // the request will not become stateful by being repeated.
+        'stateful_request_required' => 'This endpoint authenticates by session cookie, and this '
+            .'request could not establish one — its Origin or Referer is not a configured stateful '
+            .'domain. Browser clients on the same origin do this automatically; a server-to-server '
+            .'caller cannot use this endpoint.',
+
         'invalid_session' => 'The CSRF token was missing or stale. You are still logged in: call '
             .'GET /sanctum/csrf-cookie and retry the request. Do not send the user back to the '
             .'login screen.',
@@ -80,6 +89,12 @@ final class ErrorVocabulary
         // them in the refusal only helps somebody tune around it.
         'too_many_attempts' => 'Too many failed attempts. Wait and try again later; further '
             .'attempts before then do not shorten the wait.',
+
+        // Distinct from too_many_attempts, which counts FAILED attempts at one
+        // account. This is the per-IP request rate on the public endpoints:
+        // nothing failed, you are simply going too fast.
+        'rate_limited' => 'Too many requests. The Retry-After header says how long to wait; the '
+            .'RateLimit-* headers describe the allowance.',
 
         'reauth_failed' => 'The current password sent alongside this change was wrong. Your session '
             .'is unaffected — retry with the correct password.',

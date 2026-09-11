@@ -18,6 +18,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
@@ -253,6 +254,31 @@ return Application::configure(basePath: dirname(__DIR__))
         // later cannot silently pick the wrong winner.
         $exceptions->render(fn (ReauthenticationFailed $e, Request $request) => $request->is('api/*')
             ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
+            : null);
+
+        // 429 from the `throttle:` middleware. THE SAME HOLE AS THE 404 BELOW,
+        // and it survived that fix because only the 404 path was closed:
+        // ThrottleRequestsException is an HttpException, invalidSession()
+        // returns null for every status but 419, so it fell through to
+        // Laravel's default renderer — {"message":"Too Many Attempts.",
+        // "exception":…,"trace":[45 frames]}. On /api/v1/form-token and the two
+        // public writes, which are anonymous and internet-facing.
+        //
+        // Two defects in one: no `code` for a client to branch on, and a stack
+        // trace to an unauthenticated caller whenever APP_DEBUG is on. Found by
+        // a black-box review on 2026-09-11.
+        //
+        // Laravel's own 429 — the login lockout — was always correct, because
+        // that one is raised by our code through ApiError. Only the middleware's
+        // was escaping, which is exactly why nothing noticed.
+        //
+        // getHeaders() is preserved: ThrottleRequests puts Retry-After and the
+        // RateLimit-* family on the exception, and those are the headers a
+        // well-behaved client backs off with. Dropping them would answer the
+        // question "when may I retry" with silence.
+        $exceptions->render(fn (ThrottleRequestsException $e, Request $request) => $request->is('api/*')
+            ? ApiError::json(429, 'rate_limited', 'Too many requests')
+                ->withHeaders($e->getHeaders())
             : null);
 
         // 404. Registered BEFORE the catch-all HttpException closure below,

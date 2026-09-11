@@ -76,6 +76,27 @@ class AuthController extends Controller
             return ApiError::json(401, 'invalid_credentials', 'Incorrect username or password');
         }
 
+        // THE CREDENTIALS WERE RIGHT, and everything below needs a session. A
+        // request Sanctum did not treat as stateful has none, and calling
+        // session() on it throws — which used to surface as a 500 carrying a
+        // stack trace, to an anonymous caller, on the very first request any
+        // integrator makes. Found by a black-box review on 2026-09-11; no test
+        // caught it because the SPA and the test client are both stateful, so
+        // the failing path is the one nothing internal exercises.
+        //
+        // Refused cleanly instead, and deliberately AFTER the attempt, so this
+        // cannot be used to probe credentials without a session: a wrong
+        // password still answers invalid_credentials either way.
+        //
+        // Not 419 invalid_session, which means "prime the cookie and retry" —
+        // advice that would loop forever here, because the request will never
+        // become stateful by retrying. Session auth needs a browser on a
+        // configured origin; a server-to-server caller needs the token
+        // credential that A6 adds.
+        if (! $request->hasSession()) {
+            return ApiError::json(400, 'stateful_request_required', 'This endpoint requires a session');
+        }
+
         RateLimiter::clear($key);
 
         // Fixation defence: the pre-login session id must not survive the

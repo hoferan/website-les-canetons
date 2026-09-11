@@ -62,6 +62,18 @@ class ApiErrorVocabularyTest extends TestCase
     private const APP_DIR = __DIR__.'/../../app';
 
     /**
+     * Scanned alongside app/, because several exception renderers live there and
+     * emit codes directly.
+     *
+     * This was a blind spot twice over. The scan originally covered app/ only,
+     * so `rate_limited` — raised by the ThrottleRequestsException renderer in
+     * bootstrap/app.php — read as "documented but never emitted" while being
+     * emitted on every rate-limited public request. Directories are not the
+     * boundary that matters here; "everywhere a code literal can appear" is.
+     */
+    private const BOOTSTRAP_FILE = __DIR__.'/../../bootstrap/app.php';
+
+    /**
      * Reason tokens no scan of `'reason' =>` literals can see.
      *
      * - invalid_format: ApiError::validation()'s fallback for any rule absent
@@ -122,6 +134,9 @@ class ApiErrorVocabularyTest extends TestCase
         // matching that construct fails here rather than silently shrinking the
         // derived set — which is exactly how these four went unchecked before.
         'not_answerable', 'reauth_failed', 'answer_already_settled',
+        // Emitted from bootstrap/app.php, not from app/ — the floor that keeps
+        // that file in the scan.
+        'rate_limited',
     ];
 
     private const MUST_INCLUDE_FIELDS = [
@@ -361,8 +376,10 @@ class ApiErrorVocabularyTest extends TestCase
      */
     private function scanAppFor(string $pattern): array
     {
+        self::assertFileExists(self::BOOTSTRAP_FILE, 'Cannot scan bootstrap/app.php for hand-rolled tokens.');
+
         $found = [];
-        foreach ($this->phpFiles(self::APP_DIR) as $file) {
+        foreach ([...$this->phpFiles(self::APP_DIR), self::BOOTSTRAP_FILE] as $file) {
             if (preg_match_all($pattern, (string) file_get_contents($file), $m)) {
                 $found = array_merge($found, $m[1]);
             }

@@ -85,6 +85,9 @@
                             }
                         }
                     },
+                    "400": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
                     "401": {
                         "description": "",
                         "content": {
@@ -182,9 +185,6 @@
                                 }
                             }
                         }
-                    },
-                    "400": {
-                        "$ref": "#/components/responses/ValidationException"
                     }
                 }
             }
