@@ -145,6 +145,8 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type Contact200 = {
-  ok: boolean;
+export type RegistrationExport200Four = {
+  headers: unknown[];
+  rows: unknown[][];
+  totals: unknown[];
 };

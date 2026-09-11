@@ -144,9 +144,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { MemberResource } from "./memberResource";
 
-export type MemberRole200 = {
-  member: MemberResource;
-  sessionsEnded: number;
+export type ContactStore200 = {
+  ok: boolean;
 };

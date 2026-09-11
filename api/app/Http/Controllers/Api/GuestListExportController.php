@@ -6,6 +6,7 @@ use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Support\GuestList;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -35,6 +36,7 @@ class GuestListExportController extends Controller
      * XLSX needs the PHP `zip` extension. A server without it answers
      * `503 xlsx_unavailable`, and CSV still works there.
      */
+    #[Endpoint(operationId: 'registration.export')]
     public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
     {
         // ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The

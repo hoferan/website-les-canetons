@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
-#[Group('Events', weight: 20)]
+#[Group('Events', 'The planning: what the band is doing and when. Every member reads it; changing it needs `events.manage`.', weight: 20)]
 class EventController extends Controller
 {
     /**

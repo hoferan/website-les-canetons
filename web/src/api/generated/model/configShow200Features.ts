@@ -145,13 +145,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RegistrationOption409 = {
-  title: string;
-  status: 409;
-  code: "option_has_registrations";
-  instance: string;
-  errors: unknown[];
-  requestId: string;
-  /** @nullable */
-  detail: string | null;
-};
+export type ConfigShow200Features = { [key: string]: boolean };

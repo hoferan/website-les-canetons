@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ class EventSeriesController extends Controller
      * with `too_long`, and a date that is not `Y-m-d` against its own entry
      * with `invalid_format`. A refused request writes nothing at all.
      */
+    #[Endpoint(operationId: 'event.series')]
     public function __invoke(StoreEventSeriesRequest $request): JsonResponse
     {
         // Writes a whole season in one request — thirteen rehearsals, the

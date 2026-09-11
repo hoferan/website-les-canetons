@@ -87,7 +87,11 @@ class StoreRegistrationRequest extends FormRequest
             // controls, and each element costs an exists query during
             // validation. Twenty option lines is already more than any
             // souper offers.
-            /** What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap. */
+            /**
+             * What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.
+             *
+             * @example [{"optionId":7,"quantity":2},{"optionId":8,"quantity":1}]
+             */
             'choices' => ['required', 'array', 'min:1', 'max:20'],
 
             // Scoped to THIS event's options. Without the where clause a

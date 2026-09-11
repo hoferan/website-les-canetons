@@ -144,10 +144,9 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { Config200Features } from "./config200Features";
-import type { Environment } from "./environment";
+import type { MemberResource } from "./memberResource";
 
-export type Config200 = {
-  env: Environment;
-  features: Config200Features;
+export type MemberRoleReplace200 = {
+  member: MemberResource;
+  sessionsEnded: number;
 };

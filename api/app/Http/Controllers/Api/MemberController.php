@@ -17,7 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
-#[Group('Members', weight: 50)]
+#[Group('Members', 'The roster, and the reference data a roster form needs. All of it behind `members.manage`.', weight: 50)]
 class MemberController extends Controller
 {
     /**

@@ -9,6 +9,7 @@ use App\Http\Resources\RegistrationOptionResource;
 use App\Models\Event;
 use App\Models\RegistrationOption;
 use App\Support\Audit;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,7 @@ class RegistrationOptionController extends Controller
      * changes nothing. An `id` belonging to another event's option, more
      * than 50 entries, or a missing label answers `400 validation_failed`.
      */
+    #[Endpoint(operationId: 'registrationOption.replace')]
     public function __invoke(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
     {
         // SINGLE-ACTION AND PUT, matching MemberRoleController: the committee

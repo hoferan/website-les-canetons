@@ -9,6 +9,7 @@ use App\Models\Member;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\SessionRevoker;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,7 @@ class MemberRoleController extends Controller
      * When both apply, the last-administrator refusal is the one returned. An
      * unknown role id answers `400 validation_failed` against `roleIds`.
      */
+    #[Endpoint(operationId: 'memberRole.replace')]
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {
         // NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted

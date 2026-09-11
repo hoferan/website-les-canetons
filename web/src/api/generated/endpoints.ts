@@ -173,20 +173,18 @@ import type {
   AuthMe200,
   AuthenticationExceptionResponse,
   ChaseListEntryResource,
-  Config200,
-  Contact200,
+  ConfigShow200,
   ContactRequest,
+  ContactStore200,
   EventDestroy200,
   EventIndexParams,
   EventResource,
-  FormToken200,
-  GuestListExport200Four,
-  GuestListExport503,
+  FormTokenShow200,
   MemberAttendanceDestroy200,
   MemberDestroy200,
-  MemberPassword200,
+  MemberPasswordReset200,
   MemberResource,
-  MemberRole200,
+  MemberRoleReplace200,
   MemberStore201,
   ModelNotFoundExceptionResponse,
   Problem403Response,
@@ -196,11 +194,12 @@ import type {
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationDestroy200,
+  RegistrationExport200Four,
+  RegistrationExport503,
   RegistrationFormResource,
-  RegistrationOption409,
+  RegistrationOptionReplace409,
   RegistrationOptionResource,
   RegistrationResource,
-  RegistrationStore200,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
   RoleResource,
@@ -2582,9 +2581,9 @@ export const useMemberAttendanceDestroy = <
   return useMutation(getMemberAttendanceDestroyMutationOptions(options), queryClient);
 };
 
-export type registrationStoreResponse200 = {
-  data: RegistrationStore200;
-  status: 200;
+export type registrationStoreResponse201 = {
+  data: RegistrationResource;
+  status: 201;
 };
 
 export type registrationStoreResponse400 = {
@@ -2612,7 +2611,7 @@ export type registrationStoreResponse429 = {
   status: 429;
 };
 
-export type registrationStoreResponseSuccess = registrationStoreResponse200 & {
+export type registrationStoreResponseSuccess = registrationStoreResponse201 & {
   headers: Headers;
 };
 export type registrationStoreResponseError = (
@@ -3088,67 +3087,68 @@ export function useRegistrationForm<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type guestListExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet =
+export type registrationExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet =
   {
     data: string;
     status: 200;
   };
 
-export type guestListExportResponse200TextCsvCharsetUTF8 = {
+export type registrationExportResponse200TextCsvCharsetUTF8 = {
   data: string;
   status: 200;
 };
 
-export type guestListExportResponse200TextMarkdownCharsetUTF8 = {
+export type registrationExportResponse200TextMarkdownCharsetUTF8 = {
   data: string;
   status: 200;
 };
 
-export type guestListExportResponse200ApplicationJson = {
-  data: GuestListExport200Four;
+export type registrationExportResponse200ApplicationJson = {
+  data: RegistrationExport200Four;
   status: 200;
 };
 
-export type guestListExportResponse401 = {
+export type registrationExportResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type guestListExportResponse403 = {
+export type registrationExportResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type guestListExportResponse404 = {
+export type registrationExportResponse404 = {
   data: ModelNotFoundExceptionResponse;
   status: 404;
 };
 
-export type guestListExportResponse503 = {
-  data: GuestListExport503;
+export type registrationExportResponse503 = {
+  data: RegistrationExport503;
   status: 503;
 };
 
-export type guestListExportResponseSuccess = (
-  | guestListExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet
-  | guestListExportResponse200TextCsvCharsetUTF8
-  | guestListExportResponse200TextMarkdownCharsetUTF8
-  | guestListExportResponse200ApplicationJson
+export type registrationExportResponseSuccess = (
+  | registrationExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet
+  | registrationExportResponse200TextCsvCharsetUTF8
+  | registrationExportResponse200TextMarkdownCharsetUTF8
+  | registrationExportResponse200ApplicationJson
 ) & {
   headers: Headers;
 };
-export type guestListExportResponseError = (
-  | guestListExportResponse401
-  | guestListExportResponse403
-  | guestListExportResponse404
-  | guestListExportResponse503
+export type registrationExportResponseError = (
+  | registrationExportResponse401
+  | registrationExportResponse403
+  | registrationExportResponse404
+  | registrationExportResponse503
 ) & {
   headers: Headers;
 };
 
-export type guestListExportResponse = guestListExportResponseSuccess | guestListExportResponseError;
+export type registrationExportResponse =
+  registrationExportResponseSuccess | registrationExportResponseError;
 
-export const getGuestListExportUrl = (event: number, format: "xlsx" | "csv" | "md" | "json") => {
+export const getRegistrationExportUrl = (event: number, format: "xlsx" | "csv" | "md" | "json") => {
   return `/events/${event}/registrations.${format}`;
 };
 
@@ -3170,80 +3170,82 @@ export const getGuestListExportUrl = (event: number, format: "xlsx" | "csv" | "m
  * `503 xlsx_unavailable`, and CSV still works there.
  * @summary Download the guest list as a file
  */
-export const guestListExport = async (
+export const registrationExport = async (
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options?: Parameters<typeof customFetch>[1],
-): Promise<guestListExportResponse> => {
-  return customFetch<guestListExportResponse>(getGuestListExportUrl(event, format), {
+): Promise<registrationExportResponse> => {
+  return customFetch<registrationExportResponse>(getRegistrationExportUrl(event, format), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGuestListExportQueryKey = (
+export const getRegistrationExportQueryKey = (
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
 ) => {
   return [`/events/${event}/registrations.${format}`] as const;
 };
 
-export const getGuestListExportQueryOptions = <
-  TData = Awaited<ReturnType<typeof guestListExport>>,
+export const getRegistrationExportQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationExport>>,
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | GuestListExport503,
+    | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGuestListExportQueryKey(event, format);
+  const queryKey = queryOptions?.queryKey ?? getRegistrationExportQueryKey(event, format);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof guestListExport>>> = ({ signal }) =>
-    guestListExport(event, format, { signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationExport>>> = ({ signal }) =>
+    registrationExport(event, format, { signal, ...requestOptions });
 
   return {
     queryKey,
     queryFn,
     enabled: event !== null && event !== undefined && format !== null && format !== undefined,
     ...queryOptions,
-  } as UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData> & {
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData> & {
     queryKey: DataTag<QueryKey, TData, TError>;
   };
 };
 
-export type GuestListExportQueryResult = NonNullable<Awaited<ReturnType<typeof guestListExport>>>;
-export type GuestListExportQueryError =
+export type RegistrationExportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof registrationExport>>
+>;
+export type RegistrationExportQueryError =
   | AuthenticationExceptionResponse
   | Problem403Response
   | ModelNotFoundExceptionResponse
-  | GuestListExport503;
+  | RegistrationExport503;
 
-export function useGuestListExport<
-  TData = Awaited<ReturnType<typeof guestListExport>>,
+export function useRegistrationExport<
+  TData = Awaited<ReturnType<typeof registrationExport>>,
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | GuestListExport503,
+    | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof guestListExport>>,
+          Awaited<ReturnType<typeof registrationExport>>,
           TError,
-          Awaited<ReturnType<typeof guestListExport>>
+          Awaited<ReturnType<typeof registrationExport>>
         >,
         "initialData"
       >;
@@ -3251,23 +3253,25 @@ export function useGuestListExport<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGuestListExport<
-  TData = Awaited<ReturnType<typeof guestListExport>>,
+export function useRegistrationExport<
+  TData = Awaited<ReturnType<typeof registrationExport>>,
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | GuestListExport503,
+    | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData>
+    > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof guestListExport>>,
+          Awaited<ReturnType<typeof registrationExport>>,
           TError,
-          Awaited<ReturnType<typeof guestListExport>>
+          Awaited<ReturnType<typeof registrationExport>>
         >,
         "initialData"
       >;
@@ -3275,18 +3279,18 @@ export function useGuestListExport<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useGuestListExport<
-  TData = Awaited<ReturnType<typeof guestListExport>>,
+export function useRegistrationExport<
+  TData = Awaited<ReturnType<typeof registrationExport>>,
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | GuestListExport503,
+    | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
@@ -3295,23 +3299,23 @@ export function useGuestListExport<
  * @summary Download the guest list as a file
  */
 
-export function useGuestListExport<
-  TData = Awaited<ReturnType<typeof guestListExport>>,
+export function useRegistrationExport<
+  TData = Awaited<ReturnType<typeof registrationExport>>,
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | GuestListExport503,
+    | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getGuestListExportQueryOptions(event, format, options);
+  const queryOptions = getRegistrationExportQueryOptions(event, format, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -3647,59 +3651,59 @@ export const useRegistrationDestroy = <
   return useMutation(getRegistrationDestroyMutationOptions(options), queryClient);
 };
 
-export type registrationOptionResponse200 = {
+export type registrationOptionReplaceResponse200 = {
   data: RegistrationOptionResource[];
   status: 200;
 };
 
-export type registrationOptionResponse400 = {
+export type registrationOptionReplaceResponse400 = {
   data: ValidationExceptionResponse;
   status: 400;
 };
 
-export type registrationOptionResponse401 = {
+export type registrationOptionReplaceResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type registrationOptionResponse403 = {
+export type registrationOptionReplaceResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type registrationOptionResponse404 = {
+export type registrationOptionReplaceResponse404 = {
   data: ModelNotFoundExceptionResponse;
   status: 404;
 };
 
-export type registrationOptionResponse409 = {
-  data: RegistrationOption409;
+export type registrationOptionReplaceResponse409 = {
+  data: RegistrationOptionReplace409;
   status: 409;
 };
 
-export type registrationOptionResponse419 = {
+export type registrationOptionReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type registrationOptionResponseSuccess = registrationOptionResponse200 & {
+export type registrationOptionReplaceResponseSuccess = registrationOptionReplaceResponse200 & {
   headers: Headers;
 };
-export type registrationOptionResponseError = (
-  | registrationOptionResponse400
-  | registrationOptionResponse401
-  | registrationOptionResponse403
-  | registrationOptionResponse404
-  | registrationOptionResponse409
-  | registrationOptionResponse419
+export type registrationOptionReplaceResponseError = (
+  | registrationOptionReplaceResponse400
+  | registrationOptionReplaceResponse401
+  | registrationOptionReplaceResponse403
+  | registrationOptionReplaceResponse404
+  | registrationOptionReplaceResponse409
+  | registrationOptionReplaceResponse419
 ) & {
   headers: Headers;
 };
 
-export type registrationOptionResponse =
-  registrationOptionResponseSuccess | registrationOptionResponseError;
+export type registrationOptionReplaceResponse =
+  registrationOptionReplaceResponseSuccess | registrationOptionReplaceResponseError;
 
-export const getRegistrationOptionUrl = (event: number) => {
+export const getRegistrationOptionReplaceUrl = (event: number) => {
   return `/events/${event}/registration-options`;
 };
 
@@ -3725,11 +3729,11 @@ export const getRegistrationOptionUrl = (event: number) => {
  * than 50 entries, or a missing label answers `400 validation_failed`.
  * @summary Replace an event's bookable options
  */
-export const registrationOption = async (
+export const registrationOptionReplace = async (
   event: number,
   replaceRegistrationOptionsRequest: ReplaceRegistrationOptionsRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<registrationOptionResponse> => {
+): Promise<registrationOptionReplaceResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -3749,7 +3753,7 @@ export const registrationOption = async (
     }
     return headers;
   };
-  return customFetch<registrationOptionResponse>(getRegistrationOptionUrl(event), {
+  return customFetch<registrationOptionReplaceResponse>(getRegistrationOptionReplaceUrl(event), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
@@ -3757,32 +3761,32 @@ export const registrationOption = async (
   });
 };
 
-export const getRegistrationOptionMutationKey = () => ["registrationOption"] as const;
+export const getRegistrationOptionReplaceMutationKey = () => ["registrationOptionReplace"] as const;
 
-export const getRegistrationOptionMutationOptions = <
+export const getRegistrationOptionReplaceMutationOptions = <
   TError =
     | ValidationExceptionResponse
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | RegistrationOption409
+    | RegistrationOptionReplace409
     | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof registrationOption>>,
+    Awaited<ReturnType<typeof registrationOptionReplace>>,
     TError,
-    RegistrationOptionMutationVariables,
+    RegistrationOptionReplaceMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof registrationOption>>,
+  Awaited<ReturnType<typeof registrationOptionReplace>>,
   TError,
-  RegistrationOptionMutationVariables,
+  RegistrationOptionReplaceMutationVariables,
   TContext
 > => {
-  const mutationKey = getRegistrationOptionMutationKey();
+  const mutationKey = getRegistrationOptionReplaceMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -3790,29 +3794,29 @@ export const getRegistrationOptionMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof registrationOption>>,
-    RegistrationOptionMutationVariables
+    Awaited<ReturnType<typeof registrationOptionReplace>>,
+    RegistrationOptionReplaceMutationVariables
   > = (props) => {
     const { event, data } = props ?? {};
 
-    return registrationOption(event, data, requestOptions);
+    return registrationOptionReplace(event, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type RegistrationOptionMutationResult = NonNullable<
-  Awaited<ReturnType<typeof registrationOption>>
+export type RegistrationOptionReplaceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof registrationOptionReplace>>
 >;
-export type RegistrationOptionMutationBody = ReplaceRegistrationOptionsRequest;
-export type RegistrationOptionMutationError =
+export type RegistrationOptionReplaceMutationBody = ReplaceRegistrationOptionsRequest;
+export type RegistrationOptionReplaceMutationError =
   | ValidationExceptionResponse
   | AuthenticationExceptionResponse
   | Problem403Response
   | ModelNotFoundExceptionResponse
-  | RegistrationOption409
+  | RegistrationOptionReplace409
   | Problem419Response;
-export type RegistrationOptionMutationVariables = {
+export type RegistrationOptionReplaceMutationVariables = {
   event: number;
   data: ReplaceRegistrationOptionsRequest;
 };
@@ -3820,33 +3824,33 @@ export type RegistrationOptionMutationVariables = {
 /**
  * @summary Replace an event's bookable options
  */
-export const useRegistrationOption = <
+export const useRegistrationOptionReplace = <
   TError =
     | ValidationExceptionResponse
     | AuthenticationExceptionResponse
     | Problem403Response
     | ModelNotFoundExceptionResponse
-    | RegistrationOption409
+    | RegistrationOptionReplace409
     | Problem419Response,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof registrationOption>>,
+      Awaited<ReturnType<typeof registrationOptionReplace>>,
       TError,
-      RegistrationOptionMutationVariables,
+      RegistrationOptionReplaceMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof registrationOption>>,
+  Awaited<ReturnType<typeof registrationOptionReplace>>,
   TError,
-  RegistrationOptionMutationVariables,
+  RegistrationOptionReplaceMutationVariables,
   TContext
 > => {
-  return useMutation(getRegistrationOptionMutationOptions(options), queryClient);
+  return useMutation(getRegistrationOptionReplaceMutationOptions(options), queryClient);
 };
 
 export type sectionIndexResponse200 = {
@@ -4784,52 +4788,53 @@ export const useMemberDestroy = <
   return useMutation(getMemberDestroyMutationOptions(options), queryClient);
 };
 
-export type memberRoleResponse200 = {
-  data: MemberRole200;
+export type memberRoleReplaceResponse200 = {
+  data: MemberRoleReplace200;
   status: 200;
 };
 
-export type memberRoleResponse400 = {
+export type memberRoleReplaceResponse400 = {
   data: ValidationExceptionResponse;
   status: 400;
 };
 
-export type memberRoleResponse401 = {
+export type memberRoleReplaceResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type memberRoleResponse403 = {
+export type memberRoleReplaceResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type memberRoleResponse404 = {
+export type memberRoleReplaceResponse404 = {
   data: ModelNotFoundExceptionResponse;
   status: 404;
 };
 
-export type memberRoleResponse419 = {
+export type memberRoleReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type memberRoleResponseSuccess = memberRoleResponse200 & {
+export type memberRoleReplaceResponseSuccess = memberRoleReplaceResponse200 & {
   headers: Headers;
 };
-export type memberRoleResponseError = (
-  | memberRoleResponse400
-  | memberRoleResponse401
-  | memberRoleResponse403
-  | memberRoleResponse404
-  | memberRoleResponse419
+export type memberRoleReplaceResponseError = (
+  | memberRoleReplaceResponse400
+  | memberRoleReplaceResponse401
+  | memberRoleReplaceResponse403
+  | memberRoleReplaceResponse404
+  | memberRoleReplaceResponse419
 ) & {
   headers: Headers;
 };
 
-export type memberRoleResponse = memberRoleResponseSuccess | memberRoleResponseError;
+export type memberRoleReplaceResponse =
+  memberRoleReplaceResponseSuccess | memberRoleReplaceResponseError;
 
-export const getMemberRoleUrl = (member: number) => {
+export const getMemberRoleReplaceUrl = (member: number) => {
   return `/members/${member}/roles`;
 };
 
@@ -4855,11 +4860,11 @@ export const getMemberRoleUrl = (member: number) => {
  * unknown role id answers `400 validation_failed` against `roleIds`.
  * @summary Replace a member's roles
  */
-export const memberRole = async (
+export const memberRoleReplace = async (
   member: number,
   replaceMemberRolesRequest: ReplaceMemberRolesRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<memberRoleResponse> => {
+): Promise<memberRoleReplaceResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -4879,7 +4884,7 @@ export const memberRole = async (
     }
     return headers;
   };
-  return customFetch<memberRoleResponse>(getMemberRoleUrl(member), {
+  return customFetch<memberRoleReplaceResponse>(getMemberRoleReplaceUrl(member), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
@@ -4887,9 +4892,9 @@ export const memberRole = async (
   });
 };
 
-export const getMemberRoleMutationKey = () => ["memberRole"] as const;
+export const getMemberRoleReplaceMutationKey = () => ["memberRoleReplace"] as const;
 
-export const getMemberRoleMutationOptions = <
+export const getMemberRoleReplaceMutationOptions = <
   TError =
     | ValidationExceptionResponse
     | AuthenticationExceptionResponse
@@ -4899,19 +4904,19 @@ export const getMemberRoleMutationOptions = <
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof memberRole>>,
+    Awaited<ReturnType<typeof memberRoleReplace>>,
     TError,
-    MemberRoleMutationVariables,
+    MemberRoleReplaceMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof memberRole>>,
+  Awaited<ReturnType<typeof memberRoleReplace>>,
   TError,
-  MemberRoleMutationVariables,
+  MemberRoleReplaceMutationVariables,
   TContext
 > => {
-  const mutationKey = getMemberRoleMutationKey();
+  const mutationKey = getMemberRoleReplaceMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -4919,31 +4924,36 @@ export const getMemberRoleMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof memberRole>>,
-    MemberRoleMutationVariables
+    Awaited<ReturnType<typeof memberRoleReplace>>,
+    MemberRoleReplaceMutationVariables
   > = (props) => {
     const { member, data } = props ?? {};
 
-    return memberRole(member, data, requestOptions);
+    return memberRoleReplace(member, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type MemberRoleMutationResult = NonNullable<Awaited<ReturnType<typeof memberRole>>>;
-export type MemberRoleMutationBody = ReplaceMemberRolesRequest;
-export type MemberRoleMutationError =
+export type MemberRoleReplaceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof memberRoleReplace>>
+>;
+export type MemberRoleReplaceMutationBody = ReplaceMemberRolesRequest;
+export type MemberRoleReplaceMutationError =
   | ValidationExceptionResponse
   | AuthenticationExceptionResponse
   | Problem403Response
   | ModelNotFoundExceptionResponse
   | Problem419Response;
-export type MemberRoleMutationVariables = { member: number; data: ReplaceMemberRolesRequest };
+export type MemberRoleReplaceMutationVariables = {
+  member: number;
+  data: ReplaceMemberRolesRequest;
+};
 
 /**
  * @summary Replace a member's roles
  */
-export const useMemberRole = <
+export const useMemberRoleReplace = <
   TError =
     | ValidationExceptionResponse
     | AuthenticationExceptionResponse
@@ -4954,63 +4964,64 @@ export const useMemberRole = <
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof memberRole>>,
+      Awaited<ReturnType<typeof memberRoleReplace>>,
       TError,
-      MemberRoleMutationVariables,
+      MemberRoleReplaceMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof memberRole>>,
+  Awaited<ReturnType<typeof memberRoleReplace>>,
   TError,
-  MemberRoleMutationVariables,
+  MemberRoleReplaceMutationVariables,
   TContext
 > => {
-  return useMutation(getMemberRoleMutationOptions(options), queryClient);
+  return useMutation(getMemberRoleReplaceMutationOptions(options), queryClient);
 };
 
-export type memberPasswordResponse200 = {
-  data: MemberPassword200;
+export type memberPasswordResetResponse200 = {
+  data: MemberPasswordReset200;
   status: 200;
 };
 
-export type memberPasswordResponse401 = {
+export type memberPasswordResetResponse401 = {
   data: AuthenticationExceptionResponse;
   status: 401;
 };
 
-export type memberPasswordResponse403 = {
+export type memberPasswordResetResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type memberPasswordResponse404 = {
+export type memberPasswordResetResponse404 = {
   data: ModelNotFoundExceptionResponse;
   status: 404;
 };
 
-export type memberPasswordResponse419 = {
+export type memberPasswordResetResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type memberPasswordResponseSuccess = memberPasswordResponse200 & {
+export type memberPasswordResetResponseSuccess = memberPasswordResetResponse200 & {
   headers: Headers;
 };
-export type memberPasswordResponseError = (
-  | memberPasswordResponse401
-  | memberPasswordResponse403
-  | memberPasswordResponse404
-  | memberPasswordResponse419
+export type memberPasswordResetResponseError = (
+  | memberPasswordResetResponse401
+  | memberPasswordResetResponse403
+  | memberPasswordResetResponse404
+  | memberPasswordResetResponse419
 ) & {
   headers: Headers;
 };
 
-export type memberPasswordResponse = memberPasswordResponseSuccess | memberPasswordResponseError;
+export type memberPasswordResetResponse =
+  memberPasswordResetResponseSuccess | memberPasswordResetResponseError;
 
-export const getMemberPasswordUrl = (member: number) => {
+export const getMemberPasswordResetUrl = (member: number) => {
   return `/members/${member}/password`;
 };
 
@@ -5032,19 +5043,19 @@ export const getMemberPasswordUrl = (member: number) => {
  * choose the password instead.
  * @summary Reset a member's password
  */
-export const memberPassword = async (
+export const memberPasswordReset = async (
   member: number,
   options?: Parameters<typeof customFetch>[1],
-): Promise<memberPasswordResponse> => {
-  return customFetch<memberPasswordResponse>(getMemberPasswordUrl(member), {
+): Promise<memberPasswordResetResponse> => {
+  return customFetch<memberPasswordResetResponse>(getMemberPasswordResetUrl(member), {
     ...options,
     method: "POST",
   });
 };
 
-export const getMemberPasswordMutationKey = () => ["memberPassword"] as const;
+export const getMemberPasswordResetMutationKey = () => ["memberPasswordReset"] as const;
 
-export const getMemberPasswordMutationOptions = <
+export const getMemberPasswordResetMutationOptions = <
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
@@ -5053,19 +5064,19 @@ export const getMemberPasswordMutationOptions = <
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof memberPassword>>,
+    Awaited<ReturnType<typeof memberPasswordReset>>,
     TError,
-    MemberPasswordMutationVariables,
+    MemberPasswordResetMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof memberPassword>>,
+  Awaited<ReturnType<typeof memberPasswordReset>>,
   TError,
-  MemberPasswordMutationVariables,
+  MemberPasswordResetMutationVariables,
   TContext
 > => {
-  const mutationKey = getMemberPasswordMutationKey();
+  const mutationKey = getMemberPasswordResetMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -5073,30 +5084,32 @@ export const getMemberPasswordMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof memberPassword>>,
-    MemberPasswordMutationVariables
+    Awaited<ReturnType<typeof memberPasswordReset>>,
+    MemberPasswordResetMutationVariables
   > = (props) => {
     const { member } = props ?? {};
 
-    return memberPassword(member, requestOptions);
+    return memberPasswordReset(member, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type MemberPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof memberPassword>>>;
+export type MemberPasswordResetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof memberPasswordReset>>
+>;
 
-export type MemberPasswordMutationError =
+export type MemberPasswordResetMutationError =
   | AuthenticationExceptionResponse
   | Problem403Response
   | ModelNotFoundExceptionResponse
   | Problem419Response;
-export type MemberPasswordMutationVariables = { member: number };
+export type MemberPasswordResetMutationVariables = { member: number };
 
 /**
  * @summary Reset a member's password
  */
-export const useMemberPassword = <
+export const useMemberPasswordReset = <
   TError =
     | AuthenticationExceptionResponse
     | Problem403Response
@@ -5106,43 +5119,43 @@ export const useMemberPassword = <
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof memberPassword>>,
+      Awaited<ReturnType<typeof memberPasswordReset>>,
       TError,
-      MemberPasswordMutationVariables,
+      MemberPasswordResetMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof memberPassword>>,
+  Awaited<ReturnType<typeof memberPasswordReset>>,
   TError,
-  MemberPasswordMutationVariables,
+  MemberPasswordResetMutationVariables,
   TContext
 > => {
-  return useMutation(getMemberPasswordMutationOptions(options), queryClient);
+  return useMutation(getMemberPasswordResetMutationOptions(options), queryClient);
 };
 
-export type formTokenResponse200 = {
-  data: FormToken200;
+export type formTokenShowResponse200 = {
+  data: FormTokenShow200;
   status: 200;
 };
 
-export type formTokenResponse429 = {
+export type formTokenShowResponse429 = {
   data: Problem429Response;
   status: 429;
 };
 
-export type formTokenResponseSuccess = formTokenResponse200 & {
+export type formTokenShowResponseSuccess = formTokenShowResponse200 & {
   headers: Headers;
 };
-export type formTokenResponseError = formTokenResponse429 & {
+export type formTokenShowResponseError = formTokenShowResponse429 & {
   headers: Headers;
 };
 
-export type formTokenResponse = formTokenResponseSuccess | formTokenResponseError;
+export type formTokenShowResponse = formTokenShowResponseSuccess | formTokenShowResponseError;
 
-export const getFormTokenUrl = () => {
+export const getFormTokenShowUrl = () => {
   return `/form-token`;
 };
 
@@ -5162,54 +5175,54 @@ export const getFormTokenUrl = () => {
  * in hand.
  * @summary Issue a form token for a public form
  */
-export const formToken = async (
+export const formTokenShow = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<formTokenResponse> => {
-  return customFetch<formTokenResponse>(getFormTokenUrl(), {
+): Promise<formTokenShowResponse> => {
+  return customFetch<formTokenShowResponse>(getFormTokenShowUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getFormTokenQueryKey = () => {
+export const getFormTokenShowQueryKey = () => {
   return [`/form-token`] as const;
 };
 
-export const getFormTokenQueryOptions = <
-  TData = Awaited<ReturnType<typeof formToken>>,
+export const getFormTokenShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof formTokenShow>>,
   TError = Problem429Response,
 >(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getFormTokenQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getFormTokenShowQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof formToken>>> = ({ signal }) =>
-    formToken({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof formTokenShow>>> = ({ signal }) =>
+    formTokenShow({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof formToken>>,
+    Awaited<ReturnType<typeof formTokenShow>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type FormTokenQueryResult = NonNullable<Awaited<ReturnType<typeof formToken>>>;
-export type FormTokenQueryError = Problem429Response;
+export type FormTokenShowQueryResult = NonNullable<Awaited<ReturnType<typeof formTokenShow>>>;
+export type FormTokenShowQueryError = Problem429Response;
 
-export function useFormToken<
-  TData = Awaited<ReturnType<typeof formToken>>,
+export function useFormTokenShow<
+  TData = Awaited<ReturnType<typeof formTokenShow>>,
   TError = Problem429Response,
 >(
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof formToken>>,
+          Awaited<ReturnType<typeof formTokenShow>>,
           TError,
-          Awaited<ReturnType<typeof formToken>>
+          Awaited<ReturnType<typeof formTokenShow>>
         >,
         "initialData"
       >;
@@ -5217,17 +5230,17 @@ export function useFormToken<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useFormToken<
-  TData = Awaited<ReturnType<typeof formToken>>,
+export function useFormTokenShow<
+  TData = Awaited<ReturnType<typeof formTokenShow>>,
   TError = Problem429Response,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof formToken>>,
+          Awaited<ReturnType<typeof formTokenShow>>,
           TError,
-          Awaited<ReturnType<typeof formToken>>
+          Awaited<ReturnType<typeof formTokenShow>>
         >,
         "initialData"
       >;
@@ -5235,12 +5248,12 @@ export function useFormToken<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useFormToken<
-  TData = Awaited<ReturnType<typeof formToken>>,
+export function useFormTokenShow<
+  TData = Awaited<ReturnType<typeof formTokenShow>>,
   TError = Problem429Response,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
@@ -5249,17 +5262,17 @@ export function useFormToken<
  * @summary Issue a form token for a public form
  */
 
-export function useFormToken<
-  TData = Awaited<ReturnType<typeof formToken>>,
+export function useFormTokenShow<
+  TData = Awaited<ReturnType<typeof formTokenShow>>,
   TError = Problem429Response,
 >(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formToken>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getFormTokenQueryOptions(options);
+  const queryOptions = getFormTokenShowQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -5268,43 +5281,46 @@ export function useFormToken<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type contactResponse200 = {
-  data: Contact200;
+export type contactStoreResponse200 = {
+  data: ContactStore200;
   status: 200;
 };
 
-export type contactResponse400 = {
+export type contactStoreResponse400 = {
   data: ValidationExceptionResponse;
   status: 400;
 };
 
-export type contactResponse419 = {
+export type contactStoreResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type contactResponse422 = {
+export type contactStoreResponse422 = {
   data: Problem422Response;
   status: 422;
 };
 
-export type contactResponse429 = {
+export type contactStoreResponse429 = {
   data: Problem429Response;
   status: 429;
 };
 
-export type contactResponseSuccess = contactResponse200 & {
+export type contactStoreResponseSuccess = contactStoreResponse200 & {
   headers: Headers;
 };
-export type contactResponseError = (
-  contactResponse400 | contactResponse419 | contactResponse422 | contactResponse429
+export type contactStoreResponseError = (
+  | contactStoreResponse400
+  | contactStoreResponse419
+  | contactStoreResponse422
+  | contactStoreResponse429
 ) & {
   headers: Headers;
 };
 
-export type contactResponse = contactResponseSuccess | contactResponseError;
+export type contactStoreResponse = contactStoreResponseSuccess | contactStoreResponseError;
 
-export const getContactUrl = () => {
+export const getContactStoreUrl = () => {
   return `/contact`;
 };
 
@@ -5323,10 +5339,10 @@ export const getContactUrl = () => {
  * problem named in `fields[]`.
  * @summary Send a message to the committee
  */
-export const contact = async (
+export const contactStore = async (
   contactRequest: ContactRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<contactResponse> => {
+): Promise<contactStoreResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -5346,7 +5362,7 @@ export const contact = async (
     }
     return headers;
   };
-  return customFetch<contactResponse>(getContactUrl(), {
+  return customFetch<contactStoreResponse>(getContactStoreUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
@@ -5354,27 +5370,27 @@ export const contact = async (
   });
 };
 
-export const getContactMutationKey = () => ["contact"] as const;
+export const getContactStoreMutationKey = () => ["contactStore"] as const;
 
-export const getContactMutationOptions = <
+export const getContactStoreMutationOptions = <
   TError =
     ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof contact>>,
+    Awaited<ReturnType<typeof contactStore>>,
     TError,
-    ContactMutationVariables,
+    ContactStoreMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof contact>>,
+  Awaited<ReturnType<typeof contactStore>>,
   TError,
-  ContactMutationVariables,
+  ContactStoreMutationVariables,
   TContext
 > => {
-  const mutationKey = getContactMutationKey();
+  const mutationKey = getContactStoreMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -5382,61 +5398,61 @@ export const getContactMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof contact>>,
-    ContactMutationVariables
+    Awaited<ReturnType<typeof contactStore>>,
+    ContactStoreMutationVariables
   > = (props) => {
     const { data } = props ?? {};
 
-    return contact(data, requestOptions);
+    return contactStore(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type ContactMutationResult = NonNullable<Awaited<ReturnType<typeof contact>>>;
-export type ContactMutationBody = ContactRequest;
-export type ContactMutationError =
+export type ContactStoreMutationResult = NonNullable<Awaited<ReturnType<typeof contactStore>>>;
+export type ContactStoreMutationBody = ContactRequest;
+export type ContactStoreMutationError =
   ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response;
-export type ContactMutationVariables = { data: ContactRequest };
+export type ContactStoreMutationVariables = { data: ContactRequest };
 
 /**
  * @summary Send a message to the committee
  */
-export const useContact = <
+export const useContactStore = <
   TError =
     ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof contact>>,
+      Awaited<ReturnType<typeof contactStore>>,
       TError,
-      ContactMutationVariables,
+      ContactStoreMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof contact>>,
+  Awaited<ReturnType<typeof contactStore>>,
   TError,
-  ContactMutationVariables,
+  ContactStoreMutationVariables,
   TContext
 > => {
-  return useMutation(getContactMutationOptions(options), queryClient);
+  return useMutation(getContactStoreMutationOptions(options), queryClient);
 };
 
-export type configResponse200 = {
-  data: Config200;
+export type configShowResponse200 = {
+  data: ConfigShow200;
   status: 200;
 };
 
-export type configResponseSuccess = configResponse200 & {
+export type configShowResponseSuccess = configShowResponse200 & {
   headers: Headers;
 };
-export type configResponse = configResponseSuccess;
+export type configShowResponse = configShowResponseSuccess;
 
-export const getConfigUrl = () => {
+export const getConfigShowUrl = () => {
   return `/config`;
 };
 
@@ -5455,51 +5471,51 @@ export const getConfigUrl = () => {
  * on the next page load.
  * @summary Read the runtime configuration
  */
-export const config = async (
+export const configShow = async (
   options?: Parameters<typeof customFetch>[1],
-): Promise<configResponse> => {
-  return customFetch<configResponse>(getConfigUrl(), {
+): Promise<configShowResponse> => {
+  return customFetch<configShowResponse>(getConfigShowUrl(), {
     ...options,
     method: "GET",
   });
 };
 
-export const getConfigQueryKey = () => {
+export const getConfigShowQueryKey = () => {
   return [`/config`] as const;
 };
 
-export const getConfigQueryOptions = <
-  TData = Awaited<ReturnType<typeof config>>,
+export const getConfigShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof configShow>>,
   TError = unknown,
 >(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof config>>, TError, TData>>;
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getConfigQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getConfigShowQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof config>>> = ({ signal }) =>
-    config({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof configShow>>> = ({ signal }) =>
+    configShow({ signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof config>>,
+    Awaited<ReturnType<typeof configShow>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type ConfigQueryResult = NonNullable<Awaited<ReturnType<typeof config>>>;
-export type ConfigQueryError = unknown;
+export type ConfigShowQueryResult = NonNullable<Awaited<ReturnType<typeof configShow>>>;
+export type ConfigShowQueryError = unknown;
 
-export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = unknown>(
+export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof config>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof config>>,
+          Awaited<ReturnType<typeof configShow>>,
           TError,
-          Awaited<ReturnType<typeof config>>
+          Awaited<ReturnType<typeof configShow>>
         >,
         "initialData"
       >;
@@ -5507,14 +5523,14 @@ export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = u
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = unknown>(
+export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof config>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof config>>,
+          Awaited<ReturnType<typeof configShow>>,
           TError,
-          Awaited<ReturnType<typeof config>>
+          Awaited<ReturnType<typeof configShow>>
         >,
         "initialData"
       >;
@@ -5522,9 +5538,9 @@ export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = u
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = unknown>(
+export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof config>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
@@ -5533,14 +5549,14 @@ export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = u
  * @summary Read the runtime configuration
  */
 
-export function useConfig<TData = Awaited<ReturnType<typeof config>>, TError = unknown>(
+export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof config>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getConfigQueryOptions(options);
+  const queryOptions = getConfigShowQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

@@ -13,25 +13,32 @@
     ],
     "tags": [
         {
-            "name": "Session"
+            "name": "Session",
+            "description": "Logging in, reading who you are, and changing your own password."
         },
         {
-            "name": "Events"
+            "name": "Events",
+            "description": "The planning: what the band is doing and when. Every member reads it; changing it needs `events.manage`."
         },
         {
-            "name": "Attendance"
+            "name": "Attendance",
+            "description": "Who is coming. Anyone in a register answers for themselves; seeing the whole list and answering for somebody else are separate permissions."
         },
         {
-            "name": "Registration"
+            "name": "Registration",
+            "description": "Public bookings for an event that takes them, and the guest list the committee works from."
         },
         {
-            "name": "Members"
+            "name": "Members",
+            "description": "The roster, and the reference data a roster form needs. All of it behind `members.manage`."
         },
         {
-            "name": "Public forms"
+            "name": "Public forms",
+            "description": "What an anonymous visitor may send, and the stamp every such submission carries. Rate limited."
         },
         {
-            "name": "Service"
+            "name": "Service",
+            "description": "What a client needs before it renders anything."
         }
     ],
     "paths": {
@@ -290,7 +297,7 @@
         },
         "/me/password": {
             "post": {
-                "operationId": "accountPassword",
+                "operationId": "account.password",
                 "description": "Any logged-in account holder, for their own account. No permission is\nneeded: this is the screen every member has and nobody administers, and\nit is where a member sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`.",
                 "summary": "Change your own password",
                 "tags": [
@@ -580,7 +587,7 @@
         },
         "/events/series": {
             "post": {
-                "operationId": "eventSeries",
+                "operationId": "event.series",
                 "description": "Requires `events.manage`. Takes a `template` and a list of `Y-m-d`\n`dates`, at most 60 of them, and creates one event per date. Answers\n`201` with the created events, in the same shape `GET /api/v1/events`\nreturns, so a client can refresh its list straight from the response.\n\nThe events are independent, and there is no series afterwards: nothing\nlinks them, and each one is edited, answered and deleted on its own.\n\nThe template carries `startTime` and `endTime` as `H:i` wall-clock\nstrings rather than instants, applied in Europe/Zurich for each date.\nA season that crosses the daylight-saving change therefore keeps the\nsame time on the clock throughout. `endTime` must be after `startTime`.\n\n`title`, `location`, `isPublic`, `startTime` and `endTime` are required\non the template; `attire` and `notes` are optional. An empty date list\nfails validation against `dates` with `required`, more than 60 dates\nwith `too_long`, and a date that is not `Y-m-d` against its own entry\nwith `invalid_format`. A refused request writes nothing at all.",
                 "summary": "Generate a season of events from one template",
                 "tags": [
@@ -937,21 +944,21 @@
                     }
                 },
                 "responses": {
-                    "200": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "201": {
+                        "description": "The booking, as it was recorded.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RegistrationResource"
+                                }
+                            }
+                        }
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
@@ -1046,7 +1053,7 @@
         },
         "/events/{event}/registrations.{format}": {
             "get": {
-                "operationId": "guestListExport",
+                "operationId": "registration.export",
                 "description": "Requires `registrations.view`. `{format}` is `xlsx`, `csv`, `md` or\n`json`; any other value is a `404` from the router.\n\nReturns the list as an attachment named after the event: one row per\nbooking with the guest's details, a column for each of the event's\nbookable options holding how many of it that booking took, the number\nof people it covers, its total in francs and when it was made, then a\nclosing totals row for the caterer. Every format carries the same rows\nin the same order.\n\nThe CSV is semicolon-separated and carries a UTF-8 byte order mark, so\nExcel opens it in columns and with accents intact.\n\nXLSX needs the PHP `zip` extension. A server without it answers\n`503 xlsx_unavailable`, and CSV still works there.",
                 "summary": "Download the guest list as a file",
                 "tags": [
@@ -1312,7 +1319,7 @@
         },
         "/events/{event}/registration-options": {
             "put": {
-                "operationId": "registrationOption",
+                "operationId": "registrationOption.replace",
                 "description": "Requires `events.manage`, because configuring what an event offers is\nconfiguring the event.\n\nSend the complete list. An entry carrying an `id` updates that option,\nan entry without one creates it, and an option missing from the list\nis deleted. Replaying the same body converges on the same list, so a\nretry after a timeout is safe.\n\n`priceCents` is a whole number of centimes and may be null, for an\noption that is free or whose price lives in its description.\n`sortOrder` may be left out, in which case the entry's position in the\nlist is used.\n\nReturns the event's options as they now stand, in sort order.\n\nRemoving an option somebody has already booked answers\n`409 option_has_registrations`, names the options in the way, and\nchanges nothing. An `id` belonging to another event's option, more\nthan 50 entries, or a missing label answers `400 validation_failed`.",
                 "summary": "Replace an event's bookable options",
                 "tags": [
@@ -1680,7 +1687,7 @@
         },
         "/members/{member}/roles": {
             "put": {
-                "operationId": "memberRole",
+                "operationId": "memberRole.replace",
                 "description": "Requires `members.manage`. `roleIds` is the complete set the member is\nleft with, so send every role they should keep; an empty array removes\nall of them. Read the roles that exist from `GET /api/v1/roles`.\n\nThis is the only way any permission is granted or taken away. A role is\nwhat groups permissions, and no endpoint in this API authorises by role\nname, so nothing is ever granted to one member directly.\n\nThe change ends every session the member has open, so a permission that\nhas just been removed stops working immediately rather than at their\nnext login. Answers the updated member and `sessionsEnded`.\n\nRefuses with `409 cannot_remove_last_administrator` when the new set\nwould leave nobody able to administer members, and\n`409 cannot_demote_self` when callers would strip their own member\nadministration. Both are `409` rather than `403` because the caller does\nhold the permission; the request conflicts with the state of the roster.\nWhen both apply, the last-administrator refusal is the one returned. An\nunknown role id answers `400 validation_failed` against `roleIds`.",
                 "summary": "Replace a member's roles",
                 "tags": [
@@ -1750,7 +1757,7 @@
         },
         "/members/{member}/password": {
             "post": {
-                "operationId": "memberPassword",
+                "operationId": "memberPassword.reset",
                 "description": "Requires `members.manage`. Mints a readable password an administrator\ncan dictate over the phone, replaces the member's own with it, and ends\nevery session that member has open. Takes no body. Answers\n`{\"generatedPassword\": \"...\", \"sessionsEnded\": n}`.\n\n`generatedPassword` is shown in this response and nowhere else: it is\nhashed on the way into the database, is never written to the audit log,\nand no later call returns it. A lost one is replaced by calling this\nagain. The member is required to change it at their next login, through\n`POST /api/v1/me/password`.\n\nA member resetting their own password this way keeps the session they\nare calling from, and `sessionsEnded` then counts their other ones. The\nordinary route for that is `POST /api/v1/me/password`, which lets them\nchoose the password instead.",
                 "summary": "Reset a member's password",
                 "tags": [
@@ -1807,7 +1814,7 @@
         },
         "/form-token": {
             "get": {
-                "operationId": "formToken",
+                "operationId": "formToken.show",
                 "description": "Anonymous, and no session is required. Rate limited to 10 a minute per\nIP.\n\nReturns `{\"token\": \"...\"}`, to be sent back as the `X-Form-Token`\nheader on a public write: `POST /api/v1/contact` and\n`POST /api/v1/events/{event}/registrations`.\n\nFetch it when the form is rendered, not when it is submitted. The\nsubmission guard refuses a token less than two seconds old, so\nrequesting one at submit time would refuse every real person. A token\nstays valid for two hours and may be sent more than once, so a\nsubmission that fails validation can be retried with the token already\nin hand.",
                 "summary": "Issue a form token for a public form",
                 "tags": [
@@ -1840,7 +1847,7 @@
         },
         "/contact": {
             "post": {
-                "operationId": "contact",
+                "operationId": "contact.store",
                 "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message for the committee to read and answers\n`{\"ok\": true}`. Nothing is sent back to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
                 "summary": "Send a message to the committee",
                 "tags": [
@@ -1903,7 +1910,7 @@
         },
         "/config": {
             "get": {
-                "operationId": "config",
+                "operationId": "config.show",
                 "description": "Anonymous, and no session is required. The SPA fetches this before its\nfirst render to learn which environment it is talking to and which\nfeature flags are on.\n\nReturns `env`, one of `dev`, `test`, `qa` or `prod`, and `features`, a\nmap of flag name to boolean. A flag the server says nothing about\nreads as `false`, and an environment the server does not recognise\nreads as `prod`.\n\nCarries no secrets and depends on nothing about the caller. The\nresponse is `no-store`, so a value changed on the server is picked up\non the next page load.",
                 "summary": "Read the runtime configuration",
                 "tags": [
@@ -2545,6 +2552,23 @@
                     "options": {
                         "type": "array",
                         "description": "The whole list, replacing whatever the event offered before. Send `[]` to offer nothing.",
+                        "examples": [
+                            [
+                                {
+                                    "id": 7,
+                                    "label": "Repas adulte",
+                                    "description": "Jambon, gratin et salade",
+                                    "priceCents": 4500,
+                                    "sortOrder": 0
+                                },
+                                {
+                                    "label": "Repas enfant",
+                                    "description": null,
+                                    "priceCents": 2000,
+                                    "sortOrder": 1
+                                }
+                            ]
+                        ],
                         "items": {
                             "type": "object",
                             "properties": {
@@ -2730,6 +2754,17 @@
                     "template": {
                         "type": "object",
                         "description": "The event every date is stamped out from.",
+                        "examples": [
+                            {
+                                "title": "R\u00e9p\u00e9tition",
+                                "location": "Local des Canetons, Fribourg",
+                                "attire": null,
+                                "isPublic": false,
+                                "notes": null,
+                                "startTime": "20:00",
+                                "endTime": "22:00"
+                            }
+                        ],
                         "properties": {
                             "title": {
                                 "type": "string",
@@ -2778,6 +2813,14 @@
                     "dates": {
                         "type": "array",
                         "description": "The dates to generate, at least one and at most 60. Order does not matter.",
+                        "examples": [
+                            [
+                                "2026-10-06",
+                                "2026-10-13",
+                                "2026-11-03",
+                                "2026-11-10"
+                            ]
+                        ],
                         "items": {
                             "type": "string",
                             "format": "date",
@@ -2887,6 +2930,18 @@
                     "choices": {
                         "type": "array",
                         "description": "What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.",
+                        "examples": [
+                            [
+                                {
+                                    "optionId": 7,
+                                    "quantity": 2
+                                },
+                                {
+                                    "optionId": 8,
+                                    "quantity": 1
+                                }
+                            ]
+                        ],
                         "items": {
                             "type": "object",
                             "properties": {

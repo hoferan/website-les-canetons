@@ -1,11 +1,11 @@
 import { createContext, use, type ReactNode } from "react";
 
-import { useAuthMe, useConfig } from "../api/generated/endpoints";
-import type { AuthMe200, Config200 } from "../api/generated/model";
+import { useAuthMe, useConfigShow } from "../api/generated/endpoints";
+import type { AuthMe200, ConfigShow200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
 
 type Session = {
-  config: Config200;
+  config: ConfigShow200;
   user: AuthMe200 | null;
   /**
    * UX ONLY. Laravel's `permission:` middleware is the sole enforcement — a
@@ -51,7 +51,7 @@ export function useSession(): Session {
  * tab switch for no benefit.
  */
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const config = useConfig({ query: { retry: false, staleTime: Infinity } });
+  const config = useConfigShow({ query: { retry: false, staleTime: Infinity } });
   const user = useAuthMe({ query: { retry: false, staleTime: Infinity } });
 
   if (config.isPending || user.isPending) {

@@ -15,8 +15,8 @@ import {
   getMemberIndexQueryKey,
   useMemberDestroy,
   useMemberIndex,
-  useMemberPassword,
-  useMemberRole,
+  useMemberPasswordReset,
+  useMemberRoleReplace,
   useMemberStore,
   useMemberUpdate,
   useRoleIndex,
@@ -64,9 +64,9 @@ export function Members() {
 
   const create = useMemberStore();
   const update = useMemberUpdate();
-  const replaceRoles = useMemberRole();
+  const replaceRoles = useMemberRoleReplace();
   const destroy = useMemberDestroy();
-  const issuePassword = useMemberPassword();
+  const issuePassword = useMemberPasswordReset();
 
   // `editing` distinguishes three states: closed, creating (null) and editing
   // (a member). A separate boolean plus a member would allow a fourth,

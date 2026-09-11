@@ -158,23 +158,22 @@ import type {
   AuthLogout200,
   AuthMe200,
   ChaseListEntryResource,
-  Config200,
-  Contact200,
+  ConfigShow200,
+  ContactStore200,
   EventDestroy200,
   EventResource,
-  FormToken200,
-  GuestListExport200Four,
+  FormTokenShow200,
   MemberAttendanceDestroy200,
   MemberDestroy200,
-  MemberPassword200,
+  MemberPasswordReset200,
   MemberResource,
-  MemberRole200,
+  MemberRoleReplace200,
   MemberStore201,
   RegistrationDestroy200,
+  RegistrationExport200Four,
   RegistrationFormResource,
   RegistrationOptionResource,
   RegistrationResource,
-  RegistrationStore200,
   RoleResource,
   SectionResource,
 } from "./model";
@@ -452,7 +451,32 @@ export const getMemberAttendanceDestroyResponseMock = (
   overrideResponse: Partial<Extract<MemberAttendanceDestroy200, object>> = {},
 ): MemberAttendanceDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getRegistrationStoreResponseMock = (): RegistrationStore200 => ({});
+export const getRegistrationStoreResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationResource, object>> = {},
+): RegistrationResource => ({
+  id: faker.number.int(),
+  firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  address: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  tableName: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  choices: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      optionId: faker.number.int(),
+      label: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      quantity: faker.number.int(),
+      priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
+    }),
+  ),
+  guestCount: faker.number.int(),
+  totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+});
 
 export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
@@ -510,9 +534,9 @@ export const getRegistrationFormResponseMock = (
   ...overrideResponse,
 });
 
-export const getGuestListExportResponseMock = (
-  overrideResponse: Partial<Extract<string | GuestListExport200Four, object>> = {},
-): string | GuestListExport200Four =>
+export const getRegistrationExportResponseMock = (
+  overrideResponse: Partial<Extract<string | RegistrationExport200Four, object>> = {},
+): string | RegistrationExport200Four =>
   faker.helpers.arrayElement([
     faker.word.sample(),
     faker.word.sample(),
@@ -564,7 +588,7 @@ export const getRegistrationDestroyResponseMock = (
   overrideResponse: Partial<Extract<RegistrationDestroy200, object>> = {},
 ): RegistrationDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getRegistrationOptionResponseMock = (): RegistrationOptionResource[] =>
+export const getRegistrationOptionReplaceResponseMock = (): RegistrationOptionResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     label: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -691,9 +715,9 @@ export const getMemberDestroyResponseMock = (
   ...overrideResponse,
 });
 
-export const getMemberRoleResponseMock = (
-  overrideResponse: Partial<Extract<MemberRole200, object>> = {},
-): MemberRole200 => ({
+export const getMemberRoleReplaceResponseMock = (
+  overrideResponse: Partial<Extract<MemberRoleReplace200, object>> = {},
+): MemberRoleReplace200 => ({
   member: {
     id: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -724,28 +748,28 @@ export const getMemberRoleResponseMock = (
   ...overrideResponse,
 });
 
-export const getMemberPasswordResponseMock = (
-  overrideResponse: Partial<Extract<MemberPassword200, object>> = {},
-): MemberPassword200 => ({
+export const getMemberPasswordResetResponseMock = (
+  overrideResponse: Partial<Extract<MemberPasswordReset200, object>> = {},
+): MemberPasswordReset200 => ({
   generatedPassword: faker.string.alpha({ length: { min: 10, max: 20 } }),
   sessionsEnded: faker.number.int(),
   ...overrideResponse,
 });
 
-export const getFormTokenResponseMock = (
-  overrideResponse: Partial<Extract<FormToken200, object>> = {},
-): FormToken200 => ({
+export const getFormTokenShowResponseMock = (
+  overrideResponse: Partial<Extract<FormTokenShow200, object>> = {},
+): FormTokenShow200 => ({
   token: faker.string.alpha({ length: { min: 10, max: 20 } }),
   ...overrideResponse,
 });
 
-export const getContactResponseMock = (
-  overrideResponse: Partial<Extract<Contact200, object>> = {},
-): Contact200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+export const getContactStoreResponseMock = (
+  overrideResponse: Partial<Extract<ContactStore200, object>> = {},
+): ContactStore200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getConfigResponseMock = (
-  overrideResponse: Partial<Extract<Config200, object>> = {},
-): Config200 => ({
+export const getConfigShowResponseMock = (
+  overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
+): ConfigShow200 => ({
   env: faker.helpers.arrayElement(Object.values(Environment)),
   features: {
     [faker.string.alphanumeric(5)]: faker.datatype.boolean(),
@@ -1113,10 +1137,10 @@ export const getMemberAttendanceDestroyMockHandler = (
 
 export const getRegistrationStoreMockHandler = (
   overrideResponse?:
-    | RegistrationStore200
+    | RegistrationResource
     | ((
         info: Parameters<Parameters<typeof http.post>[1]>[0],
-      ) => Promise<RegistrationStore200> | RegistrationStore200),
+      ) => Promise<RegistrationResource> | RegistrationResource),
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
@@ -1128,7 +1152,7 @@ export const getRegistrationStoreMockHandler = (
             ? await overrideResponse(info)
             : overrideResponse
           : getRegistrationStoreResponseMock(),
-        { status: 200 },
+        { status: 201 },
       );
     },
     options,
@@ -1183,13 +1207,13 @@ export const getRegistrationFormMockHandler = (
   );
 };
 
-export const getGuestListExportMockHandler = (
+export const getRegistrationExportMockHandler = (
   overrideResponse?:
     | string
-    | GuestListExport200Four
+    | RegistrationExport200Four
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<string | GuestListExport200Four> | string | GuestListExport200Four),
+      ) => Promise<string | RegistrationExport200Four> | string | RegistrationExport200Four),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1200,7 +1224,7 @@ export const getGuestListExportMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getGuestListExportResponseMock();
+          : getRegistrationExportResponseMock();
       return typeof resolvedBody === "string"
         ? HttpResponse.text(resolvedBody, {
             status: 200,
@@ -1260,7 +1284,7 @@ export const getRegistrationDestroyMockHandler = (
   );
 };
 
-export const getRegistrationOptionMockHandler = (
+export const getRegistrationOptionReplaceMockHandler = (
   overrideResponse?:
     | RegistrationOptionResource[]
     | ((
@@ -1276,7 +1300,7 @@ export const getRegistrationOptionMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getRegistrationOptionResponseMock(),
+          : getRegistrationOptionReplaceResponseMock(),
         { status: 200 },
       );
     },
@@ -1428,12 +1452,12 @@ export const getMemberDestroyMockHandler = (
   );
 };
 
-export const getMemberRoleMockHandler = (
+export const getMemberRoleReplaceMockHandler = (
   overrideResponse?:
-    | MemberRole200
+    | MemberRoleReplace200
     | ((
         info: Parameters<Parameters<typeof http.put>[1]>[0],
-      ) => Promise<MemberRole200> | MemberRole200),
+      ) => Promise<MemberRoleReplace200> | MemberRoleReplace200),
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
@@ -1444,7 +1468,7 @@ export const getMemberRoleMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getMemberRoleResponseMock(),
+          : getMemberRoleReplaceResponseMock(),
         { status: 200 },
       );
     },
@@ -1452,12 +1476,12 @@ export const getMemberRoleMockHandler = (
   );
 };
 
-export const getMemberPasswordMockHandler = (
+export const getMemberPasswordResetMockHandler = (
   overrideResponse?:
-    | MemberPassword200
+    | MemberPasswordReset200
     | ((
         info: Parameters<Parameters<typeof http.post>[1]>[0],
-      ) => Promise<MemberPassword200> | MemberPassword200),
+      ) => Promise<MemberPasswordReset200> | MemberPasswordReset200),
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
@@ -1468,7 +1492,7 @@ export const getMemberPasswordMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getMemberPasswordResponseMock(),
+          : getMemberPasswordResetResponseMock(),
         { status: 200 },
       );
     },
@@ -1476,12 +1500,12 @@ export const getMemberPasswordMockHandler = (
   );
 };
 
-export const getFormTokenMockHandler = (
+export const getFormTokenShowMockHandler = (
   overrideResponse?:
-    | FormToken200
+    | FormTokenShow200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<FormToken200> | FormToken200),
+      ) => Promise<FormTokenShow200> | FormTokenShow200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1492,7 +1516,7 @@ export const getFormTokenMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getFormTokenResponseMock(),
+          : getFormTokenShowResponseMock(),
         { status: 200 },
       );
     },
@@ -1500,10 +1524,12 @@ export const getFormTokenMockHandler = (
   );
 };
 
-export const getContactMockHandler = (
+export const getContactStoreMockHandler = (
   overrideResponse?:
-    | Contact200
-    | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<Contact200> | Contact200),
+    | ContactStore200
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<ContactStore200> | ContactStore200),
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
@@ -1514,7 +1540,7 @@ export const getContactMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getContactResponseMock(),
+          : getContactStoreResponseMock(),
         { status: 200 },
       );
     },
@@ -1522,10 +1548,12 @@ export const getContactMockHandler = (
   );
 };
 
-export const getConfigMockHandler = (
+export const getConfigShowMockHandler = (
   overrideResponse?:
-    | Config200
-    | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<Config200> | Config200),
+    | ConfigShow200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ConfigShow200> | ConfigShow200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1536,7 +1564,7 @@ export const getConfigMockHandler = (
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getConfigResponseMock(),
+          : getConfigShowResponseMock(),
         { status: 200 },
       );
     },
@@ -1562,19 +1590,19 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationStoreMockHandler(),
   getRegistrationIndexMockHandler(),
   getRegistrationFormMockHandler(),
-  getGuestListExportMockHandler(),
+  getRegistrationExportMockHandler(),
   getRegistrationUpdateMockHandler(),
   getRegistrationDestroyMockHandler(),
-  getRegistrationOptionMockHandler(),
+  getRegistrationOptionReplaceMockHandler(),
   getSectionIndexMockHandler(),
   getRoleIndexMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),
   getMemberUpdateMockHandler(),
   getMemberDestroyMockHandler(),
-  getMemberRoleMockHandler(),
-  getMemberPasswordMockHandler(),
-  getFormTokenMockHandler(),
-  getContactMockHandler(),
-  getConfigMockHandler(),
+  getMemberRoleReplaceMockHandler(),
+  getMemberPasswordResetMockHandler(),
+  getFormTokenShowMockHandler(),
+  getContactStoreMockHandler(),
+  getConfigShowMockHandler(),
 ];

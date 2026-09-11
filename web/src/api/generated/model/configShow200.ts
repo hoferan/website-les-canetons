@@ -144,5 +144,10 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ConfigShow200Features } from "./configShow200Features";
+import type { Environment } from "./environment";
 
-export type RegistrationStore200 = { [key: string]: unknown };
+export type ConfigShow200 = {
+  env: Environment;
+  features: ConfigShow200Features;
+};

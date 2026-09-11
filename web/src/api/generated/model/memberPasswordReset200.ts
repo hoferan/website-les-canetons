@@ -145,6 +145,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type FormToken200 = {
-  token: string;
+export type MemberPasswordReset200 = {
+  generatedPassword: string;
+  sessionsEnded: number;
 };

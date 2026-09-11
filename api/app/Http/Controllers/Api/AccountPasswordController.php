@@ -7,6 +7,7 @@ use App\Http\Requests\AccountPasswordRequest;
 use App\Support\Audit;
 use App\Support\Reauthentication;
 use App\Support\SessionRevoker;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,12 @@ class AccountPasswordController extends Controller
      * `newPassword` shorter than eight characters answers
      * `400 validation_failed` with `too_short` against `newPassword`.
      */
+    // An invokable controller has no method name for Scramble to build an
+    // operationId from, so it falls back to the class name and the operation
+    // loses the `resource.action` shape every other one here has. That shape is
+    // what orval turns into a hook name, so it is the client's vocabulary
+    // rather than a documentation detail.
+    #[Endpoint(operationId: 'account.password')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {
         // GATED ON AUTHENTICATION ALONE — no permission. This is the one screen

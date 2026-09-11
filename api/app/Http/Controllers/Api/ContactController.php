@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ContactRequest;
 use App\Models\ContactMessage;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
-#[Group('Public forms', weight: 60)]
+#[Group('Public forms', 'What an anonymous visitor may send, and the stamp every such submission carries. Rate limited.', weight: 60)]
 class ContactController extends Controller
 {
     /**
@@ -27,6 +28,7 @@ class ContactController extends Controller
      * A missing or malformed field answers `400 validation_failed`, with each
      * problem named in `fields[]`.
      */
+    #[Endpoint(operationId: 'contact.store')]
     public function __invoke(ContactRequest $request): JsonResponse
     {
         // Store raw input; escape at output time (not at storage time).

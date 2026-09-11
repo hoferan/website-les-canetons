@@ -14,6 +14,8 @@ use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Support\Audit;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\IgnoreResponse;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,7 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-#[Group('Registration', weight: 40)]
+#[Group('Registration', 'Public bookings for an event that takes them, and the guest list the committee works from.', weight: 40)]
 class RegistrationController extends Controller
 {
     /**
@@ -70,6 +72,16 @@ class RegistrationController extends Controller
      * with `too_many_guests`. Options must belong to this event, and each
      * may appear at most once.
      */
+    // Scramble cannot see through `response()->json(new Resource(...), 201)`:
+    // it reads the JsonResponse and nothing else, so this operation documented
+    // `200` with an empty `{"type":"object"}` and the generated client typed a
+    // booking as `{ [key: string]: unknown }` — the one endpoint a stranger
+    // calls, and the only one whose success body said nothing at all.
+    // The inferred 200 goes with it. #[Response] ADDS a status; it does not
+    // replace the guess, so without this the operation declares both and a
+    // client narrows a branch that cannot happen.
+    #[IgnoreResponse(200)]
+    #[Response(201, 'The booking, as it was recorded.', type: RegistrationResource::class)]
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
         // The takesRegistrations() 404 lives in the Form Request's

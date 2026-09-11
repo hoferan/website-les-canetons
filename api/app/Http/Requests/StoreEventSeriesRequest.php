@@ -65,7 +65,11 @@ class StoreEventSeriesRequest extends FormRequest
         // pinning an ordering — it pins the reported reason, which is what
         // the committee actually reads.
         return [
-            /** The event every date is stamped out from. */
+            /**
+             * The event every date is stamped out from.
+             *
+             * @example {"title":"Répétition","location":"Local des Canetons, Fribourg","attire":null,"isPublic":false,"notes":null,"startTime":"20:00","endTime":"22:00"}
+             */
             'template' => ['required', 'array'],
             'template.title' => ['required', 'string', 'max:255'],
             /** Where it happens, as free text. The same for every date. */
@@ -91,7 +95,16 @@ class StoreEventSeriesRequest extends FormRequest
             // records that `min` is committed to the string-length reading, so
             // an array minimum here would tell the committee their list of
             // dates "est trop court (minimum 1 caractères)".
-            /** The dates to generate, at least one and at most 60. Order does not matter. */
+            // The example is the real 2026 autumn rehearsal season as the
+            // committee would enter it: Tuesday evenings, with the school
+            // holidays simply absent from the list. That gap is the whole
+            // argument for sending dates rather than a recurrence rule, and it
+            // is the part no description can show.
+            /**
+             * The dates to generate, at least one and at most 60. Order does not matter.
+             *
+             * @example ["2026-10-06","2026-10-13","2026-11-03","2026-11-10"]
+             */
             'dates' => ['required', 'array', 'max:'.self::MAX_DATES],
 
             // Y-m-d only. An ISO instant would carry an offset, and the whole

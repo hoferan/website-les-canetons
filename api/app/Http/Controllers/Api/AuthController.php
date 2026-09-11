@@ -12,7 +12,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
-#[Group('Session', weight: 10)]
+// ONE description per group, on the controller that owns it. Scramble keeps
+// whichever #[Group] carries one, and the other controllers in a group repeat
+// only the name and the weight — a description written out at each of the five
+// Members controllers would be four copies waiting to disagree.
+#[Group('Session', 'Logging in, reading who you are, and changing your own password.', weight: 10)]
 class AuthController extends Controller
 {
     /**

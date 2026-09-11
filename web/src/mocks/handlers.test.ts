@@ -1,6 +1,12 @@
 import { expect, test } from "vitest";
 
-import { authLogin, authLogout, authMe, config, contact } from "../api/generated/endpoints";
+import {
+  authLogin,
+  authLogout,
+  authMe,
+  configShow,
+  contactStore,
+} from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
 import { setMockUser } from "./handlers";
 
@@ -16,7 +22,7 @@ import { setMockUser } from "./handlers";
  */
 
 test("GET /config answers with the shape the boot gate reads", async () => {
-  const result = await config();
+  const result = await configShow();
   expect(result.status).toBe(200);
   expect(result.data.env).toBe("dev");
 });
@@ -52,7 +58,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
 // failure tests in Contact.test.tsx replace the handler outright, so nothing
 // else exercised it.
 test("POST /contact rejects a missing field the way the real API does", async () => {
-  const error = (await contact({
+  const error = (await contactStore({
     lastName: "Canard",
     firstName: "Donald",
     email: "donald@example.com",

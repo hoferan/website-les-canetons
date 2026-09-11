@@ -145,7 +145,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type GuestListExport503 = {
+export type RegistrationExport503 = {
   title: "XLSX export needs the PHP zip extension, which this server does not have. Use CSV.";
   status: 503;
   code: "xlsx_unavailable";

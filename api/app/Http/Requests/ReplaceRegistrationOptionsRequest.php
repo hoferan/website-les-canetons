@@ -51,7 +51,15 @@ class ReplaceRegistrationOptionsRequest extends FormRequest
         return [
             // `present`, not `required`: an event may legitimately have no
             // options, and `required` refuses an empty array.
-            /** The whole list, replacing whatever the event offered before. Send `[]` to offer nothing. */
+            // The example carries one entry WITH an id and one without,
+            // because that difference is what makes this a replacement rather
+            // than an update, and it is the part the description above cannot
+            // show.
+            /**
+             * The whole list, replacing whatever the event offered before. Send `[]` to offer nothing.
+             *
+             * @example [{"id":7,"label":"Repas adulte","description":"Jambon, gratin et salade","priceCents":4500,"sortOrder":0},{"label":"Repas enfant","description":null,"priceCents":2000,"sortOrder":1}]
+             */
             'options' => ['present', 'array', 'max:50'],
 
             // Nullable rather than absent-or-int: the client sends the whole

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Support\FormToken;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
@@ -27,6 +28,7 @@ class FormTokenController extends Controller
      * submission that fails validation can be retried with the token already
      * in hand.
      */
+    #[Endpoint(operationId: 'formToken.show')]
     public function __invoke(): JsonResponse
     {
         // PUBLIC AND UNGATED, necessarily: it is fetched by an anonymous

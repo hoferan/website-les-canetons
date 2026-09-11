@@ -145,8 +145,6 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type GuestListExport200Four = {
-  headers: unknown[];
-  rows: unknown[][];
-  totals: unknown[];
+export type FormTokenShow200 = {
+  token: string;
 };
