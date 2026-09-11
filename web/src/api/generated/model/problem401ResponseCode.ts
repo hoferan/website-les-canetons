@@ -145,4 +145,12 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type AuthenticationExceptionResponseErrorsItem = { [key: string]: unknown };
+/**
+ * Stable machine token the front end maps to French.
+ */
+export type Problem401ResponseCode =
+  (typeof Problem401ResponseCode)[keyof typeof Problem401ResponseCode];
+
+export const Problem401ResponseCode = {
+  not_authenticated: "not_authenticated",
+} as const;

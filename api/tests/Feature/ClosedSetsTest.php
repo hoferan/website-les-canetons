@@ -93,9 +93,9 @@ class ClosedSetsTest extends TestCase
 
     public function test_a_validation_failure_names_a_reason_from_the_vocabulary(): void
     {
-        $errors = $this->document['components']['responses']['ValidationException']['content']['application/problem+json']['schema']['properties']['errors'] ?? null;
+        $errors = $this->document['components']['responses']['Problem400']['content']['application/problem+json']['schema']['properties']['errors'] ?? null;
 
-        self::assertIsArray($errors, 'The validation problem no longer describes its errors array.');
+        self::assertIsArray($errors, 'The 400 problem no longer describes its errors array.');
         self::assertSame(ErrorVocabulary::REASONS, $errors['items']['properties']['reason']['enum'] ?? null);
     }
 

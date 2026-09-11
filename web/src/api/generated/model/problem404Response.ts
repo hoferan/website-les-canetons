@@ -144,5 +144,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { Problem404ResponseCode } from "./problem404ResponseCode";
+import type { Problem404ResponseErrorsItem } from "./problem404ResponseErrorsItem";
 
-export type ValidationExceptionResponseErrorsItemParams = { [key: string]: unknown };
+export type Problem404Response = {
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
+  instance: string;
+  /** Stable machine token the front end maps to French. */
+  code: Problem404ResponseCode;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: Problem404ResponseErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
+  requestId: string;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
+};

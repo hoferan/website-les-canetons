@@ -1,9 +1,9 @@
 <?php
 
-use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
 use App\Support\Scramble\DocumentsTheSessionCookie;
 use App\Support\Scramble\Iso8601ToSchema;
+use App\Support\Scramble\NotFoundExceptionResponse;
 use App\Support\Scramble\ValidationExceptionResponse;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 
@@ -339,7 +339,7 @@ MARKDOWN,
     'extensions' => [
         ValidationExceptionResponse::class,
         AuthenticationExceptionResponse::class,
-        AccessDeniedExceptionResponse::class,
+        NotFoundExceptionResponse::class,
         // A type-to-schema extension, which is what this array actually
         // reaches. Operation transformers go through AppServiceProvider
         // instead; one listed here is accepted and never called.

@@ -1,0 +1,33 @@
+# Configuration for `npm run lint:openapi`, which validates api/openapi.json.
+#
+# WHY A LINTER AT ALL, when CI already regenerates the document and fails on a
+# diff. That check proves the document is CURRENT; it says nothing about whether
+# it is VALID or coherent. The two are independent: a generator can faithfully
+# export a document that no tool can read, and did — a documentation review on
+# 2026-09-11 found an empty success schema, nine operations promising a status
+# they never declared, and a path parameter with no constraint, none of which a
+# drift check can see. This is the half that reads the result.
+#
+# Ruleset: `recommended`, unchanged except for the two below. Each is turned off
+# with its reason, rather than left to print a warning on every run until nobody
+# reads the output any more.
+extends:
+  - recommended
+
+rules:
+  # The band is a Fribourg carnival society, not a publisher of software. There
+  # is no licence under which a third party may use this API, and inventing one
+  # to satisfy a linter would say something legally untrue in a machine-readable
+  # field. Terms of use, if they ever exist, are the committee's to write.
+  info-license: off
+
+  # GET /api/v1/config takes no parameters, needs no session, is not rate
+  # limited and reads two values out of configuration. It has no 4xx because it
+  # has no way to fail, and adding one to quiet this rule would document a
+  # response that cannot occur — the exact defect this whole program exists to
+  # remove.
+  #
+  # The rule's intent is covered better elsewhere:
+  # App\Support\Scramble\DocumentsFailureModes derives each route's failures
+  # from its own middleware, so an operation that CAN fail cannot omit it.
+  operation-4xx-response: off

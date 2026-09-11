@@ -114,6 +114,40 @@ class ResponseHygieneTest extends TestCase
         self::assertArrayNotHasKey('format', $export['text/csv']['schema'] ?? []);
     }
 
+    /**
+     * Every shared failure is a problem document, and is named for its status.
+     *
+     * TWO THINGS THIS CAUGHT. `#/components/responses/ModelNotFoundException`
+     * described a 404 as Laravel's `{"message": "..."}` on `application/json`,
+     * which this API has not answered since A2 — the most common failure in the
+     * contract, described as a body that cannot occur, referenced by nineteen
+     * operations. And the component NAME published an ORM word to readers who
+     * have no ORM.
+     *
+     * Derived from the components themselves, so an eighth shared failure is
+     * held to the same two rules without an edit here.
+     */
+    public function test_every_shared_failure_is_a_problem_document(): void
+    {
+        $components = $this->document['components']['responses'] ?? [];
+
+        self::assertGreaterThan(5, count($components), 'Found almost no shared responses; this test is reading the wrong thing.');
+
+        $wrong = [];
+
+        foreach ($components as $name => $response) {
+            if (array_keys($response['content'] ?? []) !== ['application/problem+json']) {
+                $wrong[] = "{$name} is not served as a problem document";
+            }
+
+            if (preg_match('/^Problem[45]\d\d$/', (string) $name) !== 1) {
+                $wrong[] = "{$name} is named after something other than its status";
+            }
+        }
+
+        self::assertSame([], $wrong, implode("\n  - ", $wrong));
+    }
+
     // ------------------------------------------------------------- the credential
 
     public function test_the_document_names_the_cookie_the_api_actually_sets(): void

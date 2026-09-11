@@ -144,22 +144,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AuthenticationExceptionResponseCode } from "./authenticationExceptionResponseCode";
-import type { AuthenticationExceptionResponseErrorsItem } from "./authenticationExceptionResponseErrorsItem";
 
-export type AuthenticationExceptionResponse = {
-  /** English message. Never displayed: the front end renders `code`. */
-  title: string;
-  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
-  status: number;
-  /** The path that was requested. Never the query string. */
-  instance: string;
-  /** Stable machine token the front end maps to French. */
-  code: AuthenticationExceptionResponseCode;
-  /** Always empty for this status; present so every problem has the same shape. */
-  errors: AuthenticationExceptionResponseErrorsItem[];
-  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
-  requestId: string;
-  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
-  detail: string;
-};
+/**
+ * Stable machine token the front end maps to French.
+ */
+export type Problem404ResponseCode =
+  (typeof Problem404ResponseCode)[keyof typeof Problem404ResponseCode];
+
+export const Problem404ResponseCode = {
+  not_found: "not_found",
+} as const;

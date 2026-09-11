@@ -144,22 +144,21 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ValidationExceptionResponseCode } from "./validationExceptionResponseCode";
-import type { ValidationExceptionResponseErrorsItem } from "./validationExceptionResponseErrorsItem";
 
-export type ValidationExceptionResponse = {
-  /** English message. Never displayed: the front end renders `code`. */
-  title: string;
-  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
-  status: number;
-  /** The path that was requested. Never the query string. */
-  instance: string;
-  /** Stable machine token the front end maps to French. */
-  code: ValidationExceptionResponseCode;
-  /** One entry per rejected field, first failure only. */
-  errors: ValidationExceptionResponseErrorsItem[];
-  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
-  requestId: string;
-  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
-  detail: string;
-};
+/**
+ * Stable machine token saying what is wrong with that field.
+ */
+export type Problem400ResponseErrorsItemReason =
+  (typeof Problem400ResponseErrorsItemReason)[keyof typeof Problem400ResponseErrorsItemReason];
+
+export const Problem400ResponseErrorsItemReason = {
+  required: "required",
+  too_long: "too_long",
+  too_short: "too_short",
+  invalid_format: "invalid_format",
+  invalid_type: "invalid_type",
+  invalid_value: "invalid_value",
+  invalid_number: "invalid_number",
+  already_taken: "already_taken",
+  must_be_after: "must_be_after",
+} as const;

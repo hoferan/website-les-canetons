@@ -171,7 +171,6 @@ import type {
   AuthLoginBody,
   AuthLogout200,
   AuthMe200,
-  AuthenticationExceptionResponse,
   ChaseListEntryResource,
   ConfigShow200,
   ContactRequest,
@@ -186,8 +185,10 @@ import type {
   MemberResource,
   MemberRoleReplace200,
   MemberStore201,
-  ModelNotFoundExceptionResponse,
+  Problem400Response,
+  Problem401Response,
   Problem403Response,
+  Problem404Response,
   Problem419Response,
   Problem422Response,
   Problem429Response,
@@ -211,7 +212,6 @@ import type {
   UpdateEventRequest,
   UpdateMemberRequest,
   UpdateRegistrationRequest,
-  ValidationExceptionResponse,
 } from "./model";
 
 import { customFetch } from "../http";
@@ -239,7 +239,7 @@ export type authLoginResponse200 = {
 };
 
 export type authLoginResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
@@ -323,7 +323,7 @@ export const authLogin = async (
 export const getAuthLoginMutationKey = () => ["authLogin"] as const;
 
 export const getAuthLoginMutationOptions = <
-  TError = ValidationExceptionResponse | AuthLogin401 | Problem419Response | AuthLogin429,
+  TError = Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -361,14 +361,14 @@ export const getAuthLoginMutationOptions = <
 export type AuthLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authLogin>>>;
 export type AuthLoginMutationBody = AuthLoginBody;
 export type AuthLoginMutationError =
-  ValidationExceptionResponse | AuthLogin401 | Problem419Response | AuthLogin429;
+  Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429;
 export type AuthLoginMutationVariables = { data: AuthLoginBody };
 
 /**
  * @summary Log in
  */
 export const useAuthLogin = <
-  TError = ValidationExceptionResponse | AuthLogin401 | Problem419Response | AuthLogin429,
+  TError = Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429,
   TContext = unknown,
 >(
   options?: {
@@ -396,7 +396,7 @@ export type authLogoutResponse200 = {
 };
 
 export type authLogoutResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -438,7 +438,7 @@ export const authLogout = async (
 export const getAuthLogoutMutationKey = () => ["authLogout"] as const;
 
 export const getAuthLogoutMutationOptions = <
-  TError = AuthenticationExceptionResponse | Problem419Response,
+  TError = Problem401Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError, void, TContext>;
@@ -460,15 +460,12 @@ export const getAuthLogoutMutationOptions = <
 
 export type AuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof authLogout>>>;
 
-export type AuthLogoutMutationError = AuthenticationExceptionResponse | Problem419Response;
+export type AuthLogoutMutationError = Problem401Response | Problem419Response;
 
 /**
  * @summary Log out
  */
-export const useAuthLogout = <
-  TError = AuthenticationExceptionResponse | Problem419Response,
-  TContext = unknown,
->(
+export const useAuthLogout = <TError = Problem401Response | Problem419Response, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
@@ -484,7 +481,7 @@ export type authMeResponse200 = {
 };
 
 export type authMeResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -530,7 +527,7 @@ export const getAuthMeQueryKey = () => {
 
 export const getAuthMeQueryOptions = <
   TData = Awaited<ReturnType<typeof authMe>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -550,12 +547,9 @@ export const getAuthMeQueryOptions = <
 };
 
 export type AuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof authMe>>>;
-export type AuthMeQueryError = AuthenticationExceptionResponse;
+export type AuthMeQueryError = Problem401Response;
 
-export function useAuthMe<
-  TData = Awaited<ReturnType<typeof authMe>>,
-  TError = AuthenticationExceptionResponse,
->(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
@@ -570,10 +564,7 @@ export function useAuthMe<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthMe<
-  TData = Awaited<ReturnType<typeof authMe>>,
-  TError = AuthenticationExceptionResponse,
->(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
@@ -588,10 +579,7 @@ export function useAuthMe<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthMe<
-  TData = Awaited<ReturnType<typeof authMe>>,
-  TError = AuthenticationExceptionResponse,
->(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -602,10 +590,7 @@ export function useAuthMe<
  * @summary Read the current member and what they may do
  */
 
-export function useAuthMe<
-  TData = Awaited<ReturnType<typeof authMe>>,
-  TError = AuthenticationExceptionResponse,
->(
+export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -627,12 +612,12 @@ export type accountPasswordResponse200 = {
 };
 
 export type accountPasswordResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type accountPasswordResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -710,7 +695,7 @@ export const accountPassword = async (
 export const getAccountPasswordMutationKey = () => ["accountPassword"] as const;
 
 export const getAccountPasswordMutationOptions = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -750,14 +735,14 @@ export type AccountPasswordMutationResult = NonNullable<
 >;
 export type AccountPasswordMutationBody = AccountPasswordRequest;
 export type AccountPasswordMutationError =
-  ValidationExceptionResponse | AuthenticationExceptionResponse | Problem419Response;
+  Problem400Response | Problem401Response | Problem419Response;
 export type AccountPasswordMutationVariables = { data: AccountPasswordRequest };
 
 /**
  * @summary Change your own password
  */
 export const useAccountPassword = <
-  TError = ValidationExceptionResponse | AuthenticationExceptionResponse | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -785,7 +770,7 @@ export type eventIndexResponse200 = {
 };
 
 export type eventIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -842,7 +827,7 @@ export const getEventIndexQueryKey = (params?: EventIndexParams) => {
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -865,11 +850,11 @@ export const getEventIndexQueryOptions = <
 };
 
 export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
-export type EventIndexQueryError = AuthenticationExceptionResponse;
+export type EventIndexQueryError = Problem401Response;
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(
   params: undefined | EventIndexParams,
   options: {
@@ -888,7 +873,7 @@ export function useEventIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -907,7 +892,7 @@ export function useEventIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -922,7 +907,7 @@ export function useEventIndex<
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = AuthenticationExceptionResponse,
+  TError = Problem401Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -946,12 +931,12 @@ export type eventStoreResponse201 = {
 };
 
 export type eventStoreResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type eventStoreResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -1030,11 +1015,7 @@ export const eventStore = async (
 export const getEventStoreMutationKey = () => ["eventStore"] as const;
 
 export const getEventStoreMutationOptions = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1072,21 +1053,14 @@ export const getEventStoreMutationOptions = <
 export type EventStoreMutationResult = NonNullable<Awaited<ReturnType<typeof eventStore>>>;
 export type EventStoreMutationBody = StoreEventRequest;
 export type EventStoreMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | Problem419Response;
+  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
 export type EventStoreMutationVariables = { data: StoreEventRequest };
 
 /**
  * @summary Put a rehearsal or a gig on the planning
  */
 export const useEventStore = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -1114,12 +1088,12 @@ export type eventShowResponse200 = {
 };
 
 export type eventShowResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
 export type eventShowResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -1160,7 +1134,7 @@ export const getEventShowQueryKey = (event: number) => {
 
 export const getEventShowQueryOptions = <
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -1186,11 +1160,11 @@ export const getEventShowQueryOptions = <
 };
 
 export type EventShowQueryResult = NonNullable<Awaited<ReturnType<typeof eventShow>>>;
-export type EventShowQueryError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse;
+export type EventShowQueryError = Problem401Response | Problem404Response;
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem404Response,
 >(
   event: number,
   options: {
@@ -1209,7 +1183,7 @@ export function useEventShow<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -1228,7 +1202,7 @@ export function useEventShow<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -1243,7 +1217,7 @@ export function useEventShow<
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -1267,12 +1241,12 @@ export type eventUpdateResponse200 = {
 };
 
 export type eventUpdateResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type eventUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -1282,7 +1256,7 @@ export type eventUpdateResponse403 = {
 };
 
 export type eventUpdateResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -1359,10 +1333,10 @@ export const getEventUpdateMutationKey = () => ["eventUpdate"] as const;
 
 export const getEventUpdateMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(options?: {
@@ -1401,10 +1375,10 @@ export const getEventUpdateMutationOptions = <
 export type EventUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof eventUpdate>>>;
 export type EventUpdateMutationBody = UpdateEventRequest | undefined;
 export type EventUpdateMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | Problem419Response;
 export type EventUpdateMutationVariables = { event: number; data?: UpdateEventRequest };
 
@@ -1413,10 +1387,10 @@ export type EventUpdateMutationVariables = { event: number; data?: UpdateEventRe
  */
 export const useEventUpdate = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(
@@ -1445,7 +1419,7 @@ export type eventDestroyResponse200 = {
 };
 
 export type eventDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -1455,7 +1429,7 @@ export type eventDestroyResponse403 = {
 };
 
 export type eventDestroyResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -1505,11 +1479,7 @@ export const eventDestroy = async (
 export const getEventDestroyMutationKey = () => ["eventDestroy"] as const;
 
 export const getEventDestroyMutationOptions = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1547,21 +1517,14 @@ export const getEventDestroyMutationOptions = <
 export type EventDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof eventDestroy>>>;
 
 export type EventDestroyMutationError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
 export type EventDestroyMutationVariables = { event: number };
 
 /**
  * @summary Take an event off the planning
  */
 export const useEventDestroy = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -1589,12 +1552,12 @@ export type eventSeriesResponse201 = {
 };
 
 export type eventSeriesResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type eventSeriesResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -1678,11 +1641,7 @@ export const eventSeries = async (
 export const getEventSeriesMutationKey = () => ["eventSeries"] as const;
 
 export const getEventSeriesMutationOptions = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1720,21 +1679,14 @@ export const getEventSeriesMutationOptions = <
 export type EventSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof eventSeries>>>;
 export type EventSeriesMutationBody = StoreEventSeriesRequest;
 export type EventSeriesMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | Problem419Response;
+  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
 export type EventSeriesMutationVariables = { data: StoreEventSeriesRequest };
 
 /**
  * @summary Generate a season of events from one template
  */
 export const useEventSeries = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -1762,17 +1714,17 @@ export type attendanceUpdateResponse200 = {
 };
 
 export type attendanceUpdateResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type attendanceUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
 export type attendanceUpdateResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -1857,11 +1809,7 @@ export const attendanceUpdate = async (
 export const getAttendanceUpdateMutationKey = () => ["attendanceUpdate"] as const;
 
 export const getAttendanceUpdateMutationOptions = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1901,21 +1849,14 @@ export type AttendanceUpdateMutationResult = NonNullable<
 >;
 export type AttendanceUpdateMutationBody = RecordOwnAttendanceRequest;
 export type AttendanceUpdateMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem400Response | Problem401Response | Problem404Response | Problem419Response;
 export type AttendanceUpdateMutationVariables = { event: number; data: RecordOwnAttendanceRequest };
 
 /**
  * @summary Record your own answer for an event
  */
 export const useAttendanceUpdate = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -1943,12 +1884,12 @@ export type attendanceDestroyResponse200 = {
 };
 
 export type attendanceDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
 export type attendanceDestroyResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -1998,7 +1939,7 @@ export const attendanceDestroy = async (
 export const getAttendanceDestroyMutationKey = () => ["attendanceDestroy"] as const;
 
 export const getAttendanceDestroyMutationOptions = <
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | Problem419Response,
+  TError = Problem401Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2038,14 +1979,14 @@ export type AttendanceDestroyMutationResult = NonNullable<
 >;
 
 export type AttendanceDestroyMutationError =
-  AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | Problem419Response;
+  Problem401Response | Problem404Response | Problem419Response;
 export type AttendanceDestroyMutationVariables = { event: number };
 
 /**
  * @summary Take back your own answer
  */
 export const useAttendanceDestroy = <
-  TError = AuthenticationExceptionResponse | ModelNotFoundExceptionResponse | Problem419Response,
+  TError = Problem401Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -2073,7 +2014,7 @@ export type attendanceIndexResponse200 = {
 };
 
 export type attendanceIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -2083,7 +2024,7 @@ export type attendanceIndexResponse403 = {
 };
 
 export type attendanceIndexResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2132,7 +2073,7 @@ export const getAttendanceIndexQueryKey = (event: number) => {
 
 export const getAttendanceIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2159,11 +2100,11 @@ export const getAttendanceIndexQueryOptions = <
 
 export type AttendanceIndexQueryResult = NonNullable<Awaited<ReturnType<typeof attendanceIndex>>>;
 export type AttendanceIndexQueryError =
-  AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse;
+  Problem401Response | Problem403Response | Problem404Response;
 
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options: {
@@ -2182,7 +2123,7 @@ export function useAttendanceIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2201,7 +2142,7 @@ export function useAttendanceIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2216,7 +2157,7 @@ export function useAttendanceIndex<
 
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2240,12 +2181,12 @@ export type memberAttendanceUpdateResponse200 = {
 };
 
 export type memberAttendanceUpdateResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type memberAttendanceUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -2255,7 +2196,7 @@ export type memberAttendanceUpdateResponse403 = {
 };
 
 export type memberAttendanceUpdateResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2339,10 +2280,10 @@ export const getMemberAttendanceUpdateMutationKey = () => ["memberAttendanceUpda
 
 export const getMemberAttendanceUpdateMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(options?: {
@@ -2383,10 +2324,10 @@ export type MemberAttendanceUpdateMutationResult = NonNullable<
 >;
 export type MemberAttendanceUpdateMutationBody = RecordMemberAttendanceRequest;
 export type MemberAttendanceUpdateMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | Problem419Response;
 export type MemberAttendanceUpdateMutationVariables = {
   event: number;
@@ -2399,10 +2340,10 @@ export type MemberAttendanceUpdateMutationVariables = {
  */
 export const useMemberAttendanceUpdate = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(
@@ -2431,7 +2372,7 @@ export type memberAttendanceDestroyResponse200 = {
 };
 
 export type memberAttendanceDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -2441,7 +2382,7 @@ export type memberAttendanceDestroyResponse403 = {
 };
 
 export type memberAttendanceDestroyResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2501,11 +2442,7 @@ export const memberAttendanceDestroy = async (
 export const getMemberAttendanceDestroyMutationKey = () => ["memberAttendanceDestroy"] as const;
 
 export const getMemberAttendanceDestroyMutationOptions = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2545,21 +2482,14 @@ export type MemberAttendanceDestroyMutationResult = NonNullable<
 >;
 
 export type MemberAttendanceDestroyMutationError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
 export type MemberAttendanceDestroyMutationVariables = { event: number; member: number };
 
 /**
  * @summary Take back a member's answer
  */
 export const useMemberAttendanceDestroy = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -2587,12 +2517,12 @@ export type registrationStoreResponse201 = {
 };
 
 export type registrationStoreResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type registrationStoreResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2684,8 +2614,8 @@ export const getRegistrationStoreMutationKey = () => ["registrationStore"] as co
 
 export const getRegistrationStoreMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | ModelNotFoundExceptionResponse
+    | Problem400Response
+    | Problem404Response
     | Problem419Response
     | Problem422Response
     | Problem429Response,
@@ -2728,8 +2658,8 @@ export type RegistrationStoreMutationResult = NonNullable<
 >;
 export type RegistrationStoreMutationBody = StoreRegistrationRequest;
 export type RegistrationStoreMutationError =
-  | ValidationExceptionResponse
-  | ModelNotFoundExceptionResponse
+  | Problem400Response
+  | Problem404Response
   | Problem419Response
   | Problem422Response
   | Problem429Response;
@@ -2740,8 +2670,8 @@ export type RegistrationStoreMutationVariables = { event: number; data: StoreReg
  */
 export const useRegistrationStore = <
   TError =
-    | ValidationExceptionResponse
-    | ModelNotFoundExceptionResponse
+    | Problem400Response
+    | Problem404Response
     | Problem419Response
     | Problem422Response
     | Problem429Response,
@@ -2772,7 +2702,7 @@ export type registrationIndexResponse200 = {
 };
 
 export type registrationIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -2782,7 +2712,7 @@ export type registrationIndexResponse403 = {
 };
 
 export type registrationIndexResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2828,7 +2758,7 @@ export const getRegistrationIndexQueryKey = (event: number) => {
 
 export const getRegistrationIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2857,11 +2787,11 @@ export type RegistrationIndexQueryResult = NonNullable<
   Awaited<ReturnType<typeof registrationIndex>>
 >;
 export type RegistrationIndexQueryError =
-  AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse;
+  Problem401Response | Problem403Response | Problem404Response;
 
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options: {
@@ -2880,7 +2810,7 @@ export function useRegistrationIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2899,7 +2829,7 @@ export function useRegistrationIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2914,7 +2844,7 @@ export function useRegistrationIndex<
 
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response | ModelNotFoundExceptionResponse,
+  TError = Problem401Response | Problem403Response | Problem404Response,
 >(
   event: number,
   options?: {
@@ -2938,7 +2868,7 @@ export type registrationFormResponse200 = {
 };
 
 export type registrationFormResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -2986,7 +2916,7 @@ export const getRegistrationFormQueryKey = (event: number) => {
 
 export const getRegistrationFormQueryOptions = <
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = ModelNotFoundExceptionResponse,
+  TError = Problem404Response,
 >(
   event: number,
   options?: {
@@ -3012,11 +2942,11 @@ export const getRegistrationFormQueryOptions = <
 };
 
 export type RegistrationFormQueryResult = NonNullable<Awaited<ReturnType<typeof registrationForm>>>;
-export type RegistrationFormQueryError = ModelNotFoundExceptionResponse;
+export type RegistrationFormQueryError = Problem404Response;
 
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = ModelNotFoundExceptionResponse,
+  TError = Problem404Response,
 >(
   event: number,
   options: {
@@ -3035,7 +2965,7 @@ export function useRegistrationForm<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = ModelNotFoundExceptionResponse,
+  TError = Problem404Response,
 >(
   event: number,
   options?: {
@@ -3054,7 +2984,7 @@ export function useRegistrationForm<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = ModelNotFoundExceptionResponse,
+  TError = Problem404Response,
 >(
   event: number,
   options?: {
@@ -3069,7 +2999,7 @@ export function useRegistrationForm<
 
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = ModelNotFoundExceptionResponse,
+  TError = Problem404Response,
 >(
   event: number,
   options?: {
@@ -3109,7 +3039,7 @@ export type registrationExportResponse200ApplicationJson = {
 };
 
 export type registrationExportResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -3119,7 +3049,7 @@ export type registrationExportResponse403 = {
 };
 
 export type registrationExportResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -3190,11 +3120,7 @@ export const getRegistrationExportQueryKey = (
 
 export const getRegistrationExportQueryOptions = <
   TData = Awaited<ReturnType<typeof registrationExport>>,
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | RegistrationExport503,
+  TError = Problem401Response | Problem403Response | Problem404Response | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
@@ -3224,18 +3150,11 @@ export type RegistrationExportQueryResult = NonNullable<
   Awaited<ReturnType<typeof registrationExport>>
 >;
 export type RegistrationExportQueryError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | RegistrationExport503;
+  Problem401Response | Problem403Response | Problem404Response | RegistrationExport503;
 
 export function useRegistrationExport<
   TData = Awaited<ReturnType<typeof registrationExport>>,
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | RegistrationExport503,
+  TError = Problem401Response | Problem403Response | Problem404Response | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
@@ -3255,11 +3174,7 @@ export function useRegistrationExport<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationExport<
   TData = Awaited<ReturnType<typeof registrationExport>>,
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | RegistrationExport503,
+  TError = Problem401Response | Problem403Response | Problem404Response | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
@@ -3281,11 +3196,7 @@ export function useRegistrationExport<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationExport<
   TData = Awaited<ReturnType<typeof registrationExport>>,
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | RegistrationExport503,
+  TError = Problem401Response | Problem403Response | Problem404Response | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
@@ -3301,11 +3212,7 @@ export function useRegistrationExport<
 
 export function useRegistrationExport<
   TData = Awaited<ReturnType<typeof registrationExport>>,
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | RegistrationExport503,
+  TError = Problem401Response | Problem403Response | Problem404Response | RegistrationExport503,
 >(
   event: number,
   format: "xlsx" | "csv" | "md" | "json",
@@ -3330,12 +3237,12 @@ export type registrationUpdateResponse200 = {
 };
 
 export type registrationUpdateResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type registrationUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -3345,7 +3252,7 @@ export type registrationUpdateResponse403 = {
 };
 
 export type registrationUpdateResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -3422,10 +3329,10 @@ export const getRegistrationUpdateMutationKey = () => ["registrationUpdate"] as 
 
 export const getRegistrationUpdateMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(options?: {
@@ -3466,10 +3373,10 @@ export type RegistrationUpdateMutationResult = NonNullable<
 >;
 export type RegistrationUpdateMutationBody = UpdateRegistrationRequest | undefined;
 export type RegistrationUpdateMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | Problem419Response;
 export type RegistrationUpdateMutationVariables = {
   registration: number;
@@ -3481,10 +3388,10 @@ export type RegistrationUpdateMutationVariables = {
  */
 export const useRegistrationUpdate = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(
@@ -3513,7 +3420,7 @@ export type registrationDestroyResponse200 = {
 };
 
 export type registrationDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -3523,7 +3430,7 @@ export type registrationDestroyResponse403 = {
 };
 
 export type registrationDestroyResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -3571,11 +3478,7 @@ export const registrationDestroy = async (
 export const getRegistrationDestroyMutationKey = () => ["registrationDestroy"] as const;
 
 export const getRegistrationDestroyMutationOptions = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3615,21 +3518,14 @@ export type RegistrationDestroyMutationResult = NonNullable<
 >;
 
 export type RegistrationDestroyMutationError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
 export type RegistrationDestroyMutationVariables = { registration: number };
 
 /**
  * @summary Cancel a booking
  */
 export const useRegistrationDestroy = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -3657,12 +3553,12 @@ export type registrationOptionReplaceResponse200 = {
 };
 
 export type registrationOptionReplaceResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type registrationOptionReplaceResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -3672,7 +3568,7 @@ export type registrationOptionReplaceResponse403 = {
 };
 
 export type registrationOptionReplaceResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -3765,10 +3661,10 @@ export const getRegistrationOptionReplaceMutationKey = () => ["registrationOptio
 
 export const getRegistrationOptionReplaceMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | RegistrationOptionReplace409
     | Problem419Response,
   TContext = unknown,
@@ -3810,10 +3706,10 @@ export type RegistrationOptionReplaceMutationResult = NonNullable<
 >;
 export type RegistrationOptionReplaceMutationBody = ReplaceRegistrationOptionsRequest;
 export type RegistrationOptionReplaceMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | RegistrationOptionReplace409
   | Problem419Response;
 export type RegistrationOptionReplaceMutationVariables = {
@@ -3826,10 +3722,10 @@ export type RegistrationOptionReplaceMutationVariables = {
  */
 export const useRegistrationOptionReplace = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | RegistrationOptionReplace409
     | Problem419Response,
   TContext = unknown,
@@ -3859,7 +3755,7 @@ export type sectionIndexResponse200 = {
 };
 
 export type sectionIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -3905,7 +3801,7 @@ export const getSectionIndexQueryKey = () => {
 
 export const getSectionIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -3925,11 +3821,11 @@ export const getSectionIndexQueryOptions = <
 };
 
 export type SectionIndexQueryResult = NonNullable<Awaited<ReturnType<typeof sectionIndex>>>;
-export type SectionIndexQueryError = AuthenticationExceptionResponse | Problem403Response;
+export type SectionIndexQueryError = Problem401Response | Problem403Response;
 
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
@@ -3947,7 +3843,7 @@ export function useSectionIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
@@ -3965,7 +3861,7 @@ export function useSectionIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
@@ -3979,7 +3875,7 @@ export function useSectionIndex<
 
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
@@ -4002,7 +3898,7 @@ export type roleIndexResponse200 = {
 };
 
 export type roleIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4048,7 +3944,7 @@ export const getRoleIndexQueryKey = () => {
 
 export const getRoleIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -4068,11 +3964,11 @@ export const getRoleIndexQueryOptions = <
 };
 
 export type RoleIndexQueryResult = NonNullable<Awaited<ReturnType<typeof roleIndex>>>;
-export type RoleIndexQueryError = AuthenticationExceptionResponse | Problem403Response;
+export type RoleIndexQueryError = Problem401Response | Problem403Response;
 
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
@@ -4090,7 +3986,7 @@ export function useRoleIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
@@ -4108,7 +4004,7 @@ export function useRoleIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
@@ -4122,7 +4018,7 @@ export function useRoleIndex<
 
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
@@ -4145,7 +4041,7 @@ export type memberIndexResponse200 = {
 };
 
 export type memberIndexResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4194,7 +4090,7 @@ export const getMemberIndexQueryKey = () => {
 
 export const getMemberIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -4214,11 +4110,11 @@ export const getMemberIndexQueryOptions = <
 };
 
 export type MemberIndexQueryResult = NonNullable<Awaited<ReturnType<typeof memberIndex>>>;
-export type MemberIndexQueryError = AuthenticationExceptionResponse | Problem403Response;
+export type MemberIndexQueryError = Problem401Response | Problem403Response;
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
@@ -4236,7 +4132,7 @@ export function useMemberIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
@@ -4254,7 +4150,7 @@ export function useMemberIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
@@ -4268,7 +4164,7 @@ export function useMemberIndex<
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = AuthenticationExceptionResponse | Problem403Response,
+  TError = Problem401Response | Problem403Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
@@ -4291,12 +4187,12 @@ export type memberStoreResponse201 = {
 };
 
 export type memberStoreResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type memberStoreResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4382,11 +4278,7 @@ export const memberStore = async (
 export const getMemberStoreMutationKey = () => ["memberStore"] as const;
 
 export const getMemberStoreMutationOptions = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4424,21 +4316,14 @@ export const getMemberStoreMutationOptions = <
 export type MemberStoreMutationResult = NonNullable<Awaited<ReturnType<typeof memberStore>>>;
 export type MemberStoreMutationBody = StoreMemberRequest;
 export type MemberStoreMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | Problem419Response;
+  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
 export type MemberStoreMutationVariables = { data: StoreMemberRequest };
 
 /**
  * @summary Add a member to the roster
  */
 export const useMemberStore = <
-  TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | Problem419Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -4466,12 +4351,12 @@ export type memberUpdateResponse200 = {
 };
 
 export type memberUpdateResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type memberUpdateResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4481,7 +4366,7 @@ export type memberUpdateResponse403 = {
 };
 
 export type memberUpdateResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -4560,10 +4445,10 @@ export const getMemberUpdateMutationKey = () => ["memberUpdate"] as const;
 
 export const getMemberUpdateMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(options?: {
@@ -4602,10 +4487,10 @@ export const getMemberUpdateMutationOptions = <
 export type MemberUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof memberUpdate>>>;
 export type MemberUpdateMutationBody = UpdateMemberRequest | undefined;
 export type MemberUpdateMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | Problem419Response;
 export type MemberUpdateMutationVariables = { member: number; data?: UpdateMemberRequest };
 
@@ -4614,10 +4499,10 @@ export type MemberUpdateMutationVariables = { member: number; data?: UpdateMembe
  */
 export const useMemberUpdate = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(
@@ -4646,7 +4531,7 @@ export type memberDestroyResponse200 = {
 };
 
 export type memberDestroyResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4656,7 +4541,7 @@ export type memberDestroyResponse403 = {
 };
 
 export type memberDestroyResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -4710,11 +4595,7 @@ export const memberDestroy = async (
 export const getMemberDestroyMutationKey = () => ["memberDestroy"] as const;
 
 export const getMemberDestroyMutationOptions = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4752,21 +4633,14 @@ export const getMemberDestroyMutationOptions = <
 export type MemberDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof memberDestroy>>>;
 
 export type MemberDestroyMutationError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
 export type MemberDestroyMutationVariables = { member: number };
 
 /**
  * @summary Remove a member from the roster
  */
 export const useMemberDestroy = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -4794,12 +4668,12 @@ export type memberRoleReplaceResponse200 = {
 };
 
 export type memberRoleReplaceResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
 export type memberRoleReplaceResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4809,7 +4683,7 @@ export type memberRoleReplaceResponse403 = {
 };
 
 export type memberRoleReplaceResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -4896,10 +4770,10 @@ export const getMemberRoleReplaceMutationKey = () => ["memberRoleReplace"] as co
 
 export const getMemberRoleReplaceMutationOptions = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(options?: {
@@ -4940,10 +4814,10 @@ export type MemberRoleReplaceMutationResult = NonNullable<
 >;
 export type MemberRoleReplaceMutationBody = ReplaceMemberRolesRequest;
 export type MemberRoleReplaceMutationError =
-  | ValidationExceptionResponse
-  | AuthenticationExceptionResponse
+  | Problem400Response
+  | Problem401Response
   | Problem403Response
-  | ModelNotFoundExceptionResponse
+  | Problem404Response
   | Problem419Response;
 export type MemberRoleReplaceMutationVariables = {
   member: number;
@@ -4955,10 +4829,10 @@ export type MemberRoleReplaceMutationVariables = {
  */
 export const useMemberRoleReplace = <
   TError =
-    | ValidationExceptionResponse
-    | AuthenticationExceptionResponse
+    | Problem400Response
+    | Problem401Response
     | Problem403Response
-    | ModelNotFoundExceptionResponse
+    | Problem404Response
     | Problem419Response,
   TContext = unknown,
 >(
@@ -4987,7 +4861,7 @@ export type memberPasswordResetResponse200 = {
 };
 
 export type memberPasswordResetResponse401 = {
-  data: AuthenticationExceptionResponse;
+  data: Problem401Response;
   status: 401;
 };
 
@@ -4997,7 +4871,7 @@ export type memberPasswordResetResponse403 = {
 };
 
 export type memberPasswordResetResponse404 = {
-  data: ModelNotFoundExceptionResponse;
+  data: Problem404Response;
   status: 404;
 };
 
@@ -5056,11 +4930,7 @@ export const memberPasswordReset = async (
 export const getMemberPasswordResetMutationKey = () => ["memberPasswordReset"] as const;
 
 export const getMemberPasswordResetMutationOptions = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -5100,21 +4970,14 @@ export type MemberPasswordResetMutationResult = NonNullable<
 >;
 
 export type MemberPasswordResetMutationError =
-  | AuthenticationExceptionResponse
-  | Problem403Response
-  | ModelNotFoundExceptionResponse
-  | Problem419Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
 export type MemberPasswordResetMutationVariables = { member: number };
 
 /**
  * @summary Reset a member's password
  */
 export const useMemberPasswordReset = <
-  TError =
-    | AuthenticationExceptionResponse
-    | Problem403Response
-    | ModelNotFoundExceptionResponse
-    | Problem419Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
   TContext = unknown,
 >(
   options?: {
@@ -5287,7 +5150,7 @@ export type contactStoreResponse200 = {
 };
 
 export type contactStoreResponse400 = {
-  data: ValidationExceptionResponse;
+  data: Problem400Response;
   status: 400;
 };
 
@@ -5373,8 +5236,7 @@ export const contactStore = async (
 export const getContactStoreMutationKey = () => ["contactStore"] as const;
 
 export const getContactStoreMutationOptions = <
-  TError =
-    ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response,
+  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -5412,15 +5274,14 @@ export const getContactStoreMutationOptions = <
 export type ContactStoreMutationResult = NonNullable<Awaited<ReturnType<typeof contactStore>>>;
 export type ContactStoreMutationBody = ContactRequest;
 export type ContactStoreMutationError =
-  ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response;
+  Problem400Response | Problem419Response | Problem422Response | Problem429Response;
 export type ContactStoreMutationVariables = { data: ContactRequest };
 
 /**
  * @summary Send a message to the committee
  */
 export const useContactStore = <
-  TError =
-    ValidationExceptionResponse | Problem419Response | Problem422Response | Problem429Response,
+  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
   TContext = unknown,
 >(
   options?: {

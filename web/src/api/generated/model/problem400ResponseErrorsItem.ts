@@ -144,13 +144,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { Problem400ResponseErrorsItemParams } from "./problem400ResponseErrorsItemParams";
+import type { Problem400ResponseErrorsItemReason } from "./problem400ResponseErrorsItemReason";
 
-/**
- * Stable machine token the front end maps to French.
- */
-export type AuthenticationExceptionResponseCode =
-  (typeof AuthenticationExceptionResponseCode)[keyof typeof AuthenticationExceptionResponseCode];
-
-export const AuthenticationExceptionResponseCode = {
-  not_authenticated: "not_authenticated",
-} as const;
+export type Problem400ResponseErrorsItem = {
+  /** The camelCase name of the rejected field, as it was submitted. */
+  field: string;
+  /** Stable machine token saying what is wrong with that field. */
+  reason: Problem400ResponseErrorsItemReason;
+  params?: Problem400ResponseErrorsItemParams;
+};

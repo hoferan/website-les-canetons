@@ -145,7 +145,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type ModelNotFoundExceptionResponse = {
-  /** Error overview. */
-  message: string;
-};
+export type Problem401ResponseErrorsItem = { [key: string]: unknown };

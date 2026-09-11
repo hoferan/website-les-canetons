@@ -144,81 +144,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { Problem400ResponseCode } from "./problem400ResponseCode";
+import type { Problem400ResponseErrorsItem } from "./problem400ResponseErrorsItem";
 
-export * from "./accountPassword200";
-export * from "./accountPasswordRequest";
-export * from "./attendanceDestroy200";
-export * from "./attendanceResource";
-export * from "./attendanceStatus";
-export * from "./authLogin200";
-export * from "./authLogin401";
-export * from "./authLogin429";
-export * from "./authLoginBody";
-export * from "./authLogout200";
-export * from "./authMe200";
-export * from "./chaseListEntryResource";
-export * from "./configShow200";
-export * from "./configShow200Features";
-export * from "./contactRequest";
-export * from "./contactStore200";
-export * from "./environment";
-export * from "./eventDestroy200";
-export * from "./eventIndexParams";
-export * from "./eventResource";
-export * from "./formTokenShow200";
-export * from "./memberAttendanceDestroy200";
-export * from "./memberDestroy200";
-export * from "./memberPasswordReset200";
-export * from "./memberResource";
-export * from "./memberRoleReplace200";
-export * from "./memberStore201";
-export * from "./problem400Response";
-export * from "./problem400ResponseCode";
-export * from "./problem400ResponseErrorsItem";
-export * from "./problem400ResponseErrorsItemParams";
-export * from "./problem400ResponseErrorsItemReason";
-export * from "./problem401Response";
-export * from "./problem401ResponseCode";
-export * from "./problem401ResponseErrorsItem";
-export * from "./problem403Response";
-export * from "./problem403ResponseCode";
-export * from "./problem403ResponseErrorsItem";
-export * from "./problem404Response";
-export * from "./problem404ResponseCode";
-export * from "./problem404ResponseErrorsItem";
-export * from "./problem419Response";
-export * from "./problem419ResponseCode";
-export * from "./problem419ResponseErrorsItem";
-export * from "./problem422Response";
-export * from "./problem422ResponseCode";
-export * from "./problem422ResponseErrorsItem";
-export * from "./problem429Response";
-export * from "./problem429ResponseCode";
-export * from "./problem429ResponseErrorsItem";
-export * from "./publicEventResource";
-export * from "./recordMemberAttendanceRequest";
-export * from "./recordMemberAttendanceRequestStatus";
-export * from "./recordOwnAttendanceRequest";
-export * from "./recordOwnAttendanceRequestStatus";
-export * from "./registrationDestroy200";
-export * from "./registrationExport200Four";
-export * from "./registrationExport503";
-export * from "./registrationFormResource";
-export * from "./registrationOptionReplace409";
-export * from "./registrationOptionResource";
-export * from "./registrationResource";
-export * from "./registrationResourceChoicesItem";
-export * from "./replaceMemberRolesRequest";
-export * from "./replaceRegistrationOptionsRequest";
-export * from "./replaceRegistrationOptionsRequestOptionsItem";
-export * from "./roleResource";
-export * from "./sectionResource";
-export * from "./storeEventRequest";
-export * from "./storeEventSeriesRequest";
-export * from "./storeEventSeriesRequestTemplate";
-export * from "./storeMemberRequest";
-export * from "./storeRegistrationRequest";
-export * from "./storeRegistrationRequestChoicesItem";
-export * from "./updateEventRequest";
-export * from "./updateMemberRequest";
-export * from "./updateRegistrationRequest";
+export type Problem400Response = {
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
+  instance: string;
+  /** Stable machine token the front end maps to French. */
+  code: Problem400ResponseCode;
+  /** One entry per rejected field, first failure only. */
+  errors: Problem400ResponseErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
+  requestId: string;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
+};
