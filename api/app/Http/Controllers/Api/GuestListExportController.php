@@ -8,6 +8,8 @@ use App\Models\Event;
 use App\Support\GuestList;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Header;
+use Dedoc\Scramble\Attributes\Response as DocumentedResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use OpenSpout\Common\Entity\Row;
@@ -36,6 +38,10 @@ class GuestListExportController extends Controller
      * XLSX needs the PHP `zip` extension. A server without it answers
      * `503 xlsx_unavailable`, and CSV still works there.
      */
+    // Aliased, because this controller already imports Symfony's Response as
+    // its return type.
+    #[DocumentedResponse(200, 'The guest list in the requested format. Same rows every time; only the encoding differs.')]
+    #[Header('Content-Disposition', 'attachment, with a filename built from the event. Browsers save rather than render.', type: 'string')]
     #[Endpoint(operationId: 'registration.export')]
     public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
     {

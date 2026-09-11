@@ -12,6 +12,7 @@ use App\Support\Audit;
 use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -82,6 +83,7 @@ class MemberController extends Controller
      * `already_taken`; one containing anything but lower-case letters, digits,
      * dot, hyphen or underscore answers `invalid_format`.
      */
+    #[Response(201, 'The new member, plus the generated password. It is shown once and never retrievable again.')]
     public function store(StoreMemberRequest $request): JsonResponse
     {
         // THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create
@@ -203,6 +205,7 @@ class MemberController extends Controller
      * request conflicts with the state of the roster. When both apply, the
      * last-administrator refusal is the one returned.
      */
+    #[Response(200, 'Removed. `sessionsEnded` counts the sessions revoked in the same transaction.')]
     public function destroy(Request $request, Member $member): JsonResponse
     {
         // Existence is the state (design D3): there is no `active` flag and no

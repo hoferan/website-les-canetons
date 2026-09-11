@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Support\Scramble\ConstrainsPathParameters;
 use App\Support\Scramble\DocumentsFailureModes;
 use App\Support\Scramble\DocumentsNumericFloors;
+use App\Support\Scramble\TidiesResponseMedia;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -48,6 +49,7 @@ class AppServiceProvider extends ServiceProvider
         Scramble::configure()->withOperationTransformers([
             DocumentsFailureModes::class,
             ConstrainsPathParameters::class,
+            TidiesResponseMedia::class,
         ]);
 
         // A third pipeline again: a rule transformer is neither an operation

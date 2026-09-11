@@ -7,6 +7,7 @@ use App\Http\Requests\ContactRequest;
 use App\Models\ContactMessage;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Public forms', 'What an anonymous visitor may send, and the stamp every such submission carries. Rate limited.', weight: 60)]
@@ -28,6 +29,7 @@ class ContactController extends Controller
      * A missing or malformed field answers `400 validation_failed`, with each
      * problem named in `fields[]`.
      */
+    #[Response(200, 'Accepted and sent to the committee. Nothing is stored beyond the message itself.')]
     #[Endpoint(operationId: 'contact.store')]
     public function __invoke(ContactRequest $request): JsonResponse
     {

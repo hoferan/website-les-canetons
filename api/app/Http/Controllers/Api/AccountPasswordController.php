@@ -9,6 +9,7 @@ use App\Support\Reauthentication;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,7 @@ class AccountPasswordController extends Controller
     // loses the `resource.action` shape every other one here has. That shape is
     // what orval turns into a hook name, so it is the client's vocabulary
     // rather than a documentation detail.
+    #[Response(200, 'Changed. `sessionsEnded` counts the caller other sessions that were revoked.')]
     #[Endpoint(operationId: 'account.password')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {

@@ -11,6 +11,7 @@ use App\Support\Audit;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +41,7 @@ class MemberRoleController extends Controller
      * When both apply, the last-administrator refusal is the one returned. An
      * unknown role id answers `400 validation_failed` against `roleIds`.
      */
+    #[Response(200, 'The member as they now stand, and how many of their sessions were revoked.')]
     #[Endpoint(operationId: 'memberRole.replace')]
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {

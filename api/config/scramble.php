@@ -2,6 +2,7 @@
 
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
+use App\Support\Scramble\DocumentsTheSessionCookie;
 use App\Support\Scramble\Iso8601ToSchema;
 use App\Support\Scramble\ValidationExceptionResponse;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
@@ -346,27 +347,14 @@ MARKDOWN,
     ],
 
     /*
-     * Automatically document API security (OpenAPI `security` / `securitySchemes`) based on route
-     * middleware.
+     * How this API is authenticated, in the document.
      *
-     * Disabled by default. Uncomment the line below to enable `MiddlewareAuthSecurityStrategy`.
-     * When at least one documented route uses middleware matching the configured patterns (by default
-     * `auth` and `auth:*`), bearer auth is applied globally. Routes without matching middleware are
-     * marked as public (`security: []`).
-     *
-     * Set to `null` explicitly to disable. If you already configure security manually via
-     * `afterOpenApiGenerated` / `extendOpenApi`, keep this disabled to avoid duplicate schemes.
-     *
-     * Customize with a class-string or [class, options]:
-     *
-     * 'security_strategy' => [
-     *     \Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
-     *     [
-     *         'middleware' => ['auth', 'auth:*'],
-     *         'scheme' => \Dedoc\Scramble\Support\Generator\SecurityScheme::http('bearer'),
-     *     ],
-     * ],
+     * App\Support\Scramble\DocumentsTheSessionCookie is Scramble's own
+     * MiddlewareAuthSecurityStrategy with the scheme replaced: it reads `auth:*`
+     * off each route, applies the scheme at the root, and marks every anonymous
+     * operation `security: []`. The default scheme is a bearer token, which this
+     * API does not have; see that class for the cookie and for why the CSRF
+     * header is not a second scheme.
      */
-    // 'security_strategy' => \Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
-    'security_strategy' => null,
+    'security_strategy' => DocumentsTheSessionCookie::class,
 ];

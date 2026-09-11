@@ -6,6 +6,7 @@ use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -54,6 +55,7 @@ class AuthController extends Controller
      * first failure. A correct password during the lockout is still refused,
      * and attempts made while locked out do not extend it.
      */
+    #[Response(200, 'Logged in. The session cookie is set; nothing in the body is needed.')]
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
@@ -137,6 +139,7 @@ class AuthController extends Controller
      *
      * An anonymous caller answers `401 not_authenticated`.
      */
+    #[Response(200, 'Logged out. The session is destroyed server-side.')]
     public function logout(Request $request): JsonResponse
     {
         // Three steps, each doing a different half of the job. logout() forgets
@@ -171,6 +174,7 @@ class AuthController extends Controller
      * The response is never cacheable. An anonymous caller answers
      * `401 not_authenticated`.
      */
+    #[Response(200, 'Who the caller is, and every permission their roles add up to.')]
     public function me(Request $request): JsonResponse
     {
         /** @var Member $member */

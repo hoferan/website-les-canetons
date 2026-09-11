@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Support\FormToken;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Public forms', weight: 60)]
@@ -28,6 +29,7 @@ class FormTokenController extends Controller
      * submission that fails validation can be retried with the token already
      * in hand.
      */
+    #[Response(200, 'A token to send back as X-Form-Token. Valid for two hours, usable more than once.')]
     #[Endpoint(operationId: 'formToken.show')]
     public function __invoke(): JsonResponse
     {

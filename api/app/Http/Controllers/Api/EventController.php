@@ -11,6 +11,7 @@ use App\Support\Audit;
 use App\Support\BandTime;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -267,6 +268,7 @@ class EventController extends Controller
      * with the counts of what went with it, so a confirmation can say what is
      * about to be discarded rather than merely asking again.
      */
+    #[Response(200, 'Deleted, with the counts of answers and bookings that went with it.')]
     public function destroy(Request $request, Event $event): JsonResponse
     {
         // NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has

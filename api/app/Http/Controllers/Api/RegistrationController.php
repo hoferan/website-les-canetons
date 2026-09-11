@@ -208,6 +208,7 @@ class RegistrationController extends Controller
      *
      * Answers `{"ok": true}`.
      */
+    #[Response(200, 'Cancelled. The booking and its line items are gone.')]
     public function destroy(Request $request, Registration $registration): JsonResponse
     {
         // Captured BEFORE the delete: the row is gone by the time anybody

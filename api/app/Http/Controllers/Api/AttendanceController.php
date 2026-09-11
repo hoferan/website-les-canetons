@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\AttendanceIntegrity;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -143,6 +144,7 @@ class AttendanceController extends Controller
      * answer is what tells a client whether the window is still open, so it
      * can offer the undo or not rather than finding out from a refusal.
      */
+    #[Response(200, 'Withdrawn. The member now counts as not having answered.')]
     public function destroy(Request $request, Event $event): JsonResponse
     {
         // UNDO. Removes the answer entirely, returning the event to

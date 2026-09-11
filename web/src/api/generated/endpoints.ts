@@ -3089,16 +3089,16 @@ export function useRegistrationForm<
 
 export type registrationExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet =
   {
-    data: string;
+    data: Blob;
     status: 200;
   };
 
-export type registrationExportResponse200TextCsvCharsetUTF8 = {
+export type registrationExportResponse200TextCsv = {
   data: string;
   status: 200;
 };
 
-export type registrationExportResponse200TextMarkdownCharsetUTF8 = {
+export type registrationExportResponse200TextMarkdown = {
   data: string;
   status: 200;
 };
@@ -3130,8 +3130,8 @@ export type registrationExportResponse503 = {
 
 export type registrationExportResponseSuccess = (
   | registrationExportResponse200ApplicationVndOpenxmlformatsOfficedocumentSpreadsheetmlSheet
-  | registrationExportResponse200TextCsvCharsetUTF8
-  | registrationExportResponse200TextMarkdownCharsetUTF8
+  | registrationExportResponse200TextCsv
+  | registrationExportResponse200TextMarkdown
   | registrationExportResponse200ApplicationJson
 ) & {
   headers: Headers;

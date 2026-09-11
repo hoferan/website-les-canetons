@@ -11,6 +11,7 @@ use App\Models\Member;
 use App\Support\AttendanceIntegrity;
 use App\Support\Audit;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,7 @@ class MemberAttendanceController extends Controller
      * caller. Use `DELETE /api/v1/events/{event}/attendance` for your own
      * answer.
      */
+    #[Response(200, 'Withdrawn. The member own five-minute undo window starts from this moment.')]
     public function destroy(Request $request, Event $event, Member $member): JsonResponse
     {
         // Answering on somebody else's behalf — the phone call to the

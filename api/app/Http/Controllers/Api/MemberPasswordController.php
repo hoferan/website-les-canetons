@@ -9,6 +9,7 @@ use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class MemberPasswordController extends Controller
      * ordinary route for that is `POST /api/v1/me/password`, which lets them
      * choose the password instead.
      */
+    #[Response(200, 'The generated password, shown once. Every session of that member is revoked.')]
     #[Endpoint(operationId: 'memberPassword.reset')]
     public function __invoke(Request $request, Member $member): JsonResponse
     {

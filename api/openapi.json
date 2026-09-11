@@ -41,6 +41,11 @@
             "description": "What a client needs before it renders anything."
         }
     ],
+    "security": [
+        {
+            "sessionCookie": []
+        }
+    ],
     "paths": {
         "/login": {
             "post": {
@@ -75,7 +80,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Logged in. The session cookie is set; nothing in the body is needed.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -196,7 +201,8 @@
                     "419": {
                         "$ref": "#/components/responses/Problem419"
                     }
-                }
+                },
+                "security": []
             }
         },
         "/logout": {
@@ -209,7 +215,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Logged out. The session is destroyed server-side.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -245,7 +251,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Who the caller is, and every permission their roles add up to.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -315,7 +321,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Changed. `sessionsEnded` counts the caller other sessions that were revoked.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -543,7 +549,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Deleted, with the counts of answers and bookings that went with it.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -706,7 +712,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Withdrawn. The member now counts as not having answered.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -873,7 +879,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Withdrawn. The member own five-minute undo window starts from this moment.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -969,7 +975,8 @@
                     "429": {
                         "$ref": "#/components/responses/Problem429"
                     }
-                }
+                },
+                "security": []
             },
             "get": {
                 "operationId": "registration.index",
@@ -1048,7 +1055,8 @@
                     "404": {
                         "$ref": "#/components/responses/ModelNotFoundException"
                     }
-                }
+                },
+                "security": []
             }
         },
         "/events/{event}/registrations.{format}": {
@@ -1086,19 +1094,20 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "The guest list in the requested format. Same rows every time; only the encoding differs.",
                         "content": {
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                                 "schema": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "format": "binary"
                                 }
                             },
-                            "text/csv; charset=UTF-8": {
+                            "text/csv": {
                                 "schema": {
                                     "type": "string"
                                 }
                             },
-                            "text/markdown; charset=UTF-8": {
+                            "text/markdown": {
                                 "schema": {
                                     "type": "string"
                                 }
@@ -1132,16 +1141,8 @@
                             }
                         },
                         "headers": {
-                            "Transfer-Encoding": {
-                                "required": true,
-                                "schema": {
-                                    "type": "string",
-                                    "enum": [
-                                        "chunked"
-                                    ]
-                                }
-                            },
                             "Content-Disposition": {
+                                "description": "attachment, with a filename built from the event. Browsers save rather than render.",
                                 "schema": {
                                     "type": "string"
                                 }
@@ -1285,7 +1286,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Cancelled. The booking and its line items are gone.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1537,7 +1538,7 @@
                 },
                 "responses": {
                     "201": {
-                        "description": "",
+                        "description": "The new member, plus the generated password. It is shown once and never retrievable again.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1649,7 +1650,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Removed. `sessionsEnded` counts the sessions revoked in the same transaction.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1716,7 +1717,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "The member as they now stand, and how many of their sessions were revoked.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1776,7 +1777,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "The generated password, shown once. Every session of that member is revoked.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1822,7 +1823,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "A token to send back as X-Form-Token. Valid for two hours, usable more than once.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1842,7 +1843,8 @@
                     "429": {
                         "$ref": "#/components/responses/Problem429"
                     }
-                }
+                },
+                "security": []
             }
         },
         "/contact": {
@@ -1876,7 +1878,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Accepted and sent to the committee. Nothing is stored beyond the message itself.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1905,7 +1907,8 @@
                     "429": {
                         "$ref": "#/components/responses/Problem429"
                     }
-                }
+                },
+                "security": []
             }
         },
         "/config": {
@@ -1918,7 +1921,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "The environment this API is running as, and which feature flags are on.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -1942,11 +1945,20 @@
                             }
                         }
                     }
-                }
+                },
+                "security": []
             }
         }
     },
     "components": {
+        "securitySchemes": {
+            "sessionCookie": {
+                "type": "apiKey",
+                "description": "The session cookie, set by POST /api/v1/login and sent automatically by a browser. It is HttpOnly, so it cannot be read from JavaScript, and there is nothing for a client to store or attach by hand.",
+                "in": "cookie",
+                "name": "les-canetons-api-session"
+            }
+        },
         "schemas": {
             "AccountPasswordRequest": {
                 "type": "object",
@@ -2280,6 +2292,35 @@
                 ],
                 "title": "MemberResource"
             },
+            "PublicEventResource": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string"
+                    },
+                    "startsAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When it starts, in UTC."
+                    },
+                    "endsAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When it ends, in UTC. May fall on a later day."
+                    },
+                    "location": {
+                        "type": "string",
+                        "description": "Where it happens, as free text."
+                    }
+                },
+                "required": [
+                    "title",
+                    "startsAt",
+                    "endsAt",
+                    "location"
+                ],
+                "title": "PublicEventResource"
+            },
             "RecordMemberAttendanceRequest": {
                 "type": "object",
                 "description": "One member's answer, entered on their behalf by the committee.\n\nThe same payload a member sends for themselves, with one rule missing:\n`note` is always optional here, even when the answer changes from `yes` to\n`no`. The committee is writing down what somebody told them on the phone,\nnot justifying a decision of their own.\n\nThe route refuses a caller who aims it at their own membership, so a member\nwho both plays and manages still has to answer for themselves through\n`PUT /api/v1/events/{event}/attendance`.",
@@ -2336,29 +2377,7 @@
                 "type": "object",
                 "properties": {
                     "event": {
-                        "type": "object",
-                        "properties": {
-                            "title": {
-                                "type": "string"
-                            },
-                            "startsAt": {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            "endsAt": {
-                                "type": "string",
-                                "format": "date-time"
-                            },
-                            "location": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "title",
-                            "startsAt",
-                            "endsAt",
-                            "location"
-                        ]
+                        "$ref": "#/components/schemas/PublicEventResource"
                     },
                     "options": {
                         "type": "array",

@@ -144,11 +144,11 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { RegistrationFormResourceEvent } from "./registrationFormResourceEvent";
+import type { PublicEventResource } from "./publicEventResource";
 import type { RegistrationOptionResource } from "./registrationOptionResource";
 
 export interface RegistrationFormResource {
-  event: RegistrationFormResourceEvent;
+  event: PublicEventResource;
   options: RegistrationOptionResource[];
   /** @nullable */
   maxGuests: number | null;

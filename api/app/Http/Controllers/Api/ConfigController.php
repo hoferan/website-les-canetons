@@ -7,6 +7,7 @@ use App\Support\Environment;
 use App\Support\Features;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 #[Group('Service', 'What a client needs before it renders anything.', weight: 70)]
@@ -28,6 +29,7 @@ class ConfigController extends Controller
      * response is `no-store`, so a value changed on the server is picked up
      * on the next page load.
      */
+    #[Response(200, 'The environment this API is running as, and which feature flags are on.')]
     #[Endpoint(operationId: 'config.show')]
     public function __invoke(): JsonResponse
     {

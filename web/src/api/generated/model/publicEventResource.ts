@@ -145,9 +145,12 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type RegistrationFormResourceEvent = {
+export interface PublicEventResource {
   title: string;
+  /** When it starts, in UTC. */
   startsAt: string;
+  /** When it ends, in UTC. May fall on a later day. */
   endsAt: string;
+  /** Where it happens, as free text. */
   location: string;
-};
+}

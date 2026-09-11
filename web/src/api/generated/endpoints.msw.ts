@@ -535,10 +535,10 @@ export const getRegistrationFormResponseMock = (
 });
 
 export const getRegistrationExportResponseMock = (
-  overrideResponse: Partial<Extract<string | RegistrationExport200Four, object>> = {},
-): string | RegistrationExport200Four =>
+  overrideResponse: Partial<Extract<ArrayBuffer | string | RegistrationExport200Four, object>> = {},
+): ArrayBuffer | string | RegistrationExport200Four =>
   faker.helpers.arrayElement([
-    faker.word.sample(),
+    new ArrayBuffer(faker.number.int({ min: 1, max: 64 })),
     faker.word.sample(),
     faker.word.sample(),
     {
@@ -1209,28 +1209,31 @@ export const getRegistrationFormMockHandler = (
 
 export const getRegistrationExportMockHandler = (
   overrideResponse?:
+    | ArrayBuffer
     | string
     | RegistrationExport200Four
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<string | RegistrationExport200Four> | string | RegistrationExport200Four),
+      ) =>
+        | Promise<ArrayBuffer | string | RegistrationExport200Four>
+        | ArrayBuffer
+        | string
+        | RegistrationExport200Four),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
     "*/events/:event/registrations.:format",
     async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
-      const resolvedBody =
+      const binaryBody =
         overrideResponse !== undefined
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
           : getRegistrationExportResponseMock();
-      return typeof resolvedBody === "string"
-        ? HttpResponse.text(resolvedBody, {
-            status: 200,
-            headers: { "Content-Type": "text/csv; charset=UTF-8" },
-          })
-        : HttpResponse.json(resolvedBody, { status: 200 });
+      return HttpResponse.arrayBuffer(
+        binaryBody instanceof ArrayBuffer ? binaryBody : new ArrayBuffer(0),
+        { status: 200, headers: { "Content-Type": "application/octet-stream" } },
+      );
     },
     options,
   );
