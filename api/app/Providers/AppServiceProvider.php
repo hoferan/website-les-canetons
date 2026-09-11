@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\Scramble\DocumentsFailureModes;
+use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -23,6 +25,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Declares each route's failure modes in the OpenAPI document, read off
+        // that route's own middleware. See App\Support\Scramble\
+        // DocumentsFailureModes for what it derives and why.
+        //
+        // REGISTERED HERE, NOT IN config/scramble.php's `extensions` array.
+        // That array is documented as taking extensions and its filter does
+        // accept an OperationExtension, but one listed there is never called —
+        // verified by putting a `throw` in handle() and watching the export
+        // succeed anyway. The `extensions` array reaches the paths that build
+        // SCHEMAS and RESPONSES from types; operation transformers are a
+        // separate pipeline, and this is its documented entry point.
+        //
+        // Cost an hour to find, so: if a Scramble extension of yours appears to
+        // do nothing, check which pipeline consumes it before debugging the
+        // extension itself.
+        Scramble::configure()->withOperationTransformers(DocumentsFailureModes::class);
+
         // The rate limiter the two ANONYMOUS write endpoints run behind.
         //
         // Here rather than in bootstrap/app.php's withMiddleware() closure,

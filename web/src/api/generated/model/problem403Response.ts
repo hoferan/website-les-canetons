@@ -144,60 +144,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { StoreRegistrationRequestChoicesItem } from "./storeRegistrationRequestChoicesItem";
+import type { Problem403ResponseCode } from "./problem403ResponseCode";
+import type { Problem403ResponseErrorsItem } from "./problem403ResponseErrorsItem";
 
-/**
- * An anonymous booking for one event.
- *
- * Anonymous, so it also has to satisfy the public write guard: send the
- * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that
- * is present and empty, or the request answers `422 spam_suspected`.
- *
- * Name, email and phone are required, because a Swiss committee reaches
- * somebody by telephone the evening before. Address and table name are
- * optional.
- *
- * `choices` is what is being ordered: a non-empty list of `{optionId,
- * quantity}`, at most 20 entries, each option appearing at most once and
- * belonging to this event. Read the options from
- * `GET /api/v1/events/{event}/registration`. When the event sets a per-booking
- * guest cap, a booking whose quantities add up to more than that cap fails
- * validation against `choices` with `too_many_guests`.
- *
- * An event that takes no bookings answers `404`, whether or not it exists.
- */
-export interface StoreRegistrationRequest {
-  /** @maxLength 255 */
-  firstName: string;
-  /** @maxLength 255 */
-  lastName: string;
-  /**
-   * Where the confirmation is sent. A mail failure does not fail the booking.
-   * @maxLength 255
-   */
-  email: string;
-  /**
-   * A telephone number, in whatever form the guest writes it. Required: this is how the committee reaches them the evening before.
-   * @maxLength 64
-   */
-  phone: string;
-  /**
-   * @maxLength 255
-   * @nullable
-   */
-  address?: string | null;
-  /**
-   * Who the guest would like to sit with, as free text. Nothing enforces it; the committee reads it when seating the room.
-   * @maxLength 255
-   * @nullable
-   */
-  tableName?: string | null;
-  /**
-   * What is being ordered, at least one entry and at most 20. Fails with `too_many_guests` when the quantities exceed the event per-booking cap.
-   * @minItems 1
-   * @maxItems 20
-   */
-  choices: StoreRegistrationRequestChoicesItem[];
-  /** A honeypot. Send it PRESENT AND EMPTY. Anything else answers 422 — it is a field a person never sees and only a script fills in. */
-  website: string;
-}
+export type Problem403Response = {
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
+  instance: string;
+  /** Stable machine token the front end maps to French. */
+  code: Problem403ResponseCode;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: Problem403ResponseErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
+  requestId: string;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
+};

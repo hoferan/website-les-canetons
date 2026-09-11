@@ -185,6 +185,9 @@
                                 }
                             }
                         }
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -218,6 +221,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -328,6 +334,9 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -403,6 +412,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -491,6 +506,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -546,6 +567,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -587,6 +614,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -639,6 +672,9 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -684,6 +720,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -724,6 +763,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -785,6 +827,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -839,6 +887,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -859,6 +913,15 @@
                         "description": "The event ID",
                         "schema": {
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "X-Form-Token",
+                        "in": "header",
+                        "required": true,
+                        "description": "A token from GET /api/v1/form-token, at least two seconds and at most two hours old. Fetch it when the form is rendered, not when it is submitted.",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 ],
@@ -888,6 +951,15 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Problem422"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/Problem429"
                     }
                 }
             },
@@ -928,6 +1000,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -1113,6 +1188,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -1164,6 +1242,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -1209,6 +1293,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1312,6 +1402,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1340,6 +1436,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -1368,6 +1467,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -1396,6 +1498,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             },
@@ -1444,6 +1549,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1495,6 +1606,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             },
@@ -1544,6 +1661,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1608,6 +1731,12 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1659,6 +1788,12 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/AuthenticationException"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
                     }
                 }
             }
@@ -1689,6 +1824,9 @@
                                 }
                             }
                         }
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/Problem429"
                     }
                 }
             }
@@ -1700,6 +1838,17 @@
                 "summary": "Send a message to the committee",
                 "tags": [
                     "Public forms"
+                ],
+                "parameters": [
+                    {
+                        "name": "X-Form-Token",
+                        "in": "header",
+                        "required": true,
+                        "description": "A token from GET /api/v1/form-token, at least two seconds and at most two hours old. Fetch it when the form is rendered, not when it is submitted.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
                 ],
                 "requestBody": {
                     "required": true,
@@ -1732,6 +1881,15 @@
                     },
                     "400": {
                         "$ref": "#/components/responses/ValidationException"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Problem422"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/Problem429"
                     }
                 }
             }
@@ -1900,6 +2058,10 @@
                         "type": "string",
                         "description": "The message body, up to 5000 characters. Plain text; no markup is rendered.",
                         "maxLength": 5000
+                    },
+                    "website": {
+                        "type": "string",
+                        "description": "A honeypot. Send it PRESENT AND EMPTY. Anything else answers 422 \u2014 it is a field a person never sees and only a script fills in."
                     }
                 },
                 "required": [
@@ -1907,7 +2069,8 @@
                     "firstName",
                     "email",
                     "subject",
-                    "message"
+                    "message",
+                    "website"
                 ],
                 "title": "ContactRequest"
             },
@@ -2708,6 +2871,10 @@
                         },
                         "minItems": 1,
                         "maxItems": 20
+                    },
+                    "website": {
+                        "type": "string",
+                        "description": "A honeypot. Send it PRESENT AND EMPTY. Anything else answers 422 \u2014 it is a field a person never sees and only a script fills in."
                     }
                 },
                 "required": [
@@ -2715,7 +2882,8 @@
                     "lastName",
                     "email",
                     "phone",
-                    "choices"
+                    "choices",
+                    "website"
                 ],
                 "title": "StoreRegistrationRequest"
             },
@@ -2880,6 +3048,61 @@
             }
         },
         "responses": {
+            "Problem429": {
+                "description": "Too many requests. Retry-After says how long to wait.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "English message. Never displayed: the front end renders `code`."
+                                },
+                                "status": {
+                                    "type": "integer",
+                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "The path that was requested. Never the query string."
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "Stable machine token the front end maps to French.",
+                                    "enum": [
+                                        "rate_limited"
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "array",
+                                    "description": "Always empty for this status; present so every problem has the same shape.",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "requestId": {
+                                    "type": "string",
+                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                },
+                                "detail": {
+                                    "type": "string",
+                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "status",
+                                "code",
+                                "instance",
+                                "errors",
+                                "requestId",
+                                "detail"
+                            ]
+                        }
+                    }
+                }
+            },
             "ValidationException": {
                 "description": "The submitted fields were rejected. `errors` names each one and why.",
                 "content": {
@@ -2951,6 +3174,116 @@
                     }
                 }
             },
+            "Problem419": {
+                "description": "The CSRF token was missing or stale. Re-prime it and retry; you are still logged in.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "English message. Never displayed: the front end renders `code`."
+                                },
+                                "status": {
+                                    "type": "integer",
+                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "The path that was requested. Never the query string."
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "Stable machine token the front end maps to French.",
+                                    "enum": [
+                                        "invalid_session"
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "array",
+                                    "description": "Always empty for this status; present so every problem has the same shape.",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "requestId": {
+                                    "type": "string",
+                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                },
+                                "detail": {
+                                    "type": "string",
+                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "status",
+                                "code",
+                                "instance",
+                                "errors",
+                                "requestId",
+                                "detail"
+                            ]
+                        }
+                    }
+                }
+            },
+            "Problem422": {
+                "description": "The submission looks automated. See Public forms.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "English message. Never displayed: the front end renders `code`."
+                                },
+                                "status": {
+                                    "type": "integer",
+                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "The path that was requested. Never the query string."
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "Stable machine token the front end maps to French.",
+                                    "enum": [
+                                        "spam_suspected"
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "array",
+                                    "description": "Always empty for this status; present so every problem has the same shape.",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "requestId": {
+                                    "type": "string",
+                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                },
+                                "detail": {
+                                    "type": "string",
+                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "status",
+                                "code",
+                                "instance",
+                                "errors",
+                                "requestId",
+                                "detail"
+                            ]
+                        }
+                    }
+                }
+            },
             "ModelNotFoundException": {
                 "description": "Not found",
                 "content": {
@@ -2994,6 +3327,61 @@
                                     "description": "Stable machine token the front end maps to French.",
                                     "enum": [
                                         "not_authenticated"
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "array",
+                                    "description": "Always empty for this status; present so every problem has the same shape.",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "requestId": {
+                                    "type": "string",
+                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                },
+                                "detail": {
+                                    "type": "string",
+                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "status",
+                                "code",
+                                "instance",
+                                "errors",
+                                "requestId",
+                                "detail"
+                            ]
+                        }
+                    }
+                }
+            },
+            "Problem403": {
+                "description": "Authenticated, but not permitted to do this.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "English message. Never displayed: the front end renders `code`."
+                                },
+                                "status": {
+                                    "type": "integer",
+                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "The path that was requested. Never the query string."
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "Stable machine token the front end maps to French.",
+                                    "enum": [
+                                        "access_denied"
                                     ]
                                 },
                                 "errors": {

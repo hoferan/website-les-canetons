@@ -58,6 +58,10 @@ test("POST /contact rejects a missing field the way the real API does", async ()
     email: "donald@example.com",
     subject: "",
     message: "Coin",
+    // The honeypot. Present and empty is what a person's browser sends; the
+    // generated type now requires it, which is the point — a client that
+    // omits it used to compile and then 422 on every submission.
+    website: "",
   }).catch((thrown: unknown) => thrown)) as ApiError;
 
   expect(error).toBeInstanceOf(ApiError);

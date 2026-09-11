@@ -172,4 +172,6 @@ export interface ContactRequest {
    * @maxLength 5000
    */
   message: string;
+  /** A honeypot. Send it PRESENT AND EMPTY. Anything else answers 422 — it is a field a person never sees and only a script fills in. */
+  website: string;
 }
