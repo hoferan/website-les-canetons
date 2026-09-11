@@ -3,18 +3,25 @@
 namespace App\Support;
 
 /**
- * The two answers a member can give.
- *
- * TWO, NOT THREE. There is deliberately no "maybe" — see the attendance
- * migration for why a third option makes a chase list unanswerable.
- *
- * Stored and transmitted in ENGLISH, like every other machine value in this
- * API; `web/src/i18n/` is the only place Oui and Non exist. The old
- * `responses.answer` column already followed this rule with
- * `participate`/`notparticipate`, and these are the same values said shorter.
+ * Whether a member is coming to an event.
  */
 enum AttendanceStatus: string
 {
+    // THE DOCBLOCK ABOVE IS PUBLISHED. Scramble renders an enum's class docblock as
+    // the schema description in api/openapi.json, so everything a reader of the
+    // contract has no use for lives down here as a comment instead — measured
+    // 2026-09-11, when the paragraphs below shipped to /api/docs verbatim,
+    // migration references and all.
+    //
+    // TWO ANSWERS, NOT THREE. There is deliberately no "maybe" — see the
+    // attendance migration for why a third option makes a chase list
+    // unanswerable.
+    //
+    // Stored and transmitted in ENGLISH, like every other machine value in this
+    // API; web/src/i18n/ is the only place Oui and Non exist. The old
+    // `responses.answer` column already followed this rule with
+    // `participate`/`notparticipate`, and these are the same values said
+    // shorter.
     case Yes = 'yes';
     case No = 'no';
 

@@ -145,6 +145,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type Config200Features = {
-  calendar: boolean;
-};
+export type Config200Features = { [key: string]: boolean };

@@ -3148,7 +3148,7 @@ export type guestListExportResponseError = (
 
 export type guestListExportResponse = guestListExportResponseSuccess | guestListExportResponseError;
 
-export const getGuestListExportUrl = (event: number, format: string) => {
+export const getGuestListExportUrl = (event: number, format: "xlsx" | "csv" | "md" | "json") => {
   return `/events/${event}/registrations.${format}`;
 };
 
@@ -3172,7 +3172,7 @@ export const getGuestListExportUrl = (event: number, format: string) => {
  */
 export const guestListExport = async (
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options?: Parameters<typeof customFetch>[1],
 ): Promise<guestListExportResponse> => {
   return customFetch<guestListExportResponse>(getGuestListExportUrl(event, format), {
@@ -3181,7 +3181,10 @@ export const guestListExport = async (
   });
 };
 
-export const getGuestListExportQueryKey = (event: number, format: string) => {
+export const getGuestListExportQueryKey = (
+  event: number,
+  format: "xlsx" | "csv" | "md" | "json",
+) => {
   return [`/events/${event}/registrations.${format}`] as const;
 };
 
@@ -3194,7 +3197,7 @@ export const getGuestListExportQueryOptions = <
     | GuestListExport503,
 >(
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -3233,7 +3236,7 @@ export function useGuestListExport<
     | GuestListExport503,
 >(
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
       Pick<
@@ -3257,7 +3260,7 @@ export function useGuestListExport<
     | GuestListExport503,
 >(
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>> &
       Pick<
@@ -3281,7 +3284,7 @@ export function useGuestListExport<
     | GuestListExport503,
 >(
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -3301,7 +3304,7 @@ export function useGuestListExport<
     | GuestListExport503,
 >(
   event: number,
-  format: string,
+  format: "xlsx" | "csv" | "md" | "json",
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof guestListExport>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;

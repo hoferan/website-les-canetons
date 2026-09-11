@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Attendance;
+use App\Support\AttendanceStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -22,8 +23,8 @@ class AttendanceResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            /** Whether the member is coming. One of `yes` or `no`. */
-            'status' => $this->status->value,
+            /** Whether the member is coming. */
+            'status' => $this->status(),
             /** Free text the member or the committee added. Required when a member changes their own answer from `yes` to `no`. */
             'note' => $this->note,
             /** True when the committee entered this answer for the member rather than the member answering themselves. */
@@ -31,6 +32,26 @@ class AttendanceResource extends JsonResource
             /** When the answer was last written. A member may withdraw their own answer entirely for five minutes after this. */
             'recordedAt' => $this->recordedAt(),
         ];
+    }
+
+    /**
+     * The answer itself, returned as the enum rather than as its value.
+     *
+     * The bytes on the wire are identical — a backed enum is JSON-encoded as
+     * its value — but the DOCUMENT is not: returning `->value` publishes a bare
+     * `string`, which is what it did until 2026-09-11, so the one field the
+     * whole attendance feature branches on was the only place in the contract
+     * with no closed set. Both request schemas already carried `in:yes,no`
+     * through App\Support\AttendanceStatus::rule(), so a client could see what
+     * it was allowed to SEND and not what it might RECEIVE.
+     *
+     * A typed private method for the reason recordedAt() below is one: Scramble
+     * reads a declared return type, and infers considerably less from an
+     * expression in the array literal.
+     */
+    private function status(): AttendanceStatus
+    {
+        return $this->status;
     }
 
     /**

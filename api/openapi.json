@@ -353,9 +353,10 @@
                     {
                         "name": "past",
                         "in": "query",
-                        "description": "Set to `1` for the history \u2014 past events, newest first \u2014 instead of the upcoming planning. Any other value, or none, gives the planning.",
+                        "description": "Set to `1` for the history \u2014 past events, newest first \u2014 instead of the upcoming planning. Omit it for the planning.",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "const": "1"
                         },
                         "example": "1"
                     }
@@ -1066,7 +1067,13 @@
                         "in": "path",
                         "required": true,
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "enum": [
+                                "xlsx",
+                                "csv",
+                                "md",
+                                "json"
+                            ]
                         }
                     }
                 ],
@@ -1911,18 +1918,13 @@
                                     "type": "object",
                                     "properties": {
                                         "env": {
-                                            "type": "string"
+                                            "$ref": "#/components/schemas/Environment"
                                         },
                                         "features": {
                                             "type": "object",
-                                            "properties": {
-                                                "calendar": {
-                                                    "type": "boolean"
-                                                }
-                                            },
-                                            "required": [
-                                                "calendar"
-                                            ]
+                                            "additionalProperties": {
+                                                "type": "boolean"
+                                            }
                                         }
                                     },
                                     "required": [
@@ -1964,8 +1966,8 @@
                 "type": "object",
                 "properties": {
                     "status": {
-                        "type": "string",
-                        "description": "Whether the member is coming. One of `yes` or `no`."
+                        "description": "Whether the member is coming.",
+                        "$ref": "#/components/schemas/AttendanceStatus"
                     },
                     "note": {
                         "type": [
@@ -1990,6 +1992,15 @@
                     "recordedAt"
                 ],
                 "title": "AttendanceResource"
+            },
+            "AttendanceStatus": {
+                "type": "string",
+                "description": "Whether a member is coming to an event.\n",
+                "enum": [
+                    "yes",
+                    "no"
+                ],
+                "title": "AttendanceStatus"
             },
             "ChaseListEntryResource": {
                 "type": "object",
@@ -2073,6 +2084,17 @@
                     "website"
                 ],
                 "title": "ContactRequest"
+            },
+            "Environment": {
+                "type": "string",
+                "description": "Which deployment a response came from.\n",
+                "enum": [
+                    "dev",
+                    "test",
+                    "qa",
+                    "prod"
+                ],
+                "title": "Environment"
             },
             "EventResource": {
                 "type": "object",
@@ -3136,10 +3158,23 @@
                                         "type": "object",
                                         "properties": {
                                             "field": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "description": "The camelCase name of the rejected field, as it was submitted."
                                             },
                                             "reason": {
-                                                "type": "string"
+                                                "type": "string",
+                                                "description": "Stable machine token saying what is wrong with that field.",
+                                                "enum": [
+                                                    "required",
+                                                    "too_long",
+                                                    "too_short",
+                                                    "invalid_format",
+                                                    "invalid_type",
+                                                    "invalid_value",
+                                                    "invalid_number",
+                                                    "already_taken",
+                                                    "must_be_after"
+                                                ]
                                             },
                                             "params": {
                                                 "type": "object",

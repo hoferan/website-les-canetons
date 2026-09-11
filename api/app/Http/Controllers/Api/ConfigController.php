@@ -55,9 +55,14 @@ class ConfigController extends Controller
      * 'prod', so a misspelled APP_ENV can never paint a staging ribbon on the
      * live site). Shared with the API reference's server label so the two
      * cannot disagree about which environment this is.
+     *
+     * Returns the ENUM, not its value. The JSON is identical — a backed enum
+     * encodes as its value — but the contract gains the closed set, and a
+     * generated client gains a union of four strings rather than `string` for
+     * the field the SPA switches its whole chrome on.
      */
-    private function env(): string
+    private function env(): Environment
     {
-        return Environment::name();
+        return Environment::current();
     }
 }

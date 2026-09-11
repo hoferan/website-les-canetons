@@ -2,6 +2,7 @@
 
 namespace App\Support\Scramble;
 
+use App\Support\ErrorVocabulary;
 use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
 
 /**
@@ -72,8 +73,11 @@ final class ErrorResponseSchema
     private static function entry(): OpenApiTypes\ObjectType
     {
         return (new OpenApiTypes\ObjectType)
-            ->addProperty('field', new OpenApiTypes\StringType)
-            ->addProperty('reason', new OpenApiTypes\StringType)
+            ->addProperty('field', (new OpenApiTypes\StringType)
+                ->setDescription('The camelCase name of the rejected field, as it was submitted.'))
+            ->addProperty('reason', (new OpenApiTypes\StringType)
+                ->enum(ErrorVocabulary::REASONS)
+                ->setDescription('Stable machine token saying what is wrong with that field.'))
             ->addProperty('params', (new OpenApiTypes\ObjectType)
                 ->additionalProperties(new OpenApiTypes\MixedType))
             ->setRequired(['field', 'reason']);

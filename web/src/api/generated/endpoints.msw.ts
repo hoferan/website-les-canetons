@@ -149,6 +149,7 @@ import { faker } from "@faker-js/faker";
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
+import { AttendanceStatus, Environment } from "./model";
 import type {
   AccountPassword200,
   AttendanceDestroy200,
@@ -234,7 +235,7 @@ export const getEventIndexResponseMock = (): EventResource[] =>
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
-        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
         note: faker.helpers.arrayElement([
           faker.string.alpha({ length: { min: 10, max: 20 } }),
           null,
@@ -269,7 +270,7 @@ export const getEventStoreResponseMock = (
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
-      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
       note: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
@@ -305,7 +306,7 @@ export const getEventShowResponseMock = (
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
-      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
       note: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
@@ -341,7 +342,7 @@ export const getEventUpdateResponseMock = (
   takesRegistrations: faker.datatype.boolean(),
   myAttendance: faker.helpers.arrayElement([
     {
-      status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
       note: faker.helpers.arrayElement([
         faker.string.alpha({ length: { min: 10, max: 20 } }),
         null,
@@ -388,7 +389,7 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
     takesRegistrations: faker.datatype.boolean(),
     myAttendance: faker.helpers.arrayElement([
       {
-        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
         note: faker.helpers.arrayElement([
           faker.string.alpha({ length: { min: 10, max: 20 } }),
           null,
@@ -403,7 +404,7 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
 export const getAttendanceUpdateResponseMock = (
   overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
 ): AttendanceResource => ({
-  status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
   recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -425,7 +426,7 @@ export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
     ]),
     attendance: faker.helpers.arrayElement([
       {
-        status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
         note: faker.helpers.arrayElement([
           faker.string.alpha({ length: { min: 10, max: 20 } }),
           null,
@@ -440,7 +441,7 @@ export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
 export const getMemberAttendanceUpdateResponseMock = (
   overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
 ): AttendanceResource => ({
-  status: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
   recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -748,8 +749,10 @@ export const getContactResponseMock = (
 export const getConfigResponseMock = (
   overrideResponse: Partial<Extract<Config200, object>> = {},
 ): Config200 => ({
-  env: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  features: { calendar: faker.datatype.boolean() },
+  env: faker.helpers.arrayElement(Object.values(Environment)),
+  features: {
+    [faker.string.alphanumeric(5)]: faker.datatype.boolean(),
+  },
   ...overrideResponse,
 });
 

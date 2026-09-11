@@ -144,13 +144,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ValidationExceptionResponseErrorsItemParams } from "./validationExceptionResponseErrorsItemParams";
-import type { ValidationExceptionResponseErrorsItemReason } from "./validationExceptionResponseErrorsItemReason";
 
-export type ValidationExceptionResponseErrorsItem = {
-  /** The camelCase name of the rejected field, as it was submitted. */
-  field: string;
-  /** Stable machine token saying what is wrong with that field. */
-  reason: ValidationExceptionResponseErrorsItemReason;
-  params?: ValidationExceptionResponseErrorsItemParams;
-};
+/**
+ * Whether a member is coming to an event.
+ */
+export type AttendanceStatus = (typeof AttendanceStatus)[keyof typeof AttendanceStatus];
+
+export const AttendanceStatus = {
+  yes: "yes",
+  no: "no",
+} as const;

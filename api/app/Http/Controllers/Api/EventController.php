@@ -34,11 +34,16 @@ class EventController extends Controller
      * An event taking place today stays in the planning for the whole of that
      * day; it does not move to the history the moment it starts.
      */
+    // `type` is the LITERAL '1', not `string`. Scramble parses this argument as
+    // a PHPDoc type, so a constant string becomes an enum of one value — which
+    // is the contract: send `1`, or leave the parameter off. The controller is
+    // lenient about anything else on purpose (see below), and leniency is not
+    // something a document should invite a client to rely on.
     #[QueryParameter(
         'past',
-        'Set to `1` for the history — past events, newest first — instead of the upcoming planning. Any other value, or none, gives the planning.',
+        'Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.',
         required: false,
-        type: 'string',
+        type: "'1'",
         example: '1',
     )]
     public function index(Request $request): AnonymousResourceCollection

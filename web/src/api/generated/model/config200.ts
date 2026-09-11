@@ -145,8 +145,9 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { Config200Features } from "./config200Features";
+import type { Environment } from "./environment";
 
 export type Config200 = {
-  env: string;
+  env: Environment;
   features: Config200Features;
 };

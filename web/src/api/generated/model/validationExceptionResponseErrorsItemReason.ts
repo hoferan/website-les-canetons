@@ -144,13 +144,21 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { ValidationExceptionResponseErrorsItemParams } from "./validationExceptionResponseErrorsItemParams";
-import type { ValidationExceptionResponseErrorsItemReason } from "./validationExceptionResponseErrorsItemReason";
 
-export type ValidationExceptionResponseErrorsItem = {
-  /** The camelCase name of the rejected field, as it was submitted. */
-  field: string;
-  /** Stable machine token saying what is wrong with that field. */
-  reason: ValidationExceptionResponseErrorsItemReason;
-  params?: ValidationExceptionResponseErrorsItemParams;
-};
+/**
+ * Stable machine token saying what is wrong with that field.
+ */
+export type ValidationExceptionResponseErrorsItemReason =
+  (typeof ValidationExceptionResponseErrorsItemReason)[keyof typeof ValidationExceptionResponseErrorsItemReason];
+
+export const ValidationExceptionResponseErrorsItemReason = {
+  required: "required",
+  too_long: "too_long",
+  too_short: "too_short",
+  invalid_format: "invalid_format",
+  invalid_type: "invalid_type",
+  invalid_value: "invalid_value",
+  invalid_number: "invalid_number",
+  already_taken: "already_taken",
+  must_be_after: "must_be_after",
+} as const;

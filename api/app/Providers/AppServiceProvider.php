@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\Scramble\ConstrainsPathParameters;
 use App\Support\Scramble\DocumentsFailureModes;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -40,7 +41,13 @@ class AppServiceProvider extends ServiceProvider
         // Cost an hour to find, so: if a Scramble extension of yours appears to
         // do nothing, check which pipeline consumes it before debugging the
         // extension itself.
-        Scramble::configure()->withOperationTransformers(DocumentsFailureModes::class);
+        // ConstrainsPathParameters joins it on the same footing and for the same
+        // reason: a route's `->where()` is already the authority on what that
+        // parameter accepts, so publishing the constraint beats restating it.
+        Scramble::configure()->withOperationTransformers([
+            DocumentsFailureModes::class,
+            ConstrainsPathParameters::class,
+        ]);
 
         // The rate limiter the two ANONYMOUS write endpoints run behind.
         //

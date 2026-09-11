@@ -147,7 +147,7 @@
 
 export type EventIndexParams = {
   /**
-   * Set to `1` for the history — past events, newest first — instead of the upcoming planning. Any other value, or none, gives the planning.
+   * Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.
    */
-  past?: string;
+  past?: "1";
 };

@@ -15,8 +15,8 @@ namespace App\Support;
  * App\Support\Permission.
  *
  * One flag for now: `calendar`. Its consumer arrives in R1c-2; it is declared
- * here so the mechanism has something real to carry and so the .env key can
- * be placed on servers before the feature lands.
+ * in FLAGS below so the mechanism has something real to carry and so the .env
+ * key can be placed on servers before the feature lands.
  *
  * BOOLEAN CAST, NOT DECORATIVE. .env values arrive as strings, and
  * config/features.php's env('FEATURE_CALENDAR', false) only converts the
@@ -43,12 +43,35 @@ namespace App\Support;
  */
 final class Features
 {
+    /**
+     * Every flag this class can report, and the only place the key set is
+     * written down.
+     *
+     * A LIST RATHER THAN THE LITERAL ARRAY all() USED TO RETURN, for two
+     * reasons. The first is ordinary: adding a flag is now one line in one
+     * place. The second is the contract. Scramble evaluates a returned array
+     * literal and publishes its keys, so GET /api/v1/config documented
+     * `features` as an object with a REQUIRED `calendar` boolean and nothing
+     * else — which contradicts this endpoint's own documented behaviour, that a
+     * flag the server says nothing about reads as false. Built in a loop, the
+     * shape Scramble can see is the docblock's `array<string, bool>`, which is
+     * the truth: a map of flag name to boolean, whose membership is the
+     * server's business and not the client's.
+     *
+     * @var list<string>
+     */
+    public const FLAGS = ['calendar'];
+
     /** @return array<string, bool> */
     public static function all(): array
     {
-        return [
-            'calendar' => self::flag('features.calendar'),
-        ];
+        $flags = [];
+
+        foreach (self::FLAGS as $flag) {
+            $flags[$flag] = self::flag('features.'.$flag);
+        }
+
+        return $flags;
     }
 
     private static function flag(string $key): bool

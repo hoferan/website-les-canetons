@@ -144,10 +144,11 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { AttendanceStatus } from "./attendanceStatus";
 
 export interface AttendanceResource {
-  /** Whether the member is coming. One of `yes` or `no`. */
-  status: string;
+  /** Whether the member is coming. */
+  status: AttendanceStatus;
   /**
    * Free text the member or the committee added. Required when a member changes their own answer from `yes` to `no`.
    * @nullable
