@@ -10,6 +10,7 @@ use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
 use App\Http\Middleware\NoStoreResponse;
 use App\Http\Middleware\PublicWriteGuard;
+use App\Http\Middleware\ReadableJson;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RunPendingMigrations;
@@ -125,6 +126,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // AutoMigrateTest asserts it is index 0 because anything ahead of it
         // runs against a schema that may not exist yet.
         $middleware->prepend(RequestId::class);
+
+        // Also global, and for the same reason: it has to see the responses of
+        // routes/meta.php as well as the contract's, and neither group is a
+        // place it could sit without being listed twice.
+        $middleware->prepend(ReadableJson::class);
 
         $middleware->alias([
             'permission' => RequirePermission::class,
