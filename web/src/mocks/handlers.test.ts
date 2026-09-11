@@ -11,7 +11,7 @@ import { setMockUser } from "./handlers";
  * including the mutator's envelope.
  *
  * During the R1a rebuild this only covers what the mocked API still has:
- * /api/config, /api/contact, and auth. The event/signup/altcha coverage that
+ * /api/v1/config, /api/v1/contact, and auth. The event/signup/altcha coverage that
  * used to live here modeled the domain Task 1 deleted.
  */
 
@@ -48,7 +48,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
   });
 });
 
-// The whole reason /api/contact is hand-written is its reject branch — both
+// The whole reason /api/v1/contact is hand-written is its reject branch — both
 // failure tests in Contact.test.tsx replace the handler outright, so nothing
 // else exercised it.
 test("POST /contact rejects a missing field the way the real API does", async () => {
@@ -100,7 +100,7 @@ test("logging out clears the mocked session", async () => {
 
 test("lists the roster ordered by name, not in insertion order", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/members");
+  const response = await fetch("/api/v1/members");
   const roster = (await response.json()) as { lastName: string }[];
 
   expect(response.status).toBe(200);
@@ -115,7 +115,7 @@ test("lists the roster ordered by name, not in insertion order", async () => {
 
 test("every member on the roster has an account", async () => {
   setMockUser("demo.direction");
-  const roster = (await (await fetch("/api/members")).json()) as { username: string }[];
+  const roster = (await (await fetch("/api/v1/members")).json()) as { username: string }[];
 
   // 2026_09_08_000001 made credentials NOT NULL: people the band merely
   // displays are content, not members. A mock carrying a login-less row would
@@ -125,7 +125,7 @@ test("every member on the roster has an account", async () => {
 
 test("refuses the roster to a member without members.manage", async () => {
   setMockUser("demo.player");
-  const response = await fetch("/api/members");
+  const response = await fetch("/api/v1/members");
 
   // 403, not 401: they ARE logged in. The real routes get this split by pairing
   // auth:sanctum with permission:, and the SPA's guards depend on it.
@@ -134,13 +134,13 @@ test("refuses the roster to a member without members.manage", async () => {
 });
 
 test("refuses the roster to an anonymous caller with 401, not 403", async () => {
-  const response = await fetch("/api/members");
+  const response = await fetch("/api/v1/members");
   expect(response.status).toBe(401);
 });
 
 test("creating a member never mints them a role", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/members", {
+  const response = await fetch("/api/v1/members", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -172,7 +172,7 @@ test("creating a member never mints them a role", async () => {
 
 test("forgets a created member between tests", async () => {
   setMockUser("demo.direction");
-  const before = ((await (await fetch("/api/members")).json()) as unknown[]).length;
+  const before = ((await (await fetch("/api/v1/members")).json()) as unknown[]).length;
 
   // The assertion that makes every other test in the suite trustworthy: if
   // resetMockState() misses the roster, one test's member leaks into the next
@@ -184,8 +184,8 @@ test("refuses to delete the last member who can administer members", async () =>
   setMockUser("demo.direction");
   // demo.both holds `direction` too, so remove them first — then Dominique is
   // the last holder and deleting anyone who holds it is refused.
-  await fetch("/api/members/3", { method: "DELETE" });
-  const response = await fetch("/api/members/1", { method: "DELETE" });
+  await fetch("/api/v1/members/3", { method: "DELETE" });
+  const response = await fetch("/api/v1/members/1", { method: "DELETE" });
 
   // 409, not 403: the caller HAS the permission. The request conflicts with
   // the state of the system.
@@ -197,7 +197,7 @@ test("refuses to delete the last member who can administer members", async () =>
 
 test("refuses to delete yourself, once someone else can still administer", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/members/1", { method: "DELETE" });
+  const response = await fetch("/api/v1/members/1", { method: "DELETE" });
 
   expect(response.status).toBe(409);
   expect(((await response.json()) as { code: string }).code).toBe("cannot_delete_self");
@@ -205,7 +205,7 @@ test("refuses to delete yourself, once someone else can still administer", async
 
 test("refuses to remove your own administration", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/members/1/roles", {
+  const response = await fetch("/api/v1/members/1/roles", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ roleIds: [] }),
@@ -221,14 +221,14 @@ test("a destructive roster call needs no password, only the session", async () =
   // whole roster and editing anyone. Mistake-prevention is the type-the-name
   // confirmation in the UI. If re-authentication is ever reintroduced on the
   // roster, this test is what says so.
-  const response = await fetch("/api/members/2", { method: "DELETE" });
+  const response = await fetch("/api/v1/members/2", { method: "DELETE" });
 
   expect(response.status).toBe(200);
 });
 
 test("changing your own password does need the current one", async () => {
   setMockUser("demo.direction");
-  const refused = await fetch("/api/me/password", {
+  const refused = await fetch("/api/v1/me/password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ currentPassword: "wrong", newPassword: "un-mot-de-passe-long" }),
@@ -237,7 +237,7 @@ test("changing your own password does need the current one", async () => {
   expect(refused.status).toBe(403);
   expect(((await refused.json()) as { code: string }).code).toBe("reauth_failed");
 
-  const accepted = await fetch("/api/me/password", {
+  const accepted = await fetch("/api/v1/me/password", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ currentPassword: "demo", newPassword: "un-mot-de-passe-long" }),
@@ -248,7 +248,7 @@ test("changing your own password does need the current one", async () => {
 
 test("the register list is the one the migration seeds", async () => {
   setMockUser("demo.direction");
-  const sections = (await (await fetch("/api/sections")).json()) as { name: string }[];
+  const sections = (await (await fetch("/api/v1/sections")).json()) as { name: string }[];
 
   // Mirrors 2026_09_07_000001 exactly. A synthetic list here would mean every
   // mocked screenshot showed pupitres no server has.
@@ -264,7 +264,7 @@ test("the register list is the one the migration seeds", async () => {
 
 test("roles carry a key and their permissions, and no display name", async () => {
   setMockUser("demo.direction");
-  const roles = (await (await fetch("/api/roles")).json()) as Record<string, unknown>[];
+  const roles = (await (await fetch("/api/v1/roles")).json()) as Record<string, unknown>[];
 
   // Decision B6: the UI resolves the French from `key`. A label here would let
   // a screen render a name the real API never sends.
@@ -274,7 +274,7 @@ test("roles carry a key and their permissions, and no display name", async () =>
 
 test("editing a member changes only what the real request validates", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/members/2", {
+  const response = await fetch("/api/v1/members/2", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     // roleIds is not an editable field — it has its own endpoint, its own
@@ -302,7 +302,7 @@ test("editing a member changes only what the real request validates", async () =
 
 test("lists the planning soonest first, and hides the past", async () => {
   setMockUser("demo.player");
-  const response = await fetch("/api/events");
+  const response = await fetch("/api/v1/events");
   const planning = (await response.json()) as { title: string; startsAt: string }[];
 
   expect(response.status).toBe(200);
@@ -315,7 +315,7 @@ test("lists the planning soonest first, and hides the past", async () => {
 
 test("the past is the other half of the list, newest first", async () => {
   setMockUser("demo.player");
-  const past = (await (await fetch("/api/events?past=1")).json()) as { startsAt: string }[];
+  const past = (await (await fetch("/api/v1/events?past=1")).json()) as { startsAt: string }[];
 
   const times = past.map((event) => Date.parse(event.startsAt));
   expect(times).toEqual([...times].sort((a, b) => b - a));
@@ -325,12 +325,12 @@ test("the past is the other half of the list, newest first", async () => {
 test("reading the planning needs no permission", async () => {
   // Everybody in the band needs to know when the next rehearsal is.
   setMockUser("demo.player");
-  expect((await fetch("/api/events")).status).toBe(200);
+  expect((await fetch("/api/v1/events")).status).toBe(200);
 });
 
 test("refuses to create an event for somebody who does not organise", async () => {
   setMockUser("demo.player");
-  const response = await fetch("/api/events", {
+  const response = await fetch("/api/v1/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: "Non", location: "X" }),
@@ -345,13 +345,13 @@ test("tells an anonymous caller 401, not 403", async () => {
   // A 403 here would tell a stranger the endpoint exists and that they merely
   // lack a grant.
   setMockUser(null);
-  expect((await fetch("/api/events")).status).toBe(401);
-  expect((await fetch("/api/events", { method: "POST", body: "{}" })).status).toBe(401);
+  expect((await fetch("/api/v1/events")).status).toBe(401);
+  expect((await fetch("/api/v1/events", { method: "POST", body: "{}" })).status).toBe(401);
 });
 
 test("refuses an end before the start, against its own field", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/events", {
+  const response = await fetch("/api/v1/events", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -376,10 +376,10 @@ test("patching only the end still compares against the stored start", async () =
   // request carries no startsAt, so a mock comparing input against input
   // would pass it vacuously.
   setMockUser("demo.direction");
-  const planning = (await (await fetch("/api/events")).json()) as { id: number }[];
+  const planning = (await (await fetch("/api/v1/events")).json()) as { id: number }[];
   const target = planning[0];
 
-  const response = await fetch(`/api/events/${target?.id}`, {
+  const response = await fetch(`/api/v1/events/${target?.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ endsAt: new Date(Date.now() - 86_400_000).toISOString() }),
@@ -390,9 +390,9 @@ test("patching only the end still compares against the stored start", async () =
 
 test("a series creates one independent event per date", async () => {
   setMockUser("demo.direction");
-  const before = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+  const before = ((await (await fetch("/api/v1/events")).json()) as unknown[]).length;
 
-  const response = await fetch("/api/events/series", {
+  const response = await fetch("/api/v1/events/series", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -417,25 +417,25 @@ test("a series creates one independent event per date", async () => {
   // Distinct ids: they are three events, not one repeated.
   expect(new Set(created.map((event) => event.id)).size).toBe(3);
 
-  const after = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+  const after = ((await (await fetch("/api/v1/events")).json()) as unknown[]).length;
   expect(after).toBe(before + 3);
 });
 
 test("deleting an event takes it off the planning", async () => {
   setMockUser("demo.direction");
-  const planning = (await (await fetch("/api/events")).json()) as { id: number }[];
+  const planning = (await (await fetch("/api/v1/events")).json()) as { id: number }[];
   const target = planning[0];
 
-  const response = await fetch(`/api/events/${target?.id}`, { method: "DELETE" });
+  const response = await fetch(`/api/v1/events/${target?.id}`, { method: "DELETE" });
   expect(response.status).toBe(200);
 
-  const after = (await (await fetch("/api/events")).json()) as { id: number }[];
+  const after = (await (await fetch("/api/v1/events")).json()) as { id: number }[];
   expect(after.some((event) => event.id === target?.id)).toBe(false);
 });
 
 test("forgets a created event between tests", async () => {
   setMockUser("demo.direction");
-  const before = ((await (await fetch("/api/events")).json()) as unknown[]).length;
+  const before = ((await (await fetch("/api/v1/events")).json()) as unknown[]).length;
 
   // If resetMockState() misses the events store, an event created by an
   // earlier test leaks into this count and it fails only when the whole file

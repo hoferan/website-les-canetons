@@ -18,7 +18,7 @@ class PermissionMiddlewareTest extends TestCase
         parent::setUp();
 
         Route::middleware(['api', 'auth:sanctum', 'permission:events.manage'])
-            ->get('/api/_test/guarded', fn () => response()->json(['ok' => true]));
+            ->get('/api/v1/_test/guarded', fn () => response()->json(['ok' => true]));
     }
 
     private function memberWith(?Permission $permission): Member
@@ -36,7 +36,7 @@ class PermissionMiddlewareTest extends TestCase
 
     public function test_an_anonymous_caller_gets_401_not_403(): void
     {
-        $this->getJson('/api/_test/guarded')
+        $this->getJson('/api/v1/_test/guarded')
             ->assertStatus(401)
             ->assertJson(['code' => 'not_authenticated']);
     }
@@ -50,7 +50,7 @@ class PermissionMiddlewareTest extends TestCase
         // attach a session store to the request) and the stamp itself — see
         // MeTest for the full explanation.
         $this->actingAsMember($this->memberWith(null))
-            ->getJson('/api/_test/guarded')
+            ->getJson('/api/v1/_test/guarded')
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
     }
@@ -58,7 +58,7 @@ class PermissionMiddlewareTest extends TestCase
     public function test_a_member_with_the_permission_passes(): void
     {
         $this->actingAsMember($this->memberWith(Permission::EventsManage))
-            ->getJson('/api/_test/guarded')
+            ->getJson('/api/v1/_test/guarded')
             ->assertOk()
             ->assertJson(['ok' => true]);
     }
@@ -66,19 +66,19 @@ class PermissionMiddlewareTest extends TestCase
     public function test_a_different_permission_does_not_open_the_route(): void
     {
         $this->actingAsMember($this->memberWith(Permission::MembersManage))
-            ->getJson('/api/_test/guarded')
+            ->getJson('/api/v1/_test/guarded')
             ->assertStatus(403);
     }
 
     public function test_an_unknown_permission_name_is_a_loud_failure(): void
     {
         Route::middleware(['api', 'auth:sanctum', 'permission:events.mangle'])
-            ->get('/api/_test/typo', fn () => response()->json(['ok' => true]));
+            ->get('/api/v1/_test/typo', fn () => response()->json(['ok' => true]));
 
         $this->withoutExceptionHandling();
         $this->expectException(\InvalidArgumentException::class);
 
         $this->actingAsMember($this->memberWith(Permission::EventsManage))
-            ->getJson('/api/_test/typo');
+            ->getJson('/api/v1/_test/typo');
     }
 }

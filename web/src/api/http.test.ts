@@ -33,7 +33,7 @@ describe("customFetch", () => {
 
     await customFetch("/config", { method: "GET" });
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/config");
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/config");
   });
 
   it("primes the CSRF cookie before the first mutating request", async () => {
@@ -46,7 +46,7 @@ describe("customFetch", () => {
     });
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/sanctum/csrf-cookie");
-    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/login");
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/login");
   });
 
   it("primes only once across several mutations", async () => {

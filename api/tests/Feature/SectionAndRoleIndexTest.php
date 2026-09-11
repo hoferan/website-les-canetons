@@ -46,7 +46,7 @@ class SectionAndRoleIndexTest extends TestCase
         // The list the 2026_09_07_000001 migration seeds, in sort_order — NOT
         // in id order, and not alphabetical. The old front end hardcoded this
         // order in TSX, where it drifted from the table.
-        $body = $this->actingAsAdministrator()->getJson('/api/sections')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/sections')->assertOk()->json();
 
         $this->assertSame([
             'Batteurs',
@@ -65,7 +65,7 @@ class SectionAndRoleIndexTest extends TestCase
         // The permissions travel with the role because that is how the UI
         // answers "why does she have this?" — always "because she is in Team
         // Direction", never a per-member grant.
-        $body = $this->actingAsAdministrator()->getJson('/api/roles')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json();
 
         $byKey = collect($body)->keyBy('key');
 
@@ -82,18 +82,18 @@ class SectionAndRoleIndexTest extends TestCase
         // typed, and nobody typed "Team Direction" — a migration did. So the
         // UI resolves the name from `key` through fr.ts, and this pins the
         // response shape so a French field cannot creep back in.
-        $body = $this->actingAsAdministrator()->getJson('/api/roles')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json();
 
         $this->assertSame(['id', 'key', 'permissions'], array_keys($body[0]));
     }
 
     public function test_neither_list_is_wrapped_in_a_data_envelope(): void
     {
-        // JsonResource wraps collections in {"data": …} by default. /api/me and
-        // /api/config return bare payloads, so wrapping here would give the API
+        // JsonResource wraps collections in {"data": …} by default. /api/v1/me and
+        // /api/v1/config return bare payloads, so wrapping here would give the API
         // two shapes for no reason — and every hand-written MSW handler would
         // have to imitate the wrapper.
-        foreach (['/api/sections', '/api/roles'] as $url) {
+        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
             $body = $this->actingAsAdministrator()->getJson($url)->assertOk()->json();
 
             $this->assertArrayNotHasKey('data', $body, "{$url} must not be enveloped");
@@ -106,7 +106,7 @@ class SectionAndRoleIndexTest extends TestCase
         // Not an exact-match assertion: Symfony's Response::prepare() appends
         // ", private" whenever a session cookie is present. See
         // ConfigEndpointTest::test_it_is_not_cacheable for the full reasoning.
-        foreach (['/api/sections', '/api/roles'] as $url) {
+        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
             $header = $this->actingAsAdministrator()->getJson($url)->assertOk()
                 ->headers->get('Cache-Control');
 
@@ -120,14 +120,14 @@ class SectionAndRoleIndexTest extends TestCase
         // Pairing auth:sanctum with permission: is what makes this a 401. With
         // only the permission gate, an anonymous caller would be told they are
         // forbidden rather than that they are nobody.
-        foreach (['/api/sections', '/api/roles'] as $url) {
+        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
             $this->getJson($url)->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
         }
     }
 
     public function test_a_member_without_members_manage_gets_403(): void
     {
-        foreach (['/api/sections', '/api/roles'] as $url) {
+        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
             $this->actingAsAdministrator(withPermission: false)
                 ->getJson($url)
                 ->assertStatus(403)

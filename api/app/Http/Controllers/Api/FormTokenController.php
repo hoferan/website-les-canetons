@@ -17,8 +17,8 @@ class FormTokenController extends Controller
      * IP.
      *
      * Returns `{"token": "..."}`, to be sent back as the `X-Form-Token`
-     * header on a public write: `POST /api/contact` and
-     * `POST /api/events/{event}/registrations`.
+     * header on a public write: `POST /api/v1/contact` and
+     * `POST /api/v1/events/{event}/registrations`.
      *
      * Fetch it when the form is rendered, not when it is submitted. The
      * submission guard refuses a token less than two seconds old, so

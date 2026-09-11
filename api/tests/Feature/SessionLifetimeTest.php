@@ -124,7 +124,7 @@ class SessionLifetimeTest extends TestCase
         $this->member();
 
         $response = $this->withHeaders(['Origin' => 'http://localhost'])
-            ->postJson('/api/login', ['username' => 'lea.keller', 'password' => 'secret123'])
+            ->postJson('/api/v1/login', ['username' => 'lea.keller', 'password' => 'secret123'])
             ->assertOk();
 
         $cookie = collect($response->headers->getCookies())
@@ -141,7 +141,7 @@ class SessionLifetimeTest extends TestCase
         $this->member();
 
         $this->withHeaders(['Origin' => 'http://localhost'])
-            ->postJson('/api/login', ['username' => 'lea.keller', 'password' => 'secret123'])
+            ->postJson('/api/v1/login', ['username' => 'lea.keller', 'password' => 'secret123'])
             ->assertOk();
 
         $this->assertNotNull(session('auth.started_at'));
@@ -161,7 +161,7 @@ class SessionLifetimeTest extends TestCase
         // only seeds the container's session singleton, not this simulated
         // request's own session store. Mirrors LoginTest::spaPostJson().
         $this->actingAsMember($member)
-            ->getJson('/api/me')
+            ->getJson('/api/v1/me')
             ->assertOk();
     }
 
@@ -173,7 +173,7 @@ class SessionLifetimeTest extends TestCase
         $this->actingAs($member)
             ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession(['auth.started_at' => $tooOld])
-            ->getJson('/api/me')
+            ->getJson('/api/v1/me')
             ->assertStatus(401)
             ->assertJson(['code' => 'not_authenticated']);
     }
@@ -187,7 +187,7 @@ class SessionLifetimeTest extends TestCase
         $this->actingAs($member)
             ->withHeaders(['Origin' => 'http://localhost'])
             ->withSession([])
-            ->getJson('/api/me')
+            ->getJson('/api/v1/me')
             ->assertStatus(401);
     }
 }

@@ -20,7 +20,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_stores_a_message(): void
     {
-        $this->postJson('/api/contact', $this->publicWriteBody(self::VALID), $this->publicWriteHeaders())
+        $this->postJson('/api/v1/contact', $this->publicWriteBody(self::VALID), $this->publicWriteHeaders())
             ->assertOk()
             ->assertExactJson(['ok' => true]);
 
@@ -35,7 +35,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_reports_missing_fields_with_camelcase_names(): void
     {
-        $response = $this->postJson('/api/contact', $this->publicWriteBody(), $this->publicWriteHeaders());
+        $response = $this->postJson('/api/v1/contact', $this->publicWriteBody(), $this->publicWriteHeaders());
 
         $response->assertStatus(400)->assertJsonPath('code', 'validation_failed');
 
@@ -46,7 +46,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_rejects_a_malformed_email(): void
     {
-        $response = $this->postJson('/api/contact', $this->publicWriteBody(['email' => 'not-an-email'] + self::VALID), $this->publicWriteHeaders());
+        $response = $this->postJson('/api/v1/contact', $this->publicWriteBody(['email' => 'not-an-email'] + self::VALID), $this->publicWriteHeaders());
 
         $response->assertStatus(400)->assertJsonPath('fields.0', [
             'field' => 'email',
@@ -57,13 +57,13 @@ class ContactEndpointTest extends TestCase
     public function test_it_stores_raw_input_without_escaping(): void
     {
         // Escaping happens at output time, not storage time.
-        $this->postJson('/api/contact', $this->publicWriteBody(['message' => '<b>hi</b>'] + self::VALID), $this->publicWriteHeaders())->assertOk();
+        $this->postJson('/api/v1/contact', $this->publicWriteBody(['message' => '<b>hi</b>'] + self::VALID), $this->publicWriteHeaders())->assertOk();
 
         $this->assertSame('<b>hi</b>', ContactMessage::latest('id')->first()->message);
     }
 
     public function test_it_rejects_a_get(): void
     {
-        $this->getJson('/api/contact')->assertStatus(405);
+        $this->getJson('/api/v1/contact')->assertStatus(405);
     }
 }

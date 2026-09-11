@@ -11,7 +11,7 @@ use Illuminate\Validation\Validator;
  * An anonymous booking for one event.
  *
  * Anonymous, so it also has to satisfy the public write guard: send the
- * `X-Form-Token` header from `GET /api/form-token` and a `website` field that
+ * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that
  * is present and empty, or the request answers `422 spam_suspected`.
  *
  * Name, email and phone are required, because a Swiss committee reaches
@@ -21,7 +21,7 @@ use Illuminate\Validation\Validator;
  * `choices` is what is being ordered: a non-empty list of `{optionId,
  * quantity}`, at most 20 entries, each option appearing at most once and
  * belonging to this event. Read the options from
- * `GET /api/events/{event}/registration`. When the event sets a per-booking
+ * `GET /api/v1/events/{event}/registration`. When the event sets a per-booking
  * guest cap, a booking whose quantities add up to more than that cap fails
  * validation against `choices` with `too_many_guests`.
  *
@@ -93,7 +93,7 @@ class StoreRegistrationRequest extends FormRequest
             // Scoped to THIS event's options. Without the where clause a
             // booking could reference an option belonging to a different
             // event entirely, which the foreign key would happily accept.
-            /** An option offered by this event, from `GET /api/events/{event}/registration`. Each option may appear at most once in `choices`. */
+            /** An option offered by this event, from `GET /api/v1/events/{event}/registration`. Each option may appear at most once in `choices`. */
             'choices.*.optionId' => [
                 'required',
                 'integer',

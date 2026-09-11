@@ -27,8 +27,12 @@
  * hand-designed one.
  */
 
-/** Spec paths are relative to /api; the SPA is served from the same origin. */
-const API_BASE = "/api";
+/**
+ * Spec paths are relative to /api/v1; the SPA is served from the same origin.
+ * The version prefix is part of the contract — App\Http\Middleware\ApiVersion::PREFIX
+ * on the Laravel side — and moving to a v2 means changing it here too.
+ */
+const API_BASE = "/api/v1";
 const CSRF_COOKIE_PATH = "/sanctum/csrf-cookie";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 

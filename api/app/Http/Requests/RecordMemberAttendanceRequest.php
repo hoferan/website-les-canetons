@@ -15,7 +15,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * The route refuses a caller who aims it at their own membership, so a member
  * who both plays and manages still has to answer for themselves through
- * `PUT /api/events/{event}/attendance`.
+ * `PUT /api/v1/events/{event}/attendance`.
  */
 class RecordMemberAttendanceRequest extends FormRequest
 {

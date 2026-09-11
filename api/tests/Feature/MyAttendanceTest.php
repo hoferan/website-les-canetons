@@ -35,7 +35,7 @@ class MyAttendanceTest extends TestCase
         ]);
 
         $this->actingAsMember($this->player)
-            ->getJson('/api/events')
+            ->getJson('/api/v1/events')
             ->assertOk()
             ->assertJsonPath('0.myAttendance.status', 'yes')
             ->assertJsonPath('0.myAttendance.note', 'A vélo.')
@@ -47,7 +47,7 @@ class MyAttendanceTest extends TestCase
         Event::factory()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(2)]);
 
         $this->actingAsMember($this->player)
-            ->getJson('/api/events')
+            ->getJson('/api/v1/events')
             ->assertOk()
             ->assertJsonPath('0.myAttendance', null);
     }
@@ -64,7 +64,7 @@ class MyAttendanceTest extends TestCase
             'note' => 'Ceci ne regarde personne.',
         ]);
 
-        $body = $this->actingAsMember($this->player)->getJson('/api/events')->assertOk()->json();
+        $body = $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk()->json();
 
         $this->assertNull($body[0]['myAttendance']);
         $this->assertStringNotContainsString('Ceci ne regarde personne.', json_encode($body));
@@ -79,7 +79,7 @@ class MyAttendanceTest extends TestCase
         ]);
 
         $this->actingAsMember($this->player)
-            ->getJson("/api/events/{$event->id}")
+            ->getJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJsonPath('myAttendance.status', 'no');
     }
@@ -93,7 +93,7 @@ class MyAttendanceTest extends TestCase
         Attendance::factory()->create(['event_id' => $event->id, 'member_id' => $both->id]);
 
         $this->actingAsMember($both)
-            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition déplacée'])
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition déplacée'])
             ->assertOk()
             ->assertJsonPath('myAttendance.status', 'yes');
     }
@@ -116,7 +116,7 @@ class MyAttendanceTest extends TestCase
             $queries++;
         });
 
-        $this->actingAsMember($this->player)->getJson('/api/events')->assertOk();
+        $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk();
 
         $this->assertLessThanOrEqual(3, $queries, 'myAttendance must not query per event');
     }
@@ -135,7 +135,7 @@ class MyAttendanceTest extends TestCase
             ]));
 
         $this->actingAsMember($organiser)
-            ->deleteJson("/api/events/{$event->id}")
+            ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJson(['ok' => true, 'attendanceDeleted' => 3]);
 

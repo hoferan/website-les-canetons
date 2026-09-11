@@ -21,7 +21,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * or repeating a `no`, needs no note.
  *
  * Recording an answer on somebody else's behalf uses
- * `PUT /api/events/{event}/attendance/{member}`, which does not ask for the
+ * `PUT /api/v1/events/{event}/attendance/{member}`, which does not ask for the
  * reason.
  */
 class RecordOwnAttendanceRequest extends FormRequest

@@ -14,7 +14,7 @@
  * either. From a browser this is close to automatic:
  *
  * ```js
- * await fetch("/api/login", {
+ * await fetch("/api/v1/login", {
  *   method: "POST",
  *   credentials: "include",
  *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf },
@@ -85,7 +85,7 @@
  *
  * Authorisation is by permission, never by role. Roles are editable data that
  * group permissions; which role granted one is not a question the API answers.
- * `GET /api/me` returns the caller's effective permissions.
+ * `GET /api/v1/me` returns the caller's effective permissions.
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`.
@@ -104,17 +104,17 @@
  *
  * ## Public forms
  *
- * `POST /api/contact` and `POST /api/events/{event}/registrations` are open to
+ * `POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
  * anonymous callers and are protected against automated submission. Both
  * require:
  *
- * - an `X-Form-Token` header, from `GET /api/form-token`, at least two seconds
+ * - an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds
  *   and at most two hours old, and
  * - a `website` field, present and empty.
  *
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 1.0.0
  */
 import type { StoreRegistrationRequestChoicesItem } from "./storeRegistrationRequestChoicesItem";
 
@@ -122,7 +122,7 @@ import type { StoreRegistrationRequestChoicesItem } from "./storeRegistrationReq
  * An anonymous booking for one event.
  *
  * Anonymous, so it also has to satisfy the public write guard: send the
- * `X-Form-Token` header from `GET /api/form-token` and a `website` field that
+ * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that
  * is present and empty, or the request answers `422 spam_suspected`.
  *
  * Name, email and phone are required, because a Swiss committee reaches
@@ -132,7 +132,7 @@ import type { StoreRegistrationRequestChoicesItem } from "./storeRegistrationReq
  * `choices` is what is being ordered: a non-empty list of `{optionId,
  * quantity}`, at most 20 entries, each option appearing at most once and
  * belonging to this event. Read the options from
- * `GET /api/events/{event}/registration`. When the event sets a per-booking
+ * `GET /api/v1/events/{event}/registration`. When the event sets a per-booking
  * guest cap, a booking whose quantities add up to more than that cap fails
  * validation against `choices` with `too_many_guests`.
  *

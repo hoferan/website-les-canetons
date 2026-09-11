@@ -65,7 +65,7 @@ class Event extends Model
     /**
      * Every answer for this event.
      *
-     * GET /api/events loads it CONSTRAINED TO THE CALLER, which is what
+     * GET /api/v1/events loads it CONSTRAINED TO THE CALLER, which is what
      * makes `myAttendance` one extra query for the whole list rather than
      * one per row. The chase list does not use this relation at all — it
      * fetches the answers once and setRelation()s them onto the roster.

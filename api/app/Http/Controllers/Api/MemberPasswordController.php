@@ -27,11 +27,11 @@ class MemberPasswordController extends Controller
      * hashed on the way into the database, is never written to the audit log,
      * and no later call returns it. A lost one is replaced by calling this
      * again. The member is required to change it at their next login, through
-     * `POST /api/me/password`.
+     * `POST /api/v1/me/password`.
      *
      * A member resetting their own password this way keeps the session they
      * are calling from, and `sessionsEnded` then counts their other ones. The
-     * ordinary route for that is `POST /api/me/password`, which lets them
+     * ordinary route for that is `POST /api/v1/me/password`, which lets them
      * choose the password instead.
      */
     public function __invoke(Request $request, Member $member): JsonResponse
@@ -40,7 +40,7 @@ class MemberPasswordController extends Controller
         // a member, hit "Réinitialiser le mot de passe", read out what appears
         // — so there is one endpoint for it. Since 2026_09_08_000001 every
         // member already has a password, so this is always a reset; the "give
-        // this person an account" case is POST /api/members, which mints one at
+        // this person an account" case is POST /api/v1/members, which mints one at
         // creation using the same generator and the same forced-change
         // semantics.
         $password = GeneratedPassword::make();

@@ -113,7 +113,7 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // /user, so this check asserted a 404 for weeks. Any authenticated route
   // would do; /api/me is the one guaranteed to exist for as long as there is a
   // session at all.
-  const res = await request('/api/me', { headers: { Accept: 'application/json' } });
+  const res = await request('/api/v1/me', { headers: { Accept: 'application/json' } });
   if (res.status === 403) {
     return `got 403 — api/public/.htaccess is missing "Require all granted" (or the whole tree is 403ing — check the shell result first): ${await detail(res)}`;
   }
@@ -235,7 +235,7 @@ check('POST /api/contact is Laravel, answering in the {error, code, fields[]} co
   // `contact_messages` insert. Should the rules ever be relaxed to accept an
   // empty body, this would start writing rows to the dev database on every
   // smoke run — change the check, not the guard.
-  const res = await request('/api/contact', { method: 'POST', headers: { Accept: 'application/json' } });
+  const res = await request('/api/v1/contact', { method: 'POST', headers: { Accept: 'application/json' } });
   if (res.status === 404) {
     return `got 404 — /api/* is not reaching Laravel at all (the dispatch block in the template lost to the SPA fallback): ${await detail(res)}`;
   }

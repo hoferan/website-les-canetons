@@ -47,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
             fn (Request $request) => Limit::perMinute(10)->by($request->ip()),
         );
 
-        // This API returns BARE payloads: /api/config and /api/me both do, and
+        // This API returns BARE payloads: /api/v1/config and /api/v1/me both do, and
         // the {error, code, fields[]} error contract has no envelope either.
         // JsonResource wraps COLLECTIONS in {"data": …} by default, which would
         // give the same API two shapes depending on whether a response happened

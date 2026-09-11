@@ -18,22 +18,24 @@ return [
      * With *, Str::is is used (e.g. api/v*).
      *
      * One static include → default server is /{include} and paths are stripped (/users).
-     * Multiple includes or wildcards → server defaults to / and paths stay full (/api/users).
+     * Multiple includes or wildcards → server defaults to / and paths stay full (/api/v1/users).
      * Override with `servers`, or use Scramble::registerApi() for separate bases.
      */
     /*
-     * The docs routes are excluded so the API reference does not document
-     * itself — and, more to the point, so orval does not generate TanStack
-     * Query hooks for a documentation page.
+     * Only the versioned contract is documented. routes/meta.php — /api/docs,
+     * /api/docs.json and /api/migrate — sits at /api/* and is therefore outside
+     * this include entirely, which is why there is no longer an `exclude` list:
+     * the reference cannot document itself, and orval cannot generate TanStack
+     * Query hooks for a documentation page or a migration trigger.
      *
-     * The array form is used with a SINGLE include, which keeps Scramble's
-     * path-stripping behaviour: paths stay /me and /config rather than
-     * becoming /api/me. Verified 2026-09-07 by exporting both ways and
-     * diffing — the document is byte-identical.
+     * The array form is used with a SINGLE static include, which keeps
+     * Scramble's path-stripping behaviour: documented paths stay /me and
+     * /config rather than becoming /api/v1/me, and the server becomes
+     * /api/v1. Verified 2026-09-07 by exporting both ways and diffing — the
+     * document is byte-identical apart from that server URL.
      */
     'api_path' => [
-        'include' => 'api',
-        'exclude' => ['api/docs', 'api/docs.json'],
+        'include' => 'api/v1',
     ],
 
     /*
@@ -67,7 +69,7 @@ return [
         /*
          * API version.
          */
-        'version' => env('API_VERSION', '0.0.1'),
+        'version' => env('API_VERSION', '1.0.0'),
 
         /*
          * Rendered at the top of the reference at GET /api/docs. This is the
@@ -89,7 +91,7 @@ The browser and the API are served from one origin, so there is no CORS
 either. From a browser this is close to automatic:
 
 ```js
-await fetch("/api/login", {
+await fetch("/api/v1/login", {
   method: "POST",
   credentials: "include",
   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf },
@@ -160,7 +162,7 @@ same rather than displaying `error`, which is English and meant for logs.
 
 Authorisation is by permission, never by role. Roles are editable data that
 group permissions; which role granted one is not a question the API answers.
-`GET /api/me` returns the caller's effective permissions.
+`GET /api/v1/me` returns the caller's effective permissions.
 
 `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
 `members.manage`, `registrations.view`, `registrations.manage`.
@@ -179,11 +181,11 @@ answers for themselves.
 
 ## Public forms
 
-`POST /api/contact` and `POST /api/events/{event}/registrations` are open to
+`POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
 anonymous callers and are protected against automated submission. Both
 require:
 
-- an `X-Form-Token` header, from `GET /api/form-token`, at least two seconds
+- an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds
   and at most two hours old, and
 - a `website` field, present and empty.
 
@@ -235,11 +237,11 @@ MARKDOWN,
      * helper returns absolute URLs unchanged, so this value survives verbatim
      * and the exported document is byte-identical everywhere.
      *
-     * The client does not read this: web/src/api/http.ts prepends /api itself,
+     * The client does not read this: web/src/api/http.ts prepends /api/v1 itself,
      * because the SPA is served from the same origin as the API.
      */
     'servers' => [
-        'Production' => 'https://lescanetons.org/api',
+        'Production' => 'https://lescanetons.org/api/v1',
     ],
 
     /**

@@ -21,7 +21,7 @@ class MemberRoleController extends Controller
      *
      * Requires `members.manage`. `roleIds` is the complete set the member is
      * left with, so send every role they should keep; an empty array removes
-     * all of them. Read the roles that exist from `GET /api/roles`.
+     * all of them. Read the roles that exist from `GET /api/v1/roles`.
      *
      * This is the only way any permission is granted or taken away. A role is
      * what groups permissions, and no endpoint in this API authorises by role

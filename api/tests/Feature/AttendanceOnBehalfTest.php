@@ -12,7 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * PUT /api/events/{event}/attendance/{member} — the phone call to the
+ * PUT /api/v1/events/{event}/attendance/{member} — the phone call to the
  * committee, and decisions C13 and C14.
  */
 class AttendanceOnBehalfTest extends TestCase
@@ -35,7 +35,7 @@ class AttendanceOnBehalfTest extends TestCase
 
     private function url(?Member $target = null): string
     {
-        return "/api/events/{$this->event->id}/attendance/".($target ?? $this->player)->id;
+        return "/api/v1/events/{$this->event->id}/attendance/".($target ?? $this->player)->id;
     }
 
     public function test_an_anonymous_caller_gets_401_not_403(): void

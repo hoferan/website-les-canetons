@@ -30,7 +30,7 @@ class MemberAttendanceController extends Controller
      * exists for.
      *
      * Refuses `409 cannot_record_for_self` when the member named is the
-     * caller. Use `DELETE /api/events/{event}/attendance` for your own
+     * caller. Use `DELETE /api/v1/events/{event}/attendance` for your own
      * answer.
      */
     public function destroy(Request $request, Event $event, Member $member): JsonResponse

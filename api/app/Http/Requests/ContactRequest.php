@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * A message sent through the public contact form.
  *
  * Anonymous, so it also has to satisfy the public write guard: send the
- * `X-Form-Token` header from `GET /api/form-token` and a `website` field that
+ * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that
  * is present and empty, or the request answers `422 spam_suspected`.
  *
  * Every field here is required. The body is capped at 5000 characters, which

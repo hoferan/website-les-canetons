@@ -15,7 +15,7 @@ class ContactController extends Controller
      * Send a message to the committee.
      *
      * Anonymous, and protected against automated submission: send the
-     * `X-Form-Token` header from `GET /api/form-token` and a `website` field
+     * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field
      * that is present and empty, or the request answers `422 spam_suspected`.
      * Fetch that token when the form is rendered rather than when it is
      * submitted, because one less than two seconds old is refused. Rate

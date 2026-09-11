@@ -3,7 +3,7 @@
 namespace App\Support;
 
 /**
- * The complete set of feature flags GET /api/config exposes to the SPA.
+ * The complete set of feature flags GET /api/v1/config exposes to the SPA.
  *
  * THE KEY SET IS FIXED IN CODE, NOT READ FROM THE ENVIRONMENT — the same
  * reason ConfigController never returns config() wholesale: this endpoint is

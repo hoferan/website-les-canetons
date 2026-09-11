@@ -5,6 +5,7 @@ use App\Exceptions\ApiError;
 use App\Exceptions\AttendanceRefused;
 use App\Exceptions\ReauthenticationFailed;
 use App\Exceptions\SchemaUnavailable;
+use App\Http\Middleware\ApiVersion;
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
 use App\Http\Middleware\NoStoreResponse;
@@ -16,17 +17,39 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
+    // The contract lives under /api/v1. The prefix is what makes a future v2
+    // possible without renaming every URL at the moment clients exist — see
+    // docs/superpowers/specs/2026-09-11-api-v1-public-contract-design.md, A1.
+    //
+    // The site .htaccess needs no change for this: its dispatch matches
+    // `^api(/|$)`, which already covers /api/v1/..., and the substituted
+    // _api/public/index.php still cannot re-match that pattern.
+    //
+    // Every `$request->is('api/*')` guard in withExceptions() below still
+    // matches, because Str::is()'s `*` crosses slashes.
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
+        apiPrefix: ApiVersion::PREFIX,
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        // routes/meta.php stays UNVERSIONED at /api/*: the reference and the
+        // migration trigger describe or operate the API rather than being part
+        // of it. Same `api` middleware group as routes/api.php, so
+        // RunPendingMigrations still sits in front of them exactly as it did
+        // when they lived in that file.
+        then: function (): void {
+            Route::middleware('api')
+                ->prefix('api')
+                ->group(__DIR__.'/../routes/meta.php');
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Sanctum SPA mode: same-origin cookie session auth (no API tokens,
@@ -101,6 +124,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // resolved, so it must run after StartSession and Authenticate rather
         // than in front of them like RunPendingMigrations.
         $middleware->appendToGroup('api', EnforceAbsoluteSessionLifetime::class);
+
+        // Announces the contract version, and one day that it is retiring. It
+        // only ever sets response headers, so where it sits in the group does
+        // not matter; it skips routes/meta.php by checking the prefix itself,
+        // since that file shares this group.
+        $middleware->appendToGroup('api', ApiVersion::class);
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {

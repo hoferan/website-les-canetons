@@ -19,7 +19,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * The permissions travel with the role because that is how the UI answers "why
  * does she have this?" — always "because she is in Team Direction", never a
  * per-member grant (design §3). The roster screen therefore needs no per-member
- * permission list, which also keeps GET /api/members to one query per relation
+ * permission list, which also keeps GET /api/v1/members to one query per relation
  * instead of one per member.
  *
  * @mixin Role

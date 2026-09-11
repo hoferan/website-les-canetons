@@ -107,7 +107,7 @@ class AutoMigrateTest extends TestCase
         // A route with no auth, no capability and no feature gate, so a failure
         // here is unambiguously the middleware's. It is registered into the
         // `api` group, which is what carries RunPendingMigrations.
-        Route::middleware('api')->get('/api/auto-migrate-probe', fn () => response()->json(['ok' => true]));
+        Route::middleware('api')->get('/api/v1/auto-migrate-probe', fn () => response()->json(['ok' => true]));
     }
 
     protected function tearDown(): void
@@ -138,7 +138,7 @@ class AutoMigrateTest extends TestCase
 
         $ledgerBefore = DB::table('migrations')->count();
 
-        $this->getJson('/api/auto-migrate-probe')
+        $this->getJson('/api/v1/auto-migrate-probe')
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -154,7 +154,7 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => true]);
         $name = $this->writeProbeMigration();
 
-        $this->getJson('/api/auto-migrate-probe')
+        $this->getJson('/api/v1/auto-migrate-probe')
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -174,10 +174,10 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => true]);
         $this->writeProbeMigration();
 
-        $this->getJson('/api/auto-migrate-probe')->assertOk();
+        $this->getJson('/api/v1/auto-migrate-probe')->assertOk();
         self::assertSame(1, $this->migrationRuns);
 
-        $this->getJson('/api/auto-migrate-probe')->assertOk();
+        $this->getJson('/api/v1/auto-migrate-probe')->assertOk();
 
         self::assertSame(1, $this->migrationRuns, 'The second request re-ran `migrate` with nothing pending.');
         self::assertTrue($this->lockIsFree());
@@ -214,7 +214,7 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => false]);
         $name = $this->writeProbeMigration();
 
-        $this->getJson('/api/auto-migrate-probe')
+        $this->getJson('/api/v1/auto-migrate-probe')
             ->assertOk()
             ->assertJsonPath('ok', true);
 
@@ -335,7 +335,7 @@ class AutoMigrateTest extends TestCase
         $marker = $this->probePath.'/holder.txt';
         $this->writeLockObservingProbeMigration($marker);
 
-        $this->getJson('/api/auto-migrate-probe')->assertOk();
+        $this->getJson('/api/v1/auto-migrate-probe')->assertOk();
 
         self::assertFileExists($marker, 'The probe migration never ran.');
         self::assertSame(
@@ -350,7 +350,7 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => true]);
         $this->writeProbeMigration();
 
-        $this->getJson('/api/auto-migrate-probe')->assertOk();
+        $this->getJson('/api/v1/auto-migrate-probe')->assertOk();
 
         self::assertTrue($this->lockIsFree(), 'The migration lock was left held after a successful run.');
     }
@@ -366,7 +366,7 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => true]);
         $this->writeFailingProbeMigration();
 
-        $this->getJson('/api/auto-migrate-probe')->assertStatus(503);
+        $this->getJson('/api/v1/auto-migrate-probe')->assertStatus(503);
 
         self::assertTrue($this->lockIsFree(), 'The migration lock was left held after a failed run.');
     }
@@ -387,7 +387,7 @@ class AutoMigrateTest extends TestCase
 
         self::assertTrue($this->grabLockOnAnotherConnection(), 'Fixture check: the other connection must get the lock.');
 
-        $this->getJson('/api/auto-migrate-probe')
+        $this->getJson('/api/v1/auto-migrate-probe')
             ->assertStatus(503)
             ->assertJsonPath('code', 'service_unavailable');
 
@@ -403,7 +403,7 @@ class AutoMigrateTest extends TestCase
      * half-applied schema is the failure mode that costs the most to find,
      * because it produces wrong answers rather than errors.
      *
-     * The body is asserted too, not just the status: /api/* answers in the
+     * The body is asserted too, not just the status: /api/v1/* answers in the
      * project's {error, code, fields[]} contract and app/assets/js/i18n.js is
      * what turns `code` into French. A 503 carrying Laravel's native
      * {message, exception} shape would reach the visitor as the generic
@@ -414,7 +414,7 @@ class AutoMigrateTest extends TestCase
         config(['app.auto_migrate' => true]);
         $name = $this->writeFailingProbeMigration();
 
-        $response = $this->getJson('/api/auto-migrate-probe');
+        $response = $this->getJson('/api/v1/auto-migrate-probe');
 
         $response->assertStatus(503)
             ->assertJsonPath('code', 'service_unavailable')
@@ -515,11 +515,11 @@ class AutoMigrateTest extends TestCase
     {
         config(['app.auto_migrate' => true]);
         Route::middleware(['web', 'api'])
-            ->get('/api/auto-migrate-both-groups', fn () => response()->json(['ok' => true]));
+            ->get('/api/v1/auto-migrate-both-groups', fn () => response()->json(['ok' => true]));
 
         $name = $this->writeProbeMigration();
 
-        $this->getJson('/api/auto-migrate-both-groups')
+        $this->getJson('/api/v1/auto-migrate-both-groups')
             ->assertOk()
             ->assertJsonPath('ok', true);
 

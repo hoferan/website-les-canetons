@@ -15,7 +15,7 @@ class MeTest extends TestCase
 
     public function test_an_anonymous_caller_is_refused(): void
     {
-        $this->getJson('/api/me')
+        $this->getJson('/api/v1/me')
             ->assertStatus(401)
             ->assertJson(['code' => 'not_authenticated']);
     }
@@ -37,7 +37,7 @@ class MeTest extends TestCase
 
         // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
         // `api` group) reads auth.started_at off the request's session, so
-        // every actingAs() call against /api/* now needs both: the Origin
+        // every actingAs() call against /api/v1/* now needs both: the Origin
         // header is what makes Sanctum's EnsureFrontendRequestsAreStateful
         // treat this as a stateful frontend request and actually attach a
         // session store to the request (fromFrontend() checks Origin/Referer);
@@ -45,7 +45,7 @@ class MeTest extends TestCase
         // not this simulated request's own session. Mirrors
         // LoginTest::spaPostJson().
         $response = $this->actingAsMember($member)
-            ->getJson('/api/me')->assertOk();
+            ->getJson('/api/v1/me')->assertOk();
 
         $response->assertJson([
             'id' => $member->id,
@@ -84,7 +84,7 @@ class MeTest extends TestCase
         $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
 
         $body = $this->actingAsMember($member->fresh())
-            ->getJson('/api/me')->assertOk()->json();
+            ->getJson('/api/v1/me')->assertOk()->json();
 
         $this->assertArrayNotHasKey('password', $body);
         $this->assertStringNotContainsString('argon2', json_encode($body));
@@ -95,7 +95,7 @@ class MeTest extends TestCase
         $member = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->create();
 
         $response = $this->actingAsMember($member->fresh())
-            ->getJson('/api/me')->assertOk();
+            ->getJson('/api/v1/me')->assertOk();
 
         // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
         // regress to null and still satisfy an expectation of false. assertSame()
@@ -105,14 +105,14 @@ class MeTest extends TestCase
 
     public function test_the_response_is_never_cached(): void
     {
-        // /api/me varies by identity; a shared proxy caching it would serve one
+        // /api/v1/me varies by identity; a shared proxy caching it would serve one
         // member's identity to another. Cache-Control is the only thing
         // stopping that, so its exact value is pinned here rather than
         // asserted with a loose substring match.
         $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->create();
 
         $this->actingAsMember($member->fresh())
-            ->getJson('/api/me')
+            ->getJson('/api/v1/me')
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');
     }

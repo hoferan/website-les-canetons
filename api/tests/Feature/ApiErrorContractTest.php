@@ -12,14 +12,14 @@ class ApiErrorContractTest extends TestCase
 {
     public function test_validation_failure_uses_the_legacy_contract(): void
     {
-        Route::post('/api/_contract_probe', function () {
+        Route::post('/api/v1/_contract_probe', function () {
             request()->validate([
                 'email' => ['required', 'email', 'max:255'],
                 'subject' => ['required', 'string'],
             ]);
         });
 
-        $response = $this->postJson('/api/_contract_probe', ['email' => 'nope']);
+        $response = $this->postJson('/api/v1/_contract_probe', ['email' => 'nope']);
 
         $response->assertStatus(400)->assertExactJson([
             'error' => 'Invalid form submission',
@@ -33,11 +33,11 @@ class ApiErrorContractTest extends TestCase
 
     public function test_max_length_failure_carries_the_limit_as_params(): void
     {
-        Route::post('/api/_contract_probe_len', function () {
+        Route::post('/api/v1/_contract_probe_len', function () {
             request()->validate(['subject' => ['required', 'max:255']]);
         });
 
-        $response = $this->postJson('/api/_contract_probe_len', [
+        $response = $this->postJson('/api/v1/_contract_probe_len', [
             'subject' => str_repeat('x', 256),
         ]);
 
@@ -50,13 +50,13 @@ class ApiErrorContractTest extends TestCase
 
     public function test_in_rule_failure_carries_the_allowed_values(): void
     {
-        Route::post('/api/_contract_probe_in', function () {
+        Route::post('/api/v1/_contract_probe_in', function () {
             request()->validate([
                 'participation' => ['required', 'in:participate,notparticipate'],
             ]);
         });
 
-        $response = $this->postJson('/api/_contract_probe_in', ['participation' => 'maybe']);
+        $response = $this->postJson('/api/v1/_contract_probe_in', ['participation' => 'maybe']);
 
         $response->assertStatus(400)->assertJsonPath('fields.0', [
             'field' => 'participation',
@@ -67,7 +67,7 @@ class ApiErrorContractTest extends TestCase
 
     public function test_unauthenticated_request_uses_the_legacy_contract(): void
     {
-        $this->getJson('/api/me')->assertStatus(401)->assertExactJson([
+        $this->getJson('/api/v1/me')->assertStatus(401)->assertExactJson([
             'error' => 'Not authenticated',
             'code' => 'not_authenticated',
         ]);
@@ -91,23 +91,23 @@ class ApiErrorContractTest extends TestCase
         $expected = ['error' => 'Not authenticated', 'code' => 'not_authenticated'];
 
         // A browser's Accept header, i.e. the URL-pasted-into-the-address-bar case.
-        $this->get('/api/me', ['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
+        $this->get('/api/v1/me', ['Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8'])
             ->assertStatus(401)
             ->assertExactJson($expected);
 
         // And with no Accept header at all (curl's default).
-        $this->call('GET', '/api/me')
+        $this->call('GET', '/api/v1/me')
             ->assertStatus(401)
             ->assertExactJson($expected);
     }
 
     public function test_authorization_failure_uses_the_legacy_contract(): void
     {
-        Route::get('/api/_contract_probe_403', function () {
+        Route::get('/api/v1/_contract_probe_403', function () {
             throw new AuthorizationException;
         });
 
-        $this->getJson('/api/_contract_probe_403')->assertStatus(403)->assertExactJson([
+        $this->getJson('/api/v1/_contract_probe_403')->assertStatus(403)->assertExactJson([
             'error' => 'Access denied',
             'code' => 'access_denied',
         ]);
@@ -115,11 +115,11 @@ class ApiErrorContractTest extends TestCase
 
     public function test_only_the_first_failure_per_field_is_reported(): void
     {
-        Route::post('/api/_contract_probe_first', fn () => request()->validate([
+        Route::post('/api/v1/_contract_probe_first', fn () => request()->validate([
             'email' => ['email', 'max:5'],
         ]));
 
-        $this->postJson('/api/_contract_probe_first', ['email' => 'not-an-email-at-all'])
+        $this->postJson('/api/v1/_contract_probe_first', ['email' => 'not-an-email-at-all'])
             ->assertStatus(400)
             ->assertJsonPath('fields', [['field' => 'email', 'reason' => 'invalid_format']]);
     }
@@ -132,11 +132,11 @@ class ApiErrorContractTest extends TestCase
      */
     public function test_multi_word_rule_names_map_to_their_reason(): void
     {
-        Route::post('/api/_contract_probe_date_format', fn () => request()->validate([
+        Route::post('/api/v1/_contract_probe_date_format', fn () => request()->validate([
             'startTime' => ['date_format:H:i'],
         ]));
 
-        $this->postJson('/api/_contract_probe_date_format', ['startTime' => 'half past two'])
+        $this->postJson('/api/v1/_contract_probe_date_format', ['startTime' => 'half past two'])
             ->assertStatus(400)
             ->assertJsonPath('fields.0', ['field' => 'startTime', 'reason' => 'invalid_format']);
     }
@@ -146,20 +146,20 @@ class ApiErrorContractTest extends TestCase
         // invalid_value interpolates {{allowed}} in i18n.js, and i18next emits
         // that placeholder literally when no value is supplied — so numeric
         // failures must NOT use it.
-        Route::post('/api/_contract_probe_gt', fn () => request()->validate([
+        Route::post('/api/v1/_contract_probe_gt', fn () => request()->validate([
             'eventId' => ['required', 'integer', 'gt:0'],
         ]));
 
-        $this->postJson('/api/_contract_probe_gt', ['eventId' => 0])
+        $this->postJson('/api/v1/_contract_probe_gt', ['eventId' => 0])
             ->assertStatus(400)
             ->assertJsonPath('fields', [['field' => 'eventId', 'reason' => 'invalid_number']]);
     }
 
     public function test_method_not_allowed_uses_the_legacy_contract(): void
     {
-        Route::get('/api/_contract_probe_405', fn () => response()->json(['ok' => true]));
+        Route::get('/api/v1/_contract_probe_405', fn () => response()->json(['ok' => true]));
 
-        $this->postJson('/api/_contract_probe_405')->assertStatus(405)->assertExactJson([
+        $this->postJson('/api/v1/_contract_probe_405')->assertStatus(405)->assertExactJson([
             'error' => 'Method not allowed',
             'code' => 'method_not_allowed',
         ]);
@@ -167,9 +167,9 @@ class ApiErrorContractTest extends TestCase
 
     public function test_csrf_token_mismatch_uses_the_legacy_contract(): void
     {
-        Route::post('/api/_contract_probe_419', fn () => throw new TokenMismatchException);
+        Route::post('/api/v1/_contract_probe_419', fn () => throw new TokenMismatchException);
 
-        $this->postJson('/api/_contract_probe_419')->assertStatus(419)->assertExactJson([
+        $this->postJson('/api/v1/_contract_probe_419')->assertStatus(419)->assertExactJson([
             'error' => 'Invalid session',
             'code' => 'invalid_session',
         ]);
@@ -184,9 +184,9 @@ class ApiErrorContractTest extends TestCase
      */
     public function test_the_catch_all_http_renderer_ignores_other_statuses(): void
     {
-        Route::get('/api/_contract_probe_404', fn () => abort(404));
+        Route::get('/api/v1/_contract_probe_404', fn () => abort(404));
 
-        $response = $this->getJson('/api/_contract_probe_404');
+        $response = $this->getJson('/api/v1/_contract_probe_404');
 
         $response->assertStatus(404);
         $this->assertStringNotContainsString('invalid_session', $response->getContent());
@@ -201,12 +201,12 @@ class ApiErrorContractTest extends TestCase
      */
     public function test_an_unmapped_rule_falls_back_to_a_paramless_reason(): void
     {
-        Route::post('/api/_contract_probe_unmapped', fn () => request()->validate([
+        Route::post('/api/v1/_contract_probe_unmapped', fn () => request()->validate([
             'subject' => ['between:1,10'],
             'password' => [Password::min(8)],
         ]));
 
-        $this->postJson('/api/_contract_probe_unmapped', [
+        $this->postJson('/api/v1/_contract_probe_unmapped', [
             'subject' => str_repeat('x', 50),
             'password' => 'short',
         ])->assertStatus(400)->assertJsonPath('fields', [

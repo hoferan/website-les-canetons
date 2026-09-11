@@ -21,7 +21,7 @@ class EventSeriesController extends Controller
      *
      * Requires `events.manage`. Takes a `template` and a list of `Y-m-d`
      * `dates`, at most 60 of them, and creates one event per date. Answers
-     * `201` with the created events, in the same shape `GET /api/events`
+     * `201` with the created events, in the same shape `GET /api/v1/events`
      * returns, so a client can refresh its list straight from the response.
      *
      * The events are independent, and there is no series afterwards: nothing
@@ -110,7 +110,7 @@ class EventSeriesController extends Controller
             return $created;
         });
 
-        // The same shape GET /api/events returns, so the SPA refreshes its
+        // The same shape GET /api/v1/events returns, so the SPA refreshes its
         // list from this response rather than guessing what it just made.
         $planning = EventResource::collection($events);
 

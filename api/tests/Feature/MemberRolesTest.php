@@ -74,7 +74,7 @@ class MemberRolesTest extends TestCase
         $target = $this->player();
         $target->roles()->attach($this->committee);
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [$this->direction->id],
         ])->assertOk();
 
@@ -89,7 +89,7 @@ class MemberRolesTest extends TestCase
         $target = $this->player();
         $target->roles()->attach($this->committee);
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [],
         ])->assertOk();
 
@@ -105,7 +105,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('target-phone', $target->id);
         $this->sessionFor('target-laptop', $target->id);
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [],
         ])->assertOk();
 
@@ -120,7 +120,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('bystander-phone', $bystander->id);
         $this->sessionFor('anonymous', null);
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [$this->committee->id],
         ])->assertOk();
 
@@ -132,7 +132,7 @@ class MemberRolesTest extends TestCase
     {
         $target = $this->player();
 
-        $this->acting()->putJson("/api/members/{$target->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [$this->committee->id],
         ])->assertOk();
 
@@ -148,7 +148,7 @@ class MemberRolesTest extends TestCase
         // self-demotion guard and not the orphan one.
         $this->administrator('other');
 
-        $this->acting()->putJson("/api/members/{$this->actor->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$this->actor->id}/roles", [
             'roleIds' => [],
         ])->assertStatus(409)->assertJson(['code' => 'cannot_demote_self']);
 
@@ -159,7 +159,7 @@ class MemberRolesTest extends TestCase
     {
         // The orphan check outranks the self-demotion one when both apply:
         // "you would lock everyone out" is the more informative answer.
-        $this->acting()->putJson("/api/members/{$this->actor->id}/roles", [
+        $this->acting()->putJson("/api/v1/members/{$this->actor->id}/roles", [
             'roleIds' => [],
         ])->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
     }
@@ -170,7 +170,7 @@ class MemberRolesTest extends TestCase
         $this->sessionFor('target-phone', $target->id);
         $this->sessionFor('anonymous', null);
 
-        $this->acting()->deleteJson("/api/members/{$target->id}")->assertOk();
+        $this->acting()->deleteJson("/api/v1/members/{$target->id}")->assertOk();
 
         $this->assertDatabaseMissing('members', ['id' => $target->id]);
         // `sessions` has NO foreign key to members, so without the explicit
@@ -185,7 +185,7 @@ class MemberRolesTest extends TestCase
         // the row is gone by the time anyone reads it back.
         $target = $this->player();
 
-        $this->acting()->deleteJson("/api/members/{$target->id}")->assertOk();
+        $this->acting()->deleteJson("/api/v1/members/{$target->id}")->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
         $this->assertSame('member.deleted', $entry->action);
@@ -197,14 +197,14 @@ class MemberRolesTest extends TestCase
     {
         $this->administrator('other');
 
-        $this->acting()->deleteJson("/api/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_delete_self']);
+        $this->acting()->deleteJson("/api/v1/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_delete_self']);
 
         $this->assertDatabaseHas('members', ['id' => $this->actor->id]);
     }
 
     public function test_deleting_the_last_administrator_is_refused(): void
     {
-        $this->acting()->deleteJson("/api/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
+        $this->acting()->deleteJson("/api/v1/members/{$this->actor->id}")->assertStatus(409)->assertJson(['code' => 'cannot_remove_last_administrator']);
     }
 
     public function test_a_player_can_do_neither(): void
@@ -212,11 +212,11 @@ class MemberRolesTest extends TestCase
         $player = $this->player();
         $target = $this->player('someone.else');
 
-        $this->acting($player)->putJson("/api/members/{$target->id}/roles", [
+        $this->acting($player)->putJson("/api/v1/members/{$target->id}/roles", [
             'roleIds' => [],
         ])->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
-        $this->acting($player)->deleteJson("/api/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player)->deleteJson("/api/v1/members/{$target->id}")->assertStatus(403)->assertJson(['code' => 'access_denied']);
 
         $this->assertDatabaseHas('members', ['id' => $target->id]);
     }

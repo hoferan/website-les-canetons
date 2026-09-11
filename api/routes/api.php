@@ -5,8 +5,6 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
-use App\Http\Controllers\Api\DocsController;
-use App\Http\Controllers\Api\DocsDocumentController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\FormTokenController;
@@ -15,7 +13,6 @@ use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
-use App\Http\Controllers\Api\MigrateController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
@@ -226,23 +223,3 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::put('/events/{event}/registration-options', RegistrationOptionController::class);
     });
 });
-
-// The API reference, for developers. PUBLIC BUT GATED: no session is required
-// — you should be able to read the login endpoint's documentation before
-// logging in — and the `docs` middleware answers 404 unless this environment
-// sets API_DOCS_ENABLED. TEST and QA sit behind HTTP Basic Auth; PROD has the
-// flag off.
-//
-// Under /api/ deliberately. The site .htaccess dispatches /api/* to Laravel
-// BEFORE its SPA fallback, so these need no rewrite rule of their own —
-// whereas Scramble's own /docs/api has been swallowed by that fallback since
-// the day it was installed.
-Route::middleware('docs')->group(function () {
-    Route::get('/docs', DocsController::class);
-    Route::get('/docs.json', DocsDocumentController::class);
-});
-
-// Token-gated (not session-gated): the deploy tooling calls this server-side
-// with the shared MIGRATE_TOKEN. Excluded from the OpenAPI document — nothing
-// in the browser may trigger a migration.
-Route::post('/migrate', MigrateController::class);

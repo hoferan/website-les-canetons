@@ -51,7 +51,7 @@ class LoginTest extends TestCase
     {
         $this->member();
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'secret123',
         ])->assertOk()->assertJson(['ok' => true]);
@@ -64,7 +64,7 @@ class LoginTest extends TestCase
         $member = $this->member();
         $this->assertNull($member->last_login_at);
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'secret123',
         ])->assertOk();
@@ -76,7 +76,7 @@ class LoginTest extends TestCase
     {
         $this->member();
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'wrong',
         ])->assertStatus(401)
@@ -98,11 +98,11 @@ class LoginTest extends TestCase
         // Anything else enables username enumeration.
         $this->member();
 
-        $unknown = $this->spaPostJson('/api/login', [
+        $unknown = $this->spaPostJson('/api/v1/login', [
             'username' => 'nobody',
             'password' => 'secret123',
         ]);
-        $wrong = $this->spaPostJson('/api/login', [
+        $wrong = $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'wrong',
         ]);
@@ -154,13 +154,13 @@ class LoginTest extends TestCase
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->spaPostJson('/api/login', [
+            $this->spaPostJson('/api/v1/login', [
                 'username' => 'lea.keller',
                 'password' => 'wrong',
             ])->assertStatus(401);
         }
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'wrong',
         ])->assertStatus(429)->assertJson(['code' => 'too_many_attempts']);
@@ -173,13 +173,13 @@ class LoginTest extends TestCase
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->spaPostJson('/api/login', [
+            $this->spaPostJson('/api/v1/login', [
                 'username' => 'lea.keller',
                 'password' => 'wrong',
             ]);
         }
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'secret123',
         ])->assertStatus(429);
@@ -199,13 +199,13 @@ class LoginTest extends TestCase
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->spaPostJson('/api/login', [
+            $this->spaPostJson('/api/v1/login', [
                 'username' => 'lea.keller',
                 'password' => 'wrong',
             ]);
         }
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'LEA.Keller',
             'password' => 'secret123',
         ])->assertStatus(429)->assertJson(['code' => 'too_many_attempts']);
@@ -223,7 +223,7 @@ class LoginTest extends TestCase
         $this->member();
 
         for ($attempt = 0; $attempt < 5; $attempt++) {
-            $this->spaPostJson('/api/login', [
+            $this->spaPostJson('/api/v1/login', [
                 'username' => 'lea.keller',
                 'password' => 'wrong',
             ]);
@@ -241,13 +241,13 @@ class LoginTest extends TestCase
         $this->member();
 
         for ($attempt = 0; $attempt < 3; $attempt++) {
-            $this->spaPostJson('/api/login', [
+            $this->spaPostJson('/api/v1/login', [
                 'username' => 'lea.keller',
                 'password' => 'wrong',
             ]);
         }
 
-        $this->spaPostJson('/api/login', [
+        $this->spaPostJson('/api/v1/login', [
             'username' => 'lea.keller',
             'password' => 'secret123',
         ])->assertOk();
@@ -264,10 +264,10 @@ class LoginTest extends TestCase
         // this actingAs() call needs the stamp too — see MeTest for the full
         // explanation. The Origin header was already here.
         $this->actingAsMember($member)
-            ->postJson('/api/logout')
+            ->postJson('/api/v1/logout')
             ->assertOk()->assertJson(['ok' => true]);
 
-        // Pinned to the 'web' guard deliberately. /api/logout sits behind
+        // Pinned to the 'web' guard deliberately. /api/v1/logout sits behind
         // auth:sanctum, and Illuminate\Auth\Middleware\Authenticate::authenticate()
         // calls Auth::shouldUse('sanctum') once it passes — so a guard-less
         // assertGuest() would check the 'sanctum' RequestGuard instead. That guard

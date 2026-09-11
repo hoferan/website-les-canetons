@@ -16,7 +16,7 @@ use Illuminate\Validation\Rule;
  * is the login and every member has one. It keeps the same shape as at
  * creation, and must stay unique across the roster.
  *
- * Roles are not here: replacing them is `PUT /api/members/{member}/roles`,
+ * Roles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,
  * which checks the roster's lockout invariants and ends the member's open
  * sessions. Neither is the password, which has its own endpoint.
  */
@@ -42,7 +42,7 @@ class UpdateMemberRequest extends FormRequest
         // by making the column NOT NULL.
         //
         // ROLES ARE NOT HERE. Replacing them is PUT
-        // /api/members/{member}/roles, which has its own invariant check and
+        // /api/v1/members/{member}/roles, which has its own invariant check and
         // revokes every session the member holds; folding it into the general
         // edit would put a privilege change behind a form that has neither.
         // Neither is the password: that is its own endpoint, and its own
@@ -71,7 +71,7 @@ class UpdateMemberRequest extends FormRequest
                 Rule::unique('members', 'username')->ignore($member?->id),
             ],
 
-            /** The register the member plays in, from `GET /api/sections`. Send `null` to take them out of every register, which also takes them off attendance lists. */
+            /** The register the member plays in, from `GET /api/v1/sections`. Send `null` to take them out of every register, which also takes them off attendance lists. */
             'sectionId' => ['sometimes', 'nullable', 'integer', 'exists:sections,id'],
             /** The member's function on the committee. Send `null` to clear it. */
             'committeeTitle' => ['sometimes', 'nullable', 'string', 'max:255'],

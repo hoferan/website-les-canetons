@@ -56,7 +56,7 @@ class RegistrationController extends Controller
      * Book a place at an event.
      *
      * Anonymous, and protected against automated submission: send the
-     * `X-Form-Token` header from `GET /api/form-token` and a `website` field
+     * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field
      * that is present and empty, or the request answers
      * `422 spam_suspected`. Rate limited to 10 a minute per IP.
      *
@@ -125,7 +125,7 @@ class RegistrationController extends Controller
      *
      * This contains personal data supplied by members of the public. The
      * same list is available as a file from
-     * `GET /api/events/{event}/registrations.{format}`.
+     * `GET /api/v1/events/{event}/registrations.{format}`.
      */
     public function index(Event $event): AnonymousResourceCollection
     {

@@ -61,7 +61,7 @@ test("keeps the username on a failure so only the wrong part is retyped", async 
 test("does not submit an empty form to the API", async () => {
   let attempts = 0;
   server.use(
-    http.post("/api/login", () => {
+    http.post("/api/v1/login", () => {
       attempts++;
       return HttpResponse.json({ ok: true });
     }),
@@ -82,7 +82,7 @@ test("shows the submit as busy without disabling it", async () => {
     release = resolve;
   });
   server.use(
-    http.post("/api/login", async () => {
+    http.post("/api/v1/login", async () => {
       await held;
       return HttpResponse.json({ ok: true });
     }),
@@ -109,7 +109,7 @@ test("a second click while the first is in flight sends nothing", async () => {
     release = resolve;
   });
   server.use(
-    http.post("/api/login", async () => {
+    http.post("/api/v1/login", async () => {
       attempts++;
       await held;
       return HttpResponse.json({ ok: true });
@@ -134,7 +134,7 @@ test("a member who must change their password lands on /account", async () => {
   // secret. MustChangePassword enforces this globally; going straight there
   // avoids a pointless bounce through a page they cannot use.
   server.use(
-    http.get("/api/me", () =>
+    http.get("/api/v1/me", () =>
       HttpResponse.json({
         id: 5,
         username: "demo.young",

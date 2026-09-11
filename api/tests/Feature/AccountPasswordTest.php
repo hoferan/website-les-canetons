@@ -56,7 +56,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_a_member_can_change_their_own_password(): void
     {
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertOk();
@@ -66,7 +66,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_it_clears_the_forced_change_flag(): void
     {
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertOk();
@@ -80,7 +80,7 @@ class AccountPasswordTest extends TestCase
         // borrowed, unlocked phone and a permanently stolen account.
         $before = $this->member->password;
 
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => 'not-it',
             'newPassword' => 'a-password-they-chose',
         ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
@@ -94,7 +94,7 @@ class AccountPasswordTest extends TestCase
         // `min` used to map to 'invalid_number' — "n'est pas un nombre valide"
         // for a short password. ApiError's own docblock predicted this and
         // asked for a too_short token; this is it.
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'short',
         ])->assertStatus(400)
@@ -113,7 +113,7 @@ class AccountPasswordTest extends TestCase
         $this->sessionFor('their-phone', $this->member->id);
         $this->sessionFor('their-laptop', $this->member->id);
 
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertOk();
@@ -124,17 +124,17 @@ class AccountPasswordTest extends TestCase
 
     public function test_the_member_is_still_logged_in_afterwards(): void
     {
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertOk();
 
-        $this->actingAsMember($this->member)->getJson('/api/me')->assertOk();
+        $this->actingAsMember($this->member)->getJson('/api/v1/me')->assertOk();
     }
 
     public function test_it_is_audited_without_either_password(): void
     {
-        $this->actingAsMember($this->member)->postJson('/api/me/password', [
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertOk();
@@ -150,7 +150,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_an_anonymous_caller_gets_401(): void
     {
-        $this->postJson('/api/me/password', [
+        $this->postJson('/api/v1/me/password', [
             'currentPassword' => self::CURRENT,
             'newPassword' => 'a-password-they-chose',
         ])->assertStatus(401)->assertJson(['code' => 'not_authenticated']);

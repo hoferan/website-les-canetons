@@ -30,7 +30,7 @@ class MemberController extends Controller
      * `roleIds`, the roles they hold.
      *
      * No password and no hash is ever included, and neither are effective
-     * permissions: a role is what grants them, so read `GET /api/roles` and
+     * permissions: a role is what grants them, so read `GET /api/v1/roles` and
      * join on `roleIds`.
      */
     public function index(): AnonymousResourceCollection
@@ -71,10 +71,10 @@ class MemberController extends Controller
      * nowhere else: it is hashed on the way into the database, is never
      * written to the audit log, and no later call returns it. An administrator
      * who loses it issues a new one at
-     * `POST /api/members/{member}/password`. The new member is required to
+     * `POST /api/v1/members/{member}/password`. The new member is required to
      * change it before doing anything else.
      *
-     * No roles are granted. Roles are `PUT /api/members/{member}/roles`, and
+     * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
      * no password may be chosen here.
      *
      * A missing required field answers `400 validation_failed` naming the
@@ -148,8 +148,8 @@ class MemberController extends Controller
      * as the register or the committee title. Returns the updated member.
      *
      * Roles and passwords are not editable here. They are
-     * `PUT /api/members/{member}/roles` and
-     * `POST /api/members/{member}/password`, each of which also ends the
+     * `PUT /api/v1/members/{member}/roles` and
+     * `POST /api/v1/members/{member}/password`, each of which also ends the
      * member's sessions.
      *
      * A username already in use answers `400 validation_failed` with

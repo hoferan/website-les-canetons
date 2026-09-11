@@ -49,7 +49,7 @@ class EventWriteTest extends TestCase
     {
         // 403, not 401: they are logged in, they simply do not organise.
         $this->actingAsMember($this->player)
-            ->postJson('/api/events', $this->validPayload())
+            ->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
 
@@ -67,7 +67,7 @@ class EventWriteTest extends TestCase
         // permission, registrations.view: this member passes every weaker
         // reading of the check and must still be refused.
         $this->actingAsMember(Member::factory()->committee()->create())
-            ->postJson('/api/events', $this->validPayload())
+            ->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
 
@@ -90,7 +90,7 @@ class EventWriteTest extends TestCase
             ->create();
 
         $this->actingAsMember($organiserOnly)
-            ->postJson('/api/events', $this->validPayload())
+            ->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(201);
 
         $this->assertDatabaseCount('events', 1);
@@ -102,7 +102,7 @@ class EventWriteTest extends TestCase
         // makes: 401 is also what a stale CSRF token or a dead session would
         // produce, and the SPA acts on the code — "log in" and "your session
         // ended" are different screens.
-        $this->postJson('/api/events', $this->validPayload())
+        $this->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(401)
             ->assertJson(['code' => 'not_authenticated']);
 
@@ -119,7 +119,7 @@ class EventWriteTest extends TestCase
         // green until this test sent something else. The other tests keep the
         // default shape, which is the one the plan pinned.
         $response = $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload([
+            ->postJson('/api/v1/events', $this->validPayload([
                 'isPublic' => true,
                 'notes' => 'Apporter la partition de Carnaval.',
             ]))
@@ -151,7 +151,7 @@ class EventWriteTest extends TestCase
         // Without this a mistyped time produces an event of negative length,
         // which sorts and renders in ways nobody has designed for.
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload([
+            ->postJson('/api/v1/events', $this->validPayload([
                 'startsAt' => '2026-09-05T12:00:00+02:00',
                 'endsAt' => '2026-09-05T10:00:00+02:00',
             ]))
@@ -177,7 +177,7 @@ class EventWriteTest extends TestCase
         // round the committee is told that 'pas une date' "doit être après le
         // début" — sent to fix the one thing that was not wrong.
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload(['endsAt' => 'pas une date']))
+            ->postJson('/api/v1/events', $this->validPayload(['endsAt' => 'pas une date']))
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'endsAt')
             ->assertJsonPath('fields.0.reason', 'invalid_format');
@@ -188,7 +188,7 @@ class EventWriteTest extends TestCase
         // "Weekend musical, 3-4 October" from the live planning. The rule is
         // "after", not "same day".
         $response = $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload([
+            ->postJson('/api/v1/events', $this->validPayload([
                 'title' => 'Weekend musical',
                 'startsAt' => '2026-10-03T09:00:00+02:00',
                 'endsAt' => '2026-10-04T16:00:00+02:00',
@@ -208,7 +208,7 @@ class EventWriteTest extends TestCase
     public function test_a_missing_title_is_reported_against_its_own_field(): void
     {
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload(['title' => '']))
+            ->postJson('/api/v1/events', $this->validPayload(['title' => '']))
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'title')
             ->assertJsonPath('fields.0.reason', 'required');
@@ -216,7 +216,7 @@ class EventWriteTest extends TestCase
 
     public function test_creating_an_event_is_audited(): void
     {
-        $this->actingAsMember($this->organiser)->postJson('/api/events', $this->validPayload());
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events', $this->validPayload());
 
         $this->assertDatabaseHas('audit_log', [
             'actor_member_id' => $this->organiser->id,
@@ -234,7 +234,7 @@ class EventWriteTest extends TestCase
     {
         // Typed as 10:00 in Fribourg, stored as 08:00 UTC, read back as 10:00.
         // This is the whole reason BandTime exists.
-        $this->actingAsMember($this->organiser)->postJson('/api/events', $this->validPayload());
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events', $this->validPayload());
 
         $event = Event::query()->sole();
         $this->assertSame('08:00', $event->starts_at->utc()->format('H:i'));
@@ -248,7 +248,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition', 'location' => 'Werkhof']);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition + apéritif'])
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif'])
             ->assertOk()
             ->assertJsonPath('title', 'Répétition + apéritif');
 
@@ -272,7 +272,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", [
+            ->patchJson("/api/v1/events/{$event->id}", [
                 'title' => 'Cortège du Carnaval',
                 'startsAt' => '2027-02-13T14:00:00+01:00',
                 'endsAt' => '2027-02-13T18:00:00+01:00',
@@ -306,7 +306,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['attire' => null, 'notes' => null])
+            ->patchJson("/api/v1/events/{$event->id}", ['attire' => null, 'notes' => null])
             ->assertOk()
             ->assertJsonPath('attire', null)
             ->assertJsonPath('notes', null);
@@ -327,7 +327,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
+            ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'endsAt')
             // The token as well as the field, for the reason the POST's own
@@ -351,7 +351,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['endsAt' => 'pas une date'])
+            ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => 'pas une date'])
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'endsAt')
             ->assertJsonPath('fields.0.reason', 'invalid_format');
@@ -366,7 +366,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['title' => ''])
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => ''])
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'title')
             ->assertJsonPath('fields.0.reason', 'required');
@@ -379,7 +379,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->player)
-            ->patchJson("/api/events/{$event->id}", ['title' => 'Non'])
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Non'])
             ->assertStatus(403);
 
         // As with creating: a gate that answered 403 after writing would pass
@@ -402,7 +402,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($organiserOnly)
-            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition avancée'])
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition avancée'])
             ->assertOk();
 
         $this->assertSame('Répétition avancée', $event->fresh()->title);
@@ -413,7 +413,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['title' => 'Répétition + apéritif']);
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif']);
 
         $this->assertDatabaseHas('audit_log', [
             'actor_member_id' => $this->organiser->id,
@@ -431,7 +431,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
-            ->deleteJson("/api/events/{$event->id}")
+            ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJson(['ok' => true]);
 
@@ -445,7 +445,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->player)
-            ->deleteJson("/api/events/{$event->id}")
+            ->deleteJson("/api/v1/events/{$event->id}")
             ->assertStatus(403);
 
         $this->assertDatabaseHas('events', ['id' => $event->id]);
@@ -463,7 +463,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($organiserOnly)
-            ->deleteJson("/api/events/{$event->id}")
+            ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk();
 
         $this->assertDatabaseMissing('events', ['id' => $event->id]);
@@ -475,7 +475,7 @@ class EventWriteTest extends TestCase
         // the audit back.
         $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
 
-        $this->actingAsMember($this->organiser)->deleteJson("/api/events/{$event->id}");
+        $this->actingAsMember($this->organiser)->deleteJson("/api/v1/events/{$event->id}");
 
         $this->assertDatabaseHas('audit_log', [
             'actor_member_id' => $this->organiser->id,
@@ -495,7 +495,7 @@ class EventWriteTest extends TestCase
         // whether or not APP_DEBUG is on — only trace/exception/file are
         // debug-gated. Same pairing as
         // EventIndexTest::test_an_unknown_event_is_a_404.
-        $this->actingAsMember($this->organiser)->patchJson('/api/events/99999', ['title' => 'X'])
+        $this->actingAsMember($this->organiser)->patchJson('/api/v1/events/99999', ['title' => 'X'])
             ->assertStatus(404)
             ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
     }
@@ -511,7 +511,7 @@ class EventWriteTest extends TestCase
         $this->assertFalse($event->takesRegistrations());
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", [
+            ->patchJson("/api/v1/events/{$event->id}", [
                 'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
                 'registrationMaxGuests' => 6,
             ])
@@ -524,7 +524,7 @@ class EventWriteTest extends TestCase
         // And off again: clearing the close date is how it is switched off,
         // which is why the rule needs `sometimes` AND `nullable`.
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", ['registrationClosesAt' => null])
+            ->patchJson("/api/v1/events/{$event->id}", ['registrationClosesAt' => null])
             ->assertOk()
             ->assertJsonPath('takesRegistrations', false);
 
@@ -534,7 +534,7 @@ class EventWriteTest extends TestCase
     public function test_registration_can_be_enabled_at_creation(): void
     {
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload([
+            ->postJson('/api/v1/events', $this->validPayload([
                 'registrationOpensAt' => '2026-10-01T00:00:00+02:00',
                 'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
                 'registrationMaxGuests' => 6,
@@ -550,7 +550,7 @@ class EventWriteTest extends TestCase
     public function test_the_registration_window_cannot_close_before_it_opens(): void
     {
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events', $this->validPayload([
+            ->postJson('/api/v1/events', $this->validPayload([
                 'registrationOpensAt' => '2026-11-30T00:00:00+01:00',
                 'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
             ]))
@@ -569,7 +569,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/events/{$event->id}", [
+            ->patchJson("/api/v1/events/{$event->id}", [
                 'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
             ])
             ->assertStatus(400)

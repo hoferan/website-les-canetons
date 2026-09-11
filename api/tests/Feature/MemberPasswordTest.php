@@ -15,7 +15,7 @@ use Tests\TestCase;
  * Issuing a credential and resetting one are the SAME operation — §4.4
  * describes one mechanism, so there is one endpoint. Since 2026_09_08_000001
  * every member already has a password, so this is always a reset; the "give
- * this person an account" case is POST /api/members, which mints one at
+ * this person an account" case is POST /api/v1/members, which mints one at
  * creation.
  */
 class MemberPasswordTest extends TestCase
@@ -66,7 +66,7 @@ class MemberPasswordTest extends TestCase
     {
         $target = $this->member();
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
+        $body = $this->acting()->postJson("/api/v1/members/{$target->id}/password")->assertOk()->json();
 
         // The returned value is the only copy that will ever exist in plaintext.
         $this->assertMatchesRegularExpression('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', $body['generatedPassword']);
@@ -80,7 +80,7 @@ class MemberPasswordTest extends TestCase
         // and must not survive first use.
         $target = $this->member();
 
-        $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk();
+        $this->acting()->postJson("/api/v1/members/{$target->id}/password")->assertOk();
 
         $this->assertTrue($target->fresh()->must_change_password);
     }
@@ -93,7 +93,7 @@ class MemberPasswordTest extends TestCase
         $this->sessionFor('target-laptop', $target->id);
         $this->sessionFor('bystander-phone', $bystander->id);
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
+        $body = $this->acting()->postJson("/api/v1/members/{$target->id}/password")->assertOk()->json();
 
         $this->assertSame(2, $body['sessionsEnded']);
         $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
@@ -118,9 +118,9 @@ class MemberPasswordTest extends TestCase
         // observable from here.
         $this->sessionFor('actor-other-device', $this->actor->id);
 
-        $this->acting()->postJson("/api/members/{$this->actor->id}/password")->assertOk();
+        $this->acting()->postJson("/api/v1/members/{$this->actor->id}/password")->assertOk();
 
-        $this->acting()->getJson('/api/me')->assertOk();
+        $this->acting()->getJson('/api/v1/me')->assertOk();
         $this->assertDatabaseMissing('sessions', ['id' => 'actor-other-device']);
         $this->assertTrue($this->actor->fresh()->must_change_password);
     }
@@ -129,7 +129,7 @@ class MemberPasswordTest extends TestCase
     {
         $target = $this->member();
 
-        $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk();
+        $this->acting()->postJson("/api/v1/members/{$target->id}/password")->assertOk();
 
         $entry = AuditEntry::latest('id')->first();
         $this->assertSame('member.password_reset', $entry->action);
@@ -142,7 +142,7 @@ class MemberPasswordTest extends TestCase
         // The one place a credential could plausibly get written down forever.
         $target = $this->member();
 
-        $body = $this->acting()->postJson("/api/members/{$target->id}/password")->assertOk()->json();
+        $body = $this->acting()->postJson("/api/v1/members/{$target->id}/password")->assertOk()->json();
 
         $log = AuditEntry::all()->toJson();
         $this->assertStringNotContainsString($body['generatedPassword'], $log);
@@ -154,6 +154,6 @@ class MemberPasswordTest extends TestCase
         $player = $this->member('plain');
         $target = $this->member('someone.else');
 
-        $this->acting($player)->postJson("/api/members/{$target->id}/password")->assertStatus(403)->assertJson(['code' => 'access_denied']);
+        $this->acting($player)->postJson("/api/v1/members/{$target->id}/password")->assertStatus(403)->assertJson(['code' => 'access_denied']);
     }
 }

@@ -29,7 +29,7 @@ test("changes the password and says so", async () => {
 test("catches a mistyped confirmation without asking the API", async () => {
   let attempts = 0;
   server.use(
-    http.post("/api/me/password", () => {
+    http.post("/api/v1/me/password", () => {
       attempts++;
       return HttpResponse.json({ ok: true });
     }),

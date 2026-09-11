@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * out is removed, and an empty array removes all of them.
  *
  * `roleIds` must be sent, even when empty. Read the ids that exist from
- * `GET /api/roles`; an unknown one fails validation against `roleIds`.
+ * `GET /api/v1/roles`; an unknown one fails validation against `roleIds`.
  */
 class ReplaceMemberRolesRequest extends FormRequest
 {

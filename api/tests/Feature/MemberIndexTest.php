@@ -49,7 +49,7 @@ class MemberIndexTest extends TestCase
         $this->assertFalse($columns['username']['nullable'], 'members.username must be NOT NULL');
         $this->assertFalse($columns['password']['nullable'], 'members.password must be NOT NULL');
 
-        $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
 
         foreach ($body as $row) {
             $this->assertNotNull($row['username'], 'every member on the roster has a username');
@@ -66,7 +66,7 @@ class MemberIndexTest extends TestCase
         Member::factory()->named('Zoe', 'Alpha')->create();
         Member::factory()->named('Anne', 'Zulu')->create();
 
-        $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
 
         $this->assertSame(['Alpha', 'Direction', 'Zulu'], array_column($body, 'lastName'));
     }
@@ -82,7 +82,7 @@ class MemberIndexTest extends TestCase
             ->committee()
             ->create(['committee_title' => 'Présidente']);
 
-        $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
         $camille = collect($body)->firstWhere('lastName', 'Committee');
 
         $this->assertSame($member->id, $camille['id']);
@@ -105,7 +105,7 @@ class MemberIndexTest extends TestCase
         // $hidden on the model covers a model serialised directly; a Resource
         // that reads $this->password would sail straight past it. This is the
         // assertion that catches that.
-        $raw = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->getContent();
+        $raw = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('password', $raw);
         $this->assertStringNotContainsString('argon2', $raw);
@@ -119,7 +119,7 @@ class MemberIndexTest extends TestCase
         // every count carries a permanent phantom "sans réponse". Note this is
         // a separate question from having an account — everybody has one of
         // those.
-        $body = $this->actingAsAdministrator()->getJson('/api/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
         $dominique = collect($body)->firstWhere('lastName', 'Direction');
 
         $this->assertNull($dominique['sectionId']);
@@ -129,10 +129,10 @@ class MemberIndexTest extends TestCase
 
     public function test_it_answers_401_anonymously_and_403_without_the_permission(): void
     {
-        $this->getJson('/api/members')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
+        $this->getJson('/api/v1/members')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
 
         $this->actingAsMember(Member::factory()->create())
-            ->getJson('/api/members')
+            ->getJson('/api/v1/members')
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
     }
@@ -155,7 +155,7 @@ class MemberIndexTest extends TestCase
             $queries++;
         });
 
-        $this->actingAsAdministrator()->getJson('/api/members')->assertOk();
+        $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk();
 
         // Session, permission lookup, the members query and one per eager-loaded
         // relation — a small constant. What must NOT happen is growth with the
@@ -185,7 +185,7 @@ class MemberIndexTest extends TestCase
             ->withRole(Role::factory()->granting(Permission::MembersManage)->create())
             ->create();
 
-        $this->actingAsMember($exactly)->getJson('/api/members')->assertOk();
+        $this->actingAsMember($exactly)->getJson('/api/v1/members')->assertOk();
     }
 
     public function test_a_different_permission_does_not_admit(): void
@@ -197,7 +197,7 @@ class MemberIndexTest extends TestCase
             ->create();
 
         $this->actingAsMember($organiser)
-            ->getJson('/api/members')
+            ->getJson('/api/v1/members')
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
     }
@@ -210,7 +210,7 @@ class MemberIndexTest extends TestCase
             ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
             ->create();
 
-        $this->actingAsMember($organiser)->getJson('/api/sections')->assertStatus(403);
-        $this->actingAsMember($organiser)->getJson('/api/roles')->assertStatus(403);
+        $this->actingAsMember($organiser)->getJson('/api/v1/sections')->assertStatus(403);
+        $this->actingAsMember($organiser)->getJson('/api/v1/roles')->assertStatus(403);
     }
 }

@@ -28,7 +28,7 @@ class EventIndexTest extends TestCase
         // 401, not 403: the planning is members-only in R1c (C1), and an
         // anonymous caller has not failed a permission check — they have not
         // authenticated at all.
-        $this->getJson('/api/events')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
+        $this->getJson('/api/v1/events')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
     }
 
     public function test_it_lists_upcoming_events_soonest_first(): void
@@ -36,7 +36,7 @@ class EventIndexTest extends TestCase
         Event::factory()->create(['title' => 'Plus tard', 'starts_at' => now()->addDays(20)]);
         Event::factory()->create(['title' => 'Bientôt', 'starts_at' => now()->addDays(2)]);
 
-        $response = $this->actingAsMember($this->member)->getJson('/api/events')->assertOk();
+        $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
         $this->assertSame(['Bientôt', 'Plus tard'], array_column($response->json(), 'title'));
     }
@@ -48,7 +48,7 @@ class EventIndexTest extends TestCase
         Event::factory()->past()->create(['title' => 'Déjà joué']);
         Event::factory()->create(['title' => 'À venir']);
 
-        $response = $this->actingAsMember($this->member)->getJson('/api/events')->assertOk();
+        $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
         $this->assertSame(['À venir'], array_column($response->json(), 'title'));
     }
@@ -61,7 +61,7 @@ class EventIndexTest extends TestCase
         Event::factory()->past()->create(['title' => 'La semaine dernière', 'starts_at' => now()->subDays(7)]);
         Event::factory()->create(['title' => 'À venir']);
 
-        $response = $this->actingAsMember($this->member)->getJson('/api/events?past=1')->assertOk();
+        $response = $this->actingAsMember($this->member)->getJson('/api/v1/events?past=1')->assertOk();
 
         $this->assertSame(
             ['La semaine dernière', 'Il y a longtemps'],
@@ -90,7 +90,7 @@ class EventIndexTest extends TestCase
             'title' => 'En cours',
         ]);
 
-        $response = $this->actingAsMember($this->member)->getJson('/api/events')->assertOk();
+        $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
         $this->assertSame(['En cours'], array_column($response->json(), 'title'));
     }
@@ -105,7 +105,7 @@ class EventIndexTest extends TestCase
             'is_public' => false,
         ]);
 
-        $response = $this->actingAsMember($this->member)->getJson('/api/events')
+        $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')
             ->assertOk()
             ->assertJsonStructure([['id', 'title', 'startsAt', 'endsAt', 'location', 'attire', 'isPublic', 'notes']]);
 
@@ -128,7 +128,7 @@ class EventIndexTest extends TestCase
     {
         // This list varies by identity in R1c-2, and a shared proxy that
         // cached one member's view would serve it to another.
-        $this->actingAsMember($this->member)->getJson('/api/events')
+        $this->actingAsMember($this->member)->getJson('/api/v1/events')
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');
     }
@@ -140,7 +140,7 @@ class EventIndexTest extends TestCase
         // would work until somebody edited last month's rehearsal.
         $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
 
-        $this->actingAsMember($this->member)->getJson("/api/events/{$event->id}")
+        $this->actingAsMember($this->member)->getJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJsonPath('title', 'Vendanges Cheyres');
     }
@@ -149,7 +149,7 @@ class EventIndexTest extends TestCase
     {
         $event = Event::factory()->past()->create();
 
-        $this->actingAsMember($this->member)->getJson("/api/events/{$event->id}")->assertOk();
+        $this->actingAsMember($this->member)->getJson("/api/v1/events/{$event->id}")->assertOk();
     }
 
     public function test_an_unknown_event_is_a_404(): void
@@ -161,7 +161,7 @@ class EventIndexTest extends TestCase
         // present in the JSON body either way: Illuminate's exception handler
         // always includes an HttpException's own getMessage(), debug or not —
         // only the trace/exception/file keys are debug-gated.
-        $this->actingAsMember($this->member)->getJson('/api/events/99999')
+        $this->actingAsMember($this->member)->getJson('/api/v1/events/99999')
             ->assertStatus(404)
             ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
     }
@@ -177,8 +177,8 @@ class EventIndexTest extends TestCase
             $queries++;
         });
 
-        $this->actingAsMember($this->member)->getJson('/api/events')->assertOk();
+        $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
-        $this->assertLessThanOrEqual(3, $queries, 'GET /api/events should not scale queries with events');
+        $this->assertLessThanOrEqual(3, $queries, 'GET /api/v1/events should not scale queries with events');
     }
 }

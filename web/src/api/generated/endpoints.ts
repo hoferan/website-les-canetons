@@ -14,7 +14,7 @@
  * either. From a browser this is close to automatic:
  *
  * ```js
- * await fetch("/api/login", {
+ * await fetch("/api/v1/login", {
  *   method: "POST",
  *   credentials: "include",
  *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf },
@@ -85,7 +85,7 @@
  *
  * Authorisation is by permission, never by role. Roles are editable data that
  * group permissions; which role granted one is not a question the API answers.
- * `GET /api/me` returns the caller's effective permissions.
+ * `GET /api/v1/me` returns the caller's effective permissions.
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`.
@@ -104,17 +104,17 @@
  *
  * ## Public forms
  *
- * `POST /api/contact` and `POST /api/events/{event}/registrations` are open to
+ * `POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
  * anonymous callers and are protected against automated submission. Both
  * require:
  *
- * - an `X-Form-Token` header, from `GET /api/form-token`, at least two seconds
+ * - an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds
  *   and at most two hours old, and
  * - a `website` field, present and empty.
  *
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 1.0.0
  */
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
@@ -241,7 +241,7 @@ export const getAuthLoginUrl = () => {
  * Anonymous. Send `username` and `password`. A successful call answers
  * `{"ok": true}` and establishes the session cookie every authenticated
  * endpoint reads. It deliberately carries no identity of its own: call
- * `GET /api/me` afterwards for who you are and what you may do.
+ * `GET /api/v1/me` afterwards for who you are and what you may do.
  *
  * A username that does not exist and a wrong password both answer
  * `401 invalid_credentials`, the same code for each, so that neither can
@@ -1488,7 +1488,7 @@ export const getEventSeriesUrl = () => {
 /**
  * Requires `events.manage`. Takes a `template` and a list of `Y-m-d`
  * `dates`, at most 60 of them, and creates one event per date. Answers
- * `201` with the created events, in the same shape `GET /api/events`
+ * `201` with the created events, in the same shape `GET /api/v1/events`
  * returns, so a client can refresh its list straight from the response.
  *
  * The events are independent, and there is no series afterwards: nothing
@@ -2267,7 +2267,7 @@ export const getMemberAttendanceDestroyUrl = (event: number, member: number) => 
  * exists for.
  *
  * Refuses `409 cannot_record_for_self` when the member named is the
- * caller. Use `DELETE /api/events/{event}/attendance` for your own
+ * caller. Use `DELETE /api/v1/events/{event}/attendance` for your own
  * answer.
  * @summary Take back a member's answer
  */
@@ -2390,7 +2390,7 @@ export const getRegistrationStoreUrl = (event: number) => {
 
 /**
  * Anonymous, and protected against automated submission: send the
- * `X-Form-Token` header from `GET /api/form-token` and a `website` field
+ * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field
  * that is present and empty, or the request answers
  * `422 spam_suspected`. Rate limited to 10 a minute per IP.
  *
@@ -2547,7 +2547,7 @@ export const getRegistrationIndexUrl = (event: number) => {
  *
  * This contains personal data supplied by members of the public. The
  * same list is available as a file from
- * `GET /api/events/{event}/registrations.{format}`.
+ * `GET /api/v1/events/{event}/registrations.{format}`.
  * @summary List everyone booked for an event
  */
 export const registrationIndex = async (
@@ -3791,7 +3791,7 @@ export const getMemberIndexUrl = () => {
  * `roleIds`, the roles they hold.
  *
  * No password and no hash is ever included, and neither are effective
- * permissions: a role is what grants them, so read `GET /api/roles` and
+ * permissions: a role is what grants them, so read `GET /api/v1/roles` and
  * join on `roleIds`.
  * @summary List the roster
  */
@@ -3940,10 +3940,10 @@ export const getMemberStoreUrl = () => {
  * nowhere else: it is hashed on the way into the database, is never
  * written to the audit log, and no later call returns it. An administrator
  * who loses it issues a new one at
- * `POST /api/members/{member}/password`. The new member is required to
+ * `POST /api/v1/members/{member}/password`. The new member is required to
  * change it before doing anything else.
  *
- * No roles are granted. Roles are `PUT /api/members/{member}/roles`, and
+ * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
  * no password may be chosen here.
  *
  * A missing required field answers `400 validation_failed` naming the
@@ -4094,8 +4094,8 @@ export const getMemberUpdateUrl = (member: number) => {
  * as the register or the committee title. Returns the updated member.
  *
  * Roles and passwords are not editable here. They are
- * `PUT /api/members/{member}/roles` and
- * `POST /api/members/{member}/password`, each of which also ends the
+ * `PUT /api/v1/members/{member}/roles` and
+ * `POST /api/v1/members/{member}/password`, each of which also ends the
  * member's sessions.
  *
  * A username already in use answers `400 validation_failed` with
@@ -4367,7 +4367,7 @@ export const getMemberRoleUrl = (member: number) => {
 /**
  * Requires `members.manage`. `roleIds` is the complete set the member is
  * left with, so send every role they should keep; an empty array removes
- * all of them. Read the roles that exist from `GET /api/roles`.
+ * all of them. Read the roles that exist from `GET /api/v1/roles`.
  *
  * This is the only way any permission is granted or taken away. A role is
  * what groups permissions, and no endpoint in this API authorises by role
@@ -4530,11 +4530,11 @@ export const getMemberPasswordUrl = (member: number) => {
  * hashed on the way into the database, is never written to the audit log,
  * and no later call returns it. A lost one is replaced by calling this
  * again. The member is required to change it at their next login, through
- * `POST /api/me/password`.
+ * `POST /api/v1/me/password`.
  *
  * A member resetting their own password this way keeps the session they
  * are calling from, and `sessionsEnded` then counts their other ones. The
- * ordinary route for that is `POST /api/me/password`, which lets them
+ * ordinary route for that is `POST /api/v1/me/password`, which lets them
  * choose the password instead.
  * @summary Reset a member's password
  */
@@ -4637,8 +4637,8 @@ export const getFormTokenUrl = () => {
  * IP.
  *
  * Returns `{"token": "..."}`, to be sent back as the `X-Form-Token`
- * header on a public write: `POST /api/contact` and
- * `POST /api/events/{event}/registrations`.
+ * header on a public write: `POST /api/v1/contact` and
+ * `POST /api/v1/events/{event}/registrations`.
  *
  * Fetch it when the form is rendered, not when it is submitted. The
  * submission guard refuses a token less than two seconds old, so
@@ -4767,7 +4767,7 @@ export const getContactUrl = () => {
 
 /**
  * Anonymous, and protected against automated submission: send the
- * `X-Form-Token` header from `GET /api/form-token` and a `website` field
+ * `X-Form-Token` header from `GET /api/v1/form-token` and a `website` field
  * that is present and empty, or the request answers `422 spam_suspected`.
  * Fetch that token when the form is rendered rather than when it is
  * submitted, because one less than two seconds old is refused. Rate

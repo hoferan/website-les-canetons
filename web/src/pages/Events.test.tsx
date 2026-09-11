@@ -77,7 +77,7 @@ test("an event with no attire says so rather than leaving a blank", async () => 
 test("an empty planning says so rather than rendering nothing", async () => {
   // A blank screen reads as broken. This is the state a committee sees before
   // they have entered the season, which is the first thing they will ever see.
-  server.use(http.get("/api/events", () => HttpResponse.json([])));
+  server.use(http.get("/api/v1/events", () => HttpResponse.json([])));
 
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events" });
@@ -88,7 +88,7 @@ test("an empty planning says so rather than rendering nothing", async () => {
 });
 
 test("a failed planning is announced, not silently empty", async () => {
-  server.use(http.get("/api/events", () => HttpResponse.error()));
+  server.use(http.get("/api/v1/events", () => HttpResponse.error()));
 
   setMockUser("demo.player");
   await renderWithSession(<Events />, { route: "/events" });

@@ -46,7 +46,7 @@ class EventSeriesTest extends TestCase
     public function test_it_creates_one_event_per_date(): void
     {
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload())
+            ->postJson('/api/v1/events/series', $this->payload())
             ->assertStatus(201)
             ->assertJsonCount(3);
 
@@ -57,7 +57,7 @@ class EventSeriesTest extends TestCase
     {
         // C3: nothing links them. This is what makes "how does a player attend
         // one occurrence?" a non-question — each one is an ordinary event.
-        $this->actingAsMember($this->organiser)->postJson('/api/events/series', $this->payload());
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload());
 
         $titles = Event::query()->pluck('title')->all();
         $this->assertSame(['Répétition', 'Répétition', 'Répétition'], $titles);
@@ -71,7 +71,7 @@ class EventSeriesTest extends TestCase
         // The trap this whole endpoint could fall into: September is CEST and
         // December is CET, so a naive fixed offset makes half a season an hour
         // wrong. Both must read back as 10:00 in Fribourg.
-        $this->actingAsMember($this->organiser)->postJson('/api/events/series', $this->payload([
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload([
             'dates' => ['2026-09-05', '2026-12-05'],
         ]));
 
@@ -98,7 +98,7 @@ class EventSeriesTest extends TestCase
         $player = Member::factory()->inSection('Cloches')->create();
 
         $this->actingAsMember($player)
-            ->postJson('/api/events/series', $this->payload())
+            ->postJson('/api/v1/events/series', $this->payload())
             ->assertStatus(403);
 
         $this->assertSame(0, Event::query()->count());
@@ -115,7 +115,7 @@ class EventSeriesTest extends TestCase
             ->create();
 
         $this->actingAsMember($organiserOnly)
-            ->postJson('/api/events/series', $this->payload())
+            ->postJson('/api/v1/events/series', $this->payload())
             ->assertStatus(201);
 
         $this->assertSame(3, Event::query()->count());
@@ -131,7 +131,7 @@ class EventSeriesTest extends TestCase
         }
 
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload(['dates' => $dates]))
+            ->postJson('/api/v1/events/series', $this->payload(['dates' => $dates]))
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'dates')
             ->assertJsonPath('fields.0.reason', 'too_long')
@@ -152,7 +152,7 @@ class EventSeriesTest extends TestCase
         }
 
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload(['dates' => $dates]))
+            ->postJson('/api/v1/events/series', $this->payload(['dates' => $dates]))
             ->assertStatus(201);
 
         $this->assertSame(60, Event::query()->count());
@@ -161,7 +161,7 @@ class EventSeriesTest extends TestCase
     public function test_an_empty_date_list_is_refused(): void
     {
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload(['dates' => []]))
+            ->postJson('/api/v1/events/series', $this->payload(['dates' => []]))
             ->assertStatus(400)
             // `required`, not `too_short`: Laravel's required already refuses
             // an empty array, and StoreEventSeriesRequest deliberately omits
@@ -176,7 +176,7 @@ class EventSeriesTest extends TestCase
         // One transaction. A half-created season is worse than none, because
         // the committee has no way to tell which half landed.
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload([
+            ->postJson('/api/v1/events/series', $this->payload([
                 'dates' => ['2026-09-05', 'pas-une-date'],
             ]))
             ->assertStatus(400);
@@ -191,7 +191,7 @@ class EventSeriesTest extends TestCase
         $payload['template']['endTime'] = '10:00';
 
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $payload)
+            ->postJson('/api/v1/events/series', $payload)
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'template.endTime')
             ->assertJsonPath('fields.0.reason', 'must_be_after');
@@ -215,7 +215,7 @@ class EventSeriesTest extends TestCase
         $payload['template']['endTime'] = '25:00';
 
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $payload)
+            ->postJson('/api/v1/events/series', $payload)
             ->assertStatus(400)
             ->assertJsonPath('fields.0.field', 'template.endTime')
             ->assertJsonPath('fields.0.reason', 'invalid_format');
@@ -228,7 +228,7 @@ class EventSeriesTest extends TestCase
         // defaults, so a generator that never wrote those two columns passed
         // every assertion made against the default payload.
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload([
+            ->postJson('/api/v1/events/series', $this->payload([
                 'template' => [
                     'title' => 'Cortège',
                     'location' => 'Place Georges-Python',
@@ -270,7 +270,7 @@ class EventSeriesTest extends TestCase
         });
 
         $this->actingAsMember($this->organiser)
-            ->postJson('/api/events/series', $this->payload(['dates' => $dates]))
+            ->postJson('/api/v1/events/series', $this->payload(['dates' => $dates]))
             ->assertStatus(201);
 
         // 20 inserts + 20 audit rows + the transaction and session overhead.
@@ -279,7 +279,7 @@ class EventSeriesTest extends TestCase
 
     public function test_generating_a_season_is_audited_once_per_event(): void
     {
-        $this->actingAsMember($this->organiser)->postJson('/api/events/series', $this->payload());
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload());
 
         $this->assertSame(3, DB::table('audit_log')->where('action', 'event.created')->count());
 

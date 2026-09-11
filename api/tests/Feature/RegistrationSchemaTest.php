@@ -123,7 +123,7 @@ class RegistrationSchemaTest extends TestCase
         Registration::factory()->withChoice($option)->create(['event_id' => $option->event_id]);
 
         $this->actingAsMember($organiser)
-            ->deleteJson("/api/events/{$option->event_id}")
+            ->deleteJson("/api/v1/events/{$option->event_id}")
             ->assertOk()
             ->assertJson(['ok' => true, 'attendanceDeleted' => 0, 'registrationsDeleted' => 2]);
 

@@ -31,8 +31,8 @@ import type {
  * unpinned title renames this export between machines.
  *
  * During the R1a rebuild this file only covered what the API still had:
- * /api/config, /api/contact, and auth. R1b adds the roster — reference data,
- * /api/members and the account password — and it is a real little backend
+ * /api/v1/config, /api/v1/contact, and auth. R1b adds the roster — reference data,
+ * /api/v1/members and the account password — and it is a real little backend
  * rather than a fixture dump: a screen that creates a member and then lists
  * them must see what it created, or the test is asserting against a fixture
  * instead of a flow. The event/signup/response/altcha handlers that used to
@@ -240,7 +240,7 @@ const GENERATED_PASSWORD = "kanu-7rex-mp34";
 
 /**
  * The seeded roster, mirroring DevSeeder, in ITS insertion order rather than
- * the order the screen shows: the real GET /api/members sorts by name, so a
+ * the order the screen shows: the real GET /api/v1/members sorts by name, so a
  * mock that stored them pre-sorted would hide a sorting bug in the endpoint's
  * mocked stand-in and in any screen that re-sorted them itself.
  *
@@ -587,16 +587,16 @@ const overrides = [
   http.get("/sanctum/csrf-cookie", () => new HttpResponse(null, { status: 204 })),
 
   // Mirrors App\Http\Controllers\Api\ConfigController exactly: `env` only.
-  http.get("/api/config", () => HttpResponse.json({ env: "dev" })),
+  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev" })),
 
-  http.get("/api/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
+  http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
   // Hand-written because the generated handler always succeeds, and the whole
   // point of a contact form is what it does when it does not. The required set
   // mirrors api/app/Http/Requests/ContactRequest.php exactly — including
   // `subject`, which the OLD HTML form did not mark required even though the
   // API always has.
-  http.post("/api/contact", async ({ request }) => {
+  http.post("/api/v1/contact", async ({ request }) => {
     const body = (await request.json()) as Partial<Record<keyof ContactRequest, string>>;
     // Laravel's `required` treats "0" as present and a whitespace-only string
     // as absent — the opposite of plain falsiness in both cases. `!body[field]`
@@ -619,7 +619,7 @@ const overrides = [
     return HttpResponse.json({ ok: true });
   }),
 
-  http.post("/api/login", async ({ request }) => {
+  http.post("/api/v1/login", async ({ request }) => {
     const body = (await request.json()) as { username?: string; password?: string };
     // Unlike setMockUser's test seam, this handler stands in for a real login
     // request: the username is untyped input from the request body, so it is
@@ -634,12 +634,12 @@ const overrides = [
     }
     setCurrentUser(user);
     // Deliberately no identity in this body — mirrors AuthController::login
-    // exactly, which returns only {ok: true}: the client asks GET /api/me for
+    // exactly, which returns only {ok: true}: the client asks GET /api/v1/me for
     // identity, so there is exactly one shape describing who you are.
     return HttpResponse.json({ ok: true });
   }),
 
-  http.post("/api/logout", () => {
+  http.post("/api/v1/logout", () => {
     setCurrentUser(null);
     return HttpResponse.json({ ok: true });
   }),
@@ -649,13 +649,13 @@ const overrides = [
    * the screens' guards are exercised rather than assumed.
    * ---------------------------------------------------------------------- */
 
-  http.get("/api/sections", () => refuseWithoutMembersManage() ?? HttpResponse.json(SECTIONS)),
+  http.get("/api/v1/sections", () => refuseWithoutMembersManage() ?? HttpResponse.json(SECTIONS)),
 
-  http.get("/api/roles", () => refuseWithoutMembersManage() ?? HttpResponse.json(ROLES)),
+  http.get("/api/v1/roles", () => refuseWithoutMembersManage() ?? HttpResponse.json(ROLES)),
 
   // Ordered by name, like the real endpoint: this screen is scanned for a
   // person, and a mock answering in insertion order would hide a sorting bug.
-  http.get("/api/members", () => {
+  http.get("/api/v1/members", () => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -669,7 +669,7 @@ const overrides = [
   // Creating a person creates an ACCOUNT and mints its password, returned once.
   // IT GRANTS NO ROLES — the real API does not either, and a mock that did
   // would hide the second, separately-guarded step from every test.
-  http.post("/api/members", async ({ request }) => {
+  http.post("/api/v1/members", async ({ request }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -711,7 +711,7 @@ const overrides = [
     return HttpResponse.json({ member, generatedPassword: GENERATED_PASSWORD }, { status: 201 });
   }),
 
-  http.patch("/api/members/:id", async ({ request, params }) => {
+  http.patch("/api/v1/members/:id", async ({ request, params }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -762,7 +762,7 @@ const overrides = [
   // outranks self-deletion when both apply, because it is the more informative
   // refusal. Without these the mocked app would let flows through that the real
   // API answers 409 to.
-  http.delete("/api/members/:id", ({ params }) => {
+  http.delete("/api/v1/members/:id", ({ params }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -791,7 +791,7 @@ const overrides = [
   // Replacing roles is PUT, not PATCH: roleIds is the complete set, and an
   // "add this one" API cannot express removal — which is the half the
   // invariants exist for.
-  http.put("/api/members/:id/roles", async ({ request, params }) => {
+  http.put("/api/v1/members/:id/roles", async ({ request, params }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -827,7 +827,7 @@ const overrides = [
     return HttpResponse.json({ member, sessionsEnded: 1 });
   }),
 
-  http.post("/api/members/:id/password", ({ params }) => {
+  http.post("/api/v1/members/:id/password", ({ params }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -846,7 +846,7 @@ const overrides = [
   // The ONE endpoint that still re-authenticates (decision B7). Knowing the
   // current password is this operation's own input, not ceremony: without it a
   // borrowed, unlocked phone locks the real owner out of their own account.
-  http.post("/api/me/password", async ({ request }) => {
+  http.post("/api/v1/me/password", async ({ request }) => {
     if (!currentUser) {
       return unauthenticated();
     }
@@ -889,7 +889,7 @@ const overrides = [
   // THE PLANNING. Reading it needs no permission — everybody in the band needs
   // to know when the next rehearsal is — so this one is gated on nothing but
   // being logged in, exactly like the real route.
-  http.get("/api/events", ({ request }) => {
+  http.get("/api/v1/events", ({ request }) => {
     if (!currentUser) {
       return unauthenticated();
     }
@@ -919,10 +919,10 @@ const overrides = [
     return HttpResponse.json(planning);
   }),
 
-  // BEFORE /api/events/:id, so `series` is never read as an id. MSW matches
+  // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches
   // the first handler whose path matches, and `:id` would happily bind the
   // literal string.
-  http.post("/api/events/series", async ({ request }) => {
+  http.post("/api/v1/events/series", async ({ request }) => {
     const refusal = refuseWithout("events.manage");
     if (refusal) {
       return refusal;
@@ -963,7 +963,7 @@ const overrides = [
     return HttpResponse.json(created, { status: 201 });
   }),
 
-  http.post("/api/events", async ({ request }) => {
+  http.post("/api/v1/events", async ({ request }) => {
     const refusal = refuseWithout("events.manage");
     if (refusal) {
       return refusal;
@@ -980,7 +980,7 @@ const overrides = [
     return HttpResponse.json(event, { status: 201 });
   }),
 
-  http.get("/api/events/:id", ({ params }) => {
+  http.get("/api/v1/events/:id", ({ params }) => {
     if (!currentUser) {
       return unauthenticated();
     }
@@ -988,7 +988,7 @@ const overrides = [
     return event ? HttpResponse.json(event) : notFound();
   }),
 
-  http.patch("/api/events/:id", async ({ request, params }) => {
+  http.patch("/api/v1/events/:id", async ({ request, params }) => {
     const refusal = refuseWithout("events.manage");
     if (refusal) {
       return refusal;
@@ -1018,7 +1018,7 @@ const overrides = [
     return HttpResponse.json(updated);
   }),
 
-  http.delete("/api/events/:id", ({ params }) => {
+  http.delete("/api/v1/events/:id", ({ params }) => {
     const refusal = refuseWithout("events.manage");
     if (refusal) {
       return refusal;

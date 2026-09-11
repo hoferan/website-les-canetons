@@ -11,7 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * GET /api/events/{event}/attendance — a chase list, not a report.
+ * GET /api/v1/events/{event}/attendance — a chase list, not a report.
  */
 class ChaseListTest extends TestCase
 {
@@ -30,7 +30,7 @@ class ChaseListTest extends TestCase
 
     private function url(): string
     {
-        return "/api/events/{$this->event->id}/attendance";
+        return "/api/v1/events/{$this->event->id}/attendance";
     }
 
     public function test_an_anonymous_caller_gets_401_not_403(): void

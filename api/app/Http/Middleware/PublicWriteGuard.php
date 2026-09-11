@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
  * submit-timing plus Altcha "applied generically to both public write
  * endpoints". That requirement was orphaned across three release slicings —
  * R1 covered the members' tool, R2 the public pages, R3 registration, and
- * none of them claimed the contact form — so POST /api/contact shipped with
+ * none of them claimed the contact form — so POST /api/v1/contact shipped with
  * no protection of any kind and still had none when R3 was designed. This is
  * the owner it never had.
  *
@@ -24,7 +24,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  *   1. A HONEYPOT field that must arrive empty. A form-filling bot fills
  *      every input it finds; a human never sees this one.
- *   2. A SIGNED TIMESTAMP issued by GET /api/form-token. A submission under
+ *   2. A SIGNED TIMESTAMP issued by GET /api/v1/form-token. A submission under
  *      two seconds old was not typed by a person. See App\Support\FormToken
  *      for why it is stateless and not single-use.
  *

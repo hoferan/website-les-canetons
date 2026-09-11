@@ -299,10 +299,10 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   owns cookie credentials, Sanctum's CSRF priming (`GET /sanctum/csrf-cookie`
   once per page load) and the `{error, code, fields[]}` error contract. It
   throws a typed `ApiError` for every non-2xx. Never call `fetch("/api/…")`
-  directly: Sanctum's stateful SPA mode puts `/api/*` behind the `web`
+  directly: Sanctum's stateful SPA mode puts `/api/v1/*` behind the `web`
   middleware group, so a mutating request without the replayed `X-XSRF-TOKEN`
   header comes back `419 {"error":"Invalid session","code":"invalid_session"}`.
-- **Runtime configuration comes from `GET /api/config`**, not from
+- **Runtime configuration comes from `GET /api/v1/config`**, not from
   `import.meta.env`. TEST, QA and PROD run the *same promoted bundle*, so no
   environment-specific value may be baked in. That endpoint drives the non-prod
   corner ribbon and the feature flags.
@@ -313,19 +313,34 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   server, and CI's `openapi-drift` job already guarantees that file matches the
   code, so the docs cannot describe an API the generated client does not speak.
   `GET /api/docs.json` serves that document with its `servers` rewritten to a
-  relative `/api`: the committed file pins an absolute production URL (for a
+  relative `/api/v1`: the committed file pins an absolute production URL (for a
   byte-identical export), and serving it untouched would make the docs page on
   TEST fire real requests at PROD.
 
   Both routes sit under `/api/` deliberately, because the `.htaccess` dispatch
   claims that prefix before the SPA fallback. Scramble's own `/docs/api` is
   outside it and has always been swallowed by the fallback.
-- **Auth:** Laravel owns it — `POST /api/login` / `POST /api/logout` via
+- **Auth:** Laravel owns it — `POST /api/v1/login` / `POST /api/v1/logout` via
   Sanctum's stateful SPA cookie flow. The capability matrix is **not a
   hierarchy**: `user`/`moderator` may `respond`; `admin` may `manage_events` /
   `view_summary`, and therefore may *not* respond. `App\Support\Capability`
   (behind the `capability:` route middleware) is the only thing that enforces
   anything; the SPA's guards mirror it for UX only.
+- **The contract is versioned: everything lives under `/api/v1/*`.** The prefix
+  comes from `withRouting(apiPrefix: ApiVersion::PREFIX)` in
+  `api/bootstrap/app.php`, and `App\Http\Middleware\ApiVersion` owns that
+  string so the mount point and the middleware that reads it cannot drift.
+  `api/routes/meta.php` is deliberately **outside** it — `/api/docs`,
+  `/api/docs.json` and `/api/migrate` describe or operate the API rather than
+  being part of it, and a v2 would not get a second copy of either. The
+  `.htaccess` needs no change for any of this: its dispatch matches
+  `^api(/|$)`, which already covers both. That middleware also carries the
+  `Deprecation` / `Sunset` / `Link: rel="successor-version"` headers that will
+  one day retire v1; they are configured in `api/config/api.php` and every one
+  of them is null today, so nothing is emitted. **Those keys must never be
+  added to `api/.env.example`** — the deploy pre-flight refuses on extra keys
+  as well as missing ones, so an optional key there would refuse every
+  server's next deploy.
 - **API:** routes in `api/routes/api.php` (each with a comment saying why it is
   public or which capability gates it), controllers in
   `api/app/Http/Controllers/Api/`, shared logic in `api/app/Support/`. Pair
@@ -342,7 +357,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   this, reading that file directly (which is why the dev container mounts `web/`
   read-only at `/srv/web` — the container's document root holds only built
   bundles).
-- **Environments:** the `env` value from `GET /api/config` drives the non-prod
+- **Environments:** the `env` value from `GET /api/v1/config` drives the non-prod
   corner ribbon. TEST and QA are private behind HTTP Basic Auth; see
   `staging/README.md`.
 

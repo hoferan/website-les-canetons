@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Middleware\ApiVersion;
 use App\Support\Environment;
 use Illuminate\Http\JsonResponse;
 
@@ -18,7 +19,7 @@ use Illuminate\Http\JsonResponse;
  * describe an API the client does not speak.
  *
  * THE ONE THING IT CHANGES, AND WHY. The committed document declares
- * `servers: [{"url": "https://lescanetons.org/api"}]`. That is deliberate —
+ * `servers: [{"url": "https://lescanetons.org/api/v1"}]`. That is deliberate —
  * config/scramble.php pins an absolute production URL so the export is
  * byte-identical on every machine, which is what lets the drift check pass —
  * but Scalar builds every "Send" from that list. Served untouched, the docs
@@ -69,8 +70,10 @@ class DocsDocumentController extends Controller
         // the audience is a developer reading a document whose every other
         // string — endpoint summaries, response descriptions, the schema — is
         // English too.
+        // Built from ApiVersion::PREFIX rather than written out, so the docs
+        // page cannot go on pointing at /api/v1 after the contract has moved.
         $document['servers'] = [[
-            'url' => '/api',
+            'url' => '/'.ApiVersion::PREFIX,
             'description' => Environment::label(),
         ]];
 

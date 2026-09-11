@@ -69,14 +69,14 @@ class GuestListTest extends TestCase
 
     public function test_an_anonymous_caller_gets_401_not_403(): void
     {
-        $this->getJson("/api/events/{$this->event->id}/registrations")->assertStatus(401);
+        $this->getJson("/api/v1/events/{$this->event->id}/registrations")->assertStatus(401);
     }
 
     public function test_an_ordinary_member_cannot_read_the_guest_list(): void
     {
         // Personal data of strangers: name, email, phone, address.
         $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
-            ->getJson("/api/events/{$this->event->id}/registrations")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations")
             ->assertStatus(403);
     }
 
@@ -85,7 +85,7 @@ class GuestListTest extends TestCase
         // PINS THE PERMISSION STRING. demo.committee holds exactly this and
         // nothing else — the role exists so somebody can look at the list.
         $this->actingAsMember(Member::factory()->committee()->create())
-            ->getJson("/api/events/{$this->event->id}/registrations")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations")
             ->assertOk();
     }
 
@@ -94,7 +94,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 3, 1);
 
         $entry = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations")
             ->assertOk()
             ->json('0');
 
@@ -117,7 +117,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
-            ->patchJson("/api/registrations/{$booking->id}", ['lastName' => 'Piraté'])
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['lastName' => 'Piraté'])
             ->assertStatus(403);
 
         $this->assertSame('Maillard', $booking->fresh()->last_name);
@@ -132,7 +132,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
-            ->deleteJson("/api/registrations/{$booking->id}")
+            ->deleteJson("/api/v1/registrations/{$booking->id}")
             ->assertStatus(403);
 
         $this->assertSame(1, Registration::query()->count());
@@ -146,7 +146,7 @@ class GuestListTest extends TestCase
             ->create();
 
         $this->actingAsMember($manager)
-            ->patchJson("/api/registrations/{$booking->id}", ['tableName' => 'Table 4'])
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => 'Table 4'])
             ->assertOk()
             ->assertJsonPath('tableName', 'Table 4');
     }
@@ -156,7 +156,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/registrations/{$booking->id}", ['lastName' => 'Maillard-Rossier'])
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['lastName' => 'Maillard-Rossier'])
             ->assertOk();
 
         $fresh = $booking->fresh();
@@ -175,7 +175,7 @@ class GuestListTest extends TestCase
         $booking->update(['table_name' => 'Table 1']);
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/registrations/{$booking->id}", ['tableName' => null])
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => null])
             ->assertOk();
 
         $this->assertNull($booking->fresh()->table_name);
@@ -186,7 +186,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember($this->organiser)
-            ->patchJson("/api/registrations/{$booking->id}", ['tableName' => 'Table 2']);
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => 'Table 2']);
 
         $this->assertDatabaseHas('audit_log', [
             'action' => 'registration.updated',
@@ -200,7 +200,7 @@ class GuestListTest extends TestCase
         $booking = $this->book('Cuennet', 2, 1);
 
         $this->actingAsMember($this->organiser)
-            ->deleteJson("/api/registrations/{$booking->id}")
+            ->deleteJson("/api/v1/registrations/{$booking->id}")
             ->assertOk()
             ->assertJson(['ok' => true]);
 
@@ -214,7 +214,7 @@ class GuestListTest extends TestCase
     {
         $booking = $this->book('Cuennet');
 
-        $this->actingAsMember($this->organiser)->deleteJson("/api/registrations/{$booking->id}");
+        $this->actingAsMember($this->organiser)->deleteJson("/api/v1/registrations/{$booking->id}");
 
         $this->assertDatabaseHas('audit_log', [
             'action' => 'registration.deleted',
@@ -232,14 +232,14 @@ class GuestListTest extends TestCase
             ->create();
 
         $this->actingAsMember($manager)
-            ->putJson("/api/events/{$this->event->id}/registration-options", ['options' => []])
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
             ->assertStatus(403);
     }
 
     public function test_replacing_the_options_creates_updates_and_deletes(): void
     {
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", [
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", [
                 'options' => [
                     // kept and renamed
                     ['id' => $this->meat->id, 'label' => 'Menu carnivore', 'priceCents' => 4800],
@@ -264,7 +264,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 2, 0);
 
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", ['options' => []])
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
             ->assertStatus(409)
             ->assertJson(['code' => 'option_has_registrations']);
 
@@ -277,7 +277,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 2, 0);
 
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", [
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", [
                 'options' => [['id' => $this->meat->id, 'label' => 'Menu viande', 'priceCents' => 4500]],
             ])
             ->assertOk();
@@ -296,17 +296,17 @@ class GuestListTest extends TestCase
         $this->book('Rossier', 1, 0);
 
         $json = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
             ->assertOk()
             ->json();
 
         $csv = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->get("/api/v1/events/{$this->event->id}/registrations.csv")
             ->assertOk()
             ->getContent();
 
         $md = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.md")
+            ->get("/api/v1/events/{$this->event->id}/registrations.md")
             ->assertOk()
             ->getContent();
 
@@ -332,7 +332,7 @@ class GuestListTest extends TestCase
         $this->book('Rossier', 1, 0);
 
         $json = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
             ->assertOk()
             ->json();
 
@@ -360,7 +360,7 @@ class GuestListTest extends TestCase
         $this->book();
 
         $csv = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->get("/api/v1/events/{$this->event->id}/registrations.csv")
             ->assertOk()
             ->getContent();
 
@@ -373,7 +373,7 @@ class GuestListTest extends TestCase
         $this->book();
 
         $response = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.xlsx")
+            ->get("/api/v1/events/{$this->event->id}/registrations.xlsx")
             ->assertOk();
 
         $this->assertSame(
@@ -389,7 +389,7 @@ class GuestListTest extends TestCase
     public function test_the_filename_is_derived_from_the_event(): void
     {
         $response = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->get("/api/v1/events/{$this->event->id}/registrations.csv")
             ->assertOk();
 
         $this->assertStringContainsString(
@@ -401,7 +401,7 @@ class GuestListTest extends TestCase
     public function test_an_unknown_format_is_a_404_from_the_router(): void
     {
         $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.pdf")
+            ->get("/api/v1/events/{$this->event->id}/registrations.pdf")
             ->assertStatus(404);
     }
 
@@ -411,7 +411,7 @@ class GuestListTest extends TestCase
 
         foreach (['xlsx', 'csv', 'md', 'json'] as $format) {
             $this->actingAsMember($player)
-                ->get("/api/events/{$this->event->id}/registrations.{$format}")
+                ->get("/api/v1/events/{$this->event->id}/registrations.{$format}")
                 ->assertStatus(403);
         }
     }
@@ -428,7 +428,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 3, 1);
 
         $json = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
             ->assertOk()
             ->json();
 
@@ -458,7 +458,7 @@ class GuestListTest extends TestCase
         $this->book('Rossier', 1, 0);
 
         $json = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
             ->assertOk()
             ->json();
 
@@ -481,17 +481,17 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 3, 1);
 
         $json = $this->actingAsMember($this->organiser)
-            ->getJson("/api/events/{$this->event->id}/registrations.json")
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
             ->assertOk()
             ->json();
 
         $csv = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->get("/api/v1/events/{$this->event->id}/registrations.csv")
             ->assertOk()
             ->getContent();
 
         $md = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.md")
+            ->get("/api/v1/events/{$this->event->id}/registrations.md")
             ->assertOk()
             ->getContent();
 
@@ -517,12 +517,12 @@ class GuestListTest extends TestCase
         ]];
 
         $first = $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
         $second = $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
@@ -537,7 +537,7 @@ class GuestListTest extends TestCase
         $body = ['options' => [['label' => 'Menu unique', 'priceCents' => 4500]]];
 
         $created = $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
@@ -546,7 +546,7 @@ class GuestListTest extends TestCase
 
         // The client never saw the first response and sends it again.
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/events/{$this->event->id}/registration-options", $body)
+            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk();
 
         $this->assertSame(1, RegistrationOption::query()->count());
@@ -564,7 +564,7 @@ class GuestListTest extends TestCase
         ]);
 
         $csv = $this->actingAsMember($this->organiser)
-            ->get("/api/events/{$this->event->id}/registrations.csv")
+            ->get("/api/v1/events/{$this->event->id}/registrations.csv")
             ->assertOk()
             ->getContent();
 
@@ -583,7 +583,7 @@ class GuestListTest extends TestCase
 
         foreach (['xlsx', 'csv', 'md', 'json'] as $format) {
             $this->actingAsMember($organiser)
-                ->get("/api/events/{$this->event->id}/registrations.{$format}")
+                ->get("/api/v1/events/{$this->event->id}/registrations.{$format}")
                 ->assertStatus(403);
         }
     }

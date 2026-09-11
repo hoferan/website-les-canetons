@@ -14,14 +14,14 @@ class ConfigEndpointTest extends TestCase
 {
     public function test_it_is_public(): void
     {
-        $this->getJson('/api/config')->assertStatus(200);
+        $this->getJson('/api/v1/config')->assertStatus(200);
     }
 
     public function test_it_reports_the_environment(): void
     {
         config(['app.env' => 'test']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'test');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'test');
     }
 
     /**
@@ -33,7 +33,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'staging-2']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'prod');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'prod');
     }
 
     /**
@@ -49,7 +49,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'local']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'dev');
     }
 
     /**
@@ -62,7 +62,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'production']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'prod');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'prod');
     }
 
     /**
@@ -74,7 +74,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'dev']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'dev');
     }
 
     /**
@@ -86,7 +86,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'qa']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'qa');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'qa');
     }
 
     /**
@@ -97,7 +97,7 @@ class ConfigEndpointTest extends TestCase
      */
     public function test_it_exposes_only_allowlisted_keys(): void
     {
-        $body = $this->getJson('/api/config')->json();
+        $body = $this->getJson('/api/v1/config')->json();
 
         $this->assertSame(['env', 'features'], array_keys($body));
 
@@ -119,7 +119,7 @@ class ConfigEndpointTest extends TestCase
      */
     public function test_it_reports_every_known_feature_flag(): void
     {
-        $this->getJson('/api/config')
+        $this->getJson('/api/v1/config')
             ->assertOk()
             ->assertJsonStructure(['env', 'features' => ['calendar']]);
     }
@@ -128,14 +128,14 @@ class ConfigEndpointTest extends TestCase
     {
         config(['features.calendar' => null]);
 
-        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
     }
 
     public function test_a_flag_is_on_only_when_the_environment_turns_it_on(): void
     {
         config(['features.calendar' => true]);
 
-        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', true);
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', true);
     }
 
     /**
@@ -147,7 +147,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['features.calendar' => 'false']);
 
-        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
     }
 
     /**
@@ -161,14 +161,14 @@ class ConfigEndpointTest extends TestCase
     {
         config(['features.calendar' => '0']);
 
-        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
     }
 
     public function test_the_empty_string_reads_as_false(): void
     {
         config(['features.calendar' => '']);
 
-        $this->getJson('/api/config')->assertOk()->assertJsonPath('features.calendar', false);
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
     }
 
     /**
@@ -185,7 +185,7 @@ class ConfigEndpointTest extends TestCase
      */
     public function test_it_is_not_cacheable(): void
     {
-        $header = $this->getJson('/api/config')->headers->get('Cache-Control');
+        $header = $this->getJson('/api/v1/config')->headers->get('Cache-Control');
 
         $this->assertNotNull($header, 'Expected a Cache-Control header.');
         $this->assertStringContainsString('no-store', $header);

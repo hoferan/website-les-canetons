@@ -92,7 +92,10 @@ class DocsTest extends TestCase
         $servers = $this->getJson('/api/docs.json')->assertOk()->json('servers');
 
         $this->assertCount(1, $servers, 'One server, so there is nothing to pick wrongly.');
-        $this->assertSame('/api', $servers[0]['url']);
+        // Relative, and carrying the version prefix: the committed document
+        // pins https://lescanetons.org/api/v1, and a rewrite that dropped the
+        // /v1 would point every "Send" button at routes that no longer exist.
+        $this->assertSame('/api/v1', $servers[0]['url']);
     }
 
     public function test_the_server_label_names_the_environment_you_are_reading(): void
@@ -219,7 +222,7 @@ class DocsTest extends TestCase
 
     public function test_the_page_replays_the_csrf_token_so_try_it_is_not_419(): void
     {
-        // Sanctum's stateful SPA mode puts /api/* behind the `web` middleware
+        // Sanctum's stateful SPA mode puts /api/v1/* behind the `web` middleware
         // group, so a mutating request without X-XSRF-TOKEN answers
         // 419 {"code":"invalid_session"}. web/src/api/http.ts does this for the
         // SPA; a docs page that skipped it would 419 on the first POST and

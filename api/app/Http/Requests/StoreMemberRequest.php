@@ -18,7 +18,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * There is no `roleIds` field either. A new member starts with no roles and
  * no permissions; granting any is a separate call to
- * `PUT /api/members/{member}/roles`.
+ * `PUT /api/v1/members/{member}/roles`.
  *
  * `sectionId` is the register the member plays in. A member with no register
  * is not answerable for events and never appears in an attendance list, which
@@ -68,7 +68,7 @@ class StoreMemberRequest extends FormRequest
             /** The login, unique across the roster. Lower case letters, digits, dot, hyphen and underscore only, for example `marie.dupont`. */
             'username' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9._-]+$/', 'unique:members,username'],
 
-            /** The register the member plays in, from `GET /api/sections`. Null for somebody who organises but does not play; they are then never listed for attendance. */
+            /** The register the member plays in, from `GET /api/v1/sections`. Null for somebody who organises but does not play; they are then never listed for attendance. */
             'sectionId' => ['nullable', 'integer', 'exists:sections,id'],
             /** The member's function on the committee, shown on the public committee page. Free text, null for most members. */
             'committeeTitle' => ['nullable', 'string', 'max:255'],

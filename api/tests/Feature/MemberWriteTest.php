@@ -63,7 +63,7 @@ class MemberWriteTest extends TestCase
     {
         $section = $this->section();
 
-        $body = $this->acting()->postJson('/api/members', $this->payload([
+        $body = $this->acting()->postJson('/api/v1/members', $this->payload([
             'sectionId' => $section->id,
             'committeeTitle' => 'Présidente',
             'publicVisible' => true,
@@ -87,7 +87,7 @@ class MemberWriteTest extends TestCase
         // straight out of the 201 response, a backdoor needing no password.
         $role = Role::where('key', 'direction')->sole();
 
-        $this->acting()->postJson('/api/members', $this->payload([
+        $this->acting()->postJson('/api/v1/members', $this->payload([
             'roleIds' => [$role->id],
         ]))->assertCreated();
 
@@ -100,7 +100,7 @@ class MemberWriteTest extends TestCase
         // The whole reason create mints a credential rather than leaving the
         // person account-less: a member who cannot log in but can hold
         // members.manage is the ghost administrator that locked the band out.
-        $body = $this->acting()->postJson('/api/members', $this->payload())
+        $body = $this->acting()->postJson('/api/v1/members', $this->payload())
             ->assertCreated()->json();
 
         $this->assertMatchesRegularExpression(
@@ -121,9 +121,9 @@ class MemberWriteTest extends TestCase
 
     public function test_the_password_is_returned_once_and_never_read_back(): void
     {
-        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+        $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
-        $raw = $this->acting()->getJson('/api/members')->assertOk()->getContent();
+        $raw = $this->acting()->getJson('/api/v1/members')->assertOk()->getContent();
 
         $this->assertStringNotContainsString('generatedPassword', $raw);
         $this->assertStringNotContainsString('argon2', $raw);
@@ -131,7 +131,7 @@ class MemberWriteTest extends TestCase
 
     public function test_a_username_is_required_because_every_member_has_an_account(): void
     {
-        $this->acting()->postJson('/api/members', [
+        $this->acting()->postJson('/api/v1/members', [
             'firstName' => 'Nadia',
             'lastName' => 'Sansconnexion',
             'publicVisible' => false,
@@ -146,9 +146,9 @@ class MemberWriteTest extends TestCase
         // The most likely error on this whole screen, so its copy matters. An
         // unmapped `unique` rule would render "Identifiant n'est pas dans un
         // format valide", which is both wrong and unhelpful.
-        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+        $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
-        $this->acting()->postJson('/api/members', $this->payload(['firstName' => 'Autre']))
+        $this->acting()->postJson('/api/v1/members', $this->payload(['firstName' => 'Autre']))
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('fields.0.field', 'username')
@@ -157,7 +157,7 @@ class MemberWriteTest extends TestCase
 
     public function test_a_missing_name_is_a_validation_failure_not_a_500(): void
     {
-        $this->acting()->postJson('/api/members', ['username' => 'x.y', 'publicVisible' => false])
+        $this->acting()->postJson('/api/v1/members', ['username' => 'x.y', 'publicVisible' => false])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('fields.0.field', 'firstName')
@@ -166,7 +166,7 @@ class MemberWriteTest extends TestCase
 
     public function test_creating_a_person_is_audited_with_their_name(): void
     {
-        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+        $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
         $entry = AuditEntry::latest('id')->first();
 
@@ -185,7 +185,7 @@ class MemberWriteTest extends TestCase
             ->publiclyVisible()
             ->create(['committee_title' => 'Caissière']);
 
-        $this->acting()->patchJson("/api/members/{$member->id}", ['lastName' => 'Joueuse'])
+        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['lastName' => 'Joueuse'])
             ->assertOk();
 
         $member->refresh();
@@ -207,7 +207,7 @@ class MemberWriteTest extends TestCase
             ->inSection($this->section())
             ->create(['committee_title' => 'Caissière']);
 
-        $this->acting()->patchJson("/api/members/{$member->id}", [
+        $this->acting()->patchJson("/api/v1/members/{$member->id}", [
             'sectionId' => null,
             'committeeTitle' => null,
         ])->assertOk();
@@ -224,7 +224,7 @@ class MemberWriteTest extends TestCase
         // by themselves.
         $member = Member::factory()->named('Perrine', 'Player')->create();
 
-        $this->acting()->patchJson("/api/members/{$member->id}", [
+        $this->acting()->patchJson("/api/v1/members/{$member->id}", [
             'lastName' => 'Joueuse',
             'username' => 'perrine.player',
         ])->assertOk();
@@ -239,7 +239,7 @@ class MemberWriteTest extends TestCase
         // NULL now, so the whole branch is gone and the rule rejects it.
         $member = Member::factory()->named('Perrine', 'Player')->create();
 
-        $this->acting()->patchJson("/api/members/{$member->id}", ['username' => null])
+        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['username' => null])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('fields.0.field', 'username');
@@ -253,10 +253,10 @@ class MemberWriteTest extends TestCase
         // password prompt on every corrected typo is a prompt people learn to
         // type through without reading — which is worse than not having one,
         // because it trains the reflex the destructive dialogs rely on.
-        $this->acting()->postJson('/api/members', $this->payload())->assertCreated();
+        $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
         $member = Member::where('username', 'perrine.player')->sole();
-        $this->acting()->patchJson("/api/members/{$member->id}", ['firstName' => 'Perry'])
+        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['firstName' => 'Perry'])
             ->assertOk();
     }
 
@@ -264,11 +264,11 @@ class MemberWriteTest extends TestCase
     {
         $player = Member::factory()->named('Perrine', 'Player', 'perrine')->create();
 
-        $this->acting($player)->postJson('/api/members', $this->payload(['username' => 'other.one']))
+        $this->acting($player)->postJson('/api/v1/members', $this->payload(['username' => 'other.one']))
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
 
-        $this->acting($player)->patchJson("/api/members/{$player->id}", ['firstName' => 'X'])
+        $this->acting($player)->patchJson("/api/v1/members/{$player->id}", ['firstName' => 'X'])
             ->assertStatus(403);
     }
 }

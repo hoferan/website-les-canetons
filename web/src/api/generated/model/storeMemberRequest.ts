@@ -14,7 +14,7 @@
  * either. From a browser this is close to automatic:
  *
  * ```js
- * await fetch("/api/login", {
+ * await fetch("/api/v1/login", {
  *   method: "POST",
  *   credentials: "include",
  *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf },
@@ -85,7 +85,7 @@
  *
  * Authorisation is by permission, never by role. Roles are editable data that
  * group permissions; which role granted one is not a question the API answers.
- * `GET /api/me` returns the caller's effective permissions.
+ * `GET /api/v1/me` returns the caller's effective permissions.
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`.
@@ -104,17 +104,17 @@
  *
  * ## Public forms
  *
- * `POST /api/contact` and `POST /api/events/{event}/registrations` are open to
+ * `POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
  * anonymous callers and are protected against automated submission. Both
  * require:
  *
- * - an `X-Form-Token` header, from `GET /api/form-token`, at least two seconds
+ * - an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds
  *   and at most two hours old, and
  * - a `website` field, present and empty.
  *
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
- * OpenAPI spec version: 0.0.1
+ * OpenAPI spec version: 1.0.0
  */
 
 /**
@@ -131,7 +131,7 @@
  *
  * There is no `roleIds` field either. A new member starts with no roles and
  * no permissions; granting any is a separate call to
- * `PUT /api/members/{member}/roles`.
+ * `PUT /api/v1/members/{member}/roles`.
  *
  * `sectionId` is the register the member plays in. A member with no register
  * is not answerable for events and never appears in an attendance list, which
@@ -149,7 +149,7 @@ export interface StoreMemberRequest {
    */
   username: string;
   /**
-   * The register the member plays in, from `GET /api/sections`. Null for somebody who organises but does not play; they are then never listed for attendance.
+   * The register the member plays in, from `GET /api/v1/sections`. Null for somebody who organises but does not play; they are then never listed for attendance.
    * @nullable
    */
   sectionId?: number | null;

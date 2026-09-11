@@ -70,14 +70,14 @@ class RegistrationPublicTest extends TestCase
 
     private function url(?Event $event = null): string
     {
-        return '/api/events/'.($event ?? $this->event)->id.'/registrations';
+        return '/api/v1/events/'.($event ?? $this->event)->id.'/registrations';
     }
 
     // ------------------------------------------------------------ the form
 
     public function test_anybody_may_read_the_form_without_logging_in(): void
     {
-        $this->getJson("/api/events/{$this->event->id}/registration")
+        $this->getJson("/api/v1/events/{$this->event->id}/registration")
             ->assertOk()
             ->assertJsonPath('event.title', 'Souper de soutien')
             ->assertJsonPath('open', true)
@@ -93,7 +93,7 @@ class RegistrationPublicTest extends TestCase
         // event.
         $this->event->update(['notes' => 'Rappeler à Marc d’apporter la caisse.']);
 
-        $body = $this->getJson("/api/events/{$this->event->id}/registration")->assertOk()->json();
+        $body = $this->getJson("/api/v1/events/{$this->event->id}/registration")->assertOk()->json();
 
         $this->assertStringNotContainsString('caisse', json_encode($body));
         $this->assertArrayNotHasKey('notes', $body['event']);
@@ -106,14 +106,14 @@ class RegistrationPublicTest extends TestCase
         // not taking bookings — that is the band's private planning.
         $private = Event::factory()->create();
 
-        $this->getJson("/api/events/{$private->id}/registration")->assertStatus(404);
+        $this->getJson("/api/v1/events/{$private->id}/registration")->assertStatus(404);
     }
 
     public function test_a_closed_form_still_answers_so_it_can_say_so(): void
     {
         $closed = Event::factory()->registrationClosed()->create();
 
-        $this->getJson("/api/events/{$closed->id}/registration")
+        $this->getJson("/api/v1/events/{$closed->id}/registration")
             ->assertOk()
             ->assertJsonPath('open', false);
     }
@@ -345,7 +345,7 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_token_endpoint_issues_a_usable_one(): void
     {
-        $token = $this->getJson('/api/form-token')->assertOk()->json('token');
+        $token = $this->getJson('/api/v1/form-token')->assertOk()->json('token');
 
         $this->assertIsString($token);
         // Not yet valid — it is brand new, which is exactly the point.
@@ -354,10 +354,10 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_contact_form_is_guarded_too(): void
     {
-        // The orphan this middleware finally adopts: POST /api/contact
+        // The orphan this middleware finally adopts: POST /api/v1/contact
         // shipped with no protection of any kind and still had none when R3
         // was designed. No token AND no decoy field: both must refuse.
-        $this->postJson('/api/contact', [
+        $this->postJson('/api/v1/contact', [
             'firstName' => 'A',
             'lastName' => 'B',
             'email' => 'a@example.test',
@@ -370,7 +370,7 @@ class RegistrationPublicTest extends TestCase
 
     public function test_the_contact_form_still_works_with_a_token(): void
     {
-        $this->postJson('/api/contact', $this->publicWriteBody([
+        $this->postJson('/api/v1/contact', $this->publicWriteBody([
             'firstName' => 'A',
             'lastName' => 'B',
             'email' => 'a@example.test',

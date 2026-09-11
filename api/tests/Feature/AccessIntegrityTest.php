@@ -179,11 +179,11 @@ class AccessIntegrityTest extends TestCase
     public function test_a_violation_renders_as_409_in_the_error_contract(): void
     {
         Route::middleware('api')->get(
-            '/api/_test/violation',
+            '/api/v1/_test/violation',
             fn () => throw new AccessIntegrityViolation('cannot_delete_self', 'Cannot delete self'),
         );
 
-        $this->getJson('/api/_test/violation')
+        $this->getJson('/api/v1/_test/violation')
             ->assertStatus(409)
             ->assertJson(['code' => 'cannot_delete_self']);
     }

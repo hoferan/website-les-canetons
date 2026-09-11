@@ -30,7 +30,7 @@ class AttendanceAnswerTest extends TestCase
 
     private function url(): string
     {
-        return "/api/events/{$this->event->id}/attendance";
+        return "/api/v1/events/{$this->event->id}/attendance";
     }
 
     public function test_an_anonymous_caller_gets_401(): void

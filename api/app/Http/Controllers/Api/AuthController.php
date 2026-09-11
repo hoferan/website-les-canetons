@@ -39,7 +39,7 @@ class AuthController extends Controller
      * Anonymous. Send `username` and `password`. A successful call answers
      * `{"ok": true}` and establishes the session cookie every authenticated
      * endpoint reads. It deliberately carries no identity of its own: call
-     * `GET /api/me` afterwards for who you are and what you may do.
+     * `GET /api/v1/me` afterwards for who you are and what you may do.
      *
      * A username that does not exist and a wrong password both answer
      * `401 invalid_credentials`, the same code for each, so that neither can
@@ -93,7 +93,7 @@ class AuthController extends Controller
         $member->forceFill(['last_login_at' => now()])->save();
 
         // Deliberately no role or permissions in this body. The client asks
-        // GET /api/me for identity, so there is exactly one shape describing
+        // GET /api/v1/me for identity, so there is exactly one shape describing
         // who you are and one place to change it.
         $body = ['ok' => true];
 
