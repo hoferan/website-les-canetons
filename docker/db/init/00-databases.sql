@@ -10,7 +10,7 @@
 -- drops every table, so pointing them at the shared lescanetons database would
 -- wipe local dev data on every run.
 CREATE DATABASE IF NOT EXISTS `laravel_api_test`
-  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- The same synthetic local-dev account the rest of the stack uses. The image
 -- grants it on lescanetons only, so the test database needs its own grant.

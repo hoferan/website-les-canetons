@@ -75,6 +75,29 @@ class EnforceAbsoluteSessionLifetime
             return $next($request);
         }
 
+        // AN AUTHENTICATED REQUEST WITH NO SESSION. Today that combination is
+        // unreachable through the front door — Sanctum authenticates this API
+        // by session cookie, so no session means no user and the branch above
+        // has already returned. It becomes reachable the moment a second
+        // credential exists that does not carry one: an API token, which the
+        // public-contract programme's A6 adds.
+        //
+        // Without this guard that request 500s on the session() call below,
+        // which is the same defect a black-box review found in
+        // AuthController::login on 2026-09-11 — found again here by a UTF-8
+        // test that happened to authenticate without a session. Twice in one
+        // codebase makes it a pattern worth naming rather than a one-off:
+        // `$request->session()` throws, it does not return null, and being
+        // inside an authenticated branch is not proof that a session exists.
+        //
+        // Passing through is correct rather than merely safe. This middleware
+        // enforces an ABSOLUTE SESSION lifetime; a caller with no session has
+        // no session to expire, and a token's lifetime is the token's own
+        // business.
+        if (! $request->hasSession()) {
+            return $next($request);
+        }
+
         $startedAt = $request->session()->get('auth.started_at');
         $maxAgeSeconds = ((int) config('session.absolute_lifetime', 720)) * 60;
 

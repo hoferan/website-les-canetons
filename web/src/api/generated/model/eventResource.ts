@@ -121,9 +121,11 @@
  * ## Conventions
  *
  * - Field names are `camelCase` in both directions.
- * - Timestamps are ISO 8601 with an offset (`2026-09-05T10:00:00+02:00`).
- *   Events happen in Europe/Zurich whatever the reader's timezone; send an
- *   offset and one will be honoured.
+ * - **Timestamps are always UTC**, ISO 8601 with a `+00:00` offset
+ *   (`2026-09-05T08:00:00+00:00`). The band is in Europe/Zurich, so convert for
+ *   display — slicing the hour out of the string shows the wrong time.
+ *   On the way IN, send any offset you like and it is honoured; a value with no
+ *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
  * - Collections are returned as bare JSON arrays, with no `data` envelope.
  *
@@ -147,9 +149,9 @@ import type { AttendanceResource } from "./attendanceResource";
 export interface EventResource {
   id: number;
   title: string;
-  /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
+  /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. */
   startsAt: string;
-  /** ISO 8601 with an offset. Always after `startsAt`, and may fall on a later day. */
+  /** ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day. */
   endsAt: string;
   location: string;
   /**

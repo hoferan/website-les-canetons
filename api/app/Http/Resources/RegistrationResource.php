@@ -41,7 +41,7 @@ class RegistrationResource extends JsonResource
             'guestCount' => $this->guest_count,
             /** What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero. */
             'totalCents' => $this->total_cents,
-            'createdAt' => $this->created_at->toIso8601String(),
+            'createdAt' => $this->created_at->utc()->toIso8601String(),
         ];
     }
 

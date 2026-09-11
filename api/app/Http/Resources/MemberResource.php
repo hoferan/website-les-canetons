@@ -83,6 +83,6 @@ class MemberResource extends JsonResource
      */
     private function lastLoginAt(): ?string
     {
-        return $this->last_login_at?->toIso8601String();
+        return $this->last_login_at?->utc()->toIso8601String();
     }
 }

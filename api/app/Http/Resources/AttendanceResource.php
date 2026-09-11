@@ -47,7 +47,7 @@ class AttendanceResource extends JsonResource
      */
     private function recordedAt(): string
     {
-        return $this->updated_at->toIso8601String();
+        return $this->updated_at->utc()->toIso8601String();
     }
 
     /**

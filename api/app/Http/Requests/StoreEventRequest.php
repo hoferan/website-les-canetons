@@ -57,7 +57,7 @@ class StoreEventRequest extends FormRequest
         // it to anything would report the wrong thing.
         return [
             'title' => ['required', 'string', 'max:255'],
-            /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
+            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
             'startsAt' => ['required', 'date'],
             /** ISO 8601 with an offset, strictly after `startsAt`. May fall on a later day; a two-day event is normal. */
             'endsAt' => ['required', 'date', 'after:startsAt'],

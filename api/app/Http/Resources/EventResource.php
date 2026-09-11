@@ -31,9 +31,9 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
+            /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. */
             'startsAt' => $this->startsAt(),
-            /** ISO 8601 with an offset. Always after `startsAt`, and may fall on a later day. */
+            /** ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day. */
             'endsAt' => $this->endsAt(),
             'location' => $this->location,
             /** What to wear, or null when nothing was specified. */
@@ -42,8 +42,8 @@ class EventResource extends JsonResource
             'isPublic' => $this->is_public,
             /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
-            'registrationOpensAt' => $this->registration_opens_at?->toIso8601String(),
-            'registrationClosesAt' => $this->registration_closes_at?->toIso8601String(),
+            'registrationOpensAt' => $this->registration_opens_at?->utc()->toIso8601String(),
+            'registrationClosesAt' => $this->registration_closes_at?->utc()->toIso8601String(),
             'registrationMaxGuests' => $this->registration_max_guests,
             /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
@@ -87,15 +87,39 @@ class EventResource extends JsonResource
      * Scramble types an inline `->toIso8601String()` call as an untyped
      * object in the OpenAPI document, and the docblock below is what makes
      * it `string`.
+     *
+     * ->utc() BEFORE ->toIso8601String(), HERE AND IN EVERY RESOURCE. That call
+     * renders in whatever timezone the Carbon instance is carrying, which is
+     * not always what the database holds: App\Casts\UtcDateTime normalises on
+     * READ, but a model whose attribute was just ASSIGNED keeps the instance it
+     * was given, and Eloquent's class-cast cache hands that same object back.
+     *
+     * A black-box review found the consequence on 2026-09-11.
+     * POST /api/v1/events/series builds its times as Europe/Zurich wall-clock —
+     * a season must keep the same clock time across the daylight-saving change,
+     * which is the whole reason that endpoint takes `H:i` — so its 201 rendered
+     * `+01:00` while a GET on the very same row rendered `+00:00`. The same
+     * instant, the same declared resource, two spellings.
+     *
+     * Forcing it here makes that unreachable whatever a caller left in the
+     * attribute. Tests\Feature\UtcRenderingTest compares a creation response
+     * against a read of the same row, which is the only comparison that catches
+     * it — asserting that a READ is UTC passed throughout.
+     *
+     * It is written inline rather than behind a helper deliberately: a helper
+     * was tried and Scramble could not infer nullability through the static
+     * call, which silently retyped `registrationOpensAt` from `string|null` to
+     * `string` in the published contract. The nullsafe form below is what keeps
+     * that right.
      */
     private function startsAt(): string
     {
-        return $this->starts_at->toIso8601String();
+        return $this->starts_at->utc()->toIso8601String();
     }
 
     /** Typed for the same reason as startsAt(). */
     private function endsAt(): string
     {
-        return $this->ends_at->toIso8601String();
+        return $this->ends_at->utc()->toIso8601String();
     }
 }

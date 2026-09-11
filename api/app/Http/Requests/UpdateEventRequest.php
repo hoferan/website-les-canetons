@@ -53,7 +53,7 @@ class UpdateEventRequest extends FormRequest
 
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            /** ISO 8601 with an offset. The event happens at this wall-clock time in Europe/Zurich. */
+            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
             'startsAt' => ['sometimes', 'required', 'date'],
             /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. */
             'endsAt' => ['sometimes', 'required', 'date', ...$this->afterTheStart($event)],

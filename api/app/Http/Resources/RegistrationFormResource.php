@@ -30,14 +30,14 @@ class RegistrationFormResource extends JsonResource
         return [
             'event' => [
                 'title' => $this->title,
-                'startsAt' => $this->starts_at->toIso8601String(),
-                'endsAt' => $this->ends_at->toIso8601String(),
+                'startsAt' => $this->starts_at->utc()->toIso8601String(),
+                'endsAt' => $this->ends_at->utc()->toIso8601String(),
                 'location' => $this->location,
             ],
             'options' => RegistrationOptionResource::collection($this->registrationOptions),
             'maxGuests' => $this->registration_max_guests,
-            'opensAt' => $this->registration_opens_at?->toIso8601String(),
-            'closesAt' => $this->registration_closes_at?->toIso8601String(),
+            'opensAt' => $this->registration_opens_at?->utc()->toIso8601String(),
+            'closesAt' => $this->registration_closes_at?->utc()->toIso8601String(),
             'open' => $this->registrationIsOpen(),
         ];
     }
