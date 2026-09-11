@@ -107,7 +107,10 @@ class AuthController extends Controller
         // regenerating migrates the session data and writing before it would
         // work but reads as though the order did not matter — it does the day
         // someone switches to a driver that does not migrate.
-        $request->session()->put('auth.started_at', time());
+        // now()->timestamp, so the stamp and the check in
+        // EnforceAbsoluteSessionLifetime read the same clock — the one a test
+        // can move.
+        $request->session()->put('auth.started_at', now()->timestamp);
 
         /** @var Member $member */
         $member = Auth::user();

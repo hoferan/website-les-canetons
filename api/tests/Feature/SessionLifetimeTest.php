@@ -178,6 +178,49 @@ class SessionLifetimeTest extends TestCase
             ->assertJson(['code' => 'not_authenticated']);
     }
 
+    /**
+     * The absolute lifetime is measured on the clock the application uses, not
+     * on the wall clock.
+     *
+     * WHY THIS IS WORTH A TEST. The check read `time()` until 2026-09-11, which
+     * Carbon's test clock cannot move, so the two assertions below could not
+     * both hold: travelling past the lifetime left the session valid, and
+     * travelling backwards expired one that had only just started. The second
+     * is how it surfaced — EventIndexTest travels to 10:00 today for an
+     * unrelated rule, and after 22:00 local every one of its requests answered
+     * 401, a red bar once a day for a reason nothing in that file mentions.
+     *
+     * The two directions are both here deliberately. Only the first fails
+     * against `time()` in an obvious way; the second is the one that was
+     * actually costing time, and it passes for the wrong reason if the stamp
+     * and the check ever read different clocks again.
+     */
+    public function test_the_absolute_lifetime_follows_the_applications_clock(): void
+    {
+        $member = $this->member();
+        $lifetime = (int) config('session.absolute_lifetime');
+
+        $session = $this->actingAs($member)
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp]);
+
+        $this->travel($lifetime + 1)->minutes();
+
+        $session->getJson('/api/v1/me')->assertStatus(401);
+
+        $this->travelBack();
+
+        // The other direction: a session stamped at the travelled time is as
+        // fresh as one stamped now, however far from the wall clock it is.
+        $this->travelTo(now()->subHours(13));
+
+        $this->actingAs($member)
+            ->withHeaders(['Origin' => 'http://localhost'])
+            ->withSession(['auth.started_at' => now()->timestamp])
+            ->getJson('/api/v1/me')
+            ->assertOk();
+    }
+
     public function test_a_session_with_no_stamp_is_refused(): void
     {
         // A session predating this middleware, or one forged by hand. Failing

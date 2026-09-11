@@ -101,7 +101,14 @@ class EnforceAbsoluteSessionLifetime
         $startedAt = $request->session()->get('auth.started_at');
         $maxAgeSeconds = ((int) config('session.absolute_lifetime', 720)) * 60;
 
-        if (! is_int($startedAt) || (time() - $startedAt) > $maxAgeSeconds) {
+        // now()->timestamp, NOT time(). The stamp is written with the same
+        // call, and Carbon's clock is the one a test can move — PHP's cannot.
+        // Reading the real clock here made EventIndexTest fail once a day: it
+        // travels to 10:00 today to pin an unrelated rule, so the session it
+        // creates is stamped 10:00 while this compared against the wall clock,
+        // and every request after 22:00 local answered 401 for a reason with
+        // nothing to do with what that test asserts. Found 2026-09-11 at 22:20.
+        if (! is_int($startedAt) || (now()->timestamp - $startedAt) > $maxAgeSeconds) {
             Auth::guard('web')->logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
