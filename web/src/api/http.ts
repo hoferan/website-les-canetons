@@ -14,9 +14,10 @@
  *    returning the body alone type-checks everywhere and is undefined at
  *    runtime. Call sites read `.data`; through a TanStack Query hook that
  *    reads `query.data.data`, the outer one being Query's own.
- *  - Errors use this API's own contract, {error, code, fields[]}, not Laravel's
- *    {message, errors}. `code` and `fields[].reason` are stable machine tokens
- *    the display layer translates into French; they are never shown raw.
+ *  - Errors are RFC 9457 problem documents on application/problem+json, not
+ *    Laravel's {message, errors}. `code` and `errors[].reason` are stable
+ *    machine tokens the display layer translates into French; they are never
+ *    shown raw. `title` is English prose for a log and must never be rendered.
  *
  * Signature note: orval's `httpClient: 'fetch'` mode calls its mutator as
  * `customFetch<T>(url, options)` — a URL string (already spec-relative, with
@@ -135,14 +136,21 @@ async function toApiError(response: Response): Promise<ApiError> {
   }
 
   // An RFC 9457 problem document. `type` and `title` are the standard members;
-  // `code`, `errors` and `requestId` are this API's extensions — see
-  // App\Exceptions\ApiError. Only `code` is load-bearing here: it is the token
-  // the French layer maps, and a body without one is not our contract at all.
+  // `code`, `errors`, `requestId` and `documentation` are this API's extensions
+  // — see App\Exceptions\ApiError. Only `code` is load-bearing here: it is the
+  // token the French layer maps, and a body without one is not our contract.
+  //
+  // `type` and `documentation` are declared but deliberately not carried onto
+  // ApiError. `type` is a URN saying the same thing as `code`, and
+  // `documentation` points at the English developer reference — neither belongs
+  // on a French screen. They are typed so the shape here stays an honest
+  // description of the wire.
   const problem = body as {
     title?: string;
     code?: string;
     errors?: ApiErrorField[];
     requestId?: string;
+    documentation?: string;
   };
 
   if (typeof problem?.code !== "string") {

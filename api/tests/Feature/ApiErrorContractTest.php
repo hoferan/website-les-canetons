@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Support\ErrorVocabulary;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Route;
@@ -44,9 +45,10 @@ class ApiErrorContractTest extends TestCase
 
         $body = $response->json();
 
-        // Under /api/problems, where ProblemController actually serves a
-        // document for it — ProblemPagesTest fetches this exact URI.
-        $this->assertSame('/api/problems/validation-failed', $body['type']);
+        // A URN, which resolves to nothing by design: `type` identifies the
+        // problem type and nothing more. `documentation` below is the member a
+        // human clicks — see App\Support\ErrorVocabulary::TYPE_BASE.
+        $this->assertSame('urn:lescanetons:problem:validation_failed', $body['type']);
         $this->assertSame('Invalid form submission', $body['title']);
         $this->assertSame(400, $body['status']);
         $this->assertSame('/api/v1/_contract_probe', $body['instance']);
@@ -61,11 +63,14 @@ class ApiErrorContractTest extends TestCase
         // middleware uses to decide whether to trust an inbound one.
         $this->assertTrue(Str::isUlid($body['requestId']), 'requestId is not a ULID.');
 
+        $this->assertSame(ErrorVocabulary::DOCUMENTATION, $body['documentation']);
+
         $this->assertSame(
-            ['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId'],
+            ['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation'],
             array_keys($body),
-            'The problem document gained or lost a member. Both halves of the '
-            .'contract — web/src/api/http.ts and the OpenAPI components — have to move with it.'
+            'The problem document gained or lost a member. Three things have to move with '
+            .'it: web/src/api/http.ts, the OpenAPI components, and the worked example in '
+            .'config/scramble.php — which DocsDescriptionTest checks against this very shape.'
         );
     }
 

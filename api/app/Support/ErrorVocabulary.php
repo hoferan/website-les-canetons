@@ -27,48 +27,57 @@ namespace App\Support;
 final class ErrorVocabulary
 {
     /**
-     * The namespace every `type` URI is built under, and the path the endpoint
-     * that answers them is served at. One constant, so those two cannot
-     * disagree — a `type` pointing somewhere nothing is served is the exact
-     * failure this endpoint exists to prevent.
+     * The namespace every `type` is built under.
      *
-     * A RELATIVE URI REFERENCE, and that is the whole design. RFC 9457 types
-     * `type` as a URI *reference*, which includes relative ones, resolved
-     * against the document that carried it. So this string gets both properties
-     * that an absolute URL can only have one of:
+     * A URN, and it is deliberately NOT FETCHABLE. `type` has exactly one job —
+     * identify the problem type, which RFC 9457 calls the primary identifier a
+     * consumer branches on — and a URN does that job while promising nothing
+     * else. Identifier and locator are separate concerns, and conflating them
+     * is what made every earlier attempt here wrong:
      *
-     *   IDENTICAL IN EVERY ENVIRONMENT, so it is a stable key. A client that
-     *   branches on `type` — which RFC 9457 says is the primary identifier —
-     *   keeps working when it is pointed from a local stack at production.
-     *   Three per-host absolute URLs would give one problem type three
-     *   identities and break that switch on promotion.
+     *   An absolute https://lescanetons.org/problems/... URL never resolved on
+     *   a developer's machine, and — worse — a server running a newer build
+     *   emits codes production does not have, so its errors pointed at a
+     *   production page that 404s for a type which genuinely exists on the
+     *   machine that answered.
      *
-     *   RESOLVES ON THE HOST THAT ANSWERED. An absolute production URL was the
-     *   first attempt here, and it had a flaw André found: a server running a
-     *   newer build emits codes production does not have yet, so its error
-     *   documents pointed at a production page that 404s for a type which
-     *   genuinely exists on the machine that answered. Relative, it always
-     *   names a document on the host that emitted it — including localhost,
-     *   where the absolute form never resolved at all.
+     *   A relative /api/problems/... URL fixed that by being served from an
+     *   endpoint of its own, at the cost of a controller, two routes, a test
+     *   file, an ongoing "should it be versioned" question, and a second human
+     *   surface for words that already live in the Scalar reference.
      *
-     * UNVERSIONED. A problem type outlives a contract version — `not_found`
-     * means the same thing in v1 and v2 — and this is an identifier clients
-     * branch on, so it can never be changed once anything depends on it.
+     * A URN has none of those failure modes because it makes no promise to
+     * resolve: it cannot 404, cannot differ between environments, cannot drift,
+     * and needs no route. What a human clicks is DOCUMENTATION below, carried
+     * on the same document — the locator, free to move, because nothing
+     * branches on it.
+     *
+     * Strictly, RFC 8141 wants an IANA-registered namespace identifier and
+     * `lescanetons` is not one; an unregistered NID is very widely used in
+     * practice, and `tag:lescanetons.org,2026:problem/...` (RFC 4151) is the
+     * pedantically correct alternative if that ever matters.
+     *
+     * UNVERSIONED, and with a URN that is free rather than argued for. A
+     * problem type outlives a contract version — `not_found` means the same
+     * thing in v1 and v2 — and clients branch on this, so it can never change
+     * once anything depends on it.
      */
-    public const TYPE_BASE = '/api/problems/';
+    public const TYPE_BASE = 'urn:lescanetons:problem:';
 
     /**
-     * Where a human reads these, linked from every document this serves.
+     * Where a human reads these. Carried on every problem document.
      *
-     * The Scalar reference renders the same list from the same source — see
-     * markdown() below — as a sidebar group, so a developer who lands on the
-     * JSON has one hop to prose without this endpoint having to render any.
+     * This is the locator half of the pair, and it exists because `type` is
+     * deliberately unfetchable: a developer who wants prose needs somewhere to
+     * click, and it should not be `type`. The Scalar reference renders the
+     * whole vocabulary from the same source — see markdown() below — as a
+     * sidebar group.
      *
-     * The fragment is Scalar's own heading slug, so it is the one string here
-     * that a Scalar upgrade could invalidate. It is used anyway because the
-     * failure is SOFT: a stale fragment still lands the reader on the reference
-     * and merely fails to scroll. That is exactly the risk `type` cannot take,
-     * which is why `type` points here and not at the docs page.
+     * The fragment is Scalar's own heading slug, the one string here their
+     * upgrade could invalidate. Used anyway because the failure is SOFT: a
+     * stale fragment still lands the reader on the reference and merely fails
+     * to scroll. `type` could not take that risk; this can, which is precisely
+     * why the two are separate members.
      */
     public const DOCUMENTATION = '/api/docs#description/problem-types';
 
@@ -243,28 +252,19 @@ final class ErrorVocabulary
     }
 
     /**
-     * The URL-facing spelling of a code.
+     * The `type` a problem document carries for this code.
      *
-     * Hyphenated, because a URI path segment conventionally is, while `code`
-     * stays snake_case like every other machine token in this API. The two
-     * spellings of one token are the price of both conventions being right in
-     * their own place; codeFrom() below is the way back.
+     * The code goes in VERBATIM, underscores and all. The URL form needed a
+     * hyphenated spelling — a URI path segment conventionally is — which meant
+     * one token had two spellings and a pair of functions to convert between
+     * them, plus a route that had to accept both so a developer typing the code
+     * they could see was not met with a 404. A URN has no such convention, so
+     * that entire seam is gone: `type` is the prefix plus the code, and the two
+     * can be read off each other by eye.
      */
-    public static function slug(string $code): string
-    {
-        return str_replace('_', '-', $code);
-    }
-
-    /** The code a URL segment names, accepting either spelling. */
-    public static function codeFrom(string $slug): string
-    {
-        return str_replace('-', '_', $slug);
-    }
-
-    /** The `type` URI a problem document carries for this code. */
     public static function typeUri(string $code): string
     {
-        return self::TYPE_BASE.self::slug($code);
+        return self::TYPE_BASE.$code;
     }
 
     /**
@@ -323,11 +323,14 @@ final class ErrorVocabulary
         foreach (self::all() as $problem) {
             $lines[] = sprintf('### `%s`', $problem['code']);
             $lines[] = '';
+            // The `type` as code, NOT as a link: it is a URN and resolves to
+            // nothing by design. Rendering it as a link would recreate the
+            // broken promise the URN exists to avoid — this section IS the
+            // documentation those identifiers refer to.
             $lines[] = sprintf(
-                '**%d** · `%s` · [%s](%s)',
+                '**%d** · `%s` · `%s`',
                 $problem['status'],
                 $problem['title'],
-                $problem['type'],
                 $problem['type'],
             );
             $lines[] = '';

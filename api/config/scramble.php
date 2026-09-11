@@ -146,25 +146,33 @@ problem document, served as `application/problem+json`:
 
 ```json
 {
-  "type": "https://lescanetons.org/problems/validation-failed",
+  "type": "urn:lescanetons:problem:validation_failed",
   "title": "Invalid form submission",
   "status": 400,
   "instance": "/api/v1/events/42",
   "code": "validation_failed",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
-  "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P"
+  "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P",
+  "documentation": "/api/docs#description/problem-types"
 }
 ```
 
 `type`, `title`, `status` and `instance` are the standard members. `code`,
-`errors` and `requestId` are this API's extensions, which RFC 9457 permits.
+`errors`, `requestId` and `documentation` are this API's extensions, which
+RFC 9457 permits.
 
 **Branch on `code`, not on `title`.** `code` and `errors[].reason` are stable
 machine tokens; `title` is English prose meant for a log, and it may be
 reworded without notice. The front end maps the tokens to French, and any
-other client should do the same. `type` carries the same token as `code`,
-hyphenated, for a reader who prefers the URI; those URIs identify a problem
-type and are not currently documents you can fetch.
+other client should do the same.
+
+`type` is the same token as `code` with a namespace in front, for a client
+that discriminates on `type` as RFC 9457 intends. It is a **URN and resolves
+to nothing on purpose**: its only job is to identify the problem type, and an
+identifier that also tried to be a fetchable address would be one more thing
+that can move, 404, or differ between environments. What you click instead is
+`documentation`, which points at the *Problem types* section below — the same
+list, and free to move precisely because nothing branches on it.
 
 `errors` is always present, and empty for a failure with nothing field-level
 to say. A `reason` may carry `params` (for example `{"max": 255}`) when the
@@ -225,9 +233,11 @@ to 10 requests a minute per IP.
 
 ## Problem types
 
-Every failure this API can answer with, and what each one means. The headings
-are the `code` member; the link is the `type` URI, which resolves to the same
-entry as a standalone page on whichever host answered you.
+Every failure this API can answer with, and what each one means. The heading is
+the `code` member, and beside each one is the status it answers with, its
+English `title`, and the `type` URN that identifies it.
+
+This section is what every problem document's `documentation` member points at.
 
 MARKDOWN.ErrorVocabulary::markdown(),
     ],

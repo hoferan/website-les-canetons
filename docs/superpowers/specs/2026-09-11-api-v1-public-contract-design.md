@@ -109,13 +109,14 @@ rather than an archaeology project.
 
 ```json
 {
-  "type": "https://lescanetons.org/problems/validation-failed",
+  "type": "urn:lescanetons:problem:validation_failed",
   "title": "Invalid form submission",
   "status": 400,
   "instance": "/api/v1/events/42",
   "code": "validation_failed",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
-  "requestId": "01JB3K7QW8ZX..."
+  "requestId": "01JB3K7QW8ZX...",
+  "documentation": "/api/docs#description/problem-types"
 }
 ```
 
@@ -139,50 +140,45 @@ Served as `application/problem+json` on every failure.
   inbound `X-Request-Id` when it is a well-formed ULID, echoed on **every** response,
   attached to the log context, and carried in the problem body. A member reporting a
   failure then hands over a string that finds the log line.
-- The `type` URI is **`/api/problems/<code-with-hyphens>`, a relative reference**,
-  and it resolves — see the amendment below.
+- **`type` is a URN** and **`documentation`** is what a human clicks — see the
+  amendment below, which replaced two earlier attempts at a fetchable `type`.
 
-### Amended 2026-09-11: `type` resolves, and it is relative
+### Amended 2026-09-11: `type` is a URN, and there is no endpoint
 
-The original text above said `type` would be an absolute production URL that did not
-resolve, calling the pages "a deliberate deferral". Both halves were wrong, and
-André found the flaw in the second.
+This section was rewritten twice in one day, and the final answer is smaller
+than either attempt. Both earlier ones conflated two jobs that RFC 9457 keeps
+apart: `type` **identifies** a problem type; something else **locates** the
+documentation.
 
-**It resolves.** A `type` that looks fetchable and 404s is a small lie told to every
-developer who pastes it into a browser, and it is expensive to correct later: the
-moment a client branches on `type`, changing it is a breaking change. `/api/problems`
-and `/api/problems/{code}` now serve it — unversioned in `routes/meta.php`, because a
-problem type outlives a contract version, and ungated, unlike `/api/docs`, because the
-vocabulary already ships to every visitor inside the SPA bundle and a `type` that
-resolved only where `API_DOCS_ENABLED` happened to be on would be worse than one that
-never resolved.
+The first attempt made `type` an absolute production URL that did not resolve.
+The second made it a relative URL served by a real endpoint at `/api/problems`.
+Both were answers to "how do we make `type` fetchable", which turned out to be
+the wrong question — pursued through a Blade page that answered `curl` with
+HTML, a versioning argument, and a second human surface for words that already
+had a good home.
 
-**It is a JSON endpoint, not a page.** It was briefly content-negotiated with a Blade
-view, which meant `curl /api/problems/{code}` answered with HTML — backwards for
-anything under `/api/`. André caught it, along with the reason the whole arrangement
-felt wrong: problem types are data, and the page bought nothing even in availability,
-since these routes are the same Laravel app in the same middleware group as
-`/api/v1/*`. If the API is down, a page here is down with it. So the view is gone;
-every document carries a `documentation` member pointing at the Scalar section, and a
-browser aimed straight at the endpoint still gets something readable because browsers
-pretty-print JSON.
+**`type` is now `urn:lescanetons:problem:<code>`.** A URN cannot 404, cannot
+differ between environments, cannot drift, and needs no route. The code goes in
+verbatim, which also deleted the hyphen/underscore seam: one token, one
+spelling, no conversion functions and no route accepting both.
 
-That also retired a framing error of mine. The page, its styling and its dark-mode
-toggle were built because I argued `type` needed a *human-readable* destination — and
-then the reference went inside Scalar, which does that job better and cannot drift,
-making the page redundant within the hour.
+**`documentation` is the locator**, carried on every problem document, pointing
+at the *Problem types* section of the reference. It can move freely precisely
+because nothing branches on it — which is the property `type` must never have.
 
-**It is relative, not absolute.** The absolute form had a fault beyond not resolving
-locally: a server running a newer build emits codes production does not have yet, so
-its error documents pointed at a production page that 404s for a type which genuinely
-exists on the machine that answered. A relative URI reference — which RFC 9457 permits,
-typing `type` as a URI *reference* — keeps the property the absolute form was chosen
-for, since the string is byte-identical everywhere and therefore still a stable key a
-client can branch on, while resolving against whichever host served the document. Per-host
-absolute URLs would have given one problem type three identities and broken that
-branching on promotion.
+**`/api/problems` is deleted**, with its controller, its routes and its test
+file. It bought nothing in availability (same Laravel app, same middleware group
+as `/api/v1/*` — if the API is down it is down), and its human-readable content
+lives in the Scalar reference, generated from the same `ErrorVocabulary`.
 
-**The reference lives inside Scalar too.** `ErrorVocabulary::markdown()` generates the
+**Removing `type` altogether was considered and rejected.** RFC 9457 §4.2.1
+defines an absent `type` as `about:blank`, meaning "no semantics beyond the
+status code" — untrue of an API with three distinct 409s. It would have kept
+RFC 9457's shape while making `code` a proprietary discriminator, which is the
+arrangement adopting the RFC was meant to avoid. Once `type` is a URN its cost
+is one line, so deleting it would have spent conformance for no remaining saving.
+
+**The reference lives inside Scalar. `ErrorVocabulary::markdown()` generates the
 whole section into `info.description`, which Scalar parses into a collapsible sidebar
 group beside Session and Events. That answers the styling question by dissolving it:
 there is no plugin that makes a hand-built page look like Scalar, and a hand-matched

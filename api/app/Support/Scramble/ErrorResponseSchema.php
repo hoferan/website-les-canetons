@@ -8,7 +8,8 @@ use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
  * Builds the OpenAPI schema for App\Exceptions\ApiError's response body — an
  * RFC 9457 problem document:
  *
- *     {"type", "title", "status", "instance", "code", "errors":[…], "requestId"}
+ *     {"type", "title", "status", "instance", "code", "errors":[…], "requestId",
+ *      "documentation"}
  *
  * One builder, every extension, so the documented contract cannot differ between
  * statuses. ApiError is the authority on the shape; this only describes it, and
@@ -60,7 +61,12 @@ final class ErrorResponseSchema
                 ))
             ->addProperty('requestId', (new OpenApiTypes\StringType)
                 ->setDescription('ULID identifying this request. Echoed as the X-Request-Id header, and in the logs.'))
-            ->setRequired(['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId']);
+            ->addProperty('documentation', (new OpenApiTypes\StringType)
+                ->setDescription(
+                    'Where a human reads what this means. `type` is a URN and resolves to '
+                    .'nothing by design; this is the member to follow.'
+                ))
+            ->setRequired(['type', 'title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation']);
     }
 
     /**

@@ -290,6 +290,12 @@ final class ApiError
      *   `requestId` is what a member reads out over the telephone. See
      *               App\Http\Middleware\RequestId.
      *
+     *   `documentation` is where a human reads what any of this means. It
+     *               exists because `type` is a URN and deliberately resolves to
+     *               nothing: identifier and locator are different jobs, and the
+     *               member that can be clicked has to be the one nothing
+     *               branches on, so that it stays free to move.
+     *
      * `errors` is ALWAYS present, empty where there is nothing field-level to
      * say. The previous contract omitted `fields` when empty, which made it
      * optional in the document and meant every consumer needed a null check for
@@ -321,6 +327,7 @@ final class ApiError
             'code' => $code,
             'errors' => $orderedErrors,
             'requestId' => RequestId::current(),
+            'documentation' => ErrorVocabulary::DOCUMENTATION,
         ];
 
         return response()
