@@ -109,6 +109,94 @@ token therefore refuses every correctly built test/qa overlay.
 
 ---
 
+## Scramble: an `extensions` entry that is silently never called
+
+`config/scramble.php`'s `extensions` array is documented as taking extensions,
+and its filter really does accept an `OperationExtension` — but one listed there
+is **never invoked**. That array feeds the pipelines which build schemas and
+responses from TYPES. Operation transformers are a separate pipeline.
+
+Register one through the provider instead:
+
+```php
+// AppServiceProvider::boot()
+Scramble::configure()->withOperationTransformers(MyExtension::class);
+```
+
+Cost an hour on 2026-09-11. The symptom is nothing at all: the export succeeds,
+the document is unchanged, no warning anywhere. **Diagnose it by putting a
+`throw` in `handle()`** — if the export still succeeds, the class is not being
+called and the problem is registration, not logic.
+
+## Scramble: a request body's content entry IS a `$ref`
+
+To extend a request schema from an extension, resolve the reference at the
+CONTENT level, not one level deeper:
+
+```php
+$body = $operation->requestBodyObject?->content['application/json'] ?? null;
+if ($body instanceof Reference) {                    // <- the entry itself
+    $body = $this->openApiTransformer->getComponents()->get($body);
+}
+$type = $body instanceof Schema ? $body->type : null;
+```
+
+Resolving `$body->type` instead silently does nothing: the header a sibling call
+added still appears, so it looks like it worked. Larastan calls the
+`instanceof Reference` branch impossible, because Scramble's docblock types
+`content` as `Schema|null` — the docblock is narrower than the runtime, and a
+`var_dump` settles it. `@phpstan-ignore instanceof.alwaysFalse` with a note.
+
+## Scramble: what breaks nullability and what leaks into descriptions
+
+Two ways the exported document quietly stops matching the code:
+
+- **A helper hides nullability.** `Instant::iso($this->opens_at)` returning
+  `?string` was typed `string` in the document, silently making an optional
+  field required for every generated client. `$this->opens_at?->utc()->toIso8601String()`
+  keeps it `string|null` — Scramble reads the nullsafe operator, not the
+  signature. Caught by the mocks' typecheck, not by any API test.
+- **A comment above an array key becomes that property's `description`.** An
+  implementation note written above `'errors' => ...` in `ApiError::json()` was
+  published into the OpenAPI document. Hoist the explanation above the whole
+  statement, or out of the literal entirely.
+
+## Scalar: a heading wrapped in backticks gets no route
+
+Scalar builds each heading's anchor from its **plain text**, so a heading whose
+text is entirely inside a code span slugifies to nothing — every such heading
+collapses to the same empty route and none is addressable:
+
+```markdown
+### `validation_failed`   ->  api-1/description/          (empty, collides)
+### validation_failed     ->  api-1/description/validation-failed
+```
+
+What made it visible: an ordinary prose heading two sections above routed
+correctly, so the slugifier plainly worked. Put the formatting in the line
+below the heading instead.
+
+## `$request->session()` throws — and being authenticated does not imply a session
+
+It raises `RuntimeException: Session store not set on request` rather than
+returning null. Two 500s came from this in one codebase: `AuthController::login`
+and `EnforceAbsoluteSessionLifetime`, both inside branches where a user was
+already authenticated, which felt like proof a session existed. It is not — a
+request Sanctum has not treated as stateful reaches an authenticated branch with
+no session at all.
+
+Guard with `$request->hasSession()` wherever a session is touched outside the
+`web` group. Note that the whole test suite hides this: every login test sets an
+`Origin` matching `SANCTUM_STATEFUL_DOMAINS`, because that is what the SPA does,
+so the failing path is the one nothing internal drives.
+
+## `bcrypt()` in a test against an argon2id app
+
+`Member::factory()->create(['password' => bcrypt('x')])` makes `Hash::check`
+**throw** `Could not verify the hashed value's configuration` rather than return
+false — so the test fails with a confusing framework error rather than a failed
+assertion. Use `Hash::make()`, which follows the configured driver.
+
 # Decisions taken in conversation, not visible in the code
 
 - **WordPress is abandoned.** A greenfield rebuild was designed and half-built

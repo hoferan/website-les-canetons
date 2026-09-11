@@ -225,6 +225,27 @@ migration retries on every request. The emergency switch is
 `AUTO_MIGRATE=false`. This is why migrations must stay idempotent *and*
 backward-compatible.
 
+## Traps
+
+**`docs/traps.md` collects the things that cost real debugging time and are not
+obvious from the code.** Read the entries covering whatever you are about to
+touch *before* you start — that is the whole point of the file. Its traps are
+the ones you would not meet in time otherwise: a Scramble extension that is
+never called and reports nothing, `$request->session()` throwing rather than
+returning null, a Scalar heading that silently gets no anchor.
+
+Where a new trap goes depends on when you would need it:
+
+| Home | For |
+| --- | --- |
+| A comment at the line | Anyone editing that code will see it |
+| `docs/traps.md` | You need it *before* opening a file, so no comment could reach you |
+| This file | It changes what you do by default on **every** task |
+
+Keep it in one of them, not several. This file is loaded into every session, so
+a trap that belongs in `docs/traps.md` costs context on every turn if it lands
+here instead.
+
 ## Superpowers Skills
 
 This project ships with [Superpowers](https://github.com/obra/superpowers) skills in `.claude/skills/`. These are loaded automatically at session start. Always use the `Skill` tool to invoke them — never read skill files manually.
