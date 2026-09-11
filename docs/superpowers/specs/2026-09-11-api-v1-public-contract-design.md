@@ -152,10 +152,25 @@ André found the flaw in the second.
 developer who pastes it into a browser, and it is expensive to correct later: the
 moment a client branches on `type`, changing it is a breaking change. `/api/problems`
 and `/api/problems/{code}` now serve it — unversioned in `routes/meta.php`, because a
-problem type outlives a contract version; ungated, unlike `/api/docs`, because the
+problem type outlives a contract version, and ungated, unlike `/api/docs`, because the
 vocabulary already ships to every visitor inside the SPA bundle and a `type` that
 resolved only where `API_DOCS_ENABLED` happened to be on would be worse than one that
-never resolved; and content-negotiated, so a browser gets a page and a tool gets JSON.
+never resolved.
+
+**It is a JSON endpoint, not a page.** It was briefly content-negotiated with a Blade
+view, which meant `curl /api/problems/{code}` answered with HTML — backwards for
+anything under `/api/`. André caught it, along with the reason the whole arrangement
+felt wrong: problem types are data, and the page bought nothing even in availability,
+since these routes are the same Laravel app in the same middleware group as
+`/api/v1/*`. If the API is down, a page here is down with it. So the view is gone;
+every document carries a `documentation` member pointing at the Scalar section, and a
+browser aimed straight at the endpoint still gets something readable because browsers
+pretty-print JSON.
+
+That also retired a framing error of mine. The page, its styling and its dark-mode
+toggle were built because I argued `type` needed a *human-readable* destination — and
+then the reference went inside Scalar, which does that job better and cannot drift,
+making the page redundant within the hour.
 
 **It is relative, not absolute.** The absolute form had a fault beyond not resolving
 locally: a server running a newer build emits codes production does not have yet, so

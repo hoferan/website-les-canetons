@@ -6,7 +6,7 @@ namespace App\Support;
  * Every problem type this API can answer with, and what each one means.
  *
  * THREE READERS, ONE LIST. This feeds the `code` enum in the exported OpenAPI
- * document, the problem-type pages at /api/problems, and
+ * document, the endpoint at /api/problems, and
  * Tests\Feature\ApiErrorVocabularyTest. Adding a token in one place makes it
  * appear in all three.
  *
@@ -18,7 +18,7 @@ namespace App\Support;
  * description of the API rather than a wish about it.
  *
  * `detail` is documentation, not a response member: ApiError never sends it.
- * It is what /api/problems/{code} renders, and it is where the things a status
+ * It is what /api/problems/{code} serves, and it is where the things a status
  * code cannot say are written down — above all the pairs of codes that look
  * interchangeable and are not. English, like every other machine-facing string
  * here; the French a member reads lives in web/src/i18n/fr.ts, keyed by the
@@ -27,10 +27,10 @@ namespace App\Support;
 final class ErrorVocabulary
 {
     /**
-     * The namespace every `type` URI is built under, and the path the pages
-     * that answer them are served at. One constant, so those two cannot
+     * The namespace every `type` URI is built under, and the path the endpoint
+     * that answers them is served at. One constant, so those two cannot
      * disagree — a `type` pointing somewhere nothing is served is the exact
-     * failure these pages exist to prevent.
+     * failure this endpoint exists to prevent.
      *
      * A RELATIVE URI REFERENCE, and that is the whole design. RFC 9457 types
      * `type` as a URI *reference*, which includes relative ones, resolved
@@ -48,14 +48,29 @@ final class ErrorVocabulary
      *   newer build emits codes production does not have yet, so its error
      *   documents pointed at a production page that 404s for a type which
      *   genuinely exists on the machine that answered. Relative, it always
-     *   names a page on the host that emitted it — including localhost, where
-     *   the absolute form never resolved at all.
+     *   names a document on the host that emitted it — including localhost,
+     *   where the absolute form never resolved at all.
      *
      * UNVERSIONED. A problem type outlives a contract version — `not_found`
      * means the same thing in v1 and v2 — and this is an identifier clients
      * branch on, so it can never be changed once anything depends on it.
      */
     public const TYPE_BASE = '/api/problems/';
+
+    /**
+     * Where a human reads these, linked from every document this serves.
+     *
+     * The Scalar reference renders the same list from the same source — see
+     * markdown() below — as a sidebar group, so a developer who lands on the
+     * JSON has one hop to prose without this endpoint having to render any.
+     *
+     * The fragment is Scalar's own heading slug, so it is the one string here
+     * that a Scalar upgrade could invalidate. It is used anyway because the
+     * failure is SOFT: a stale fragment still lands the reader on the reference
+     * and merely fails to scroll. That is exactly the risk `type` cannot take,
+     * which is why `type` points here and not at the docs page.
+     */
+    public const DOCUMENTATION = '/api/docs#description/problem-types';
 
     /**
      * code => [status, title, detail]
@@ -259,7 +274,7 @@ final class ErrorVocabulary
      * fetched one of these can match it against the `type` of a problem
      * document it holds without knowing how the URI is built.
      *
-     * @return array{code: string, type: string, status: int, title: string, detail: string}|null
+     * @return array{code: string, type: string, status: int, title: string, detail: string, documentation: string}|null
      */
     public static function describe(string $code): ?array
     {
@@ -275,6 +290,7 @@ final class ErrorVocabulary
             'status' => $status,
             'title' => $title,
             'detail' => $detail,
+            'documentation' => self::DOCUMENTATION,
         ];
     }
 
@@ -290,10 +306,11 @@ final class ErrorVocabulary
      *
      * Scalar parses the Markdown headings in info.description into its own
      * sidebar, so each `###` below becomes a navigable entry, rendered in its
-     * theme and its dark mode. That is why this lives in the document at all
-     * rather than only on its own page: there is no way to make a hand-built
-     * page look like Scalar and stay looking like it across their releases, and
-     * content inside the document cannot drift from the renderer.
+     * theme and its dark mode. THIS IS THE HUMAN-READABLE HALF, and the reason
+     * /api/problems serves data and no longer a page: a hand-built page cannot
+     * be made to look like Scalar and stay looking like it across their
+     * releases, whereas content inside the document cannot drift from the
+     * renderer at all.
      */
     public static function markdown(): string
     {
@@ -322,14 +339,14 @@ final class ErrorVocabulary
     }
 
     /**
-     * Every problem type, in declaration order, for /api/problems.
+     * Every problem type, in declaration order, for GET /api/problems.
      *
      * Declaration order is grouped by what the reader is asking about — the
      * form, who you are, what you may do, what exists, state conflicts, the
      * server — rather than alphabetically or by status, because an index is
      * read by somebody who does not yet know which code they want.
      *
-     * @return list<array{code: string, type: string, status: int, title: string, detail: string}>
+     * @return list<array{code: string, type: string, status: int, title: string, detail: string, documentation: string}>
      */
     public static function all(): array
     {

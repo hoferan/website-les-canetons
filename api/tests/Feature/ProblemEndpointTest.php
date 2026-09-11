@@ -6,13 +6,13 @@ use App\Support\ErrorVocabulary;
 use Tests\TestCase;
 
 /**
- * The pages every problem document's `type` URI points at.
+ * The endpoint every problem document's `type` URI resolves to.
  *
  * The test that matters most is the last one: it takes the `type` off a REAL
  * error response and fetches it. Everything else here could pass while the two
  * halves still disagreed about how a URI is spelled.
  */
-class ProblemPagesTest extends TestCase
+class ProblemEndpointTest extends TestCase
 {
     public function test_the_index_lists_every_problem_type(): void
     {
@@ -33,7 +33,7 @@ class ProblemPagesTest extends TestCase
                 'status' => 401,
                 'title' => 'Not authenticated',
             ])
-            // The detail is the whole reason these pages exist: it says the
+            // The detail is the whole reason this endpoint exists: it says the
             // thing the status code cannot.
             ->assertJsonPath('detail', fn (string $detail) => str_contains($detail, '419'));
     }
@@ -49,22 +49,57 @@ class ProblemPagesTest extends TestCase
             ->assertJsonPath('code', 'not_authenticated');
     }
 
-    public function test_a_browser_gets_a_page_and_a_tool_gets_json(): void
+    /**
+     * JSON WHATEVER THE CLIENT ASKS FOR, including a browser.
+     *
+     * This used to serve a Blade page by default and negotiate down to JSON,
+     * which meant `curl /api/problems/{code}` answered with HTML — backwards for
+     * anything under /api/, and the thing that made the arrangement feel wrong.
+     * The page is gone: problem types are data, humans read them in the Scalar
+     * reference, and a browser pointed straight here still gets something
+     * readable because browsers pretty-print JSON.
+     *
+     * Both headers are driven, because the defect was specifically about the
+     * DEFAULT — a test that only sent `Accept: application/json` would have
+     * passed against the broken version.
+     */
+    public function test_it_answers_json_whatever_the_client_asks_for(): void
     {
-        $page = $this->get('/api/problems/not-authenticated', [
+        // curl's default, and what the old version answered with HTML.
+        $anything = $this->get('/api/problems/not-authenticated', ['Accept' => '*/*'])->assertOk();
+        $this->assertStringContainsString('application/json', (string) $anything->headers->get('Content-Type'));
+
+        // A browser's.
+        $browser = $this->get('/api/problems/not-authenticated', [
             'Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8',
         ])->assertOk();
+        $this->assertStringContainsString('application/json', (string) $browser->headers->get('Content-Type'));
+        $this->assertStringNotContainsString('<!doctype html>', (string) $browser->getContent());
+    }
 
-        $this->assertStringContainsString('text/html', (string) $page->headers->get('Content-Type'));
-        $page->assertSee('not_authenticated');
+    /**
+     * One hop to prose, since this endpoint renders none itself.
+     *
+     * The fragment is Scalar's own heading slug and is the one string here a
+     * Scalar upgrade could invalidate — used anyway because the failure is soft:
+     * a stale fragment still lands the reader on the reference and merely fails
+     * to scroll. `type` could not take that risk, which is why `type` points at
+     * this endpoint and not at the docs page.
+     */
+    public function test_every_document_links_to_where_a_human_reads_it(): void
+    {
+        $this->getJson('/api/problems/not-authenticated')
+            ->assertOk()
+            ->assertJsonPath('documentation', '/api/docs#description/problem-types');
 
-        $json = $this->getJson('/api/problems/not-authenticated')->assertOk();
-        $this->assertStringContainsString('application/json', (string) $json->headers->get('Content-Type'));
+        $this->getJson('/api/problems')
+            ->assertOk()
+            ->assertJsonPath('problems.0.documentation', '/api/docs#description/problem-types');
     }
 
     /**
      * An unknown code answers in the very contract it documents — and that 404's
-     * own `type` points back here, at a page that does exist.
+     * own `type` points back here, at a document that does exist.
      */
     public function test_an_unknown_problem_type_is_itself_a_problem_document(): void
     {
@@ -78,7 +113,7 @@ class ProblemPagesTest extends TestCase
      * Unversioned, unlike everything in routes/api.php. A problem type outlives
      * a contract version, and clients branch on `type`, so it can never move.
      */
-    public function test_the_pages_are_not_under_the_version_prefix(): void
+    public function test_the_endpoint_is_not_under_the_version_prefix(): void
     {
         $this->getJson('/api/problems')->assertOk();
         $this->getJson('/api/v1/problems')->assertStatus(404);
@@ -91,7 +126,7 @@ class ProblemPagesTest extends TestCase
      * where API_DOCS_ENABLED happened to be on would be worse than one that
      * never resolved.
      */
-    public function test_the_pages_do_not_depend_on_the_docs_flag(): void
+    public function test_the_endpoint_does_not_depend_on_the_docs_flag(): void
     {
         config(['docs.enabled' => false]);
 

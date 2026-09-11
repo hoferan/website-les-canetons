@@ -26,15 +26,21 @@ use Illuminate\Support\Facades\Route;
 
 // The API reference, for developers. PUBLIC BUT GATED: no session is required
 // — you should be able to read the login endpoint's documentation before
-// logging in — and the `docs` middleware answers 404 unless this environment
-// sets API_DOCS_ENABLED. TEST and QA sit behind HTTP Basic Auth; PROD has the
-// flag off.
+// logging in — and the `docs` middleware answers 404 when API_DOCS_ENABLED is
+// off, which as of 2026-09-11 it is not by default: the reference is public
+// everywhere, because hiding it was security through obscurity while the SPA
+// bundle ships the whole surface anyway. What IS off on production is the
+// try-it console, gated separately by `docs.interactive` — see config/docs.php
+// for the argument.
 Route::middleware('docs')->group(function () {
     Route::get('/docs', DocsController::class);
     Route::get('/docs.json', DocsDocumentController::class);
 });
 
-// The problem types every error's `type` URI points at. PUBLIC AND UNGATED,
+// The problem types every error's `type` URI resolves to. JSON, always — a
+// route under /api/ that answered curl with HTML was the reason this stopped
+// being a rendered page. Humans read the same list in the Scalar reference,
+// which generates it from App\Support\ErrorVocabulary too. PUBLIC AND UNGATED,
 // unlike /api/docs above: that reference describes the whole schema, this
 // describes what one error token means — and that vocabulary already ships to
 // every visitor inside the SPA bundle (web/src/i18n/fr.ts). A `type` URI that
