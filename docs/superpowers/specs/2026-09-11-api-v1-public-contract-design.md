@@ -338,6 +338,41 @@ and the generated client's return types.
 
 ## A6 — auth to current RFCs
 
+### DEFERRED IN FULL, 2026-09-11
+
+André's decision after working through the alternatives: **the session cookie
+stays, and every other auth method waits for an actual requirement.** No personal
+access tokens, no OAuth, no OIDC, and no `__Host-` prefix for now.
+
+The reasoning, so it does not have to be rediscovered:
+
+- For a same-origin browser SPA the cookie is not the dated choice — the IETF's
+  browser-app BCP and OWASP both recommend it over tokens in JavaScript. A token
+  in `localStorage` is exfiltrable by any script that runs; a token in an
+  `HttpOnly` cookie is a cookie with extra steps.
+- OAuth/OIDC answers a question this project does not yet have. Its purpose is
+  delegating access to a party the provider does not control. A future
+  Events-Notifier is first-party, on our own infrastructure, so the consent
+  screen and authorization-code exchange would guard against nobody — while
+  costing an authorization server on a host with no shell.
+- Sanctum PATs remain forward-compatible with all of it. The `auth:sanctum`
+  guard, the abilities-to-permissions mapping and `RequirePermission` do not
+  change if tokens or OAuth arrive later; they are added in front of the same
+  model. Deferring costs nothing but the wait.
+- `__Host-` requires `Secure`, so it does nothing over plain HTTP and only
+  matters on a deployed HTTPS host. Deployment is itself deferred, so it belongs
+  with that work rather than this.
+
+**The triggers to revisit:** a non-browser consumer that actually needs to
+authenticate; splitting the frontend and backend onto different origins, which
+breaks `SameSite=Strict` outright; or a genuine third party wanting delegated
+access.
+
+The original A6 plan is kept below for when one of those arrives.
+
+### Original plan (unbuilt)
+
+
 **What already meets the bar, and is not being replaced.** Session regenerated on
 login; invalidated and CSRF-rotated on logout; idle *and* absolute lifetimes;
 `SameSite=Strict`, `HttpOnly`, `Secure`; argon2id; login throttled per
