@@ -56,38 +56,17 @@ class DocsDescriptionTest extends TestCase
             .'Fix the ```json block under "## Errors" in config/scramble.php.'
         );
 
-        // The member a reader is most likely to follow.
-        $this->assertSame(
-            ErrorVocabulary::documentationFor('validation_failed'),
-            $documented['documentation'],
-            'The documented `documentation` link is not the one this API emits for that code.'
-        );
-        $this->assertSame($real['documentation'], $documented['documentation']);
         $this->assertSame($real['code'], $documented['code']);
         $this->assertSame($real['status'], $documented['status']);
-    }
 
-    /**
-     * Every problem type is described. The generated section makes this true by
-     * construction today — ErrorVocabulary::markdown() writes it — so this
-     * really guards the day somebody replaces that with hand-written prose,
-     * which is precisely when it would stop being true and nothing would say so.
-     */
-    public function test_every_problem_type_appears_in_the_reference(): void
-    {
-        $description = $this->description();
-
-        foreach (ErrorVocabulary::codes() as $code) {
-            // NO BACKTICKS: Scalar builds each heading's route from its plain
-            // text, so a code span there collapses every one of these to the
-            // same empty slug and none is addressable. This assertion is what
-            // keeps them routable, which is what `documentation` depends on.
-            $this->assertStringContainsString(
-                '### '.$code.PHP_EOL,
-                $description,
-                "The reference documents no problem type `{$code}` as a plain-text heading."
-            );
-        }
+        // `detail` is the member this whole design now rests on, so the example
+        // has to show one — abbreviated with an ellipsis, since the real
+        // sentence is longer than an example wants to be.
+        $this->assertStringStartsWith(
+            substr((string) ErrorVocabulary::detailFor('validation_failed'), 0, 40),
+            (string) $documented['detail'],
+            'The documented `detail` does not begin like the one this API emits.'
+        );
     }
 
     /**
@@ -112,6 +91,10 @@ class DocsDescriptionTest extends TestCase
             'standalone page' => 'there is no page; this section is the documentation',
             // The URN, which replaced the URLs and was then deleted itself.
             'urn:lescanetons:problem:' => '`type` was removed: it was a constant prefix in front of `code`',
+            // The generated catalogue of twenty-one sections, replaced by an
+            // inline `detail` on every error.
+            '## Problem types' => 'the catalogue is gone; every error carries its own `detail`',
+            '"documentation"' => 'there is no `documentation` member any more',
         ];
 
         foreach ($retired as $claim => $why) {
@@ -120,34 +103,6 @@ class DocsDescriptionTest extends TestCase
                 $description,
                 "The reference still says \"{$claim}\" — {$why}."
             );
-        }
-    }
-
-    /**
-     * `documentation` points at a heading this very description contains.
-     *
-     * The fragment is Scalar's slug for that heading. A stale one fails softly
-     * in a browser — the reader lands on the reference without scrolling — so
-     * this asserts the part that can be checked here: that the heading it names
-     * exists at all.
-     */
-    public function test_every_documentation_link_names_a_heading_that_exists(): void
-    {
-        $description = $this->description();
-
-        foreach (ErrorVocabulary::codes() as $code) {
-            $fragment = parse_url(ErrorVocabulary::documentationFor($code), PHP_URL_FRAGMENT);
-
-            // Scalar's route for a `### <code>` heading is the description
-            // path plus the heading slugified — lowercased, underscores and
-            // spaces to hyphens. Measured in a browser, not assumed.
-            $this->assertSame(
-                'description/'.str_replace('_', '-', $code),
-                $fragment,
-                "The documentation link for `{$code}` does not match Scalar's slug for its heading."
-            );
-
-            $this->assertStringContainsString('### '.$code.PHP_EOL, $description);
         }
     }
 

@@ -3,195 +3,169 @@
 namespace App\Support;
 
 /**
- * Every problem type this API can answer with, and what each one means.
+ * What each of this API's failures means, in the words the caller gets.
  *
- * THREE READERS, ONE LIST. This feeds the `code` enum in the exported OpenAPI
- * document, the *Problem types* section of the reference, and
- * Tests\Feature\ApiErrorVocabularyTest. Adding a token in one place makes it
- * appear in all three.
+ * These are RFC 9457 `detail` strings: §3.1.1 defines that member as a
+ * human-readable explanation that "SHOULD focus on helping the client correct
+ * the problem". App\Exceptions\ApiError puts the matching one into every error
+ * response, so the explanation arrives WITH the failure rather than at some
+ * other URL.
  *
- * IT IS CHECKED AGAINST THE SOURCE, not trusted. ApiErrorVocabularyTest scans
- * app/ for every `::json(<status>, '<code>'` literal and asserts the two sets
- * match exactly — so a developer who emits a new code without documenting it
- * here fails a test, and a stale entry for a code nobody emits fails the same
- * test from the other side. That derivation is what makes this list a
- * description of the API rather than a wish about it.
+ * THAT IS THE WHOLE DESIGN, and it replaced a considerably larger one. There
+ * was a `type` member, an endpoint serving a document per problem type, a
+ * `documentation` link to a per-code anchor, and twenty-one sections in the API
+ * reference. André's argument ended all of it: a problem description is only
+ * wanted by somebody who has that problem, at the moment they have it, and it
+ * is one or two sentences — so making them open a page or issue a second
+ * request to read it is pure friction. Inlining is also the more conformant
+ * answer, since `detail` is the member the RFC provides for exactly this.
  *
- * `detail` is documentation, not a response member: ApiError never sends it.
- * It is rendered into the reference by markdown() below, and it is where the
- * things a status code cannot say are written down — above all the pairs of
- * codes that look interchangeable and are not. English, like every other
- * machine-facing string here; the French a member reads lives in
- * web/src/i18n/fr.ts, keyed by the same token.
+ * WRITTEN FOR A RESPONSE, NOT FOR DOCUMENTATION, which is a real distinction
+ * and the reason these were rewritten rather than moved. Documentation explains
+ * WHY a thing is designed as it is; a response says what happened and what to do
+ * about it. The earlier prose did both, and some of it had no business
+ * travelling in a body — `spam_suspected` enumerated all three anti-abuse checks
+ * in the very response that is deliberately vague about which one failed, and
+ * others explained our account-enumeration defences to the caller being defended
+ * against. That rationale now lives in comments here, where it belongs and where
+ * it costs nobody any bytes.
+ *
+ * CHECKED AGAINST THE SOURCE, not trusted. Tests\Feature\ApiErrorVocabularyTest
+ * scans app/ for every code the API can emit and asserts this list matches
+ * exactly, in both directions — so a code emitted without an entry fails, and an
+ * entry for a code nobody emits fails too.
+ *
+ * English, like every machine-facing string in this API. `detail` is for the
+ * developer reading a response, never for a member reading a screen; the French
+ * lives in web/src/i18n/fr.ts, keyed by the same `code`.
  */
 final class ErrorVocabulary
 {
     /**
-     * Where a human reads about one problem type. Carried on every problem
-     * document, per code.
+     * code => detail
      *
-     * THIS IS THE ONLY POINTER THE CONTRACT CARRIES, and it replaced a `type`
-     * member that went through three designs before being deleted outright.
-     * André's argument ended it: `type` was always this namespace plus the
-     * `code`, so it carried exactly zero information that `code` did not. A
-     * constant prefix on a value you already have is not an identifier, it is
-     * ceremony.
-     *
-     * The same objection nearly sank this member too — it pointed at one
-     * section for every error, which is no more useful than no link. It is
-     * per-code now, and that is what earns its place: `documentation` says
-     * where to read about THIS problem, which is the one thing `type` never
-     * did.
-     *
-     * The slug is Scalar's own, derived from the `###` heading that
-     * markdown() writes. That coupling is acceptable HERE and would not have
-     * been on `type`: this is a locator, so a stale slug fails softly — the
-     * reader still lands on the reference and merely fails to scroll — whereas
-     * a broken identifier breaks a client's branching. Which member may depend
-     * on a third party's slugifier is exactly the identifier/locator
-     * distinction, made concrete.
-     */
-    public const DOCUMENTATION_BASE = '/api/docs#description/';
-
-    /**
-     * code => [status, title, detail]
-     *
-     * @var array<string, array{int, string, string}>
+     * @var array<string, string>
      */
     public const PROBLEMS = [
 
         // ---------------------------------------------------------- the form
 
-        'validation_failed' => [400, 'Invalid form submission',
-            'One or more submitted fields were rejected. `errors` names each one '
-            .'and why, as machine tokens: read `errors[].field` and `errors[].reason` '
-            .'rather than `title`. A `reason` carries `params` when its sentence '
-            .'needs a number, for example `{"max": 255}`.'],
+        'validation_failed' => 'One or more submitted fields were rejected. `errors` names each one '
+            .'and why, as machine tokens: read `errors[].field` and `errors[].reason` rather than '
+            .'this sentence. A `reason` carries `params` when it needs a number, for example '
+            .'`{"max": 255}`.',
 
-        // ------------------------------------------------------ who you are
+        // ------------------------------------------------------- who you are
 
-        'not_authenticated' => [401, 'Not authenticated',
-            'No session cookie was sent, or it has expired. Call POST /api/v1/login. '
-            .'This is NOT the same as 419 invalid_session, which means you are still '
-            .'logged in and only the CSRF token needs re-priming — retrying a login '
-            .'there is the wrong move.'],
+        // The 401/419 confusion is the most useful thing this vocabulary says,
+        // and it is pure "what to do": the two look alike and the correct
+        // responses are opposites. Sending a member back to the login screen on
+        // a 419 is a bug that has shipped in many an API client.
+        'not_authenticated' => 'No session cookie was sent, or it has expired. Call '
+            .'POST /api/v1/login. Not to be confused with 419 invalid_session, where you are still '
+            .'logged in and only the CSRF token needs re-priming.',
 
-        'invalid_credentials' => [401, 'Incorrect username or password',
-            'The username does not exist, or the password is wrong. Deliberately the '
-            .'same answer for both, so this endpoint cannot be used to discover which '
-            .'accounts exist.'],
+        // DELIBERATELY SAYS NOTHING about which half was wrong. One answer for
+        // an unknown username and for a bad password is what stops this endpoint
+        // being used to discover which accounts exist — and explaining that
+        // defence in the response body, as this entry once did, tells the person
+        // probing it exactly what they are up against.
+        'invalid_credentials' => 'The username or the password is wrong.',
 
-        'invalid_session' => [419, 'Invalid session',
-            'A mutating request arrived without a valid X-XSRF-TOKEN header. You are '
-            .'still logged in: call GET /sanctum/csrf-cookie and retry the request. '
-            .'Sending the user back to the login screen on this code is a bug, and a '
-            .'common one.'],
+        'invalid_session' => 'The CSRF token was missing or stale. You are still logged in: call '
+            .'GET /sanctum/csrf-cookie and retry the request. Do not send the user back to the '
+            .'login screen.',
 
-        'too_many_attempts' => [429, 'Too many attempts',
-            'Rate limited after repeated failures. Applies to logging in and to '
-            .'re-entering your own password. Attempts made while locked out do not '
-            .'extend the lockout, and a correct password during it is still refused.'],
+        // No numbers: the thresholds are a detail of the throttle, and putting
+        // them in the refusal only helps somebody tune around it.
+        'too_many_attempts' => 'Too many failed attempts. Wait and try again later; further '
+            .'attempts before then do not shorten the wait.',
 
-        'reauth_failed' => [403, 'Password confirmation failed',
-            'The current password sent alongside a sensitive change was wrong. The '
-            .'session is untouched and still valid — this is a re-proof of identity, '
-            .'not a session failure.'],
+        'reauth_failed' => 'The current password sent alongside this change was wrong. Your session '
+            .'is unaffected — retry with the correct password.',
 
-        // ------------------------------------------- what you are allowed to do
+        // ---------------------------------------- what you are allowed to do
 
-        'access_denied' => [403, 'Access denied',
-            'You are authenticated but hold no role granting the permission this route '
-            .'requires. Permissions are the only thing enforced; role names are not. '
-            .'GET /api/v1/me returns the caller\'s effective permissions.'],
+        'access_denied' => 'Your account holds no role granting the permission this route requires. '
+            .'GET /api/v1/me lists the permissions you do have.',
 
-        'not_answerable' => [403, 'Not answerable for this event',
-            'Only members who play in a register are asked to answer for events, and '
-            .'this member is in none. A 403 that is NOT about a missing permission: '
-            .'there is no permission for answering, and no grant would change this. '
-            .'Somebody who organises but does not play is the ordinary case.'],
+        // Worth spelling out that no permission would help: the natural reading
+        // of a 403 is "ask somebody for access", and here there is nothing to
+        // ask for.
+        'not_answerable' => 'Only members who play in a register are asked to answer for events, and '
+            .'this account is in none. No permission changes that.',
 
-        // ------------------------------------------------ what exists
+        // -------------------------------------------------------- what exists
 
-        'not_found' => [404, 'Not found',
-            'No such route, or no such record. One answer for both on purpose: '
-            .'distinguishing them would let a caller enumerate which records exist, '
-            .'which is exactly what a 404 is for.'],
+        // One answer for a missing route and a missing record, on purpose: a
+        // caller able to tell them apart could enumerate which records exist.
+        // That reasoning belongs here, not in the body.
+        'not_found' => 'No such route, or no such record.',
 
-        'method_not_allowed' => [405, 'Method not allowed',
-            'The route exists but not for this HTTP method. Usually a POST where the '
-            .'API expects PUT or PATCH.'],
+        'method_not_allowed' => 'The route exists, but not for this HTTP method. Check whether it '
+            .'expects PUT or PATCH rather than POST.',
 
-        // ----------------------------------- allowed, but not against this state
+        // ---------------------------------- allowed, but not against this state
 
-        'cannot_delete_self' => [409, 'You cannot delete your own account',
-            'Refused regardless of permission. Removing yourself is the one deletion '
-            .'nobody can undo from the outside, because the account that would repair '
-            .'it is the one being removed.'],
+        'cannot_delete_self' => 'An account cannot delete itself. Ask another member who holds '
+            .'members.manage to do it.',
 
-        'cannot_demote_self' => [409, 'You cannot remove your own administration rights',
-            'Refused regardless of permission. Taking members.manage from yourself is '
-            .'the fastest way to lock the band out of its own roster, and this host '
-            .'has no shell to repair it with.'],
+        // Why this is refused at all: taking members.manage from yourself is the
+        // fastest way to lock the band out of its own roster, and this host has
+        // no shell to repair it with. The caller does not need to know that;
+        // they need to know who to ask.
+        'cannot_demote_self' => 'An account cannot remove its own members.manage permission. Ask '
+            .'another administrator.',
 
-        'cannot_remove_last_administrator' => [409, 'This is the last member who can administer members',
-            'The write would leave nobody holding members.manage. Grant it to somebody '
-            .'else first. The same guard covers deleting that member and stripping '
-            .'their roles.'],
+        'cannot_remove_last_administrator' => 'This change would leave nobody able to administer '
+            .'members. Grant members.manage to somebody else first.',
 
-        'cannot_record_for_self' => [409, 'Use your own attendance endpoint',
-            'An answer recorded on somebody\'s behalf was aimed at the caller. Use '
-            .'PUT /api/v1/events/{event}/attendance instead. This matters for a member '
-            .'who both plays and organises: answering for yourself through the on-behalf '
-            .'route would sidestep the rule that withdrawing a yes costs a reason.'],
+        // The rule being protected: a member answering for THEMSELVES owes a
+        // reason when withdrawing a yes, and the on-behalf route is exempt — so
+        // aiming it at yourself would be a way around that. Saying so in the
+        // response would describe the bypass to the person attempting it.
+        'cannot_record_for_self' => 'This endpoint records an answer on another member\'s behalf and '
+            .'was aimed at you. Use PUT /api/v1/events/{event}/attendance for your own answer.',
 
-        'answer_already_settled' => [409, 'The undo window has closed',
-            'An answer can be withdrawn entirely for five minutes after it was last '
-            .'recorded; after that it can only be changed. `recordedAt` on the answer is '
-            .'what tells a client whether to offer the undo, so this should be reachable '
-            .'only by a client racing its own clock.'],
+        'answer_already_settled' => 'An answer can only be withdrawn within five minutes of being '
+            .'recorded. Change it instead. `recordedAt` on the answer tells you whether that window '
+            .'is still open.',
 
-        'registration_not_open' => [409, 'Registration has not opened yet',
-            'The event takes public bookings, but the window has not started. '
-            .'GET /api/v1/events/{event}/registration reports `open` — computed by the '
-            .'server, because the visitor\'s clock may be wrong — along with when it '
-            .'starts.'],
+        'registration_not_open' => 'Bookings for this event have not opened yet. '
+            .'GET /api/v1/events/{event}/registration reports when they do.',
 
-        'registration_closed' => [409, 'Registration has closed',
-            'The event takes public bookings and the window has ended. Bookings already '
-            .'taken are unaffected.'],
+        'registration_closed' => 'Bookings for this event have closed. Those already taken are '
+            .'unaffected.',
 
-        'option_has_registrations' => [409, 'That option has already been booked',
-            'Deleting a bookable option somebody has ordered is refused rather than '
-            .'silently rewriting what they ordered. Cancel the bookings that reference '
-            .'it first.'],
+        'option_has_registrations' => 'That option has already been booked, so it cannot be deleted. '
+            .'Cancel the bookings that reference it first.',
 
-        // ------------------------------------------------ the submission itself
+        // ----------------------------------------------- the submission itself
 
-        'spam_suspected' => [422, 'This submission looks automated',
-            'A public form was submitted without a valid X-Form-Token header, or '
-            .'without the empty `website` field, or faster than a person could fill it '
-            .'in. Which check failed is deliberately not reported: naming it tells a '
-            .'script how to pass next time, and a real person only needs to reload and '
-            .'retry.'],
+        // THE ONE THAT MUST STAY VAGUE. An earlier version of this string listed
+        // all three checks the public-write guard applies — the form token, the
+        // empty `website` field, and the minimum age — inside the very response
+        // that exists to avoid telling a script which one it failed. A
+        // legitimate integrator needs the same information and gets it from the
+        // reference's "Public forms" section; a script gets nothing.
+        'spam_suspected' => 'The submission was refused. Reload the form and send it again. Public '
+            .'forms require a form token — see Public forms in the API reference.',
 
-        // ---------------------------------------------------- the server itself
+        // --------------------------------------------------- the server itself
 
-        'service_unavailable' => [503, 'Service unavailable',
-            'The database schema is not known to be current, so the request was refused '
-            .'rather than served against a possibly half-applied schema. Temporary, and '
-            .'not something a client can fix — retry shortly.'],
+        'service_unavailable' => 'The service is temporarily refusing requests. Retry shortly; '
+            .'nothing on your side needs changing.',
 
-        'xlsx_unavailable' => [503, 'XLSX export needs the PHP zip extension',
-            'This server has no zip extension, so the spreadsheet export cannot be '
-            .'built. Every other export format still works; request csv instead.'],
+        'xlsx_unavailable' => 'This server cannot build spreadsheet exports. Request the csv format '
+            .'instead.',
     ];
 
     /**
      * The `reason` tokens an `errors[]` entry can carry.
      *
-     * Separate from the codes above because they answer a different question:
-     * a code says what went wrong with the REQUEST, a reason what went wrong
-     * with one FIELD. Both must have French in web/src/i18n/fr.ts, and
+     * Separate from the codes above because they answer a different question: a
+     * code says what went wrong with the REQUEST, a reason what went wrong with
+     * one FIELD. Both must have French in web/src/i18n/fr.ts, and
      * ApiErrorVocabularyTest checks both.
      *
      * @var list<string>
@@ -209,7 +183,7 @@ final class ErrorVocabulary
     ];
 
     /**
-     * Every code, for the OpenAPI `code` enum.
+     * Every code, for the OpenAPI `code` enum and for the vocabulary test.
      *
      * @return list<string>
      */
@@ -224,106 +198,17 @@ final class ErrorVocabulary
     }
 
     /**
-     * Where this particular problem type is documented.
+     * The `detail` for a code, or null for one this list does not describe.
      *
-     * Hyphenated, because that is what Scalar's slugifier makes of the `###`
-     * heading markdown() writes — measured, not assumed. Getting it wrong is a
-     * soft failure: the reader lands on the reference and does not scroll.
+     * Null is unreachable in practice — ApiErrorVocabularyTest asserts this list
+     * and the codes app/ emits match exactly — and it is modelled anyway,
+     * because the alternative when somebody adds a code mid-change is a 500
+     * while rendering an error, which is the worst possible moment to fail.
+     * ApiError omits the member rather than sending an empty one; RFC 9457 makes
+     * `detail` optional.
      */
-    public static function documentationFor(string $code): string
+    public static function detailFor(string $code): ?string
     {
-        return self::DOCUMENTATION_BASE.str_replace('_', '-', $code);
-    }
-
-    /**
-     * One problem type as a document, for /api/problems/{code}.
-     *
-     * Carries its own `type`, so the JSON is self-describing: a tool that
-     * fetched one of these can match it against the `type` of a problem
-     * document it holds without knowing how the URI is built.
-     *
-     * @return array{code: string, status: int, title: string, detail: string, documentation: string}|null
-     */
-    public static function describe(string $code): ?array
-    {
-        if (! self::has($code)) {
-            return null;
-        }
-
-        [$status, $title, $detail] = self::PROBLEMS[$code];
-
-        return [
-            'code' => $code,
-            'status' => $status,
-            'title' => $title,
-            'detail' => $detail,
-            'documentation' => self::documentationFor($code),
-        ];
-    }
-
-    /**
-     * The problem-type reference, as Markdown, for the OpenAPI document's
-     * `info.description`.
-     *
-     * GENERATED RATHER THAN WRITTEN, so the reference a developer reads inside
-     * the Scalar page and the pages at /api/problems are the same text from the
-     * same list. A prose copy of this in the description is a copy that goes
-     * stale the first time somebody adds a code, and does so silently — the
-     * worst way for documentation to be wrong.
-     *
-     * Scalar parses the Markdown headings in info.description into its own
-     * sidebar, so each `###` below becomes a navigable entry, rendered in its
-     * theme and its dark mode. THIS IS THE HUMAN-READABLE HALF, and the reason
-     * /api/problems serves data and no longer a page: a hand-built page cannot
-     * be made to look like Scalar and stay looking like it across their
-     * releases, whereas content inside the document cannot drift from the
-     * renderer at all.
-     */
-    public static function markdown(): string
-    {
-        // Leading blank line: PHP drops the newline before a heredoc's closing
-        // identifier, so without this the first `###` lands on the line
-        // immediately after the prose that introduces it and Markdown renders
-        // the two as one paragraph.
-        $lines = [''];
-
-        foreach (self::all() as $problem) {
-            // NO BACKTICKS around the code, and that is load-bearing rather
-            // than a style choice. Scalar builds each heading's route from the
-            // heading's PLAIN TEXT; wrapped in a code span there is none, so
-            // every one of these collapsed to the same empty slug
-            // (`api-1/description/`) and none of them was addressable. Measured
-            // in a browser — `### Why a cookie rather than a token` two
-            // sections above routes correctly, which is what made the
-            // difference visible.
-            $lines[] = sprintf('### %s', $problem['code']);
-            $lines[] = '';
-            // No link here: this section IS what `documentation` points at,
-            // so linking each entry to itself would be circular.
-            $lines[] = sprintf('**%d** · `%s`', $problem['status'], $problem['title']);
-            $lines[] = '';
-            $lines[] = $problem['detail'];
-            $lines[] = '';
-        }
-
-        return rtrim(implode("\n", $lines));
-    }
-
-    /**
-     * Every problem type, in declaration order, for GET /api/problems.
-     *
-     * Declaration order is grouped by what the reader is asking about — the
-     * form, who you are, what you may do, what exists, state conflicts, the
-     * server — rather than alphabetically or by status, because an index is
-     * read by somebody who does not yet know which code they want.
-     *
-     * @return list<array{code: string, status: int, title: string, detail: string, documentation: string}>
-     */
-    public static function all(): array
-    {
-        return array_values(array_filter(array_map(
-            static fn (string $code): ?array => self::describe($code),
-            self::codes(),
-        )));
+        return self::PROBLEMS[$code] ?? null;
     }
 }

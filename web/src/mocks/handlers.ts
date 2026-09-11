@@ -180,9 +180,6 @@ export function setMockUser(username: keyof typeof USERS | null): void {
 /** A valid ULID, so anything that validates the shape of one still passes. */
 export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
 
-/** Mirrors App\Support\ErrorVocabulary::documentationFor(). */
-const documentationFor = (code: string) => `/api/docs#description/${code.replace(/_/g, "-")}`;
-
 /**
  * The one place this mocked backend builds a failure, mirroring
  * App\Exceptions\ApiError::json() on the real one.
@@ -214,7 +211,11 @@ export function problem(
       // Fixed, not random: a mocked screenshot or a snapshot that changed on
       // every run because of an identifier nobody asserts would be noise.
       requestId: MOCK_REQUEST_ID,
-      documentation: documentationFor(code),
+      // The real API sources this from App\Support\ErrorVocabulary by code.
+      // The mock does not carry that list: nothing in the SPA reads `detail`,
+      // and duplicating 21 English paragraphs here to satisfy a shape no screen
+      // renders would be a second place for them to go stale.
+      detail: `Mocked detail for ${code}.`,
     },
     { status, headers: { "Content-Type": "application/problem+json" } },
   );

@@ -18,13 +18,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *     Content-Type: application/problem+json
  *
  *     {
- *       "title":         "Invalid form submission",
- *       "status":        400,
- *       "instance":      "/api/v1/events/42",
- *       "code":          "validation_failed",
- *       "errors":        [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
- *       "requestId":     "01JB3K7QW8ZX...",
- *       "documentation": "/api/docs#description/validation-failed"
+ *       "title":     "Invalid form submission",
+ *       "status":    400,
+ *       "code":      "validation_failed",
+ *       "instance":  "/api/v1/events/42",
+ *       "errors":    [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
+ *       "requestId": "01JB3K7QW8ZX...",
+ *       "detail":    "One or more submitted fields were rejected. …"
  *     }
  *
  * This deliberately replaces Laravel's native {message, errors:{}} shape.
@@ -50,8 +50,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * absolute URL, a relative URL with an endpoint behind it, a URN) before André
  * ended the argument with the observation that settled it: every one of them
  * was a constant prefix plus the `code`, so it carried exactly zero information
- * the document did not already have. `code` is the discriminator, and
- * `documentation` — per code — is where to read about it.
+ * the document did not already have.
+ *
+ * `code` is the discriminator and `detail` is the explanation, carried in the
+ * same response. See App\Support\ErrorVocabulary for why that replaced a
+ * documentation endpoint, a link member and twenty-one sections of reference.
  */
 final class ApiError
 {
@@ -295,10 +298,10 @@ final class ApiError
      *   `requestId` is what a member reads out over the telephone. See
      *               App\Http\Middleware\RequestId.
      *
-     *   `documentation` is where a human reads what THIS problem means —
-     *               per code, not one link for every error, which is what makes
-     *               it worth carrying at all. It may move freely precisely
-     *               because nothing branches on it.
+     *   `detail`    is RFC 9457's own member: what happened and what to do,
+     *               from App\Support\ErrorVocabulary. It is prose for a
+     *               developer reading a response — never rendered to a member,
+     *               who sees French computed from `code`.
      *
      * `errors` is ALWAYS present, empty where there is nothing field-level to
      * say. The previous contract omitted `fields` when empty, which made it
@@ -326,12 +329,26 @@ final class ApiError
         $body = [
             'title' => $message,
             'status' => $status,
-            'instance' => self::instance(),
             'code' => $code,
+            'instance' => self::instance(),
             'errors' => $orderedErrors,
             'requestId' => RequestId::current(),
-            'documentation' => ErrorVocabulary::documentationFor($code),
         ];
+
+        // RFC 9457 §3.1.1's own member, and the reason there is no longer a
+        // `documentation` link or an endpoint behind it: a problem description
+        // is wanted by somebody who has that problem, at the moment they have
+        // it. Making them fetch it separately is friction for the one member
+        // that can remove it.
+        //
+        // Placed after `code` rather than in the literal above so the key order
+        // reads title, status, code, instance, errors, requestId, detail — the
+        // machine-readable members first, the paragraph last.
+        $detail = ErrorVocabulary::detailFor($code);
+
+        if ($detail !== null) {
+            $body['detail'] = $detail;
+        }
 
         return response()
             ->json($body, $status)

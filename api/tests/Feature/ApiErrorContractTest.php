@@ -59,25 +59,26 @@ class ApiErrorContractTest extends TestCase
         // middleware uses to decide whether to trust an inbound one.
         $this->assertTrue(Str::isUlid($body['requestId']), 'requestId is not a ULID.');
 
-        // PER CODE, not one link for every error — which is the whole reason
-        // this member survived while `type` did not. A constant pointer carries
-        // no more information than no pointer at all.
-        $this->assertSame(
-            '/api/docs#description/validation-failed',
-            $body['documentation'],
-        );
-        $this->assertSame(ErrorVocabulary::documentationFor('validation_failed'), $body['documentation']);
+        // The explanation travels WITH the failure. That is the whole reason
+        // there is no catalogue in the reference and no endpoint to fetch one:
+        // a problem description is wanted by whoever has that problem, at the
+        // moment they have it.
+        $this->assertSame(ErrorVocabulary::detailFor('validation_failed'), $body['detail']);
 
         // No `type`. RFC 9457 makes it optional, and here it could only have
         // been a constant prefix in front of `code`.
         $this->assertArrayNotHasKey('type', $body);
+        // And no `documentation`: the link it carried pointed at a catalogue
+        // that no longer exists, because `detail` replaced it.
+        $this->assertArrayNotHasKey('documentation', $body);
 
         $this->assertSame(
-            ['title', 'status', 'instance', 'code', 'errors', 'requestId', 'documentation'],
+            ['title', 'status', 'code', 'instance', 'errors', 'requestId', 'detail'],
             array_keys($body),
             'The problem document gained or lost a member. Three things have to move with '
-            .'it: web/src/api/http.ts, the OpenAPI components, and the worked example in '
-            .'config/scramble.php — which DocsDescriptionTest checks against this very shape.'
+            .'it: web/src/api/http.ts, App\Support\Scramble\ErrorResponseSchema, and the '
+            .'worked example in config/scramble.php — which DocsDescriptionTest checks '
+            .'against this very shape.'
         );
     }
 

@@ -115,7 +115,7 @@ rather than an archaeology project.
   "code": "validation_failed",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
   "requestId": "01JB3K7QW8ZX...",
-  "documentation": "/api/docs#description/validation-failed"
+  "detail": "One or more submitted fields were rejected. …"
 }
 ```
 
@@ -142,48 +142,44 @@ Served as `application/problem+json` on every failure.
 - **`type` is a URN** and **`documentation`** is what a human clicks — see the
   amendment below, which replaced two earlier attempts at a fetchable `type`.
 
-### Amended 2026-09-11: there is no `type`, and `documentation` is per code
+### Amended 2026-09-11: the explanation travels with the failure
 
-`type` went through four designs in one day and ended up deleted. Recording why,
-because the reasoning generalises.
+`type` is gone, there is no problem-type endpoint, no `documentation` link and
+no catalogue in the reference. What replaced all of it is one member the RFC
+already had: **`detail`**.
 
-An absolute production URL never resolved off production, and pointed at a page
-that 404s for codes a newer build emits. A relative URL fixed that by adding an
-endpoint — a controller, two routes, a test file, a versioning question, and a
-Blade page that answered `curl` with HTML. A URN fixed *that* by promising
-nothing, at which point André asked the question that ended it: the value was
-always a constant prefix in front of `code`, so it carried **exactly zero
-information** the document did not already have. A constant prefix on a value you
-already hold is not an identifier; it is ceremony.
+RFC 9457 §3.1.1 defines `detail` as a human-readable explanation that "SHOULD
+focus on helping the client correct the problem". That is precisely what those
+sentences were, and inlining them is both simpler and more conformant than the
+apparatus built to serve them out-of-band.
 
-RFC 9457 makes `type` optional, and an absent one formally reads as
-`about:blank`. That is the one real cost — it nominally says "no semantics beyond
-the status code" while `code` says otherwise — and it is accepted, because the
-alternative is a member that is pure derivation.
+André's argument, which is worth keeping because it generalises: a problem
+description is only wanted by somebody who **has** that problem, at the moment
+they have it, and it is one or two sentences. Making them open a page or issue
+a second request to read it is friction with nothing on the other side of it.
+Median detail is 172 bytes; the endpoint, the link member and twenty-one
+reference sections existed to avoid sending them.
 
-**`documentation` survived the same objection by being fixed rather than
-deleted.** It pointed at one section for every error, which is no more useful
-than no link. It is now per code, and links to that problem's own entry in the
-reference — the one thing `type` never did.
+`type` went the same way and for a related reason: every design of it (absolute
+URL, relative URL, URN) was a constant prefix in front of `code`, carrying zero
+information the document did not already have. RFC 9457 makes it optional. The
+one real cost is that an absent `type` formally reads as `about:blank`, meaning
+"no semantics beyond the status code", which `code` contradicts — accepted, as
+the alternative is a member that is pure derivation.
 
-That was enabled by a one-character finding: Scalar builds each heading's route
-from its **plain text**, so `### \`validation_failed\`` (wrapped in a code span)
-collapsed every problem type to the same empty slug and none was addressable.
-Written as `### validation_failed`, each gets its own route —
-`#description/validation-failed` — and `documentation` can point straight at it.
-`DocsDescriptionTest` pins both the plain-text headings and the slug shape.
+**The sentences were rewritten, not moved**, and that distinction matters.
+Documentation explains WHY something is designed as it is; a response says what
+happened and what to do. The earlier prose did both, and some of it had no
+business in a body: `spam_suspected` enumerated all three anti-abuse checks
+inside the very response that is deliberately vague about which one failed, and
+`invalid_credentials` and `not_found` explained our enumeration defences to the
+caller being defended against. That rationale now lives in comments in
+`ErrorVocabulary`, where it costs nobody any bytes.
 
-**The remaining coupling is deliberate and asymmetric.** `documentation` depends
-on Scalar's slugifier; `type` never could have. A locator fails softly — the
-reader lands on the reference and does not scroll — while a broken identifier
-breaks a client's branching. Which member may depend on a third party is exactly
-the identifier/locator distinction, made concrete.
-
-**The reference lives inside Scalar.** `ErrorVocabulary::markdown()` generates the
-whole section into `info.description`, which Scalar renders as a collapsible
-sidebar group beside Session and Events. That answers "can we style a page like
-Scalar" by dissolving it: a hand-matched copy drifts on every Scalar release;
-content inside the document cannot.
+`DocsDescriptionTest` still guards the reference prose — the worked example is
+parsed out of `info.description` and compared against a problem document the API
+really emits — and its retired-claims list now buries every dead design so none
+of them can creep back in.
 
 ---
 

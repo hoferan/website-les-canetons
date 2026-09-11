@@ -1,6 +1,5 @@
 <?php
 
-use App\Support\ErrorVocabulary;
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
 use App\Support\Scramble\ValidationExceptionResponse;
@@ -80,17 +79,12 @@ return [
          * follows.
          */
         /*
-         * The problem-type section at the end is APPENDED FROM CODE, by
-         * App\Support\ErrorVocabulary::markdown(), rather than written here.
-         * One list feeds the OpenAPI enum, the pages at /api/problems and this
-         * reference, so a prose copy cannot go stale behind the others.
-         *
-         * Calling a class from a config file is safe; calling the CONTAINER is
-         * not. The composer autoloader is registered before config is loaded,
-         * so a plain class with constants resolves — whereas app() or a facade
-         * fails with "Target class [env] does not exist" while booting, which
-         * takes down every route including the ones that would explain why.
-         * config/docs.php carries the same warning next to the same trap.
+         * NO PROBLEM-TYPE CATALOGUE HERE, deliberately. This description once
+         * ended with twenty-one generated sections, one per error code — which
+         * dominated the reference's sidebar to document something nobody reads
+         * until they hit it. Every error now carries its own `detail`, so the
+         * explanation arrives with the failure instead. See
+         * App\Support\ErrorVocabulary.
          */
         'description' => <<<'MARKDOWN'
 The API behind the members' area and the public forms of the Guggenmusik
@@ -148,28 +142,31 @@ problem document, served as `application/problem+json`:
 {
   "title": "Invalid form submission",
   "status": 400,
-  "instance": "/api/v1/events/42",
   "code": "validation_failed",
+  "instance": "/api/v1/events/42",
   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
   "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P",
-  "documentation": "/api/docs#description/validation-failed"
+  "detail": "One or more submitted fields were rejected. `errors` names each one and why…"
 }
 ```
 
-`title`, `status` and `instance` are RFC 9457's own members. `code`, `errors`,
-`requestId` and `documentation` are this API's extensions, which the RFC
-permits.
+`title`, `status`, `detail` and `instance` are RFC 9457's own members. `code`,
+`errors` and `requestId` are this API's extensions, which the RFC permits.
 
 **Branch on `code`.** `code` and `errors[].reason` are stable machine tokens;
 `title` is English prose meant for a log and may be reworded without notice.
 The front end maps the tokens to French, and any other client should do the
 same.
 
-There is deliberately **no `type` member**. RFC 9457 makes it optional, and
-here it could only ever have been a constant prefix in front of `code` —
-carrying no information the document did not already have. `code` is the
-discriminator; `documentation` is where to read about that particular
-problem, and it links straight to its entry under *Problem types* below.
+`detail` says what happened and what to do about it, in English, for whoever
+is reading the response. There is no catalogue of error codes elsewhere in
+this reference and no endpoint to fetch one: a problem description is wanted
+by somebody who has that problem, at the moment they have it, so it travels
+with the failure.
+
+There is deliberately **no `type` member** either. RFC 9457 makes it optional,
+and here it could only ever have been a constant prefix in front of `code`,
+carrying nothing the document did not already have.
 
 `errors` is always present, and empty for a failure with nothing field-level
 to say. A `reason` may carry `params` (for example `{"max": 255}`) when the
@@ -228,17 +225,8 @@ require:
 Failing either answers `422 spam_suspected`. Both endpoints are rate limited
 to 10 requests a minute per IP.
 
-## Problem types
+MARKDOWN,
 
-Every failure this API can answer with, and what each one means. The heading is
-the `code` member, and beside it the status it answers with and its English
-`title`.
-
-Each entry is individually addressable, and a problem document's
-`documentation` member links straight to its own — so an error you cannot make
-sense of is one click from the paragraph explaining it.
-
-MARKDOWN.ErrorVocabulary::markdown(),
     ],
 
     'ui' => [
