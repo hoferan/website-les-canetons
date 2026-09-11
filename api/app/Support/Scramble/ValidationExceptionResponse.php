@@ -2,6 +2,7 @@
 
 namespace App\Support\Scramble;
 
+use App\Exceptions\ApiError;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
@@ -27,8 +28,8 @@ final class ValidationExceptionResponse extends ExceptionToResponseExtension
         return Response::make(400)
             ->setDescription('Validation failed. See App\Exceptions\ApiError::validation().')
             ->setContent(
-                'application/json',
-                Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withFields: true))
+                ApiError::MEDIA_TYPE,
+                Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withErrors: true))
             );
     }
 

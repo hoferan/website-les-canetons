@@ -2,6 +2,7 @@
 
 namespace App\Support\Scramble;
 
+use App\Exceptions\ApiError;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
@@ -23,7 +24,7 @@ final class AuthenticationExceptionResponse extends ExceptionToResponseExtension
     {
         return Response::make(401)
             ->setDescription('Not authenticated.')
-            ->setContent('application/json', Schema::fromType(ErrorResponseSchema::schema(['not_authenticated'])));
+            ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema(['not_authenticated'])));
     }
 
     public function reference(ObjectType $type)

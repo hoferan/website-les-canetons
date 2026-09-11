@@ -10,6 +10,7 @@ use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
 use App\Http\Middleware\NoStoreResponse;
 use App\Http\Middleware\PublicWriteGuard;
+use App\Http\Middleware\RequestId;
 use App\Http\Middleware\RequirePermission;
 use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Auth\AuthenticationException;
@@ -22,6 +23,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     // The contract lives under /api/v1. The prefix is what makes a future v2
@@ -112,6 +114,17 @@ return Application::configure(basePath: dirname(__DIR__))
         // test_traversing_both_groups_migrates_once_and_does_not_deadlock.
         $middleware->prependToGroup('api', RunPendingMigrations::class);
         $middleware->prependToGroup('web', RunPendingMigrations::class);
+
+        // GLOBAL, and ahead of everything: every response carries X-Request-Id,
+        // and every log line written during the request carries the same value
+        // through Illuminate's Context.
+        //
+        // Global middleware is a separate stack from the groups, which is what
+        // makes this safe — prependToGroup() here would displace
+        // RunPendingMigrations from index 0 of the `api` group, and
+        // AutoMigrateTest asserts it is index 0 because anything ahead of it
+        // runs against a schema that may not exist yet.
+        $middleware->prepend(RequestId::class);
 
         $middleware->alias([
             'permission' => RequirePermission::class,
@@ -234,6 +247,23 @@ return Application::configure(basePath: dirname(__DIR__))
         // later cannot silently pick the wrong winner.
         $exceptions->render(fn (ReauthenticationFailed $e, Request $request) => $request->is('api/*')
             ? ApiError::json($e->status, $e->errorCode, $e->getMessage())
+            : null);
+
+        // 404. Registered BEFORE the catch-all HttpException closure below,
+        // which is what makes it reachable at all: NotFoundHttpException IS an
+        // HttpException, and invalidSession() returns null for every status but
+        // 419, so until this existed a 404 fell straight through to Laravel's
+        // default renderer and answered {"message": "..."} — a body with no
+        // `code`, which web/src/i18n/'s translateApiError() can only render as
+        // the generic French fallback. The one status in the whole API that
+        // escaped its own error contract.
+        //
+        // Route-model binding needs no separate renderer: prepareException()
+        // has already rewritten ModelNotFoundException into this by the time
+        // any callback runs, the same way it rewrites AuthorizationException
+        // into AccessDeniedHttpException above.
+        $exceptions->render(fn (NotFoundHttpException $e, Request $request) => $request->is('api/*')
+            ? ApiError::notFound($e)
             : null);
 
         // 419/CSRF. Same prepareException() trap as the 403 above, but worse:

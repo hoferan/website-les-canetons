@@ -99,9 +99,9 @@ class AccountPasswordTest extends TestCase
             'newPassword' => 'short',
         ])->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'newPassword')
-            ->assertJsonPath('fields.0.reason', 'too_short')
-            ->assertJsonPath('fields.0.params.min', 8);
+            ->assertJsonPath('errors.0.field', 'newPassword')
+            ->assertJsonPath('errors.0.reason', 'too_short')
+            ->assertJsonPath('errors.0.params.min', 8);
     }
 
     public function test_it_ends_the_members_other_sessions_but_not_this_one(): void

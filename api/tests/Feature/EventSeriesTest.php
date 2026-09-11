@@ -133,9 +133,9 @@ class EventSeriesTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events/series', $this->payload(['dates' => $dates]))
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'dates')
-            ->assertJsonPath('fields.0.reason', 'too_long')
-            ->assertJsonPath('fields.0.params.max', 60);
+            ->assertJsonPath('errors.0.field', 'dates')
+            ->assertJsonPath('errors.0.reason', 'too_long')
+            ->assertJsonPath('errors.0.params.max', 60);
 
         $this->assertSame(0, Event::query()->count());
     }
@@ -167,8 +167,8 @@ class EventSeriesTest extends TestCase
             // an empty array, and StoreEventSeriesRequest deliberately omits
             // `min:1` so the committee is told the list is missing rather than
             // that it "est trop court (minimum 1 caractères)".
-            ->assertJsonPath('fields.0.field', 'dates')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'dates')
+            ->assertJsonPath('errors.0.reason', 'required');
     }
 
     public function test_one_bad_date_writes_nothing_at_all(): void
@@ -193,8 +193,8 @@ class EventSeriesTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events/series', $payload)
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'template.endTime')
-            ->assertJsonPath('fields.0.reason', 'must_be_after');
+            ->assertJsonPath('errors.0.field', 'template.endTime')
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
 
         $this->assertSame(0, Event::query()->count());
     }
@@ -217,8 +217,8 @@ class EventSeriesTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events/series', $payload)
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'template.endTime')
-            ->assertJsonPath('fields.0.reason', 'invalid_format');
+            ->assertJsonPath('errors.0.field', 'template.endTime')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
     }
 
     public function test_the_template_is_applied_to_every_event(): void

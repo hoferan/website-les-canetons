@@ -69,16 +69,20 @@ describe("customFetch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("throws a typed ApiError carrying code and fields", async () => {
+  it("reads an RFC 9457 problem document into a typed ApiError", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(() =>
         Promise.resolve(
           jsonResponse(
             {
-              error: "Invalid form submission",
+              type: "https://lescanetons.org/problems/validation-failed",
+              title: "Invalid form submission",
+              status: 400,
+              instance: "/api/v1/contact",
               code: "validation_failed",
-              fields: [{ field: "email", reason: "required" }],
+              errors: [{ field: "email", reason: "required" }],
+              requestId: "01JB3K7QW8ZX7VN4S2QK9J0M1P",
             },
             400,
           ),
@@ -94,7 +98,12 @@ describe("customFetch", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(400);
     expect(error.code).toBe("validation_failed");
+    // `errors` on the wire, `fields` on the object: the wire name follows
+    // RFC 9457 convention, this one follows what the UI does with it.
     expect(error.fields).toEqual([{ field: "email", reason: "required" }]);
+    // The string a member reads out. Dropping it would make every reported
+    // failure unfindable in the log, silently.
+    expect(error.requestId).toBe("01JB3K7QW8ZX7VN4S2QK9J0M1P");
   });
 
   it("still throws an ApiError when the body is not the contract", async () => {

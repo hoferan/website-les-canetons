@@ -105,9 +105,9 @@ class AttendanceAnswerTest extends TestCase
         $this->actingAsMember($this->player)
             ->putJson($this->url(), ['status' => 'peut-être'])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'status')
-            ->assertJsonPath('fields.0.reason', 'invalid_value')
-            ->assertJsonPath('fields.0.params.allowed', ['yes', 'no']);
+            ->assertJsonPath('errors.0.field', 'status')
+            ->assertJsonPath('errors.0.reason', 'invalid_value')
+            ->assertJsonPath('errors.0.params.allowed', ['yes', 'no']);
     }
 
     // ------------------------------------------------ C11: withdrawing a yes
@@ -124,8 +124,8 @@ class AttendanceAnswerTest extends TestCase
             ->putJson($this->url(), ['status' => 'no'])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'note')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'note')
+            ->assertJsonPath('errors.0.reason', 'required');
 
         // And the yes still stands: a refused withdrawal must not half-apply.
         $this->assertSame(AttendanceStatus::Yes, Attendance::query()->sole()->status);

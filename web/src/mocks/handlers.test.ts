@@ -366,9 +366,9 @@ test("refuses an end before the start, against its own field", async () => {
   });
 
   expect(response.status).toBe(400);
-  const body = (await response.json()) as { code: string; fields: { field: string }[] };
+  const body = (await response.json()) as { code: string; errors: { field: string }[] };
   expect(body.code).toBe("validation_failed");
-  expect(body.fields[0]?.field).toBe("endsAt");
+  expect(body.errors[0]?.field).toBe("endsAt");
 });
 
 test("patching only the end still compares against the stored start", async () => {

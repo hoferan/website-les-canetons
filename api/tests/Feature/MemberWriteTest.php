@@ -137,8 +137,8 @@ class MemberWriteTest extends TestCase
             'publicVisible' => false,
         ])->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'username')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'username')
+            ->assertJsonPath('errors.0.reason', 'required');
     }
 
     public function test_a_duplicate_username_is_reported_against_its_own_field(): void
@@ -151,8 +151,8 @@ class MemberWriteTest extends TestCase
         $this->acting()->postJson('/api/v1/members', $this->payload(['firstName' => 'Autre']))
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'username')
-            ->assertJsonPath('fields.0.reason', 'already_taken');
+            ->assertJsonPath('errors.0.field', 'username')
+            ->assertJsonPath('errors.0.reason', 'already_taken');
     }
 
     public function test_a_missing_name_is_a_validation_failure_not_a_500(): void
@@ -160,8 +160,8 @@ class MemberWriteTest extends TestCase
         $this->acting()->postJson('/api/v1/members', ['username' => 'x.y', 'publicVisible' => false])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'firstName')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'firstName')
+            ->assertJsonPath('errors.0.reason', 'required');
     }
 
     public function test_creating_a_person_is_audited_with_their_name(): void
@@ -242,7 +242,7 @@ class MemberWriteTest extends TestCase
         $this->acting()->patchJson("/api/v1/members/{$member->id}", ['username' => null])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'username');
+            ->assertJsonPath('errors.0.field', 'username');
 
         $this->assertSame('perrine.player', $member->fresh()->username);
     }

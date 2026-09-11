@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 
+import type { ApiErrorField } from "../api/http";
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
 import type {
   AuthMe200,
@@ -176,11 +177,47 @@ export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);
 }
 
-const unauthenticated = () =>
-  HttpResponse.json(
-    { error: "Not authenticated", code: "not_authenticated", fields: [] },
-    { status: 401 },
+/** A valid ULID, so anything that validates the shape of one still passes. */
+export const MOCK_REQUEST_ID = "01JB3K7QW8ZXMOCKMOCKMOCK00";
+
+/**
+ * The one place this mocked backend builds a failure, mirroring
+ * App\Exceptions\ApiError::json() on the real one.
+ *
+ * It exists for the same reason that one does: an error shape assembled inline
+ * at a dozen call sites drifts, and a mock that drifts from the server is worse
+ * than no mock — it makes the SPA pass against a contract nothing serves.
+ *
+ * `instance` is optional here and it is the one member this mock does not always
+ * fill. MSW resolvers that already destructure `request` pass a path; the rest
+ * send an empty string. Nothing in the SPA reads it — it is in the contract for
+ * a third party reading a log — so a faithful `type`, `code`, `errors` and
+ * `requestId` matter and this one does not.
+ */
+export function problem(
+  status: number,
+  code: string,
+  title: string,
+  errors: ApiErrorField[] = [],
+  instance = "",
+) {
+  return HttpResponse.json(
+    {
+      type: `https://lescanetons.org/problems/${code.replace(/_/g, "-")}`,
+      title,
+      status,
+      instance,
+      code,
+      errors,
+      // Fixed, not random: a mocked screenshot or a snapshot that changed on
+      // every run because of an identifier nobody asserts would be noise.
+      requestId: MOCK_REQUEST_ID,
+    },
+    { status, headers: { "Content-Type": "application/problem+json" } },
   );
+}
+
+const unauthenticated = () => problem(401, "not_authenticated", "Not authenticated");
 
 /* ------------------------------------------------------------------------ *
  * The roster
@@ -379,10 +416,7 @@ function refuseWithout(permission: string) {
     return unauthenticated();
   }
   if (!currentUser.permissions.includes(permission)) {
-    return HttpResponse.json(
-      { error: "Access denied", code: "access_denied", fields: [] },
-      { status: 403 },
-    );
+    return problem(403, "access_denied", "Access denied");
   }
   return null;
 }
@@ -390,15 +424,14 @@ function refuseWithout(permission: string) {
 const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 
 /** Route-model binding's own answer for an id nothing matches. */
-const notFound = () =>
-  HttpResponse.json({ error: "Not found", code: "not_found", fields: [] }, { status: 404 });
+const notFound = () => problem(404, "not_found", "Not found");
 
 /**
  * Mirrors App\Support\AccessIntegrity: 409, not 403 — the caller HAS the
  * permission, the request conflicts with the state of the system.
  */
-function conflict(code: string, error: string) {
-  return HttpResponse.json({ error, code, fields: [] }, { status: 409 });
+function conflict(code: string, title: string) {
+  return problem(409, code, title);
 }
 
 /** True when removing these members would leave nobody holding members.manage. */
@@ -554,14 +587,9 @@ function refuseIfEndsBeforeStart(startsAt: string, endsAt: string) {
   if (Date.parse(endsAt) > Date.parse(startsAt)) {
     return null;
   }
-  return HttpResponse.json(
-    {
-      error: "Invalid form submission",
-      code: "validation_failed",
-      fields: [{ field: "endsAt", reason: "must_be_after" }],
-    },
-    { status: 400 },
-  );
+  return problem(400, "validation_failed", "Invalid form submission", [
+    { field: "endsAt", reason: "must_be_after" },
+  ]);
 }
 
 /** Test seam: every mock store is module state, so every test must reset them all. */
@@ -603,17 +631,15 @@ const overrides = [
     // used to disagree with the real API on exactly those two values.
     const missing = REQUIRED.filter((field) => (body[field] ?? "").trim() === "");
     if (missing.length > 0) {
-      return HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: missing.map((field) => ({ field, reason: "required" })),
-        },
-        // 400, NOT Laravel's default 422: ApiError::validation() ends
-        // `self::json(400, 'validation_failed', ...)` for every validation
-        // failure in this API, and OpenApiDocumentTest pins it
-        // ("422 is Laravel's default shape; this API does not use it").
-        { status: 400 },
+      // 400, NOT Laravel's default 422: ApiError::validation() ends
+      // `self::json(400, 'validation_failed', ...)` for every validation
+      // failure in this API, and OpenApiDocumentTest pins it
+      // ("422 is Laravel's default shape; this API does not use it").
+      return problem(
+        400,
+        "validation_failed",
+        "Invalid form submission",
+        missing.map((field) => ({ field, reason: "required" })),
       );
     }
     return HttpResponse.json({ ok: true });
@@ -627,10 +653,7 @@ const overrides = [
     // rather than against the literal key union `satisfies` gives USERS.
     const user = body.username ? (USERS as Record<string, MockUser>)[body.username] : undefined;
     if (!user || body.password !== "demo") {
-      return HttpResponse.json(
-        { error: "Incorrect username or password", code: "invalid_credentials", fields: [] },
-        { status: 401 },
-      );
+      return problem(401, "invalid_credentials", "Incorrect username or password");
     }
     setCurrentUser(user);
     // Deliberately no identity in this body — mirrors AuthController::login
@@ -680,14 +703,9 @@ const overrides = [
     // screen most needs a mock for: a duplicate has to land on the username
     // field, in French, without closing the form the administrator is typing in.
     if (members.some((member) => member.username === body.username)) {
-      return HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: [{ field: "username", reason: "already_taken" }],
-        },
-        { status: 400 },
-      );
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "username", reason: "already_taken" },
+      ]);
     }
 
     const member: MemberResource = {
@@ -859,24 +877,12 @@ const overrides = [
     // and i18next prints a missing interpolation value literally — a mock that
     // omitted it would let a screen ship reading "minimum {{min}} caractères".
     if (body.currentPassword !== ACTOR_PASSWORD) {
-      return HttpResponse.json(
-        {
-          error: "Password confirmation failed",
-          code: "reauth_failed",
-          fields: [],
-        },
-        { status: 403 },
-      );
+      return problem(403, "reauth_failed", "Password confirmation failed");
     }
     if ((body.newPassword ?? "").length < 8) {
-      return HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: [{ field: "newPassword", reason: "too_short", params: { min: 8 } }],
-        },
-        { status: 400 },
-      );
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "newPassword", reason: "too_short", params: { min: 8 } },
+      ]);
     }
     setCurrentUser({ ...currentUser, mustChangePassword: false });
     // Their roster row carries the same flag, so the screen that lists it

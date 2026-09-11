@@ -418,7 +418,7 @@ class AutoMigrateTest extends TestCase
 
         $response->assertStatus(503)
             ->assertJsonPath('code', 'service_unavailable')
-            ->assertJsonPath('error', 'Service unavailable')
+            ->assertJsonPath('title', 'Service unavailable')
             ->assertJsonMissingPath('message');
 
         self::assertSame(

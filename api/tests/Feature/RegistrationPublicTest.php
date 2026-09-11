@@ -221,7 +221,7 @@ class RegistrationPublicTest extends TestCase
             'choices' => [['optionId' => $other->id, 'quantity' => 1]],
         ]), $this->headers())
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'choices.0.optionId');
+            ->assertJsonPath('errors.0.field', 'choices.0.optionId');
 
         $this->assertSame(0, Registration::query()->count());
     }
@@ -237,8 +237,8 @@ class RegistrationPublicTest extends TestCase
             ],
         ]), $this->headers())
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'choices')
-            ->assertJsonPath('fields.0.reason', 'too_many_guests');
+            ->assertJsonPath('errors.0.field', 'choices')
+            ->assertJsonPath('errors.0.reason', 'too_many_guests');
 
         $this->assertSame(0, Registration::query()->count());
     }
@@ -259,15 +259,15 @@ class RegistrationPublicTest extends TestCase
     {
         $this->postJson($this->url(), $this->payload(['phone' => '']), $this->headers())
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'phone')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'phone')
+            ->assertJsonPath('errors.0.reason', 'required');
     }
 
     public function test_a_booking_with_no_choices_is_refused(): void
     {
         $this->postJson($this->url(), $this->payload(['choices' => []]), $this->headers())
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'choices');
+            ->assertJsonPath('errors.0.field', 'choices');
 
         $this->assertSame(0, Registration::query()->count());
     }

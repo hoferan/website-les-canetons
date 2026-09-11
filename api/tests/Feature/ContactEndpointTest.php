@@ -40,7 +40,7 @@ class ContactEndpointTest extends TestCase
         $response->assertStatus(400)->assertJsonPath('code', 'validation_failed');
 
         // These names must match i18n.js's fields.* keys exactly.
-        $fields = array_column($response->json('fields'), 'field');
+        $fields = array_column($response->json('errors'), 'field');
         $this->assertSame(['lastName', 'firstName', 'email', 'subject', 'message'], $fields);
     }
 
@@ -48,7 +48,7 @@ class ContactEndpointTest extends TestCase
     {
         $response = $this->postJson('/api/v1/contact', $this->publicWriteBody(['email' => 'not-an-email'] + self::VALID), $this->publicWriteHeaders());
 
-        $response->assertStatus(400)->assertJsonPath('fields.0', [
+        $response->assertStatus(400)->assertJsonPath('errors.0', [
             'field' => 'email',
             'reason' => 'invalid_format',
         ]);

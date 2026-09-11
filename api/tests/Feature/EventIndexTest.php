@@ -155,15 +155,32 @@ class EventIndexTest extends TestCase
     public function test_an_unknown_event_is_a_404(): void
     {
         // assertStatus(404) alone cannot tell "route-model binding refused an
-        // unknown id" from "there is no such route at all" — both answer 404.
-        // The message is unique to route-model binding failing to resolve the
-        // model, and (verified against both APP_DEBUG=true and =false) it is
-        // present in the JSON body either way: Illuminate's exception handler
-        // always includes an HttpException's own getMessage(), debug or not —
-        // only the trace/exception/file keys are debug-gated.
-        $this->actingAsMember($this->member)->getJson('/api/v1/events/99999')
+        // unknown id" from "there is no such route at all" — both answer 404,
+        // and in Task 4 that bare assertion passed with the route deleted
+        // outright.
+        //
+        // This used to tell them apart by matching Laravel's internal "No query
+        // results for model [...]" message, which was only ever visible because
+        // 404 ESCAPED this API's error contract and fell through to the
+        // framework's default body. A2 closed that escape, so the string is
+        // gone and both cases now answer the same problem document — which is
+        // correct: telling a caller which of the two happened is exactly the
+        // enumeration a 404 exists to prevent.
+        //
+        // The route is proved to exist by driving it, in the same test, with an
+        // id that does resolve. Delete the route and the first half fails;
+        // break the binding and the second does. That is strictly stronger than
+        // the message match, and it depends on nothing internal to Laravel.
+        $event = Event::factory()->create(['starts_at' => now()->addDays(3)]);
+
+        $this->actingAsMember($this->member)
+            ->getJson("/api/v1/events/{$event->id}")
+            ->assertOk();
+
+        $this->actingAsMember($this->member)
+            ->getJson('/api/v1/events/99999')
             ->assertStatus(404)
-            ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
+            ->assertJsonPath('code', 'not_found');
     }
 
     public function test_listing_the_planning_costs_a_fixed_number_of_queries(): void

@@ -47,18 +47,34 @@ export type ApiErrorField = {
  * state) always receive one type. `code` falls back to 'unknown_error' when the
  * body is not the contract at all — an HTML 502 from the host, say — because the
  * display layer must always have a token to translate.
+ *
+ * `fields` keeps its name here even though the wire calls it `errors`: on this
+ * side it is one property of an Error object, and `error.errors` reads as a
+ * mistake. The wire name follows RFC 9457 convention; this one follows what the
+ * UI does with it, which is highlight fields.
+ *
+ * `requestId` is the string a member reads out when something failed. It is
+ * optional because a body that is not our contract has none.
  */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: ApiErrorField[];
+  readonly requestId?: string;
 
-  constructor(status: number, code: string, message: string, fields: ApiErrorField[] = []) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields: ApiErrorField[] = [],
+    requestId?: string,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.requestId = requestId;
   }
 }
 
@@ -118,15 +134,26 @@ async function toApiError(response: Response): Promise<ApiError> {
     return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
   }
 
-  const contract = body as { error?: string; code?: string; fields?: ApiErrorField[] };
-  if (typeof contract?.code !== "string") {
+  // An RFC 9457 problem document. `type` and `title` are the standard members;
+  // `code`, `errors` and `requestId` are this API's extensions — see
+  // App\Exceptions\ApiError. Only `code` is load-bearing here: it is the token
+  // the French layer maps, and a body without one is not our contract at all.
+  const problem = body as {
+    title?: string;
+    code?: string;
+    errors?: ApiErrorField[];
+    requestId?: string;
+  };
+
+  if (typeof problem?.code !== "string") {
     return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
   }
 
   return new ApiError(
     response.status,
-    contract.code,
-    contract.error ?? `HTTP ${response.status}`,
-    contract.fields ?? [],
+    problem.code,
+    problem.title ?? `HTTP ${response.status}`,
+    problem.errors ?? [],
+    typeof problem.requestId === "string" ? problem.requestId : undefined,
   );
 }

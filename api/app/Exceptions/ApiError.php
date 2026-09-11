@@ -2,30 +2,65 @@
 
 namespace App\Exceptions;
 
+use App\Http\Middleware\RequestId;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Renders exceptions into the JSON error contract the front-end consumes:
+ * Renders every failure as an RFC 9457 problem document:
  *
- *     {"error": "...", "code": "...", "fields": [{"field", "reason", "params"?}]}
+ *     Content-Type: application/problem+json
+ *
+ *     {
+ *       "type":      "https://lescanetons.org/problems/validation-failed",
+ *       "title":     "Invalid form submission",
+ *       "status":    400,
+ *       "instance":  "/api/v1/events/42",
+ *       "code":      "validation_failed",
+ *       "errors":    [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
+ *       "requestId": "01JB3K7QW8ZX..."
+ *     }
  *
  * This deliberately replaces Laravel's native {message, errors:{}} shape.
- * web/src/i18n/'s translateApiError() is the ONLY place French is
- * computed in the whole system, and it maps `code` and `fields[].reason` —
- * stable machine tokens — onto French text. Laravel's native shape carries
- * English prose instead, which that layer cannot translate. Keeping this
- * contract is also what upholds the project rule that API bodies stay English.
+ * web/src/i18n/'s translateApiError() is the ONLY place French is computed in
+ * the whole system, and it maps `code` and `errors[].reason` — stable machine
+ * tokens — onto French text. Laravel's native shape carries English prose
+ * instead, which that layer cannot translate. Keeping this contract is also what
+ * upholds the project rule that API bodies stay English.
  *
  * Every `reason` and `field` token emitted here must exist as a key in
  * web/src/i18n/fr.ts; ApiErrorVocabularyTest enforces this.
+ *
+ * WHY A STANDARD SHAPE RATHER THAN OUR OWN. The previous contract —
+ * {error, code, fields[]} — did the same job perfectly well for one known
+ * consumer. This API is held to genuinely-public standards, and a third-party
+ * integrator with only the document in hand should not have to learn a bespoke
+ * error envelope to write a `catch` block. The tokens that carry the meaning are
+ * unchanged; only the envelope around them moved, which is why no French copy
+ * was rewritten when it did.
+ *
+ * `type` and `code` say the same thing twice, on purpose. See json().
  */
 final class ApiError
 {
+    /** RFC 9457 §3. Not application/json — that is the point of the media type. */
+    public const MEDIA_TYPE = 'application/problem+json';
+
+    /**
+     * The namespace every `type` URI is built under.
+     *
+     * A URI identifies the problem type; it is not required to be fetchable, and
+     * the host here is a name rather than a promise. Keeping it absolute (rather
+     * than a relative URI reference, which RFC 9457 also permits) means a `type`
+     * copied out of a log is unambiguous about which system produced it.
+     */
+    private const TYPE_BASE = 'https://lescanetons.org/problems/';
+
     /**
      * Laravel rule name => legacy reason token.
      *
@@ -107,7 +142,7 @@ final class ApiError
      * rule failures. The two idiomatic ways to raise a business-rule error —
      * ValidationException::withMessages() and
      * $validator->after(fn ($v) => $v->errors()->add(...)) — never touch
-     * failedRules, so on their own they would render with NO `fields` entry and
+     * failedRules, so on their own they would render with NO `errors` entry and
      * the UI would have nothing to highlight. The second loop closes that gap:
      * for any field carrying a message but no failed rule, the MESSAGE IS THE
      * REASON TOKEN, emitted as-is. So a closure validator must add a bare token
@@ -119,7 +154,7 @@ final class ApiError
      * missing interpolation value literally — so a token whose French
      * interpolates (today: 'too_long' and the `in`-only 'invalid_value') would
      * put a raw {{max}} or {{allowed}} on the user's screen. Raise those
-     * through ApiError::json() with an explicit `fields` array instead.
+     * through ApiError::json() with an explicit `errors` array instead.
      */
     public static function validation(ValidationException $e): JsonResponse
     {
@@ -206,6 +241,22 @@ final class ApiError
     }
 
     /**
+     * 404, for an unknown route and for route-model binding alike.
+     *
+     * ONE CODE FOR BOTH, and the message says no more than the code does. "No
+     * such event" and "no such route" are the same answer to a caller who may
+     * not know the thing exists, and telling the two apart is exactly the
+     * enumeration a 404 is supposed to prevent. The API's own reference already
+     * documents 404 as "no such thing, or nothing you may know exists".
+     *
+     * $e is unused deliberately; see unauthenticated().
+     */
+    public static function notFound(NotFoundHttpException $e): JsonResponse
+    {
+        return self::json(404, 'not_found', 'Not found');
+    }
+
+    /**
      * The schema is not known to be current, so the request was refused rather
      * than served against a possibly half-applied database — see
      * App\Http\Middleware\RunPendingMigrations.
@@ -234,22 +285,91 @@ final class ApiError
         return self::json(419, 'invalid_session', 'Invalid session');
     }
 
-    /** @param array<int, array<string, mixed>> $fields */
+    /**
+     * The single place a problem document is built.
+     *
+     * RFC 9457 members first, then the two extensions this API adds. Extension
+     * members are explicitly allowed by §3.2, and both earn their place:
+     *
+     *   `code`      is redundant with `type` — it is the same token, without the
+     *               URI around it — and it is what web/src/i18n/ maps to French.
+     *               Making the translation layer parse a URI to recover a token
+     *               we already have would buy nothing.
+     *
+     *   `requestId` is what a member reads out over the telephone. See
+     *               App\Http\Middleware\RequestId.
+     *
+     * `errors` is ALWAYS present, empty where there is nothing field-level to
+     * say. The previous contract omitted `fields` when empty, which made it
+     * optional in the document and meant every consumer needed a null check for
+     * a case that carries no information.
+     *
+     * @param  array<int, array<string, mixed>>  $errors
+     */
     public static function json(
         int $status,
         string $code,
         string $message,
-        array $fields = []
+        array $errors = []
     ): JsonResponse {
-        $body = ['error' => $message, 'code' => $code];
-        if ($fields !== []) {
-            // array_values, because an associative array would serialise as a
-            // JSON object and web/src/i18n/ calls .map() on this — a TypeError in
-            // the browser. Nothing statically checks the @param above.
-            $body['fields'] = array_values($fields);
-        }
+        // array_values, because an associative array would serialise as a JSON
+        // object and web/src/i18n/ calls .map() on this — a TypeError in the
+        // browser. Nothing statically checks the @param above.
+        //
+        // Hoisted out of the literal below deliberately: Scramble reads a
+        // comment sitting above an array key as that property's DESCRIPTION,
+        // and this one was being published into the OpenAPI document as the
+        // documentation for `errors`.
+        $orderedErrors = array_values($errors);
 
-        return response()->json($body, $status);
+        $body = [
+            'type' => self::type($code),
+            'title' => $message,
+            'status' => $status,
+            'instance' => self::instance(),
+            'code' => $code,
+            'errors' => $orderedErrors,
+            'requestId' => RequestId::current(),
+        ];
+
+        return response()
+            ->json($body, $status)
+            // RFC 9457 §3. Overriding response()->json()'s application/json is
+            // the whole point: it is what tells a standards-aware client that
+            // this body is a problem document and not the resource it asked for.
+            ->header('Content-Type', self::MEDIA_TYPE);
+    }
+
+    /**
+     * The `type` URI for a code.
+     *
+     * Hyphenated, because a URI path segment conventionally is, while the `code`
+     * beside it stays snake_case like every other machine token in this API.
+     *
+     * RFC 9457 §3.1 says a `type` URI "is encouraged to" resolve to
+     * human-readable documentation, and is valid whether or not it does. These
+     * do not resolve today. That is a deliberate deferral, not an oversight: a
+     * page per error token is worth writing when somebody outside this
+     * repository is integrating, and the tokens are already documented in the
+     * OpenAPI reference until then.
+     */
+    private static function type(string $code): string
+    {
+        return self::TYPE_BASE.str_replace('_', '-', $code);
+    }
+
+    /**
+     * RFC 9457 §3.1's `instance`: what was being asked for, as a path.
+     *
+     * Path only, never the query string — Apache logs query strings in plain
+     * text on this host, and a problem document is a thing people paste into
+     * chat messages and issue trackers.
+     */
+    private static function instance(): string
+    {
+        // request() is always a Request, even in a console context, where it is
+        // an empty one whose path is "/". There is no null case to guard.
+        return request()->getPathInfo();
     }
 
     /**

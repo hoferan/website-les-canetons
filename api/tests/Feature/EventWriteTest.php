@@ -157,12 +157,12 @@ class EventWriteTest extends TestCase
             ]))
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
-            ->assertJsonPath('fields.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.field', 'endsAt')
             // The token, not just the field: `after` is absent from
             // ApiError::REASONS by default and would silently fall back to
             // 'invalid_format' — "n'est pas dans un format valide" for a
             // perfectly well-formed timestamp.
-            ->assertJsonPath('fields.0.reason', 'must_be_after');
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
 
         $this->assertDatabaseCount('events', 0);
     }
@@ -179,8 +179,8 @@ class EventWriteTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events', $this->validPayload(['endsAt' => 'pas une date']))
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'endsAt')
-            ->assertJsonPath('fields.0.reason', 'invalid_format');
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
     }
 
     public function test_an_event_may_span_two_days(): void
@@ -210,8 +210,8 @@ class EventWriteTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events', $this->validPayload(['title' => '']))
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'title')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'title')
+            ->assertJsonPath('errors.0.reason', 'required');
     }
 
     public function test_creating_an_event_is_audited(): void
@@ -329,11 +329,11 @@ class EventWriteTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.field', 'endsAt')
             // The token as well as the field, for the reason the POST's own
             // test gives: `after` would otherwise fall back to
             // 'invalid_format' and call a well-formed timestamp malformed.
-            ->assertJsonPath('fields.0.reason', 'must_be_after');
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
 
         // 400 does not by itself prove nothing was written.
         $this->assertSame('2026-09-05 10:00', $event->fresh()->ends_at->utc()->format('Y-m-d H:i'));
@@ -353,8 +353,8 @@ class EventWriteTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => 'pas une date'])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'endsAt')
-            ->assertJsonPath('fields.0.reason', 'invalid_format');
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
     }
 
     public function test_editing_cannot_blank_the_title(): void
@@ -368,8 +368,8 @@ class EventWriteTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->patchJson("/api/v1/events/{$event->id}", ['title' => ''])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'title')
-            ->assertJsonPath('fields.0.reason', 'required');
+            ->assertJsonPath('errors.0.field', 'title')
+            ->assertJsonPath('errors.0.reason', 'required');
 
         $this->assertSame('Répétition', $event->fresh()->title);
     }
@@ -490,14 +490,24 @@ class EventWriteTest extends TestCase
     {
         // assertStatus(404) alone cannot tell "route-model binding refused an
         // unknown id" from "there is no such route": in Task 4 that bare
-        // assertion passed with the route deleted outright. The message is
-        // unique to the binding failing to resolve, and is in the JSON body
-        // whether or not APP_DEBUG is on — only trace/exception/file are
-        // debug-gated. Same pairing as
-        // EventIndexTest::test_an_unknown_event_is_a_404.
-        $this->actingAsMember($this->organiser)->patchJson('/api/v1/events/99999', ['title' => 'X'])
+        // assertion passed with the route deleted outright.
+        //
+        // It used to be told apart by Laravel's internal "No query results for
+        // model [...]" message, which was only visible because 404 escaped this
+        // API's error contract. A2 closed that escape. The route is proved to
+        // exist by driving the same verb against an id that resolves — same
+        // pairing as EventIndexTest::test_an_unknown_event_is_a_404, and
+        // stronger than the message match was.
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Toujours là'])
+            ->assertOk();
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson('/api/v1/events/99999', ['title' => 'X'])
             ->assertStatus(404)
-            ->assertJsonFragment(['message' => 'No query results for model [App\\Models\\Event] 99999']);
+            ->assertJsonPath('code', 'not_found');
     }
 
     public function test_an_organiser_switches_registration_on_and_off(): void
@@ -555,7 +565,7 @@ class EventWriteTest extends TestCase
                 'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
             ]))
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'registrationClosesAt');
+            ->assertJsonPath('errors.0.field', 'registrationClosesAt');
     }
 
     public function test_patching_only_the_close_date_compares_against_the_stored_opening(): void
@@ -573,6 +583,6 @@ class EventWriteTest extends TestCase
                 'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
             ])
             ->assertStatus(400)
-            ->assertJsonPath('fields.0.field', 'registrationClosesAt');
+            ->assertJsonPath('errors.0.field', 'registrationClosesAt');
     }
 }

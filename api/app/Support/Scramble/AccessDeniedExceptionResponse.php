@@ -2,6 +2,7 @@
 
 namespace App\Support\Scramble;
 
+use App\Exceptions\ApiError;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
@@ -45,7 +46,7 @@ final class AccessDeniedExceptionResponse extends ExceptionToResponseExtension
     {
         return Response::make(403)
             ->setDescription('Access denied.')
-            ->setContent('application/json', Schema::fromType(ErrorResponseSchema::schema(['access_denied'])));
+            ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema(['access_denied'])));
     }
 
     public function reference(ObjectType $type)

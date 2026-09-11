@@ -133,31 +133,5 @@
  * to 10 requests a minute per IP.
  * OpenAPI spec version: 1.0.0
  */
-import type { RecordOwnAttendanceRequestStatus } from "./recordOwnAttendanceRequestStatus";
 
-/**
- * A member's own answer to an event.
- *
- * `status` is `yes` or `no`; there is no "maybe". The endpoint is idempotent,
- * so sending the same answer twice is fine and answering again replaces the
- * previous answer.
- *
- * One conditional rule: taking back a `yes` costs a reason. If the stored
- * answer is `yes` and this request sends `no`, `note` becomes required and an
- * empty one fails validation against `note` with `required`. Saying yes late,
- * or repeating a `no`, needs no note.
- *
- * Recording an answer on somebody else's behalf uses
- * `PUT /api/v1/events/{event}/attendance/{member}`, which does not ask for the
- * reason.
- */
-export interface RecordOwnAttendanceRequest {
-  /** Whether the member is coming. One of `yes` or `no`. */
-  status: RecordOwnAttendanceRequestStatus;
-  /**
-   * Free text. Required when this request changes the member's own stored `yes` into a `no`; optional otherwise.
-   * @maxLength 255
-   * @nullable
-   */
-  note?: string | null;
-}
+export type AuthenticationExceptionResponseErrorsItem = { [key: string]: unknown };

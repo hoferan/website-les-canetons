@@ -50,28 +50,45 @@
  *
  * ## Errors
  *
- * Every failure uses one shape:
+ * Every failure is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
+ * problem document, served as `application/problem+json`:
  *
  * ```json
  * {
- *   "error": "Invalid form submission",
+ *   "type": "https://lescanetons.org/problems/validation-failed",
+ *   "title": "Invalid form submission",
+ *   "status": 400,
+ *   "instance": "/api/v1/events/42",
  *   "code": "validation_failed",
- *   "fields": [{ "field": "endsAt", "reason": "must_be_after" }]
+ *   "errors": [{ "field": "endsAt", "reason": "must_be_after" }],
+ *   "requestId": "01JB3K7QW8ZX7VN4S2QK9J0M1P"
  * }
  * ```
  *
- * `code` and `fields[].reason` are stable machine tokens, never prose to show
- * a user. The front end maps them to French; any other client should do the
- * same rather than displaying `error`, which is English and meant for logs.
+ * `type`, `title`, `status` and `instance` are the standard members. `code`,
+ * `errors` and `requestId` are this API's extensions, which RFC 9457 permits.
  *
- * `fields` is present only on `400 validation_failed`. A `reason` may carry
- * `params` (for example `{"max": 255}`) when the sentence needs a number.
+ * **Branch on `code`, not on `title`.** `code` and `errors[].reason` are stable
+ * machine tokens; `title` is English prose meant for a log, and it may be
+ * reworded without notice. The front end maps the tokens to French, and any
+ * other client should do the same. `type` carries the same token as `code`,
+ * hyphenated, for a reader who prefers the URI; those URIs identify a problem
+ * type and are not currently documents you can fetch.
+ *
+ * `errors` is always present, and empty for a failure with nothing field-level
+ * to say. A `reason` may carry `params` (for example `{"max": 255}`) when the
+ * sentence needs a number.
+ *
+ * `requestId` is a ULID, also returned as the `X-Request-Id` header on every
+ * response. Quote it when reporting a problem; it identifies the request in the
+ * server log. Send your own `X-Request-Id` and it is honoured, provided it is a
+ * well-formed ULID.
  *
  * ## Status codes
  *
  * | Code | Means |
  * | --- | --- |
- * | `400` | The submitted fields are wrong. See `fields`. |
+ * | `400` | The submitted fields are wrong. See `errors`. |
  * | `401` | No session. Log in. |
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
@@ -118,7 +135,11 @@
  */
 
 export type AuthLogin401 = {
-  error: "Incorrect username or password";
+  type: string;
+  title: "Incorrect username or password";
+  status: 401;
+  instance: string;
   code: "invalid_credentials";
-  fields: unknown[];
+  errors: unknown[];
+  requestId: string;
 };
