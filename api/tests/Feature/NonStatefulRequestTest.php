@@ -119,6 +119,75 @@ class NonStatefulRequestTest extends TestCase
     }
 
     /**
+     * The dev stack lists `localhost:*`, and this is what says that works.
+     *
+     * WHY IT IS A WILDCARD. Each git worktree runs a Vite dev server of its own
+     * on whatever port was free — :5173 belongs to the compose `assets`
+     * container and serves whichever checkout compose was started from — so the
+     * ports cannot be written down in advance. Listing them would mean editing
+     * docker/api/env.docker every time somebody makes a worktree, which is the
+     * kind of step that gets skipped once and then costs an hour, because the
+     * symptom is a SPA that renders perfectly and cannot sign in.
+     *
+     * Sanctum matches with Str::is(), so `*` is a pattern rather than a literal
+     * — this asserts that rather than trusting it, because the whole
+     * arrangement rests on it.
+     */
+    public function test_a_wildcard_stateful_domain_accepts_any_local_port(): void
+    {
+        config(['sanctum.stateful' => ['localhost:*', '127.0.0.1:*']]);
+
+        $this->member();
+
+        $this->withHeaders(['Origin' => 'http://localhost:5175'])
+            ->postJson('/api/v1/login', [
+                'username' => 'lea.keller',
+                'password' => 'secret123',
+            ])->assertOk()->assertJson(['ok' => true]);
+    }
+
+    /**
+     * The same request against the list the wildcard replaced.
+     *
+     * This is the mutation test for the one above: put the four explicit
+     * host:port entries back and a worktree on 5175 cannot log in. It is also
+     * the exact failure anybody hits who moves a dev server off 5173 without
+     * knowing this file exists.
+     */
+    public function test_a_port_outside_an_explicit_list_is_refused(): void
+    {
+        config(['sanctum.stateful' => ['localhost:8090', 'localhost:5173']]);
+
+        $this->member();
+
+        $this->withHeaders(['Origin' => 'http://localhost:5175'])
+            ->postJson('/api/v1/login', [
+                'username' => 'lea.keller',
+                'password' => 'secret123',
+            ])->assertStatus(400)->assertJsonPath('code', 'stateful_request_required');
+    }
+
+    /**
+     * The wildcard widens the PORT and nothing else.
+     *
+     * `localhost:*` is one pattern away from `*`, and the difference is the
+     * whole security argument for allowing it in a dev file: a host that is not
+     * this machine stays non-stateful, so the cookie never applies to it.
+     */
+    public function test_the_wildcard_does_not_accept_another_host(): void
+    {
+        config(['sanctum.stateful' => ['localhost:*', '127.0.0.1:*']]);
+
+        $this->member();
+
+        $this->withHeaders(['Origin' => 'http://evil.test:5175'])
+            ->postJson('/api/v1/login', [
+                'username' => 'lea.keller',
+                'password' => 'secret123',
+            ])->assertStatus(400)->assertJsonPath('code', 'stateful_request_required');
+    }
+
+    /**
      * And an unknown username answers the same as a wrong password with no
      * session either — the enumeration defence must not gain a hole from the
      * new branch.

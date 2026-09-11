@@ -190,46 +190,64 @@ Guard with `$request->hasSession()` wherever a session is touched outside the
 `Origin` matching `SANCTUM_STATEFUL_DOMAINS`, because that is what the SPA does,
 so the failing path is the one nothing internal drives.
 
-## The dev server on :5173 is already running — attach, do not start
+## :5173 does not serve the checkout you are editing
 
-`npm run dev` is **not** a dev server. It is
-`build-overlays.mjs docker && docker compose up -d --build`, the whole stack.
-Pointing a preview at it from a worktree starts a SECOND compose project (a
-different directory means a different project name) racing the first for every
-published port: 8090, 5173, 3307, 8025, 8091.
+The compose `assets` service publishes a Vite dev server on 5173, and it mounts
+**the repo root compose was started from** — so from a git worktree it serves
+the OTHER tree's `web/`. Everything renders, nothing you changed is there, and
+the natural conclusion is that the build is broken rather than that you are
+looking at a different checkout.
 
-The Vite dev server is the compose `assets` service, which already publishes
-5173. So the right preview configuration attaches rather than starts, and
-`.claude/launch.json` is tracked for that reason — see `.gitignore`, which
-negates a global ignore to keep it:
+So each checkout starts a dev server of its own. `.claude/launch.json` is
+tracked (see `.gitignore`, which negates a global ignore to keep it) and says:
 
 ```json
-{ "name": "dev", "url": "http://localhost:5173", "port": 5173, "autoPort": false }
+{ "name": "dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev:web"],
+  "port": 5173, "autoPort": true }
 ```
 
-Attach-only is right permanently, not just when the stack happens to be up:
-:5173 is occupied exactly when :8090 is available, and the dev server needs
-:8090 for its `/api` proxy, so there is no state in which starting a copy helps.
+`autoPort` matters because 5173 is normally taken. `vite.config.ts` reads
+`process.env.PORT` for the same reason — Vite does not on its own, so without
+that line an assigned port is silently ignored and the server lands on 5173 or
+drifts to 5174, which belongs to Playwright.
 
-Note that `assets` mounts the repo root it was started from, so from a worktree
-the preview serves the MAIN checkout. Fine for contract work, wrong the moment
-you change something under `web/`.
+Two things to know before it works:
 
-## Moving the Vite port breaks login, and only login
+- `npm install` in the worktree first. `node_modules/` is not tracked, so a
+  fresh worktree has none and `npm run dev:web` cannot start.
+- **`npm run dev` is not a dev server.** It is
+  `build-overlays.mjs docker && docker compose up -d --build`. Run from a
+  worktree it starts a SECOND compose project — a different directory means a
+  different project name — racing the first for 8090, 5173, 3307, 8025 and
+  8091.
 
-`SANCTUM_STATEFUL_DOMAINS` in `docker/api/env.docker` pins
-`localhost:8090,127.0.0.1:8090,localhost:5173,127.0.0.1:5173`. Sanctum matches
-the request's Origin against that list to decide whether to treat the request as
-stateful — that is, whether a session cookie applies at all.
+What a per-worktree dev server does NOT give you is a per-worktree API. It
+proxies `/api` and `/sanctum` to :8090, which is the stack, which mounts the
+main checkout's `api/`. Fine while a branch only changes `web/`; wrong the
+moment it changes a controller. `VITE_API_PROXY_TARGET` is the escape hatch.
 
-On any other port the SPA builds, renders and fetches `/api/v1/config` happily,
-because none of that needs a session. Only signing in fails. Add the port to
-that variable, or stay on 5173.
+## The dev stack is stateful on ANY localhost port, deliberately
+
+`SANCTUM_STATEFUL_DOMAINS` in `docker/api/env.docker` is `localhost:*,127.0.0.1:*`.
+Sanctum matches the browser's Origin against that list with `Str::is()`, so `*`
+is a real pattern, and an origin missing from it falls out of stateful mode: the
+session cookie stops applying.
+
+It is a wildcard because the ports are not knowable in advance — each worktree's
+dev server takes whatever was free. Narrowing it back to a list is the trap:
+everything keeps working except signing in, on whichever port is not listed.
+`NonStatefulRequestTest` pins all three halves — the wildcard accepts an
+arbitrary port, an explicit list refuses one, and neither accepts a host that is
+not this machine.
 
 The refusal is at least legible, and deliberately so: `POST /api/v1/login`
 answers **400 `stateful_request_required`** — "Cette requête ne peut pas ouvrir
 de session" — rather than the 500 it used to, or a generic credential error that
-would send you re-typing a correct password. See `NonStatefulRequestTest`.
+would send you re-typing a correct password.
+
+**Never let that wildcard reach a server.** `api/.env.example` carries
+`CHANGE_ME` and each server names its own origin; `*` there would make any host
+stateful.
 
 ## `bcrypt()` in a test against an argon2id app
 

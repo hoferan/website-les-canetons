@@ -59,6 +59,25 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
+    // PORT, when something upstream assigns one.
+    //
+    // Vite does not read PORT on its own: left alone it takes 5173, which the
+    // compose `assets` container already publishes. That is fine for the main
+    // checkout and wrong in a git worktree, where :5173 serves the OTHER tree's
+    // web/ and a preview shows code that is not the code you are editing.
+    // Honouring PORT is what lets each worktree run a dev server of its own on
+    // whatever port is free.
+    //
+    // strictPort only when PORT was assigned: a caller that named a port needs
+    // the server on THAT port or nowhere, because it is about to open it.
+    // Vite's own default behaviour — drift to the next free port — is right
+    // when nobody asked for one.
+    //
+    // The Playwright harness passes `--port 5174 --strictPort` on the command
+    // line instead, which outranks this; see playwright.config.ts for why it
+    // owns a port of its own.
+    port: process.env.PORT ? Number(process.env.PORT) : undefined,
+    strictPort: process.env.PORT !== undefined,
     proxy: {
       "/api": { target: apiProxyTarget, changeOrigin: false },
       "/sanctum": { target: apiProxyTarget, changeOrigin: false },
