@@ -71,6 +71,18 @@ prod-*.sql
 .phpunit.cache
 .phpunit.result.cache
 
+# The preview server's configuration, tracked ON PURPOSE and against a global
+# ignore. `**/.claude/launch.json` is excluded in ~/.config/git/ignore, next to
+# settings.local.json, because that file is usually machine-specific. This one
+# is not: it holds a port this project cannot change (see docs/traps.md) and
+# an instruction to ATTACH rather than start, which is right on every machine.
+#
+# A repo .gitignore outranks core.excludesFile, so this negation is what makes
+# it trackable. Without it every new git worktree starts with no launch config,
+# and whatever writes one guesses `npm run dev` — which here is `docker compose
+# up`, not a dev server.
+!.claude/launch.json
+
 # OS / editor junk
 .DS_Store
 Thumbs.db

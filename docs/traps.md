@@ -190,6 +190,47 @@ Guard with `$request->hasSession()` wherever a session is touched outside the
 `Origin` matching `SANCTUM_STATEFUL_DOMAINS`, because that is what the SPA does,
 so the failing path is the one nothing internal drives.
 
+## The dev server on :5173 is already running — attach, do not start
+
+`npm run dev` is **not** a dev server. It is
+`build-overlays.mjs docker && docker compose up -d --build`, the whole stack.
+Pointing a preview at it from a worktree starts a SECOND compose project (a
+different directory means a different project name) racing the first for every
+published port: 8090, 5173, 3307, 8025, 8091.
+
+The Vite dev server is the compose `assets` service, which already publishes
+5173. So the right preview configuration attaches rather than starts, and
+`.claude/launch.json` is tracked for that reason — see `.gitignore`, which
+negates a global ignore to keep it:
+
+```json
+{ "name": "dev", "url": "http://localhost:5173", "port": 5173, "autoPort": false }
+```
+
+Attach-only is right permanently, not just when the stack happens to be up:
+:5173 is occupied exactly when :8090 is available, and the dev server needs
+:8090 for its `/api` proxy, so there is no state in which starting a copy helps.
+
+Note that `assets` mounts the repo root it was started from, so from a worktree
+the preview serves the MAIN checkout. Fine for contract work, wrong the moment
+you change something under `web/`.
+
+## Moving the Vite port breaks login, and only login
+
+`SANCTUM_STATEFUL_DOMAINS` in `docker/api/env.docker` pins
+`localhost:8090,127.0.0.1:8090,localhost:5173,127.0.0.1:5173`. Sanctum matches
+the request's Origin against that list to decide whether to treat the request as
+stateful — that is, whether a session cookie applies at all.
+
+On any other port the SPA builds, renders and fetches `/api/v1/config` happily,
+because none of that needs a session. Only signing in fails. Add the port to
+that variable, or stay on 5173.
+
+The refusal is at least legible, and deliberately so: `POST /api/v1/login`
+answers **400 `stateful_request_required`** — "Cette requête ne peut pas ouvrir
+de session" — rather than the 500 it used to, or a generic credential error that
+would send you re-typing a correct password. See `NonStatefulRequestTest`.
+
 ## `bcrypt()` in a test against an argon2id app
 
 `Member::factory()->create(['password' => bcrypt('x')])` makes `Hash::check`
