@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Member;
+use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -80,9 +81,14 @@ class MemberResource extends JsonResource
 
     /**
      * Typed for the same reason as roleIds().
+     *
+     * The ternary is what keeps it nullable in the document: Scramble reads the
+     * expression rather than the signature, so a `?Iso8601` helper here would
+     * publish a required `string` and every generated client would stop
+     * expecting the null a member who has never logged in returns.
      */
-    private function lastLoginAt(): ?string
+    private function lastLoginAt(): ?Iso8601
     {
-        return $this->last_login_at?->utc()->toIso8601String();
+        return $this->last_login_at === null ? null : Iso8601::utc($this->last_login_at);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
+use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,7 +42,7 @@ class RegistrationResource extends JsonResource
             'guestCount' => $this->guest_count,
             /** What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero. */
             'totalCents' => $this->total_cents,
-            'createdAt' => $this->created_at->utc()->toIso8601String(),
+            'createdAt' => Iso8601::utc($this->created_at),
         ];
     }
 

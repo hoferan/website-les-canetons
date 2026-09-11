@@ -150,6 +150,7 @@ export type StoreRegistrationRequestChoicesItem = {
   optionId: number;
   /**
    * How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.
+   * @minimum 1
    * @maximum 50
    */
   quantity: number;

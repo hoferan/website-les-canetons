@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Support\Scramble\ConstrainsPathParameters;
 use App\Support\Scramble\DocumentsFailureModes;
+use App\Support\Scramble\DocumentsNumericFloors;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -48,6 +49,12 @@ class AppServiceProvider extends ServiceProvider
             DocumentsFailureModes::class,
             ConstrainsPathParameters::class,
         ]);
+
+        // A third pipeline again: a rule transformer is neither an operation
+        // transformer nor one of config/scramble.php's `extensions`. It sees
+        // each validation rule as the request schema is built, which is the
+        // only place a `gt:` can still be told apart from the `max:` beside it.
+        Scramble::configure()->withRuleTransformers(DocumentsNumericFloors::class);
 
         // The rate limiter the two ANONYMOUS write endpoints run behind.
         //

@@ -163,12 +163,14 @@ export type ReplaceRegistrationOptionsRequestOptionsItem = {
   description?: string | null;
   /**
    * Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.
+   * @minimum 0
    * @maximum 1000000
    * @nullable
    */
   priceCents?: number | null;
   /**
    * Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send.
+   * @minimum 0
    * @maximum 1000
    * @nullable
    */

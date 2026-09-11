@@ -1982,6 +1982,7 @@
                     },
                     "recordedAt": {
                         "type": "string",
+                        "format": "date-time",
                         "description": "When the answer was last written. A member may withdraw their own answer entirely for five minutes after this."
                     }
                 },
@@ -2107,10 +2108,12 @@
                     },
                     "startsAt": {
                         "type": "string",
+                        "format": "date-time",
                         "description": "ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts."
                     },
                     "endsAt": {
                         "type": "string",
+                        "format": "date-time",
                         "description": "ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day."
                     },
                     "location": {
@@ -2138,13 +2141,15 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "registrationClosesAt": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "registrationMaxGuests": {
                         "type": [
@@ -2208,7 +2213,8 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "sectionId": {
                         "type": [
@@ -2329,10 +2335,12 @@
                                 "type": "string"
                             },
                             "startsAt": {
-                                "type": "string"
+                                "type": "string",
+                                "format": "date-time"
                             },
                             "endsAt": {
-                                "type": "string"
+                                "type": "string",
+                                "format": "date-time"
                             },
                             "location": {
                                 "type": "string"
@@ -2361,13 +2369,15 @@
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "closesAt": {
                         "type": [
                             "string",
                             "null"
-                        ]
+                        ],
+                        "format": "date-time"
                     },
                     "open": {
                         "type": "boolean"
@@ -2492,7 +2502,8 @@
                         "description": "What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero."
                     },
                     "createdAt": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "date-time"
                     }
                 },
                 "required": [
@@ -2562,6 +2573,7 @@
                                         "null"
                                     ],
                                     "description": "Integer centimes: `4500` is CHF 45.00. `0` is free; `null` is an option with no price of its own.",
+                                    "minimum": 0,
                                     "maximum": 1000000
                                 },
                                 "sortOrder": {
@@ -2570,6 +2582,7 @@
                                         "null"
                                     ],
                                     "description": "Where this option sits on the form, lowest first, ties broken by id. Omitted, it takes the entry position in the list you send.",
+                                    "minimum": 0,
                                     "maximum": 1000
                                 }
                             },
@@ -2697,6 +2710,7 @@
                             "null"
                         ],
                         "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
+                        "minimum": 1,
                         "maximum": 100
                     }
                 },
@@ -2883,6 +2897,7 @@
                                 "quantity": {
                                     "type": "integer",
                                     "description": "How many of that option, 1 to 50. Order the same option twice by raising this, not by repeating the entry.",
+                                    "minimum": 1,
                                     "maximum": 50
                                 }
                             },
@@ -2974,6 +2989,7 @@
                             "null"
                         ],
                         "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
+                        "minimum": 1,
                         "maximum": 100
                     }
                 },

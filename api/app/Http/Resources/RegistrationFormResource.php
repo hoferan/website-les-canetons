@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Event;
+use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,14 +31,18 @@ class RegistrationFormResource extends JsonResource
         return [
             'event' => [
                 'title' => $this->title,
-                'startsAt' => $this->starts_at->utc()->toIso8601String(),
-                'endsAt' => $this->ends_at->utc()->toIso8601String(),
+                'startsAt' => Iso8601::utc($this->starts_at),
+                'endsAt' => Iso8601::utc($this->ends_at),
                 'location' => $this->location,
             ],
             'options' => RegistrationOptionResource::collection($this->registrationOptions),
             'maxGuests' => $this->registration_max_guests,
-            'opensAt' => $this->registration_opens_at?->utc()->toIso8601String(),
-            'closesAt' => $this->registration_closes_at?->utc()->toIso8601String(),
+            'opensAt' => $this->registration_opens_at === null
+                ? null
+                : Iso8601::utc($this->registration_opens_at),
+            'closesAt' => $this->registration_closes_at === null
+                ? null
+                : Iso8601::utc($this->registration_closes_at),
             'open' => $this->registrationIsOpen(),
         ];
     }

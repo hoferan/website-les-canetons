@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Event;
+use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,8 +43,12 @@ class EventResource extends JsonResource
             'isPublic' => $this->is_public,
             /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
-            'registrationOpensAt' => $this->registration_opens_at?->utc()->toIso8601String(),
-            'registrationClosesAt' => $this->registration_closes_at?->utc()->toIso8601String(),
+            'registrationOpensAt' => $this->registration_opens_at === null
+                ? null
+                : Iso8601::utc($this->registration_opens_at),
+            'registrationClosesAt' => $this->registration_closes_at === null
+                ? null
+                : Iso8601::utc($this->registration_closes_at),
             'registrationMaxGuests' => $this->registration_max_guests,
             /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
             'takesRegistrations' => $this->takesRegistrations(),
@@ -84,42 +89,29 @@ class EventResource extends JsonResource
     /**
      * A typed method, not an inline expression — the same pattern
      * MemberResource::lastLoginAt() uses, and for the same measured reason:
-     * Scramble types an inline `->toIso8601String()` call as an untyped
-     * object in the OpenAPI document, and the docblock below is what makes
-     * it `string`.
+     * Scramble types an inline rendering call as an untyped object in the
+     * OpenAPI document, and the declared return type is what gives it a shape.
      *
-     * ->utc() BEFORE ->toIso8601String(), HERE AND IN EVERY RESOURCE. That call
-     * renders in whatever timezone the Carbon instance is carrying, which is
-     * not always what the database holds: App\Casts\UtcDateTime normalises on
-     * READ, but a model whose attribute was just ASSIGNED keeps the instance it
-     * was given, and Eloquent's class-cast cache hands that same object back.
+     * THE UTC CONVERSION MOVED INTO App\Support\Iso8601 on 2026-09-11, with
+     * the argument for why it has to happen at all. It used to be written out
+     * at every call site with a warning above it; a rule that has to be
+     * remembered at nine call sites is a rule one of them will get wrong.
      *
-     * A black-box review found the consequence on 2026-09-11.
-     * POST /api/v1/events/series builds its times as Europe/Zurich wall-clock —
-     * a season must keep the same clock time across the daylight-saving change,
-     * which is the whole reason that endpoint takes `H:i` — so its 201 rendered
-     * `+01:00` while a GET on the very same row rendered `+00:00`. The same
-     * instant, the same declared resource, two spellings.
-     *
-     * Forcing it here makes that unreachable whatever a caller left in the
-     * attribute. Tests\Feature\UtcRenderingTest compares a creation response
-     * against a read of the same row, which is the only comparison that catches
-     * it — asserting that a READ is UTC passed throughout.
-     *
-     * It is written inline rather than behind a helper deliberately: a helper
-     * was tried and Scramble could not infer nullability through the static
-     * call, which silently retyped `registrationOpensAt` from `string|null` to
-     * `string` in the published contract. The nullsafe form below is what keeps
-     * that right.
+     * The NULLABLE timestamps above are written as a ternary rather than as a
+     * `?Iso8601` helper, and that is not stylistic. A helper was tried and
+     * Scramble could not infer nullability through the static call, which
+     * silently retyped `registrationOpensAt` from `string|null` to `string` in
+     * the published contract — an optional field made required for every
+     * generated client. Scramble reads the expression, not the signature.
      */
-    private function startsAt(): string
+    private function startsAt(): Iso8601
     {
-        return $this->starts_at->utc()->toIso8601String();
+        return Iso8601::utc($this->starts_at);
     }
 
     /** Typed for the same reason as startsAt(). */
-    private function endsAt(): string
+    private function endsAt(): Iso8601
     {
-        return $this->ends_at->utc()->toIso8601String();
+        return Iso8601::utc($this->ends_at);
     }
 }

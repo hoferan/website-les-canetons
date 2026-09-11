@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Attendance;
 use App\Support\AttendanceStatus;
+use App\Support\Iso8601;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -64,11 +65,11 @@ class AttendanceResource extends JsonResource
      * has gone.
      *
      * A typed private method for the reason every Resource here has one:
-     * Scramble types an inline ->toIso8601String() as an untyped object.
+     * Scramble types an inline rendering call as an untyped object.
      */
-    private function recordedAt(): string
+    private function recordedAt(): Iso8601
     {
-        return $this->updated_at->utc()->toIso8601String();
+        return Iso8601::utc($this->updated_at);
     }
 
     /**

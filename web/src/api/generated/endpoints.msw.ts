@@ -214,8 +214,8 @@ export const getEventIndexResponseMock = (): EventResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
     attire: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -224,11 +224,11 @@ export const getEventIndexResponseMock = (): EventResource[] =>
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     registrationOpensAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     registrationClosesAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -241,7 +241,7 @@ export const getEventIndexResponseMock = (): EventResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
-        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
       },
       null,
     ]),
@@ -252,18 +252,18 @@ export const getEventStoreResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationClosesAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -276,7 +276,7 @@ export const getEventStoreResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
-      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     },
     null,
   ]),
@@ -288,18 +288,18 @@ export const getEventShowResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationClosesAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -312,7 +312,7 @@ export const getEventShowResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
-      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     },
     null,
   ]),
@@ -324,18 +324,18 @@ export const getEventUpdateResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationClosesAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -348,7 +348,7 @@ export const getEventUpdateResponseMock = (
         null,
       ]),
       recordedByDirection: faker.datatype.boolean(),
-      recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     },
     null,
   ]),
@@ -368,8 +368,8 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
   Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
     attire: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -378,11 +378,11 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
     isPublic: faker.datatype.boolean(),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     registrationOpensAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     registrationClosesAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -395,7 +395,7 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
-        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
       },
       null,
     ]),
@@ -407,7 +407,7 @@ export const getAttendanceUpdateResponseMock = (
   status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
-  recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });
 
@@ -432,7 +432,7 @@ export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
           null,
         ]),
         recordedByDirection: faker.datatype.boolean(),
-        recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
       },
       null,
     ]),
@@ -444,7 +444,7 @@ export const getMemberAttendanceUpdateResponseMock = (
   status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
   note: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   recordedByDirection: faker.datatype.boolean(),
-  recordedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });
 
@@ -479,7 +479,7 @@ export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
     ),
     guestCount: faker.number.int(),
     totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
-    createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   }));
 
 export const getRegistrationFormResponseMock = (
@@ -487,8 +487,8 @@ export const getRegistrationFormResponseMock = (
 ): RegistrationFormResource => ({
   event: {
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    startsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    endsAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   },
   options: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
@@ -504,11 +504,8 @@ export const getRegistrationFormResponseMock = (
     }),
   ),
   maxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
-  opensAt: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
-  closesAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
+  opensAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  closesAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   open: faker.datatype.boolean(),
   ...overrideResponse,
 });
@@ -559,7 +556,7 @@ export const getRegistrationUpdateResponseMock = (
   ),
   guestCount: faker.number.int(),
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
-  createdAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });
 
@@ -603,7 +600,7 @@ export const getMemberIndexResponseMock = (): MemberResource[] =>
     username: faker.string.alpha({ length: { min: 10, max: 20 } }),
     mustChangePassword: faker.datatype.boolean(),
     lastLoginAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -633,7 +630,7 @@ export const getMemberStoreResponseMock = (
     username: faker.string.alpha({ length: { min: 10, max: 20 } }),
     mustChangePassword: faker.datatype.boolean(),
     lastLoginAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -665,7 +662,7 @@ export const getMemberUpdateResponseMock = (
   username: faker.string.alpha({ length: { min: 10, max: 20 } }),
   mustChangePassword: faker.datatype.boolean(),
   lastLoginAt: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
   ]),
   sectionId: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -704,7 +701,7 @@ export const getMemberRoleResponseMock = (
     username: faker.string.alpha({ length: { min: 10, max: 20 } }),
     mustChangePassword: faker.datatype.boolean(),
     lastLoginAt: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
     ]),
     sectionId: faker.helpers.arrayElement([faker.number.int(), null]),

@@ -2,6 +2,7 @@
 
 use App\Support\Scramble\AccessDeniedExceptionResponse;
 use App\Support\Scramble\AuthenticationExceptionResponse;
+use App\Support\Scramble\Iso8601ToSchema;
 use App\Support\Scramble\ValidationExceptionResponse;
 use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
 
@@ -328,14 +329,20 @@ MARKDOWN,
     ],
 
     /*
-     * Custom exception documentation. Scramble's built-ins describe Laravel's
-     * default error shapes; this API replaces those with App\Exceptions\ApiError's
+     * Type and response extensions.
+     *
+     * Scramble's built-in exception documentation describes Laravel's default
+     * error shapes; this API replaces those with App\Exceptions\ApiError's
      * contract, so the built-ins would document responses that never occur.
      */
     'extensions' => [
         ValidationExceptionResponse::class,
         AuthenticationExceptionResponse::class,
         AccessDeniedExceptionResponse::class,
+        // A type-to-schema extension, which is what this array actually
+        // reaches. Operation transformers go through AppServiceProvider
+        // instead; one listed here is accepted and never called.
+        Iso8601ToSchema::class,
     ],
 
     /*

@@ -198,6 +198,7 @@ export interface UpdateEventRequest {
   registrationClosesAt?: string | null;
   /**
    * The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.
+   * @minimum 1
    * @maximum 100
    * @nullable
    */
