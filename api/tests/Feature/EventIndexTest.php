@@ -38,7 +38,7 @@ class EventIndexTest extends TestCase
 
         $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
-        $this->assertSame(['Bientôt', 'Plus tard'], array_column($response->json(), 'title'));
+        $this->assertSame(['Bientôt', 'Plus tard'], array_column($response->json('data'), 'title'));
     }
 
     public function test_past_events_are_absent_by_default(): void
@@ -50,7 +50,7 @@ class EventIndexTest extends TestCase
 
         $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
-        $this->assertSame(['À venir'], array_column($response->json(), 'title'));
+        $this->assertSame(['À venir'], array_column($response->json('data'), 'title'));
     }
 
     public function test_past_returns_only_the_history_newest_first(): void
@@ -65,7 +65,7 @@ class EventIndexTest extends TestCase
 
         $this->assertSame(
             ['La semaine dernière', 'Il y a longtemps'],
-            array_column($response->json(), 'title'),
+            array_column($response->json('data'), 'title'),
         );
     }
 
@@ -92,7 +92,7 @@ class EventIndexTest extends TestCase
 
         $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
-        $this->assertSame(['En cours'], array_column($response->json(), 'title'));
+        $this->assertSame(['En cours'], array_column($response->json('data'), 'title'));
     }
 
     public function test_the_resource_carries_what_the_card_renders(): void
@@ -107,9 +107,9 @@ class EventIndexTest extends TestCase
 
         $response = $this->actingAsMember($this->member)->getJson('/api/v1/events')
             ->assertOk()
-            ->assertJsonStructure([['id', 'title', 'startsAt', 'endsAt', 'location', 'attire', 'isPublic', 'notes']]);
+            ->assertJsonStructure(['data' => [['id', 'title', 'startsAt', 'endsAt', 'location', 'attire', 'isPublic', 'notes']]]);
 
-        $row = $response->json()[0];
+        $row = $response->json('data')[0];
 
         // assertJsonStructure above pins the KEY SET; it would pass just as
         // well with location and attire swapped, or isPublic hardcoded true.

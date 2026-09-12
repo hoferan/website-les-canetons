@@ -75,7 +75,7 @@ class ChaseListTest extends TestCase
 
         $response = $this->actingAsMember($this->organiser)->getJson($this->url())->assertOk();
 
-        $byId = collect($response->json())->keyBy('memberId');
+        $byId = collect($response->json('data'))->keyBy('memberId');
 
         $this->assertSame('yes', $byId[$answered->id]['attendance']['status']);
         $this->assertNull($byId[$silent->id]['attendance']);
@@ -90,7 +90,7 @@ class ChaseListTest extends TestCase
 
         $this->assertNotContains(
             $this->organiser->id,
-            array_column($response->json(), 'memberId')
+            array_column($response->json('data'), 'memberId')
         );
     }
 
@@ -107,7 +107,7 @@ class ChaseListTest extends TestCase
         ]);
 
         $entry = collect(
-            $this->actingAsMember($this->organiser)->getJson($this->url())->json()
+            $this->actingAsMember($this->organiser)->getJson($this->url())->json('data')
         )->firstWhere('memberId', $player->id);
 
         $this->assertSame('Perrine', $entry['firstName']);
@@ -126,7 +126,7 @@ class ChaseListTest extends TestCase
         Attendance::factory()->create(['member_id' => $player->id]);
 
         $entry = collect(
-            $this->actingAsMember($this->organiser)->getJson($this->url())->json()
+            $this->actingAsMember($this->organiser)->getJson($this->url())->json('data')
         )->firstWhere('memberId', $player->id);
 
         $this->assertNull($entry['attendance']);

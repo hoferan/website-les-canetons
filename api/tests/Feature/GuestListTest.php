@@ -96,7 +96,7 @@ class GuestListTest extends TestCase
         $entry = $this->actingAsMember($this->organiser)
             ->getJson("/api/v1/events/{$this->event->id}/registrations")
             ->assertOk()
-            ->json('0');
+            ->json('data.0');
 
         $this->assertSame('Maillard', $entry['lastName']);
         $this->assertSame(4, $entry['guestCount']);
@@ -256,7 +256,9 @@ class GuestListTest extends TestCase
                 ],
             ])
             ->assertOk()
-            ->assertJsonCount(2);
+            // Scoped to `data`: a bare assertJsonCount(2) now counts the
+            // envelope's own two keys and passes whatever the list holds.
+            ->assertJsonCount(2, 'data');
 
         $labels = RegistrationOption::query()->orderBy('sort_order')->pluck('label')->all();
         $this->assertSame(['Menu carnivore', 'Menu végétarien'], $labels);
@@ -526,15 +528,18 @@ class GuestListTest extends TestCase
         $first = $this->actingAsMember($this->organiser)
             ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
-            ->json();
+            ->json('data');
 
         $second = $this->actingAsMember($this->organiser)
             ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
-            ->json();
+            ->json('data');
 
         // Same rows, same ids, same count. A retry changes nothing.
+        // Read through `data`, not off the envelope: array_column() over
+        // {data, meta} finds no `id` at all and this passes on two empty lists.
         $this->assertSame(array_column($first, 'id'), array_column($second, 'id'));
+        $this->assertCount(2, $first);
         $this->assertSame(2, RegistrationOption::query()->count());
     }
 
@@ -546,7 +551,7 @@ class GuestListTest extends TestCase
         $created = $this->actingAsMember($this->organiser)
             ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
-            ->json();
+            ->json('data');
 
         $option = RegistrationOption::query()->findOrFail($created[0]['id']);
         Registration::factory()->withChoice($option)->create(['event_id' => $this->event->id]);

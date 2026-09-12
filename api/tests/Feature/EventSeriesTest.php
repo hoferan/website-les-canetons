@@ -48,7 +48,7 @@ class EventSeriesTest extends TestCase
         $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events/series', $this->payload())
             ->assertStatus(201)
-            ->assertJsonCount(3);
+            ->assertJsonCount(3, 'data');
 
         $this->assertSame(3, Event::query()->count());
     }

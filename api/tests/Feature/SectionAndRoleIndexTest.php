@@ -46,7 +46,7 @@ class SectionAndRoleIndexTest extends TestCase
         // The list the 2026_09_07_000001 migration seeds, in sort_order — NOT
         // in id order, and not alphabetical. The old front end hardcoded this
         // order in TSX, where it drifted from the table.
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/sections')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/sections')->assertOk()->json('data');
 
         $this->assertSame([
             'Batteurs',
@@ -65,7 +65,7 @@ class SectionAndRoleIndexTest extends TestCase
         // The permissions travel with the role because that is how the UI
         // answers "why does she have this?" — always "because she is in Team
         // Direction", never a per-member grant.
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json('data');
 
         $byKey = collect($body)->keyBy('key');
 
@@ -82,22 +82,34 @@ class SectionAndRoleIndexTest extends TestCase
         // typed, and nobody typed "Team Direction" — a migration did. So the
         // UI resolves the name from `key` through fr.ts, and this pins the
         // response shape so a French field cannot creep back in.
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/roles')->assertOk()->json('data');
 
         $this->assertSame(['id', 'key', 'permissions'], array_keys($body[0]));
     }
 
-    public function test_neither_list_is_wrapped_in_a_data_envelope(): void
+    /**
+     * REVERSED ON 2026-09-12, and the reversal is the point.
+     *
+     * This test used to assert the opposite — that these two lists were bare
+     * arrays — because /api/v1/me and /api/v1/config return bare payloads and a
+     * wrapper here looked like two shapes for no reason. What that argument
+     * missed is that `me` and `config` are not collections: the choice was never
+     * "envelope or not", it was "do collections all look alike". They did not.
+     *
+     * Reference data is where it mattered most. `/sections` and `/roles` are the
+     * two lists nobody would ever page, so they are exactly the ones a
+     * pagination change is tempted to skip — and a client that needs one code
+     * path for "read a list" cannot have one if two endpoints opt out. See
+     * App\Http\Middleware\PaginatesCollections.
+     */
+    public function test_both_lists_come_in_the_collection_envelope(): void
     {
-        // JsonResource wraps collections in {"data": …} by default. /api/v1/me and
-        // /api/v1/config return bare payloads, so wrapping here would give the API
-        // two shapes for no reason — and every hand-written MSW handler would
-        // have to imitate the wrapper.
         foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
             $body = $this->actingAsAdministrator()->getJson($url)->assertOk()->json();
 
-            $this->assertArrayNotHasKey('data', $body, "{$url} must not be enveloped");
-            $this->assertArrayHasKey(0, $body, "{$url} must be a bare array");
+            $this->assertArrayHasKey('data', $body, "{$url} must be enveloped");
+            $this->assertArrayHasKey(0, $body['data'], "{$url}'s rows must be a bare array inside `data`");
+            $this->assertSame(count($body['data']), $body['meta']['total'] ?? null, "{$url} miscounts itself");
         }
     }
 

@@ -60,8 +60,8 @@ class UtcRenderingTest extends TestCase
             ])
             ->assertStatus(201);
 
-        $id = $created->json('0.id');
-        $fromCreate = $created->json('0.startsAt');
+        $id = $created->json('data.0.id');
+        $fromCreate = $created->json('data.0.startsAt');
 
         $fromRead = $this->actingAsMember($this->organiser)
             ->getJson("/api/v1/events/{$id}")
@@ -117,7 +117,7 @@ class UtcRenderingTest extends TestCase
         $event = $this->actingAsMember($this->organiser)
             ->getJson('/api/v1/events')
             ->assertOk()
-            ->json('0');
+            ->json('data.0');
 
         foreach (['startsAt', 'endsAt', 'registrationOpensAt', 'registrationClosesAt'] as $field) {
             $this->assertIsString($event[$field], "{$field} is not rendered at all.");

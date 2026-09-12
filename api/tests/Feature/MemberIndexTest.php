@@ -49,7 +49,7 @@ class MemberIndexTest extends TestCase
         $this->assertFalse($columns['username']['nullable'], 'members.username must be NOT NULL');
         $this->assertFalse($columns['password']['nullable'], 'members.password must be NOT NULL');
 
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
 
         foreach ($body as $row) {
             $this->assertNotNull($row['username'], 'every member on the roster has a username');
@@ -66,7 +66,7 @@ class MemberIndexTest extends TestCase
         Member::factory()->named('Zoe', 'Alpha')->create();
         Member::factory()->named('Anne', 'Zulu')->create();
 
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
 
         $this->assertSame(['Alpha', 'Direction', 'Zulu'], array_column($body, 'lastName'));
     }
@@ -82,7 +82,7 @@ class MemberIndexTest extends TestCase
             ->committee()
             ->create(['committee_title' => 'Présidente']);
 
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
         $camille = collect($body)->firstWhere('lastName', 'Committee');
 
         $this->assertSame($member->id, $camille['id']);
@@ -119,7 +119,7 @@ class MemberIndexTest extends TestCase
         // every count carries a permanent phantom "sans réponse". Note this is
         // a separate question from having an account — everybody has one of
         // those.
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json();
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
         $dominique = collect($body)->firstWhere('lastName', 'Direction');
 
         $this->assertNull($dominique['sectionId']);
