@@ -317,3 +317,58 @@ test("somebody in no register is asked nothing", async () => {
   expect(screen.queryByRole("region", { name: "À répondre" })).toBeNull();
   expect(screen.queryAllByTestId("attendance-controls")).toHaveLength(0);
 });
+
+/* -------------------------------------------------------------------------- *
+ * The calendar (C8)
+ * -------------------------------------------------------------------------- */
+
+test("the calendar is absent unless the server turns it on", async () => {
+  // The flag comes from GET /api/v1/config, so it is the server's answer
+  // rather than something baked into a bundle three environments share. It is
+  // off everywhere until somebody has looked at the calendar on TEST, and this
+  // is what says the SPA obeys that.
+  server.use(http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: {} })));
+
+  await renderPlanning();
+
+  expect(screen.queryByRole("button", { name: "Calendrier" })).toBeNull();
+});
+
+test("the calendar filters the list instead of navigating to a day", async () => {
+  await renderPlanning();
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+
+  // The seeded planning puts exactly one event on each of its five days, so a
+  // day with anything on it is a day with one thing on it.
+  const [firstDay] = within(calendar)
+    .getAllByRole("button", { pressed: false })
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("événement"));
+  await userEvent.click(firstDay as HTMLElement);
+
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(1);
+  // Still on the planning: the calendar is an overview and never a second way
+  // to do the primary job.
+  expect(screen.getByRole("heading", { name: "Planning" })).toBeInTheDocument();
+});
+
+test("a narrowed planning says so at every width, and can be widened again", async () => {
+  // The calendar itself is hidden below md, so a resize can take away the only
+  // control that set the filter. Without this line the planning has silently
+  // lost most of its events.
+  await renderPlanning();
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+  const [firstDay] = within(calendar)
+    .getAllByRole("button")
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("événement"));
+  await userEvent.click(firstDay as HTMLElement);
+
+  expect(await screen.findByTestId("day-filter")).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Voir tout le planning" }));
+  await expect.poll(() => screen.queryByTestId("day-filter")).toBeNull();
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(5);
+});

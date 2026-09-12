@@ -17,7 +17,9 @@ import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
 import { AttendanceControls } from "../events/AttendanceControls";
+import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
+import { bandZoneParts } from "../events/bandTime";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -51,9 +53,15 @@ import { useSession } from "../session/SessionProvider";
  * two live sets of answer buttons for one event.
  */
 export function Events() {
-  const { can, user } = useSession();
+  const { can, user, config } = useSession();
   const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);
+
+  // The calendar, and the day it has filtered the list down to. Both are here
+  // rather than inside EventCalendar because the filter is what the calendar
+  // is FOR: it does not navigate, it narrows the list below it (C8).
+  const [showingCalendar, setShowingCalendar] = useState(false);
+  const [day, setDay] = useState<string | null>(null);
 
   const destructive = useApiFormError("La suppression a échoué.");
 
@@ -81,10 +89,22 @@ export function Events() {
 
   // Through rowsOf, which owns the status narrowing and the collection
   // envelope's own `data` hop — see web/src/api/collection.ts.
-  const events = rowsOf<EventResource>(planning.data);
+  const allEvents = rowsOf<EventResource>(planning.data);
 
   const mayManage = can("events.manage");
+  // OFF EVERYWHERE until somebody has looked at it on TEST. The flag comes
+  // from GET /api/v1/config, so it is the server's answer rather than
+  // something baked into a bundle three environments share.
+  const calendarEnabled = config.features?.calendar === true;
   const maySeeAnswers = can("attendance.view_all");
+
+  // Applied BEFORE the split, so a chosen day narrows both blocks. The day is
+  // the Fribourg one, which is what bandZoneParts is for: slicing the ISO
+  // string would file a 00:30 event under the previous day.
+  const events =
+    day === null
+      ? allEvents
+      : allEvents.filter((event) => bandZoneParts(event.startsAt).date === day);
 
   // The split that makes the top block a to-do list. Two things are never in
   // it. PAST EVENTS, because the screen asks what you owe an answer on and
@@ -209,7 +229,7 @@ export function Events() {
         ) : null}
       </div>
 
-      <div className="mt-related">
+      <div className="mt-related flex flex-wrap items-center gap-tight">
         <Button
           type="button"
           variant="outline"
@@ -217,7 +237,46 @@ export function Events() {
         >
           {showingPast ? "Voir le planning" : "Voir les événements passés"}
         </Button>
+
+        {/* md AND UP ONLY, and absent from a phone altogether rather than
+            shrunk onto one. A month grid is for somebody planning a season at
+            a desk; the list is the whole phone view and stays the default
+            everywhere (C8). */}
+        {calendarEnabled ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden md:inline-flex"
+            aria-pressed={showingCalendar}
+            onClick={() => {
+              setShowingCalendar((showing) => !showing);
+              setDay(null);
+            }}
+          >
+            {showingCalendar ? "Liste" : "Calendrier"}
+          </Button>
+        ) : null}
       </div>
+
+      {calendarEnabled && showingCalendar ? (
+        <div className="mt-block hidden md:block">
+          <EventCalendar events={allEvents} selected={day} onSelect={setDay} />
+        </div>
+      ) : null}
+
+      {/* VISIBLE AT EVERY WIDTH, unlike the calendar that sets it. A narrowed
+          list whose only control has just been hidden by a resize is a
+          planning that has silently lost most of its events. */}
+      {day !== null ? (
+        <p className="mt-related flex flex-wrap items-center gap-tight text-sm">
+          <span data-testid="day-filter" className="text-ink-muted">
+            Filtré sur un jour.
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={() => setDay(null)}>
+            Voir tout le planning
+          </Button>
+        </p>
+      ) : null}
 
       {planning.isPending ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
 

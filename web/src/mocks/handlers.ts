@@ -846,7 +846,10 @@ const overrides = [
   http.get("/sanctum/csrf-cookie", () => new HttpResponse(null, { status: 204 })),
 
   // Mirrors App\Http\Controllers\Api\ConfigController exactly: `env` only.
-  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev" })),
+  // The calendar flag is ON here and off on every real server, which is the
+  // point of a mocked backend: until somebody has looked at the calendar on
+  // TEST, this is the only place it can be looked at at all.
+  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: { calendar: true } })),
 
   http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
