@@ -27,6 +27,7 @@ test("the nav reaches every public page, and each one renders its own heading", 
 }) => {
   const pages = [
     { label: "Nous rejoindre", heading: "Tu veux commencer la guggen ?" },
+    { label: "Où nous voir", heading: "Où nous voir" },
     { label: "Les canetons", heading: "Nos Canetons" },
     { label: "Comité", heading: "Le comité" },
     { label: "Histoire", heading: "L’Histoire des Canetons" },
@@ -80,7 +81,7 @@ test("the contact form is usable and sends", async ({ page }) => {
 test("the public pages carry no horizontal overflow on a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
 
-  for (const path of ["/", "/band", "/committee", "/history", "/join", "/contact"]) {
+  for (const path of ["/", "/agenda", "/band", "/committee", "/history", "/join", "/contact"]) {
     await page.goto(path);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

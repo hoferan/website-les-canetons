@@ -126,6 +126,11 @@ test("/ renders the home page rather than the 404 view", async () => {
   ).toBeInTheDocument();
 });
 
+test("/agenda renders the public agenda", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/agenda" });
+  expect(await screen.findByRole("heading", { name: "Où nous voir" })).toBeInTheDocument();
+});
+
 test("/band renders the band", async () => {
   await renderWithSession(<AppRoutes />, { route: "/band" });
   expect(await screen.findByRole("heading", { name: "Nos Canetons" })).toBeInTheDocument();
