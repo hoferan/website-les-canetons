@@ -6,6 +6,7 @@ import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
 import { EventEdit } from "./pages/EventEdit";
 import { EventNew } from "./pages/EventNew";
+import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
@@ -62,6 +63,7 @@ export function AppRoutes() {
               see. */}
           <Route element={<RequirePermission permission="events.manage" />}>
             <Route path="/events/new" element={<EventNew />} />
+            <Route path="/events/new/series" element={<EventSeriesNew />} />
             <Route path="/events/:id/edit" element={<EventEdit />} />
           </Route>
 
