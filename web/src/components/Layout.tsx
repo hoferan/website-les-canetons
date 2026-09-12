@@ -139,7 +139,16 @@ export function Layout() {
           <Logo />
         </div>
 
-        <nav className="border-t border-white/10 bg-panel text-ink">
+        {/* NAMED, and it has to be. The band page carries a second nav (the
+            register index), and the front page repeats four of these links as
+            destination cards — so "the link called Nous rejoindre" matches two
+            elements on / and a query has nothing to scope to. Two navs without
+            names are also indistinguishable to a screen-reader user moving by
+            landmark. */}
+        <nav
+          aria-label="Navigation principale"
+          className="border-t border-white/10 bg-panel text-ink"
+        >
           <button
             type="button"
             aria-label="Menu de navigation"

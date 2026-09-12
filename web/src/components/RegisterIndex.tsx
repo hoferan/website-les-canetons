@@ -16,8 +16,8 @@
 export function RegisterIndex({ entries }: { entries: { id: string; label: string }[] }) {
   return (
     // aria-label because this is the page's SECOND nav; the site's own is
-    // "Menu de navigation" and two unnamed navs are indistinguishable to a
-    // screen reader.
+    // "Navigation principale" and two unnamed navs are indistinguishable to a
+    // screen reader moving by landmark.
     <nav aria-label="Registres" className="mt-block">
       <ul className="flex flex-wrap gap-2">
         {entries.map((entry) => (
