@@ -74,9 +74,9 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
  *
  * An unknown key falls back to the key itself rather than to i18next's miss
  * behaviour, which returns the lookup path ("roles.whatever.label") and would
- * print that on screen. A key with no copy is a role somebody added in Adminer;
- * showing its key is honest and legible, and it is what the deferred role
- * editor replaces.
+ * print that on screen. A key with no copy is a role somebody added by hand in
+ * the database; showing its key is honest and legible, and it is what the
+ * deferred role editor replaces.
  */
 export function roleLabel(key: string): string {
   const path = `roles.${key}.label`;

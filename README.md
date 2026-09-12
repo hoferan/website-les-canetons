@@ -45,7 +45,7 @@ place first, which `npm run dev` handles for you (see [CLAUDE.md](CLAUDE.md) for
 | --- | --- |
 | http://localhost:5173 | Vite dev server (HMR), proxying `/api` and `/sanctum` to :8090 |
 | http://localhost:8090 | Apache serving the **built** artifact — parity checks |
-| http://localhost:8091 | Adminer (DB UI) |
+| http://localhost:8091 | DbGate — DB UI, opens straight into `lescanetons` with no login |
 | http://localhost:8025 | Mailpit (catches outgoing mail) |
 
 The :8090 stack serves whatever `npm run build` last produced; it does not pick

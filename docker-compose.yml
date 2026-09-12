@@ -146,14 +146,44 @@ services:
     ports:
       - "8025:8025"
 
-  adminer:
-    image: adminer:latest
+  # The database UI, on :8091. It opens straight into `lescanetons` with no
+  # login — the whole point of the swap away from Adminer, which asked for
+  # server, user, password and database on every single visit.
+  #
+  # ADMINER CANNOT BE PRE-CONFIGURED FOR THIS, which is why the tool changed
+  # rather than the config. Measured 2026-09-12 against adminer:latest (6.0.1):
+  # ADMINER_DEFAULT_SERVER prefills the server field and nothing else; a plugin
+  # implementing credentials() does NOT skip the form (it exists so a password
+  # prompt can stand in front of hidden real credentials); and injecting
+  # $_POST['auth'] — from a plugin's require-time side effect or as a literal
+  # POST — is refused by a CSRF token check. Auto-login would have meant forging
+  # Adminer's session internals against a floating tag.
+  #
+  # The credentials below are the same ones already sitting in the `db` service.
+  # Nothing here is a secret this file did not already hold.
+  dbgate:
+    image: dbgate/dbgate:7.2.6-alpine
     ports:
-      - "8091:8080"
+      - "8091:3000"
+    environment:
+      CONNECTIONS: canetons
+      LABEL_canetons: Les Canetons (local)
+      SERVER_canetons: db
+      PORT_canetons: "3306"
+      USER_canetons: canetons
+      PASSWORD_canetons: canetons
+      ENGINE_canetons: mysql@dbgate-plugin-mysql
+    volumes:
+      # Open tabs, saved queries — and `.key`, the secret DbGate signs its
+      # browser token with. Without this volume that key is regenerated on
+      # every recreate, and an already-open tab then spams
+      # "DBGM-00098 Sending invalid token error" until you hard-reload.
+      - dbgate_data:/root/.dbgate
     depends_on:
       - db
 
 volumes:
   db_data:
+  dbgate_data:
   api_vendor:
   node_modules:

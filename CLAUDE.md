@@ -415,7 +415,7 @@ up source edits. That is the point: it is the parity check.
 
 | Other URLs | |
 | --- | --- |
-| http://localhost:8091 | Adminer |
+| http://localhost:8091 | DbGate (DB UI, opens straight into `lescanetons` — no login) |
 | http://localhost:8025 | Mailpit |
 | `localhost:3307` | MariaDB |
 
@@ -555,7 +555,7 @@ translated. Full version in the rebuild design §3.1.
 | --- | --- |
 | The permission set (`App\Support\Permission`) | developer, code + deploy — a permission is real only if middleware checks it |
 | UI text (`web/src/i18n/`) | developer, code + deploy |
-| Which roles exist, what each grants, the register list | **nobody yet — Adminer.** A deferred editor release owns this |
+| Which roles exist, what each grants, the register list | **nobody yet — by hand in the DB (DbGate on :8091).** A deferred editor release owns this |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events, attendance | `events.manage` (R1c) |
