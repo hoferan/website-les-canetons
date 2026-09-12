@@ -27,6 +27,7 @@
 // /api/user, which this app's route table has never had. The file was 8/13 for
 // that whole period, which is worse than having no smoke test — a real
 // breakage would have arrived as one more red line among five.
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -239,11 +240,21 @@ check('POST /api/contact is Laravel, answering in the problem-document contract'
   // over the real stack: api/tests/ covers the guard thoroughly and cannot
   // cover Apache and FastCGI at all.
   //
+  // IT ALSO HAS TO CARRY AN Idempotency-Key, added 2026-09-12 with A4. Both
+  // anonymous writes require one, so a submission without it answers 400
+  // `idempotency_key_required` and never reaches validation either — the same
+  // shape of breakage the write guard caused above, one layer further in.
+  //
   // Safe to fire repeatedly: the body carries ONLY the honeypot, so Laravel's
   // validation still rejects it before ContactController runs and no row ever
   // reaches `contact_messages`. Should the rules ever be relaxed to accept an
   // empty body, this would start writing rows to the dev database on every
   // smoke run — change the check, not the guard.
+  //
+  // A FRESH KEY EVERY RUN, which is what a form does when it renders. Reusing
+  // one would make the second smoke run replay the first run's stored answer
+  // instead of asking the stack anything, and the check would pass against an
+  // API that had stopped working hours earlier.
   const tokenRes = await request('/api/v1/form-token', { headers: { Accept: 'application/json' } });
   if (tokenRes.status !== 200) return `could not mint a form token: ${await detail(tokenRes)}`;
   const { token } = await tokenRes.json().catch(() => ({}));
@@ -258,6 +269,7 @@ check('POST /api/contact is Laravel, answering in the problem-document contract'
       Accept: 'application/json',
       'Content-Type': 'application/json',
       'X-Form-Token': token,
+      'Idempotency-Key': randomUUID(),
     },
     // PublicWriteGuard wants the honeypot PRESENT and empty; omitting it is
     // exactly the bot signature it exists to catch.

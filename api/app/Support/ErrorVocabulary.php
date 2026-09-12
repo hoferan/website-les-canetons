@@ -120,6 +120,24 @@ final class ErrorVocabulary
         'method_not_allowed' => 'The route exists, but not for this HTTP method. Check whether it '
             .'expects PUT or PATCH rather than POST.',
 
+        // ----------------------------------------------- sending it only once
+
+        'idempotency_key_required' => 'Public submissions must carry an `Idempotency-Key` header, so '
+            .'that resending one after a timeout cannot book or send it twice. Generate a UUID when '
+            .'the form is rendered and reuse it for every attempt at that submission.',
+
+        'idempotency_key_invalid' => 'The `Idempotency-Key` must be 16 to 255 printable ASCII '
+            .'characters. A UUID is the expected shape. These endpoints are anonymous, so a short '
+            .'key collides with other callers\' keys.',
+
+        // ONE CODE FOR TWO CASES — a key reused for a different body, and a key
+        // whose first request is still running. They are the same answer from
+        // the caller's side: this key is not yours to use for this. Splitting
+        // them would say which other request exists, on an anonymous endpoint.
+        'idempotency_key_reuse' => 'This `Idempotency-Key` belongs to a different submission, or to '
+            .'one still being processed. Use a fresh key for a new submission, and wait before '
+            .'retrying an attempt that has not answered yet.',
+
         // ------------------------------------------ working from current state
 
         // Names the header AND the read that produces one, because "send
