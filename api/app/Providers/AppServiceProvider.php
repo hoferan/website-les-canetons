@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Support\Scramble\ConstrainsPathParameters;
 use App\Support\Scramble\DocumentsFailureModes;
 use App\Support\Scramble\DocumentsNumericFloors;
+use App\Support\Scramble\DocumentsPagination;
 use App\Support\Scramble\TidiesResponseMedia;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -112,6 +113,10 @@ class AppServiceProvider extends ServiceProvider
         Scramble::configure()->withOperationTransformers([
             DocumentsFailureModes::class,
             ConstrainsPathParameters::class,
+            // The collection envelope, read off the operation's own success
+            // schema being an array — the static reading of the same fact
+            // App\Http\Middleware\PaginatesCollections acts on at runtime.
+            DocumentsPagination::class,
             TidiesResponseMedia::class,
         ]);
 
