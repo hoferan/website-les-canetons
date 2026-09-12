@@ -4,14 +4,14 @@ import { formatEventWhen } from "./formatEventWhen";
 
 test("a single-day event renders one date and a time range", () => {
   const when = formatEventWhen("2026-09-05T10:00:00+02:00", "2026-09-05T12:00:00+02:00");
-  expect(when).toBe("samedi, 5 septembre 2026, 10:00 – 12:00");
+  expect(when).toBe("samedi 5 septembre 2026, 10:00 – 12:00");
 });
 
 test("an event crossing days renders a date RANGE", () => {
   // "Weekend musical, 3-4 October" from the live planning. This is what the
   // old `weekend` boolean existed to fake, and it now falls out of the dates.
   const when = formatEventWhen("2026-10-03T09:00:00+02:00", "2026-10-04T16:00:00+02:00");
-  expect(when).toBe("du samedi, 3 octobre 2026, 09:00 au dimanche, 4 octobre 2026, 16:00");
+  expect(when).toBe("du samedi 3 octobre 2026 à 09:00 au dimanche 4 octobre 2026 à 16:00");
 });
 
 test("it renders Fribourg time regardless of where the browser is", () => {
@@ -36,6 +36,6 @@ test("a night event ending after midnight is a date RANGE, judged in Fribourg", 
   // day and would render as a single date with a time range reading
   // "23:00 – 01:00", which describes an event that ran backwards.
   const when = formatEventWhen("2026-09-05T23:00:00+02:00", "2026-09-06T01:00:00+02:00");
-  expect(when).toContain("du samedi, 5 septembre 2026");
-  expect(when).toContain("au dimanche, 6 septembre 2026");
+  expect(when).toContain("du samedi 5 septembre 2026");
+  expect(when).toContain("au dimanche 6 septembre 2026");
 });
