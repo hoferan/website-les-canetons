@@ -78,9 +78,11 @@ function patchMyAttendance(
  *   - THE SCREEN MOVES BEFORE THE NETWORK DOES. The cache is patched on the
  *     way out and rolled back if the server refuses, so a tap on a bad
  *     connection is not a button that does nothing for two seconds.
- *   - A TAP IS UNDOABLE for five minutes (C12), and the toast is the only
- *     route to it. That window is what keeps C11 honest: without it a member
- *     could erase a `oui` and re-answer `non` for free, with no reason.
+ *   - A FIRST ANSWER IS UNDOABLE for five minutes (C12), from the toast and
+ *     nowhere else. The window is what keeps C11 honest: without it a member
+ *     could erase a `oui` and re-answer `non` for free, with no reason. A
+ *     CHANGE is not undoable here, because the only thing behind undo is a
+ *     DELETE — see the comment where the toast is raised.
  *
  * IT RENDERS NOTHING FOR SOMEBODY IN NO REGISTER. Dominique Direction
  * organises and plays in nothing; the API answers her `403 not_answerable`,
@@ -110,8 +112,15 @@ export function AttendanceControls({ event }: { event: EventResource }) {
     return null;
   }
 
-  /** Undo, offered from the toast and nowhere else. */
-  async function undo(previous: AttendanceResource | null) {
+  /**
+   * Undo, offered from the toast and nowhere else.
+   *
+   * It takes the answer it is undoing as an argument rather than reading
+   * `answer`, which is a prop of the render that RAISED the toast — by the time
+   * anybody taps Annuler that render is describing the state before the answer
+   * was given, which is the one thing this must not put back.
+   */
+  async function undo(recorded: AttendanceResource) {
     patchMyAttendance(queryClient, event.id, null);
     try {
       await withdraw.mutateAsync();
@@ -120,7 +129,7 @@ export function AttendanceControls({ event }: { event: EventResource }) {
       // row showing "sans réponse" that the committee's list disagrees with is
       // worse than the refusal itself. Past the five minutes this is
       // `answer_already_settled`, which says to change the answer instead.
-      patchMyAttendance(queryClient, event.id, previous);
+      patchMyAttendance(queryClient, event.id, recorded);
       toast.error(
         thrown instanceof ApiError
           ? translateApiError(thrown).message
@@ -132,28 +141,40 @@ export function AttendanceControls({ event }: { event: EventResource }) {
   async function send(status: "yes" | "no", note?: string) {
     const previous = answer;
 
-    // Optimistic, with `recordedAt` set to now — which is what makes the undo
-    // offered by the toast believable while the request is still in flight.
-    patchMyAttendance(queryClient, event.id, {
+    const optimistic: AttendanceResource = {
       status,
       note: note ?? null,
       recordedByDirection: false,
       recordedAt: new Date().toISOString(),
-    });
+    };
+
+    // Optimistic, with `recordedAt` set to now — which is what makes the undo
+    // the toast offers believable while the request is still in flight.
+    patchMyAttendance(queryClient, event.id, optimistic);
 
     try {
       const response = await record.mutateAsync({ status, note });
-      if (response.status === 200) {
-        patchMyAttendance(queryClient, event.id, response.data);
-      }
+      const recorded = response.status === 200 ? response.data : optimistic;
+      patchMyAttendance(queryClient, event.id, recorded);
       setWithdrawing(false);
       refusal.clear();
 
+      // THE UNDO IS OFFERED ON A FIRST ANSWER ONLY, because DELETE is the only
+      // thing behind it and DELETE returns the event to UNANSWERED. On a first
+      // answer that is exactly right, and it is the state a second PUT cannot
+      // express. On a CHANGE it would be a button labelled "Annuler" that
+      // throws away the previous answer as well as the new one — and, when the
+      // change was a withdrawal, throws away the reason C11 just collected
+      // along with the `oui` it was given for. Somebody who mis-tapped a change
+      // taps the other answer again, which costs nothing in that direction.
       toast.success(status === "yes" ? "Vous venez." : "Vous ne venez pas.", {
-        action: {
-          label: "Annuler",
-          onClick: () => void undo(previous),
-        },
+        action:
+          previous === null
+            ? {
+                label: "Annuler",
+                onClick: () => void undo(recorded),
+              }
+            : undefined,
       });
     } catch (thrown) {
       patchMyAttendance(queryClient, event.id, previous);

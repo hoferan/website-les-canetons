@@ -21,6 +21,16 @@ if (typeof window !== "undefined") {
   // itself (see ScrollToTop.test.tsx — spying on a stub function works, and
   // afterEach's vi.restoreAllMocks() below restores it back to this stub).
   window.scrollTo = () => {};
+
+  // Pointer capture is not implemented in jsdom either, and a component that
+  // reaches for it throws rather than degrading: sonner calls
+  // setPointerCapture on pointerdown so a toast can be swiped away, which
+  // takes down the whole test file as an unhandled exception the moment
+  // userEvent clicks anything inside one. No-ops, because nothing here is
+  // testing a swipe.
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
 }
 
 // onUnhandledRequest: "error", not "bypass". In a test an unhandled request is
