@@ -3502,6 +3502,100 @@
                 }
             }
         },
+        "/agenda": {
+            "get": {
+                "operationId": "agenda.index",
+                "description": "Anonymous. Returns the upcoming events the committee has marked public,\nsoonest first \u2014 the appearances anybody may come and watch.\n\n**A rehearsal is not on this list.** `isPublic` is set per event and\ndefaults to off, so the planning stays private and a public appearance\nis a decision somebody made about that event rather than the default for\neverything in the diary.\n\nFour fields per event, each one a fact already on a poster. Nothing here\nsays who is coming: attendance is the members' business.",
+                "summary": "List what the band is doing next, for a visitor",
+                "tags": [
+                    "Public pages"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `PublicEventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PublicEventResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
         "/band": {
             "get": {
                 "operationId": "band.index",
@@ -3599,7 +3693,8 @@
         "/committee": {
             "get": {
                 "operationId": "committee.index",
-                "summary": "List the committee.\r\n\r\nAnonymous. Returns everyone holding a committee seat who has consented\r\nto appear, with the title they hold.\r\n\r\nThe title is free text the committee typed, so it is rendered verbatim\r\nand is never translated",
+                "description": "Anonymous. Returns everyone holding a committee seat who has consented\nto appear, with the title they hold.\n\nThe title is free text the committee typed, so it is rendered verbatim\nand is never translated.",
+                "summary": "List the committee",
                 "tags": [
                     "Public pages"
                 ],

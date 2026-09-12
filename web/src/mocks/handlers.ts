@@ -642,6 +642,23 @@ function wouldOrphanAdministration(excludedMemberIds: number[]): boolean {
  * into the past the moment it is a month old, and `/events` then renders empty
  * for every future reader — including every screenshot and every demo.
  */
+/**
+ * The upcoming/past boundary, mirroring EventController::index and
+ * App\Support\BandTime::startOfToday: the START OF TODAY, not now, so an
+ * event that began an hour ago stays in the planning of somebody running late.
+ *
+ * The browser's own midnight rather than Fribourg's, which is the one place
+ * this mock knowingly differs from the server. A test runner and a developer
+ * are both in the band's zone in practice, and teaching the mock about
+ * Europe/Zurich would mean reimplementing BandTime in TypeScript to answer a
+ * question no screen asks.
+ */
+function startOfTodayMs(): number {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  return midnight.getTime();
+}
+
 function at(dayOffset: number, time: string): string {
   const [hours, minutes] = time.split(":").map(Number);
   const when = new Date();
@@ -726,13 +743,19 @@ function initialEvents(): EventResource[] {
     },
     {
       // The missing-attire case: the card has to render without one.
+      //
+      // AND THE ONLY PUBLIC ONE, which is what gives the front page's agenda
+      // something to render. It is also the honest split: a gig is somewhere
+      // anybody may come and watch, and five rehearsals are not. With every
+      // event private the agenda renders nothing, which is correct and
+      // unlookable-at.
       id: 5,
       title: "Vendanges Cheyres",
       startsAt: at(35, "11:00"),
       endsAt: at(35, "16:30"),
       location: "Cheyres",
       attire: null,
-      isPublic: false,
+      isPublic: true,
       notes: null,
       registrationOpensAt: null,
       registrationClosesAt: null,
@@ -920,6 +943,24 @@ const overrides = [
   // non-empty title — because a mocked handler that served everybody would let
   // a screen ship having never rendered the empty state that today's roster
   // actually produces.
+  // The public agenda, read off the same event store the planning uses — so
+  // ticking "Visible publiquement" on an event in /events/:id/edit puts it on
+  // the front page, which is the only way that flag can be seen to work.
+  http.get("/api/v1/agenda", ({ request }) =>
+    collection(
+      events
+        .filter((event) => event.isPublic && Date.parse(event.startsAt) >= startOfTodayMs())
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+        .map((event) => ({
+          title: event.title,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+          location: event.location,
+        })),
+      request,
+    ),
+  ),
+
   http.get("/api/v1/band", ({ request }) =>
     collection(
       SECTIONS.map((section) => ({
@@ -1302,12 +1343,8 @@ const overrides = [
       return unauthenticated();
     }
 
-    // The split is on the START OF TODAY, not on now: a rehearsal that began
-    // an hour ago stays in the planning of somebody running late. Mirrors
-    // EventController::index and BandTime::startOfToday.
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const boundary = startOfToday.getTime();
+    // The split is on the START OF TODAY, not on now — see startOfTodayMs().
+    const boundary = startOfTodayMs();
 
     // Anything that is not exactly '1' is the default upcoming view, the same
     // fail-safe direction the real endpoint takes: a truncated or misspelled

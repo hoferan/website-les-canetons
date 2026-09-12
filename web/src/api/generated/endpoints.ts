@@ -320,6 +320,8 @@ import type {
   AccountPassword403,
   AccountPassword429,
   AccountPasswordRequest,
+  AgendaIndex200,
+  AgendaIndexParams,
   AttendanceDestroy200,
   AttendanceDestroy409,
   AttendanceIndex200,
@@ -6440,6 +6442,166 @@ export const useMemberPasswordReset = <
   return useMutation(getMemberPasswordResetMutationOptions(options), queryClient);
 };
 
+export type agendaIndexResponse200 = {
+  data: AgendaIndex200;
+  status: 200;
+};
+
+export type agendaIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type agendaIndexResponseSuccess = agendaIndexResponse200 & {
+  headers: Headers;
+};
+export type agendaIndexResponseError = agendaIndexResponse503 & {
+  headers: Headers;
+};
+
+export type agendaIndexResponse = agendaIndexResponseSuccess | agendaIndexResponseError;
+
+export const getAgendaIndexUrl = (params?: AgendaIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/agenda?${stringifiedParams}` : `/agenda`;
+};
+
+/**
+ * Anonymous. Returns the upcoming events the committee has marked public,
+ * soonest first — the appearances anybody may come and watch.
+ *
+ * **A rehearsal is not on this list.** `isPublic` is set per event and
+ * defaults to off, so the planning stays private and a public appearance
+ * is a decision somebody made about that event rather than the default for
+ * everything in the diary.
+ *
+ * Four fields per event, each one a fact already on a poster. Nothing here
+ * says who is coming: attendance is the members' business.
+ * @summary List what the band is doing next, for a visitor
+ */
+export const agendaIndex = async (
+  params?: AgendaIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<agendaIndexResponse> => {
+  return customFetch<agendaIndexResponse>(getAgendaIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAgendaIndexQueryKey = (params?: AgendaIndexParams) => {
+  return [`/agenda`, ...(params ? [params] : [])] as const;
+};
+
+export const getAgendaIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAgendaIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof agendaIndex>>> = ({ signal }) =>
+    agendaIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof agendaIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type AgendaIndexQueryResult = NonNullable<Awaited<ReturnType<typeof agendaIndex>>>;
+export type AgendaIndexQueryError = Problem503Response;
+
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | AgendaIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof agendaIndex>>,
+          TError,
+          Awaited<ReturnType<typeof agendaIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof agendaIndex>>,
+          TError,
+          Awaited<ReturnType<typeof agendaIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List what the band is doing next, for a visitor
+ */
+
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getAgendaIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type bandIndexResponse200 = {
   data: BandIndex200;
   status: 200;
@@ -6635,13 +6797,12 @@ export const getCommitteeIndexUrl = (params?: CommitteeIndexParams) => {
 };
 
 /**
- * @summary List the committee.
-
-Anonymous. Returns everyone holding a committee seat who has consented
-to appear, with the title they hold.
-
-The title is free text the committee typed, so it is rendered verbatim
-and is never translated
+ * Anonymous. Returns everyone holding a committee seat who has consented
+ * to appear, with the title they hold.
+ *
+ * The title is free text the committee typed, so it is rendered verbatim
+ * and is never translated.
+ * @summary List the committee
  */
 export const committeeIndex = async (
   params?: CommitteeIndexParams,
@@ -6734,13 +6895,7 @@ export function useCommitteeIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List the committee.
-
-Anonymous. Returns everyone holding a committee seat who has consented
-to appear, with the title they hold.
-
-The title is free text the committee typed, so it is rendered verbatim
-and is never translated
+ * @summary List the committee
  */
 
 export function useCommitteeIndex<

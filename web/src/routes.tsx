@@ -13,6 +13,7 @@ import { EventNew } from "./pages/EventNew";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
+import { Home } from "./pages/Home";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
@@ -57,6 +58,7 @@ export function AppRoutes() {
       <Route element={<Layout />}>
         {/* THE PUBLIC FACE. No session, no gate, no guard — see the note
             above on why these sit outside MustChangePassword. */}
+        <Route index element={<Home />} />
         <Route path="/band" element={<Band />} />
         <Route path="/committee" element={<Committee />} />
         <Route path="/history" element={<History />} />

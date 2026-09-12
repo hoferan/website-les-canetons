@@ -112,3 +112,26 @@ test("does not hold a member with a committee-issued password away from the publ
     await screen.findByRole("heading", { name: /L’Histoire des Canetons/ }),
   ).toBeInTheDocument();
 });
+
+/**
+ * THE FRONT DOOR. Until R2 there was no `/` at all: the site's own address
+ * fell through to the catch-all and answered 200 with the 404 view, which is
+ * the worst possible first impression and was invisible to every test because
+ * a page did render.
+ */
+test("/ renders the home page rather than the 404 view", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/" });
+  expect(
+    await screen.findByRole("heading", { name: /La guggen d’enfants de Fribourg/ }),
+  ).toBeInTheDocument();
+});
+
+test("/band renders the band", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/band" });
+  expect(await screen.findByRole("heading", { name: "Nos Canetons" })).toBeInTheDocument();
+});
+
+test("/committee renders the committee", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/committee" });
+  expect(await screen.findByRole("heading", { name: "Le comité" })).toBeInTheDocument();
+});
