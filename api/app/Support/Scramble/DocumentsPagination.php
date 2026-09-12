@@ -140,7 +140,8 @@ class DocumentsPagination extends OperationExtension
                 'RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and '
                 .'`next` where they exist. Follow `next` until there is none rather than doing '
                 .'arithmetic on `meta`. Your own query parameters are carried along, so paging '
-                .'`/events?past=1` stays in the past.'
+                .'`/events?past=1` stays in the past. The URIs are relative — resolve them '
+                .'against the URL you requested.'
             ));
     }
 }

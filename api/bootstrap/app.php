@@ -158,9 +158,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // One envelope for every collection, `{data, meta}` plus a `Link`
         // header. Appended rather than prepended because it works on the
-        // RESPONSE and needs the controller's to exist first; where it sits
-        // among the other appended middleware does not matter, since none of
-        // them reads the body.
+        // RESPONSE and needs the controller's to exist first.
+        //
+        // WHERE IT SITS RELATIVE TO ApiVersion DOES MATTER, and an earlier
+        // version of this comment said it did not, on the grounds that nothing
+        // else here reads the body. That was the wrong test: ApiVersion does
+        // not read the body, it writes the same HEADER. Both emit `Link`, this
+        // one is appended first and therefore runs last on the way out, and
+        // until 2026-09-12 it replaced the successor-version link on every
+        // collection. It now appends — see the middleware.
         //
         // On the group rather than on eight routes: the condition is the shape
         // of the answer, not a list of endpoints, so a collection added later

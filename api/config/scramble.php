@@ -254,6 +254,10 @@ Link: </api/v1/members?limit=2&offset=2>; rel="next",
 Your own query parameters are carried along, so paging `/events?past=1` stays
 in the past.
 
+The links are relative, as RFC 8288 permits: resolve them against the URL you
+requested. They carry no scheme or host, so they stay correct behind whatever
+sits in front of the API.
+
 `PUT /api/v1/events/{event}/registration-options` and
 `POST /api/v1/events/series` answer with a collection too, and are enveloped
 the same way — with no `Link` header, since a `rel="next"` you would have to

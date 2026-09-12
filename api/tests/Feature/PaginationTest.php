@@ -21,9 +21,15 @@ use Tests\TestCase;
  * a bare array, and that the published document says the same about the same
  * endpoints. Both halves are derived — one from the live routes, one from
  * openapi.json — so a collection added next year is covered without editing
- * this file, and a Scramble extension that silently stops running fails here
- * rather than quietly shipping a document describing a shape the API no longer
- * has.
+ * this file.
+ *
+ * WHAT THE DOCUMENT HALF DOES NOT CATCH: App\Support\Scramble\
+ * DocumentsPagination not running at all. These tests read the COMMITTED
+ * openapi.json, so unregistering the extension leaves them green until
+ * somebody regenerates. CI's `openapi-drift` job is what turns that red, by
+ * regenerating and diffing. An earlier version of this paragraph claimed
+ * otherwise, which is the kind of claim that makes a suite feel safer than it
+ * is.
  */
 class PaginationTest extends TestCase
 {
@@ -97,6 +103,11 @@ class PaginationTest extends TestCase
                 array_keys($body['meta'] ?? []),
                 "The $what carries the wrong `meta`."
             );
+            // Weak on purpose, and only here: at the default limit every
+            // collection fits in one page, so this passes for a `total`
+            // computed over the slice as well as over the whole collection. The
+            // assertion with teeth is
+            // test_a_limit_returns_that_many_rows_and_still_counts_the_whole_collection.
             self::assertSame(count($body['data']), $body['meta']['total'], "The $what miscounts itself.");
             self::assertNotNull($response->headers->get('Link'), "The $what hands out no Link header.");
         }
@@ -328,22 +339,117 @@ class PaginationTest extends TestCase
         self::assertSame(Page::MAX_LIMIT, $response->json('meta.limit'));
     }
 
-    public function test_a_limit_that_is_not_a_number_is_ignored_rather_than_read_as_zero(): void
+    public function test_a_limit_that_is_not_a_number_falls_back_to_the_default(): void
     {
         Member::factory()->count(2)->create();
 
         $reader = $this->reader();
 
-        foreach (['abc', '', '2.5', '-1', '0'] as $nonsense) {
-            $response = $this->actingAsMember($reader)
+        // None of these says anything a page size could be read from, so each
+        // gets the default. The failure being guarded against is a cast:
+        // `(int) "abc"` is 0, and a limit of 0 answers every collection in the
+        // system with nothing at all.
+        foreach (['abc', '', '2.5', 'ten'] as $nonsense) {
+            $limit = $this->actingAsMember($reader)
                 ->getJson('/api/v1/members?limit='.urlencode($nonsense))
+                ->assertOk()
+                ->json('meta.limit');
+
+            self::assertSame(Page::DEFAULT_LIMIT, $limit, "`?limit=$nonsense` was not read as absent.");
+        }
+    }
+
+    /**
+     * A number below the floor is CLAMPED, which is a different answer from
+     * ignored — and the previous version of this test, asserting only that the
+     * collection was not empty, could not tell the two apart.
+     */
+    public function test_a_limit_below_one_is_clamped_rather_than_ignored(): void
+    {
+        Member::factory()->count(2)->create();
+
+        $reader = $this->reader();
+
+        foreach (['0', '-1'] as $tooSmall) {
+            $response = $this->actingAsMember($reader)
+                ->getJson('/api/v1/members?limit='.urlencode($tooSmall))
                 ->assertOk();
 
-            // The failure this guards against is a cast: `(int) "abc"` is 0,
-            // and a limit of 0 answers every collection in the system with
-            // nothing at all.
-            self::assertNotSame([], $response->json('data'), "`?limit=$nonsense` emptied the collection.");
+            self::assertSame(1, $response->json('meta.limit'), "`?limit=$tooSmall` was not clamped.");
+            self::assertCount(1, $response->json('data'));
         }
+    }
+
+    /**
+     * A whole number too large for PHP's integer type still said what it meant.
+     *
+     * `filter_var` answers false for it exactly as it does for `abc`, so
+     * reading both as "no parameter at all" sent an offset past the end of the
+     * collection back to page ONE. Asking for row 99999999999999999999 and
+     * being handed the first three members is the one direction a fail-safe
+     * default must not fail in.
+     */
+    public function test_an_offset_too_large_for_an_integer_lands_past_the_end_not_at_the_start(): void
+    {
+        Member::factory()->count(2)->create();
+
+        $response = $this->actingAsMember($this->reader())
+            ->getJson('/api/v1/members?offset=99999999999999999999')
+            ->assertOk();
+
+        self::assertSame([], $response->json('data'));
+        self::assertSame(3, $response->json('meta.total'));
+    }
+
+    /** A refusal is a problem document, and a problem document is not a page of anything. */
+    public function test_a_refused_collection_is_not_dressed_up_as_one(): void
+    {
+        $player = Member::factory()->inSection(Section::where('name', 'Cloches')->sole())->create();
+
+        $body = $this->actingAsMember($player)
+            ->getJson('/api/v1/members')
+            ->assertStatus(403)
+            ->json();
+
+        self::assertSame('access_denied', $body['code']);
+        self::assertArrayNotHasKey('meta', $body);
+    }
+
+    /**
+     * The links the reference shows are the links the API sends.
+     *
+     * Relative, so nothing in them depends on what the server believes its own
+     * scheme and host to be — see App\Support\Page::url().
+     */
+    public function test_the_links_are_relative_to_the_request(): void
+    {
+        $link = (string) $this->actingAsMember($this->reader())
+            ->getJson('/api/v1/members')->headers->get('Link');
+
+        self::assertStringStartsWith('</api/v1/members?', $link);
+        self::assertStringNotContainsString('http', $link);
+    }
+
+    /**
+     * The one header this middleware could destroy, and did.
+     *
+     * App\Http\Middleware\ApiVersion announces a successor with its own `Link`,
+     * and this middleware is appended to the group first, so on the way out it
+     * runs last. A replacing `set()` left seven collections silently not
+     * announcing the retirement while `Deprecation` and `Sunset` kept working —
+     * which nothing would have noticed, because the successor is null on every
+     * server and ApiVersionTest exercises `/config`, not a collection.
+     */
+    public function test_the_page_links_do_not_silence_the_successor_version_link(): void
+    {
+        config(['api.deprecation.successor' => 'https://example.test/api/v2']);
+
+        $links = $this->actingAsMember($this->reader())
+            ->getJson('/api/v1/members')
+            ->headers->all('Link');
+
+        self::assertCount(2, $links, 'One of the two Link headers replaced the other.');
+        self::assertContains('<https://example.test/api/v2>; rel="successor-version"', $links);
     }
 
     public function test_omitting_the_parameters_returns_the_whole_collection(): void

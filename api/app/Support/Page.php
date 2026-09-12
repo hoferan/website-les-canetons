@@ -65,6 +65,14 @@ final class Page
      * FILTER_VALIDATE_INT rather than `is_numeric` or a cast, because a cast
      * reads "2.5" as 2 and "abc" as 0, and 0 is a limit that would answer every
      * collection with nothing.
+     *
+     * A WHOLE NUMBER TOO LARGE FOR THIS PLATFORM IS CLAMPED, NOT DEFAULTED, and
+     * the difference is the one place "fail safe" would have failed unsafely.
+     * `filter_var` answers false for `99999999999999999999` exactly as it does
+     * for `abc`, so reading both as "no parameter" sent `?offset=` past the end
+     * of the collection back to page ONE — the first rows, where an empty page
+     * is the honest answer. A digits-only string said what it meant; only its
+     * size was unserviceable.
      */
     private static function clamp(mixed $value, int $default, int $min, int $max): int
     {
@@ -75,7 +83,13 @@ final class Page
         $parsed = filter_var($value, FILTER_VALIDATE_INT);
 
         if ($parsed === false) {
-            return $default;
+            $digits = trim((string) $value);
+
+            if (preg_match('/^[+-]?\d+$/', $digits) !== 1) {
+                return $default;
+            }
+
+            return str_starts_with($digits, '-') ? $min : $max;
         }
 
         return max($min, min($max, $parsed));
@@ -148,7 +162,25 @@ final class Page
         return implode(', ', $header);
     }
 
-    /** This collection's URL at one offset, carrying the request's own filters. */
+    /**
+     * This collection at one offset, carrying the request's own filters.
+     *
+     * A RELATIVE URI-REFERENCE, which RFC 8288 §3 permits and every client
+     * resolves against the request URI. An absolute one would have been the
+     * first place in this whole application where the deployed environment's
+     * scheme and host reach a response: `$request->url()` reflects the `Host`
+     * header verbatim, and with no `trustProxies()` configured it would also
+     * ignore `X-Forwarded-Proto`, so a TLS-terminating host in front of PHP
+     * would hand an HTTPS page a list of `http://` links to follow. Path and
+     * query answer the question without asking where the server thinks it is —
+     * which also keeps this clear of the FastCGI prefix the host adds to
+     * rewritten paths, and lets the published reference show exactly what is
+     * sent.
+     *
+     * http_build_query percent-encodes keys and values, so nothing a caller
+     * sends can break out of the `<…>; rel="…"` grammar or reach the header as
+     * a CR or LF.
+     */
     private function url(Request $request, int $offset): string
     {
         $query = $request->query();
@@ -159,6 +191,6 @@ final class Page
         // whatever order the caller happened to send its parameters in.
         ksort($query);
 
-        return $request->url().'?'.http_build_query($query);
+        return $request->getPathInfo().'?'.http_build_query($query);
     }
 }

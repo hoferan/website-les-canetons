@@ -628,7 +628,8 @@ repair it.
   row as the form opens and writes with that read's `ETag`, never a fresher
   one.
 - **Expect `{data, meta}` from every endpoint that answers with a list**, and
-  write nothing to make a new one do it — `App\Http\Middleware  PaginatesCollections` envelopes any JSON list body, so a controller returning
+  write nothing to make a new one do it — `App\Http\Middleware\
+  PaginatesCollections` envelopes any JSON list body, so a controller returning
   a resource collection is already paged, documented and `Link`-ed. On the SPA
   side read the rows through `rowsOf()` in `web/src/api/collection.ts`: orval
   wraps the response again, so written out by hand it is `query.data.data.data`

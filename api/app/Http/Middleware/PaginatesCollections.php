@@ -85,7 +85,24 @@ class PaginatesCollections
         ]);
 
         if ($request->isMethodSafe()) {
-            $response->headers->set('Link', $page->links($request, $total));
+            // APPENDED, NOT REPLACED, and the third argument is the whole
+            // reason this comment exists. `set()` replaces by default, and
+            // App\Http\Middleware\ApiVersion has already put its own `Link`
+            // on the response — `<…>; rel="successor-version"`, the one header
+            // whose entire job is to reach clients during a v1-to-v2
+            // migration. This middleware is appended to the group BEFORE that
+            // one, so on the way out it runs LAST and a replacing set() wins.
+            //
+            // Nothing would have caught it. The successor is null on every
+            // server today, so the header does not exist to be destroyed, and
+            // ApiVersionTest exercises `/api/v1/config`, which is not a
+            // collection. It would have surfaced on the day somebody set
+            // API_SUCCESSOR_URL and noticed that seven endpoints had gone
+            // quiet while `Deprecation` and `Sunset` kept working.
+            //
+            // Two field lines is what RFC 8288 §3 asks for: a client joins
+            // them, and `fetch()` does it for free.
+            $response->headers->set('Link', $page->links($request, $total), false);
         }
 
         return $response;
