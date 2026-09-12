@@ -236,6 +236,9 @@ test("names the person and the consequence before deleting them", async () => {
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveAccessibleName(expect.stringContaining("Perrine Player"));
   expect(within(dialog).getByText(/accès au site/i)).toBeInTheDocument();
+  // And what else goes with them. A member's answers cascade, so the planning
+  // loses them, and the committee should read that before they press.
+  expect(within(dialog).getByText(/réponses de présence seront effacées/i)).toBeInTheDocument();
 });
 
 test("requires the person's name to be typed before deleting", async () => {
