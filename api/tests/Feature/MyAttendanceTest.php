@@ -93,6 +93,7 @@ class MyAttendanceTest extends TestCase
         Attendance::factory()->create(['event_id' => $event->id, 'member_id' => $both->id]);
 
         $this->actingAsMember($both)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition déplacée'])
             ->assertOk()
             ->assertJsonPath('myAttendance.status', 'yes');
@@ -135,6 +136,7 @@ class MyAttendanceTest extends TestCase
             ]));
 
         $this->actingAsMember($organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJson(['ok' => true, 'attendanceDeleted' => 3]);

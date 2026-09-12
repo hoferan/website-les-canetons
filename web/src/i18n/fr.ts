@@ -53,6 +53,16 @@ export const fr = {
     rate_limited: "Trop de requêtes. Veuillez patienter avant de réessayer.",
     service_unavailable: "Service indisponible",
 
+    // Conditional writes. `if_match_required` is a bug in the client, never
+    // something the person at the screen did — so it says what it says without
+    // blaming them, and the SPA should never let them see it.
+    if_match_required: "Cette modification n'a pas pu être vérifiée. Rechargez la page.",
+    // `if_match_failed` is the one a member really does meet: somebody else
+    // changed the same thing while their form was open. It says what happened
+    // and what to do, and deliberately does not offer to force the write.
+    if_match_failed:
+      "Quelqu'un a modifié cet élément entre-temps. Rechargez pour voir les changements, puis réessayez.",
+
     // Attendance. `not_answerable` is a 403 that is NOT about a missing
     // permission — there is none for answering — so it must not read like
     // one, or the reader goes looking for a right nobody can grant them.

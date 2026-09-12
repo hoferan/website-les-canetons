@@ -12,11 +12,37 @@ use App\Support\Audit;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 #[Group('Registration', weight: 40)]
 class RegistrationOptionController extends Controller
 {
+    /**
+     * Read an event's bookable options.
+     *
+     * Requires `events.manage`. Returns the options in sort order.
+     *
+     * Read this before replacing them, and quote the `ETag` it returns in the
+     * `If-Match` header of the PUT. The tag is over the OPTION LIST, not over
+     * the event: correcting the event's dress code does not invalidate a
+     * pending options edit, and adding an option does — which is the way round
+     * that catches a lost update.
+     *
+     * The public booking form reads the same options from
+     * `GET /api/v1/events/{event}/registration`, which needs no session but
+     * answers 404 for an event that takes no bookings. This one answers with
+     * an empty list instead, because configuring an event that does not take
+     * bookings yet is exactly when the committee needs it.
+     */
+    #[Endpoint(operationId: 'registrationOption.index')]
+    public function index(Event $event): AnonymousResourceCollection
+    {
+        return RegistrationOptionResource::collection(
+            $event->registrationOptions()->orderBy('sort_order')->orderBy('id')->get()
+        );
+    }
+
     /**
      * Replace an event's bookable options.
      *
@@ -41,7 +67,7 @@ class RegistrationOptionController extends Controller
      * than 50 entries, or a missing label answers `400 validation_failed`.
      */
     #[Endpoint(operationId: 'registrationOption.replace')]
-    public function __invoke(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
+    public function replace(ReplaceRegistrationOptionsRequest $request, Event $event): JsonResponse
     {
         // SINGLE-ACTION AND PUT, matching MemberRoleController: the committee
         // fills in one form listing every option, and an "add one" API cannot

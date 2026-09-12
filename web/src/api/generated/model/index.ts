@@ -101,8 +101,10 @@
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
  * | `409` | Allowed, but it conflicts with the current state. |
+ * | `412` | Your `If-Match` names a state this thing is no longer in. |
  * | `419` | The session or CSRF token expired. Prime the cookie and retry. |
  * | `422` | The submission looks automated. See *Public forms*. |
+ * | `428` | The write needs an `If-Match`. See *Conditional writes*. |
  * | `429` | Rate limited. |
  * | `503` | The service is temporarily refusing to serve. |
  *
@@ -128,6 +130,61 @@
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
  * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ *
+ * ## Conditional writes
+ *
+ * **Every write that replaces or removes something must prove it is working from
+ * the current state.** Read the thing first, keep the `ETag` the read returns, and
+ * send it back as `If-Match`:
+ *
+ * ```js
+ * const read = await fetch("/api/v1/events/42", { credentials: "include" });
+ * const etag = read.headers.get("ETag");
+ *
+ * await fetch("/api/v1/events/42", {
+ *   method: "PATCH",
+ *   credentials: "include",
+ *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf, "If-Match": etag },
+ *   body: JSON.stringify({ title: "Cortège" }),
+ * });
+ * ```
+ *
+ * No header answers `428 if_match_required`. A header naming a state the thing is
+ * no longer in answers `412 if_match_failed`, and **the 412 does not tell you the
+ * current tag** — retrying blindly with a fresh one would land exactly the
+ * overwrite you were stopped from making. Read it again and decide again.
+ *
+ * Which writes, and where their tag comes from:
+ *
+ * | Write | Read for its `ETag` |
+ * | --- | --- |
+ * | `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |
+ * | `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |
+ * | `PUT /members/{member}/roles` | `GET /members/{member}` |
+ * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
+ * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ *
+ * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * no read in between. A `DELETE` returns none: there is nothing left to tag.
+ *
+ * **Collections hand out no tag**, deliberately — one tag cannot validate
+ * forty-five members, and a list-wide tag would refuse every write whenever
+ * anybody changed anything. That is why each conditional write has a
+ * single-thing read beside it.
+ *
+ * The tag is over the thing's own state. An event's tag ignores `myAttendance`,
+ * which is yours alone, so answering an event does not invalidate a pending edit
+ * of it; an event's options are tagged separately from the event, so correcting a
+ * dress code does not refuse an options edit and adding an option does.
+ *
+ * **Attendance is exempt.** `PUT` and `DELETE` on
+ * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
+ * writer of their own answer, the whole answer is one value so there is no half of
+ * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * Tags are strong validators. `If-Match: *` asserts only that the thing still
+ * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
+ * nothing here is cacheable.
  *
  * ## Public forms
  *
@@ -186,12 +243,18 @@ export * from "./problem403ResponseErrorsItem";
 export * from "./problem404Response";
 export * from "./problem404ResponseCode";
 export * from "./problem404ResponseErrorsItem";
+export * from "./problem412Response";
+export * from "./problem412ResponseCode";
+export * from "./problem412ResponseErrorsItem";
 export * from "./problem419Response";
 export * from "./problem419ResponseCode";
 export * from "./problem419ResponseErrorsItem";
 export * from "./problem422Response";
 export * from "./problem422ResponseCode";
 export * from "./problem422ResponseErrorsItem";
+export * from "./problem428Response";
+export * from "./problem428ResponseCode";
+export * from "./problem428ResponseErrorsItem";
 export * from "./problem429Response";
 export * from "./problem429ResponseCode";
 export * from "./problem429ResponseErrorsItem";

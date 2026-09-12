@@ -6,6 +6,7 @@ use App\Exceptions\AttendanceRefused;
 use App\Exceptions\ReauthenticationFailed;
 use App\Exceptions\SchemaUnavailable;
 use App\Http\Middleware\ApiVersion;
+use App\Http\Middleware\ConditionalWrite;
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
 use App\Http\Middleware\NoStoreResponse;
@@ -135,6 +136,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'permission' => RequirePermission::class,
+            // `etag:<facet>` — hands out an ETag on a read and demands a
+            // matching If-Match on a write. See the ConditionalWrite class for
+            // which writes carry it, and why attendance deliberately does not.
+            'etag' => ConditionalWrite::class,
             'docs' => EnsureDocsEnabled::class,
             'no-store' => NoStoreResponse::class,
             'public-write' => PublicWriteGuard::class,
