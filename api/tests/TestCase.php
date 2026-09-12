@@ -2,11 +2,13 @@
 
 namespace Tests;
 
+use App\Http\Middleware\IdempotentWrite;
 use App\Http\Middleware\PublicWriteGuard;
 use App\Models\Member;
 use App\Support\EntityTag;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -94,15 +96,29 @@ abstract class TestCase extends BaseTestCase
      * seconds to every public-write test — and the thing worth testing is
      * the signature and the window, not the clock.
      *
+     * THE IDEMPOTENCY KEY IS FRESH ON EVERY CALL, which is what a real form
+     * does: one key per render, so two submissions of the same form are two
+     * submissions and a retry of one is a retry. Pass `key:` to reuse one on
+     * purpose — that is a retry — or `key: null` to send none and be refused.
+     * See App\Http\Middleware\IdempotentWrite.
+     *
      * @return array<string, string>
      */
-    protected function publicWriteHeaders(int $ageSeconds = 30): array
+    protected function publicWriteHeaders(int $ageSeconds = 30, ?string $key = ''): array
     {
         $issuedAt = (string) (time() - $ageSeconds);
 
-        return [
+        $headers = [
             PublicWriteGuard::TOKEN_HEADER => $issuedAt.'.'
                 .hash_hmac('sha256', $issuedAt, (string) config('app.key')),
         ];
+
+        if ($key === null) {
+            return $headers;
+        }
+
+        $headers[IdempotentWrite::HEADER] = $key === '' ? (string) Str::uuid() : $key;
+
+        return $headers;
     }
 }

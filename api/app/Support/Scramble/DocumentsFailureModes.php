@@ -3,6 +3,7 @@
 namespace App\Support\Scramble;
 
 use App\Exceptions\ApiError;
+use App\Http\Middleware\IdempotentWrite;
 use Dedoc\Scramble\Extensions\OperationExtension;
 use Dedoc\Scramble\Support\Generator\Header;
 use Dedoc\Scramble\Support\Generator\Operation;
@@ -56,6 +57,7 @@ class DocumentsFailureModes extends OperationExtension
         401 => ['not_authenticated', 'No session, or it has expired. Log in and retry.'],
         403 => ['access_denied', 'Authenticated, but not permitted to do this.'],
         404 => ['not_found', 'No such record.'],
+        409 => ['idempotency_key_reuse', 'This Idempotency-Key belongs to a different submission, or to one still in flight.'],
         412 => ['if_match_failed', 'The If-Match header names a state this thing is no longer in. Re-read it and decide again.'],
         419 => ['invalid_session', 'The CSRF token was missing or stale. Re-prime it and retry; you are still logged in.'],
         422 => ['spam_suspected', 'The submission looks automated. See Public forms.'],
@@ -116,6 +118,51 @@ class DocumentsFailureModes extends OperationExtension
                 break;
             }
         }
+
+        if (in_array('idempotent', $middleware, true)) {
+            $this->declareIdempotencyKey($operation);
+        }
+    }
+
+    /**
+     * The header a public submission must carry, and the one refusal only it
+     * can produce.
+     *
+     * The 400 is NOT declared here. Validation already puts one on both of
+     * these routes, declare() skips a status the operation has, and a second
+     * 400 would overwrite the inferred one with a less specific guess. So
+     * `idempotency_key_required` and `idempotency_key_invalid` are absent from
+     * that status's `code` enum, which is the same gap the 409 below has and
+     * has the same cause.
+     *
+     * THE 409's ENUM IS INCOMPLETE ON ONE ROUTE, and saying so is better than
+     * leaving it to be discovered. The Problem<status> components are SHARED,
+     * so one of them carries one code set for every operation that points at
+     * it — fine while a middleware-derived failure has exactly one cause, which
+     * was true until this one. `POST /events/{event}/registrations` also
+     * answers 409 with `registration_not_open` and `registration_closed`,
+     * raised in the controller where nothing in the route table implies them.
+     * It declared no 409 at all before this, so the status being present with
+     * two codes missing is an improvement on the status being absent — but it
+     * is still a client narrowing on a union that is short by two. Closing it
+     * needs per-operation responses rather than shared components, or a status
+     * on each ErrorVocabulary entry; both are A3's business, not A4's.
+     */
+    private function declareIdempotencyKey(Operation $operation): void
+    {
+        $this->declare($operation, 409);
+
+        $operation->addParameters([
+            (new Parameter(IdempotentWrite::HEADER, 'header'))
+                ->setSchema(Schema::fromType(new OpenApiTypes\StringType))
+                ->required(true)
+                ->description(
+                    'A key identifying this submission, 16 to 255 printable ASCII characters — a '
+                    .'UUID is the expected shape. Generate it when the form is rendered and send '
+                    .'the same one for every attempt: a retry then returns the first answer and '
+                    .'books nothing twice. A fresh submission needs a fresh key.'
+                ),
+        ]);
     }
 
     /**

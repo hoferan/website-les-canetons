@@ -100,7 +100,7 @@
  * | `401` | No session. Log in. |
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
- * | `409` | Allowed, but it conflicts with the current state. |
+ * | `409` | Allowed, but it conflicts with the current state, or with a submission you already made. |
  * | `412` | Your `If-Match` names a state this thing is no longer in. |
  * | `419` | The session or CSRF token expired. Prime the cookie and retry. |
  * | `422` | The submission looks automated. See *Public forms*. |
@@ -199,6 +199,55 @@
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
  *
+ * Both also require an **`Idempotency-Key`** header, so that resending a
+ * submission after a timeout cannot book or send it twice. See *Sending a form
+ * only once*.
+ *
+ * ## Sending a form only once
+ *
+ * A guest on a phone at the hall taps Book, the connection stalls, and they tap
+ * again. Nothing in the second request distinguishes it from a second guest, so
+ * the client has to say, and the `Idempotency-Key` header is how
+ * ([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).
+ *
+ * **Generate a key when the form is rendered** and send the same one for every
+ * attempt at that submission. A fresh submission needs a fresh key.
+ *
+ * ```js
+ * const key = crypto.randomUUID();
+ *
+ * await fetch("/api/v1/contact", {
+ *   method: "POST",
+ *   headers: {
+ *     "Content-Type": "application/json",
+ *     "X-Form-Token": formToken,
+ *     "Idempotency-Key": key,
+ *   },
+ *   body: JSON.stringify({ ...fields, website: "" }),
+ * });
+ * ```
+ *
+ * The first request runs and its answer is stored under the key. A second request
+ * with the same key and the same body gets that answer back, byte for byte and
+ * with the same status, creates nothing, and carries
+ * `Idempotency-Replayed: true` so you can tell an echo from a fresh acceptance.
+ *
+ * The key must be 16 to 255 printable ASCII characters. It is scoped to the
+ * endpoint, so one key can be used once on `/contact` and once on a booking. It
+ * is **not** scoped to a caller, because these endpoints are anonymous, which is
+ * why a short key is refused: a collision with somebody else's key answers
+ * `409 idempotency_key_reuse` rather than handing you their booking.
+ *
+ * | Answer | Means |
+ * | --- | --- |
+ * | `400 idempotency_key_required` | No header. |
+ * | `400 idempotency_key_invalid` | Too short, too long, or not printable ASCII. |
+ * | `409 idempotency_key_reuse` | The key belongs to a different body, or to an attempt still running. |
+ *
+ * A request that **fails** releases its key: nothing was written, so nothing is
+ * being retried, and a guest who mistyped their address can correct it and send
+ * again with the same key. Stored answers are kept for 24 hours.
+ *
  * OpenAPI spec version: 1.0.0
  */
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -246,6 +295,7 @@ import type {
   Problem401Response,
   Problem403Response,
   Problem404Response,
+  Problem409Response,
   Problem412Response,
   Problem419Response,
   Problem422Response,
@@ -2632,6 +2682,11 @@ export type registrationStoreResponse404 = {
   status: 404;
 };
 
+export type registrationStoreResponse409 = {
+  data: Problem409Response;
+  status: 409;
+};
+
 export type registrationStoreResponse419 = {
   data: Problem419Response;
   status: 419;
@@ -2653,6 +2708,7 @@ export type registrationStoreResponseSuccess = registrationStoreResponse201 & {
 export type registrationStoreResponseError = (
   | registrationStoreResponse400
   | registrationStoreResponse404
+  | registrationStoreResponse409
   | registrationStoreResponse419
   | registrationStoreResponse422
   | registrationStoreResponse429
@@ -2722,6 +2778,7 @@ export const getRegistrationStoreMutationOptions = <
   TError =
     | Problem400Response
     | Problem404Response
+    | Problem409Response
     | Problem419Response
     | Problem422Response
     | Problem429Response,
@@ -2766,6 +2823,7 @@ export type RegistrationStoreMutationBody = StoreRegistrationRequest;
 export type RegistrationStoreMutationError =
   | Problem400Response
   | Problem404Response
+  | Problem409Response
   | Problem419Response
   | Problem422Response
   | Problem429Response;
@@ -2778,6 +2836,7 @@ export const useRegistrationStore = <
   TError =
     | Problem400Response
     | Problem404Response
+    | Problem409Response
     | Problem419Response
     | Problem422Response
     | Problem429Response,
@@ -5900,6 +5959,11 @@ export type contactStoreResponse400 = {
   status: 400;
 };
 
+export type contactStoreResponse409 = {
+  data: Problem409Response;
+  status: 409;
+};
+
 export type contactStoreResponse419 = {
   data: Problem419Response;
   status: 419;
@@ -5920,6 +5984,7 @@ export type contactStoreResponseSuccess = contactStoreResponse200 & {
 };
 export type contactStoreResponseError = (
   | contactStoreResponse400
+  | contactStoreResponse409
   | contactStoreResponse419
   | contactStoreResponse422
   | contactStoreResponse429
@@ -5982,7 +6047,12 @@ export const contactStore = async (
 export const getContactStoreMutationKey = () => ["contactStore"] as const;
 
 export const getContactStoreMutationOptions = <
-  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
+  TError =
+    | Problem400Response
+    | Problem409Response
+    | Problem419Response
+    | Problem422Response
+    | Problem429Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -6020,14 +6090,23 @@ export const getContactStoreMutationOptions = <
 export type ContactStoreMutationResult = NonNullable<Awaited<ReturnType<typeof contactStore>>>;
 export type ContactStoreMutationBody = ContactRequest;
 export type ContactStoreMutationError =
-  Problem400Response | Problem419Response | Problem422Response | Problem429Response;
+  | Problem400Response
+  | Problem409Response
+  | Problem419Response
+  | Problem422Response
+  | Problem429Response;
 export type ContactStoreMutationVariables = { data: ContactRequest };
 
 /**
  * @summary Send a message to the committee
  */
 export const useContactStore = <
-  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
+  TError =
+    | Problem400Response
+    | Problem409Response
+    | Problem419Response
+    | Problem422Response
+    | Problem429Response,
   TContext = unknown,
 >(
   options?: {

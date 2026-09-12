@@ -46,7 +46,14 @@ Route::middleware('throttle:public-write')->group(function () {
 // registration sends mail INLINE to an address the caller chose, through the
 // band's own authenticated mailbox — an open relay whose cost is a
 // blacklisted sending domain, which the committee cannot repair.
-Route::middleware(['throttle:public-write', 'public-write'])->group(function () {
+// IDEMPOTENT AS WELL, and `idempotent` comes LAST of the three on purpose. A
+// replay still costs a valid form token and a slot in the rate limit, so a
+// stored key cannot be used to walk past the anti-abuse guard; a genuine retry
+// arrives seconds later carrying the same token, which stays valid for two
+// hours. The key is REQUIRED on both — a guest tapping Book twice on a stalled
+// connection is the failure, and a protection that only covers the clients who
+// remembered to opt in protects the ones that did not need it.
+Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->group(function () {
     Route::post('/contact', ContactController::class);
 
     // Public event registration — the souper, generalised (D9). Anonymous
