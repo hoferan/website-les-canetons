@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,16 +13,18 @@ import {
 
 import {
   getMemberIndexQueryKey,
-  useMemberDestroy,
+  memberDestroy,
+  memberRoleReplace,
+  memberShow,
+  memberUpdate,
   useMemberIndex,
   useMemberPasswordReset,
-  useMemberRoleReplace,
   useMemberStore,
-  useMemberUpdate,
   useRoleIndex,
   useSectionIndex,
 } from "../api/generated/endpoints";
-import type { MemberResource } from "../api/generated/model";
+import type { MemberResource, UpdateMemberRequest } from "../api/generated/model";
+import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { roleLabel } from "../i18n";
@@ -63,16 +65,55 @@ export function Members() {
   const destructive = useApiFormError("L’action a échoué.");
 
   const create = useMemberStore();
-  const update = useMemberUpdate();
-  const replaceRoles = useMemberRoleReplace();
-  const destroy = useMemberDestroy();
   const issuePassword = useMemberPasswordReset();
+
+  // THE THREE CONDITIONAL WRITES, built by hand over the generated functions.
+  // Each has to carry an `If-Match` that differs per call, and orval's mutation
+  // hooks take their request options once when the hook is created — see
+  // web/src/api/ifMatch.ts. The functions, their types and their errors are
+  // still the generated ones.
+  const update = useMutation({
+    mutationFn: ({
+      member,
+      data,
+      etag,
+    }: {
+      member: number;
+      data: UpdateMemberRequest;
+      etag: string;
+    }) => memberUpdate(member, data, ifMatch(etag)),
+  });
+
+  const replaceRoles = useMutation({
+    mutationFn: ({ member, roleIds, etag }: { member: number; roleIds: number[]; etag: string }) =>
+      memberRoleReplace(member, { roleIds }, ifMatch(etag)),
+  });
+
+  const destroy = useMutation({
+    mutationFn: ({ member, etag }: { member: number; etag: string }) =>
+      memberDestroy(member, ifMatch(etag)),
+  });
 
   // `editing` distinguishes three states: closed, creating (null) and editing
   // (a member). A separate boolean plus a member would allow a fourth,
   // meaningless one.
-  const [editing, setEditing] = useState<{ member: MemberResource | null } | null>(null);
-  const [deleting, setDeleting] = useState<MemberResource | null>(null);
+  //
+  // AN EDIT CARRIES THE TAG OF THE READ IT WAS OPENED FROM, and the member it
+  // shows is that read's — not the row from the list. The tag has to describe
+  // what the person was looking at when they decided what to change, so
+  // seeding the form from a possibly-stale list row and writing with a fresh
+  // tag would satisfy the server while protecting nobody.
+  const [editing, setEditing] = useState<{
+    member: MemberResource | null;
+    etag: string | null;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<{ member: MemberResource; etag: string | null } | null>(
+    null,
+  );
+  // Which row is being read, so its buttons can say so rather than looking
+  // dead while the request is in flight.
+  const [opening, setOpening] = useState<number | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const [resetting, setResetting] = useState<MemberResource | null>(null);
   const [issued, setIssued] = useState<{ name: string; password: string } | null>(null);
 
@@ -95,12 +136,52 @@ export function Members() {
 
   function openCreate() {
     form.clear();
-    setEditing({ member: null });
+    setEditing({ member: null, etag: null });
   }
 
-  function openEdit(member: MemberResource) {
+  /**
+   * Reads the one person, and keeps the tag that read handed out.
+   *
+   * Both the edit form and the delete confirmation go through this, because
+   * both end in a conditional write and both need a tag describing what the
+   * administrator was shown. The roster list hands out none — one tag cannot
+   * validate forty-five rows — so this read is also the moment the concurrency
+   * window opens: "while this dialog was open".
+   */
+  async function read(id: number): Promise<{ member: MemberResource; etag: string | null } | null> {
+    setReadError(null);
+    setOpening(id);
+    try {
+      const response = await memberShow(id);
+      if (response.status !== 200) {
+        // Unreachable: the mutator throws on every non-2xx. The declared union
+        // says otherwise and tsc is right that it does.
+        setReadError("Cette personne n’a pas pu être chargée.");
+        return null;
+      }
+      return { member: response.data, etag: entityTagOf(response) };
+    } catch {
+      setReadError("Cette personne n’a pas pu être chargée. Rechargez la page.");
+      return null;
+    } finally {
+      setOpening(null);
+    }
+  }
+
+  async function openEdit(row: MemberResource) {
     form.clear();
-    setEditing({ member });
+    const read_ = await read(row.id);
+    if (read_) {
+      setEditing(read_);
+    }
+  }
+
+  async function openDelete(row: MemberResource) {
+    destructive.clear();
+    const read_ = await read(row.id);
+    if (read_) {
+      setDeleting(read_);
+    }
   }
 
   function closeForm() {
@@ -124,7 +205,14 @@ export function Members() {
     try {
       if (editing?.member) {
         const member = editing.member;
-        await update.mutateAsync({ member: member.id, data });
+        if (editing.etag === null) {
+          // No tag means the write would be refused with 428, which reads as a
+          // broken screen. Saying so and stopping is the honest answer.
+          setReadError("Cette personne n’a pas pu être chargée. Rechargez la page.");
+          return;
+        }
+
+        const saved = await update.mutateAsync({ member: member.id, data, etag: editing.etag });
 
         // Roles travel on their own endpoint, and only when they changed: it
         // ends the member's sessions and writes an audit entry, so sending it
@@ -132,7 +220,21 @@ export function Members() {
         const before = [...member.roleIds].sort((a, b) => a - b);
         const after = [...draft.roleIds].sort((a, b) => a - b);
         if (before.join() !== after.join()) {
-          await replaceRoles.mutateAsync({ member: member.id, data: { roleIds: draft.roleIds } });
+          // THE TAG FROM THE WRITE JUST MADE, not the one this form opened
+          // with: the PATCH above changed the member, so the tag it was
+          // checked against describes a state that is now gone and the roles
+          // call would answer 412. A successful write hands back the new tag
+          // for exactly this.
+          const chained = entityTagOf(saved);
+          if (chained === null) {
+            setReadError("L’enregistrement est incomplet : rechargez la page.");
+            return;
+          }
+          await replaceRoles.mutateAsync({
+            member: member.id,
+            roleIds: draft.roleIds,
+            etag: chained,
+          });
         }
       } else {
         const result = await create.mutateAsync({ data });
@@ -158,12 +260,12 @@ export function Members() {
   }
 
   async function confirmDelete() {
-    if (!deleting) {
+    if (!deleting || deleting.etag === null) {
       return;
     }
     destructive.clear();
     try {
-      await destroy.mutateAsync({ member: deleting.id });
+      await destroy.mutateAsync({ member: deleting.member.id, etag: deleting.etag });
     } catch (thrown) {
       // Dialog stays open, so a 409 invariant is read where the action was
       // taken rather than behind a dialog that has vanished.
@@ -226,6 +328,12 @@ export function Members() {
         </Button>
       )}
 
+      {readError ? (
+        <p role="alert" className="mt-block text-danger">
+          {readError}
+        </p>
+      ) : null}
+
       {roster.isPending ? <p className="mt-block">Chargement…</p> : null}
       {roster.isError ? (
         <p role="alert" className="mt-block text-danger">
@@ -250,8 +358,9 @@ export function Members() {
             <div className="mt-related">
               <MemberActions
                 member={member}
+                busy={opening === member.id}
                 onEdit={openEdit}
-                onDelete={setDeleting}
+                onDelete={openDelete}
                 onResetPassword={setResetting}
               />
             </div>
@@ -283,8 +392,9 @@ export function Members() {
                 <TableCell>
                   <MemberActions
                     member={member}
+                    busy={opening === member.id}
                     onEdit={openEdit}
-                    onDelete={setDeleting}
+                    onDelete={openDelete}
                     onResetPassword={setResetting}
                   />
                 </TableCell>
@@ -296,14 +406,16 @@ export function Members() {
 
       <ConfirmByTypingName
         open={deleting !== null}
-        title={`Supprimer ${deleting?.firstName} ${deleting?.lastName}`}
+        title={`Supprimer ${deleting?.member.firstName} ${deleting?.member.lastName}`}
         // NAMES THE DAMAGE (§4). It says what is actually known to go: the
         // person and their access. Attendance and registrations arrive in R1c
         // and R3, and THIS SENTENCE MUST GAIN THEM THEN — "3 réponses à venir
         // seront effacées" is the example the spec gives.
-        description={`${deleting?.firstName} ${deleting?.lastName} sera retiré de la liste et perdra immédiatement son accès au site. Cette action est définitive.`}
+        description={`${deleting?.member.firstName} ${deleting?.member.lastName} sera retiré de la liste et perdra immédiatement son accès au site. Cette action est définitive.`}
         confirmLabel="Supprimer"
-        confirmPhrase={deleting ? `${deleting.firstName} ${deleting.lastName}` : undefined}
+        confirmPhrase={
+          deleting ? `${deleting.member.firstName} ${deleting.member.lastName}` : undefined
+        }
         busy={destroy.isPending}
         error={destructive.error}
         onConfirm={confirmDelete}
@@ -359,11 +471,13 @@ function rolesOf(member: MemberResource, labelForRole: (id: number) => string): 
  */
 function MemberActions({
   member,
+  busy,
   onEdit,
   onDelete,
   onResetPassword,
 }: {
   member: MemberResource;
+  busy: boolean;
   onEdit: (member: MemberResource) => void;
   onDelete: (member: MemberResource) => void;
   onResetPassword: (member: MemberResource) => void;
@@ -372,7 +486,7 @@ function MemberActions({
 
   return (
     <div className="flex flex-wrap gap-tight">
-      <Button variant="outline" size="sm" onClick={() => onEdit(member)}>
+      <Button variant="outline" size="sm" disabled={busy} onClick={() => void onEdit(member)}>
         <span aria-hidden="true">Modifier</span>
         <span className="sr-only">Modifier {name}</span>
       </Button>
@@ -380,7 +494,7 @@ function MemberActions({
         <span aria-hidden="true">Mot de passe</span>
         <span className="sr-only">Réinitialiser le mot de passe de {name}</span>
       </Button>
-      <Button variant="destructive" size="sm" onClick={() => onDelete(member)}>
+      <Button variant="destructive" size="sm" disabled={busy} onClick={() => void onDelete(member)}>
         <span aria-hidden="true">Supprimer</span>
         <span className="sr-only">Supprimer {name}</span>
       </Button>
