@@ -250,14 +250,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { RegistrationExport503Code } from "./registrationExport503Code";
+import type { RegistrationExport503ErrorsItem } from "./registrationExport503ErrorsItem";
 
 export type RegistrationExport503 = {
-  title: "XLSX export needs the PHP zip extension, which this server does not have. Use CSV.";
-  status: 503;
-  code: "xlsx_unavailable";
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
   instance: string;
-  errors: unknown[];
+  /** Stable machine token the front end maps to French. */
+  code: RegistrationExport503Code;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: RegistrationExport503ErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
   requestId: string;
-  /** @nullable */
-  detail: string | null;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
 };

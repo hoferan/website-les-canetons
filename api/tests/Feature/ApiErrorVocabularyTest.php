@@ -281,6 +281,135 @@ class ApiErrorVocabularyTest extends TestCase
         ), self::MUST_INCLUDE_REASONS, 'reasons');
     }
 
+    public function test_every_code_carries_the_status_the_source_emits_it_with(): void
+    {
+        // WHY THIS IS SCANNED AND NOT DERIVED. App\Support\ErrorVocabulary now
+        // carries a status per code, and that status is what the OpenAPI
+        // document groups its responses by — so the document, the extension
+        // that builds it and the tests that read it all agree with the map by
+        // construction. Filing a code under the wrong number would be invisible
+        // to every one of them and wrong in every generated client. The only
+        // way to catch it is to read the status off the CODE THAT RAISES IT,
+        // which is what this does.
+        $pairs = $this->emittedStatuses();
+
+        // The floor, for the reason every derivation here has one: a regex that
+        // stopped matching would make this vacuously green.
+        self::assertGreaterThanOrEqual(
+            20,
+            count($pairs),
+            'Found almost no status/code pairs in app/; this scan has stopped matching.'
+        );
+
+        $wrong = [];
+
+        foreach ($pairs as $code => $statuses) {
+            $declared = ErrorVocabulary::statusFor($code);
+
+            foreach (array_unique($statuses) as $status) {
+                if ($declared !== $status) {
+                    $wrong[] = sprintf(
+                        '%s is raised with %d and the vocabulary says %s',
+                        $code,
+                        $status,
+                        $declared === null ? 'nothing' : (string) $declared,
+                    );
+                }
+            }
+        }
+
+        self::assertSame([], $wrong, sprintf(
+            'The vocabulary disagrees with the code about what status a failure carries:
+  - %s
+
+'
+            .'One status per code is a property of this vocabulary: where a refusal has two '
+            .'statuses it has two codes, so that a caller branching on `code` never has to read '
+            .'`status` as well.',
+            implode('
+  - ', $wrong)
+        ));
+    }
+
+    /**
+     * code => the statuses app/ actually raises it with.
+     *
+     * Three sources, because a status reaches a response three ways:
+     *
+     *  - a literal `::json(<status>, '<code>'`, which covers ApiError's own
+     *    renderers, the controllers and the middleware;
+     *  - `new AttendanceRefused(<status>, '<code>'` and ReauthenticationFailed,
+     *    which carry their own because theirs varies;
+     *  - AccessIntegrityViolation, which carries NO status — the render closure
+     *    in bootstrap/app.php supplies it, so that literal is read from there
+     *    rather than assumed here.
+     *
+     * @return array<string, list<int>>
+     */
+    private function emittedStatuses(): array
+    {
+        $pairs = [];
+
+        $collect = function (string $pattern) use (&$pairs): void {
+            foreach ([...$this->phpFiles(self::APP_DIR), self::BOOTSTRAP_FILE] as $file) {
+                if (! preg_match_all($pattern, (string) file_get_contents($file), $m, PREG_SET_ORDER)) {
+                    continue;
+                }
+
+                foreach ($m as $match) {
+                    $pairs[$match[2]][] = (int) $match[1];
+                }
+            }
+        };
+
+        $collect("/::json\(\s*(\d{3})\s*,\s*'([a-z_]+)'/");
+        $collect(sprintf(
+            "/new\s+(?:%s)\(\s*(\d{3})\s*,\s*'([a-z_]+)'/",
+            implode('|', self::CODE_CARRYING_EXCEPTIONS),
+        ));
+
+        foreach ($this->rendererSuppliedStatuses() as $code => $status) {
+            $pairs[$code][] = $status;
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * The codes whose status lives in a render closure rather than at the throw.
+     *
+     * AccessIntegrityViolation is the only one: every violation it carries is a
+     * conflict, so bootstrap/app.php renders the lot at one status and the
+     * throw sites name only the code. Reading that literal out of the closure
+     * keeps this test anchored on the source rather than on a number repeated
+     * here.
+     *
+     * @return array<string, int>
+     */
+    private function rendererSuppliedStatuses(): array
+    {
+        $bootstrap = (string) file_get_contents(self::BOOTSTRAP_FILE);
+
+        if (! preg_match('/AccessIntegrityViolation \$e.*?ApiError::json\(\s*(\d{3})/s', $bootstrap, $m)) {
+            self::fail('Cannot find the AccessIntegrityViolation renderer in bootstrap/app.php, so its status is unchecked.');
+        }
+
+        $status = (int) $m[1];
+        $found = [];
+
+        foreach ($this->phpFiles(self::APP_DIR) as $file) {
+            if (preg_match_all("/new\s+AccessIntegrityViolation\(\s*'([a-z_]+)'/", (string) file_get_contents($file), $codes)) {
+                foreach ($codes[1] as $code) {
+                    $found[$code] = $status;
+                }
+            }
+        }
+
+        self::assertNotEmpty($found, 'Found no AccessIntegrityViolation throw sites; this scan has stopped matching.');
+
+        return $found;
+    }
+
     /**
      * Code tokens: every `::json(<status>, '<code>'` call site in app/ — which
      * covers both ApiError's own named helpers (self::json(401,

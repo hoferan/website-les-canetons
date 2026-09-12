@@ -97,43 +97,53 @@
                             }
                         }
                     },
-                    "400": {
-                        "$ref": "#/components/responses/Problem400"
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     },
                     "401": {
-                        "description": "",
+                        "description": "No session, or it has expired. Log in and retry.",
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "title": {
                                             "type": "string",
-                                            "const": "Incorrect username or password"
+                                            "description": "English message. Never displayed: the front end renders `code`."
                                         },
                                         "status": {
                                             "type": "integer",
-                                            "const": 401
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
                                         },
                                         "code": {
                                             "type": "string",
-                                            "const": "invalid_credentials"
-                                        },
-                                        "instance": {
-                                            "type": "string"
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "invalid_credentials",
+                                                "not_authenticated"
+                                            ]
                                         },
                                         "errors": {
                                             "type": "array",
-                                            "items": {}
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
                                         },
                                         "requestId": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
                                         },
                                         "detail": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
                                         }
                                     },
                                     "required": [
@@ -150,39 +160,46 @@
                         }
                     },
                     "429": {
-                        "description": "",
+                        "description": "Too many requests. Retry-After says how long to wait.",
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "title": {
                                             "type": "string",
-                                            "const": "Too many attempts"
+                                            "description": "English message. Never displayed: the front end renders `code`."
                                         },
                                         "status": {
                                             "type": "integer",
-                                            "const": 429
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
                                         },
                                         "code": {
                                             "type": "string",
-                                            "const": "too_many_attempts"
-                                        },
-                                        "instance": {
-                                            "type": "string"
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "rate_limited",
+                                                "too_many_attempts"
+                                            ]
                                         },
                                         "errors": {
                                             "type": "array",
-                                            "items": {}
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
                                         },
                                         "requestId": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
                                         },
                                         "detail": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
                                         }
                                     },
                                     "required": [
@@ -198,8 +215,90 @@
                             }
                         }
                     },
-                    "419": {
-                        "$ref": "#/components/responses/Problem419"
+                    "400": {
+                        "description": "The submitted fields were rejected, or a required header was missing or malformed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "stateful_request_required",
+                                                "validation_failed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "One entry per rejected field, first failure only.",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "field": {
+                                                        "type": "string",
+                                                        "description": "The camelCase name of the rejected field, as it was submitted."
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "description": "Stable machine token saying what is wrong with that field.",
+                                                        "enum": [
+                                                            "required",
+                                                            "too_long",
+                                                            "too_short",
+                                                            "invalid_format",
+                                                            "invalid_type",
+                                                            "invalid_value",
+                                                            "invalid_number",
+                                                            "already_taken",
+                                                            "must_be_after"
+                                                        ]
+                                                    },
+                                                    "params": {
+                                                        "type": "object",
+                                                        "additionalProperties": {}
+                                                    }
+                                                },
+                                                "required": [
+                                                    "field",
+                                                    "reason"
+                                                ]
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 },
                 "security": []
@@ -237,6 +336,9 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -297,6 +399,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -350,6 +455,119 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "403": {
+                        "description": "Authenticated, but not permitted to do this.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "reauth_failed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many requests. Retry-After says how long to wait.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "too_many_attempts"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -390,6 +608,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -432,6 +653,9 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -480,6 +704,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -559,6 +786,9 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -635,6 +865,9 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -682,6 +915,9 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -737,6 +973,64 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "403": {
+                        "description": "Authenticated, but not permitted to do this.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "not_answerable"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -785,6 +1079,64 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "answer_already_settled"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -828,6 +1180,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -891,10 +1246,121 @@
                         "$ref": "#/components/responses/Problem400"
                     },
                     "403": {
-                        "$ref": "#/components/responses/Problem403"
+                        "description": "Authenticated, but not permitted to do this.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "access_denied",
+                                                "not_answerable"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "cannot_record_for_self"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -955,6 +1421,64 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "cannot_record_for_self"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1010,9 +1534,6 @@
                     "404": {
                         "$ref": "#/components/responses/Problem404"
                     },
-                    "400": {
-                        "$ref": "#/components/responses/Problem400"
-                    },
                     "201": {
                         "description": "The booking, as it was recorded.",
                         "content": {
@@ -1032,8 +1553,151 @@
                     "429": {
                         "$ref": "#/components/responses/Problem429"
                     },
+                    "400": {
+                        "description": "The submitted fields were rejected, or a required header was missing or malformed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "idempotency_key_invalid",
+                                                "idempotency_key_required",
+                                                "validation_failed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "One entry per rejected field, first failure only.",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "field": {
+                                                        "type": "string",
+                                                        "description": "The camelCase name of the rejected field, as it was submitted."
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "description": "Stable machine token saying what is wrong with that field.",
+                                                        "enum": [
+                                                            "required",
+                                                            "too_long",
+                                                            "too_short",
+                                                            "invalid_format",
+                                                            "invalid_type",
+                                                            "invalid_value",
+                                                            "invalid_number",
+                                                            "already_taken",
+                                                            "must_be_after"
+                                                        ]
+                                                    },
+                                                    "params": {
+                                                        "type": "object",
+                                                        "additionalProperties": {}
+                                                    }
+                                                },
+                                                "required": [
+                                                    "field",
+                                                    "reason"
+                                                ]
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "409": {
-                        "$ref": "#/components/responses/Problem409"
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "idempotency_key_reuse",
+                                                "registration_closed",
+                                                "registration_not_open"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 },
                 "security": []
@@ -1078,6 +1742,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -1114,6 +1781,9 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/Problem404"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 },
                 "security": []
@@ -1209,40 +1879,56 @@
                             }
                         }
                     },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
                     "503": {
-                        "description": "",
+                        "description": "The service is temporarily refusing to serve. Retry shortly.",
                         "content": {
-                            "application/json": {
+                            "application/problem+json": {
                                 "schema": {
                                     "type": "object",
                                     "properties": {
                                         "title": {
                                             "type": "string",
-                                            "const": "XLSX export needs the PHP zip extension, which this server does not have. Use CSV."
+                                            "description": "English message. Never displayed: the front end renders `code`."
                                         },
                                         "status": {
                                             "type": "integer",
-                                            "const": 503
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
                                         },
                                         "code": {
                                             "type": "string",
-                                            "const": "xlsx_unavailable"
-                                        },
-                                        "instance": {
-                                            "type": "string"
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "service_unavailable",
+                                                "xlsx_unavailable"
+                                            ]
                                         },
                                         "errors": {
                                             "type": "array",
-                                            "items": {}
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
                                         },
                                         "requestId": {
-                                            "type": "string"
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
                                         },
                                         "detail": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
                                         }
                                     },
                                     "required": [
@@ -1257,15 +1943,6 @@
                                 }
                             }
                         }
-                    },
-                    "404": {
-                        "$ref": "#/components/responses/Problem404"
-                    },
-                    "401": {
-                        "$ref": "#/components/responses/Problem401"
-                    },
-                    "403": {
-                        "$ref": "#/components/responses/Problem403"
                     }
                 }
             }
@@ -1317,6 +1994,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1396,6 +2076,9 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1462,6 +2145,9 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -1516,6 +2202,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1579,54 +2268,6 @@
                             }
                         }
                     },
-                    "409": {
-                        "description": "",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "title": {
-                                            "type": "string"
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "const": 409
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "const": "option_has_registrations"
-                                        },
-                                        "instance": {
-                                            "type": "string"
-                                        },
-                                        "errors": {
-                                            "type": "array",
-                                            "items": {}
-                                        },
-                                        "requestId": {
-                                            "type": "string"
-                                        },
-                                        "detail": {
-                                            "type": [
-                                                "string",
-                                                "null"
-                                            ]
-                                        }
-                                    },
-                                    "required": [
-                                        "title",
-                                        "status",
-                                        "code",
-                                        "instance",
-                                        "errors",
-                                        "requestId",
-                                        "detail"
-                                    ]
-                                }
-                            }
-                        }
-                    },
                     "404": {
                         "$ref": "#/components/responses/Problem404"
                     },
@@ -1647,6 +2288,64 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "option_has_registrations"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1678,6 +2377,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -1709,6 +2411,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -1740,6 +2445,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1794,6 +2502,9 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -1845,6 +2556,9 @@
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1924,6 +2638,9 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             },
@@ -1994,6 +2711,65 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "cannot_delete_self",
+                                                "cannot_remove_last_administrator"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2088,6 +2864,65 @@
                     },
                     "428": {
                         "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "cannot_demote_self",
+                                                "cannot_remove_last_administrator"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -2145,6 +2980,9 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -2178,6 +3016,9 @@
                     },
                     "429": {
                         "$ref": "#/components/responses/Problem429"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 },
                 "security": []
@@ -2240,9 +3081,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "$ref": "#/components/responses/Problem400"
-                    },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
                     },
@@ -2252,8 +3090,149 @@
                     "429": {
                         "$ref": "#/components/responses/Problem429"
                     },
+                    "400": {
+                        "description": "The submitted fields were rejected, or a required header was missing or malformed.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "idempotency_key_invalid",
+                                                "idempotency_key_required",
+                                                "validation_failed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "One entry per rejected field, first failure only.",
+                                            "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "field": {
+                                                        "type": "string",
+                                                        "description": "The camelCase name of the rejected field, as it was submitted."
+                                                    },
+                                                    "reason": {
+                                                        "type": "string",
+                                                        "description": "Stable machine token saying what is wrong with that field.",
+                                                        "enum": [
+                                                            "required",
+                                                            "too_long",
+                                                            "too_short",
+                                                            "invalid_format",
+                                                            "invalid_type",
+                                                            "invalid_value",
+                                                            "invalid_number",
+                                                            "already_taken",
+                                                            "must_be_after"
+                                                        ]
+                                                    },
+                                                    "params": {
+                                                        "type": "object",
+                                                        "additionalProperties": {}
+                                                    }
+                                                },
+                                                "required": [
+                                                    "field",
+                                                    "reason"
+                                                ]
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "409": {
-                        "$ref": "#/components/responses/Problem409"
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "idempotency_key_reuse"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 },
                 "security": []
@@ -2292,6 +3271,9 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 },
                 "security": []
@@ -3508,6 +4490,61 @@
             }
         },
         "responses": {
+            "Problem503": {
+                "description": "The service is temporarily refusing to serve. Retry shortly.",
+                "content": {
+                    "application/problem+json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string",
+                                    "description": "English message. Never displayed: the front end renders `code`."
+                                },
+                                "status": {
+                                    "type": "integer",
+                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                },
+                                "instance": {
+                                    "type": "string",
+                                    "description": "The path that was requested. Never the query string."
+                                },
+                                "code": {
+                                    "type": "string",
+                                    "description": "Stable machine token the front end maps to French.",
+                                    "enum": [
+                                        "service_unavailable"
+                                    ]
+                                },
+                                "errors": {
+                                    "type": "array",
+                                    "description": "Always empty for this status; present so every problem has the same shape.",
+                                    "items": {
+                                        "type": "object"
+                                    }
+                                },
+                                "requestId": {
+                                    "type": "string",
+                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                },
+                                "detail": {
+                                    "type": "string",
+                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "status",
+                                "code",
+                                "instance",
+                                "errors",
+                                "requestId",
+                                "detail"
+                            ]
+                        }
+                    }
+                }
+            },
             "Problem429": {
                 "description": "Too many requests. Retry-After says how long to wait.",
                 "content": {
@@ -3726,61 +4763,6 @@
                                     "description": "Stable machine token the front end maps to French.",
                                     "enum": [
                                         "spam_suspected"
-                                    ]
-                                },
-                                "errors": {
-                                    "type": "array",
-                                    "description": "Always empty for this status; present so every problem has the same shape.",
-                                    "items": {
-                                        "type": "object"
-                                    }
-                                },
-                                "requestId": {
-                                    "type": "string",
-                                    "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
-                                },
-                                "detail": {
-                                    "type": "string",
-                                    "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
-                                }
-                            },
-                            "required": [
-                                "title",
-                                "status",
-                                "code",
-                                "instance",
-                                "errors",
-                                "requestId",
-                                "detail"
-                            ]
-                        }
-                    }
-                }
-            },
-            "Problem409": {
-                "description": "This Idempotency-Key belongs to a different submission, or to one still in flight.",
-                "content": {
-                    "application/problem+json": {
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "title": {
-                                    "type": "string",
-                                    "description": "English message. Never displayed: the front end renders `code`."
-                                },
-                                "status": {
-                                    "type": "integer",
-                                    "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
-                                },
-                                "instance": {
-                                    "type": "string",
-                                    "description": "The path that was requested. Never the query string."
-                                },
-                                "code": {
-                                    "type": "string",
-                                    "description": "Stable machine token the front end maps to French.",
-                                    "enum": [
-                                        "idempotency_key_reuse"
                                     ]
                                 },
                                 "errors": {

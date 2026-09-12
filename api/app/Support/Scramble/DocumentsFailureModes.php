@@ -4,6 +4,9 @@ namespace App\Support\Scramble;
 
 use App\Exceptions\ApiError;
 use App\Http\Middleware\IdempotentWrite;
+use App\Http\Middleware\RunPendingMigrations;
+use App\Support\Emits;
+use App\Support\ErrorVocabulary;
 use Dedoc\Scramble\Extensions\OperationExtension;
 use Dedoc\Scramble\Support\Generator\Header;
 use Dedoc\Scramble\Support\Generator\Operation;
@@ -13,6 +16,7 @@ use Dedoc\Scramble\Support\Generator\Response;
 use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Generator\Types as OpenApiTypes;
 use Dedoc\Scramble\Support\RouteInfo;
+use Illuminate\Support\Facades\Route;
 
 /**
  * Declares the failures a route can answer with, read off the route's own
@@ -37,32 +41,71 @@ use Dedoc\Scramble\Support\RouteInfo;
  * so reading it means the document cannot drift from the routes. Add the
  * middleware and the status appears; remove it and the status goes.
  *
- * WHAT IT CANNOT SEE, deliberately: the 409s, and the 403s that are not about a
- * missing permission (`not_answerable`, `reauth_failed`). Those are raised by
- * controllers and domain services, not by middleware, so nothing in the route
- * table implies them. They need `#[Response]` on the action — annotation is
- * right there, because the fact really is per-action.
+ * WHAT IT CANNOT SEE: the 409s, and the 403s that are not about a missing
+ * permission (`not_answerable`, `reauth_failed`). Those are raised by
+ * controllers and domain services — a date comparison, a count — so nothing in
+ * the route table implies them and no inference is going to find them. They
+ * carry `#[Emits(...)]` on the action, which is where annotation belongs
+ * because the fact really is per-action. See App\Support\Emits.
+ *
+ * ONE RESPONSE PER STATUS, NAMING EVERY CODE THAT STATUS CAN CARRY HERE. The
+ * two sources meet in handle(), which collects a status => codes map before
+ * declaring anything: the public forms answer 400 both for a rejected field and
+ * for a missing Idempotency-Key, and a response naming one of those is a
+ * response lying about the other. Until 2026-09-12 each status was a shared
+ * component with a single code, and `POST /events/{event}/registrations`
+ * declared a 409 that named `idempotency_key_reuse` while the controller also
+ * answers `registration_not_open` and `registration_closed` — two branches a
+ * generated client was told could not happen.
  */
 class DocumentsFailureModes extends OperationExtension
 {
     /**
-     * status => [code, description]
+     * status => the code the SHARED `Problem<status>` component carries.
      *
-     * One code each, and that is not a simplification: a middleware-derived
-     * failure has exactly one cause. A 403 from `permission:` is always
-     * access_denied; the other 403s come from somewhere this extension cannot
-     * see.
+     * The baseline: what a route answers with that status when nothing but the
+     * ordinary machinery is involved. An operation whose set for a status is
+     * exactly this references the shared component; an operation that can also
+     * answer with something else carries an inline response naming all of them.
+     * See declare().
+     *
+     * 400's baseline is registered by ValidationExceptionResponse rather than
+     * here, and 401 and 404 likewise by their own extensions. They are listed
+     * so this class knows what an already-declared response contains when it
+     * comes to widen one.
+     *
+     * NO 409. Every 409 in this API names a specific conflict — a booking
+     * outside its window, an option somebody has taken, a key already used —
+     * so there is no baseline to share and each operation declares its own.
+     * A `Problem409` component would be a general-sounding name for whichever
+     * conflict happened to register it first.
      */
-    private const FAILURES = [
-        401 => ['not_authenticated', 'No session, or it has expired. Log in and retry.'],
-        403 => ['access_denied', 'Authenticated, but not permitted to do this.'],
-        404 => ['not_found', 'No such record.'],
-        409 => ['idempotency_key_reuse', 'This Idempotency-Key belongs to a different submission, or to one still in flight.'],
-        412 => ['if_match_failed', 'The If-Match header names a state this thing is no longer in. Re-read it and decide again.'],
-        419 => ['invalid_session', 'The CSRF token was missing or stale. Re-prime it and retry; you are still logged in.'],
-        422 => ['spam_suspected', 'The submission looks automated. See Public forms.'],
-        428 => ['if_match_required', 'This write must carry an If-Match header. See Conditional writes.'],
-        429 => ['rate_limited', 'Too many requests. Retry-After says how long to wait.'],
+    private const BASELINE = [
+        400 => 'validation_failed',
+        401 => 'not_authenticated',
+        403 => 'access_denied',
+        404 => 'not_found',
+        412 => 'if_match_failed',
+        419 => 'invalid_session',
+        422 => 'spam_suspected',
+        428 => 'if_match_required',
+        429 => 'rate_limited',
+        503 => 'service_unavailable',
+    ];
+
+    /** status => what the response says it is, for a reader. */
+    private const DESCRIPTIONS = [
+        400 => 'The submitted fields were rejected, or a required header was missing or malformed.',
+        401 => 'No session, or it has expired. Log in and retry.',
+        403 => 'Authenticated, but not permitted to do this.',
+        404 => 'No such record.',
+        409 => 'Allowed, but it conflicts with the current state of things.',
+        412 => 'The If-Match header names a state this thing is no longer in. Re-read it and decide again.',
+        419 => 'The CSRF token was missing or stale. Re-prime it and retry; you are still logged in.',
+        422 => 'The submission looks automated. See Public forms.',
+        428 => 'This write must carry an If-Match header. See Conditional writes.',
+        429 => 'Too many requests. Retry-After says how long to wait.',
+        503 => 'The service is temporarily refusing to serve. Retry shortly.',
     ];
 
     /** The methods App\Http\Middleware\ConditionalWrite makes conditional. */
@@ -70,16 +113,29 @@ class DocumentsFailureModes extends OperationExtension
 
     public function handle(Operation $operation, RouteInfo $routeInfo): void
     {
-        $middleware = $routeInfo->route->gatherMiddleware();
+        $middleware = $this->middlewareOf($routeInfo);
         $method = strtoupper($operation->method ?: $routeInfo->method);
 
+        // status => the codes THIS operation can answer with. Collected first
+        // and declared at the end, because a status can gain codes from more
+        // than one source — the public forms answer 400 for a rejected field
+        // and for a missing Idempotency-Key — and a response has to name all of
+        // them at once or it names some of them wrongly.
+        $failures = [];
+
+        $can = function (int $status, string ...$codes) use (&$failures): void {
+            foreach ($codes as $code) {
+                $failures[$status][] = $code;
+            }
+        };
+
         if (in_array('auth:sanctum', $middleware, true)) {
-            $this->declare($operation, 401);
+            $can(401, 'not_authenticated');
         }
 
         foreach ($middleware as $entry) {
             if (is_string($entry) && str_starts_with($entry, 'permission:')) {
-                $this->declare($operation, 403);
+                $can(403, 'access_denied');
                 break;
             }
         }
@@ -88,7 +144,7 @@ class DocumentsFailureModes extends OperationExtension
         // route table: route-model binding refuses an id nothing matches. A
         // route with no parameters cannot 404 except by not existing.
         if ($routeInfo->route->parameterNames() !== []) {
-            $this->declare($operation, 404);
+            $can(404, 'not_found');
         }
 
         // Sanctum's stateful mode puts /api/v1/* behind the `web` middleware
@@ -97,61 +153,136 @@ class DocumentsFailureModes extends OperationExtension
         // from a middleware name because the CSRF check lives inside the group
         // Sanctum nests, not as a listed entry.
         if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
-            $this->declare($operation, 419);
+            $can(419, 'invalid_session');
         }
 
         if (in_array('public-write', $middleware, true)) {
-            $this->declare($operation, 422);
+            $can(422, 'spam_suspected');
             $this->declarePublicWriteGuard($operation);
         }
 
         foreach ($middleware as $entry) {
             if (is_string($entry) && str_starts_with($entry, 'throttle:')) {
-                $this->declare($operation, 429);
+                $can(429, 'rate_limited');
                 break;
             }
         }
 
         foreach ($middleware as $entry) {
             if (is_string($entry) && str_starts_with($entry, 'etag:')) {
+                if (in_array($method, self::CONDITIONED, true)) {
+                    $can(412, 'if_match_failed');
+                    $can(428, 'if_match_required');
+                }
                 $this->declareConditionalWrite($operation, $method);
                 break;
             }
         }
 
         if (in_array('idempotent', $middleware, true)) {
+            // BOTH STATUSES, which is the thing the shared components could not
+            // express: the 400 joins the one validation already put there.
+            $can(400, 'idempotency_key_required', 'idempotency_key_invalid');
+            $can(409, 'idempotency_key_reuse');
             $this->declareIdempotencyKey($operation);
+        }
+
+        // EVERY route behind RunPendingMigrations can answer 503: it refuses to
+        // serve against a schema it cannot vouch for. A client that does not
+        // know 503 is possible — and retryable — has no branch for the one
+        // answer a half-deployed server gives it.
+        if (in_array(RunPendingMigrations::class, $middleware, true)) {
+            $can(503, 'service_unavailable');
+        }
+
+        // What the route table cannot imply: a booking outside its window, a
+        // register somebody is not in, the last administrator. See
+        // App\Support\Emits.
+        foreach ($this->emitted($routeInfo) as $code) {
+            $status = ErrorVocabulary::statusFor($code);
+
+            if ($status !== null) {
+                $can($status, $code);
+            }
+        }
+
+        foreach ($failures as $status => $codes) {
+            $this->declare($operation, $status, $codes);
         }
     }
 
     /**
-     * The header a public submission must carry, and the one refusal only it
-     * can produce.
+     * The route's middleware, with group names expanded to what they contain.
      *
-     * The 400 is NOT declared here. Validation already puts one on both of
-     * these routes, declare() skips a status the operation has, and a second
-     * 400 would overwrite the inferred one with a less specific guess. So
-     * `idempotency_key_required` and `idempotency_key_invalid` are absent from
-     * that status's `code` enum, which is the same gap the 409 below has and
-     * has the same cause.
+     * `gatherMiddleware()` returns the GROUP NAME — a route in routes/api.php
+     * reports `['api']` and nothing else — so a middleware registered on the
+     * group rather than on the route is invisible to a plain scan. That is
+     * where RunPendingMigrations lives, which is why the 503 it can answer with
+     * went undeclared on every operation until this expansion existed.
      *
-     * THE 409's ENUM IS INCOMPLETE ON ONE ROUTE, and saying so is better than
-     * leaving it to be discovered. The Problem<status> components are SHARED,
-     * so one of them carries one code set for every operation that points at
-     * it — fine while a middleware-derived failure has exactly one cause, which
-     * was true until this one. `POST /events/{event}/registrations` also
-     * answers 409 with `registration_not_open` and `registration_closed`,
-     * raised in the controller where nothing in the route table implies them.
-     * It declared no 409 at all before this, so the status being present with
-     * two codes missing is an improvement on the status being absent — but it
-     * is still a client narrowing on a union that is short by two. Closing it
-     * needs per-operation responses rather than shared components, or a status
-     * on each ErrorVocabulary entry; both are A3's business, not A4's.
+     * One level deep, which is all Laravel's groups are here. A group holding
+     * another group would need recursion, and would be worth noticing anyway.
+     *
+     * @return list<mixed>
+     */
+    private function middlewareOf(RouteInfo $routeInfo): array
+    {
+        $groups = Route::getMiddlewareGroups();
+        $expanded = [];
+
+        foreach ($routeInfo->route->gatherMiddleware() as $entry) {
+            if (is_string($entry) && isset($groups[$entry])) {
+                foreach ($groups[$entry] as $inner) {
+                    $expanded[] = is_object($inner) ? $inner::class : $inner;
+                }
+
+                continue;
+            }
+
+            $expanded[] = $entry;
+        }
+
+        return $expanded;
+    }
+
+    /**
+     * The codes the action itself declares, through #[Emits].
+     *
+     * An unknown code is dropped rather than published: a typo must not put a
+     * token in the contract that no client will ever receive.
+     * Tests\Feature\EmittedCodesTest is what turns it red.
+     *
+     * @return list<string>
+     */
+    private function emitted(RouteInfo $routeInfo): array
+    {
+        $action = $routeInfo->reflectionMethod();
+
+        if ($action === null) {
+            return [];
+        }
+
+        $codes = [];
+
+        foreach ($action->getAttributes(Emits::class) as $attribute) {
+            foreach ($attribute->newInstance()->codes as $code) {
+                $codes[] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
+     * The header a public submission must carry.
+     *
+     * The statuses it can answer with — 400 for a missing or malformed key, 409
+     * for one already used — are collected in handle() alongside everything
+     * else, so they join the codes those statuses already carry instead of
+     * replacing them.
      */
     private function declareIdempotencyKey(Operation $operation): void
     {
-        $this->declare($operation, 409);
-
         $operation->addParameters([
             (new Parameter(IdempotentWrite::HEADER, 'header'))
                 ->setSchema(Schema::fromType(new OpenApiTypes\StringType))
@@ -187,9 +318,6 @@ class DocumentsFailureModes extends OperationExtension
 
             return;
         }
-
-        $this->declare($operation, 412);
-        $this->declare($operation, 428);
 
         $operation->addParameters([
             (new Parameter('If-Match', 'header'))
@@ -238,46 +366,130 @@ class DocumentsFailureModes extends OperationExtension
     }
 
     /**
-     * Adds one failure, as a shared component so the document carries each shape
-     * once rather than inline at every operation.
+     * Declares one status, naming every code this operation can answer it with.
      *
-     * Skipped when the operation already declares that status: Scramble infers
-     * some of these from the controller, and a second 401 would overwrite the
-     * inferred one with a less specific guess.
+     * SHARED WHEN IT CAN BE, INLINE WHEN IT MUST BE. A set that is exactly the
+     * baseline for that status — the ordinary machinery and nothing else —
+     * references the shared `Problem<status>` component, so the document still
+     * carries that shape once and twenty-eight operations point at it. A set
+     * with anything extra gets its own inline response naming all of them,
+     * because a shared component cannot be right for two different sets and the
+     * one that registers first would quietly define it for everybody.
+     *
+     * WIDENING AN EXISTING RESPONSE is the other half, and it is what the 400
+     * needs. Scramble infers that one from the FormRequest and declares it
+     * before this extension runs, so an operation that can also answer 400 for
+     * a missing Idempotency-Key has to REPLACE that reference rather than skip
+     * it — the old code skipped, which is how those two codes came to be
+     * declared nowhere at all. The baseline tells us what the existing response
+     * carries, so the replacement is a union rather than an overwrite.
+     *
+     * @param  list<string>  $codes
      */
-    private function declare(Operation $operation, int $status): void
+    private function declare(Operation $operation, int $status, array $codes): void
     {
-        if ($this->alreadyDeclares($operation, $status)) {
+        $existing = $this->responseFor($operation, $status);
+
+        if ($existing !== null && isset(self::BASELINE[$status])) {
+            // Whatever declared it first declared the baseline; keep it.
+            $codes[] = self::BASELINE[$status];
+        }
+
+        // Sorted and deduplicated, so the exported document is byte-identical
+        // between runs — CI's openapi-drift job diffs it.
+        $codes = array_values(array_unique($codes));
+        sort($codes);
+
+        $isBaseline = isset(self::BASELINE[$status]) && $codes === [self::BASELINE[$status]];
+
+        if ($isBaseline) {
+            if ($existing !== null) {
+                return;
+            }
+
+            $this->reference($operation, $status);
+
             return;
         }
 
-        [$code, $description] = self::FAILURES[$status];
+        $this->inline($operation, $status, $codes);
+    }
 
+    /** Points the operation at the shared component, registering it if new. */
+    private function reference(Operation $operation, int $status): void
+    {
         $components = $this->openApiTransformer->getComponents();
         $reference = new Reference('responses', 'Problem'.$status, $components);
 
         if (! $components->has($reference)) {
-            $components->add($reference, Response::make($status)
-                ->setDescription($description)
-                ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema([$code]))));
+            $components->add($reference, $this->response($status, [self::BASELINE[$status]]));
         }
 
         $operation->addResponse($reference);
     }
 
-    private function alreadyDeclares(Operation $operation, int $status): bool
+    /**
+     * Replaces this operation's response for a status with one naming exactly
+     * the codes it can answer with.
+     *
+     * The replacement is a rebuild of the responses array rather than a mutation
+     * of the existing object, because the existing one is usually a Reference
+     * into the shared components — editing it there would change the shape for
+     * every other operation pointing at the same component.
+     */
+    private function inline(Operation $operation, int $status, array $codes): void
     {
-        foreach ($operation->responses ?? [] as $response) {
-            $code = $response instanceof Reference
-                ? ($this->openApiTransformer->getComponents()->get($response)->code ?? null)
-                : ($response->code ?? null);
+        $kept = [];
 
-            if ((int) $code === $status) {
-                return true;
+        foreach ($operation->responses ?? [] as $response) {
+            if ($this->statusOf($response) !== $status) {
+                $kept[] = $response;
             }
         }
 
-        return false;
+        $operation->responses = $kept;
+        $operation->addResponse($this->response($status, $codes));
+    }
+
+    /**
+     * One problem response, built by the single builder every status goes
+     * through so the shape cannot differ between them.
+     *
+     * `withErrors` only for a status that really populates `errors`, which is
+     * validation alone: everywhere else the array is always empty and an item
+     * schema would describe a case that cannot occur.
+     *
+     * @param  list<string>  $codes
+     */
+    private function response(int $status, array $codes): Response
+    {
+        return Response::make($status)
+            ->setDescription(self::DESCRIPTIONS[$status] ?? 'The request was refused.')
+            ->setContent(ApiError::MEDIA_TYPE, Schema::fromType(ErrorResponseSchema::schema(
+                $codes,
+                withErrors: in_array('validation_failed', $codes, true),
+            )));
+    }
+
+    /** This operation's response for a status, resolved through a $ref if need be. */
+    private function responseFor(Operation $operation, int $status): Response|Reference|null
+    {
+        foreach ($operation->responses ?? [] as $response) {
+            if ($this->statusOf($response) === $status) {
+                return $response;
+            }
+        }
+
+        return null;
+    }
+
+    private function statusOf(Response|Reference $response): ?int
+    {
+        $code = $response instanceof Reference
+            ? ($this->openApiTransformer->getComponents()->get($response)->code ?? null)
+            : ($response->code ?? null);
+
+        return $code === null ? null : (int) $code;
     }
 
     /**

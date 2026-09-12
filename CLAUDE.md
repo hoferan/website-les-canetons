@@ -615,6 +615,12 @@ repair it.
 - Regenerate the client (`npm run openapi && npm run generate:api`) whenever an
   API response shape changes, and commit the result.
 - Give every new API error token French copy in `web/src/i18n/fr.ts`.
+- Put `#[Emits('...')]` on any action that refuses with a code no middleware
+  implies — a conflict a controller raises, a refusal from `App\Support\*`. The
+  status comes from `App\Support\ErrorVocabulary`, so the action names WHAT it
+  refuses and never which number carries it. Without it the code reaches no
+  operation's `code` enum and a generated client has no branch for it;
+  `DeclaredCodesTest` and `EmittedCodesTest` fail if you forget.
 - Put `etag:<facet>` on any new write that **replaces or removes** an existing
   thing, and give it a single-thing read to get the tag from — a collection
   hands out none. `App\Http\Middleware\ConditionalWrite` explains which writes
