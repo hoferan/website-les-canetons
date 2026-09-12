@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Member;
+use App\Support\Emits;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
@@ -56,6 +57,7 @@ class AuthController extends Controller
      * and attempts made while locked out do not extend it.
      */
     #[Response(200, 'Logged in. The session cookie is set; nothing in the body is needed.')]
+    #[Emits('invalid_credentials', 'too_many_attempts', 'stateful_request_required')]
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([

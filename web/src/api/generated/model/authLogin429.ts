@@ -250,14 +250,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { AuthLogin429Code } from "./authLogin429Code";
+import type { AuthLogin429ErrorsItem } from "./authLogin429ErrorsItem";
 
 export type AuthLogin429 = {
-  title: "Too many attempts";
-  status: 429;
-  code: "too_many_attempts";
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
   instance: string;
-  errors: unknown[];
+  /** Stable machine token the front end maps to French. */
+  code: AuthLogin429Code;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: AuthLogin429ErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
   requestId: string;
-  /** @nullable */
-  detail: string | null;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
 };

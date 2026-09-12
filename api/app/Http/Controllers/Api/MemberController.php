@@ -9,6 +9,7 @@ use App\Http\Resources\MemberResource;
 use App\Models\Member;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
+use App\Support\Emits;
 use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Group;
@@ -233,6 +234,7 @@ class MemberController extends Controller
      * last-administrator refusal is the one returned.
      */
     #[Response(200, 'Removed. `sessionsEnded` counts the sessions revoked in the same transaction.')]
+    #[Emits('cannot_remove_last_administrator', 'cannot_delete_self')]
     public function destroy(Request $request, Member $member): JsonResponse
     {
         // Existence is the state (design D3): there is no `active` flag and no

@@ -250,14 +250,22 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { RegistrationOptionReplace409Code } from "./registrationOptionReplace409Code";
+import type { RegistrationOptionReplace409ErrorsItem } from "./registrationOptionReplace409ErrorsItem";
 
 export type RegistrationOptionReplace409 = {
+  /** English message. Never displayed: the front end renders `code`. */
   title: string;
-  status: 409;
-  code: "option_has_registrations";
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
   instance: string;
-  errors: unknown[];
+  /** Stable machine token the front end maps to French. */
+  code: RegistrationOptionReplace409Code;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: RegistrationOptionReplace409ErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
   requestId: string;
-  /** @nullable */
-  detail: string | null;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
 };

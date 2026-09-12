@@ -10,6 +10,7 @@ use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
 use App\Support\AttendanceIntegrity;
+use App\Support\Emits;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
@@ -97,6 +98,7 @@ class AttendanceController extends Controller
      * Answering for yourself clears any mark saying the direction entered the
      * answer.
      */
+    #[Emits('not_answerable')]
     public function update(RecordOwnAttendanceRequest $request, Event $event): AttendanceResource
     {
         /** @var Member $member */
@@ -145,6 +147,7 @@ class AttendanceController extends Controller
      * can offer the undo or not rather than finding out from a refusal.
      */
     #[Response(200, 'Withdrawn. The member now counts as not having answered.')]
+    #[Emits('answer_already_settled')]
     public function destroy(Request $request, Event $event): JsonResponse
     {
         // UNDO. Removes the answer entirely, returning the event to

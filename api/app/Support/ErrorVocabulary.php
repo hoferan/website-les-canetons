@@ -42,18 +42,33 @@ namespace App\Support;
 final class ErrorVocabulary
 {
     /**
-     * code => detail
+     * code => [the HTTP status it is emitted with, the detail]
      *
-     * @var array<string, string>
+     * THE STATUS IS HERE SO THE DOCUMENT CAN GROUP BY IT. Each operation
+     * declares one response per status carrying the codes IT can answer with,
+     * and that set is assembled from codes — the middleware's and the action's
+     * — which have to be sorted into statuses somehow. Storing it beside the
+     * detail keeps the two from drifting: there is one entry per code and it
+     * carries everything known about that code.
+     *
+     * ONE STATUS EACH, and that is a property of the vocabulary rather than a
+     * simplification. Where a refusal has two statuses it has two codes —
+     * App\Support\Reauthentication raises `reauth_failed` at 403 and
+     * `too_many_attempts` at 429 rather than one code at either — because a
+     * caller branching on `code` must not have to read `status` as well to know
+     * what happened. Tests\Feature\ApiErrorVocabularyTest checks the status
+     * against the source.
+     *
+     * @var array<string, array{0: int, 1: string}>
      */
     public const PROBLEMS = [
 
         // ---------------------------------------------------------- the form
 
-        'validation_failed' => 'One or more submitted fields were rejected. `errors` names each one '
+        'validation_failed' => [400, 'One or more submitted fields were rejected. `errors` names each one '
             .'and why, as machine tokens: read `errors[].field` and `errors[].reason` rather than '
             .'this sentence. A `reason` carries `params` when it needs a number, for example '
-            .'`{"max": 255}`.',
+            .'`{"max": 255}`.'],
 
         // ------------------------------------------------------- who you are
 
@@ -61,135 +76,135 @@ final class ErrorVocabulary
         // and it is pure "what to do": the two look alike and the correct
         // responses are opposites. Sending a member back to the login screen on
         // a 419 is a bug that has shipped in many an API client.
-        'not_authenticated' => 'No session cookie was sent, or it has expired. Call '
+        'not_authenticated' => [401, 'No session cookie was sent, or it has expired. Call '
             .'POST /api/v1/login. Not to be confused with 419 invalid_session, where you are still '
-            .'logged in and only the CSRF token needs re-priming.',
+            .'logged in and only the CSRF token needs re-priming.'],
 
         // DELIBERATELY SAYS NOTHING about which half was wrong. One answer for
         // an unknown username and for a bad password is what stops this endpoint
         // being used to discover which accounts exist — and explaining that
         // defence in the response body, as this entry once did, tells the person
         // probing it exactly what they are up against.
-        'invalid_credentials' => 'The username or the password is wrong.',
+        'invalid_credentials' => [401, 'The username or the password is wrong.'],
 
         // A request Sanctum did not treat as stateful reached an endpoint that
         // needs a session. Distinct from invalid_session on purpose: that one
         // means "prime the cookie and retry", which here would loop forever —
         // the request will not become stateful by being repeated.
-        'stateful_request_required' => 'This endpoint authenticates by session cookie, and this '
+        'stateful_request_required' => [400, 'This endpoint authenticates by session cookie, and this '
             .'request could not establish one — its Origin or Referer is not a configured stateful '
             .'domain. Browser clients on the same origin do this automatically; a server-to-server '
-            .'caller cannot use this endpoint.',
+            .'caller cannot use this endpoint.'],
 
-        'invalid_session' => 'The CSRF token was missing or stale. You are still logged in: call '
+        'invalid_session' => [419, 'The CSRF token was missing or stale. You are still logged in: call '
             .'GET /sanctum/csrf-cookie and retry the request. Do not send the user back to the '
-            .'login screen.',
+            .'login screen.'],
 
         // No numbers: the thresholds are a detail of the throttle, and putting
         // them in the refusal only helps somebody tune around it.
-        'too_many_attempts' => 'Too many failed attempts. Wait and try again later; further '
-            .'attempts before then do not shorten the wait.',
+        'too_many_attempts' => [429, 'Too many failed attempts. Wait and try again later; further '
+            .'attempts before then do not shorten the wait.'],
 
         // Distinct from too_many_attempts, which counts FAILED attempts at one
         // account. This is the per-IP request rate on the public endpoints:
         // nothing failed, you are simply going too fast.
-        'rate_limited' => 'Too many requests. The Retry-After header says how long to wait; the '
-            .'RateLimit-* headers describe the allowance.',
+        'rate_limited' => [429, 'Too many requests. The Retry-After header says how long to wait; the '
+            .'RateLimit-* headers describe the allowance.'],
 
-        'reauth_failed' => 'The current password sent alongside this change was wrong. Your session '
-            .'is unaffected — retry with the correct password.',
+        'reauth_failed' => [403, 'The current password sent alongside this change was wrong. Your session '
+            .'is unaffected — retry with the correct password.'],
 
         // ---------------------------------------- what you are allowed to do
 
-        'access_denied' => 'Your account holds no role granting the permission this route requires. '
-            .'GET /api/v1/me lists the permissions you do have.',
+        'access_denied' => [403, 'Your account holds no role granting the permission this route requires. '
+            .'GET /api/v1/me lists the permissions you do have.'],
 
         // Worth spelling out that no permission would help: the natural reading
         // of a 403 is "ask somebody for access", and here there is nothing to
         // ask for.
-        'not_answerable' => 'Only members who play in a register are asked to answer for events, and '
-            .'this account is in none. No permission changes that.',
+        'not_answerable' => [403, 'Only members who play in a register are asked to answer for events, and '
+            .'this account is in none. No permission changes that.'],
 
         // -------------------------------------------------------- what exists
 
         // One answer for a missing route and a missing record, on purpose: a
         // caller able to tell them apart could enumerate which records exist.
         // That reasoning belongs here, not in the body.
-        'not_found' => 'No such route, or no such record.',
+        'not_found' => [404, 'No such route, or no such record.'],
 
-        'method_not_allowed' => 'The route exists, but not for this HTTP method. Check whether it '
-            .'expects PUT or PATCH rather than POST.',
+        'method_not_allowed' => [405, 'The route exists, but not for this HTTP method. Check whether it '
+            .'expects PUT or PATCH rather than POST.'],
 
         // ----------------------------------------------- sending it only once
 
-        'idempotency_key_required' => 'Public submissions must carry an `Idempotency-Key` header, so '
+        'idempotency_key_required' => [400, 'Public submissions must carry an `Idempotency-Key` header, so '
             .'that resending one after a timeout cannot book or send it twice. Generate a UUID when '
-            .'the form is rendered and reuse it for every attempt at that submission.',
+            .'the form is rendered and reuse it for every attempt at that submission.'],
 
-        'idempotency_key_invalid' => 'The `Idempotency-Key` must be 16 to 255 printable ASCII '
+        'idempotency_key_invalid' => [400, 'The `Idempotency-Key` must be 16 to 255 printable ASCII '
             .'characters. A UUID is the expected shape. These endpoints are anonymous, so a short '
-            .'key collides with other callers\' keys.',
+            .'key collides with other callers\' keys.'],
 
         // ONE CODE FOR TWO CASES — a key reused for a different body, and a key
         // whose first request is still running. They are the same answer from
         // the caller's side: this key is not yours to use for this. Splitting
         // them would say which other request exists, on an anonymous endpoint.
-        'idempotency_key_reuse' => 'This `Idempotency-Key` belongs to a different submission, or to '
+        'idempotency_key_reuse' => [409, 'This `Idempotency-Key` belongs to a different submission, or to '
             .'one still being processed. Use a fresh key for a new submission, and wait before '
-            .'retrying an attempt that has not answered yet.',
+            .'retrying an attempt that has not answered yet.'],
 
         // ------------------------------------------ working from current state
 
         // Names the header AND the read that produces one, because "send
         // If-Match" without saying where a tag comes from is the kind of
         // instruction that sends somebody to the source code.
-        'if_match_required' => 'This request replaces or removes something, so it must prove it is '
+        'if_match_required' => [428, 'This request replaces or removes something, so it must prove it is '
             .'working from the current state. Read the thing first and send the `ETag` it returns '
-            .'back as `If-Match`. Attendance answers are exempt.',
+            .'back as `If-Match`. Attendance answers are exempt.'],
 
         // DOES NOT CARRY THE CURRENT TAG, and neither does the response — see
         // App\Http\Middleware\ConditionalWrite. Handing it over would let a
         // client retry blindly and land exactly the overwrite it was just
         // stopped from making, which is the whole failure this refusal exists
         // to prevent.
-        'if_match_failed' => 'Somebody else changed this since you read it, so the write was '
+        'if_match_failed' => [412, 'Somebody else changed this since you read it, so the write was '
             .'refused rather than silently discarding their change. Read it again, decide what you '
-            .'still want to write, and retry with the new `ETag`.',
+            .'still want to write, and retry with the new `ETag`.'],
 
         // ---------------------------------- allowed, but not against this state
 
-        'cannot_delete_self' => 'An account cannot delete itself. Ask another member who holds '
-            .'members.manage to do it.',
+        'cannot_delete_self' => [409, 'An account cannot delete itself. Ask another member who holds '
+            .'members.manage to do it.'],
 
         // Why this is refused at all: taking members.manage from yourself is the
         // fastest way to lock the band out of its own roster, and this host has
         // no shell to repair it with. The caller does not need to know that;
         // they need to know who to ask.
-        'cannot_demote_self' => 'An account cannot remove its own members.manage permission. Ask '
-            .'another administrator.',
+        'cannot_demote_self' => [409, 'An account cannot remove its own members.manage permission. Ask '
+            .'another administrator.'],
 
-        'cannot_remove_last_administrator' => 'This change would leave nobody able to administer '
-            .'members. Grant members.manage to somebody else first.',
+        'cannot_remove_last_administrator' => [409, 'This change would leave nobody able to administer '
+            .'members. Grant members.manage to somebody else first.'],
 
         // The rule being protected: a member answering for THEMSELVES owes a
         // reason when withdrawing a yes, and the on-behalf route is exempt — so
         // aiming it at yourself would be a way around that. Saying so in the
         // response would describe the bypass to the person attempting it.
-        'cannot_record_for_self' => 'This endpoint records an answer on another member\'s behalf and '
-            .'was aimed at you. Use PUT /api/v1/events/{event}/attendance for your own answer.',
+        'cannot_record_for_self' => [409, 'This endpoint records an answer on another member\'s behalf and '
+            .'was aimed at you. Use PUT /api/v1/events/{event}/attendance for your own answer.'],
 
-        'answer_already_settled' => 'An answer can only be withdrawn within five minutes of being '
+        'answer_already_settled' => [409, 'An answer can only be withdrawn within five minutes of being '
             .'recorded. Change it instead. `recordedAt` on the answer tells you whether that window '
-            .'is still open.',
+            .'is still open.'],
 
-        'registration_not_open' => 'Bookings for this event have not opened yet. '
-            .'GET /api/v1/events/{event}/registration reports when they do.',
+        'registration_not_open' => [409, 'Bookings for this event have not opened yet. '
+            .'GET /api/v1/events/{event}/registration reports when they do.'],
 
-        'registration_closed' => 'Bookings for this event have closed. Those already taken are '
-            .'unaffected.',
+        'registration_closed' => [409, 'Bookings for this event have closed. Those already taken are '
+            .'unaffected.'],
 
-        'option_has_registrations' => 'That option has already been booked, so it cannot be deleted. '
-            .'Cancel the bookings that reference it first.',
+        'option_has_registrations' => [409, 'That option has already been booked, so it cannot be deleted. '
+            .'Cancel the bookings that reference it first.'],
 
         // ----------------------------------------------- the submission itself
 
@@ -199,16 +214,16 @@ final class ErrorVocabulary
         // that exists to avoid telling a script which one it failed. A
         // legitimate integrator needs the same information and gets it from the
         // reference's "Public forms" section; a script gets nothing.
-        'spam_suspected' => 'The submission was refused. Reload the form and send it again. Public '
-            .'forms require a form token — see Public forms in the API reference.',
+        'spam_suspected' => [422, 'The submission was refused. Reload the form and send it again. Public '
+            .'forms require a form token — see Public forms in the API reference.'],
 
         // --------------------------------------------------- the server itself
 
-        'service_unavailable' => 'The service is temporarily refusing requests. Retry shortly; '
-            .'nothing on your side needs changing.',
+        'service_unavailable' => [503, 'The service is temporarily refusing requests. Retry shortly; '
+            .'nothing on your side needs changing.'],
 
-        'xlsx_unavailable' => 'This server cannot build spreadsheet exports. Request the csv format '
-            .'instead.',
+        'xlsx_unavailable' => [503, 'This server cannot build spreadsheet exports. Request the csv format '
+            .'instead.'],
     ];
 
     /**
@@ -260,6 +275,19 @@ final class ErrorVocabulary
      */
     public static function detailFor(string $code): ?string
     {
-        return self::PROBLEMS[$code] ?? null;
+        return self::PROBLEMS[$code][1] ?? null;
+    }
+
+    /**
+     * The HTTP status a code is emitted with, or null for one this list does
+     * not describe.
+     *
+     * Null is unreachable for the same reason detailFor()'s is, and modelled
+     * for the same reason: a code added mid-change must not turn the document
+     * export into a fatal.
+     */
+    public static function statusFor(string $code): ?int
+    {
+        return self::PROBLEMS[$code][0] ?? null;
     }
 }

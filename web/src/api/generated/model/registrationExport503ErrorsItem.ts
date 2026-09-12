@@ -251,12 +251,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-/**
- * Stable machine token the front end maps to French.
- */
-export type Problem409ResponseCode =
-  (typeof Problem409ResponseCode)[keyof typeof Problem409ResponseCode];
-
-export const Problem409ResponseCode = {
-  idempotency_key_reuse: "idempotency_key_reuse",
-} as const;
+export type RegistrationExport503ErrorsItem = { [key: string]: unknown };

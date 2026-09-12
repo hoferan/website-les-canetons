@@ -35,7 +35,13 @@ async function ifMatchFor(url: string): Promise<Record<string, string>> {
 
 test("GET /config answers with the shape the boot gate reads", async () => {
   const result = await configShow();
+  // Narrowed rather than asserted-then-read: the declared union now includes
+  // the 503 every route behind RunPendingMigrations can answer with, so
+  // `result.data` is not a config until `status` picks a branch.
   expect(result.status).toBe(200);
+  if (result.status !== 200) {
+    throw new Error("GET /config did not answer 200");
+  }
   expect(result.data.env).toBe("dev");
 });
 

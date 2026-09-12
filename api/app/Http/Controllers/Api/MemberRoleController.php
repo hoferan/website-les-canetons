@@ -8,6 +8,7 @@ use App\Http\Resources\MemberResource;
 use App\Models\Member;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
+use App\Support\Emits;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
@@ -43,6 +44,7 @@ class MemberRoleController extends Controller
      */
     #[Response(200, 'The member as they now stand, and how many of their sessions were revoked.')]
     #[Endpoint(operationId: 'memberRole.replace')]
+    #[Emits('cannot_remove_last_administrator', 'cannot_demote_self')]
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {
         // NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted

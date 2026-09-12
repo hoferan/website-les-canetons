@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Support\Emits;
 use App\Support\GuestList;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
@@ -43,6 +44,7 @@ class GuestListExportController extends Controller
     #[DocumentedResponse(200, 'The guest list in the requested format. Same rows every time; only the encoding differs.')]
     #[Header('Content-Disposition', 'attachment, with a filename built from the event. Browsers save rather than render.', type: 'string')]
     #[Endpoint(operationId: 'registration.export')]
+    #[Emits('xlsx_unavailable')]
     public function __invoke(Event $event, string $format): Response|StreamedResponse|JsonResponse
     {
         // ONE ROW-BUILDER, FOUR FORMATTERS — see App\Support\GuestList. The

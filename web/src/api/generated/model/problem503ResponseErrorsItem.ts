@@ -251,4 +251,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type Problem409ResponseErrorsItem = { [key: string]: unknown };
+export type Problem503ResponseErrorsItem = { [key: string]: unknown };

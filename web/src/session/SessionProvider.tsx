@@ -58,7 +58,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return null;
   }
 
-  if (config.isError) {
+  // `status !== 200` beside isError, and it is what narrows the union rather
+  // than merely guarding it. orval types this as ConfigShow200 |
+  // Problem503Response — the 503 every route behind RunPendingMigrations can
+  // answer with, declared since 2026-09-12 — so `config.data.data` is not a
+  // config until the status picks a branch. The mutator throws on a 503, so
+  // isError already covers it at runtime; tsc is right that the type does not
+  // say so, and the site refusing to start is the correct answer either way.
+  if (config.isError || config.data.status !== 200) {
     return (
       <p role="alert">Le site n’a pas pu démarrer. Veuillez réessayer dans quelques instants.</p>
     );
