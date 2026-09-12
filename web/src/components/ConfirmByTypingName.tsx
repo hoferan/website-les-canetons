@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField } from "./FormField";
 import type { TranslatedError } from "../i18n";
 
 /**
@@ -37,9 +37,16 @@ import type { TranslatedError } from "../i18n";
  * confirmation from an automated one, which is why GitHub enforces this in the
  * browser only, and why this is now the ONLY guard on a delete.
  *
- * `confirm` is optional: an action that is merely disruptive (issuing a new
- * password, which can simply be done again) names the damage and asks for a
- * press. An irreversible one asks for the name.
+ * `confirmPhrase` is optional, and what decides it is what the action costs if
+ * it was a mis-aimed tap. Deleting a member destroys their whole history, so
+ * it asks for the name. Issuing a new password can simply be done again, and
+ * deleting an event the committee mistyped a minute ago costs them the minute
+ * — both name the damage and ask for a press. Typing a title back would be
+ * friction with nothing behind it.
+ *
+ * It lives in components/ rather than members/ because it has a second
+ * consumer: the planning deletes events through it. One dialog, because the
+ * two halves above are exactly what a second one would separate.
  *
  * The action button is never `disabled` — that would blur focus to <body>
  * mid-submit. `aria-disabled` plus the early return in the handler is what

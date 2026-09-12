@@ -1,11 +1,20 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
 import { rowsOf } from "../api/collection";
-import { useEventIndex } from "../api/generated/endpoints";
+import {
+  eventDestroy,
+  eventShow,
+  getEventIndexQueryKey,
+  useEventIndex,
+} from "../api/generated/endpoints";
 import type { EventResource } from "../api/generated/model";
+import { entityTagOf, ifMatch } from "../api/ifMatch";
+import { useApiFormError } from "../api/useApiFormError";
 import { ButtonLink } from "../components/ButtonLink";
+import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
 import { EventCard } from "../events/EventCard";
 import { useSession } from "../session/SessionProvider";
@@ -33,7 +42,27 @@ import { useSession } from "../session/SessionProvider";
  */
 export function Events() {
   const { can } = useSession();
+  const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);
+
+  const destructive = useApiFormError("La suppression a échoué.");
+
+  // The event being deleted, together with the tag of the read the dialog was
+  // opened from. DELETE is a conditional write, and the planning hands out no
+  // tag of its own: one tag cannot validate five rows, and a list-wide one
+  // would refuse every delete whenever anybody touched anything. So opening
+  // the dialog is also the read, which is where "while this dialog was open"
+  // starts. Built by hand over the generated function because the header
+  // differs per call — see web/src/api/ifMatch.ts.
+  const [deleting, setDeleting] = useState<{ event: EventResource; etag: string | null } | null>(
+    null,
+  );
+  const [opening, setOpening] = useState<number | null>(null);
+
+  const destroy = useMutation({
+    mutationFn: ({ event, etag }: { event: number; etag: string }) =>
+      eventDestroy(event, ifMatch(etag)),
+  });
 
   // `past: "1"` is the magic value the API reads; anything else is the
   // upcoming view. Passing undefined rather than "0" keeps the query string
@@ -45,6 +74,46 @@ export function Events() {
   const events = rowsOf<EventResource>(planning.data);
 
   const mayManage = can("events.manage");
+
+  async function openDelete(row: EventResource) {
+    destructive.clear();
+    setOpening(row.id);
+    try {
+      const response = await eventShow(row.id);
+      if (response.status === 200) {
+        setDeleting({ event: response.data, etag: entityTagOf(response) });
+      }
+    } catch (thrown) {
+      // Announced rather than swallowed: a dialog that never opens reads as a
+      // dead button, and the reason is usually worth knowing (the event has
+      // already gone, or the session has).
+      destructive.setFromThrown(thrown);
+    } finally {
+      setOpening(null);
+    }
+  }
+
+  async function confirmDelete() {
+    if (deleting === null) {
+      return;
+    }
+    if (deleting.etag === null) {
+      // Without a tag the write is refused with 428, which on screen is
+      // indistinguishable from a broken button.
+      return;
+    }
+
+    try {
+      await destroy.mutateAsync({ event: deleting.event.id, etag: deleting.etag });
+      await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+      setDeleting(null);
+    } catch (thrown) {
+      // The dialog STAYS OPEN, which is why the confirm button is a plain
+      // Button rather than Radix's AlertDialogAction: a 412 has to be readable
+      // where it happened, next to the event it is about.
+      destructive.setFromThrown(thrown);
+    }
+  }
 
   return (
     <PageSection>
@@ -106,18 +175,56 @@ export function Events() {
             // control row rather than a row of refusals.
             actions={
               mayManage ? (
-                <ButtonLink
-                  to={`/events/${event.id}/edit`}
-                  variant="outline"
-                  ariaLabel={`Modifier ${event.title}`}
-                >
-                  Modifier
-                </ButtonLink>
+                <>
+                  <ButtonLink
+                    to={`/events/${event.id}/edit`}
+                    variant="outline"
+                    ariaLabel={`Modifier ${event.title}`}
+                  >
+                    Modifier
+                  </ButtonLink>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-label={`Supprimer ${event.title}`}
+                    aria-disabled={opening === event.id}
+                    onClick={() => {
+                      if (opening === event.id) {
+                        return;
+                      }
+                      void openDelete(event);
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                </>
               ) : null
             }
           />
         ))}
       </div>
+
+      {/*
+        NO TYPED PHRASE for an event, unlike a member. Typing a name back is
+        the price of an action that destroys somebody's history and cannot be
+        undone; an event the committee mistyped a minute ago costs them the
+        minute. What the dialog owes is the NAME of what it is about to take,
+        and what goes with it — the API deletes every attendance answer and
+        every public booking attached to the event.
+      */}
+      <ConfirmByTypingName
+        open={deleting !== null}
+        title={`Supprimer « ${deleting?.event.title ?? ""} » ?`}
+        description="L’événement sera retiré du planning. Les réponses de présence et les inscriptions liées seront supprimées avec lui. Cette action est définitive."
+        confirmLabel="Supprimer"
+        busy={destroy.isPending}
+        error={destructive.error}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => {
+          destructive.clear();
+          setDeleting(null);
+        }}
+      />
     </PageSection>
   );
 }
