@@ -16,7 +16,10 @@ import { useApiFormError } from "../api/useApiFormError";
 import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
+import { AttendanceControls } from "../events/AttendanceControls";
+import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
+import { bandZoneParts } from "../events/bandTime";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -37,13 +40,28 @@ import { useSession } from "../session/SessionProvider";
  * than on now, so an event that began an hour ago stays in the planning of
  * somebody running late.
  *
- * NO ATTENDANCE HERE. R1c-2 adds the answer buttons and the counts; this
- * release is the planning itself.
+ * ORDERED BY URGENCY, NOT BY DATE. Unanswered upcoming events are pinned to
+ * the top under "À répondre"; the planning follows below. This is why the old
+ * site needed a second page, /inscriptions_utilisateurs — under this design
+ * that page has no reason to exist, because "my answers" IS the top of the one
+ * screen.
+ *
+ * THE TWO BLOCKS PARTITION THE LIST rather than the top one repeating rows
+ * from the bottom. Answering therefore moves a card down, out of the block of
+ * things still owed — which is the feedback that the tap landed, and what lets
+ * "À répondre" mean something when it is empty. A card in both places would be
+ * two live sets of answer buttons for one event.
  */
 export function Events() {
-  const { can } = useSession();
+  const { can, user, config } = useSession();
   const queryClient = useQueryClient();
   const [showingPast, setShowingPast] = useState(false);
+
+  // The calendar, and the day it has filtered the list down to. Both are here
+  // rather than inside EventCalendar because the filter is what the calendar
+  // is FOR: it does not navigate, it narrows the list below it (C8).
+  const [showingCalendar, setShowingCalendar] = useState(false);
+  const [day, setDay] = useState<string | null>(null);
 
   const destructive = useApiFormError("La suppression a échoué.");
 
@@ -71,9 +89,90 @@ export function Events() {
 
   // Through rowsOf, which owns the status narrowing and the collection
   // envelope's own `data` hop — see web/src/api/collection.ts.
-  const events = rowsOf<EventResource>(planning.data);
+  const allEvents = rowsOf<EventResource>(planning.data);
 
   const mayManage = can("events.manage");
+  // OFF EVERYWHERE until somebody has looked at it on TEST. The flag comes
+  // from GET /api/v1/config, so it is the server's answer rather than
+  // something baked into a bundle three environments share.
+  const calendarEnabled = config.features?.calendar === true;
+  const maySeeAnswers = can("attendance.view_all");
+
+  // Applied BEFORE the split, so a chosen day narrows both blocks. The day is
+  // the Fribourg one, which is what bandZoneParts is for: slicing the ISO
+  // string would file a 00:30 event under the previous day.
+  const events =
+    day === null
+      ? allEvents
+      : allEvents.filter((event) => bandZoneParts(event.startsAt).date === day);
+
+  // The split that makes the top block a to-do list. Two things are never in
+  // it. PAST EVENTS, because the screen asks what you owe an answer on and
+  // nobody is owed an answer about last Saturday. And EVERYTHING, for somebody
+  // who is in no register: `myAttendance` is null on every event for Dominique
+  // Direction, who organises and plays nothing, so the naive split would file
+  // the whole planning under "À répondre" and then show her no way to answer
+  // any of it.
+  const answerable = (user?.isPlayer ?? false) && !showingPast;
+  const awaiting = answerable ? events.filter((event) => event.myAttendance === null) : [];
+  const planned = answerable ? events.filter((event) => event.myAttendance !== null) : events;
+
+  function card(event: EventResource) {
+    return (
+      <EventCard
+        key={event.id}
+        event={event}
+        // The card decides nothing about permissions — see its docblock. A
+        // player is passed no actions at all, so their card has no empty
+        // control row rather than a row of refusals.
+        actions={
+          mayManage || maySeeAnswers ? (
+            <>
+              {maySeeAnswers ? (
+                <ButtonLink
+                  to={`/events/${event.id}/attendance`}
+                  variant="outline"
+                  ariaLabel={`Qui vient à ${event.title}`}
+                >
+                  Qui vient&nbsp;?
+                </ButtonLink>
+              ) : null}
+              {mayManage ? (
+                <>
+                  <ButtonLink
+                    to={`/events/${event.id}/edit`}
+                    variant="outline"
+                    ariaLabel={`Modifier ${event.title}`}
+                  >
+                    Modifier
+                  </ButtonLink>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    aria-label={`Supprimer ${event.title}`}
+                    aria-disabled={opening === event.id}
+                    onClick={() => {
+                      if (opening === event.id) {
+                        return;
+                      }
+                      void openDelete(event);
+                    }}
+                  >
+                    Supprimer
+                  </Button>
+                </>
+              ) : null}
+            </>
+          ) : null
+        }
+        // NOT ON THE PAST. The API would accept the write, but a pair of
+        // buttons asking whether you are coming to a rehearsal that finished
+        // last week is an invitation to nonsense, and the chase list is where a
+        // late correction belongs.
+        answer={showingPast ? undefined : <AttendanceControls event={event} />}
+      />
+    );
+  }
 
   async function openDelete(row: EventResource) {
     destructive.clear();
@@ -130,7 +229,7 @@ export function Events() {
         ) : null}
       </div>
 
-      <div className="mt-related">
+      <div className="mt-related flex flex-wrap items-center gap-tight">
         <Button
           type="button"
           variant="outline"
@@ -138,7 +237,46 @@ export function Events() {
         >
           {showingPast ? "Voir le planning" : "Voir les événements passés"}
         </Button>
+
+        {/* md AND UP ONLY, and absent from a phone altogether rather than
+            shrunk onto one. A month grid is for somebody planning a season at
+            a desk; the list is the whole phone view and stays the default
+            everywhere (C8). */}
+        {calendarEnabled ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden md:inline-flex"
+            aria-pressed={showingCalendar}
+            onClick={() => {
+              setShowingCalendar((showing) => !showing);
+              setDay(null);
+            }}
+          >
+            {showingCalendar ? "Liste" : "Calendrier"}
+          </Button>
+        ) : null}
       </div>
+
+      {calendarEnabled && showingCalendar ? (
+        <div className="mt-block hidden md:block">
+          <EventCalendar events={allEvents} selected={day} onSelect={setDay} />
+        </div>
+      ) : null}
+
+      {/* VISIBLE AT EVERY WIDTH, unlike the calendar that sets it. A narrowed
+          list whose only control has just been hidden by a resize is a
+          planning that has silently lost most of its events. */}
+      {day !== null ? (
+        <p className="mt-related flex flex-wrap items-center gap-tight text-sm">
+          <span data-testid="day-filter" className="text-ink-muted">
+            Filtré sur un jour.
+          </span>
+          <Button type="button" variant="outline" size="sm" onClick={() => setDay(null)}>
+            Voir tout le planning
+          </Button>
+        </p>
+      ) : null}
 
       {planning.isPending ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
 
@@ -165,44 +303,29 @@ export function Events() {
         </div>
       ) : null}
 
-      <div className="mt-block grid gap-related">
-        {events.map((event) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            // The card decides nothing about permissions — see its docblock.
-            // A player is passed no actions at all, so their card has no empty
-            // control row rather than a row of refusals.
-            actions={
-              mayManage ? (
-                <>
-                  <ButtonLink
-                    to={`/events/${event.id}/edit`}
-                    variant="outline"
-                    ariaLabel={`Modifier ${event.title}`}
-                  >
-                    Modifier
-                  </ButtonLink>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    aria-label={`Supprimer ${event.title}`}
-                    aria-disabled={opening === event.id}
-                    onClick={() => {
-                      if (opening === event.id) {
-                        return;
-                      }
-                      void openDelete(event);
-                    }}
-                  >
-                    Supprimer
-                  </Button>
-                </>
-              ) : null
-            }
-          />
-        ))}
-      </div>
+      {awaiting.length > 0 ? (
+        <section className="mt-block" aria-labelledby="awaiting-heading">
+          <h2 id="awaiting-heading" className="font-display text-xl">
+            À répondre
+          </h2>
+          <div className="mt-related grid gap-related">{awaiting.map(card)}</div>
+        </section>
+      ) : null}
+
+      {/* The heading appears only when there is a block above it to be
+          distinguished from. On a phone, a lone "Planning" under a page titled
+          "Planning" is a line of chrome costing a line of screen. */}
+      <section
+        className="mt-block"
+        aria-labelledby={awaiting.length > 0 ? "planning-heading" : undefined}
+      >
+        {awaiting.length > 0 ? (
+          <h2 id="planning-heading" className="font-display text-xl">
+            {showingPast ? "Événements passés" : "Le reste du planning"}
+          </h2>
+        ) : null}
+        <div className="mt-related grid gap-related">{planned.map(card)}</div>
+      </section>
 
       {/*
         NO TYPED PHRASE for an event, unlike a member. Typing a name back is

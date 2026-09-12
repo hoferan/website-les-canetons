@@ -185,3 +185,190 @@ test("a delete carries the tag of the read it was confirmed from", async () => {
 
   await expect.poll(() => sentIfMatch).not.toBeNull();
 });
+
+/* -------------------------------------------------------------------------- *
+ * Answering, from the planning (R1c-2)
+ * -------------------------------------------------------------------------- */
+
+test("what you still owe an answer on is pinned above the rest", async () => {
+  // The seeded answers give demo.player one answered event out of five, so the
+  // two blocks are distinguishable by count as well as by heading.
+  await renderPlanning();
+
+  const awaiting = screen.getByRole("region", { name: "À répondre" });
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+
+  expect(within(awaiting).getAllByTestId("event-card")).toHaveLength(4);
+  expect(within(rest).getAllByTestId("event-card")).toHaveLength(1);
+});
+
+test("answering is one tap and moves the event out of what is owed", async () => {
+  await renderPlanning();
+
+  const awaiting = screen.getByRole("region", { name: "À répondre" });
+  await userEvent.click(
+    within(awaiting).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
+  );
+
+  // No navigation, no dialog: the whole point of the screen.
+  await expect
+    .poll(
+      () =>
+        within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card")
+          .length,
+    )
+    .toBe(3);
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  expect(
+    within(rest).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("taking back a yes opens the dialog rather than answering", async () => {
+  await renderPlanning();
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  await userEvent.click(within(rest).getByRole("button", { name: /^Je ne viens pas à/ }));
+
+  expect(await screen.findByRole("alertdialog")).toHaveTextContent("Vous ne venez plus à");
+});
+
+test("the dialog will not submit until a reason is typed (C11)", async () => {
+  // MUTATION TEST: delete `armed` from WithdrawDialog and the first assertion
+  // fails — the button becomes pressable with an empty field, and the member
+  // meets the server's refusal instead of the question.
+  await renderPlanning();
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  await userEvent.click(within(rest).getByRole("button", { name: /^Je ne viens pas à/ }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  const confirm = within(dialog).getByRole("button", { name: "Je ne viens pas" });
+
+  expect(confirm).toHaveAttribute("aria-disabled", "true");
+
+  await userEvent.type(within(dialog).getByLabelText("Raison"), "Malade");
+  expect(confirm).toHaveAttribute("aria-disabled", "false");
+});
+
+test("a reason travels with the withdrawal and is shown back", async () => {
+  await renderPlanning();
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  await userEvent.click(within(rest).getByRole("button", { name: /^Je ne viens pas à/ }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.type(within(dialog).getByLabelText("Raison"), "Malade");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Je ne viens pas" }));
+
+  const card = within(screen.getByRole("region", { name: "Le reste du planning" })).getAllByTestId(
+    "event-card",
+  )[0] as HTMLElement;
+
+  await expect
+    .poll(() => within(card).queryByTestId("attendance-note")?.textContent)
+    .toContain("Malade");
+});
+
+test("the server's own refusal lands under the field it is about", async () => {
+  // The client-side guard above only spares a round trip. THIS is the rule:
+  // App\Support's reason requirement, rendered by translateApiError against
+  // `fields.note` — which is why `note` has to carry French copy in
+  // web/src/i18n/fr.ts, and why ApiErrorVocabularyTest reads that file.
+  server.use(
+    http.put("/api/v1/events/:id/attendance", () =>
+      HttpResponse.json(
+        {
+          title: "Invalid form submission",
+          status: 400,
+          instance: "",
+          code: "validation_failed",
+          errors: [{ field: "note", reason: "required" }],
+          requestId: "01JB3K7QW8ZXMOCKMOCKMOCK00",
+          detail: "",
+        },
+        { status: 400, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    ),
+  );
+
+  await renderPlanning();
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  await userEvent.click(within(rest).getByRole("button", { name: /^Je ne viens pas à/ }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.type(within(dialog).getByLabelText("Raison"), "  ");
+  await userEvent.type(within(dialog).getByLabelText("Raison"), "x");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Je ne viens pas" }));
+
+  expect(await within(dialog).findByText(/Raison est requis/)).toBeInTheDocument();
+});
+
+test("somebody in no register is asked nothing", async () => {
+  // Dominique Direction organises and plays in nothing, so `myAttendance` is
+  // null on every event for her — which a naive split would file under
+  // "À répondre" and then offer her no way to answer. The API would refuse her
+  // with 403 not_answerable, and a block of questions nobody may answer is
+  // worse than the refusal.
+  await renderPlanning("demo.direction");
+
+  expect(screen.queryByRole("region", { name: "À répondre" })).toBeNull();
+  expect(screen.queryAllByTestId("attendance-controls")).toHaveLength(0);
+});
+
+/* -------------------------------------------------------------------------- *
+ * The calendar (C8)
+ * -------------------------------------------------------------------------- */
+
+test("the calendar is absent unless the server turns it on", async () => {
+  // The flag comes from GET /api/v1/config, so it is the server's answer
+  // rather than something baked into a bundle three environments share. It is
+  // off everywhere until somebody has looked at the calendar on TEST, and this
+  // is what says the SPA obeys that.
+  server.use(http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: {} })));
+
+  await renderPlanning();
+
+  expect(screen.queryByRole("button", { name: "Calendrier" })).toBeNull();
+});
+
+test("the calendar filters the list instead of navigating to a day", async () => {
+  await renderPlanning();
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+
+  // The seeded planning puts exactly one event on each of its five days, so a
+  // day with anything on it is a day with one thing on it.
+  const [firstDay] = within(calendar)
+    .getAllByRole("button", { pressed: false })
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("événement"));
+  await userEvent.click(firstDay as HTMLElement);
+
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(1);
+  // Still on the planning: the calendar is an overview and never a second way
+  // to do the primary job.
+  expect(screen.getByRole("heading", { name: "Planning" })).toBeInTheDocument();
+});
+
+test("a narrowed planning says so at every width, and can be widened again", async () => {
+  // The calendar itself is hidden below md, so a resize can take away the only
+  // control that set the filter. Without this line the planning has silently
+  // lost most of its events.
+  await renderPlanning();
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+  const [firstDay] = within(calendar)
+    .getAllByRole("button")
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("événement"));
+  await userEvent.click(firstDay as HTMLElement);
+
+  expect(await screen.findByTestId("day-filter")).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Voir tout le planning" }));
+  await expect.poll(() => screen.queryByTestId("day-filter")).toBeNull();
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(5);
+});

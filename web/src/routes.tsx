@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { EventAttendance } from "./pages/EventAttendance";
 import { EventEdit } from "./pages/EventEdit";
 import { EventNew } from "./pages/EventNew";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
@@ -35,9 +36,8 @@ import { NotFound } from "./pages/NotFound";
  * compatibility (design §7/D11) — so they fall through to the 404 view like
  * every other unknown path.
  *
- * Still absent, each waiting on its own release: /events and its children
- * (R1c), /band, /committee, /join, /history (R2), /events/:id/registrations
- * (R3).
+ * Still absent, each waiting on its own release: /band, /committee, /join,
+ * /history (R2), /events/:id/registrations (R3).
  */
 export function AppRoutes() {
   return (
@@ -65,6 +65,14 @@ export function AppRoutes() {
             <Route path="/events/new" element={<EventNew />} />
             <Route path="/events/new/series" element={<EventSeriesNew />} />
             <Route path="/events/:id/edit" element={<EventEdit />} />
+          </Route>
+
+          {/* The chase list. A SEPARATE PERMISSION from managing events:
+              seeing who has not answered and entering the planning are
+              different jobs, and App\Support\Capability is what makes that
+              real — this guard only mirrors it. */}
+          <Route element={<RequirePermission permission="attendance.view_all" />}>
+            <Route path="/events/:id/attendance" element={<EventAttendance />} />
           </Route>
 
           <Route element={<RequirePermission permission="members.manage" />}>

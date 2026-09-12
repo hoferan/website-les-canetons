@@ -3,10 +3,14 @@ import { HttpResponse, http } from "msw";
 import type { ApiErrorField } from "../api/http";
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
 import type {
+  AttendanceResource,
   AuthMe200,
+  ChaseListEntryResource,
   ContactRequest,
   EventResource,
   MemberResource,
+  RecordMemberAttendanceRequest,
+  RecordOwnAttendanceRequest,
   RoleResource,
   SectionResource,
 } from "../api/generated/model";
@@ -711,6 +715,100 @@ function resetEvents(): void {
   nextEventId = 7;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Attendance
+ * ------------------------------------------------------------------------ */
+
+/** C12's undo window, in milliseconds: AttendanceIntegrity::UNDO_WINDOW_MINUTES. */
+const UNDO_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * The answers, keyed by event and member.
+ *
+ * A MAP RATHER THAN A FIELD ON THE EVENT, because `myAttendance` is the
+ * caller's own answer and nobody else's: one event carries a different one per
+ * member, so keeping it on the row would show Perrine's answer to Bastien. The
+ * events store holds `myAttendance: null` and every read projects the caller's
+ * answer onto the copy it hands out.
+ */
+const answers = new Map<string, AttendanceResource>();
+
+function answerKey(eventId: number, memberId: number): string {
+  return `${eventId}:${memberId}`;
+}
+
+/**
+ * An instant far enough back that C12's undo window has closed.
+ *
+ * Seeded answers are SETTLED on purpose. Recorded "just now" every one of them
+ * would offer an undo, and the five-minute window — the rule that keeps C11
+ * from being decorative — would never be seen in the state it spends its life
+ * in.
+ */
+function settledAt(): string {
+  return new Date(Date.now() - 86_400_000).toISOString();
+}
+
+/**
+ * The seeded answers, all against event 1 — the next rehearsal, and so the
+ * event the chase list is read about.
+ *
+ * One of each state the screen has to render: a yes, a no carrying the reason
+ * C11 collects, an answer the direction entered on somebody's behalf, and a
+ * member nobody has heard from. That last one is Bastien, who is therefore
+ * also the row an on-behalf write is aimed at.
+ */
+function resetAnswers(): void {
+  answers.clear();
+  answers.set(answerKey(1, 2), {
+    status: "yes",
+    note: null,
+    recordedByDirection: false,
+    recordedAt: settledAt(),
+  });
+  answers.set(answerKey(1, 4), {
+    status: "no",
+    note: "Malade",
+    recordedByDirection: false,
+    recordedAt: settledAt(),
+  });
+  answers.set(answerKey(1, 5), {
+    status: "yes",
+    note: "Son papa a téléphoné",
+    recordedByDirection: true,
+    recordedAt: settledAt(),
+  });
+}
+
+resetAnswers();
+
+/** The caller's own answer for an event, or null when they have not given one. */
+function myAnswerFor(eventId: number): AttendanceResource | null {
+  if (!currentUser) {
+    return null;
+  }
+  return answers.get(answerKey(eventId, currentUser.id)) ?? null;
+}
+
+/** One event as the caller sees it: the stored row plus their own answer. */
+function withMyAttendance(event: EventResource): EventResource {
+  return { ...event, myAttendance: myAnswerFor(event.id) };
+}
+
+/**
+ * The refusal for somebody who is in no register.
+ *
+ * A 403 that is NOT about a missing permission — there is none for answering —
+ * which is why it carries its own code rather than `access_denied`. Dominique
+ * Direction is the case: she organises and plays nothing.
+ */
+const notAnswerable = () =>
+  problem(
+    403,
+    "not_answerable",
+    "This member is not in a register and is not answerable for events",
+  );
+
 /**
  * The API's `endsAt`-after-`startsAt` refusal, in the shape ApiError renders.
  * Returns the refusal, or null when the pair is fine.
@@ -731,6 +829,7 @@ export function resetMockState(): void {
   // Dropping this line fails tests only when the WHOLE FILE runs, which reads
   // as flakiness and is not — R1b proved it on the roster store.
   resetEvents();
+  resetAnswers();
 }
 
 /** Tied to the model, not retyped as a bare string[]: a field rename in
@@ -747,7 +846,10 @@ const overrides = [
   http.get("/sanctum/csrf-cookie", () => new HttpResponse(null, { status: 204 })),
 
   // Mirrors App\Http\Controllers\Api\ConfigController exactly: `env` only.
-  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev" })),
+  // The calendar flag is ON here and off on every real server, which is the
+  // point of a mocked backend: until somebody has looked at the calendar on
+  // TEST, this is the only place it can be looked at at all.
+  http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: { calendar: true } })),
 
   http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
@@ -1092,7 +1194,7 @@ const overrides = [
           : Date.parse(a.startsAt) - Date.parse(b.startsAt),
       );
 
-    return collection(planning, request);
+    return collection(planning.map(withMyAttendance), request);
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches
@@ -1170,7 +1272,9 @@ const overrides = [
     // deliberately ignores `myAttendance`, which is the caller's own answer, so
     // answering an event does not invalidate a pending edit of it.
     return event
-      ? HttpResponse.json(event, { headers: { ETag: mockEntityTag(withoutMyAttendance(event)) } })
+      ? HttpResponse.json(withMyAttendance(event), {
+          headers: { ETag: mockEntityTag(withoutMyAttendance(event)) },
+        })
       : notFound();
   }),
 
@@ -1229,6 +1333,175 @@ const overrides = [
     }
 
     events = events.filter((candidate) => candidate.id !== id);
+    return HttpResponse.json({ ok: true });
+  }),
+
+  /* ---------------------------------------------------------------------- *
+   * Attendance
+   * ---------------------------------------------------------------------- */
+
+  // THE CHASE LIST. Every answerable member, whether or not they replied —
+  // returning only the answers would push "who has not replied?", the entire
+  // point of the screen, into a client-side diff against a separately fetched
+  // roster, which is two requests that can disagree.
+  http.get("/api/v1/events/:id/attendance", ({ request, params }) => {
+    const refusal = refuseWithout("attendance.view_all");
+    if (refusal) {
+      return refusal;
+    }
+
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+    if (!event) {
+      return notFound();
+    }
+
+    // Answerable means being in a register, which is Member::isPlayer() and
+    // deliberately not a permission: making it one is how the old site ended
+    // up unable to ask an organiser whether they were coming.
+    const rows: ChaseListEntryResource[] = members
+      .filter((member) => member.isPlayer)
+      .sort(
+        (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+      )
+      .map((member) => ({
+        memberId: member.id,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        sectionName: member.sectionName,
+        attendance: answers.get(answerKey(event.id, member.id)) ?? null,
+      }));
+
+    return collection(rows, request);
+  }),
+
+  // ANSWERING FOR YOURSELF. No permission gates it, and none could: being in a
+  // register is what makes somebody answerable.
+  http.put("/api/v1/events/:id/attendance", async ({ request, params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+    if (!event) {
+      return notFound();
+    }
+
+    if (!currentUser.isPlayer) {
+      return notAnswerable();
+    }
+
+    const body = (await request.json()) as RecordOwnAttendanceRequest;
+    const key = answerKey(event.id, currentUser.id);
+    const existing = answers.get(key) ?? null;
+
+    // C11: taking back a yes costs a reason. It lands as an ORDINARY
+    // validation failure against `note` rather than as a code of its own, so
+    // the dialog shows it under the field the member is looking at.
+    if (existing?.status === "yes" && body.status === "no" && !body.note?.trim()) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "note", reason: "required" },
+      ]);
+    }
+
+    const recorded: AttendanceResource = {
+      status: body.status,
+      note: body.note?.trim() ? body.note : null,
+      // Cleared, including when this overwrites something the direction
+      // entered: the member correcting it themselves is exactly when "saisie
+      // par la direction" stops being true.
+      recordedByDirection: false,
+      recordedAt: new Date().toISOString(),
+    };
+
+    // An upsert, like the real PUT: tapping Oui then Non needs no
+    // create-versus-update branch and cannot race itself into two rows.
+    answers.set(key, recorded);
+    return HttpResponse.json(recorded);
+  }),
+
+  // UNDO, and it expires (C12).
+  http.delete("/api/v1/events/:id/attendance", ({ params }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+
+    const key = answerKey(Number(params.id), currentUser.id);
+    const existing = answers.get(key);
+
+    // Idempotent rather than 404: undo is reached from a toast, and a double
+    // tap on a flaky connection must not read as an error to the member.
+    if (!existing) {
+      return HttpResponse.json({ ok: true });
+    }
+
+    if (Date.now() - Date.parse(existing.recordedAt) >= UNDO_WINDOW_MS) {
+      return conflict("answer_already_settled", "This answer can no longer be undone");
+    }
+
+    answers.delete(key);
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // ANSWERING ON SOMEBODY'S BEHALF — the phone call to the committee.
+  http.put("/api/v1/events/:id/attendance/:member", async ({ request, params }) => {
+    const refusal = refuseWithout("attendance.record_for_others");
+    if (refusal) {
+      return refusal;
+    }
+
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+    if (!event) {
+      return notFound();
+    }
+
+    const member = members.find((candidate) => candidate.id === Number(params.member));
+    if (!member) {
+      return notFound();
+    }
+
+    // C14, checked BEFORE answerability, exactly as the real controller orders
+    // it. This route is exempt from C11's reason rule (C13), which is
+    // precisely why aiming it at yourself has to be refused: Bastien plays and
+    // holds the permission, and could otherwise take back his own yes for
+    // free.
+    if (currentUser?.id === member.id) {
+      return conflict("cannot_record_for_self", "Answer for yourself from the planning");
+    }
+
+    if (!member.isPlayer) {
+      return notAnswerable();
+    }
+
+    const body = (await request.json()) as RecordMemberAttendanceRequest;
+
+    const recorded: AttendanceResource = {
+      status: body.status,
+      // NO REASON REQUIRED, withdrawal included (C13): the committee is
+      // writing down what they were told, and inventing a reason on somebody
+      // else's behalf puts words in their mouth.
+      note: body.note?.trim() ? body.note : null,
+      recordedByDirection: true,
+      recordedAt: new Date().toISOString(),
+    };
+
+    answers.set(answerKey(event.id, member.id), recorded);
+    return HttpResponse.json(recorded);
+  }),
+
+  // Taking one back. NOT subject to the five-minute window: correcting a
+  // mis-aimed entry an hour later is the case it exists for.
+  http.delete("/api/v1/events/:id/attendance/:member", ({ params }) => {
+    const refusal = refuseWithout("attendance.record_for_others");
+    if (refusal) {
+      return refusal;
+    }
+
+    const memberId = Number(params.member);
+    if (currentUser?.id === memberId) {
+      return conflict("cannot_record_for_self", "Answer for yourself from the planning");
+    }
+
+    answers.delete(answerKey(Number(params.id), memberId));
     return HttpResponse.json({ ok: true });
   }),
 ];

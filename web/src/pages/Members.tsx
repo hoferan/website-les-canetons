@@ -423,11 +423,22 @@ export function Members() {
       <ConfirmByTypingName
         open={deleting !== null}
         title={`Supprimer ${deleting?.member.firstName} ${deleting?.member.lastName}`}
-        // NAMES THE DAMAGE (§4). It says what is actually known to go: the
-        // person and their access. Attendance and registrations arrive in R1c
-        // and R3, and THIS SENTENCE MUST GAIN THEM THEN — "3 réponses à venir
-        // seront effacées" is the example the spec gives.
-        description={`${deleting?.member.firstName} ${deleting?.member.lastName} sera retiré de la liste et perdra immédiatement son accès au site. Cette action est définitive.`}
+        // NAMES THE DAMAGE (§4), and now that attendance exists it names that
+        // too: deleting a member cascades their answers, and the committee
+        // should know the planning loses them before they press this.
+        //
+        // WHAT GOES, NOT HOW MUCH. The spec's example carries a count —
+        // "3 réponses à venir seront effacées" — and the count is deliberately
+        // absent. Nothing reads it before the delete, and the obvious way to
+        // supply it, a field on MemberResource, is the one place it must not
+        // go: App\Support\EntityTag hashes the RENDERED resource, so a member's
+        // tag would then move every time they answered an event, and answering
+        // would refuse a roster edit somebody had open. That is the exact
+        // coupling EntityTag's own docblock says it avoids for events. The
+        // event dialog made the same call for the same reason.
+        //
+        // Registrations arrive in R3 and this sentence gains them then.
+        description={`${deleting?.member.firstName} ${deleting?.member.lastName} sera retiré de la liste et perdra immédiatement son accès au site. Ses réponses de présence seront effacées du planning. Cette action est définitive.`}
         confirmLabel="Supprimer"
         confirmPhrase={
           deleting ? `${deleting.member.firstName} ${deleting.member.lastName}` : undefined

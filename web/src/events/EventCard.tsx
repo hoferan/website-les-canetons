@@ -13,12 +13,25 @@ import { formatEventWhen } from "./formatEventWhen";
  * a roster of forty-five people and earns nothing here.
  *
  * IT KNOWS NOTHING ABOUT PERMISSIONS. The organiser's edit and delete controls
- * arrive as `actions`, decided by the screen. A card that checked
- * `can("events.manage")` itself would have to be edited for every future
- * control and for R1c-2's answer buttons, and would make this component
+ * arrive as `actions` and the answer buttons as `answer`, both decided by the
+ * screen. A card that checked `can("events.manage")` or `isPlayer` itself would
+ * have to be edited for every future control, and would make this component
  * untestable without a session.
+ *
+ * TWO SLOTS RATHER THAN ONE, because they are read at different moments.
+ * `actions` is the committee's housekeeping and sits up beside the title where
+ * it stays out of the way; `answer` is what everybody else came for, so it goes
+ * at the bottom, full width, under the detail it is an answer to.
  */
-export function EventCard({ event, actions }: { event: EventResource; actions?: ReactNode }) {
+export function EventCard({
+  event,
+  actions,
+  answer,
+}: {
+  event: EventResource;
+  actions?: ReactNode;
+  answer?: ReactNode;
+}) {
   return (
     <article
       data-testid="event-card"
@@ -63,6 +76,8 @@ export function EventCard({ event, actions }: { event: EventResource; actions?: 
           {event.notes}
         </p>
       ) : null}
+
+      {answer}
     </article>
   );
 }
