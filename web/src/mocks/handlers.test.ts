@@ -11,6 +11,18 @@ import { ApiError } from "../api/http";
 import { setMockUser } from "./handlers";
 
 /**
+ * The `If-Match` a conditional write owes, read the way a screen reads it.
+ *
+ * Through the mocked GET rather than by calling mockEntityTag() here: a helper
+ * computing the tag its own way would agree with itself and could pass against
+ * a handler that hands out a different one.
+ */
+async function ifMatchFor(url: string): Promise<Record<string, string>> {
+  const etag = (await fetch(url)).headers.get("ETag");
+  return etag === null ? {} : { "If-Match": etag };
+}
+
+/**
  * The mocked backend is a layer the whole suite and the whole dev loop rest on,
  * so it gets its own tests. Going through the GENERATED client rather than
  * fetch() directly is the point: it exercises the same path the app takes,
@@ -194,8 +206,14 @@ test("refuses to delete the last member who can administer members", async () =>
   setMockUser("demo.direction");
   // demo.both holds `direction` too, so remove them first — then Dominique is
   // the last holder and deleting anyone who holds it is refused.
-  await fetch("/api/v1/members/3", { method: "DELETE" });
-  const response = await fetch("/api/v1/members/1", { method: "DELETE" });
+  await fetch("/api/v1/members/3", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/members/3"),
+  });
+  const response = await fetch("/api/v1/members/1", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/members/1"),
+  });
 
   // 409, not 403: the caller HAS the permission. The request conflicts with
   // the state of the system.
@@ -207,7 +225,10 @@ test("refuses to delete the last member who can administer members", async () =>
 
 test("refuses to delete yourself, once someone else can still administer", async () => {
   setMockUser("demo.direction");
-  const response = await fetch("/api/v1/members/1", { method: "DELETE" });
+  const response = await fetch("/api/v1/members/1", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/members/1"),
+  });
 
   expect(response.status).toBe(409);
   expect(((await response.json()) as { code: string }).code).toBe("cannot_delete_self");
@@ -217,7 +238,7 @@ test("refuses to remove your own administration", async () => {
   setMockUser("demo.direction");
   const response = await fetch("/api/v1/members/1/roles", {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/members/1")) },
     body: JSON.stringify({ roleIds: [] }),
   });
 
@@ -231,7 +252,10 @@ test("a destructive roster call needs no password, only the session", async () =
   // whole roster and editing anyone. Mistake-prevention is the type-the-name
   // confirmation in the UI. If re-authentication is ever reintroduced on the
   // roster, this test is what says so.
-  const response = await fetch("/api/v1/members/2", { method: "DELETE" });
+  const response = await fetch("/api/v1/members/2", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/members/2"),
+  });
 
   expect(response.status).toBe(200);
 });
@@ -286,7 +310,7 @@ test("editing a member changes only what the real request validates", async () =
   setMockUser("demo.direction");
   const response = await fetch("/api/v1/members/2", {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(await ifMatchFor("/api/v1/members/2")) },
     // roleIds is not an editable field — it has its own endpoint, its own
     // invariants and its own audit. Laravel's validated() drops it silently,
     // so the mock must too, or a screen could be built on a write that does
@@ -391,7 +415,10 @@ test("patching only the end still compares against the stored start", async () =
 
   const response = await fetch(`/api/v1/events/${target?.id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(await ifMatchFor(`/api/v1/events/${target?.id}`)),
+    },
     body: JSON.stringify({ endsAt: new Date(Date.now() - 86_400_000).toISOString() }),
   });
 
@@ -436,7 +463,10 @@ test("deleting an event takes it off the planning", async () => {
   const planning = (await (await fetch("/api/v1/events")).json()) as { id: number }[];
   const target = planning[0];
 
-  const response = await fetch(`/api/v1/events/${target?.id}`, { method: "DELETE" });
+  const response = await fetch(`/api/v1/events/${target?.id}`, {
+    method: "DELETE",
+    headers: await ifMatchFor(`/api/v1/events/${target?.id}`),
+  });
   expect(response.status).toBe(200);
 
   const after = (await (await fetch("/api/v1/events")).json()) as { id: number }[];

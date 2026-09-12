@@ -159,6 +159,61 @@ test("assigns a role to somebody who already exists", async () => {
   expect(await within(rowFor("Player")).findByText("Comité")).toBeInTheDocument();
 });
 
+test("changing a name and a role in one save does both", async () => {
+  // THE CHAINED TAG. Roles travel on their own endpoint, so this save is two
+  // conditional writes: the PATCH moves the member's tag, and the roles call
+  // that follows has to quote the tag the PATCH handed BACK. Sending the one
+  // the form opened with answers 412 and the role change is silently lost —
+  // silently, because the name was already saved by then.
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+
+  const lastName = await screen.findByLabelText("Nom", { exact: true });
+  await userEvent.clear(lastName);
+  await userEvent.type(lastName, "Joueuse");
+  await userEvent.click(screen.getByLabelText("Comité"));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  const row = await table().findByText("Joueuse");
+  const changed = row.closest("[data-member]");
+  expect(changed).not.toBeNull();
+  expect(within(changed as HTMLElement).getByText("Comité")).toBeInTheDocument();
+});
+
+test("refuses to save over a change somebody else made while the form was open", async () => {
+  // THE WHOLE POINT OF A4, at the screen. Two administrators have the roster
+  // open, one corrects a register while the other is typing a name, and before
+  // this the second save discarded the first silently.
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+  await screen.findByLabelText("Prénom", { exact: true });
+
+  // Somebody else, through the same API. The mocked backend hands out a new
+  // tag for the changed member, so the one this form is holding is now stale.
+  const read = await fetch("/api/v1/members/2");
+  await fetch("/api/v1/members/2", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "If-Match": read.headers.get("ETag") ?? "",
+    },
+    body: JSON.stringify({ committeeTitle: "Caissière" }),
+  });
+
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  // In French, from the `if_match_failed` token — and the form stays open, so
+  // the typing is not thrown away along with the save.
+  expect(await screen.findByText(/modifié cet élément entre-temps/i)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
+});
+
 test("names the person and the consequence before deleting them", async () => {
   await renderRoster();
 
