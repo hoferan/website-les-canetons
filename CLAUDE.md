@@ -26,8 +26,10 @@ Two applications, one origin, one repository:
 
 There is no PHP outside `api/`. The old front end — a front-controller app in
 `app/` with server-rendered pages, Bulma, Twig and a per-page Vite build — was
-deleted in the SPA cutover; it is on the `archive/php-laravel-stack` branch if
-you need to read it.
+deleted in the SPA cutover. Its history is on the `archive/spa-cutover-history`
+branch, kept because that pull request was squash-merged and the branch is the
+only copy of its commits; read a page with
+`git show dcd7862^:app/pages/<page>.php`.
 
 ### Tailwind 4 is CSS-first
 

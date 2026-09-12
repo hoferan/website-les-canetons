@@ -78,9 +78,10 @@ prod-*.sql
 # an instruction to ATTACH rather than start, which is right on every machine.
 #
 # A repo .gitignore outranks core.excludesFile, so this negation is what makes
-# it trackable. Without it every new git worktree starts with no launch config,
-# and whatever writes one guesses `npm run dev` — which here is `docker compose
-# up`, not a dev server.
+# it trackable. Without it every fresh clone starts with no launch config, and
+# whatever writes one guesses `npm run dev` — which here is `docker compose up`,
+# not a dev server, and starting it a second time fights the first for five
+# ports.
 !.claude/launch.json
 
 # OS / editor junk

@@ -190,41 +190,34 @@ Guard with `$request->hasSession()` wherever a session is touched outside the
 `Origin` matching `SANCTUM_STATEFUL_DOMAINS`, because that is what the SPA does,
 so the failing path is the one nothing internal drives.
 
-## :5173 does not serve the checkout you are editing
+## :5173 serves the checkout the stack was started from
 
 The compose `assets` service publishes a Vite dev server on 5173, and it mounts
-**the repo root compose was started from** — so from a git worktree it serves
-the OTHER tree's `web/`. Everything renders, nothing you changed is there, and
-the natural conclusion is that the build is broken rather than that you are
-looking at a different checkout.
-
-So each checkout starts a dev server of its own. `.claude/launch.json` is
-tracked (see `.gitignore`, which negates a global ignore to keep it) and says:
+**the repo root compose was started from**. Work in that checkout and it is
+exactly right — it is the dev server, and `.claude/launch.json` attaches to it:
 
 ```json
-{ "name": "dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev:web"],
-  "port": 5173, "autoPort": true }
+{ "name": "dev", "url": "http://localhost:5173", "port": 5173, "autoPort": false }
 ```
 
-`autoPort` matters because 5173 is normally taken. `vite.config.ts` reads
-`process.env.PORT` for the same reason — Vite does not on its own, so without
-that line an assigned port is silently ignored and the server lands on 5173 or
-drifts to 5174, which belongs to Playwright.
+From a git worktree it is a trap, because it serves the OTHER tree's `web/`:
+everything renders, nothing you changed is there, and the natural conclusion is
+a broken build rather than the wrong checkout. **That is the main reason this
+project stopped using worktrees** (2026-09-12). Only one stack can exist — five
+published ports — and it can only mount one tree, so a worktree needs its own
+Vite, a Sanctum wildcard and a fast-forward every time the stack should catch
+up. Work in `C:\Workspace\website-les-canetons` on `rebuild` instead.
 
-Two things to know before it works:
+If you do need a second checkout live at once, `vite.config.ts` honours
+`process.env.PORT` (Vite does not on its own) and `SANCTUM_STATEFUL_DOMAINS`
+accepts any localhost port, so `PORT=5180 npx vite` gives that tree a working
+dev server. Point `VITE_API_PROXY_TARGET` at a stack of its own if the branch
+also changes `api/`; otherwise it proxies to whatever :8090 is running.
 
-- `npm install` in the worktree first. `node_modules/` is not tracked, so a
-  fresh worktree has none and `npm run dev:web` cannot start.
-- **`npm run dev` is not a dev server.** It is
-  `build-overlays.mjs docker && docker compose up -d --build`. Run from a
-  worktree it starts a SECOND compose project — a different directory means a
-  different project name — racing the first for 8090, 5173, 3307, 8025 and
-  8091.
-
-What a per-worktree dev server does NOT give you is a per-worktree API. It
-proxies `/api` and `/sanctum` to :8090, which is the stack, which mounts the
-main checkout's `api/`. Fine while a branch only changes `web/`; wrong the
-moment it changes a controller. `VITE_API_PROXY_TARGET` is the escape hatch.
+**`npm run dev` is not a dev server.** It is
+`build-overlays.mjs docker && docker compose up -d --build`. Run from a second
+directory it starts a SECOND compose project — a different directory means a
+different project name — racing the first for 8090, 5173, 3307, 8025 and 8091.
 
 ## The dev stack is stateful on ANY localhost port, deliberately
 
