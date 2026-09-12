@@ -213,7 +213,7 @@ check('the token-gated migrate route works end to end', async () => {
     : `answered, but not by Laravel's MigrateController: ${JSON.stringify(json)}`;
 });
 
-check('POST /api/contact is Laravel, answering in the {error, code, fields[]} contract', async () => {
+check('POST /api/contact is Laravel, answering in the problem-document contract', async () => {
   // This replaced a check that asserted "the old app's /api/* endpoints are
   // shadowed by Laravel", discriminating the two apps by STATUS: the old app
   // 400 (its validator rejecting the empty body), Laravel 404 (no route). Both
@@ -230,28 +230,58 @@ check('POST /api/contact is Laravel, answering in the {error, code, fields[]} co
   // MUTATING public endpoint — the one class of route where the dispatch is
   // most load-bearing and a 404 the most damaging.
   //
-  // Safe to fire repeatedly: Laravel validates the request before
-  // ContactController runs, so an empty body never reaches the
-  // `contact_messages` insert. Should the rules ever be relaxed to accept an
+  // IT NOW HAS TO GET PAST PublicWriteGuard, added 2026-09-12. R3 put a
+  // honeypot and a submit-timing floor in front of both anonymous write
+  // endpoints, so a bare POST answers 422 `spam_suspected` and never reaches
+  // validation — this check had been asserting a 400 it could no longer be
+  // given. It primes a real token and waits the floor out rather than simply
+  // asserting the 422, because what is worth smoking here is the ERROR CONTRACT
+  // over the real stack: api/tests/ covers the guard thoroughly and cannot
+  // cover Apache and FastCGI at all.
+  //
+  // Safe to fire repeatedly: the body carries ONLY the honeypot, so Laravel's
+  // validation still rejects it before ContactController runs and no row ever
+  // reaches `contact_messages`. Should the rules ever be relaxed to accept an
   // empty body, this would start writing rows to the dev database on every
   // smoke run — change the check, not the guard.
-  const res = await request('/api/v1/contact', { method: 'POST', headers: { Accept: 'application/json' } });
+  const tokenRes = await request('/api/v1/form-token', { headers: { Accept: 'application/json' } });
+  if (tokenRes.status !== 200) return `could not mint a form token: ${await detail(tokenRes)}`;
+  const { token } = await tokenRes.json().catch(() => ({}));
+  if (!token) return 'GET /api/v1/form-token answered 200 without a token';
+
+  // App\Support\FormToken refuses a stamp younger than two seconds.
+  await new Promise((resolve) => setTimeout(resolve, 2100));
+
+  const res = await request('/api/v1/contact', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-Form-Token': token,
+    },
+    // PublicWriteGuard wants the honeypot PRESENT and empty; omitting it is
+    // exactly the bot signature it exists to catch.
+    body: JSON.stringify({ website: '' }),
+  });
   if (res.status === 404) {
     return `got 404 — /api/* is not reaching Laravel at all (the dispatch block in the template lost to the SPA fallback): ${await detail(res)}`;
   }
-  if (res.status !== 400) return `expected Laravel's 400 for an empty body, got ${await detail(res)}`;
-  const notLaravel = mustBeLaravel(res);
-  if (notLaravel) return notLaravel;
+  if (res.status === 422) {
+    return `PublicWriteGuard refused this submission, so the contract was never exercised: ${await detail(res)}`;
+  }
+  if (res.status !== 400) return `expected Laravel's 400 for a body with no fields, got ${await detail(res)}`;
+
   const body = await res.json().catch(() => ({}));
   if (body.code !== 'validation_failed') {
-    return `expected code "validation_failed" (App\\Exceptions\\ApiError), got ${JSON.stringify(body)}`;
+    return `expected code "validation_failed" (App\Exceptions\ApiError), got ${JSON.stringify(body)}`;
   }
-  // The per-field array is the half of the contract i18n.js needs to render a
-  // message next to each input; a bare {error, code} would satisfy the line
-  // above but leave the form unable to say WHICH field is wrong.
-  return Array.isArray(body.fields) && body.fields.length > 0
+  // The per-field array is the half of the contract web/src/i18n/ needs to
+  // render a message next to each input; a bare {title, code} would satisfy the
+  // line above but leave the form unable to say WHICH field is wrong. It is
+  // `errors` on the wire — http.ts renames it to `fields` on the client side.
+  return Array.isArray(body.errors) && body.errors.length > 0
     ? null
-    : `expected a non-empty fields[] alongside the code, got ${JSON.stringify(body)}`;
+    : `expected a non-empty errors[] alongside the code, got ${JSON.stringify(body)}`;
 });
 
 check('hashed bundles are served with the immutable cache policy', async () => {
