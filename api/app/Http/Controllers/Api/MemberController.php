@@ -9,6 +9,7 @@ use App\Http\Resources\MemberResource;
 use App\Models\Member;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
+use App\Support\Emits;
 use App\Support\GeneratedPassword;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Group;
@@ -57,6 +58,33 @@ class MemberController extends Controller
             ->get();
 
         return MemberResource::collection($roster);
+    }
+
+    /**
+     * Read one person.
+     *
+     * Requires `members.manage`. The same fields the roster list carries, for
+     * a single member.
+     *
+     * Read this before editing somebody, and quote the `ETag` it returns in
+     * the `If-Match` header of the write. The list hands out no tag — one tag
+     * cannot validate forty-five rows — so a form filled from the list and
+     * submitted without a read is the lost update this API refuses.
+     */
+    public function show(Member $member): MemberResource
+    {
+        // Loaded explicitly for the same reason index() eager-loads: the
+        // Resource publishes sectionName and roleIds, and an unloaded relation
+        // would cost two extra queries here.
+        //
+        // THE ASSIGNMENT BELOW IS LOAD-BEARING, exactly as it is in index():
+        // Scramble publishes the comment block preceding a return as that
+        // operation's 200 response description, walking back past blank lines
+        // to find it. This paragraph shipped to /api/docs once already, and
+        // DocsTest caught it because it named a class.
+        $person = $member->load(['section', 'roles']);
+
+        return new MemberResource($person);
     }
 
     /**
@@ -206,6 +234,7 @@ class MemberController extends Controller
      * last-administrator refusal is the one returned.
      */
     #[Response(200, 'Removed. `sessionsEnded` counts the sessions revoked in the same transaction.')]
+    #[Emits('cannot_remove_last_administrator', 'cannot_delete_self')]
     public function destroy(Request $request, Member $member): JsonResponse
     {
         // Existence is the state (design D3): there is no `active` flag and no

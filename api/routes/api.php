@@ -46,7 +46,14 @@ Route::middleware('throttle:public-write')->group(function () {
 // registration sends mail INLINE to an address the caller chose, through the
 // band's own authenticated mailbox — an open relay whose cost is a
 // blacklisted sending domain, which the committee cannot repair.
-Route::middleware(['throttle:public-write', 'public-write'])->group(function () {
+// IDEMPOTENT AS WELL, and `idempotent` comes LAST of the three on purpose. A
+// replay still costs a valid form token and a slot in the rate limit, so a
+// stored key cannot be used to walk past the anti-abuse guard; a genuine retry
+// arrives seconds later carrying the same token, which stays valid for two
+// hours. The key is REQUIRED on both — a guest tapping Book twice on a stalled
+// connection is the failure, and a protection that only covers the clients who
+// remembered to opt in protects the ones that did not need it.
+Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->group(function () {
     Route::post('/contact', ContactController::class);
 
     // Public event registration — the souper, generalised (D9). Anonymous
@@ -93,13 +100,23 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // list somewhere else.
         Route::get('/members', [MemberController::class, 'index']);
 
+        // ONE PERSON, and it exists because of the conditional writes below.
+        // The roster list hands out no tag — one tag cannot validate forty-five
+        // members — so editing somebody starts by reading them, which is also
+        // the right concurrency window: "while this form was open". Rendering
+        // the row from the list and writing without a read would be the lost
+        // update again, one screen further back.
+        Route::get('/members/{member}', [MemberController::class, 'show'])
+            ->middleware('etag:member');
+
         // Creating a person creates an ACCOUNT: every member has one, so this
         // mints a generated password and returns it once. No re-authentication
         // on either write — neither is destructive, and a password prompt on
         // every corrected typo trains the reflex the destructive dialogs rely
         // on.
         Route::post('/members', [MemberController::class, 'store']);
-        Route::patch('/members/{member}', [MemberController::class, 'update']);
+        Route::patch('/members/{member}', [MemberController::class, 'update'])
+            ->middleware('etag:member');
 
         // THE DESTRUCTIVE TWO. Both check the lockout invariants before
         // writing, and both end the target's sessions inside the same
@@ -119,8 +136,19 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // Replacing roles is PUT, not PATCH: roleIds is the complete set, and
         // an "add this one" API cannot express removal — which is the half the
         // invariants exist for.
-        Route::put('/members/{member}/roles', MemberRoleController::class);
-        Route::delete('/members/{member}', [MemberController::class, 'destroy']);
+        //
+        // BOTH ARE CONDITIONAL (`etag:member`), and these two are why the
+        // machinery was worth building. They are the writes that change WHO
+        // MAY DO WHAT, and a lost update here is not a wrong start time — it
+        // is one administrator's grant silently discarded by another's, on a
+        // host with no shell to notice it from. The member facet is computed
+        // over the rendered MemberResource, `roleIds` included, precisely so a
+        // role change moves the tag: `members.updated_at` does not, because
+        // roles live in a pivot table.
+        Route::put('/members/{member}/roles', MemberRoleController::class)
+            ->middleware('etag:member');
+        Route::delete('/members/{member}', [MemberController::class, 'destroy'])
+            ->middleware('etag:member');
 
         // Issuing a credential and resetting one are the same operation (§4.4).
         Route::post('/members/{member}/password', MemberPasswordController::class);
@@ -132,7 +160,14 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // auth:sanctum alone (inherited from the group) is enough to keep it
     // members-only.
     Route::get('/events', [EventController::class, 'index']);
-    Route::get('/events/{event}', [EventController::class, 'show']);
+
+    // CARRIES `etag:event`, and that is what makes the two conditional writes
+    // below usable at all: this is where a client gets the tag it has to quote
+    // back. The list does not hand one out — one tag cannot validate thirty
+    // events — so an edit starts by reading the one event it is about, which
+    // is also the correct concurrency window: "while this form was open".
+    Route::get('/events/{event}', [EventController::class, 'show'])
+        ->middleware('etag:event');
 
     // Writing the planning IS administration, unlike reading it. Nested
     // inside the auth:sanctum group above so an anonymous caller gets 401
@@ -151,13 +186,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // stores no rule and no series_id, so there is nothing here to GET.
         Route::post('/events/series', EventSeriesController::class);
 
-        Route::patch('/events/{event}', [EventController::class, 'update']);
+        Route::patch('/events/{event}', [EventController::class, 'update'])
+            ->middleware('etag:event');
 
         // No re-authentication on the delete, unlike the roster's — the call
         // MemberController::destroy() documents (decision B7), and an event
         // carries none of a member's account state. Protection against a
         // mis-aimed tap is the confirmation in the UI.
-        Route::delete('/events/{event}', [EventController::class, 'destroy']);
+        Route::delete('/events/{event}', [EventController::class, 'destroy'])
+            ->middleware('etag:event');
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a
@@ -211,8 +248,17 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // reading the list: guests get no self-service (G2), so this is the
     // committee acting on somebody's personal data.
     Route::middleware('permission:registrations.manage')->group(function () {
-        Route::patch('/registrations/{registration}', [RegistrationController::class, 'update']);
-        Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy']);
+        // The read that hands out the tag the two writes below require. Gated
+        // with them rather than with `registrations.view`, because it exists
+        // for the people who amend a booking, not for the people who count
+        // them — and the guest list already shows the committee everything.
+        Route::get('/registrations/{registration}', [RegistrationController::class, 'show'])
+            ->middleware('etag:registration');
+
+        Route::patch('/registrations/{registration}', [RegistrationController::class, 'update'])
+            ->middleware('etag:registration');
+        Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy'])
+            ->middleware('etag:registration');
     });
 
     // What an event OFFERS is part of the event, so this is events.manage
@@ -220,6 +266,16 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // date. PUT and replace-all, matching /members/{member}/roles: an "add
     // one" API cannot express removal.
     Route::middleware('permission:events.manage')->group(function () {
-        Route::put('/events/{event}/registration-options', RegistrationOptionController::class);
+        // ITS OWN FACET, not the event's. The options are absent from
+        // EventResource, so conditioning this write on `etag:event` would both
+        // miss every option change — the tag would not move, and a lost update
+        // would go straight through — and refuse a perfectly good options edit
+        // because somebody corrected the event's dress code. `etag:event.options`
+        // is computed over the option list itself.
+        Route::get('/events/{event}/registration-options', [RegistrationOptionController::class, 'index'])
+            ->middleware('etag:event.options');
+
+        Route::put('/events/{event}/registration-options', [RegistrationOptionController::class, 'replace'])
+            ->middleware('etag:event.options');
     });
 });

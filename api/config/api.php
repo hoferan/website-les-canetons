@@ -46,4 +46,28 @@ return [
 
     ],
 
+    /*
+     * Replayed public submissions. App\Http\Middleware\IdempotentWrite.
+     *
+     * NOT env()-DRIVEN, unlike the block above, and for the same reason it
+     * must not be: the deploy pre-flight refuses on extra keys as well as
+     * missing ones, so an optional key in api/.env.example would refuse every
+     * server's next deploy. Neither of these is a per-server decision anyway.
+     */
+    'idempotency' => [
+
+        // How long a stored answer can be replayed. The draft
+        // (draft-ietf-httpapi-idempotency-key-header) suggests a server state
+        // its retention; ours is a day, which covers a guest who closed the
+        // page on a stalled request and came back to it.
+        'retention_hours' => 24,
+
+        // [chances, out of] that a write also deletes what has expired. This
+        // host has no scheduler, so the sweep rides on traffic the way
+        // Laravel's session garbage collection does. A test sets [100, 100] to
+        // make it certain.
+        'lottery' => [2, 100],
+
+    ],
+
 ];

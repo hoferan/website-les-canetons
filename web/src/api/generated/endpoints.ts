@@ -100,9 +100,11 @@
  * | `401` | No session. Log in. |
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
- * | `409` | Allowed, but it conflicts with the current state. |
+ * | `409` | Allowed, but it conflicts with the current state, or with a submission you already made. |
+ * | `412` | Your `If-Match` names a state this thing is no longer in. |
  * | `419` | The session or CSRF token expired. Prime the cookie and retry. |
  * | `422` | The submission looks automated. See *Public forms*. |
+ * | `428` | The write needs an `If-Match`. See *Conditional writes*. |
  * | `429` | Rate limited. |
  * | `503` | The service is temporarily refusing to serve. |
  *
@@ -129,6 +131,61 @@
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
  * - Collections are returned as bare JSON arrays, with no `data` envelope.
  *
+ * ## Conditional writes
+ *
+ * **Every write that replaces or removes something must prove it is working from
+ * the current state.** Read the thing first, keep the `ETag` the read returns, and
+ * send it back as `If-Match`:
+ *
+ * ```js
+ * const read = await fetch("/api/v1/events/42", { credentials: "include" });
+ * const etag = read.headers.get("ETag");
+ *
+ * await fetch("/api/v1/events/42", {
+ *   method: "PATCH",
+ *   credentials: "include",
+ *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf, "If-Match": etag },
+ *   body: JSON.stringify({ title: "Cortège" }),
+ * });
+ * ```
+ *
+ * No header answers `428 if_match_required`. A header naming a state the thing is
+ * no longer in answers `412 if_match_failed`, and **the 412 does not tell you the
+ * current tag** — retrying blindly with a fresh one would land exactly the
+ * overwrite you were stopped from making. Read it again and decide again.
+ *
+ * Which writes, and where their tag comes from:
+ *
+ * | Write | Read for its `ETag` |
+ * | --- | --- |
+ * | `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |
+ * | `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |
+ * | `PUT /members/{member}/roles` | `GET /members/{member}` |
+ * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
+ * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ *
+ * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * no read in between. A `DELETE` returns none: there is nothing left to tag.
+ *
+ * **Collections hand out no tag**, deliberately — one tag cannot validate
+ * forty-five members, and a list-wide tag would refuse every write whenever
+ * anybody changed anything. That is why each conditional write has a
+ * single-thing read beside it.
+ *
+ * The tag is over the thing's own state. An event's tag ignores `myAttendance`,
+ * which is yours alone, so answering an event does not invalidate a pending edit
+ * of it; an event's options are tagged separately from the event, so correcting a
+ * dress code does not refuse an options edit and adding an option does.
+ *
+ * **Attendance is exempt.** `PUT` and `DELETE` on
+ * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
+ * writer of their own answer, the whole answer is one value so there is no half of
+ * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * Tags are strong validators. `If-Match: *` asserts only that the thing still
+ * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
+ * nothing here is cacheable.
+ *
  * ## Public forms
  *
  * `POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
@@ -141,6 +198,55 @@
  *
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
+ *
+ * Both also require an **`Idempotency-Key`** header, so that resending a
+ * submission after a timeout cannot book or send it twice. See *Sending a form
+ * only once*.
+ *
+ * ## Sending a form only once
+ *
+ * A guest on a phone at the hall taps Book, the connection stalls, and they tap
+ * again. Nothing in the second request distinguishes it from a second guest, so
+ * the client has to say, and the `Idempotency-Key` header is how
+ * ([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).
+ *
+ * **Generate a key when the form is rendered** and send the same one for every
+ * attempt at that submission. A fresh submission needs a fresh key.
+ *
+ * ```js
+ * const key = crypto.randomUUID();
+ *
+ * await fetch("/api/v1/contact", {
+ *   method: "POST",
+ *   headers: {
+ *     "Content-Type": "application/json",
+ *     "X-Form-Token": formToken,
+ *     "Idempotency-Key": key,
+ *   },
+ *   body: JSON.stringify({ ...fields, website: "" }),
+ * });
+ * ```
+ *
+ * The first request runs and its answer is stored under the key. A second request
+ * with the same key and the same body gets that answer back, byte for byte and
+ * with the same status, creates nothing, and carries
+ * `Idempotency-Replayed: true` so you can tell an echo from a fresh acceptance.
+ *
+ * The key must be 16 to 255 printable ASCII characters. It is scoped to the
+ * endpoint, so one key can be used once on `/contact` and once on a booking. It
+ * is **not** scoped to a caller, because these endpoints are anonymous, which is
+ * why a short key is refused: a collision with somebody else's key answers
+ * `409 idempotency_key_reuse` rather than handing you their booking.
+ *
+ * | Answer | Means |
+ * | --- | --- |
+ * | `400 idempotency_key_required` | No header. |
+ * | `400 idempotency_key_invalid` | Too short, too long, or not printable ASCII. |
+ * | `409 idempotency_key_reuse` | The key belongs to a different body, or to an attempt still running. |
+ *
+ * A request that **fails** releases its key: nothing was written, so nothing is
+ * being retried, and a guest who mistyped their address can correct it and send
+ * again with the same key. Stored answers are kept for 24 hours.
  *
  * OpenAPI spec version: 1.0.0
  */
@@ -162,10 +268,15 @@ import type {
 
 import type {
   AccountPassword200,
+  AccountPassword403,
+  AccountPassword429,
   AccountPasswordRequest,
   AttendanceDestroy200,
+  AttendanceDestroy409,
   AttendanceResource,
+  AttendanceUpdate403,
   AuthLogin200,
+  AuthLogin400,
   AuthLogin401,
   AuthLogin429,
   AuthLoginBody,
@@ -175,23 +286,33 @@ import type {
   ConfigShow200,
   ContactRequest,
   ContactStore200,
+  ContactStore400,
+  ContactStore409,
   EventDestroy200,
   EventIndexParams,
   EventResource,
   FormTokenShow200,
   MemberAttendanceDestroy200,
+  MemberAttendanceDestroy409,
+  MemberAttendanceUpdate403,
+  MemberAttendanceUpdate409,
   MemberDestroy200,
+  MemberDestroy409,
   MemberPasswordReset200,
   MemberResource,
   MemberRoleReplace200,
+  MemberRoleReplace409,
   MemberStore201,
   Problem400Response,
   Problem401Response,
   Problem403Response,
   Problem404Response,
+  Problem412Response,
   Problem419Response,
   Problem422Response,
+  Problem428Response,
   Problem429Response,
+  Problem503Response,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationDestroy200,
@@ -201,6 +322,8 @@ import type {
   RegistrationOptionReplace409,
   RegistrationOptionResource,
   RegistrationResource,
+  RegistrationStore400,
+  RegistrationStore409,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
   RoleResource,
@@ -239,7 +362,7 @@ export type authLoginResponse200 = {
 };
 
 export type authLoginResponse400 = {
-  data: Problem400Response;
+  data: AuthLogin400;
   status: 400;
 };
 
@@ -258,11 +381,20 @@ export type authLoginResponse429 = {
   status: 429;
 };
 
+export type authLoginResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type authLoginResponseSuccess = authLoginResponse200 & {
   headers: Headers;
 };
 export type authLoginResponseError = (
-  authLoginResponse400 | authLoginResponse401 | authLoginResponse419 | authLoginResponse429
+  | authLoginResponse400
+  | authLoginResponse401
+  | authLoginResponse419
+  | authLoginResponse429
+  | authLoginResponse503
 ) & {
   headers: Headers;
 };
@@ -323,7 +455,7 @@ export const authLogin = async (
 export const getAuthLoginMutationKey = () => ["authLogin"] as const;
 
 export const getAuthLoginMutationOptions = <
-  TError = Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429,
+  TError = AuthLogin400 | AuthLogin401 | Problem419Response | AuthLogin429 | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -361,14 +493,14 @@ export const getAuthLoginMutationOptions = <
 export type AuthLoginMutationResult = NonNullable<Awaited<ReturnType<typeof authLogin>>>;
 export type AuthLoginMutationBody = AuthLoginBody;
 export type AuthLoginMutationError =
-  Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429;
+  AuthLogin400 | AuthLogin401 | Problem419Response | AuthLogin429 | Problem503Response;
 export type AuthLoginMutationVariables = { data: AuthLoginBody };
 
 /**
  * @summary Log in
  */
 export const useAuthLogin = <
-  TError = Problem400Response | AuthLogin401 | Problem419Response | AuthLogin429,
+  TError = AuthLogin400 | AuthLogin401 | Problem419Response | AuthLogin429 | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -405,10 +537,17 @@ export type authLogoutResponse419 = {
   status: 419;
 };
 
+export type authLogoutResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type authLogoutResponseSuccess = authLogoutResponse200 & {
   headers: Headers;
 };
-export type authLogoutResponseError = (authLogoutResponse401 | authLogoutResponse419) & {
+export type authLogoutResponseError = (
+  authLogoutResponse401 | authLogoutResponse419 | authLogoutResponse503
+) & {
   headers: Headers;
 };
 
@@ -438,7 +577,7 @@ export const authLogout = async (
 export const getAuthLogoutMutationKey = () => ["authLogout"] as const;
 
 export const getAuthLogoutMutationOptions = <
-  TError = Problem401Response | Problem419Response,
+  TError = Problem401Response | Problem419Response | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError, void, TContext>;
@@ -460,12 +599,15 @@ export const getAuthLogoutMutationOptions = <
 
 export type AuthLogoutMutationResult = NonNullable<Awaited<ReturnType<typeof authLogout>>>;
 
-export type AuthLogoutMutationError = Problem401Response | Problem419Response;
+export type AuthLogoutMutationError = Problem401Response | Problem419Response | Problem503Response;
 
 /**
  * @summary Log out
  */
-export const useAuthLogout = <TError = Problem401Response | Problem419Response, TContext = unknown>(
+export const useAuthLogout = <
+  TError = Problem401Response | Problem419Response | Problem503Response,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<Awaited<ReturnType<typeof authLogout>>, TError, void, TContext>;
     request?: SecondParameter<typeof customFetch>;
@@ -485,10 +627,15 @@ export type authMeResponse401 = {
   status: 401;
 };
 
+export type authMeResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type authMeResponseSuccess = authMeResponse200 & {
   headers: Headers;
 };
-export type authMeResponseError = authMeResponse401 & {
+export type authMeResponseError = (authMeResponse401 | authMeResponse503) & {
   headers: Headers;
 };
 
@@ -527,7 +674,7 @@ export const getAuthMeQueryKey = () => {
 
 export const getAuthMeQueryOptions = <
   TData = Awaited<ReturnType<typeof authMe>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -547,9 +694,12 @@ export const getAuthMeQueryOptions = <
 };
 
 export type AuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof authMe>>>;
-export type AuthMeQueryError = Problem401Response;
+export type AuthMeQueryError = Problem401Response | Problem503Response;
 
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
+  TError = Problem401Response | Problem503Response,
+>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
@@ -564,7 +714,10 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = P
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
+  TError = Problem401Response | Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>> &
       Pick<
@@ -579,7 +732,10 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = P
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
+  TError = Problem401Response | Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -590,7 +746,10 @@ export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = P
  * @summary Read the current member and what they may do
  */
 
-export function useAuthMe<TData = Awaited<ReturnType<typeof authMe>>, TError = Problem401Response>(
+export function useAuthMe<
+  TData = Awaited<ReturnType<typeof authMe>>,
+  TError = Problem401Response | Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof authMe>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -621,16 +780,36 @@ export type accountPasswordResponse401 = {
   status: 401;
 };
 
+export type accountPasswordResponse403 = {
+  data: AccountPassword403;
+  status: 403;
+};
+
 export type accountPasswordResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type accountPasswordResponse429 = {
+  data: AccountPassword429;
+  status: 429;
+};
+
+export type accountPasswordResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type accountPasswordResponseSuccess = accountPasswordResponse200 & {
   headers: Headers;
 };
 export type accountPasswordResponseError = (
-  accountPasswordResponse400 | accountPasswordResponse401 | accountPasswordResponse419
+  | accountPasswordResponse400
+  | accountPasswordResponse401
+  | accountPasswordResponse403
+  | accountPasswordResponse419
+  | accountPasswordResponse429
+  | accountPasswordResponse503
 ) & {
   headers: Headers;
 };
@@ -695,7 +874,13 @@ export const accountPassword = async (
 export const getAccountPasswordMutationKey = () => ["accountPassword"] as const;
 
 export const getAccountPasswordMutationOptions = <
-  TError = Problem400Response | Problem401Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | AccountPassword403
+    | Problem419Response
+    | AccountPassword429
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -735,14 +920,25 @@ export type AccountPasswordMutationResult = NonNullable<
 >;
 export type AccountPasswordMutationBody = AccountPasswordRequest;
 export type AccountPasswordMutationError =
-  Problem400Response | Problem401Response | Problem419Response;
+  | Problem400Response
+  | Problem401Response
+  | AccountPassword403
+  | Problem419Response
+  | AccountPassword429
+  | Problem503Response;
 export type AccountPasswordMutationVariables = { data: AccountPasswordRequest };
 
 /**
  * @summary Change your own password
  */
 export const useAccountPassword = <
-  TError = Problem400Response | Problem401Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | AccountPassword403
+    | Problem419Response
+    | AccountPassword429
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -774,10 +970,15 @@ export type eventIndexResponse401 = {
   status: 401;
 };
 
+export type eventIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type eventIndexResponseSuccess = eventIndexResponse200 & {
   headers: Headers;
 };
-export type eventIndexResponseError = eventIndexResponse401 & {
+export type eventIndexResponseError = (eventIndexResponse401 | eventIndexResponse503) & {
   headers: Headers;
 };
 
@@ -827,7 +1028,7 @@ export const getEventIndexQueryKey = (params?: EventIndexParams) => {
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -850,11 +1051,11 @@ export const getEventIndexQueryOptions = <
 };
 
 export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
-export type EventIndexQueryError = Problem401Response;
+export type EventIndexQueryError = Problem401Response | Problem503Response;
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(
   params: undefined | EventIndexParams,
   options: {
@@ -873,7 +1074,7 @@ export function useEventIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -892,7 +1093,7 @@ export function useEventIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -907,7 +1108,7 @@ export function useEventIndex<
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response,
+  TError = Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -950,11 +1151,20 @@ export type eventStoreResponse419 = {
   status: 419;
 };
 
+export type eventStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type eventStoreResponseSuccess = eventStoreResponse201 & {
   headers: Headers;
 };
 export type eventStoreResponseError = (
-  eventStoreResponse400 | eventStoreResponse401 | eventStoreResponse403 | eventStoreResponse419
+  | eventStoreResponse400
+  | eventStoreResponse401
+  | eventStoreResponse403
+  | eventStoreResponse419
+  | eventStoreResponse503
 ) & {
   headers: Headers;
 };
@@ -1015,7 +1225,12 @@ export const eventStore = async (
 export const getEventStoreMutationKey = () => ["eventStore"] as const;
 
 export const getEventStoreMutationOptions = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1053,14 +1268,23 @@ export const getEventStoreMutationOptions = <
 export type EventStoreMutationResult = NonNullable<Awaited<ReturnType<typeof eventStore>>>;
 export type EventStoreMutationBody = StoreEventRequest;
 export type EventStoreMutationError =
-  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
 export type EventStoreMutationVariables = { data: StoreEventRequest };
 
 /**
  * @summary Put a rehearsal or a gig on the planning
  */
 export const useEventStore = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -1097,10 +1321,17 @@ export type eventShowResponse404 = {
   status: 404;
 };
 
+export type eventShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type eventShowResponseSuccess = eventShowResponse200 & {
   headers: Headers;
 };
-export type eventShowResponseError = (eventShowResponse401 | eventShowResponse404) & {
+export type eventShowResponseError = (
+  eventShowResponse401 | eventShowResponse404 | eventShowResponse503
+) & {
   headers: Headers;
 };
 
@@ -1134,7 +1365,7 @@ export const getEventShowQueryKey = (event: number) => {
 
 export const getEventShowQueryOptions = <
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response,
+  TError = Problem401Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1160,11 +1391,11 @@ export const getEventShowQueryOptions = <
 };
 
 export type EventShowQueryResult = NonNullable<Awaited<ReturnType<typeof eventShow>>>;
-export type EventShowQueryError = Problem401Response | Problem404Response;
+export type EventShowQueryError = Problem401Response | Problem404Response | Problem503Response;
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response,
+  TError = Problem401Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options: {
@@ -1183,7 +1414,7 @@ export function useEventShow<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response,
+  TError = Problem401Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1202,7 +1433,7 @@ export function useEventShow<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response,
+  TError = Problem401Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1217,7 +1448,7 @@ export function useEventShow<
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response,
+  TError = Problem401Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1260,9 +1491,24 @@ export type eventUpdateResponse404 = {
   status: 404;
 };
 
+export type eventUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type eventUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type eventUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type eventUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type eventUpdateResponseSuccess = eventUpdateResponse200 & {
@@ -1273,7 +1519,10 @@ export type eventUpdateResponseError = (
   | eventUpdateResponse401
   | eventUpdateResponse403
   | eventUpdateResponse404
+  | eventUpdateResponse412
   | eventUpdateResponse419
+  | eventUpdateResponse428
+  | eventUpdateResponse503
 ) & {
   headers: Headers;
 };
@@ -1337,7 +1586,10 @@ export const getEventUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1379,7 +1631,10 @@ export type EventUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type EventUpdateMutationVariables = { event: number; data?: UpdateEventRequest };
 
 /**
@@ -1391,7 +1646,10 @@ export const useEventUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -1433,9 +1691,24 @@ export type eventDestroyResponse404 = {
   status: 404;
 };
 
+export type eventDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type eventDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type eventDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type eventDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type eventDestroyResponseSuccess = eventDestroyResponse200 & {
@@ -1445,7 +1718,10 @@ export type eventDestroyResponseError = (
   | eventDestroyResponse401
   | eventDestroyResponse403
   | eventDestroyResponse404
+  | eventDestroyResponse412
   | eventDestroyResponse419
+  | eventDestroyResponse428
+  | eventDestroyResponse503
 ) & {
   headers: Headers;
 };
@@ -1479,7 +1755,14 @@ export const eventDestroy = async (
 export const getEventDestroyMutationKey = () => ["eventDestroy"] as const;
 
 export const getEventDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1517,14 +1800,27 @@ export const getEventDestroyMutationOptions = <
 export type EventDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof eventDestroy>>>;
 
 export type EventDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type EventDestroyMutationVariables = { event: number };
 
 /**
  * @summary Take an event off the planning
  */
 export const useEventDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -1571,11 +1867,20 @@ export type eventSeriesResponse419 = {
   status: 419;
 };
 
+export type eventSeriesResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type eventSeriesResponseSuccess = eventSeriesResponse201 & {
   headers: Headers;
 };
 export type eventSeriesResponseError = (
-  eventSeriesResponse400 | eventSeriesResponse401 | eventSeriesResponse403 | eventSeriesResponse419
+  | eventSeriesResponse400
+  | eventSeriesResponse401
+  | eventSeriesResponse403
+  | eventSeriesResponse419
+  | eventSeriesResponse503
 ) & {
   headers: Headers;
 };
@@ -1641,7 +1946,12 @@ export const eventSeries = async (
 export const getEventSeriesMutationKey = () => ["eventSeries"] as const;
 
 export const getEventSeriesMutationOptions = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1679,14 +1989,23 @@ export const getEventSeriesMutationOptions = <
 export type EventSeriesMutationResult = NonNullable<Awaited<ReturnType<typeof eventSeries>>>;
 export type EventSeriesMutationBody = StoreEventSeriesRequest;
 export type EventSeriesMutationError =
-  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
 export type EventSeriesMutationVariables = { data: StoreEventSeriesRequest };
 
 /**
  * @summary Generate a season of events from one template
  */
 export const useEventSeries = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -1723,6 +2042,11 @@ export type attendanceUpdateResponse401 = {
   status: 401;
 };
 
+export type attendanceUpdateResponse403 = {
+  data: AttendanceUpdate403;
+  status: 403;
+};
+
 export type attendanceUpdateResponse404 = {
   data: Problem404Response;
   status: 404;
@@ -1733,14 +2057,21 @@ export type attendanceUpdateResponse419 = {
   status: 419;
 };
 
+export type attendanceUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type attendanceUpdateResponseSuccess = attendanceUpdateResponse200 & {
   headers: Headers;
 };
 export type attendanceUpdateResponseError = (
   | attendanceUpdateResponse400
   | attendanceUpdateResponse401
+  | attendanceUpdateResponse403
   | attendanceUpdateResponse404
   | attendanceUpdateResponse419
+  | attendanceUpdateResponse503
 ) & {
   headers: Headers;
 };
@@ -1809,7 +2140,13 @@ export const attendanceUpdate = async (
 export const getAttendanceUpdateMutationKey = () => ["attendanceUpdate"] as const;
 
 export const getAttendanceUpdateMutationOptions = <
-  TError = Problem400Response | Problem401Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | AttendanceUpdate403
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1849,14 +2186,25 @@ export type AttendanceUpdateMutationResult = NonNullable<
 >;
 export type AttendanceUpdateMutationBody = RecordOwnAttendanceRequest;
 export type AttendanceUpdateMutationError =
-  Problem400Response | Problem401Response | Problem404Response | Problem419Response;
+  | Problem400Response
+  | Problem401Response
+  | AttendanceUpdate403
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
 export type AttendanceUpdateMutationVariables = { event: number; data: RecordOwnAttendanceRequest };
 
 /**
  * @summary Record your own answer for an event
  */
 export const useAttendanceUpdate = <
-  TError = Problem400Response | Problem401Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | AttendanceUpdate403
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -1893,16 +2241,30 @@ export type attendanceDestroyResponse404 = {
   status: 404;
 };
 
+export type attendanceDestroyResponse409 = {
+  data: AttendanceDestroy409;
+  status: 409;
+};
+
 export type attendanceDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type attendanceDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type attendanceDestroyResponseSuccess = attendanceDestroyResponse200 & {
   headers: Headers;
 };
 export type attendanceDestroyResponseError = (
-  attendanceDestroyResponse401 | attendanceDestroyResponse404 | attendanceDestroyResponse419
+  | attendanceDestroyResponse401
+  | attendanceDestroyResponse404
+  | attendanceDestroyResponse409
+  | attendanceDestroyResponse419
+  | attendanceDestroyResponse503
 ) & {
   headers: Headers;
 };
@@ -1939,7 +2301,12 @@ export const attendanceDestroy = async (
 export const getAttendanceDestroyMutationKey = () => ["attendanceDestroy"] as const;
 
 export const getAttendanceDestroyMutationOptions = <
-  TError = Problem401Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem404Response
+    | AttendanceDestroy409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1979,14 +2346,23 @@ export type AttendanceDestroyMutationResult = NonNullable<
 >;
 
 export type AttendanceDestroyMutationError =
-  Problem401Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem404Response
+  | AttendanceDestroy409
+  | Problem419Response
+  | Problem503Response;
 export type AttendanceDestroyMutationVariables = { event: number };
 
 /**
  * @summary Take back your own answer
  */
 export const useAttendanceDestroy = <
-  TError = Problem401Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem404Response
+    | AttendanceDestroy409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -2028,11 +2404,19 @@ export type attendanceIndexResponse404 = {
   status: 404;
 };
 
+export type attendanceIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type attendanceIndexResponseSuccess = attendanceIndexResponse200 & {
   headers: Headers;
 };
 export type attendanceIndexResponseError = (
-  attendanceIndexResponse401 | attendanceIndexResponse403 | attendanceIndexResponse404
+  | attendanceIndexResponse401
+  | attendanceIndexResponse403
+  | attendanceIndexResponse404
+  | attendanceIndexResponse503
 ) & {
   headers: Headers;
 };
@@ -2073,7 +2457,7 @@ export const getAttendanceIndexQueryKey = (event: number) => {
 
 export const getAttendanceIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2100,11 +2484,11 @@ export const getAttendanceIndexQueryOptions = <
 
 export type AttendanceIndexQueryResult = NonNullable<Awaited<ReturnType<typeof attendanceIndex>>>;
 export type AttendanceIndexQueryError =
-  Problem401Response | Problem403Response | Problem404Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
 
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options: {
@@ -2123,7 +2507,7 @@ export function useAttendanceIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2142,7 +2526,7 @@ export function useAttendanceIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2157,7 +2541,7 @@ export function useAttendanceIndex<
 
 export function useAttendanceIndex<
   TData = Awaited<ReturnType<typeof attendanceIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2191,7 +2575,7 @@ export type memberAttendanceUpdateResponse401 = {
 };
 
 export type memberAttendanceUpdateResponse403 = {
-  data: Problem403Response;
+  data: MemberAttendanceUpdate403;
   status: 403;
 };
 
@@ -2200,9 +2584,19 @@ export type memberAttendanceUpdateResponse404 = {
   status: 404;
 };
 
+export type memberAttendanceUpdateResponse409 = {
+  data: MemberAttendanceUpdate409;
+  status: 409;
+};
+
 export type memberAttendanceUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberAttendanceUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type memberAttendanceUpdateResponseSuccess = memberAttendanceUpdateResponse200 & {
@@ -2213,7 +2607,9 @@ export type memberAttendanceUpdateResponseError = (
   | memberAttendanceUpdateResponse401
   | memberAttendanceUpdateResponse403
   | memberAttendanceUpdateResponse404
+  | memberAttendanceUpdateResponse409
   | memberAttendanceUpdateResponse419
+  | memberAttendanceUpdateResponse503
 ) & {
   headers: Headers;
 };
@@ -2282,9 +2678,11 @@ export const getMemberAttendanceUpdateMutationOptions = <
   TError =
     | Problem400Response
     | Problem401Response
-    | Problem403Response
+    | MemberAttendanceUpdate403
     | Problem404Response
-    | Problem419Response,
+    | MemberAttendanceUpdate409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2326,9 +2724,11 @@ export type MemberAttendanceUpdateMutationBody = RecordMemberAttendanceRequest;
 export type MemberAttendanceUpdateMutationError =
   | Problem400Response
   | Problem401Response
-  | Problem403Response
+  | MemberAttendanceUpdate403
   | Problem404Response
-  | Problem419Response;
+  | MemberAttendanceUpdate409
+  | Problem419Response
+  | Problem503Response;
 export type MemberAttendanceUpdateMutationVariables = {
   event: number;
   member: number;
@@ -2342,9 +2742,11 @@ export const useMemberAttendanceUpdate = <
   TError =
     | Problem400Response
     | Problem401Response
-    | Problem403Response
+    | MemberAttendanceUpdate403
     | Problem404Response
-    | Problem419Response,
+    | MemberAttendanceUpdate409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -2386,9 +2788,19 @@ export type memberAttendanceDestroyResponse404 = {
   status: 404;
 };
 
+export type memberAttendanceDestroyResponse409 = {
+  data: MemberAttendanceDestroy409;
+  status: 409;
+};
+
 export type memberAttendanceDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberAttendanceDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type memberAttendanceDestroyResponseSuccess = memberAttendanceDestroyResponse200 & {
@@ -2398,7 +2810,9 @@ export type memberAttendanceDestroyResponseError = (
   | memberAttendanceDestroyResponse401
   | memberAttendanceDestroyResponse403
   | memberAttendanceDestroyResponse404
+  | memberAttendanceDestroyResponse409
   | memberAttendanceDestroyResponse419
+  | memberAttendanceDestroyResponse503
 ) & {
   headers: Headers;
 };
@@ -2442,7 +2856,13 @@ export const memberAttendanceDestroy = async (
 export const getMemberAttendanceDestroyMutationKey = () => ["memberAttendanceDestroy"] as const;
 
 export const getMemberAttendanceDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MemberAttendanceDestroy409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2482,14 +2902,25 @@ export type MemberAttendanceDestroyMutationResult = NonNullable<
 >;
 
 export type MemberAttendanceDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | MemberAttendanceDestroy409
+  | Problem419Response
+  | Problem503Response;
 export type MemberAttendanceDestroyMutationVariables = { event: number; member: number };
 
 /**
  * @summary Take back a member's answer
  */
 export const useMemberAttendanceDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MemberAttendanceDestroy409
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -2517,13 +2948,18 @@ export type registrationStoreResponse201 = {
 };
 
 export type registrationStoreResponse400 = {
-  data: Problem400Response;
+  data: RegistrationStore400;
   status: 400;
 };
 
 export type registrationStoreResponse404 = {
   data: Problem404Response;
   status: 404;
+};
+
+export type registrationStoreResponse409 = {
+  data: RegistrationStore409;
+  status: 409;
 };
 
 export type registrationStoreResponse419 = {
@@ -2541,15 +2977,22 @@ export type registrationStoreResponse429 = {
   status: 429;
 };
 
+export type registrationStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type registrationStoreResponseSuccess = registrationStoreResponse201 & {
   headers: Headers;
 };
 export type registrationStoreResponseError = (
   | registrationStoreResponse400
   | registrationStoreResponse404
+  | registrationStoreResponse409
   | registrationStoreResponse419
   | registrationStoreResponse422
   | registrationStoreResponse429
+  | registrationStoreResponse503
 ) & {
   headers: Headers;
 };
@@ -2614,11 +3057,13 @@ export const getRegistrationStoreMutationKey = () => ["registrationStore"] as co
 
 export const getRegistrationStoreMutationOptions = <
   TError =
-    | Problem400Response
+    | RegistrationStore400
     | Problem404Response
+    | RegistrationStore409
     | Problem419Response
     | Problem422Response
-    | Problem429Response,
+    | Problem429Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -2658,11 +3103,13 @@ export type RegistrationStoreMutationResult = NonNullable<
 >;
 export type RegistrationStoreMutationBody = StoreRegistrationRequest;
 export type RegistrationStoreMutationError =
-  | Problem400Response
+  | RegistrationStore400
   | Problem404Response
+  | RegistrationStore409
   | Problem419Response
   | Problem422Response
-  | Problem429Response;
+  | Problem429Response
+  | Problem503Response;
 export type RegistrationStoreMutationVariables = { event: number; data: StoreRegistrationRequest };
 
 /**
@@ -2670,11 +3117,13 @@ export type RegistrationStoreMutationVariables = { event: number; data: StoreReg
  */
 export const useRegistrationStore = <
   TError =
-    | Problem400Response
+    | RegistrationStore400
     | Problem404Response
+    | RegistrationStore409
     | Problem419Response
     | Problem422Response
-    | Problem429Response,
+    | Problem429Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -2716,11 +3165,19 @@ export type registrationIndexResponse404 = {
   status: 404;
 };
 
+export type registrationIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type registrationIndexResponseSuccess = registrationIndexResponse200 & {
   headers: Headers;
 };
 export type registrationIndexResponseError = (
-  registrationIndexResponse401 | registrationIndexResponse403 | registrationIndexResponse404
+  | registrationIndexResponse401
+  | registrationIndexResponse403
+  | registrationIndexResponse404
+  | registrationIndexResponse503
 ) & {
   headers: Headers;
 };
@@ -2758,7 +3215,7 @@ export const getRegistrationIndexQueryKey = (event: number) => {
 
 export const getRegistrationIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2787,11 +3244,11 @@ export type RegistrationIndexQueryResult = NonNullable<
   Awaited<ReturnType<typeof registrationIndex>>
 >;
 export type RegistrationIndexQueryError =
-  Problem401Response | Problem403Response | Problem404Response;
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
 
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options: {
@@ -2810,7 +3267,7 @@ export function useRegistrationIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2829,7 +3286,7 @@ export function useRegistrationIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2844,7 +3301,7 @@ export function useRegistrationIndex<
 
 export function useRegistrationIndex<
   TData = Awaited<ReturnType<typeof registrationIndex>>,
-  TError = Problem401Response | Problem403Response | Problem404Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2872,10 +3329,17 @@ export type registrationFormResponse404 = {
   status: 404;
 };
 
+export type registrationFormResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type registrationFormResponseSuccess = registrationFormResponse200 & {
   headers: Headers;
 };
-export type registrationFormResponseError = registrationFormResponse404 & {
+export type registrationFormResponseError = (
+  registrationFormResponse404 | registrationFormResponse503
+) & {
   headers: Headers;
 };
 
@@ -2916,7 +3380,7 @@ export const getRegistrationFormQueryKey = (event: number) => {
 
 export const getRegistrationFormQueryOptions = <
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = Problem404Response,
+  TError = Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2942,11 +3406,11 @@ export const getRegistrationFormQueryOptions = <
 };
 
 export type RegistrationFormQueryResult = NonNullable<Awaited<ReturnType<typeof registrationForm>>>;
-export type RegistrationFormQueryError = Problem404Response;
+export type RegistrationFormQueryError = Problem404Response | Problem503Response;
 
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = Problem404Response,
+  TError = Problem404Response | Problem503Response,
 >(
   event: number,
   options: {
@@ -2965,7 +3429,7 @@ export function useRegistrationForm<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = Problem404Response,
+  TError = Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2984,7 +3448,7 @@ export function useRegistrationForm<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = Problem404Response,
+  TError = Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2999,7 +3463,7 @@ export function useRegistrationForm<
 
 export function useRegistrationForm<
   TData = Awaited<ReturnType<typeof registrationForm>>,
-  TError = Problem404Response,
+  TError = Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -3231,6 +3695,177 @@ export function useRegistrationExport<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type registrationShowResponse200 = {
+  data: RegistrationResource;
+  status: 200;
+};
+
+export type registrationShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type registrationShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type registrationShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type registrationShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type registrationShowResponseSuccess = registrationShowResponse200 & {
+  headers: Headers;
+};
+export type registrationShowResponseError = (
+  | registrationShowResponse401
+  | registrationShowResponse403
+  | registrationShowResponse404
+  | registrationShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type registrationShowResponse =
+  registrationShowResponseSuccess | registrationShowResponseError;
+
+export const getRegistrationShowUrl = (registration: number) => {
+  return `/registrations/${registration}`;
+};
+
+/**
+ * Requires `registrations.manage`. The same fields the guest list
+ * carries, for a single booking.
+ *
+ * Read this before amending or cancelling one, and quote the `ETag` it
+ * returns in the `If-Match` header of the write. The guest list hands out
+ * no tag — one tag cannot validate a hundred bookings.
+ * @summary Read one booking
+ */
+export const registrationShow = async (
+  registration: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationShowResponse> => {
+  return customFetch<registrationShowResponse>(getRegistrationShowUrl(registration), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationShowQueryKey = (registration: number) => {
+  return [`/registrations/${registration}`] as const;
+};
+
+export const getRegistrationShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationShowQueryKey(registration);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationShow>>> = ({ signal }) =>
+    registrationShow(registration, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: registration !== null && registration !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationShowQueryResult = NonNullable<Awaited<ReturnType<typeof registrationShow>>>;
+export type RegistrationShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  registration: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof registrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof registrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one booking
+ */
+
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationShowQueryOptions(registration, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type registrationUpdateResponse200 = {
   data: RegistrationResource;
   status: 200;
@@ -3256,9 +3891,24 @@ export type registrationUpdateResponse404 = {
   status: 404;
 };
 
+export type registrationUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type registrationUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type registrationUpdateResponseSuccess = registrationUpdateResponse200 & {
@@ -3269,7 +3919,10 @@ export type registrationUpdateResponseError = (
   | registrationUpdateResponse401
   | registrationUpdateResponse403
   | registrationUpdateResponse404
+  | registrationUpdateResponse412
   | registrationUpdateResponse419
+  | registrationUpdateResponse428
+  | registrationUpdateResponse503
 ) & {
   headers: Headers;
 };
@@ -3333,7 +3986,10 @@ export const getRegistrationUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3377,7 +4033,10 @@ export type RegistrationUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type RegistrationUpdateMutationVariables = {
   registration: number;
   data?: UpdateRegistrationRequest;
@@ -3392,7 +4051,10 @@ export const useRegistrationUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -3434,9 +4096,24 @@ export type registrationDestroyResponse404 = {
   status: 404;
 };
 
+export type registrationDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type registrationDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type registrationDestroyResponseSuccess = registrationDestroyResponse200 & {
@@ -3446,7 +4123,10 @@ export type registrationDestroyResponseError = (
   | registrationDestroyResponse401
   | registrationDestroyResponse403
   | registrationDestroyResponse404
+  | registrationDestroyResponse412
   | registrationDestroyResponse419
+  | registrationDestroyResponse428
+  | registrationDestroyResponse503
 ) & {
   headers: Headers;
 };
@@ -3478,7 +4158,14 @@ export const registrationDestroy = async (
 export const getRegistrationDestroyMutationKey = () => ["registrationDestroy"] as const;
 
 export const getRegistrationDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3518,14 +4205,27 @@ export type RegistrationDestroyMutationResult = NonNullable<
 >;
 
 export type RegistrationDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type RegistrationDestroyMutationVariables = { registration: number };
 
 /**
  * @summary Cancel a booking
  */
 export const useRegistrationDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -3546,6 +4246,197 @@ export const useRegistrationDestroy = <
 > => {
   return useMutation(getRegistrationDestroyMutationOptions(options), queryClient);
 };
+
+export type registrationOptionIndexResponse200 = {
+  data: RegistrationOptionResource[];
+  status: 200;
+};
+
+export type registrationOptionIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type registrationOptionIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type registrationOptionIndexResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type registrationOptionIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type registrationOptionIndexResponseSuccess = registrationOptionIndexResponse200 & {
+  headers: Headers;
+};
+export type registrationOptionIndexResponseError = (
+  | registrationOptionIndexResponse401
+  | registrationOptionIndexResponse403
+  | registrationOptionIndexResponse404
+  | registrationOptionIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type registrationOptionIndexResponse =
+  registrationOptionIndexResponseSuccess | registrationOptionIndexResponseError;
+
+export const getRegistrationOptionIndexUrl = (event: number) => {
+  return `/events/${event}/registration-options`;
+};
+
+/**
+ * Requires `events.manage`. Returns the options in sort order.
+ *
+ * Read this before replacing them, and quote the `ETag` it returns in the
+ * `If-Match` header of the PUT. The tag is over the OPTION LIST, not over
+ * the event: correcting the event's dress code does not invalidate a
+ * pending options edit, and adding an option does — which is the way round
+ * that catches a lost update.
+ *
+ * The public booking form reads the same options from
+ * `GET /api/v1/events/{event}/registration`, which needs no session but
+ * answers 404 for an event that takes no bookings. This one answers with
+ * an empty list instead, because configuring an event that does not take
+ * bookings yet is exactly when the committee needs it.
+ * @summary Read an event's bookable options
+ */
+export const registrationOptionIndex = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationOptionIndexResponse> => {
+  return customFetch<registrationOptionIndexResponse>(getRegistrationOptionIndexUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationOptionIndexQueryKey = (event: number) => {
+  return [`/events/${event}/registration-options`] as const;
+};
+
+export const getRegistrationOptionIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationOptionIndexQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationOptionIndex>>> = ({
+    signal,
+  }) => registrationOptionIndex(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationOptionIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof registrationOptionIndex>>
+>;
+export type RegistrationOptionIndexQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationOptionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationOptionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationOptionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationOptionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read an event's bookable options
+ */
+
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationOptionIndexQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type registrationOptionReplaceResponse200 = {
   data: RegistrationOptionResource[];
@@ -3577,9 +4468,24 @@ export type registrationOptionReplaceResponse409 = {
   status: 409;
 };
 
+export type registrationOptionReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationOptionReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationOptionReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type registrationOptionReplaceResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type registrationOptionReplaceResponseSuccess = registrationOptionReplaceResponse200 & {
@@ -3591,7 +4497,10 @@ export type registrationOptionReplaceResponseError = (
   | registrationOptionReplaceResponse403
   | registrationOptionReplaceResponse404
   | registrationOptionReplaceResponse409
+  | registrationOptionReplaceResponse412
   | registrationOptionReplaceResponse419
+  | registrationOptionReplaceResponse428
+  | registrationOptionReplaceResponse503
 ) & {
   headers: Headers;
 };
@@ -3666,7 +4575,10 @@ export const getRegistrationOptionReplaceMutationOptions = <
     | Problem403Response
     | Problem404Response
     | RegistrationOptionReplace409
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3711,7 +4623,10 @@ export type RegistrationOptionReplaceMutationError =
   | Problem403Response
   | Problem404Response
   | RegistrationOptionReplace409
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type RegistrationOptionReplaceMutationVariables = {
   event: number;
   data: ReplaceRegistrationOptionsRequest;
@@ -3727,7 +4642,10 @@ export const useRegistrationOptionReplace = <
     | Problem403Response
     | Problem404Response
     | RegistrationOptionReplace409
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -3764,10 +4682,17 @@ export type sectionIndexResponse403 = {
   status: 403;
 };
 
+export type sectionIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type sectionIndexResponseSuccess = sectionIndexResponse200 & {
   headers: Headers;
 };
-export type sectionIndexResponseError = (sectionIndexResponse401 | sectionIndexResponse403) & {
+export type sectionIndexResponseError = (
+  sectionIndexResponse401 | sectionIndexResponse403 | sectionIndexResponse503
+) & {
   headers: Headers;
 };
 
@@ -3801,7 +4726,7 @@ export const getSectionIndexQueryKey = () => {
 
 export const getSectionIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -3821,11 +4746,11 @@ export const getSectionIndexQueryOptions = <
 };
 
 export type SectionIndexQueryResult = NonNullable<Awaited<ReturnType<typeof sectionIndex>>>;
-export type SectionIndexQueryError = Problem401Response | Problem403Response;
+export type SectionIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
 
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
@@ -3843,7 +4768,7 @@ export function useSectionIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
@@ -3861,7 +4786,7 @@ export function useSectionIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
@@ -3875,7 +4800,7 @@ export function useSectionIndex<
 
 export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
@@ -3907,10 +4832,17 @@ export type roleIndexResponse403 = {
   status: 403;
 };
 
+export type roleIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type roleIndexResponseSuccess = roleIndexResponse200 & {
   headers: Headers;
 };
-export type roleIndexResponseError = (roleIndexResponse401 | roleIndexResponse403) & {
+export type roleIndexResponseError = (
+  roleIndexResponse401 | roleIndexResponse403 | roleIndexResponse503
+) & {
   headers: Headers;
 };
 
@@ -3944,7 +4876,7 @@ export const getRoleIndexQueryKey = () => {
 
 export const getRoleIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -3964,11 +4896,11 @@ export const getRoleIndexQueryOptions = <
 };
 
 export type RoleIndexQueryResult = NonNullable<Awaited<ReturnType<typeof roleIndex>>>;
-export type RoleIndexQueryError = Problem401Response | Problem403Response;
+export type RoleIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
 
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
@@ -3986,7 +4918,7 @@ export function useRoleIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
@@ -4004,7 +4936,7 @@ export function useRoleIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
@@ -4018,7 +4950,7 @@ export function useRoleIndex<
 
 export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
@@ -4050,10 +4982,17 @@ export type memberIndexResponse403 = {
   status: 403;
 };
 
+export type memberIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type memberIndexResponseSuccess = memberIndexResponse200 & {
   headers: Headers;
 };
-export type memberIndexResponseError = (memberIndexResponse401 | memberIndexResponse403) & {
+export type memberIndexResponseError = (
+  memberIndexResponse401 | memberIndexResponse403 | memberIndexResponse503
+) & {
   headers: Headers;
 };
 
@@ -4090,7 +5029,7 @@ export const getMemberIndexQueryKey = () => {
 
 export const getMemberIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -4110,11 +5049,11 @@ export const getMemberIndexQueryOptions = <
 };
 
 export type MemberIndexQueryResult = NonNullable<Awaited<ReturnType<typeof memberIndex>>>;
-export type MemberIndexQueryError = Problem401Response | Problem403Response;
+export type MemberIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
@@ -4132,7 +5071,7 @@ export function useMemberIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
@@ -4150,7 +5089,7 @@ export function useMemberIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
@@ -4164,7 +5103,7 @@ export function useMemberIndex<
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
@@ -4206,11 +5145,20 @@ export type memberStoreResponse419 = {
   status: 419;
 };
 
+export type memberStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type memberStoreResponseSuccess = memberStoreResponse201 & {
   headers: Headers;
 };
 export type memberStoreResponseError = (
-  memberStoreResponse400 | memberStoreResponse401 | memberStoreResponse403 | memberStoreResponse419
+  | memberStoreResponse400
+  | memberStoreResponse401
+  | memberStoreResponse403
+  | memberStoreResponse419
+  | memberStoreResponse503
 ) & {
   headers: Headers;
 };
@@ -4278,7 +5226,12 @@ export const memberStore = async (
 export const getMemberStoreMutationKey = () => ["memberStore"] as const;
 
 export const getMemberStoreMutationOptions = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4316,14 +5269,23 @@ export const getMemberStoreMutationOptions = <
 export type MemberStoreMutationResult = NonNullable<Awaited<ReturnType<typeof memberStore>>>;
 export type MemberStoreMutationBody = StoreMemberRequest;
 export type MemberStoreMutationError =
-  Problem400Response | Problem401Response | Problem403Response | Problem419Response;
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
 export type MemberStoreMutationVariables = { data: StoreMemberRequest };
 
 /**
  * @summary Add a member to the roster
  */
 export const useMemberStore = <
-  TError = Problem400Response | Problem401Response | Problem403Response | Problem419Response,
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -4344,6 +5306,174 @@ export const useMemberStore = <
 > => {
   return useMutation(getMemberStoreMutationOptions(options), queryClient);
 };
+
+export type memberShowResponse200 = {
+  data: MemberResource;
+  status: 200;
+};
+
+export type memberShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type memberShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type memberShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type memberShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type memberShowResponseSuccess = memberShowResponse200 & {
+  headers: Headers;
+};
+export type memberShowResponseError = (
+  memberShowResponse401 | memberShowResponse403 | memberShowResponse404 | memberShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type memberShowResponse = memberShowResponseSuccess | memberShowResponseError;
+
+export const getMemberShowUrl = (member: number) => {
+  return `/members/${member}`;
+};
+
+/**
+ * Requires `members.manage`. The same fields the roster list carries, for
+ * a single member.
+ *
+ * Read this before editing somebody, and quote the `ETag` it returns in
+ * the `If-Match` header of the write. The list hands out no tag — one tag
+ * cannot validate forty-five rows — so a form filled from the list and
+ * submitted without a read is the lost update this API refuses.
+ * @summary Read one person
+ */
+export const memberShow = async (
+  member: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberShowResponse> => {
+  return customFetch<memberShowResponse>(getMemberShowUrl(member), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMemberShowQueryKey = (member: number) => {
+  return [`/members/${member}`] as const;
+};
+
+export const getMemberShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMemberShowQueryKey(member);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof memberShow>>> = ({ signal }) =>
+    memberShow(member, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: member !== null && member !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type MemberShowQueryResult = NonNullable<Awaited<ReturnType<typeof memberShow>>>;
+export type MemberShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  member: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberShow>>,
+          TError,
+          Awaited<ReturnType<typeof memberShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberShow>>,
+          TError,
+          Awaited<ReturnType<typeof memberShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one person
+ */
+
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getMemberShowQueryOptions(member, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type memberUpdateResponse200 = {
   data: MemberResource;
@@ -4370,9 +5500,24 @@ export type memberUpdateResponse404 = {
   status: 404;
 };
 
+export type memberUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type memberUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type memberUpdateResponseSuccess = memberUpdateResponse200 & {
@@ -4383,7 +5528,10 @@ export type memberUpdateResponseError = (
   | memberUpdateResponse401
   | memberUpdateResponse403
   | memberUpdateResponse404
+  | memberUpdateResponse412
   | memberUpdateResponse419
+  | memberUpdateResponse428
+  | memberUpdateResponse503
 ) & {
   headers: Headers;
 };
@@ -4449,7 +5597,10 @@ export const getMemberUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4491,7 +5642,10 @@ export type MemberUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type MemberUpdateMutationVariables = { member: number; data?: UpdateMemberRequest };
 
 /**
@@ -4503,7 +5657,10 @@ export const useMemberUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -4545,9 +5702,29 @@ export type memberDestroyResponse404 = {
   status: 404;
 };
 
+export type memberDestroyResponse409 = {
+  data: MemberDestroy409;
+  status: 409;
+};
+
+export type memberDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type memberDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type memberDestroyResponseSuccess = memberDestroyResponse200 & {
@@ -4557,7 +5734,11 @@ export type memberDestroyResponseError = (
   | memberDestroyResponse401
   | memberDestroyResponse403
   | memberDestroyResponse404
+  | memberDestroyResponse409
+  | memberDestroyResponse412
   | memberDestroyResponse419
+  | memberDestroyResponse428
+  | memberDestroyResponse503
 ) & {
   headers: Headers;
 };
@@ -4595,7 +5776,15 @@ export const memberDestroy = async (
 export const getMemberDestroyMutationKey = () => ["memberDestroy"] as const;
 
 export const getMemberDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MemberDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4633,14 +5822,29 @@ export const getMemberDestroyMutationOptions = <
 export type MemberDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof memberDestroy>>>;
 
 export type MemberDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | MemberDestroy409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type MemberDestroyMutationVariables = { member: number };
 
 /**
  * @summary Remove a member from the roster
  */
 export const useMemberDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | MemberDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -4687,9 +5891,29 @@ export type memberRoleReplaceResponse404 = {
   status: 404;
 };
 
+export type memberRoleReplaceResponse409 = {
+  data: MemberRoleReplace409;
+  status: 409;
+};
+
+export type memberRoleReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberRoleReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberRoleReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type memberRoleReplaceResponse503 = {
+  data: Problem503Response;
+  status: 503;
 };
 
 export type memberRoleReplaceResponseSuccess = memberRoleReplaceResponse200 & {
@@ -4700,7 +5924,11 @@ export type memberRoleReplaceResponseError = (
   | memberRoleReplaceResponse401
   | memberRoleReplaceResponse403
   | memberRoleReplaceResponse404
+  | memberRoleReplaceResponse409
+  | memberRoleReplaceResponse412
   | memberRoleReplaceResponse419
+  | memberRoleReplaceResponse428
+  | memberRoleReplaceResponse503
 ) & {
   headers: Headers;
 };
@@ -4774,7 +6002,11 @@ export const getMemberRoleReplaceMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | MemberRoleReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4818,7 +6050,11 @@ export type MemberRoleReplaceMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | MemberRoleReplace409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
 export type MemberRoleReplaceMutationVariables = {
   member: number;
   data: ReplaceMemberRolesRequest;
@@ -4833,7 +6069,11 @@ export const useMemberRoleReplace = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | MemberRoleReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -4880,6 +6120,11 @@ export type memberPasswordResetResponse419 = {
   status: 419;
 };
 
+export type memberPasswordResetResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type memberPasswordResetResponseSuccess = memberPasswordResetResponse200 & {
   headers: Headers;
 };
@@ -4888,6 +6133,7 @@ export type memberPasswordResetResponseError = (
   | memberPasswordResetResponse403
   | memberPasswordResetResponse404
   | memberPasswordResetResponse419
+  | memberPasswordResetResponse503
 ) & {
   headers: Headers;
 };
@@ -4930,7 +6176,12 @@ export const memberPasswordReset = async (
 export const getMemberPasswordResetMutationKey = () => ["memberPasswordReset"] as const;
 
 export const getMemberPasswordResetMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4970,14 +6221,23 @@ export type MemberPasswordResetMutationResult = NonNullable<
 >;
 
 export type MemberPasswordResetMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
 export type MemberPasswordResetMutationVariables = { member: number };
 
 /**
  * @summary Reset a member's password
  */
 export const useMemberPasswordReset = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -5009,10 +6269,15 @@ export type formTokenShowResponse429 = {
   status: 429;
 };
 
+export type formTokenShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type formTokenShowResponseSuccess = formTokenShowResponse200 & {
   headers: Headers;
 };
-export type formTokenShowResponseError = formTokenShowResponse429 & {
+export type formTokenShowResponseError = (formTokenShowResponse429 | formTokenShowResponse503) & {
   headers: Headers;
 };
 
@@ -5053,7 +6318,7 @@ export const getFormTokenShowQueryKey = () => {
 
 export const getFormTokenShowQueryOptions = <
   TData = Awaited<ReturnType<typeof formTokenShow>>,
-  TError = Problem429Response,
+  TError = Problem429Response | Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -5073,11 +6338,11 @@ export const getFormTokenShowQueryOptions = <
 };
 
 export type FormTokenShowQueryResult = NonNullable<Awaited<ReturnType<typeof formTokenShow>>>;
-export type FormTokenShowQueryError = Problem429Response;
+export type FormTokenShowQueryError = Problem429Response | Problem503Response;
 
 export function useFormTokenShow<
   TData = Awaited<ReturnType<typeof formTokenShow>>,
-  TError = Problem429Response,
+  TError = Problem429Response | Problem503Response,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>> &
@@ -5095,7 +6360,7 @@ export function useFormTokenShow<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useFormTokenShow<
   TData = Awaited<ReturnType<typeof formTokenShow>>,
-  TError = Problem429Response,
+  TError = Problem429Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>> &
@@ -5113,7 +6378,7 @@ export function useFormTokenShow<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useFormTokenShow<
   TData = Awaited<ReturnType<typeof formTokenShow>>,
-  TError = Problem429Response,
+  TError = Problem429Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
@@ -5127,7 +6392,7 @@ export function useFormTokenShow<
 
 export function useFormTokenShow<
   TData = Awaited<ReturnType<typeof formTokenShow>>,
-  TError = Problem429Response,
+  TError = Problem429Response | Problem503Response,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof formTokenShow>>, TError, TData>>;
@@ -5150,8 +6415,13 @@ export type contactStoreResponse200 = {
 };
 
 export type contactStoreResponse400 = {
-  data: Problem400Response;
+  data: ContactStore400;
   status: 400;
+};
+
+export type contactStoreResponse409 = {
+  data: ContactStore409;
+  status: 409;
 };
 
 export type contactStoreResponse419 = {
@@ -5169,14 +6439,21 @@ export type contactStoreResponse429 = {
   status: 429;
 };
 
+export type contactStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type contactStoreResponseSuccess = contactStoreResponse200 & {
   headers: Headers;
 };
 export type contactStoreResponseError = (
   | contactStoreResponse400
+  | contactStoreResponse409
   | contactStoreResponse419
   | contactStoreResponse422
   | contactStoreResponse429
+  | contactStoreResponse503
 ) & {
   headers: Headers;
 };
@@ -5236,7 +6513,13 @@ export const contactStore = async (
 export const getContactStoreMutationKey = () => ["contactStore"] as const;
 
 export const getContactStoreMutationOptions = <
-  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
+  TError =
+    | ContactStore400
+    | ContactStore409
+    | Problem419Response
+    | Problem422Response
+    | Problem429Response
+    | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -5274,14 +6557,25 @@ export const getContactStoreMutationOptions = <
 export type ContactStoreMutationResult = NonNullable<Awaited<ReturnType<typeof contactStore>>>;
 export type ContactStoreMutationBody = ContactRequest;
 export type ContactStoreMutationError =
-  Problem400Response | Problem419Response | Problem422Response | Problem429Response;
+  | ContactStore400
+  | ContactStore409
+  | Problem419Response
+  | Problem422Response
+  | Problem429Response
+  | Problem503Response;
 export type ContactStoreMutationVariables = { data: ContactRequest };
 
 /**
  * @summary Send a message to the committee
  */
 export const useContactStore = <
-  TError = Problem400Response | Problem419Response | Problem422Response | Problem429Response,
+  TError =
+    | ContactStore400
+    | ContactStore409
+    | Problem419Response
+    | Problem422Response
+    | Problem429Response
+    | Problem503Response,
   TContext = unknown,
 >(
   options?: {
@@ -5308,10 +6602,19 @@ export type configShowResponse200 = {
   status: 200;
 };
 
+export type configShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
 export type configShowResponseSuccess = configShowResponse200 & {
   headers: Headers;
 };
-export type configShowResponse = configShowResponseSuccess;
+export type configShowResponseError = configShowResponse503 & {
+  headers: Headers;
+};
+
+export type configShowResponse = configShowResponseSuccess | configShowResponseError;
 
 export const getConfigShowUrl = () => {
   return `/config`;
@@ -5347,7 +6650,7 @@ export const getConfigShowQueryKey = () => {
 
 export const getConfigShowQueryOptions = <
   TData = Awaited<ReturnType<typeof configShow>>,
-  TError = unknown,
+  TError = Problem503Response,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
   request?: SecondParameter<typeof customFetch>;
@@ -5367,9 +6670,12 @@ export const getConfigShowQueryOptions = <
 };
 
 export type ConfigShowQueryResult = NonNullable<Awaited<ReturnType<typeof configShow>>>;
-export type ConfigShowQueryError = unknown;
+export type ConfigShowQueryError = Problem503Response;
 
-export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
+export function useConfigShow<
+  TData = Awaited<ReturnType<typeof configShow>>,
+  TError = Problem503Response,
+>(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>> &
       Pick<
@@ -5384,7 +6690,10 @@ export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TE
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
+export function useConfigShow<
+  TData = Awaited<ReturnType<typeof configShow>>,
+  TError = Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>> &
       Pick<
@@ -5399,7 +6708,10 @@ export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TE
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
+export function useConfigShow<
+  TData = Awaited<ReturnType<typeof configShow>>,
+  TError = Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -5410,7 +6722,10 @@ export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TE
  * @summary Read the runtime configuration
  */
 
-export function useConfigShow<TData = Awaited<ReturnType<typeof configShow>>, TError = unknown>(
+export function useConfigShow<
+  TData = Awaited<ReturnType<typeof configShow>>,
+  TError = Problem503Response,
+>(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof configShow>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;

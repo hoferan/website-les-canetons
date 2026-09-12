@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AccountPasswordRequest;
 use App\Support\Audit;
+use App\Support\Emits;
 use App\Support\Reauthentication;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Endpoint;
@@ -44,6 +45,7 @@ class AccountPasswordController extends Controller
     // rather than a documentation detail.
     #[Response(200, 'Changed. `sessionsEnded` counts the caller other sessions that were revoked.')]
     #[Endpoint(operationId: 'account.password')]
+    #[Emits('reauth_failed', 'too_many_attempts')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {
         // GATED ON AUTHENTICATION ALONE — no permission. This is the one screen

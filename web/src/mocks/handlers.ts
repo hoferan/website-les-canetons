@@ -430,6 +430,73 @@ const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 /** Route-model binding's own answer for an id nothing matches. */
 const notFound = () => problem(404, "not_found", "Not found");
 
+/* ------------------------------------------------------------------------ *
+ * Conditional writes
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The ETag the real API hands out, modelled well enough to be wrong about.
+ *
+ * NOT the server's algorithm and it must not be: the real tag is a sha256 of
+ * the rendered Resource (App\Support\EntityTag) and a mock reproducing it
+ * would be asserting that two hashes agree, which nothing in the SPA depends
+ * on. What the SPA depends on is that a tag CHANGES when the thing changes and
+ * that a write without one is refused, and a cheap deterministic hash models
+ * both. FNV-1a because jsdom has no synchronous crypto digest.
+ */
+export function mockEntityTag(state: unknown): string {
+  const json = JSON.stringify(state);
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < json.length; index++) {
+    hash ^= json.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `"${hash.toString(16).padStart(8, "0")}"`;
+}
+
+/**
+ * The refusal a conditional write earns, or null to let it through.
+ *
+ * WITHOUT THIS THE MOCKED BACKEND WOULD ACCEPT WHAT THE REAL ONE REFUSES, and
+ * every test of the roster would pass against a screen that cannot save
+ * anything — which is exactly the class of defect the mocks exist to catch.
+ * Mirrors App\Http\Middleware\ConditionalWrite: 428 for an absent header,
+ * 412 for one naming a state the thing has left, strong comparison, and `*`
+ * matching anything that exists.
+ */
+/**
+ * An event's state with the caller's own answer taken out.
+ *
+ * `myAttendance` is the CALLER's answer and nobody else's, so a tag computed
+ * over it would differ between two committee members looking at the same event
+ * — and a member answering an event would invalidate their own pending edit of
+ * it. The real API gets this for free by rendering the Resource with no
+ * relations loaded; here it has to be said.
+ */
+function withoutMyAttendance(event: EventResource): Omit<EventResource, "myAttendance"> {
+  const state = { ...event };
+  delete (state as Partial<EventResource>).myAttendance;
+  return state;
+}
+
+function refuseWithoutIfMatch(request: Request, current: string) {
+  const header = request.headers.get("If-Match");
+
+  if (header === null || header.trim() === "") {
+    return problem(428, "if_match_required", "If-Match is required on this request");
+  }
+
+  if (header.trim() === "*") {
+    return null;
+  }
+
+  const quoted = header.split(",").map((candidate) => candidate.trim());
+
+  return quoted.includes(current)
+    ? null
+    : problem(412, "if_match_failed", "The If-Match header does not match the current state");
+}
+
 /**
  * Mirrors App\Support\AccessIntegrity: 409, not 403 — the caller HAS the
  * permission, the request conflicts with the state of the system.
@@ -693,6 +760,21 @@ const overrides = [
     return HttpResponse.json(ordered);
   }),
 
+  // ONE PERSON, and the read every conditional write on the roster starts
+  // from. The roster list above hands out no tag, deliberately, so a screen
+  // that edited straight from a list row would be refused with 428.
+  http.get("/api/v1/members/:id", ({ params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const member = members.find((row) => row.id === Number(params.id));
+    if (!member) {
+      return notFound();
+    }
+    return HttpResponse.json(member, { headers: { ETag: mockEntityTag(member) } });
+  }),
+
   // Creating a person creates an ACCOUNT and mints its password, returned once.
   // IT GRANTS NO ROLES — the real API does not either, and a mock that did
   // would hide the second, separately-guarded step from every test.
@@ -745,6 +827,10 @@ const overrides = [
     if (!existing) {
       return notFound();
     }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
     const body = (await request.json()) as Partial<MemberResource>;
     // PATCH, so spread over what is there: a form posting only the field it
     // changed must not blank the others.
@@ -777,14 +863,16 @@ const overrides = [
     updated.sectionName = sectionOf(updated.sectionId);
     updated.isPlayer = updated.sectionId !== null;
     members[index] = updated;
-    return HttpResponse.json(updated);
+    // The tag of what the write just produced, so a second edit needs no read
+    // in between — which is what Members.tsx chains the roles call onto.
+    return HttpResponse.json(updated, { headers: { ETag: mockEntityTag(updated) } });
   }),
 
   // Mirrors AccessIntegrity, INCLUDING its ordering: orphaning administration
   // outranks self-deletion when both apply, because it is the more informative
   // refusal. Without these the mocked app would let flows through that the real
   // API answers 409 to.
-  http.delete("/api/v1/members/:id", ({ params }) => {
+  http.delete("/api/v1/members/:id", ({ request, params }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -796,6 +884,10 @@ const overrides = [
     const existing = members[index];
     if (!existing) {
       return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
     }
     if (wouldOrphanAdministration([id])) {
       return conflict(
@@ -826,6 +918,10 @@ const overrides = [
     if (!existing) {
       return notFound();
     }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
     const body = (await request.json()) as { roleIds?: number[] };
     const roleIds = body.roleIds ?? [];
     const keepsAdministration = roleIds.some((roleId) =>
@@ -846,7 +942,10 @@ const overrides = [
     }
     const member = { ...existing, roleIds };
     members[index] = member;
-    return HttpResponse.json({ member, sessionsEnded: 1 });
+    return HttpResponse.json(
+      { member, sessionsEnded: 1 },
+      { headers: { ETag: mockEntityTag(member) } },
+    );
   }),
 
   http.post("/api/v1/members/:id/password", ({ params }) => {
@@ -995,7 +1094,12 @@ const overrides = [
       return unauthenticated();
     }
     const event = events.find((candidate) => candidate.id === Number(params.id));
-    return event ? HttpResponse.json(event) : notFound();
+    // The read the two conditional writes below start from. The event's tag
+    // deliberately ignores `myAttendance`, which is the caller's own answer, so
+    // answering an event does not invalidate a pending edit of it.
+    return event
+      ? HttpResponse.json(event, { headers: { ETag: mockEntityTag(withoutMyAttendance(event)) } })
+      : notFound();
   }),
 
   http.patch("/api/v1/events/:id", async ({ request, params }) => {
@@ -1013,6 +1117,11 @@ const overrides = [
       return notFound();
     }
 
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    if (stale) {
+      return stale;
+    }
+
     const patch = (await request.json()) as Partial<Omit<EventResource, "id">>;
     const updated: EventResource = { ...existing, ...patch };
 
@@ -1025,18 +1134,26 @@ const overrides = [
     }
 
     events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
-    return HttpResponse.json(updated);
+    return HttpResponse.json(updated, {
+      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+    });
   }),
 
-  http.delete("/api/v1/events/:id", ({ params }) => {
+  http.delete("/api/v1/events/:id", ({ request, params }) => {
     const refusal = refuseWithout("events.manage");
     if (refusal) {
       return refusal;
     }
 
     const id = Number(params.id);
-    if (!events.some((candidate) => candidate.id === id)) {
+    const existing = events.find((candidate) => candidate.id === id);
+    if (!existing) {
       return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    if (stale) {
+      return stale;
     }
 
     events = events.filter((candidate) => candidate.id !== id);

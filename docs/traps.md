@@ -250,6 +250,24 @@ would send you re-typing a correct password.
 `CHANGE_ME` and each server names its own origin; `*` there would make any host
 stateful.
 
+## MariaDB 10.3: the second `timestamp` column in a table
+
+A migration with two of them fails outright:
+
+```
+SQLSTATE[42000]: 1067 Invalid default value for 'expires_at'
+```
+
+`explicit_defaults_for_timestamp` is off on this version and on the shared
+host, so the FIRST `TIMESTAMP NOT NULL` column implicitly gets
+`DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP` and every later one
+implicitly gets `'0000-00-00 00:00:00'` — which strict mode then refuses. The
+column named in the error is the innocent one; nothing about it is wrong.
+
+Use `$table->dateTime(...)` for both. It takes no implicit default, and the
+code writing the row is already supplying the value. `2026_09_12_000001` is the
+worked example.
+
 ## `bcrypt()` in a test against an argon2id app
 
 `Member::factory()->create(['password' => bcrypt('x')])` makes `Hash::check`

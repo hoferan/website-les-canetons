@@ -330,6 +330,15 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   stateful SPA mode puts `/api/v1/*` behind the `web` middleware group, so a
   mutating request without the replayed `X-XSRF-TOKEN` header comes back `419`
   with `"code":"invalid_session"`.
+- **Both public POSTs require an `Idempotency-Key`** (`POST /api/v1/contact`,
+  `POST /api/v1/events/{event}/registrations`), alongside the `X-Form-Token`
+  they already required. A retry with the same key replays the stored answer
+  and creates nothing; a different body under the same key answers `409`. The
+  stored answers live in `idempotency_keys` and are swept by a lottery on
+  write, because this host has no scheduler — see
+  `App\Http\Middleware\IdempotentWrite`. Retention and lottery are in
+  `api/config/api.php` and **must never reach `api/.env.example`**, where an
+  extra key refuses every server's next deploy.
 - **Runtime configuration comes from `GET /api/v1/config`**, not from
   `import.meta.env`. TEST, QA and PROD run the *same promoted bundle*, so no
   environment-specific value may be baked in. That endpoint drives the non-prod
@@ -606,6 +615,18 @@ repair it.
 - Regenerate the client (`npm run openapi && npm run generate:api`) whenever an
   API response shape changes, and commit the result.
 - Give every new API error token French copy in `web/src/i18n/fr.ts`.
+- Put `#[Emits('...')]` on any action that refuses with a code no middleware
+  implies — a conflict a controller raises, a refusal from `App\Support\*`. The
+  status comes from `App\Support\ErrorVocabulary`, so the action names WHAT it
+  refuses and never which number carries it. Without it the code reaches no
+  operation's `code` enum and a generated client has no branch for it;
+  `DeclaredCodesTest` and `EmittedCodesTest` fail if you forget.
+- Put `etag:<facet>` on any new write that **replaces or removes** an existing
+  thing, and give it a single-thing read to get the tag from — a collection
+  hands out none. `App\Http\Middleware\ConditionalWrite` explains which writes
+  are covered and why attendance is exempt; on the SPA side a screen reads the
+  row as the form opens and writes with that read's `ETag`, never a fresher
+  one.
 
 ## Don'ts
 

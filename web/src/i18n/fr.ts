@@ -53,6 +53,26 @@ export const fr = {
     rate_limited: "Trop de requêtes. Veuillez patienter avant de réessayer.",
     service_unavailable: "Service indisponible",
 
+    // Idempotency. All three are bugs in the client — a real form mints a key
+    // when it renders and keeps it — so a member should never read any of
+    // them. They exist because every code needs French, and because a token
+    // with no copy prints the generic fallback.
+    idempotency_key_required: "Ce formulaire n'a pas pu être envoyé. Rechargez la page.",
+    idempotency_key_invalid: "Ce formulaire n'a pas pu être envoyé. Rechargez la page.",
+    // The one a person can actually cause, by double-tapping Envoyer: the
+    // first attempt is still running. It says to wait, not to try again.
+    idempotency_key_reuse: "Envoi déjà en cours. Patientez quelques instants avant de réessayer.",
+
+    // Conditional writes. `if_match_required` is a bug in the client, never
+    // something the person at the screen did — so it says what it says without
+    // blaming them, and the SPA should never let them see it.
+    if_match_required: "Cette modification n'a pas pu être vérifiée. Rechargez la page.",
+    // `if_match_failed` is the one a member really does meet: somebody else
+    // changed the same thing while their form was open. It says what happened
+    // and what to do, and deliberately does not offer to force the write.
+    if_match_failed:
+      "Quelqu'un a modifié cet élément entre-temps. Rechargez pour voir les changements, puis réessayez.",
+
     // Attendance. `not_answerable` is a 403 that is NOT about a missing
     // permission — there is none for answering — so it must not read like
     // one, or the reader goes looking for a right nobody can grant them.

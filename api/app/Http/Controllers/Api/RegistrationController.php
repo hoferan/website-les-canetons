@@ -13,6 +13,7 @@ use App\Models\Event;
 use App\Models\Registration;
 use App\Models\RegistrationChoice;
 use App\Support\Audit;
+use App\Support\Emits;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\IgnoreResponse;
 use Dedoc\Scramble\Attributes\Response;
@@ -82,6 +83,7 @@ class RegistrationController extends Controller
     // client narrows a branch that cannot happen.
     #[IgnoreResponse(200)]
     #[Response(201, 'The booking, as it was recorded.', type: RegistrationResource::class)]
+    #[Emits('registration_not_open', 'registration_closed')]
     public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
     {
         // The takesRegistrations() 404 lives in the Form Request's
@@ -146,6 +148,21 @@ class RegistrationController extends Controller
         $bookings = $event->registrations()->with('choices.option')->orderBy('created_at')->get();
 
         return RegistrationResource::collection($bookings);
+    }
+
+    /**
+     * Read one booking.
+     *
+     * Requires `registrations.manage`. The same fields the guest list
+     * carries, for a single booking.
+     *
+     * Read this before amending or cancelling one, and quote the `ETag` it
+     * returns in the `If-Match` header of the write. The guest list hands out
+     * no tag — one tag cannot validate a hundred bookings.
+     */
+    public function show(Registration $registration): RegistrationResource
+    {
+        return new RegistrationResource($registration->load('choices.option'));
     }
 
     /**

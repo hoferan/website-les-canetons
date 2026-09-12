@@ -100,9 +100,11 @@
  * | `401` | No session. Log in. |
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
- * | `409` | Allowed, but it conflicts with the current state. |
+ * | `409` | Allowed, but it conflicts with the current state, or with a submission you already made. |
+ * | `412` | Your `If-Match` names a state this thing is no longer in. |
  * | `419` | The session or CSRF token expired. Prime the cookie and retry. |
  * | `422` | The submission looks automated. See *Public forms*. |
+ * | `428` | The write needs an `If-Match`. See *Conditional writes*. |
  * | `429` | Rate limited. |
  * | `503` | The service is temporarily refusing to serve. |
  *
@@ -129,6 +131,61 @@
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
  * - Collections are returned as bare JSON arrays, with no `data` envelope.
  *
+ * ## Conditional writes
+ *
+ * **Every write that replaces or removes something must prove it is working from
+ * the current state.** Read the thing first, keep the `ETag` the read returns, and
+ * send it back as `If-Match`:
+ *
+ * ```js
+ * const read = await fetch("/api/v1/events/42", { credentials: "include" });
+ * const etag = read.headers.get("ETag");
+ *
+ * await fetch("/api/v1/events/42", {
+ *   method: "PATCH",
+ *   credentials: "include",
+ *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf, "If-Match": etag },
+ *   body: JSON.stringify({ title: "Cortège" }),
+ * });
+ * ```
+ *
+ * No header answers `428 if_match_required`. A header naming a state the thing is
+ * no longer in answers `412 if_match_failed`, and **the 412 does not tell you the
+ * current tag** — retrying blindly with a fresh one would land exactly the
+ * overwrite you were stopped from making. Read it again and decide again.
+ *
+ * Which writes, and where their tag comes from:
+ *
+ * | Write | Read for its `ETag` |
+ * | --- | --- |
+ * | `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |
+ * | `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |
+ * | `PUT /members/{member}/roles` | `GET /members/{member}` |
+ * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
+ * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ *
+ * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * no read in between. A `DELETE` returns none: there is nothing left to tag.
+ *
+ * **Collections hand out no tag**, deliberately — one tag cannot validate
+ * forty-five members, and a list-wide tag would refuse every write whenever
+ * anybody changed anything. That is why each conditional write has a
+ * single-thing read beside it.
+ *
+ * The tag is over the thing's own state. An event's tag ignores `myAttendance`,
+ * which is yours alone, so answering an event does not invalidate a pending edit
+ * of it; an event's options are tagged separately from the event, so correcting a
+ * dress code does not refuse an options edit and adding an option does.
+ *
+ * **Attendance is exempt.** `PUT` and `DELETE` on
+ * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
+ * writer of their own answer, the whole answer is one value so there is no half of
+ * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * Tags are strong validators. `If-Match: *` asserts only that the thing still
+ * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
+ * nothing here is cacheable.
+ *
  * ## Public forms
  *
  * `POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to
@@ -142,16 +199,73 @@
  * Failing either answers `422 spam_suspected`. Both endpoints are rate limited
  * to 10 requests a minute per IP.
  *
+ * Both also require an **`Idempotency-Key`** header, so that resending a
+ * submission after a timeout cannot book or send it twice. See *Sending a form
+ * only once*.
+ *
+ * ## Sending a form only once
+ *
+ * A guest on a phone at the hall taps Book, the connection stalls, and they tap
+ * again. Nothing in the second request distinguishes it from a second guest, so
+ * the client has to say, and the `Idempotency-Key` header is how
+ * ([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).
+ *
+ * **Generate a key when the form is rendered** and send the same one for every
+ * attempt at that submission. A fresh submission needs a fresh key.
+ *
+ * ```js
+ * const key = crypto.randomUUID();
+ *
+ * await fetch("/api/v1/contact", {
+ *   method: "POST",
+ *   headers: {
+ *     "Content-Type": "application/json",
+ *     "X-Form-Token": formToken,
+ *     "Idempotency-Key": key,
+ *   },
+ *   body: JSON.stringify({ ...fields, website: "" }),
+ * });
+ * ```
+ *
+ * The first request runs and its answer is stored under the key. A second request
+ * with the same key and the same body gets that answer back, byte for byte and
+ * with the same status, creates nothing, and carries
+ * `Idempotency-Replayed: true` so you can tell an echo from a fresh acceptance.
+ *
+ * The key must be 16 to 255 printable ASCII characters. It is scoped to the
+ * endpoint, so one key can be used once on `/contact` and once on a booking. It
+ * is **not** scoped to a caller, because these endpoints are anonymous, which is
+ * why a short key is refused: a collision with somebody else's key answers
+ * `409 idempotency_key_reuse` rather than handing you their booking.
+ *
+ * | Answer | Means |
+ * | --- | --- |
+ * | `400 idempotency_key_required` | No header. |
+ * | `400 idempotency_key_invalid` | Too short, too long, or not printable ASCII. |
+ * | `409 idempotency_key_reuse` | The key belongs to a different body, or to an attempt still running. |
+ *
+ * A request that **fails** releases its key: nothing was written, so nothing is
+ * being retried, and a guest who mistyped their address can correct it and send
+ * again with the same key. Stored answers are kept for 24 hours.
+ *
  * OpenAPI spec version: 1.0.0
  */
+import type { RegistrationExport503Code } from "./registrationExport503Code";
+import type { RegistrationExport503ErrorsItem } from "./registrationExport503ErrorsItem";
 
 export type RegistrationExport503 = {
-  title: "XLSX export needs the PHP zip extension, which this server does not have. Use CSV.";
-  status: 503;
-  code: "xlsx_unavailable";
+  /** English message. Never displayed: the front end renders `code`. */
+  title: string;
+  /** The HTTP status code, repeated in the body as RFC 9457 intends. */
+  status: number;
+  /** The path that was requested. Never the query string. */
   instance: string;
-  errors: unknown[];
+  /** Stable machine token the front end maps to French. */
+  code: RegistrationExport503Code;
+  /** Always empty for this status; present so every problem has the same shape. */
+  errors: RegistrationExport503ErrorsItem[];
+  /** ULID identifying this request. Echoed as the X-Request-Id header, and in the logs. */
   requestId: string;
-  /** @nullable */
-  detail: string | null;
+  /** RFC 9457 §3.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user. */
+  detail: string;
 };
