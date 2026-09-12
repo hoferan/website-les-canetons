@@ -10,14 +10,21 @@ import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * The content nav. Still short: R1b adds the members' tool below, and the
- * public pages arrive with R2 (/band, /committee, /join, /history) and R1c
- * (/events).
+ * The public nav — what a stranger sees, in the order a stranger wants it.
+ *
+ * "Nous rejoindre" is first because recruiting is what this site is for: the
+ * band takes players from 7 to 18 and loses them at 18, so the visitor worth
+ * optimising for is a parent deciding whether to turn up on Saturday. The two
+ * people pages follow, then the prose, then the way to write in.
  *
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
  */
-const NAV: Array<{ to: string; label: string }> = [];
+const NAV: Array<{ to: string; label: string }> = [
+  { to: "/join", label: "Nous rejoindre" },
+  { to: "/history", label: "Histoire" },
+  { to: "/contact", label: "Contact" },
+];
 
 /**
  * Screens grouped under "Direction", each gated by the permission that gates

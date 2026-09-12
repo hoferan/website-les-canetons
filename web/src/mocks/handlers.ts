@@ -837,6 +837,9 @@ export function resetMockState(): void {
  * a field the API no longer has. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
 
+/** One fixed stamp, so a test can send a wrong one and watch the guard refuse. */
+const MOCK_FORM_TOKEN = "mock-form-token";
+
 const overrides = [
   // NOT in the OpenAPI document — it is Sanctum's own route, outside /api — so
   // orval generates no handler for it. But http.ts primes it before every
@@ -858,8 +861,40 @@ const overrides = [
   // mirrors api/app/Http/Requests/ContactRequest.php exactly — including
   // `subject`, which the OLD HTML form did not mark required even though the
   // API always has.
+  // The stamp every anonymous form fetches as it renders. The real one is
+  // signed and carries the minting time; this one only has to be a string the
+  // handler below can recognise, because nothing in the SPA reads it.
+  http.get("/api/v1/form-token", () => HttpResponse.json({ token: MOCK_FORM_TOKEN })),
+
   http.post("/api/v1/contact", async ({ request }) => {
+    // THE GUARD RUNS AHEAD OF VALIDATION, exactly as PublicWriteGuard does on
+    // the server — which is the ordering `npm run smoke` got wrong for a week,
+    // asserting a 400 on a bare POST and receiving the 422. A mocked handler
+    // that validated first would let a form ship with no token at all and only
+    // fail against Apache.
+    //
+    // WHAT IS DELIBERATELY NOT MIRRORED IS THE TWO-SECOND FLOOR. The server
+    // refuses a token younger than that; enforcing it here would make every
+    // test of this form sleep two seconds to pass, and the rule it protects —
+    // fetch the token when the form renders — is already structural in
+    // Contact.tsx, where the query is pinned. Presence is checked; age is the
+    // server's.
     const body = (await request.json()) as Partial<Record<keyof ContactRequest, string>>;
+
+    // `website` must arrive PRESENT and empty. An absent field is refused as
+    // firmly as a filled one: omitting it is how a hand-written body would
+    // otherwise walk past a honeypot.
+    if (request.headers.get("X-Form-Token") !== MOCK_FORM_TOKEN || body.website !== "") {
+      return problem(422, "spam_suspected", "Submission looks automated");
+    }
+
+    const key = request.headers.get("Idempotency-Key");
+    if (key === null) {
+      return problem(400, "idempotency_key_required", "Idempotency-Key header required");
+    }
+    if (key.length < 16 || key.length > 255) {
+      return problem(400, "idempotency_key_invalid", "Idempotency-Key is not usable");
+    }
     // Laravel's `required` treats "0" as present and a whitespace-only string
     // as absent — the opposite of plain falsiness in both cases. `!body[field]`
     // used to disagree with the real API on exactly those two values.
