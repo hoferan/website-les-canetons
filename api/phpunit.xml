@@ -19,6 +19,24 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- The SESSION COOKIE'S NAME comes from here, and that is the whole
+             reason this is pinned. config/session.php derives it as
+             `Str::slug(APP_NAME).'-session'`, so every environment that has an
+             .env answers `les-canetons-api-session` and one that has none
+             answers Laravel's default `laravel-session`.
+
+             CI has no .env. So ResponseHygieneTest::
+             test_the_document_names_the_cookie_the_api_actually_sets compared
+             the committed document — exported in Docker, where APP_NAME is set
+             — against a name no server ever uses, and failed on the runner
+             while passing everywhere a developer could see. It had been failing
+             since the document gained that security scheme; nothing noticed,
+             because no pull request had been opened in between.
+
+             Same class as SESSION_SECURE_COOKIE and AUTO_MIGRATE below, one
+             environment further out: the suite must measure what ships, not
+             what the ambient environment happens to provide. -->
+        <env name="APP_NAME" value="Les Canetons API"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

@@ -28,35 +28,22 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Declares each route's failure modes in the OpenAPI document, read off
-        // that route's own middleware. See App\Support\Scramble\
-        // DocumentsFailureModes for what it derives and why.
+        // GUARDED, because Scramble is a DEV dependency and no server has it.
+        // `npm run build` runs `composer install --no-dev` into the artifact,
+        // so on a deployed server this class does not exist. An unguarded call
+        // here breaks the BUILD first: the `package:discover` composer runs
+        // after that install fatals with `Class "Dedoc\Scramble\Scramble" not
+        // found`, so from 2026-09-11 no artifact could be produced at all — and
+        // had one been, every request on the server would have fatalled in
+        // boot(), including the ones needed to diagnose it.
         //
-        // REGISTERED HERE, NOT IN config/scramble.php's `extensions` array.
-        // That array is documented as taking extensions and its filter does
-        // accept an OperationExtension, but one listed there is never called —
-        // verified by putting a `throw` in handle() and watching the export
-        // succeed anyway. The `extensions` array reaches the paths that build
-        // SCHEMAS and RESPONSES from types; operation transformers are a
-        // separate pipeline, and this is its documented entry point.
-        //
-        // Cost an hour to find, so: if a Scramble extension of yours appears to
-        // do nothing, check which pipeline consumes it before debugging the
-        // extension itself.
-        // ConstrainsPathParameters joins it on the same footing and for the same
-        // reason: a route's `->where()` is already the authority on what that
-        // parameter accepts, so publishing the constraint beats restating it.
-        Scramble::configure()->withOperationTransformers([
-            DocumentsFailureModes::class,
-            ConstrainsPathParameters::class,
-            TidiesResponseMedia::class,
-        ]);
-
-        // A third pipeline again: a rule transformer is neither an operation
-        // transformer nor one of config/scramble.php's `extensions`. It sees
-        // each validation rule as the request schema is built, which is the
-        // only place a `gt:` can still be told apart from the `max:` beside it.
-        Scramble::configure()->withRuleTransformers(DocumentsNumericFloors::class);
+        // The reference does not need it. /api/docs is a Scalar page reading
+        // the COMMITTED openapi.json that ships in the artifact, which is why
+        // Scramble is a dev dependency in the first place: nothing at runtime
+        // generates the document.
+        if (class_exists(Scramble::class)) {
+            $this->configureScramble();
+        }
 
         // The rate limiter the two ANONYMOUS write endpoints run behind.
         //
@@ -93,5 +80,45 @@ class AppServiceProvider extends ServiceProvider
         // and the MSW handlers agree with the real API rather than with each
         // other.
         JsonResource::withoutWrapping();
+    }
+
+    /**
+     * The three pipelines the OpenAPI export goes through.
+     *
+     * Only ever called when Scramble is installed — see boot(). Nothing on a
+     * deployed server reaches this.
+     */
+    private function configureScramble(): void
+    {
+        // Declares each route's failure modes in the OpenAPI document, read off
+        // that route's own middleware. See App\Support\Scramble\
+        // DocumentsFailureModes for what it derives and why.
+        //
+        // REGISTERED HERE, NOT IN config/scramble.php's `extensions` array.
+        // That array is documented as taking extensions and its filter does
+        // accept an OperationExtension, but one listed there is never called —
+        // verified by putting a `throw` in handle() and watching the export
+        // succeed anyway. The `extensions` array reaches the paths that build
+        // SCHEMAS and RESPONSES from types; operation transformers are a
+        // separate pipeline, and this is its documented entry point.
+        //
+        // Cost an hour to find, so: if a Scramble extension of yours appears to
+        // do nothing, check which pipeline consumes it before debugging the
+        // extension itself.
+        //
+        // ConstrainsPathParameters joins it on the same footing and for the same
+        // reason: a route's `->where()` is already the authority on what that
+        // parameter accepts, so publishing the constraint beats restating it.
+        Scramble::configure()->withOperationTransformers([
+            DocumentsFailureModes::class,
+            ConstrainsPathParameters::class,
+            TidiesResponseMedia::class,
+        ]);
+
+        // A third pipeline again: a rule transformer is neither an operation
+        // transformer nor one of config/scramble.php's `extensions`. It sees
+        // each validation rule as the request schema is built, which is the
+        // only place a `gt:` can still be told apart from the `max:` beside it.
+        Scramble::configure()->withRuleTransformers(DocumentsNumericFloors::class);
     }
 }
