@@ -26,21 +26,32 @@ export function ButtonLink({
   external = false,
   variant = "default",
   className,
+  ariaLabel,
 }: {
   to: string;
   children: React.ReactNode;
   external?: boolean;
   variant?: React.ComponentProps<typeof Button>["variant"];
   className?: string;
+  /**
+   * A fuller accessible name than the visible text, for a control repeated
+   * once per row: five links all called "Modifier" are five identical entries
+   * in a screen reader's list of links, and nothing says which event each
+   * belongs to. The visible text stays the FIRST WORDS of this string, so a
+   * voice-control user saying "Modifier" still matches (WCAG 2.5.3).
+   */
+  ariaLabel?: string;
 }) {
   return (
     <Button asChild variant={variant} className={className}>
       {external ? (
-        <a href={to} target="_blank" rel="noreferrer">
+        <a href={to} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
           {children}
         </a>
       ) : (
-        <Link to={to}>{children}</Link>
+        <Link to={to} aria-label={ariaLabel}>
+          {children}
+        </Link>
       )}
     </Button>
   );

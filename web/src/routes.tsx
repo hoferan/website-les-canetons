@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { EventEdit } from "./pages/EventEdit";
+import { EventNew } from "./pages/EventNew";
 import { Events } from "./pages/Events";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
@@ -50,6 +52,17 @@ export function AppRoutes() {
               (C1). */}
           <Route element={<RequireSession />}>
             <Route path="/events" element={<Events />} />
+          </Route>
+
+          {/* Entering the planning, which is the committee's job and nobody
+              else's. The static segments are written before the dynamic one
+              on purpose: React Router already ranks `/events/new` above
+              `/events/:id/edit` whatever the order, and relying on that
+              silently is how a route table acquires a collision nobody can
+              see. */}
+          <Route element={<RequirePermission permission="events.manage" />}>
+            <Route path="/events/new" element={<EventNew />} />
+            <Route path="/events/:id/edit" element={<EventEdit />} />
           </Route>
 
           <Route element={<RequirePermission permission="members.manage" />}>

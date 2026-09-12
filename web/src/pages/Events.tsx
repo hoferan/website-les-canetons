@@ -98,7 +98,24 @@ export function Events() {
 
       <div className="mt-block grid gap-related">
         {events.map((event) => (
-          <EventCard key={event.id} event={event} />
+          <EventCard
+            key={event.id}
+            event={event}
+            // The card decides nothing about permissions — see its docblock.
+            // A player is passed no actions at all, so their card has no empty
+            // control row rather than a row of refusals.
+            actions={
+              mayManage ? (
+                <ButtonLink
+                  to={`/events/${event.id}/edit`}
+                  variant="outline"
+                  ariaLabel={`Modifier ${event.title}`}
+                >
+                  Modifier
+                </ButtonLink>
+              ) : null
+            }
+          />
         ))}
       </div>
     </PageSection>
