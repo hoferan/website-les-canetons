@@ -22,6 +22,8 @@ import { Toaster } from "./ui/sonner";
  */
 const NAV: Array<{ to: string; label: string }> = [
   { to: "/join", label: "Nous rejoindre" },
+  { to: "/band", label: "Les canetons" },
+  { to: "/committee", label: "Comité" },
   { to: "/history", label: "Histoire" },
   { to: "/contact", label: "Contact" },
 ];

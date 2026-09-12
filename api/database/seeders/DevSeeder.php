@@ -49,13 +49,29 @@ class DevSeeder extends Seeder
 
         // BOTH — the case the old role matrix could not express. If someone
         // reintroduces an either/or, this member is what breaks.
-        $this->member('demo.both', 'Bastien', 'Both', $sections['Trompettes']->id)
-            ->roles()->syncWithoutDetaching([$direction->id]);
+        //
+        // ALSO THE ONE INSTRUCTOR, and that is what makes the public band page
+        // renderable in development: `instructor_of_section_id` is a different
+        // column from `section_id`, so Bastien is listed as a player under the
+        // trumpets and as an instructor under the drums. With nobody teaching
+        // anything, that branch of the page could only be looked at on a
+        // server.
+        $this->member('demo.both', 'Bastien', 'Both', $sections['Trompettes']->id, [
+            'instructor_of_section_id' => $sections['Batteurs']->id,
+        ])->roles()->syncWithoutDetaching([$direction->id]);
 
         // Holds the committee role and plays: the guest list is the only
         // thing they can see, and they are still in the attendance list.
-        $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id)
-            ->roles()->syncWithoutDetaching([$committee->id]);
+        //
+        // The TITLE is what puts them on the public committee page, and it is
+        // deliberately not the same thing as the role: `committee` grants
+        // `registrations.view`, while 'Responsable intendance' is free text the
+        // committee typed and the site renders verbatim. One is authorisation
+        // and the other is a caption, and a demo roster where they coincide is
+        // how somebody comes to believe they are one field.
+        $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id, [
+            'committee_title' => 'Responsable intendance',
+        ])->roles()->syncWithoutDetaching([$committee->id]);
 
         // A young member whose PARENT uses the login on their behalf. Every
         // member has an account (2026_09_08_000001): the roster is the people
@@ -65,7 +81,18 @@ class DevSeeder extends Seeder
         $this->member('demo.young', 'Nadia', 'Sansconnexion', $sections['Batteurs']->id);
     }
 
-    private function member(string $username, string $first, string $last, ?int $sectionId): Member
+    /**
+     * @param  array<string, mixed>  $extra  Applied ON CREATION ONLY, like every
+     *                                       other attribute here: firstOrCreate
+     *                                       leaves an existing row alone, which
+     *                                       is what stops this seeder undoing a
+     *                                       developer's hand-edits (DevSeederTest
+     *                                       pins that). A database seeded before
+     *                                       one of these was added therefore does
+     *                                       not gain it — re-seed from empty, or
+     *                                       set it in DbGate.
+     */
+    private function member(string $username, string $first, string $last, ?int $sectionId, array $extra = []): Member
     {
         return Member::firstOrCreate(
             ['username' => $username],
@@ -75,6 +102,7 @@ class DevSeeder extends Seeder
                 'section_id' => $sectionId,
                 'password' => 'demo',
                 'public_visible' => true,
+                ...$extra,
             ],
         );
     }

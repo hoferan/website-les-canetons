@@ -33,6 +33,10 @@
             "description": "The roster, and the reference data a roster form needs. All of it behind `members.manage`."
         },
         {
+            "name": "Public pages",
+            "description": "What the public site renders about the band itself. Anonymous, read-only, and limited to the people who have consented to appear."
+        },
+        {
             "name": "Public forms",
             "description": "What an anonymous visitor may send, and the stamp every such submission carries. Rate limited."
         },
@@ -3498,6 +3502,193 @@
                 }
             }
         },
+        "/band": {
+            "get": {
+                "operationId": "band.index",
+                "description": "Anonymous. Returns every register in the band's own order, each with the\nmembers who play in it and the instructors who teach it.\n\n**Only people who have consented to appear are listed.** Consent is per\nperson and defaults to off, because most of the band are minors. A\nregister whose members have all withheld it comes back with an empty\n`members` list rather than being dropped, so a reader cannot mistake\nwithheld consent for an empty register.\n\nNothing here is an account detail: three fields per person, and a name is\nthe only one a visitor learns.",
+                "summary": "List the band, register by register",
+                "tags": [
+                    "Public pages"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `PublicSectionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/PublicSectionResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/committee": {
+            "get": {
+                "operationId": "committee.index",
+                "summary": "List the committee.\r\n\r\nAnonymous. Returns everyone holding a committee seat who has consented\r\nto appear, with the title they hold.\r\n\r\nThe title is free text the committee typed, so it is rendered verbatim\r\nand is never translated",
+                "tags": [
+                    "Public pages"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `CommitteeMemberResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CommitteeMemberResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
         "/form-token": {
             "get": {
                 "operationId": "formToken.show",
@@ -3904,6 +4095,34 @@
                 ],
                 "title": "ChaseListEntryResource"
             },
+            "CommitteeMemberResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The seat they hold, as the committee typed it. Content, so never translated."
+                    }
+                },
+                "required": [
+                    "id",
+                    "firstName",
+                    "lastName",
+                    "title"
+                ],
+                "title": "CommitteeMemberResource"
+            },
             "ContactRequest": {
                 "type": "object",
                 "description": "A message sent through the public contact form.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nEvery field here is required. The body is capped at 5000 characters, which\nis a long letter; anything longer is refused rather than truncated.",
@@ -4161,6 +4380,59 @@
                     "location"
                 ],
                 "title": "PublicEventResource"
+            },
+            "PublicMemberResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "firstName",
+                    "lastName"
+                ],
+                "title": "PublicMemberResource"
+            },
+            "PublicSectionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The register's name, as the band typed it. Content, so never translated."
+                    },
+                    "members": {
+                        "type": "array",
+                        "description": "Everyone who plays in it and has consented to appear. May be empty.",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicMemberResource"
+                        }
+                    },
+                    "instructors": {
+                        "type": "array",
+                        "description": "Everyone who teaches it and has consented to appear. May be empty.",
+                        "items": {
+                            "$ref": "#/components/schemas/PublicMemberResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "members",
+                    "instructors"
+                ],
+                "title": "PublicSectionResource"
             },
             "RecordMemberAttendanceRequest": {
                 "type": "object",

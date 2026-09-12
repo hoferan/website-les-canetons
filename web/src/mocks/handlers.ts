@@ -348,7 +348,11 @@ function initialMembers(): MemberResource[] {
       sectionName: "Trompettes",
       isPlayer: true,
       committeeTitle: null,
-      instructorOfSectionId: null,
+      // THE ONE INSTRUCTOR, mirroring DevSeeder. A different column from
+      // sectionId, so the public band page lists them under the trumpets as a
+      // player and under the drummers as an instructor — the only place that
+      // branch can be looked at without a server.
+      instructorOfSectionId: 1,
       publicVisible: true,
       roleIds: [1],
     },
@@ -362,7 +366,11 @@ function initialMembers(): MemberResource[] {
       sectionId: 6,
       sectionName: "Trombones",
       isPlayer: true,
-      committeeTitle: null,
+      // The TITLE, not the role, is what puts somebody on the public committee
+      // page. `committee` grants registrations.view; this string is a caption
+      // the committee typed. A demo roster where the two coincide is how
+      // somebody comes to believe they are one field.
+      committeeTitle: "Responsable intendance",
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [2],
@@ -393,8 +401,54 @@ function initialMembers(): MemberResource[] {
  */
 let members: MemberResource[] = initialMembers();
 
+/**
+ * A roster row as the PUBLIC endpoints render it: three fields, and not one of
+ * them an account detail.
+ *
+ * Written out rather than spread-and-delete, for the reason
+ * App\Http\Resources\PublicMemberResource gives: the protection against
+ * publishing a username is that no line here mentions one, and a `{...member}`
+ * with two deletions publishes every field added after it.
+ */
+function publicly(member: MemberResource): {
+  id: number;
+  firstName: string;
+  lastName: string;
+} {
+  return { id: member.id, firstName: member.firstName, lastName: member.lastName };
+}
+
 /** The next id, mirroring an auto-increment: never reuses a deleted one. */
 let nextMemberId = 6;
+
+/**
+ * Test seam: withdraw or grant one member's consent to appear publicly.
+ *
+ * A seam rather than a `server.use()` override of /band, because the point of
+ * the two public handlers is that they READ THE ROSTER — a test that replaced
+ * the endpoint would prove the page renders a list and nothing about the one
+ * rule the endpoint exists to enforce.
+ */
+export function setMemberVisibility(id: number, visible: boolean): void {
+  const member = members.find((row) => row.id === id);
+  if (member) {
+    member.publicVisible = visible;
+  }
+}
+
+/**
+ * Test seam: give one member a committee seat, or take it away.
+ *
+ * The empty and whitespace-only values are the interesting ones — the roster
+ * form writes '' rather than null when somebody clears the field, and both the
+ * API and this mock have to read that as no seat.
+ */
+export function setMemberTitle(id: number, title: string | null): void {
+  const member = members.find((row) => row.id === id);
+  if (member) {
+    member.committeeTitle = title;
+  }
+}
 
 function resetRoster(): void {
   members = initialMembers();
@@ -855,6 +909,47 @@ const overrides = [
   http.get("/api/v1/config", () => HttpResponse.json({ env: "dev", features: { calendar: true } })),
 
   http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
+
+  // THE TWO PUBLIC PEOPLE-PAGES, derived from the same mutable roster the
+  // members screen edits rather than from a second fixture. That is what makes
+  // the mocked app answer the question this endpoint exists for: tick
+  // "Visible publiquement" off for Perrine in /members and she leaves the band
+  // page, which is the behaviour a committee has to be able to trust.
+  //
+  // Both mirror the server's filter — `publicVisible`, and for the committee a
+  // non-empty title — because a mocked handler that served everybody would let
+  // a screen ship having never rendered the empty state that today's roster
+  // actually produces.
+  http.get("/api/v1/band", ({ request }) =>
+    collection(
+      SECTIONS.map((section) => ({
+        id: section.id,
+        name: section.name,
+        members: members
+          .filter((member) => member.publicVisible && member.sectionId === section.id)
+          .map(publicly),
+        instructors: members
+          .filter((member) => member.publicVisible && member.instructorOfSectionId === section.id)
+          .map(publicly),
+      })),
+      request,
+    ),
+  ),
+
+  http.get("/api/v1/committee", ({ request }) =>
+    collection(
+      members
+        .filter((member) => member.publicVisible && (member.committeeTitle ?? "").trim() !== "")
+        .sort((a, b) => a.lastName.localeCompare(b.lastName, "fr"))
+        .map((member) => ({
+          id: member.id,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          title: member.committeeTitle,
+        })),
+      request,
+    ),
+  ),
 
   // Hand-written because the generated handler always succeeds, and the whole
   // point of a contact form is what it does when it does not. The required set

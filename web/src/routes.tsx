@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { Band } from "./pages/Band";
+import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventEdit } from "./pages/EventEdit";
@@ -55,6 +57,8 @@ export function AppRoutes() {
       <Route element={<Layout />}>
         {/* THE PUBLIC FACE. No session, no gate, no guard — see the note
             above on why these sit outside MustChangePassword. */}
+        <Route path="/band" element={<Band />} />
+        <Route path="/committee" element={<Committee />} />
         <Route path="/history" element={<History />} />
         <Route path="/join" element={<Join />} />
         <Route path="/contact" element={<Contact />} />
