@@ -120,6 +120,24 @@ final class ErrorVocabulary
         'method_not_allowed' => 'The route exists, but not for this HTTP method. Check whether it '
             .'expects PUT or PATCH rather than POST.',
 
+        // ------------------------------------------ working from current state
+
+        // Names the header AND the read that produces one, because "send
+        // If-Match" without saying where a tag comes from is the kind of
+        // instruction that sends somebody to the source code.
+        'if_match_required' => 'This request replaces or removes something, so it must prove it is '
+            .'working from the current state. Read the thing first and send the `ETag` it returns '
+            .'back as `If-Match`. Attendance answers are exempt.',
+
+        // DOES NOT CARRY THE CURRENT TAG, and neither does the response — see
+        // App\Http\Middleware\ConditionalWrite. Handing it over would let a
+        // client retry blindly and land exactly the overwrite it was just
+        // stopped from making, which is the whole failure this refusal exists
+        // to prevent.
+        'if_match_failed' => 'Somebody else changed this since you read it, so the write was '
+            .'refused rather than silently discarding their change. Read it again, decide what you '
+            .'still want to write, and retry with the new `ETag`.',
+
         // ---------------------------------- allowed, but not against this state
 
         'cannot_delete_self' => 'An account cannot delete itself. Ask another member who holds '

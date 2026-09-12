@@ -202,12 +202,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-/**
- * Stable machine token the front end maps to French.
- */
-export type Problem400ResponseCode =
-  (typeof Problem400ResponseCode)[keyof typeof Problem400ResponseCode];
-
-export const Problem400ResponseCode = {
-  validation_failed: "validation_failed",
-} as const;
+export type Problem428ResponseErrorsItem = { [key: string]: unknown };

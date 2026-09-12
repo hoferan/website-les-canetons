@@ -60,6 +60,33 @@ class MemberController extends Controller
     }
 
     /**
+     * Read one person.
+     *
+     * Requires `members.manage`. The same fields the roster list carries, for
+     * a single member.
+     *
+     * Read this before editing somebody, and quote the `ETag` it returns in
+     * the `If-Match` header of the write. The list hands out no tag — one tag
+     * cannot validate forty-five rows — so a form filled from the list and
+     * submitted without a read is the lost update this API refuses.
+     */
+    public function show(Member $member): MemberResource
+    {
+        // Loaded explicitly for the same reason index() eager-loads: the
+        // Resource publishes sectionName and roleIds, and an unloaded relation
+        // would cost two extra queries here.
+        //
+        // THE ASSIGNMENT BELOW IS LOAD-BEARING, exactly as it is in index():
+        // Scramble publishes the comment block preceding a return as that
+        // operation's 200 response description, walking back past blank lines
+        // to find it. This paragraph shipped to /api/docs once already, and
+        // DocsTest caught it because it named a class.
+        $person = $member->load(['section', 'roles']);
+
+        return new MemberResource($person);
+    }
+
+    /**
      * Add a member to the roster.
      *
      * Requires `members.manage`. Creating a person creates their account:

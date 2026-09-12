@@ -205,9 +205,9 @@
 /**
  * Stable machine token the front end maps to French.
  */
-export type Problem400ResponseCode =
-  (typeof Problem400ResponseCode)[keyof typeof Problem400ResponseCode];
+export type Problem412ResponseCode =
+  (typeof Problem412ResponseCode)[keyof typeof Problem412ResponseCode];
 
-export const Problem400ResponseCode = {
-  validation_failed: "validation_failed",
+export const Problem412ResponseCode = {
+  if_match_failed: "if_match_failed",
 } as const;

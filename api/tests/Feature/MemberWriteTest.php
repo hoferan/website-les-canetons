@@ -185,7 +185,7 @@ class MemberWriteTest extends TestCase
             ->publiclyVisible()
             ->create(['committee_title' => 'Caissière']);
 
-        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['lastName' => 'Joueuse'])
+        $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", ['lastName' => 'Joueuse'])
             ->assertOk();
 
         $member->refresh();
@@ -207,7 +207,7 @@ class MemberWriteTest extends TestCase
             ->inSection($this->section())
             ->create(['committee_title' => 'Caissière']);
 
-        $this->acting()->patchJson("/api/v1/members/{$member->id}", [
+        $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", [
             'sectionId' => null,
             'committeeTitle' => null,
         ])->assertOk();
@@ -224,7 +224,7 @@ class MemberWriteTest extends TestCase
         // by themselves.
         $member = Member::factory()->named('Perrine', 'Player')->create();
 
-        $this->acting()->patchJson("/api/v1/members/{$member->id}", [
+        $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", [
             'lastName' => 'Joueuse',
             'username' => 'perrine.player',
         ])->assertOk();
@@ -239,7 +239,7 @@ class MemberWriteTest extends TestCase
         // NULL now, so the whole branch is gone and the rule rejects it.
         $member = Member::factory()->named('Perrine', 'Player')->create();
 
-        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['username' => null])
+        $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", ['username' => null])
             ->assertStatus(400)
             ->assertJson(['code' => 'validation_failed'])
             ->assertJsonPath('errors.0.field', 'username');
@@ -256,7 +256,7 @@ class MemberWriteTest extends TestCase
         $this->acting()->postJson('/api/v1/members', $this->payload())->assertCreated();
 
         $member = Member::where('username', 'perrine.player')->sole();
-        $this->acting()->patchJson("/api/v1/members/{$member->id}", ['firstName' => 'Perry'])
+        $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", ['firstName' => 'Perry'])
             ->assertOk();
     }
 
@@ -268,7 +268,7 @@ class MemberWriteTest extends TestCase
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
 
-        $this->acting($player)->patchJson("/api/v1/members/{$player->id}", ['firstName' => 'X'])
+        $this->acting($player)->withHeaders($this->ifMatch('member', $player))->patchJson("/api/v1/members/{$player->id}", ['firstName' => 'X'])
             ->assertStatus(403);
     }
 }

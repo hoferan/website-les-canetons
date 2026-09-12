@@ -149,6 +149,21 @@ class RegistrationController extends Controller
     }
 
     /**
+     * Read one booking.
+     *
+     * Requires `registrations.manage`. The same fields the guest list
+     * carries, for a single booking.
+     *
+     * Read this before amending or cancelling one, and quote the `ETag` it
+     * returns in the `If-Match` header of the write. The guest list hands out
+     * no tag — one tag cannot validate a hundred bookings.
+     */
+    public function show(Registration $registration): RegistrationResource
+    {
+        return new RegistrationResource($registration->load('choices.option'));
+    }
+
+    /**
      * Correct a booking's details.
      *
      * Requires `registrations.manage`. Guests cannot amend their own

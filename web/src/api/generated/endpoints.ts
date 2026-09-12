@@ -101,8 +101,10 @@
  * | `403` | Logged in, but not allowed to do this. |
  * | `404` | No such thing, or nothing you may know exists. |
  * | `409` | Allowed, but it conflicts with the current state. |
+ * | `412` | Your `If-Match` names a state this thing is no longer in. |
  * | `419` | The session or CSRF token expired. Prime the cookie and retry. |
  * | `422` | The submission looks automated. See *Public forms*. |
+ * | `428` | The write needs an `If-Match`. See *Conditional writes*. |
  * | `429` | Rate limited. |
  * | `503` | The service is temporarily refusing to serve. |
  *
@@ -128,6 +130,61 @@
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
  * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ *
+ * ## Conditional writes
+ *
+ * **Every write that replaces or removes something must prove it is working from
+ * the current state.** Read the thing first, keep the `ETag` the read returns, and
+ * send it back as `If-Match`:
+ *
+ * ```js
+ * const read = await fetch("/api/v1/events/42", { credentials: "include" });
+ * const etag = read.headers.get("ETag");
+ *
+ * await fetch("/api/v1/events/42", {
+ *   method: "PATCH",
+ *   credentials: "include",
+ *   headers: { "Content-Type": "application/json", "X-XSRF-TOKEN": xsrf, "If-Match": etag },
+ *   body: JSON.stringify({ title: "Cortège" }),
+ * });
+ * ```
+ *
+ * No header answers `428 if_match_required`. A header naming a state the thing is
+ * no longer in answers `412 if_match_failed`, and **the 412 does not tell you the
+ * current tag** — retrying blindly with a fresh one would land exactly the
+ * overwrite you were stopped from making. Read it again and decide again.
+ *
+ * Which writes, and where their tag comes from:
+ *
+ * | Write | Read for its `ETag` |
+ * | --- | --- |
+ * | `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |
+ * | `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |
+ * | `PUT /members/{member}/roles` | `GET /members/{member}` |
+ * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
+ * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ *
+ * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * no read in between. A `DELETE` returns none: there is nothing left to tag.
+ *
+ * **Collections hand out no tag**, deliberately — one tag cannot validate
+ * forty-five members, and a list-wide tag would refuse every write whenever
+ * anybody changed anything. That is why each conditional write has a
+ * single-thing read beside it.
+ *
+ * The tag is over the thing's own state. An event's tag ignores `myAttendance`,
+ * which is yours alone, so answering an event does not invalidate a pending edit
+ * of it; an event's options are tagged separately from the event, so correcting a
+ * dress code does not refuse an options edit and adding an option does.
+ *
+ * **Attendance is exempt.** `PUT` and `DELETE` on
+ * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
+ * writer of their own answer, the whole answer is one value so there is no half of
+ * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * Tags are strong validators. `If-Match: *` asserts only that the thing still
+ * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
+ * nothing here is cacheable.
  *
  * ## Public forms
  *
@@ -189,8 +246,10 @@ import type {
   Problem401Response,
   Problem403Response,
   Problem404Response,
+  Problem412Response,
   Problem419Response,
   Problem422Response,
+  Problem428Response,
   Problem429Response,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
@@ -1260,9 +1319,19 @@ export type eventUpdateResponse404 = {
   status: 404;
 };
 
+export type eventUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type eventUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type eventUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type eventUpdateResponseSuccess = eventUpdateResponse200 & {
@@ -1273,7 +1342,9 @@ export type eventUpdateResponseError = (
   | eventUpdateResponse401
   | eventUpdateResponse403
   | eventUpdateResponse404
+  | eventUpdateResponse412
   | eventUpdateResponse419
+  | eventUpdateResponse428
 ) & {
   headers: Headers;
 };
@@ -1337,7 +1408,9 @@ export const getEventUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1379,7 +1452,9 @@ export type EventUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type EventUpdateMutationVariables = { event: number; data?: UpdateEventRequest };
 
 /**
@@ -1391,7 +1466,9 @@ export const useEventUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -1433,9 +1510,19 @@ export type eventDestroyResponse404 = {
   status: 404;
 };
 
+export type eventDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type eventDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type eventDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type eventDestroyResponseSuccess = eventDestroyResponse200 & {
@@ -1445,7 +1532,9 @@ export type eventDestroyResponseError = (
   | eventDestroyResponse401
   | eventDestroyResponse403
   | eventDestroyResponse404
+  | eventDestroyResponse412
   | eventDestroyResponse419
+  | eventDestroyResponse428
 ) & {
   headers: Headers;
 };
@@ -1479,7 +1568,13 @@ export const eventDestroy = async (
 export const getEventDestroyMutationKey = () => ["eventDestroy"] as const;
 
 export const getEventDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1517,14 +1612,25 @@ export const getEventDestroyMutationOptions = <
 export type EventDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof eventDestroy>>>;
 
 export type EventDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type EventDestroyMutationVariables = { event: number };
 
 /**
  * @summary Take an event off the planning
  */
 export const useEventDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -3231,6 +3337,169 @@ export function useRegistrationExport<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type registrationShowResponse200 = {
+  data: RegistrationResource;
+  status: 200;
+};
+
+export type registrationShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type registrationShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type registrationShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type registrationShowResponseSuccess = registrationShowResponse200 & {
+  headers: Headers;
+};
+export type registrationShowResponseError = (
+  registrationShowResponse401 | registrationShowResponse403 | registrationShowResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationShowResponse =
+  registrationShowResponseSuccess | registrationShowResponseError;
+
+export const getRegistrationShowUrl = (registration: number) => {
+  return `/registrations/${registration}`;
+};
+
+/**
+ * Requires `registrations.manage`. The same fields the guest list
+ * carries, for a single booking.
+ *
+ * Read this before amending or cancelling one, and quote the `ETag` it
+ * returns in the `If-Match` header of the write. The guest list hands out
+ * no tag — one tag cannot validate a hundred bookings.
+ * @summary Read one booking
+ */
+export const registrationShow = async (
+  registration: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationShowResponse> => {
+  return customFetch<registrationShowResponse>(getRegistrationShowUrl(registration), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationShowQueryKey = (registration: number) => {
+  return [`/registrations/${registration}`] as const;
+};
+
+export const getRegistrationShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationShowQueryKey(registration);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationShow>>> = ({ signal }) =>
+    registrationShow(registration, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: registration !== null && registration !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationShowQueryResult = NonNullable<Awaited<ReturnType<typeof registrationShow>>>;
+export type RegistrationShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response;
+
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  registration: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof registrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationShow>>,
+          TError,
+          Awaited<ReturnType<typeof registrationShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one booking
+ */
+
+export function useRegistrationShow<
+  TData = Awaited<ReturnType<typeof registrationShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  registration: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationShowQueryOptions(registration, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type registrationUpdateResponse200 = {
   data: RegistrationResource;
   status: 200;
@@ -3256,9 +3525,19 @@ export type registrationUpdateResponse404 = {
   status: 404;
 };
 
+export type registrationUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type registrationUpdateResponseSuccess = registrationUpdateResponse200 & {
@@ -3269,7 +3548,9 @@ export type registrationUpdateResponseError = (
   | registrationUpdateResponse401
   | registrationUpdateResponse403
   | registrationUpdateResponse404
+  | registrationUpdateResponse412
   | registrationUpdateResponse419
+  | registrationUpdateResponse428
 ) & {
   headers: Headers;
 };
@@ -3333,7 +3614,9 @@ export const getRegistrationUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3377,7 +3660,9 @@ export type RegistrationUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type RegistrationUpdateMutationVariables = {
   registration: number;
   data?: UpdateRegistrationRequest;
@@ -3392,7 +3677,9 @@ export const useRegistrationUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -3434,9 +3721,19 @@ export type registrationDestroyResponse404 = {
   status: 404;
 };
 
+export type registrationDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type registrationDestroyResponseSuccess = registrationDestroyResponse200 & {
@@ -3446,7 +3743,9 @@ export type registrationDestroyResponseError = (
   | registrationDestroyResponse401
   | registrationDestroyResponse403
   | registrationDestroyResponse404
+  | registrationDestroyResponse412
   | registrationDestroyResponse419
+  | registrationDestroyResponse428
 ) & {
   headers: Headers;
 };
@@ -3478,7 +3777,13 @@ export const registrationDestroy = async (
 export const getRegistrationDestroyMutationKey = () => ["registrationDestroy"] as const;
 
 export const getRegistrationDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3518,14 +3823,25 @@ export type RegistrationDestroyMutationResult = NonNullable<
 >;
 
 export type RegistrationDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type RegistrationDestroyMutationVariables = { registration: number };
 
 /**
  * @summary Cancel a booking
  */
 export const useRegistrationDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -3546,6 +3862,191 @@ export const useRegistrationDestroy = <
 > => {
   return useMutation(getRegistrationDestroyMutationOptions(options), queryClient);
 };
+
+export type registrationOptionIndexResponse200 = {
+  data: RegistrationOptionResource[];
+  status: 200;
+};
+
+export type registrationOptionIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type registrationOptionIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type registrationOptionIndexResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type registrationOptionIndexResponseSuccess = registrationOptionIndexResponse200 & {
+  headers: Headers;
+};
+export type registrationOptionIndexResponseError = (
+  | registrationOptionIndexResponse401
+  | registrationOptionIndexResponse403
+  | registrationOptionIndexResponse404
+) & {
+  headers: Headers;
+};
+
+export type registrationOptionIndexResponse =
+  registrationOptionIndexResponseSuccess | registrationOptionIndexResponseError;
+
+export const getRegistrationOptionIndexUrl = (event: number) => {
+  return `/events/${event}/registration-options`;
+};
+
+/**
+ * Requires `events.manage`. Returns the options in sort order.
+ *
+ * Read this before replacing them, and quote the `ETag` it returns in the
+ * `If-Match` header of the PUT. The tag is over the OPTION LIST, not over
+ * the event: correcting the event's dress code does not invalidate a
+ * pending options edit, and adding an option does — which is the way round
+ * that catches a lost update.
+ *
+ * The public booking form reads the same options from
+ * `GET /api/v1/events/{event}/registration`, which needs no session but
+ * answers 404 for an event that takes no bookings. This one answers with
+ * an empty list instead, because configuring an event that does not take
+ * bookings yet is exactly when the committee needs it.
+ * @summary Read an event's bookable options
+ */
+export const registrationOptionIndex = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<registrationOptionIndexResponse> => {
+  return customFetch<registrationOptionIndexResponse>(getRegistrationOptionIndexUrl(event), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getRegistrationOptionIndexQueryKey = (event: number) => {
+  return [`/events/${event}/registration-options`] as const;
+};
+
+export const getRegistrationOptionIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRegistrationOptionIndexQueryKey(event);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationOptionIndex>>> = ({
+    signal,
+  }) => registrationOptionIndex(event, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: event !== null && event !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type RegistrationOptionIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof registrationOptionIndex>>
+>;
+export type RegistrationOptionIndexQueryError =
+  Problem401Response | Problem403Response | Problem404Response;
+
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  event: number,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationOptionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationOptionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof registrationOptionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof registrationOptionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read an event's bookable options
+ */
+
+export function useRegistrationOptionIndex<
+  TData = Awaited<ReturnType<typeof registrationOptionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  event: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getRegistrationOptionIndexQueryOptions(event, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type registrationOptionReplaceResponse200 = {
   data: RegistrationOptionResource[];
@@ -3577,9 +4078,19 @@ export type registrationOptionReplaceResponse409 = {
   status: 409;
 };
 
+export type registrationOptionReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type registrationOptionReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type registrationOptionReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type registrationOptionReplaceResponseSuccess = registrationOptionReplaceResponse200 & {
@@ -3591,7 +4102,9 @@ export type registrationOptionReplaceResponseError = (
   | registrationOptionReplaceResponse403
   | registrationOptionReplaceResponse404
   | registrationOptionReplaceResponse409
+  | registrationOptionReplaceResponse412
   | registrationOptionReplaceResponse419
+  | registrationOptionReplaceResponse428
 ) & {
   headers: Headers;
 };
@@ -3666,7 +4179,9 @@ export const getRegistrationOptionReplaceMutationOptions = <
     | Problem403Response
     | Problem404Response
     | RegistrationOptionReplace409
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -3711,7 +4226,9 @@ export type RegistrationOptionReplaceMutationError =
   | Problem403Response
   | Problem404Response
   | RegistrationOptionReplace409
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type RegistrationOptionReplaceMutationVariables = {
   event: number;
   data: ReplaceRegistrationOptionsRequest;
@@ -3727,7 +4244,9 @@ export const useRegistrationOptionReplace = <
     | Problem403Response
     | Problem404Response
     | RegistrationOptionReplace409
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -4345,6 +4864,168 @@ export const useMemberStore = <
   return useMutation(getMemberStoreMutationOptions(options), queryClient);
 };
 
+export type memberShowResponse200 = {
+  data: MemberResource;
+  status: 200;
+};
+
+export type memberShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type memberShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type memberShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type memberShowResponseSuccess = memberShowResponse200 & {
+  headers: Headers;
+};
+export type memberShowResponseError = (
+  memberShowResponse401 | memberShowResponse403 | memberShowResponse404
+) & {
+  headers: Headers;
+};
+
+export type memberShowResponse = memberShowResponseSuccess | memberShowResponseError;
+
+export const getMemberShowUrl = (member: number) => {
+  return `/members/${member}`;
+};
+
+/**
+ * Requires `members.manage`. The same fields the roster list carries, for
+ * a single member.
+ *
+ * Read this before editing somebody, and quote the `ETag` it returns in
+ * the `If-Match` header of the write. The list hands out no tag — one tag
+ * cannot validate forty-five rows — so a form filled from the list and
+ * submitted without a read is the lost update this API refuses.
+ * @summary Read one person
+ */
+export const memberShow = async (
+  member: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<memberShowResponse> => {
+  return customFetch<memberShowResponse>(getMemberShowUrl(member), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMemberShowQueryKey = (member: number) => {
+  return [`/members/${member}`] as const;
+};
+
+export const getMemberShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMemberShowQueryKey(member);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof memberShow>>> = ({ signal }) =>
+    memberShow(member, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: member !== null && member !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type MemberShowQueryResult = NonNullable<Awaited<ReturnType<typeof memberShow>>>;
+export type MemberShowQueryError = Problem401Response | Problem403Response | Problem404Response;
+
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  member: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberShow>>,
+          TError,
+          Awaited<ReturnType<typeof memberShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof memberShow>>,
+          TError,
+          Awaited<ReturnType<typeof memberShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one person
+ */
+
+export function useMemberShow<
+  TData = Awaited<ReturnType<typeof memberShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response,
+>(
+  member: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getMemberShowQueryOptions(member, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type memberUpdateResponse200 = {
   data: MemberResource;
   status: 200;
@@ -4370,9 +5051,19 @@ export type memberUpdateResponse404 = {
   status: 404;
 };
 
+export type memberUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type memberUpdateResponseSuccess = memberUpdateResponse200 & {
@@ -4383,7 +5074,9 @@ export type memberUpdateResponseError = (
   | memberUpdateResponse401
   | memberUpdateResponse403
   | memberUpdateResponse404
+  | memberUpdateResponse412
   | memberUpdateResponse419
+  | memberUpdateResponse428
 ) & {
   headers: Headers;
 };
@@ -4449,7 +5142,9 @@ export const getMemberUpdateMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4491,7 +5186,9 @@ export type MemberUpdateMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type MemberUpdateMutationVariables = { member: number; data?: UpdateMemberRequest };
 
 /**
@@ -4503,7 +5200,9 @@ export const useMemberUpdate = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -4545,9 +5244,19 @@ export type memberDestroyResponse404 = {
   status: 404;
 };
 
+export type memberDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberDestroyResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type memberDestroyResponseSuccess = memberDestroyResponse200 & {
@@ -4557,7 +5266,9 @@ export type memberDestroyResponseError = (
   | memberDestroyResponse401
   | memberDestroyResponse403
   | memberDestroyResponse404
+  | memberDestroyResponse412
   | memberDestroyResponse419
+  | memberDestroyResponse428
 ) & {
   headers: Headers;
 };
@@ -4595,7 +5306,13 @@ export const memberDestroy = async (
 export const getMemberDestroyMutationKey = () => ["memberDestroy"] as const;
 
 export const getMemberDestroyMutationOptions = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4633,14 +5350,25 @@ export const getMemberDestroyMutationOptions = <
 export type MemberDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof memberDestroy>>>;
 
 export type MemberDestroyMutationError =
-  Problem401Response | Problem403Response | Problem404Response | Problem419Response;
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type MemberDestroyMutationVariables = { member: number };
 
 /**
  * @summary Remove a member from the roster
  */
 export const useMemberDestroy = <
-  TError = Problem401Response | Problem403Response | Problem404Response | Problem419Response,
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {
@@ -4687,9 +5415,19 @@ export type memberRoleReplaceResponse404 = {
   status: 404;
 };
 
+export type memberRoleReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type memberRoleReplaceResponse419 = {
   data: Problem419Response;
   status: 419;
+};
+
+export type memberRoleReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type memberRoleReplaceResponseSuccess = memberRoleReplaceResponse200 & {
@@ -4700,7 +5438,9 @@ export type memberRoleReplaceResponseError = (
   | memberRoleReplaceResponse401
   | memberRoleReplaceResponse403
   | memberRoleReplaceResponse404
+  | memberRoleReplaceResponse412
   | memberRoleReplaceResponse419
+  | memberRoleReplaceResponse428
 ) & {
   headers: Headers;
 };
@@ -4774,7 +5514,9 @@ export const getMemberRoleReplaceMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4818,7 +5560,9 @@ export type MemberRoleReplaceMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
-  | Problem419Response;
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response;
 export type MemberRoleReplaceMutationVariables = {
   member: number;
   data: ReplaceMemberRolesRequest;
@@ -4833,7 +5577,9 @@ export const useMemberRoleReplace = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
-    | Problem419Response,
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response,
   TContext = unknown,
 >(
   options?: {

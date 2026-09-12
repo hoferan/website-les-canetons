@@ -248,6 +248,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition', 'location' => 'Werkhof']);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif'])
             ->assertOk()
             ->assertJsonPath('title', 'Répétition + apéritif');
@@ -272,6 +273,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", [
                 'title' => 'Cortège du Carnaval',
                 'startsAt' => '2027-02-13T14:00:00+01:00',
@@ -306,6 +308,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['attire' => null, 'notes' => null])
             ->assertOk()
             ->assertJsonPath('attire', null)
@@ -327,6 +330,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
             ->assertStatus(400)
             ->assertJsonPath('errors.0.field', 'endsAt')
@@ -351,6 +355,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => 'pas une date'])
             ->assertStatus(400)
             ->assertJsonPath('errors.0.field', 'endsAt')
@@ -366,6 +371,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => ''])
             ->assertStatus(400)
             ->assertJsonPath('errors.0.field', 'title')
@@ -379,6 +385,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->player)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Non'])
             ->assertStatus(403);
 
@@ -402,6 +409,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($organiserOnly)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition avancée'])
             ->assertOk();
 
@@ -413,6 +421,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create(['title' => 'Répétition']);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif']);
 
         $this->assertDatabaseHas('audit_log', [
@@ -431,6 +440,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk()
             ->assertJson(['ok' => true]);
@@ -445,6 +455,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->player)
+            ->withHeaders($this->ifMatch('event', $event))
             ->deleteJson("/api/v1/events/{$event->id}")
             ->assertStatus(403);
 
@@ -463,6 +474,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($organiserOnly)
+            ->withHeaders($this->ifMatch('event', $event))
             ->deleteJson("/api/v1/events/{$event->id}")
             ->assertOk();
 
@@ -475,7 +487,7 @@ class EventWriteTest extends TestCase
         // the audit back.
         $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
 
-        $this->actingAsMember($this->organiser)->deleteJson("/api/v1/events/{$event->id}");
+        $this->actingAsMember($this->organiser)->withHeaders($this->ifMatch('event', $event))->deleteJson("/api/v1/events/{$event->id}");
 
         $this->assertDatabaseHas('audit_log', [
             'actor_member_id' => $this->organiser->id,
@@ -501,6 +513,7 @@ class EventWriteTest extends TestCase
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Toujours là'])
             ->assertOk();
 
@@ -521,6 +534,7 @@ class EventWriteTest extends TestCase
         $this->assertFalse($event->takesRegistrations());
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", [
                 'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
                 'registrationMaxGuests' => 6,
@@ -534,6 +548,7 @@ class EventWriteTest extends TestCase
         // And off again: clearing the close date is how it is switched off,
         // which is why the rule needs `sometimes` AND `nullable`.
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", ['registrationClosesAt' => null])
             ->assertOk()
             ->assertJsonPath('takesRegistrations', false);
@@ -579,6 +594,7 @@ class EventWriteTest extends TestCase
         ]);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
             ->patchJson("/api/v1/events/{$event->id}", [
                 'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
             ])

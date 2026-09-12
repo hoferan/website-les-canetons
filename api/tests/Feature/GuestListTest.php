@@ -117,6 +117,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->patchJson("/api/v1/registrations/{$booking->id}", ['lastName' => 'Piraté'])
             ->assertStatus(403);
 
@@ -132,6 +133,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember(Member::factory()->committee()->create())
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->deleteJson("/api/v1/registrations/{$booking->id}")
             ->assertStatus(403);
 
@@ -146,6 +148,7 @@ class GuestListTest extends TestCase
             ->create();
 
         $this->actingAsMember($manager)
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => 'Table 4'])
             ->assertOk()
             ->assertJsonPath('tableName', 'Table 4');
@@ -156,6 +159,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->patchJson("/api/v1/registrations/{$booking->id}", ['lastName' => 'Maillard-Rossier'])
             ->assertOk();
 
@@ -175,6 +179,7 @@ class GuestListTest extends TestCase
         $booking->update(['table_name' => 'Table 1']);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => null])
             ->assertOk();
 
@@ -186,6 +191,7 @@ class GuestListTest extends TestCase
         $booking = $this->book();
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->patchJson("/api/v1/registrations/{$booking->id}", ['tableName' => 'Table 2']);
 
         $this->assertDatabaseHas('audit_log', [
@@ -200,6 +206,7 @@ class GuestListTest extends TestCase
         $booking = $this->book('Cuennet', 2, 1);
 
         $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
             ->deleteJson("/api/v1/registrations/{$booking->id}")
             ->assertOk()
             ->assertJson(['ok' => true]);
@@ -214,7 +221,7 @@ class GuestListTest extends TestCase
     {
         $booking = $this->book('Cuennet');
 
-        $this->actingAsMember($this->organiser)->deleteJson("/api/v1/registrations/{$booking->id}");
+        $this->actingAsMember($this->organiser)->withHeaders($this->ifMatch('registration', $booking))->deleteJson("/api/v1/registrations/{$booking->id}");
 
         $this->assertDatabaseHas('audit_log', [
             'action' => 'registration.deleted',
@@ -232,14 +239,14 @@ class GuestListTest extends TestCase
             ->create();
 
         $this->actingAsMember($manager)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
             ->assertStatus(403);
     }
 
     public function test_replacing_the_options_creates_updates_and_deletes(): void
     {
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", [
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", [
                 'options' => [
                     // kept and renamed
                     ['id' => $this->meat->id, 'label' => 'Menu carnivore', 'priceCents' => 4800],
@@ -264,7 +271,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 2, 0);
 
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", ['options' => []])
             ->assertStatus(409)
             ->assertJson(['code' => 'option_has_registrations']);
 
@@ -277,7 +284,7 @@ class GuestListTest extends TestCase
         $this->book('Maillard', 2, 0);
 
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", [
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", [
                 'options' => [['id' => $this->meat->id, 'label' => 'Menu viande', 'priceCents' => 4500]],
             ])
             ->assertOk();
@@ -517,12 +524,12 @@ class GuestListTest extends TestCase
         ]];
 
         $first = $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
         $second = $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
@@ -537,7 +544,7 @@ class GuestListTest extends TestCase
         $body = ['options' => [['label' => 'Menu unique', 'priceCents' => 4500]]];
 
         $created = $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk()
             ->json();
 
@@ -546,7 +553,7 @@ class GuestListTest extends TestCase
 
         // The client never saw the first response and sends it again.
         $this->actingAsMember($this->organiser)
-            ->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
+            ->withHeaders($this->ifMatch('event.options', $this->event))->putJson("/api/v1/events/{$this->event->id}/registration-options", $body)
             ->assertOk();
 
         $this->assertSame(1, RegistrationOption::query()->count());

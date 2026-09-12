@@ -4,6 +4,7 @@ namespace App\Support\Scramble;
 
 use App\Exceptions\ApiError;
 use Dedoc\Scramble\Extensions\OperationExtension;
+use Dedoc\Scramble\Support\Generator\Header;
 use Dedoc\Scramble\Support\Generator\Operation;
 use Dedoc\Scramble\Support\Generator\Parameter;
 use Dedoc\Scramble\Support\Generator\Reference;
@@ -55,10 +56,15 @@ class DocumentsFailureModes extends OperationExtension
         401 => ['not_authenticated', 'No session, or it has expired. Log in and retry.'],
         403 => ['access_denied', 'Authenticated, but not permitted to do this.'],
         404 => ['not_found', 'No such record.'],
+        412 => ['if_match_failed', 'The If-Match header names a state this thing is no longer in. Re-read it and decide again.'],
         419 => ['invalid_session', 'The CSRF token was missing or stale. Re-prime it and retry; you are still logged in.'],
         422 => ['spam_suspected', 'The submission looks automated. See Public forms.'],
+        428 => ['if_match_required', 'This write must carry an If-Match header. See Conditional writes.'],
         429 => ['rate_limited', 'Too many requests. Retry-After says how long to wait.'],
     ];
+
+    /** The methods App\Http\Middleware\ConditionalWrite makes conditional. */
+    private const CONDITIONED = ['PUT', 'PATCH', 'DELETE'];
 
     public function handle(Operation $operation, RouteInfo $routeInfo): void
     {
@@ -102,6 +108,85 @@ class DocumentsFailureModes extends OperationExtension
                 $this->declare($operation, 429);
                 break;
             }
+        }
+
+        foreach ($middleware as $entry) {
+            if (is_string($entry) && str_starts_with($entry, 'etag:')) {
+                $this->declareConditionalWrite($operation, $method);
+                break;
+            }
+        }
+    }
+
+    /**
+     * What `etag:<facet>` on a route means for its contract.
+     *
+     * Both halves, because the header a write owes and the header a read hands
+     * out are one mechanism and a document carrying only one of them sends the
+     * reader looking for the other. A client generated from a document that
+     * declared the 428 but not the `ETag` would know it had to send something
+     * and have nowhere to get it.
+     *
+     * Read off the middleware rather than annotated, for the reason everything
+     * else here is: `etag:` IS the reason these statuses exist, so a route
+     * gaining or losing it moves the document with no second edit to remember.
+     */
+    private function declareConditionalWrite(Operation $operation, string $method): void
+    {
+        if (! in_array($method, self::CONDITIONED, true)) {
+            // A read. It hands out the tag the writes above need — see
+            // App\Http\Middleware\ConditionalWrite — and refuses nothing.
+            $this->declareEntityTagHeader($operation);
+
+            return;
+        }
+
+        $this->declare($operation, 412);
+        $this->declare($operation, 428);
+
+        $operation->addParameters([
+            (new Parameter('If-Match', 'header'))
+                ->setSchema(Schema::fromType(new OpenApiTypes\StringType))
+                ->required(true)
+                ->description(
+                    'The `ETag` of the thing as you last read it. Read it first and quote the '
+                    .'header back verbatim, quotes included. Absent answers 428; naming a state '
+                    .'this thing is no longer in answers 412.'
+                ),
+        ]);
+
+        // A PUT or PATCH answers with the thing it just wrote, so it carries
+        // the NEW tag and a second edit needs no read between them. A DELETE
+        // does not: there is nothing left to tag.
+        if ($method !== 'DELETE') {
+            $this->declareEntityTagHeader($operation);
+        }
+    }
+
+    /** The `ETag` on every successful response of a route that has one. */
+    private function declareEntityTagHeader(Operation $operation): void
+    {
+        foreach ($operation->responses ?? [] as $response) {
+            // A Reference here is one of the shared Problem components added
+            // above, which must not claim to carry a tag — and could not, since
+            // they are shared between every operation that fails that way.
+            if (! $response instanceof Response) {
+                continue;
+            }
+
+            $code = (int) ($response->code ?? 0);
+
+            if ($code < 200 || $code > 299) {
+                continue;
+            }
+
+            $response->addHeader('ETag', (new Header)
+                ->setRequired(true)
+                ->setSchema(Schema::fromType(new OpenApiTypes\StringType))
+                ->setDescription(
+                    'A strong entity tag for this thing as it now stands. Send it back as '
+                    .'`If-Match` when you write.'
+                ));
         }
     }
 
