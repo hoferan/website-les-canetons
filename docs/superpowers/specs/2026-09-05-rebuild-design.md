@@ -592,20 +592,31 @@ R1 + R2 together replace the entire current site. R3 replaces the souper.
    They no longer block anything structural, because the people-pages are now
    generated.
 
-5. **Contact-form anti-abuse has no owner in the release slicing** — found by
-   the R1a whole-branch review, 2026-09-05. §6 requires honeypot + submit-timing
-   + Altcha "applied generically to both public write endpoints", but R1 covers
-   the members' tool, R2 the public pages and R3 registration; none of them
-   claims the contact form. `ContactController` and `ContactRequest` were
-   untouched by R1a (verified: zero lines changed), so the form still has **no
-   anti-abuse of any kind** — the state §1 lists as a defect of the current
-   site. Decide explicitly which release owns it. R2 is the natural home, since
-   that is when the public pages ship and the form becomes reachable again.
+5. **Contact-form anti-abuse — RESOLVED IN R3, 2026-09-10.** Found by the R1a
+   whole-branch review, 2026-09-05: §6 required honeypot + submit-timing +
+   Altcha "applied generically to both public write endpoints", and the release
+   slicing gave that requirement no owner — R1 covered the members' tool, R2 the
+   public pages, R3 registration, and `POST /api/v1/contact` fell between all
+   three.
 
-   Note the sequencing: the Altcha implementation was deleted in R1a Task 1
-   along with the souper feature it was attached to, so R2 or R3 must
-   reintroduce it as the generic mechanism §3 describes rather than assume it
-   still exists.
+   R3 claimed it, because R3 adds the *second* anonymous write endpoint and the
+   two can share one mechanism. `App\Http\Middleware\PublicWriteGuard` now runs
+   in front of both: a honeypot field that must arrive **present and empty**
+   (merely empty lets a hand-written body pass by omitting it), and a signed
+   timestamp from `GET /api/v1/form-token` that refuses a submission under two
+   seconds old. One 422 `spam_suspected` for either failure, so a script cannot
+   learn which check it tripped.
+
+   Both endpoints also sit behind a `public-write` throttle, ten a minute per
+   IP, and **the throttle is the half that matters**: the stamp is not bound to
+   a caller and stays replayable for two hours, so without a limiter one fetched
+   token buys unlimited submissions — each registration sending mail inline, to
+   an address the caller chose, through the band's own mailbox.
+
+   Altcha was **dropped on purpose, not deferred**. It needs a browser widget,
+   so it cannot be finished server-side, and its cost falls hardest on the
+   oldest phone; the decision is recorded in §9 of
+   `2026-09-10-r3-registration-design.md`.
 
 6. **Repository documentation clean-up — DEFERRED TO R1d by decision,
    2026-09-05.** The docs tree still describes the system this rebuild

@@ -320,11 +320,13 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   directory.
 - **Every request goes through the mutator in `web/src/api/http.ts`**, which
   owns cookie credentials, Sanctum's CSRF priming (`GET /sanctum/csrf-cookie`
-  once per page load) and the `{error, code, fields[]}` error contract. It
-  throws a typed `ApiError` for every non-2xx. Never call `fetch("/api/…")`
-  directly: Sanctum's stateful SPA mode puts `/api/v1/*` behind the `web`
-  middleware group, so a mutating request without the replayed `X-XSRF-TOKEN`
-  header comes back `419 {"error":"Invalid session","code":"invalid_session"}`.
+  once per page load) and the problem-document error contract. It throws a typed
+  `ApiError` for every non-2xx. Note it renames the wire's `errors[]` to
+  `fields` on the client side, deliberately — see the comment at
+  `web/src/api/http.ts:52`. Never call `fetch("/api/…")` directly: Sanctum's
+  stateful SPA mode puts `/api/v1/*` behind the `web` middleware group, so a
+  mutating request without the replayed `X-XSRF-TOKEN` header comes back `419`
+  with `"code":"invalid_session"`.
 - **Runtime configuration comes from `GET /api/v1/config`**, not from
   `import.meta.env`. TEST, QA and PROD run the *same promoted bundle*, so no
   environment-specific value may be baked in. That endpoint drives the non-prod
@@ -369,13 +371,16 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `api/app/Http/Controllers/Api/`, shared logic in `api/app/Support/`. Pair
   `auth:sanctum` with `capability:` wherever both apply, so an anonymous caller
   gets 401 rather than 403.
-- **The API error contract is `{error, code, fields[]}`**, rendered by
+- **The API error contract is a problem document**, rendered by
   `App\Exceptions\ApiError`, deliberately replacing Laravel's native
-  `{message, errors:{}}`. This is not cosmetic: `web/src/i18n/`'s
-  `translateApiError()` is the **only** place in the whole system where French
-  is computed, and it maps the machine tokens `code` and `fields[].reason` onto
-  French. Laravel's native shape carries English prose that layer cannot
-  translate — so any new error must emit a token that exists as a key in
+  `{message, errors:{}}`. Every failure carries the same seven keys —
+  `title`, `status`, `code`, `instance`, `errors`, `requestId`, `detail` — and
+  `ApiErrorContractTest` pins that set, so adding or dropping one is a test
+  failure. This is not cosmetic: `web/src/i18n/`'s `translateApiError()` is the
+  **only** place in the whole system where French is computed, and it maps the
+  machine tokens `code` and `errors[].reason` onto French. Laravel's native
+  shape carries English prose that layer cannot translate — so any new error
+  must emit a token that exists as a key in
   `web/src/i18n/fr.ts`. `api/tests/Feature/ApiErrorVocabularyTest.php` enforces
   this, reading that file directly (which is why the dev container mounts `web/`
   read-only at `/srv/web` — the container's document root holds only built
@@ -577,8 +582,8 @@ repair it.
 - **Everything is written in English** — specs and plans (`docs/`), code,
   comments, DB table/column names, enum/stored values, identifiers, slugs, and
   file names.
-- **API JSON response bodies are English** — every error response's `error`
-  message, `code`, and `fields[].field`/`fields[].reason` are English
+- **API JSON response bodies are English** — every error response's `title`,
+  `detail`, `code`, and `errors[].field`/`errors[].reason` are English
   identifiers. Nothing there is user-facing: translation happens exclusively at
   the display layer, in `web/src/i18n/`. `POST /api/migrate` is the one
   exception — token-gated deploy tooling, never seen by an end user.
