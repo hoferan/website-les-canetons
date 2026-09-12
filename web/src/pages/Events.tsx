@@ -2,7 +2,9 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
+import { rowsOf } from "../api/collection";
 import { useEventIndex } from "../api/generated/endpoints";
+import type { EventResource } from "../api/generated/model";
 import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
 import { EventCard } from "../events/EventCard";
@@ -38,12 +40,9 @@ export function Events() {
   // absent altogether, which is what the default case looks like on the wire.
   const planning = useEventIndex(showingPast ? { past: "1" } : undefined);
 
-  // Narrowed on status, not read straight off `.data`. orval types each query
-  // as a discriminated union of every DECLARED response, so `.data` is not an
-  // array until `status` picks a branch. The mutator throws on 401 so the
-  // error branch never arrives as a resolved value, but the type is honest
-  // that it could — same treatment as Members.tsx.
-  const events = planning.data?.status === 200 ? planning.data.data : [];
+  // Through rowsOf, which owns the status narrowing and the collection
+  // envelope's own `data` hop — see web/src/api/collection.ts.
+  const events = rowsOf<EventResource>(planning.data);
 
   const mayManage = can("events.manage");
 

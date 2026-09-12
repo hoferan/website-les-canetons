@@ -23,7 +23,13 @@ import {
   useRoleIndex,
   useSectionIndex,
 } from "../api/generated/endpoints";
-import type { MemberResource, UpdateMemberRequest } from "../api/generated/model";
+import type {
+  MemberResource,
+  RoleResource,
+  SectionResource,
+  UpdateMemberRequest,
+} from "../api/generated/model";
+import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
@@ -117,15 +123,14 @@ export function Members() {
   const [resetting, setResetting] = useState<MemberResource | null>(null);
   const [issued, setIssued] = useState<{ name: string; password: string } | null>(null);
 
-  // Narrowed on status, not read straight off `.data`. orval types each query
-  // as a discriminated union of every DECLARED response — here
-  // `MemberResource[] | AuthenticationExceptionResponse` — so `.data` is not an
-  // array until `status` picks a branch. In practice the mutator throws on 401
-  // so the error branch never arrives as a resolved value, but the type is
-  // honest that it could. Same treatment as SessionProvider.
-  const members = roster.data?.status === 200 ? roster.data.data : [];
-  const sectionList = sections.data?.status === 200 ? sections.data.data : [];
-  const roleList = roles.data?.status === 200 ? roles.data.data : [];
+  // Through rowsOf, which owns the status narrowing and the collection
+  // envelope's own `data` hop — see web/src/api/collection.ts. Written out here
+  // it reads `roster.data.data.data`, three identically named hops of which
+  // only the middle one is the envelope.
+  const members = rowsOf<MemberResource>(roster.data);
+  const rosterCount = totalOf(roster.data);
+  const sectionList = rowsOf<SectionResource>(sections.data);
+  const roleList = rowsOf<RoleResource>(roles.data);
 
   const labelForRole = (id: number) => {
     const key = roleList.find((role) => role.id === id)?.key;
@@ -306,7 +311,18 @@ export function Members() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-4xl">Membres</h1>
+      <div className="flex flex-wrap items-baseline gap-tight">
+        <h1 className="font-display text-4xl">Membres</h1>
+        {/* Straight off `meta.total`, which counts the roster on the SERVER
+            rather than counting the rows that happened to arrive. Today they
+            are the same number; the point is that they stay the same number
+            the day this list is ever cut short. */}
+        {rosterCount === null ? null : (
+          <span className="text-ink-muted" data-testid="roster-count">
+            {rosterCount} membre{rosterCount > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
 
       {editing ? (
         <MemberForm

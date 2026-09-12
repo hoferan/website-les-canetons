@@ -129,7 +129,52 @@
  *   On the way IN, send any offset you like and it is honoured; a value with no
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
- * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ * - Every collection comes in the same envelope. See *Collections*.
+ *
+ * ## Collections
+ *
+ * Every endpoint that answers with a list answers with `{data, meta}`, never with
+ * a bare array — `/roles` and `/sections` included, which are the two nobody will
+ * ever page. One shape means one function reads any list:
+ *
+ * ```json
+ * {
+ *   "data": [ … ],
+ *   "meta": { "total": 45, "limit": 500, "offset": 0 }
+ * }
+ * ```
+ *
+ * `total` is the whole collection, not the page you were sent, so a screen can
+ * say "45 membres" without first reading forty-five of them.
+ *
+ * Ask for less with `?limit=` and `?offset=`. **You rarely need to**: the default
+ * limit is 500, above every collection this API holds, so omitting both returns
+ * the whole thing in one request. The cap is 1000.
+ *
+ * Neither parameter can fail. A `limit` above the cap is clamped, a negative
+ * `offset` reads as zero, and a value that is not a whole number is ignored —
+ * `meta` always reports what was actually applied.
+ *
+ * Reads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`
+ * header with `first` and `last`, plus `prev` and `next` where they exist:
+ *
+ * ```
+ * Link: </api/v1/members?limit=2&offset=2>; rel="next",
+ *       </api/v1/members?limit=2&offset=44>; rel="last"
+ * ```
+ *
+ * **Follow `next` until there is none** rather than doing arithmetic on `meta`.
+ * Your own query parameters are carried along, so paging `/events?past=1` stays
+ * in the past.
+ *
+ * `PUT /api/v1/events/{event}/registration-options` and
+ * `POST /api/v1/events/series` answer with a collection too, and are enveloped
+ * the same way — with no `Link` header, since a `rel="next"` you would have to
+ * PUT again is not a link to follow.
+ *
+ * The paging is offset-based rather than cursor-based, deliberately: every
+ * collection here is one page for the foreseeable future. A `cursor` parameter
+ * can be added later without changing this envelope.
  *
  * ## Conditional writes
  *
@@ -263,6 +308,9 @@ export * from "./attendanceDestroy200";
 export * from "./attendanceDestroy409";
 export * from "./attendanceDestroy409Code";
 export * from "./attendanceDestroy409ErrorsItem";
+export * from "./attendanceIndex200";
+export * from "./attendanceIndex200Meta";
+export * from "./attendanceIndexParams";
 export * from "./attendanceResource";
 export * from "./attendanceStatus";
 export * from "./attendanceUpdate403";
@@ -298,8 +346,12 @@ export * from "./contactStore409Code";
 export * from "./contactStore409ErrorsItem";
 export * from "./environment";
 export * from "./eventDestroy200";
+export * from "./eventIndex200";
+export * from "./eventIndex200Meta";
 export * from "./eventIndexParams";
 export * from "./eventResource";
+export * from "./eventSeries201";
+export * from "./eventSeries201Meta";
 export * from "./formTokenShow200";
 export * from "./memberAttendanceDestroy200";
 export * from "./memberAttendanceDestroy409";
@@ -315,6 +367,9 @@ export * from "./memberDestroy200";
 export * from "./memberDestroy409";
 export * from "./memberDestroy409Code";
 export * from "./memberDestroy409ErrorsItem";
+export * from "./memberIndex200";
+export * from "./memberIndex200Meta";
+export * from "./memberIndexParams";
 export * from "./memberPasswordReset200";
 export * from "./memberResource";
 export * from "./memberRoleReplace200";
@@ -365,6 +420,14 @@ export * from "./registrationExport503";
 export * from "./registrationExport503Code";
 export * from "./registrationExport503ErrorsItem";
 export * from "./registrationFormResource";
+export * from "./registrationIndex200";
+export * from "./registrationIndex200Meta";
+export * from "./registrationIndexParams";
+export * from "./registrationOptionIndex200";
+export * from "./registrationOptionIndex200Meta";
+export * from "./registrationOptionIndexParams";
+export * from "./registrationOptionReplace200";
+export * from "./registrationOptionReplace200Meta";
 export * from "./registrationOptionReplace409";
 export * from "./registrationOptionReplace409Code";
 export * from "./registrationOptionReplace409ErrorsItem";
@@ -382,7 +445,13 @@ export * from "./registrationStore409ErrorsItem";
 export * from "./replaceMemberRolesRequest";
 export * from "./replaceRegistrationOptionsRequest";
 export * from "./replaceRegistrationOptionsRequestOptionsItem";
+export * from "./roleIndex200";
+export * from "./roleIndex200Meta";
+export * from "./roleIndexParams";
 export * from "./roleResource";
+export * from "./sectionIndex200";
+export * from "./sectionIndex200Meta";
+export * from "./sectionIndexParams";
 export * from "./sectionResource";
 export * from "./storeEventRequest";
 export * from "./storeEventSeriesRequest";

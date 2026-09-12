@@ -431,6 +431,63 @@ const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 const notFound = () => problem(404, "not_found", "Not found");
 
 /* ------------------------------------------------------------------------ *
+ * Collections
+ * ------------------------------------------------------------------------ */
+
+/** The default and the cap the real App\Support\Page applies. */
+const DEFAULT_LIMIT = 500;
+const MAX_LIMIT = 1000;
+
+/**
+ * One collection, enveloped and paged the way the real API does it.
+ *
+ * The mocked backend earns its keep by REFUSING and RESHAPING the way the real
+ * one does — that is why it already mirrors 401 against 403, `already_taken`
+ * and the self-demotion guard. An envelope is the same kind of fact: a handler
+ * still answering a bare array would let every screen typecheck against a shape
+ * the server stopped sending, and the component tests would agree with the mock
+ * rather than with the API.
+ *
+ * The clamping is mirrored too, nonsense included, because "a bad `limit` is
+ * ignored rather than refused" is a behaviour a screen may one day depend on
+ * and there is nowhere else for it to be exercised in the browser.
+ */
+function collection<T>(rows: T[], request: Request): Response {
+  const query = new URL(request.url).searchParams;
+
+  const whole = (value: string | null, fallback: number, min: number, max: number): number => {
+    const parsed = value !== null && /^-?\d+$/.test(value) ? Number(value) : NaN;
+    return Number.isNaN(parsed) ? fallback : Math.max(min, Math.min(max, parsed));
+  };
+
+  const limit = whole(query.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT);
+  const offset = whole(query.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
+  const total = rows.length;
+
+  const url = new URL(request.url);
+  const at = (start: number): string => {
+    const link = new URL(url);
+    link.searchParams.set("limit", String(limit));
+    link.searchParams.set("offset", String(start));
+    return `<${link.pathname}${link.search}>`;
+  };
+
+  const links = [`${at(0)}; rel="first"`];
+  if (offset > 0) {
+    links.push(`${at(Math.max(0, offset - limit))}; rel="prev"`);
+  }
+  if (offset + limit < total) {
+    links.push(`${at(offset + limit)}; rel="next"`);
+  }
+  links.push(`${at(total === 0 ? 0 : Math.floor((total - 1) / limit) * limit)}; rel="last"`);
+
+  return HttpResponse.json(
+    { data: rows.slice(offset, offset + limit), meta: { total, limit, offset } },
+    { headers: { Link: links.join(", ") } },
+  );
+}
+
+/* ------------------------------------------------------------------------ *
  * Conditional writes
  * ------------------------------------------------------------------------ */
 
@@ -743,13 +800,19 @@ const overrides = [
    * the screens' guards are exercised rather than assumed.
    * ---------------------------------------------------------------------- */
 
-  http.get("/api/v1/sections", () => refuseWithoutMembersManage() ?? HttpResponse.json(SECTIONS)),
+  http.get(
+    "/api/v1/sections",
+    ({ request }) => refuseWithoutMembersManage() ?? collection(SECTIONS, request),
+  ),
 
-  http.get("/api/v1/roles", () => refuseWithoutMembersManage() ?? HttpResponse.json(ROLES)),
+  http.get(
+    "/api/v1/roles",
+    ({ request }) => refuseWithoutMembersManage() ?? collection(ROLES, request),
+  ),
 
   // Ordered by name, like the real endpoint: this screen is scanned for a
   // person, and a mock answering in insertion order would hide a sorting bug.
-  http.get("/api/v1/members", () => {
+  http.get("/api/v1/members", ({ request }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
       return refusal;
@@ -757,7 +820,7 @@ const overrides = [
     const ordered = [...members].sort(
       (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
     );
-    return HttpResponse.json(ordered);
+    return collection(ordered, request);
   }),
 
   // ONE PERSON, and the read every conditional write on the roster starts
@@ -1025,7 +1088,7 @@ const overrides = [
           : Date.parse(a.startsAt) - Date.parse(b.startsAt),
       );
 
-    return HttpResponse.json(planning);
+    return collection(planning, request);
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches

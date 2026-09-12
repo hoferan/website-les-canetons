@@ -129,7 +129,52 @@
  *   On the way IN, send any offset you like and it is honoured; a value with no
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
- * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ * - Every collection comes in the same envelope. See *Collections*.
+ *
+ * ## Collections
+ *
+ * Every endpoint that answers with a list answers with `{data, meta}`, never with
+ * a bare array — `/roles` and `/sections` included, which are the two nobody will
+ * ever page. One shape means one function reads any list:
+ *
+ * ```json
+ * {
+ *   "data": [ … ],
+ *   "meta": { "total": 45, "limit": 500, "offset": 0 }
+ * }
+ * ```
+ *
+ * `total` is the whole collection, not the page you were sent, so a screen can
+ * say "45 membres" without first reading forty-five of them.
+ *
+ * Ask for less with `?limit=` and `?offset=`. **You rarely need to**: the default
+ * limit is 500, above every collection this API holds, so omitting both returns
+ * the whole thing in one request. The cap is 1000.
+ *
+ * Neither parameter can fail. A `limit` above the cap is clamped, a negative
+ * `offset` reads as zero, and a value that is not a whole number is ignored —
+ * `meta` always reports what was actually applied.
+ *
+ * Reads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`
+ * header with `first` and `last`, plus `prev` and `next` where they exist:
+ *
+ * ```
+ * Link: </api/v1/members?limit=2&offset=2>; rel="next",
+ *       </api/v1/members?limit=2&offset=44>; rel="last"
+ * ```
+ *
+ * **Follow `next` until there is none** rather than doing arithmetic on `meta`.
+ * Your own query parameters are carried along, so paging `/events?past=1` stays
+ * in the past.
+ *
+ * `PUT /api/v1/events/{event}/registration-options` and
+ * `POST /api/v1/events/series` answer with a collection too, and are enveloped
+ * the same way — with no `Link` header, since a `rel="next"` you would have to
+ * PUT again is not a link to follow.
+ *
+ * The paging is offset-based rather than cursor-based, deliberately: every
+ * collection here is one page for the foreseeable future. A `cursor` parameter
+ * can be added later without changing this envelope.
  *
  * ## Conditional writes
  *
@@ -273,6 +318,8 @@ import type {
   AccountPasswordRequest,
   AttendanceDestroy200,
   AttendanceDestroy409,
+  AttendanceIndex200,
+  AttendanceIndexParams,
   AttendanceResource,
   AttendanceUpdate403,
   AuthLogin200,
@@ -282,15 +329,16 @@ import type {
   AuthLoginBody,
   AuthLogout200,
   AuthMe200,
-  ChaseListEntryResource,
   ConfigShow200,
   ContactRequest,
   ContactStore200,
   ContactStore400,
   ContactStore409,
   EventDestroy200,
+  EventIndex200,
   EventIndexParams,
   EventResource,
+  EventSeries201,
   FormTokenShow200,
   MemberAttendanceDestroy200,
   MemberAttendanceDestroy409,
@@ -298,6 +346,8 @@ import type {
   MemberAttendanceUpdate409,
   MemberDestroy200,
   MemberDestroy409,
+  MemberIndex200,
+  MemberIndexParams,
   MemberPasswordReset200,
   MemberResource,
   MemberRoleReplace200,
@@ -319,15 +369,21 @@ import type {
   RegistrationExport200Four,
   RegistrationExport503,
   RegistrationFormResource,
+  RegistrationIndex200,
+  RegistrationIndexParams,
+  RegistrationOptionIndex200,
+  RegistrationOptionIndexParams,
+  RegistrationOptionReplace200,
   RegistrationOptionReplace409,
-  RegistrationOptionResource,
   RegistrationResource,
   RegistrationStore400,
   RegistrationStore409,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
-  RoleResource,
-  SectionResource,
+  RoleIndex200,
+  RoleIndexParams,
+  SectionIndex200,
+  SectionIndexParams,
   StoreEventRequest,
   StoreEventSeriesRequest,
   StoreMemberRequest,
@@ -961,7 +1017,7 @@ export const useAccountPassword = <
 };
 
 export type eventIndexResponse200 = {
-  data: EventResource[];
+  data: EventIndex200;
   status: 200;
 };
 
@@ -1843,7 +1899,7 @@ export const useEventDestroy = <
 };
 
 export type eventSeriesResponse201 = {
-  data: EventResource[];
+  data: EventSeries201;
   status: 201;
 };
 
@@ -2385,7 +2441,7 @@ export const useAttendanceDestroy = <
 };
 
 export type attendanceIndexResponse200 = {
-  data: ChaseListEntryResource[];
+  data: AttendanceIndex200;
   status: 200;
 };
 
@@ -2423,8 +2479,20 @@ export type attendanceIndexResponseError = (
 
 export type attendanceIndexResponse = attendanceIndexResponseSuccess | attendanceIndexResponseError;
 
-export const getAttendanceIndexUrl = (event: number) => {
-  return `/events/${event}/attendance`;
+export const getAttendanceIndexUrl = (event: number, params?: AttendanceIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/events/${event}/attendance?${stringifiedParams}`
+    : `/events/${event}/attendance`;
 };
 
 /**
@@ -2443,16 +2511,17 @@ export const getAttendanceIndexUrl = (event: number) => {
  */
 export const attendanceIndex = async (
   event: number,
+  params?: AttendanceIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<attendanceIndexResponse> => {
-  return customFetch<attendanceIndexResponse>(getAttendanceIndexUrl(event), {
+  return customFetch<attendanceIndexResponse>(getAttendanceIndexUrl(event, params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getAttendanceIndexQueryKey = (event: number) => {
-  return [`/events/${event}/attendance`] as const;
+export const getAttendanceIndexQueryKey = (event: number, params?: AttendanceIndexParams) => {
+  return [`/events/${event}/attendance`, ...(params ? [params] : [])] as const;
 };
 
 export const getAttendanceIndexQueryOptions = <
@@ -2460,6 +2529,7 @@ export const getAttendanceIndexQueryOptions = <
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: AttendanceIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -2467,10 +2537,10 @@ export const getAttendanceIndexQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getAttendanceIndexQueryKey(event);
+  const queryKey = queryOptions?.queryKey ?? getAttendanceIndexQueryKey(event, params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof attendanceIndex>>> = ({ signal }) =>
-    attendanceIndex(event, { signal, ...requestOptions });
+    attendanceIndex(event, params, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -2491,6 +2561,7 @@ export function useAttendanceIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params: undefined | AttendanceIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>> &
       Pick<
@@ -2510,6 +2581,7 @@ export function useAttendanceIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: AttendanceIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>> &
       Pick<
@@ -2529,6 +2601,7 @@ export function useAttendanceIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: AttendanceIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -2544,13 +2617,14 @@ export function useAttendanceIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: AttendanceIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof attendanceIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getAttendanceIndexQueryOptions(event, options);
+  const queryOptions = getAttendanceIndexQueryOptions(event, params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -3146,7 +3220,7 @@ export const useRegistrationStore = <
 };
 
 export type registrationIndexResponse200 = {
-  data: RegistrationResource[];
+  data: RegistrationIndex200;
   status: 200;
 };
 
@@ -3185,8 +3259,20 @@ export type registrationIndexResponseError = (
 export type registrationIndexResponse =
   registrationIndexResponseSuccess | registrationIndexResponseError;
 
-export const getRegistrationIndexUrl = (event: number) => {
-  return `/events/${event}/registrations`;
+export const getRegistrationIndexUrl = (event: number, params?: RegistrationIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/events/${event}/registrations?${stringifiedParams}`
+    : `/events/${event}/registrations`;
 };
 
 /**
@@ -3201,16 +3287,17 @@ export const getRegistrationIndexUrl = (event: number) => {
  */
 export const registrationIndex = async (
   event: number,
+  params?: RegistrationIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<registrationIndexResponse> => {
-  return customFetch<registrationIndexResponse>(getRegistrationIndexUrl(event), {
+  return customFetch<registrationIndexResponse>(getRegistrationIndexUrl(event, params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getRegistrationIndexQueryKey = (event: number) => {
-  return [`/events/${event}/registrations`] as const;
+export const getRegistrationIndexQueryKey = (event: number, params?: RegistrationIndexParams) => {
+  return [`/events/${event}/registrations`, ...(params ? [params] : [])] as const;
 };
 
 export const getRegistrationIndexQueryOptions = <
@@ -3218,6 +3305,7 @@ export const getRegistrationIndexQueryOptions = <
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -3225,10 +3313,10 @@ export const getRegistrationIndexQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getRegistrationIndexQueryKey(event);
+  const queryKey = queryOptions?.queryKey ?? getRegistrationIndexQueryKey(event, params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationIndex>>> = ({ signal }) =>
-    registrationIndex(event, { signal, ...requestOptions });
+    registrationIndex(event, params, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -3251,6 +3339,7 @@ export function useRegistrationIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params: undefined | RegistrationIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>> &
       Pick<
@@ -3270,6 +3359,7 @@ export function useRegistrationIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>> &
       Pick<
@@ -3289,6 +3379,7 @@ export function useRegistrationIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -3304,13 +3395,14 @@ export function useRegistrationIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof registrationIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getRegistrationIndexQueryOptions(event, options);
+  const queryOptions = getRegistrationIndexQueryOptions(event, params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -4248,7 +4340,7 @@ export const useRegistrationDestroy = <
 };
 
 export type registrationOptionIndexResponse200 = {
-  data: RegistrationOptionResource[];
+  data: RegistrationOptionIndex200;
   status: 200;
 };
 
@@ -4287,8 +4379,23 @@ export type registrationOptionIndexResponseError = (
 export type registrationOptionIndexResponse =
   registrationOptionIndexResponseSuccess | registrationOptionIndexResponseError;
 
-export const getRegistrationOptionIndexUrl = (event: number) => {
-  return `/events/${event}/registration-options`;
+export const getRegistrationOptionIndexUrl = (
+  event: number,
+  params?: RegistrationOptionIndexParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/events/${event}/registration-options?${stringifiedParams}`
+    : `/events/${event}/registration-options`;
 };
 
 /**
@@ -4309,16 +4416,23 @@ export const getRegistrationOptionIndexUrl = (event: number) => {
  */
 export const registrationOptionIndex = async (
   event: number,
+  params?: RegistrationOptionIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<registrationOptionIndexResponse> => {
-  return customFetch<registrationOptionIndexResponse>(getRegistrationOptionIndexUrl(event), {
-    ...options,
-    method: "GET",
-  });
+  return customFetch<registrationOptionIndexResponse>(
+    getRegistrationOptionIndexUrl(event, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
-export const getRegistrationOptionIndexQueryKey = (event: number) => {
-  return [`/events/${event}/registration-options`] as const;
+export const getRegistrationOptionIndexQueryKey = (
+  event: number,
+  params?: RegistrationOptionIndexParams,
+) => {
+  return [`/events/${event}/registration-options`, ...(params ? [params] : [])] as const;
 };
 
 export const getRegistrationOptionIndexQueryOptions = <
@@ -4326,6 +4440,7 @@ export const getRegistrationOptionIndexQueryOptions = <
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationOptionIndexParams,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
@@ -4335,11 +4450,11 @@ export const getRegistrationOptionIndexQueryOptions = <
 ) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getRegistrationOptionIndexQueryKey(event);
+  const queryKey = queryOptions?.queryKey ?? getRegistrationOptionIndexQueryKey(event, params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof registrationOptionIndex>>> = ({
     signal,
-  }) => registrationOptionIndex(event, { signal, ...requestOptions });
+  }) => registrationOptionIndex(event, params, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -4362,6 +4477,7 @@ export function useRegistrationOptionIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params: undefined | RegistrationOptionIndexParams,
   options: {
     query: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
@@ -4383,6 +4499,7 @@ export function useRegistrationOptionIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationOptionIndexParams,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
@@ -4404,6 +4521,7 @@ export function useRegistrationOptionIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationOptionIndexParams,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
@@ -4421,6 +4539,7 @@ export function useRegistrationOptionIndex<
   TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
+  params?: RegistrationOptionIndexParams,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof registrationOptionIndex>>, TError, TData>
@@ -4429,7 +4548,7 @@ export function useRegistrationOptionIndex<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getRegistrationOptionIndexQueryOptions(event, options);
+  const queryOptions = getRegistrationOptionIndexQueryOptions(event, params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -4439,7 +4558,7 @@ export function useRegistrationOptionIndex<
 }
 
 export type registrationOptionReplaceResponse200 = {
-  data: RegistrationOptionResource[];
+  data: RegistrationOptionReplace200;
   status: 200;
 };
 
@@ -4668,7 +4787,7 @@ export const useRegistrationOptionReplace = <
 };
 
 export type sectionIndexResponse200 = {
-  data: SectionResource[];
+  data: SectionIndex200;
   status: 200;
 };
 
@@ -4698,8 +4817,18 @@ export type sectionIndexResponseError = (
 
 export type sectionIndexResponse = sectionIndexResponseSuccess | sectionIndexResponseError;
 
-export const getSectionIndexUrl = () => {
-  return `/sections`;
+export const getSectionIndexUrl = (params?: SectionIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/sections?${stringifiedParams}` : `/sections`;
 };
 
 /**
@@ -4712,31 +4841,35 @@ export const getSectionIndexUrl = () => {
  * @summary List the registers
  */
 export const sectionIndex = async (
+  params?: SectionIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<sectionIndexResponse> => {
-  return customFetch<sectionIndexResponse>(getSectionIndexUrl(), {
+  return customFetch<sectionIndexResponse>(getSectionIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getSectionIndexQueryKey = () => {
-  return [`/sections`] as const;
+export const getSectionIndexQueryKey = (params?: SectionIndexParams) => {
+  return [`/sections`, ...(params ? [params] : [])] as const;
 };
 
 export const getSectionIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof sectionIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: SectionIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getSectionIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getSectionIndexQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof sectionIndex>>> = ({ signal }) =>
-    sectionIndex({ signal, ...requestOptions });
+    sectionIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof sectionIndex>>,
@@ -4752,6 +4885,7 @@ export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params: undefined | SectionIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
       Pick<
@@ -4770,6 +4904,7 @@ export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: SectionIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>> &
       Pick<
@@ -4788,6 +4923,7 @@ export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: SectionIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -4802,13 +4938,14 @@ export function useSectionIndex<
   TData = Awaited<ReturnType<typeof sectionIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: SectionIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sectionIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getSectionIndexQueryOptions(options);
+  const queryOptions = getSectionIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -4818,7 +4955,7 @@ export function useSectionIndex<
 }
 
 export type roleIndexResponse200 = {
-  data: RoleResource[];
+  data: RoleIndex200;
   status: 200;
 };
 
@@ -4848,8 +4985,18 @@ export type roleIndexResponseError = (
 
 export type roleIndexResponse = roleIndexResponseSuccess | roleIndexResponseError;
 
-export const getRoleIndexUrl = () => {
-  return `/roles`;
+export const getRoleIndexUrl = (params?: RoleIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/roles?${stringifiedParams}` : `/roles`;
 };
 
 /**
@@ -4862,31 +5009,35 @@ export const getRoleIndexUrl = () => {
  * @summary List the roles
  */
 export const roleIndex = async (
+  params?: RoleIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<roleIndexResponse> => {
-  return customFetch<roleIndexResponse>(getRoleIndexUrl(), {
+  return customFetch<roleIndexResponse>(getRoleIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getRoleIndexQueryKey = () => {
-  return [`/roles`] as const;
+export const getRoleIndexQueryKey = (params?: RoleIndexParams) => {
+  return [`/roles`, ...(params ? [params] : [])] as const;
 };
 
 export const getRoleIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof roleIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: RoleIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getRoleIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getRoleIndexQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof roleIndex>>> = ({ signal }) =>
-    roleIndex({ signal, ...requestOptions });
+    roleIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof roleIndex>>,
@@ -4902,6 +5053,7 @@ export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params: undefined | RoleIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
       Pick<
@@ -4920,6 +5072,7 @@ export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: RoleIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>> &
       Pick<
@@ -4938,6 +5091,7 @@ export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: RoleIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -4952,13 +5106,14 @@ export function useRoleIndex<
   TData = Awaited<ReturnType<typeof roleIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: RoleIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof roleIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getRoleIndexQueryOptions(options);
+  const queryOptions = getRoleIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -4968,7 +5123,7 @@ export function useRoleIndex<
 }
 
 export type memberIndexResponse200 = {
-  data: MemberResource[];
+  data: MemberIndex200;
   status: 200;
 };
 
@@ -4998,8 +5153,18 @@ export type memberIndexResponseError = (
 
 export type memberIndexResponse = memberIndexResponseSuccess | memberIndexResponseError;
 
-export const getMemberIndexUrl = () => {
-  return `/members`;
+export const getMemberIndexUrl = (params?: MemberIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/members?${stringifiedParams}` : `/members`;
 };
 
 /**
@@ -5015,31 +5180,35 @@ export const getMemberIndexUrl = () => {
  * @summary List the roster
  */
 export const memberIndex = async (
+  params?: MemberIndexParams,
   options?: Parameters<typeof customFetch>[1],
 ): Promise<memberIndexResponse> => {
-  return customFetch<memberIndexResponse>(getMemberIndexUrl(), {
+  return customFetch<memberIndexResponse>(getMemberIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getMemberIndexQueryKey = () => {
-  return [`/members`] as const;
+export const getMemberIndexQueryKey = (params?: MemberIndexParams) => {
+  return [`/members`, ...(params ? [params] : [])] as const;
 };
 
 export const getMemberIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof memberIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: MemberIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getMemberIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getMemberIndexQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof memberIndex>>> = ({ signal }) =>
-    memberIndex({ signal, ...requestOptions });
+    memberIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof memberIndex>>,
@@ -5055,6 +5224,7 @@ export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params: undefined | MemberIndexParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
       Pick<
@@ -5073,6 +5243,7 @@ export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: MemberIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>> &
       Pick<
@@ -5091,6 +5262,7 @@ export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: MemberIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
@@ -5105,13 +5277,14 @@ export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
   TError = Problem401Response | Problem403Response | Problem503Response,
 >(
+  params?: MemberIndexParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof memberIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getMemberIndexQueryOptions(options);
+  const queryOptions = getMemberIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
