@@ -310,9 +310,12 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   fails, naming the file, on anything over 1920px or 600 KB. The exemptions are
   by name in that file, each with its reason; an exempt name is still held to a
   4000px / 2 MB ceiling, so a camera original arriving under an exempt name does
-  not sail through. The logo, `comite.jpg`, `CD_img.png` and `Flyer.jpeg` are
-  deliberately exempt — they are already small, and re-encoding a small image
-  only softens it. Re-encoding is also generational: never run an optimisation
+  not sail through. Two names are exempt, the logo and `CD_img.png`, because
+  they are already small and re-encoding a small image only softens it. An
+  exemption covers the file that earned it, not the name: `comite.jpg` and
+  `Flyer.jpeg` were dropped from the list once the photographs themselves were
+  deleted, so whatever arrives under those names next is budgeted like any other
+  new photograph. Re-encoding is also generational: never run an optimisation
   pass over already-optimised files.
 - **`web/src/api/generated/` is generated — never hand-edit it.** Change the
   Laravel controller, run `npm run openapi && npm run generate:api`, commit the

@@ -149,21 +149,27 @@ test('an exempt file is not held to the budget', () => {
 });
 
 test('an exempt name does not excuse a camera original arriving under it', () => {
-  // The exemption's reason is "already small". A 19.8 MB 6048x4024 file called
-  // comite.jpg is a different file, and is exactly what this guard is for.
-  const dir = fixture({ 'comite.jpg': jpeg(6048, 4024, 4 * 1024 * 1024) });
+  // The exemption's reason is "already small". A 4 MB 6048x4024 file called
+  // CD_img.png is a different file, and is exactly what the ceiling is for.
+  //
+  // It has to be a name that is STILL exempt. This used comite.jpg until that
+  // exemption was dropped, at which point the test went on passing while
+  // proving nothing: an unexempt name is an offender for the ordinary reason,
+  // so the ceiling could have been deleted without turning this red.
+  const dir = fixture({ 'CD_img.png': png(6048, 4024, 4 * 1024 * 1024) });
 
   const [offender] = audit(dir).offenders;
-  assert.equal(offender.file, 'comite.jpg');
+  assert.equal(offender.file, 'CD_img.png');
 });
 
 test('an exemption matching no file is reported, not failed', () => {
-  // comite.jpg and Flyer.jpeg went in de750d9. They stay listed so a restore
-  // does not trip a guard that was never about them.
+  // How the guard says an exemption has gone stale: the name is named, and the
+  // run still succeeds. That report is what prompted dropping comite.jpg and
+  // Flyer.jpeg once their photographs were deleted.
   const { offenders, staleExemptions } = audit(fixture({ 'registre.jpg': jpeg(1600, 1067) }));
 
   assert.deepEqual(offenders, []);
-  assert.ok(staleExemptions.includes('comite.jpg'));
+  assert.ok(staleExemptions.includes('CD_img.png'));
 });
 
 test('the repository tree passes its own guard', () => {
