@@ -516,8 +516,12 @@ test("a series creates one independent event per date", async () => {
   });
 
   expect(response.status).toBe(201);
-  const created = (await response.json()) as { id: number }[];
+  // Through `data`: the generator answers with a collection, and a 201 is a
+  // collection just as much as a 200 is.
+  const body = (await response.json()) as { data: { id: number }[]; meta: { total: number } };
+  const created = body.data;
   expect(created).toHaveLength(3);
+  expect(body.meta.total).toBe(3);
   // Distinct ids: they are three events, not one repeated.
   expect(new Set(created.map((event) => event.id)).size).toBe(3);
 

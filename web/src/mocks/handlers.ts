@@ -452,7 +452,7 @@ const MAX_LIMIT = 1000;
  * ignored rather than refused" is a behaviour a screen may one day depend on
  * and there is nowhere else for it to be exercised in the browser.
  */
-function collection<T>(rows: T[], request: Request): Response {
+function collection<T>(rows: T[], request: Request, status = 200): Response {
   const query = new URL(request.url).searchParams;
 
   const whole = (value: string | null, fallback: number, min: number, max: number): number => {
@@ -464,6 +464,7 @@ function collection<T>(rows: T[], request: Request): Response {
   const offset = whole(query.get("offset"), 0, 0, Number.MAX_SAFE_INTEGER);
   const total = rows.length;
 
+  // Relative, like the real Link header: path and query, no scheme or host.
   const url = new URL(request.url);
   const at = (start: number): string => {
     const link = new URL(url);
@@ -483,7 +484,10 @@ function collection<T>(rows: T[], request: Request): Response {
 
   return HttpResponse.json(
     { data: rows.slice(offset, offset + limit), meta: { total, limit, offset } },
-    { headers: { Link: links.join(", ") } },
+    // The Link header goes on reads only, matching the middleware: a
+    // `rel="next"` on a URL you would have to POST or PUT again is not a link
+    // anybody should follow.
+    status === 200 ? { headers: { Link: links.join(", ") } } : { status },
   );
 }
 
@@ -1132,7 +1136,12 @@ const overrides = [
     });
 
     events = [...events, ...created];
-    return HttpResponse.json(created, { status: 201 });
+
+    // ENVELOPED, and 201 is exactly why this one was missed the first time.
+    // The generator answers with the events it just wrote, which is a
+    // collection whatever status carries it, and the real middleware keys on
+    // any successful JSON list body rather than on 200.
+    return collection(created, request, 201);
   }),
 
   http.post("/api/v1/events", async ({ request }) => {

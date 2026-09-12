@@ -30,6 +30,17 @@ type Envelope<T> = { data: T[]; meta: { total: number; limit: number; offset: nu
 type Result = { status: number; data: unknown } | undefined;
 
 /**
+ * Any 2xx, not `status === 200`.
+ *
+ * `POST /events/series` answers **201** with a collection — the events it just
+ * created — and a helper that tested for 200 would hand its caller an empty
+ * list for a season that was generated successfully.
+ */
+function succeeded(result: Result): result is { status: number; data: unknown } {
+  return result !== undefined && result.status >= 200 && result.status < 300;
+}
+
+/**
  * The rows of a collection, or an empty list while it is loading or refused.
  *
  * An empty list rather than `undefined` on purpose: a screen renders "aucun
@@ -37,7 +48,7 @@ type Result = { status: number; data: unknown } | undefined;
  * distinguishing them is the query's `isPending`, not the shape of the rows.
  */
 export function rowsOf<T>(result: Result): T[] {
-  if (result?.status !== 200) {
+  if (!succeeded(result)) {
     return [];
   }
 
@@ -60,7 +71,7 @@ export function rowsOf<T>(result: Result): T[] {
  * known" and "none" are different things to put on a screen.
  */
 export function totalOf(result: Result): number | null {
-  if (result?.status !== 200) {
+  if (!succeeded(result)) {
     return null;
   }
 
