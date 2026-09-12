@@ -65,7 +65,7 @@ class ReadableJsonTest extends TestCase
         $decoded = $this->actingAsMember($member)
             ->getJson('/api/v1/events')
             ->assertOk()
-            ->json('0.title');
+            ->json('data.0.title');
 
         $this->assertSame('Répétition générale', $decoded);
     }

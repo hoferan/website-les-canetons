@@ -59,6 +59,16 @@ test("lists everybody on the roster, ordered by name", async () => {
   ]);
 });
 
+test("the heading counts the roster the server holds, not the rows on screen", async () => {
+  // `meta.total` rather than members.length. The two agree today, and the
+  // reason to read the server's number is that they would stop agreeing the
+  // moment this list were ever cut short — at which point counting what
+  // arrived would quietly under-report the band.
+  await renderRoster();
+
+  expect(screen.getByTestId("roster-count")).toHaveTextContent("5 membres");
+});
+
 test("the phone layout lists exactly the same people as the table", async () => {
   await renderRoster();
 

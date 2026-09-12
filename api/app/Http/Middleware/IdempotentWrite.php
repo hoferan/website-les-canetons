@@ -197,6 +197,18 @@ class IdempotentWrite
         return $response;
     }
 
+    /**
+     * Stores the answer a replay will get.
+     *
+     * IT STORES WHAT THE CONTROLLER SAID, NOT WHAT THE CLIENT WILL SEE. This
+     * middleware sits inside App\Http\Middleware\PaginatesCollections, so a
+     * body that is a JSON list is enveloped after this runs, and replay() below
+     * returns a plain Response that the envelope then skips. Both routes behind
+     * `idempotent` answer with an object today, so the two shapes cannot
+     * differ — but the day one answers a list, the first attempt would get
+     * `{data, meta}` and the retry a bare array, which is the one thing an
+     * idempotent endpoint promises cannot happen.
+     */
     private function remember(string $key, string $endpoint, Response $response): void
     {
         DB::table('idempotency_keys')

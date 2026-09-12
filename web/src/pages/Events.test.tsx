@@ -77,7 +77,13 @@ test("an event with no attire says so rather than leaving a blank", async () => 
 test("an empty planning says so rather than rendering nothing", async () => {
   // A blank screen reads as broken. This is the state a committee sees before
   // they have entered the season, which is the first thing they will ever see.
-  server.use(http.get("/api/v1/events", () => HttpResponse.json([])));
+  // The envelope, not a bare array: an override that answered the old shape
+  // would put this test in agreement with nothing the API sends.
+  server.use(
+    http.get("/api/v1/events", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
 
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events" });

@@ -129,7 +129,56 @@
  *   On the way IN, send any offset you like and it is honoured; a value with no
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
- * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ * - Every collection comes in the same envelope. See *Collections*.
+ *
+ * ## Collections
+ *
+ * Every endpoint that answers with a list answers with `{data, meta}`, never with
+ * a bare array — `/roles` and `/sections` included, which are the two nobody will
+ * ever page. One shape means one function reads any list:
+ *
+ * ```json
+ * {
+ *   "data": [ … ],
+ *   "meta": { "total": 45, "limit": 500, "offset": 0 }
+ * }
+ * ```
+ *
+ * `total` is the whole collection, not the page you were sent, so a screen can
+ * say "45 membres" without first reading forty-five of them.
+ *
+ * Ask for less with `?limit=` and `?offset=`. **You rarely need to**: the default
+ * limit is 500, above every collection this API holds, so omitting both returns
+ * the whole thing in one request. The cap is 1000.
+ *
+ * Neither parameter can fail. A `limit` above the cap is clamped, a negative
+ * `offset` reads as zero, and a value that is not a whole number is ignored —
+ * `meta` always reports what was actually applied.
+ *
+ * Reads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`
+ * header with `first` and `last`, plus `prev` and `next` where they exist:
+ *
+ * ```
+ * Link: </api/v1/members?limit=2&offset=2>; rel="next",
+ *       </api/v1/members?limit=2&offset=44>; rel="last"
+ * ```
+ *
+ * **Follow `next` until there is none** rather than doing arithmetic on `meta`.
+ * Your own query parameters are carried along, so paging `/events?past=1` stays
+ * in the past.
+ *
+ * The links are relative, as RFC 8288 permits: resolve them against the URL you
+ * requested. They carry no scheme or host, so they stay correct behind whatever
+ * sits in front of the API.
+ *
+ * `PUT /api/v1/events/{event}/registration-options` and
+ * `POST /api/v1/events/series` answer with a collection too, and are enveloped
+ * the same way — with no `Link` header, since a `rel="next"` you would have to
+ * PUT again is not a link to follow.
+ *
+ * The paging is offset-based rather than cursor-based, deliberately: every
+ * collection here is one page for the foreseeable future. A `cursor` parameter
+ * can be added later without changing this envelope.
  *
  * ## Conditional writes
  *
@@ -256,4 +305,15 @@ export type EventIndexParams = {
    * Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.
    */
   past?: "1";
+  /**
+   * How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.
+   * @minimum 1
+   * @maximum 1000
+   */
+  limit?: number;
+  /**
+   * How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.
+   * @minimum 0
+   */
+  offset?: number;
 };

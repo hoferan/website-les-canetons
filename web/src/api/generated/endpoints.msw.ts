@@ -129,7 +129,56 @@
  *   On the way IN, send any offset you like and it is honoured; a value with no
  *   offset at all is read as UTC.
  * - Money is an integer number of centimes. `4500` is CHF 45.00.
- * - Collections are returned as bare JSON arrays, with no `data` envelope.
+ * - Every collection comes in the same envelope. See *Collections*.
+ *
+ * ## Collections
+ *
+ * Every endpoint that answers with a list answers with `{data, meta}`, never with
+ * a bare array — `/roles` and `/sections` included, which are the two nobody will
+ * ever page. One shape means one function reads any list:
+ *
+ * ```json
+ * {
+ *   "data": [ … ],
+ *   "meta": { "total": 45, "limit": 500, "offset": 0 }
+ * }
+ * ```
+ *
+ * `total` is the whole collection, not the page you were sent, so a screen can
+ * say "45 membres" without first reading forty-five of them.
+ *
+ * Ask for less with `?limit=` and `?offset=`. **You rarely need to**: the default
+ * limit is 500, above every collection this API holds, so omitting both returns
+ * the whole thing in one request. The cap is 1000.
+ *
+ * Neither parameter can fail. A `limit` above the cap is clamped, a negative
+ * `offset` reads as zero, and a value that is not a whole number is ignored —
+ * `meta` always reports what was actually applied.
+ *
+ * Reads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`
+ * header with `first` and `last`, plus `prev` and `next` where they exist:
+ *
+ * ```
+ * Link: </api/v1/members?limit=2&offset=2>; rel="next",
+ *       </api/v1/members?limit=2&offset=44>; rel="last"
+ * ```
+ *
+ * **Follow `next` until there is none** rather than doing arithmetic on `meta`.
+ * Your own query parameters are carried along, so paging `/events?past=1` stays
+ * in the past.
+ *
+ * The links are relative, as RFC 8288 permits: resolve them against the URL you
+ * requested. They carry no scheme or host, so they stay correct behind whatever
+ * sits in front of the API.
+ *
+ * `PUT /api/v1/events/{event}/registration-options` and
+ * `POST /api/v1/events/series` answer with a collection too, and are enveloped
+ * the same way — with no `Link` header, since a `rel="next"` you would have to
+ * PUT again is not a link to follow.
+ *
+ * The paging is offset-based rather than cursor-based, deliberately: every
+ * collection here is one page for the foreseeable future. A `cursor` parameter
+ * can be added later without changing this envelope.
  *
  * ## Conditional writes
  *
@@ -259,18 +308,21 @@ import { AttendanceStatus, Environment } from "./model";
 import type {
   AccountPassword200,
   AttendanceDestroy200,
+  AttendanceIndex200,
   AttendanceResource,
   AuthLogin200,
   AuthLogout200,
   AuthMe200,
-  ChaseListEntryResource,
   ConfigShow200,
   ContactStore200,
   EventDestroy200,
+  EventIndex200,
   EventResource,
+  EventSeries201,
   FormTokenShow200,
   MemberAttendanceDestroy200,
   MemberDestroy200,
+  MemberIndex200,
   MemberPasswordReset200,
   MemberResource,
   MemberRoleReplace200,
@@ -278,10 +330,12 @@ import type {
   RegistrationDestroy200,
   RegistrationExport200Four,
   RegistrationFormResource,
-  RegistrationOptionResource,
+  RegistrationIndex200,
+  RegistrationOptionIndex200,
+  RegistrationOptionReplace200,
   RegistrationResource,
-  RoleResource,
-  SectionResource,
+  RoleIndex200,
+  SectionIndex200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -315,8 +369,10 @@ export const getAccountPasswordResponseMock = (
   ...overrideResponse,
 });
 
-export const getEventIndexResponseMock = (): EventResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getEventIndexResponseMock = (
+  overrideResponse: Partial<Extract<EventIndex200, object>> = {},
+): EventIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -350,7 +406,10 @@ export const getEventIndexResponseMock = (): EventResource[] =>
       },
       null,
     ]),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
 export const getEventStoreResponseMock = (
   overrideResponse: Partial<Extract<EventResource, object>> = {},
@@ -469,8 +528,10 @@ export const getEventDestroyResponseMock = (
   ...overrideResponse,
 });
 
-export const getEventSeriesResponseMock = (): EventResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getEventSeriesResponseMock = (
+  overrideResponse: Partial<Extract<EventSeries201, object>> = {},
+): EventSeries201 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -504,7 +565,10 @@ export const getEventSeriesResponseMock = (): EventResource[] =>
       },
       null,
     ]),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
 export const getAttendanceUpdateResponseMock = (
   overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
@@ -520,8 +584,10 @@ export const getAttendanceDestroyResponseMock = (
   overrideResponse: Partial<Extract<AttendanceDestroy200, object>> = {},
 ): AttendanceDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getAttendanceIndexResponseMock = (
+  overrideResponse: Partial<Extract<AttendanceIndex200, object>> = {},
+): AttendanceIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     memberId: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -541,7 +607,10 @@ export const getAttendanceIndexResponseMock = (): ChaseListEntryResource[] =>
       },
       null,
     ]),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
 export const getMemberAttendanceUpdateResponseMock = (
   overrideResponse: Partial<Extract<AttendanceResource, object>> = {},
@@ -584,8 +653,10 @@ export const getRegistrationStoreResponseMock = (
   ...overrideResponse,
 });
 
-export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getRegistrationIndexResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationIndex200, object>> = {},
+): RegistrationIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -610,7 +681,10 @@ export const getRegistrationIndexResponseMock = (): RegistrationResource[] =>
     guestCount: faker.number.int(),
     totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
     createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
 export const getRegistrationFormResponseMock = (
   overrideResponse: Partial<Extract<RegistrationFormResource, object>> = {},
@@ -721,8 +795,10 @@ export const getRegistrationDestroyResponseMock = (
   overrideResponse: Partial<Extract<RegistrationDestroy200, object>> = {},
 ): RegistrationDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
-export const getRegistrationOptionIndexResponseMock = (): RegistrationOptionResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getRegistrationOptionIndexResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationOptionIndex200, object>> = {},
+): RegistrationOptionIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     label: faker.string.alpha({ length: { min: 10, max: 20 } }),
     description: faker.helpers.arrayElement([
@@ -731,10 +807,15 @@ export const getRegistrationOptionIndexResponseMock = (): RegistrationOptionReso
     ]),
     priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     sortOrder: faker.number.int(),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
-export const getRegistrationOptionReplaceResponseMock = (): RegistrationOptionResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getRegistrationOptionReplaceResponseMock = (
+  overrideResponse: Partial<Extract<RegistrationOptionReplace200, object>> = {},
+): RegistrationOptionReplace200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     label: faker.string.alpha({ length: { min: 10, max: 20 } }),
     description: faker.helpers.arrayElement([
@@ -743,26 +824,41 @@ export const getRegistrationOptionReplaceResponseMock = (): RegistrationOptionRe
     ]),
     priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     sortOrder: faker.number.int(),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
-export const getSectionIndexResponseMock = (): SectionResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getSectionIndexResponseMock = (
+  overrideResponse: Partial<Extract<SectionIndex200, object>> = {},
+): SectionIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     name: faker.string.alpha({ length: { min: 10, max: 20 } }),
     sortOrder: faker.number.int(),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
-export const getRoleIndexResponseMock = (): RoleResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getRoleIndexResponseMock = (
+  overrideResponse: Partial<Extract<RoleIndex200, object>> = {},
+): RoleIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     key: faker.string.alpha({ length: { min: 10, max: 20 } }),
     permissions: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => faker.string.alpha({ length: { min: 10, max: 20 } }),
     ),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
-export const getMemberIndexResponseMock = (): MemberResource[] =>
-  Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+export const getMemberIndexResponseMock = (
+  overrideResponse: Partial<Extract<MemberIndex200, object>> = {},
+): MemberIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -787,7 +883,10 @@ export const getMemberIndexResponseMock = (): MemberResource[] =>
     roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => faker.number.int(),
     ),
-  }));
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
 
 export const getMemberStoreResponseMock = (
   overrideResponse: Partial<Extract<MemberStore201, object>> = {},
@@ -1048,10 +1147,10 @@ export const getAccountPasswordMockHandler = (
 
 export const getEventIndexMockHandler = (
   overrideResponse?:
-    | EventResource[]
+    | EventIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<EventResource[]> | EventResource[]),
+      ) => Promise<EventIndex200> | EventIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1168,10 +1267,10 @@ export const getEventDestroyMockHandler = (
 
 export const getEventSeriesMockHandler = (
   overrideResponse?:
-    | EventResource[]
+    | EventSeries201
     | ((
         info: Parameters<Parameters<typeof http.post>[1]>[0],
-      ) => Promise<EventResource[]> | EventResource[]),
+      ) => Promise<EventSeries201> | EventSeries201),
   options?: RequestHandlerOptions,
 ) => {
   return http.post(
@@ -1240,10 +1339,10 @@ export const getAttendanceDestroyMockHandler = (
 
 export const getAttendanceIndexMockHandler = (
   overrideResponse?:
-    | ChaseListEntryResource[]
+    | AttendanceIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<ChaseListEntryResource[]> | ChaseListEntryResource[]),
+      ) => Promise<AttendanceIndex200> | AttendanceIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1336,10 +1435,10 @@ export const getRegistrationStoreMockHandler = (
 
 export const getRegistrationIndexMockHandler = (
   overrideResponse?:
-    | RegistrationResource[]
+    | RegistrationIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<RegistrationResource[]> | RegistrationResource[]),
+      ) => Promise<RegistrationIndex200> | RegistrationIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1488,10 +1587,10 @@ export const getRegistrationDestroyMockHandler = (
 
 export const getRegistrationOptionIndexMockHandler = (
   overrideResponse?:
-    | RegistrationOptionResource[]
+    | RegistrationOptionIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<RegistrationOptionResource[]> | RegistrationOptionResource[]),
+      ) => Promise<RegistrationOptionIndex200> | RegistrationOptionIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1512,10 +1611,10 @@ export const getRegistrationOptionIndexMockHandler = (
 
 export const getRegistrationOptionReplaceMockHandler = (
   overrideResponse?:
-    | RegistrationOptionResource[]
+    | RegistrationOptionReplace200
     | ((
         info: Parameters<Parameters<typeof http.put>[1]>[0],
-      ) => Promise<RegistrationOptionResource[]> | RegistrationOptionResource[]),
+      ) => Promise<RegistrationOptionReplace200> | RegistrationOptionReplace200),
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
@@ -1536,10 +1635,10 @@ export const getRegistrationOptionReplaceMockHandler = (
 
 export const getSectionIndexMockHandler = (
   overrideResponse?:
-    | SectionResource[]
+    | SectionIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<SectionResource[]> | SectionResource[]),
+      ) => Promise<SectionIndex200> | SectionIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1560,10 +1659,10 @@ export const getSectionIndexMockHandler = (
 
 export const getRoleIndexMockHandler = (
   overrideResponse?:
-    | RoleResource[]
+    | RoleIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<RoleResource[]> | RoleResource[]),
+      ) => Promise<RoleIndex200> | RoleIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(
@@ -1584,10 +1683,10 @@ export const getRoleIndexMockHandler = (
 
 export const getMemberIndexMockHandler = (
   overrideResponse?:
-    | MemberResource[]
+    | MemberIndex200
     | ((
         info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<MemberResource[]> | MemberResource[]),
+      ) => Promise<MemberIndex200> | MemberIndex200),
   options?: RequestHandlerOptions,
 ) => {
   return http.get(

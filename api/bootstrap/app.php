@@ -11,6 +11,7 @@ use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\EnsureDocsEnabled;
 use App\Http\Middleware\IdempotentWrite;
 use App\Http\Middleware\NoStoreResponse;
+use App\Http\Middleware\PaginatesCollections;
 use App\Http\Middleware\PublicWriteGuard;
 use App\Http\Middleware\ReadableJson;
 use App\Http\Middleware\RequestId;
@@ -154,6 +155,23 @@ return Application::configure(basePath: dirname(__DIR__))
         // resolved, so it must run after StartSession and Authenticate rather
         // than in front of them like RunPendingMigrations.
         $middleware->appendToGroup('api', EnforceAbsoluteSessionLifetime::class);
+
+        // One envelope for every collection, `{data, meta}` plus a `Link`
+        // header. Appended rather than prepended because it works on the
+        // RESPONSE and needs the controller's to exist first.
+        //
+        // WHERE IT SITS RELATIVE TO ApiVersion DOES MATTER, and an earlier
+        // version of this comment said it did not, on the grounds that nothing
+        // else here reads the body. That was the wrong test: ApiVersion does
+        // not read the body, it writes the same HEADER. Both emit `Link`, this
+        // one is appended first and therefore runs last on the way out, and
+        // until 2026-09-12 it replaced the successor-version link on every
+        // collection. It now appends — see the middleware.
+        //
+        // On the group rather than on eight routes: the condition is the shape
+        // of the answer, not a list of endpoints, so a collection added later
+        // is enveloped without anybody remembering to. See the class.
+        $middleware->appendToGroup('api', PaginatesCollections::class);
 
         // Announces the contract version, and one day that it is retiring. It
         // only ever sets response headers, so where it sits in the group does

@@ -37,9 +37,9 @@ class MyAttendanceTest extends TestCase
         $this->actingAsMember($this->player)
             ->getJson('/api/v1/events')
             ->assertOk()
-            ->assertJsonPath('0.myAttendance.status', 'yes')
-            ->assertJsonPath('0.myAttendance.note', 'A vélo.')
-            ->assertJsonPath('0.myAttendance.recordedByDirection', false);
+            ->assertJsonPath('data.0.myAttendance.status', 'yes')
+            ->assertJsonPath('data.0.myAttendance.note', 'A vélo.')
+            ->assertJsonPath('data.0.myAttendance.recordedByDirection', false);
     }
 
     public function test_an_unanswered_event_reports_null(): void
@@ -49,7 +49,7 @@ class MyAttendanceTest extends TestCase
         $this->actingAsMember($this->player)
             ->getJson('/api/v1/events')
             ->assertOk()
-            ->assertJsonPath('0.myAttendance', null);
+            ->assertJsonPath('data.0.myAttendance', null);
     }
 
     public function test_it_never_shows_somebody_elses_answer(): void
@@ -64,7 +64,7 @@ class MyAttendanceTest extends TestCase
             'note' => 'Ceci ne regarde personne.',
         ]);
 
-        $body = $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk()->json();
+        $body = $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk()->json('data');
 
         $this->assertNull($body[0]['myAttendance']);
         $this->assertStringNotContainsString('Ceci ne regarde personne.', json_encode($body));

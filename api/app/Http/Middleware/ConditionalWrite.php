@@ -48,6 +48,14 @@ use Symfony\Component\HttpFoundation\Response;
  * returned: every route here also sends `Cache-Control: no-store`, so there is
  * no cache to serve one. The tag is an optimistic-concurrency token that
  * happens to be spelled the way HTTP spells one.
+ *
+ * THAT PARAGRAPH BECAME LOAD-BEARING ON 2026-09-12. `GET /events/{event}/
+ * registration-options` is a collection, so App\Http\Middleware * PaginatesCollections slices its body afterwards, and `?limit=1` and
+ * `?limit=500` now return different representations under the same strong tag.
+ * That is harmless for what the tag is for — If-Match compares the facet's
+ * state, which paging cannot touch — and would be a wrong-body 304 the day
+ * anybody implements the conditional GET this class says it does not. Read
+ * this before implementing one.
  */
 class ConditionalWrite
 {
