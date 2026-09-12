@@ -219,6 +219,14 @@ also changes `api/`; otherwise it proxies to whatever :8090 is running.
 directory it starts a SECOND compose project — a different directory means a
 different project name — racing the first for 8090, 5173, 3307, 8025 and 8091.
 
+Two DbGate containers on two ports is its own flavour of that race, because
+**cookies ignore the port**. DbGate signs the browser's token with `.key` from
+its own `/root/.dbgate` volume, so the second stack's DbGate rejects the token
+the first one issued for `localhost`, and both log
+`DBGM-00098 Sending invalid token error` until you clear the cookie. Measured
+2026-09-12. The same thing happens for one stack if you ever drop the
+`dbgate_data` volume, since the key is regenerated with it.
+
 ## The dev stack is stateful on ANY localhost port, deliberately
 
 `SANCTUM_STATEFUL_DOMAINS` in `docker/api/env.docker` is `localhost:*,127.0.0.1:*`.
