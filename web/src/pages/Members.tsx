@@ -34,7 +34,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { roleLabel } from "../i18n";
-import { ConfirmByTypingName } from "../members/ConfirmByTypingName";
+import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { MemberForm, type MemberDraft } from "../members/MemberForm";
 

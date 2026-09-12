@@ -101,3 +101,87 @@ test("a failed planning is announced, not silently empty", async () => {
 
   expect(await screen.findByRole("alert")).toHaveTextContent(/n’a pas pu être chargé/);
 });
+
+test("naming the event before deleting it", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  const title = within(card).getByTestId("event-title").textContent ?? "";
+  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+
+  // "Êtes-vous sûr ?" is a question nobody reads. The name is what makes the
+  // dialog worth stopping for.
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveAccessibleName(expect.stringContaining(title));
+});
+
+test("the dialog names what goes with the event, not only the event", async () => {
+  // The API deletes every attendance answer and every public registration
+  // attached to it, and says so in its own docblock. A confirmation that
+  // mentioned neither would be naming half the damage.
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  const title = within(card).getByTestId("event-title").textContent ?? "";
+  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveTextContent(/réponses/);
+  expect(dialog).toHaveTextContent(/inscriptions/);
+});
+
+test("a player is offered no delete at all", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+
+  expect(screen.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
+});
+
+test("deleting removes it from the planning", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+  const before = screen.getAllByTestId("event-card").length;
+
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  const title = within(card).getByTestId("event-title").textContent ?? "";
+  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+  // The plan waited on a findByText matching any non-empty node, which matches
+  // every node on the page and throws for multiple matches. Polling the count
+  // is what the rest of this file already does.
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(before - 1);
+});
+
+test("a delete carries the tag of the read it was confirmed from", async () => {
+  // DELETE is a conditional write (A4): refused 428 without an If-Match and
+  // 412 with a stale one. The planning hands out no tag — one tag cannot
+  // validate five rows — so opening the dialog is also the read. Without that
+  // read the mocked backend refuses exactly as the real one does, and this
+  // test is what says so.
+  let sentIfMatch: string | null = null;
+  server.events.on("request:start", ({ request }) => {
+    if (request.method === "DELETE") {
+      sentIfMatch = request.headers.get("If-Match");
+    }
+  });
+
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  const title = within(card).getByTestId("event-title").textContent ?? "";
+  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => sentIfMatch).not.toBeNull();
+});

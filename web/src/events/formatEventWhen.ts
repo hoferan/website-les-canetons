@@ -12,25 +12,34 @@
  * That falls straight out of comparing the two dates, which is what the old
  * `weekend` boolean was faking — see the events migration (decision C6).
  *
- * THE COMMA AFTER THE WEEKDAY IS Intl's, NOT A CHOICE. `fr-CH` renders
- * "samedi, 5 septembre 2026", and the tests below pin what the formatter
- * actually produced rather than what read best when they were written —
- * measured 2026-09-10. It is comma-heavy in the two-day form ("du samedi,
- * 3 octobre 2026, 09:00 au …"), so it is on the list to look at in a browser
- * before this release ships; changing it means composing the parts by hand,
- * which is a decision to take while looking at the rendered page rather than
- * at a string literal in a test.
+ * THE WEEKDAY AND THE DATE ARE COMPOSED BY HAND, because `fr-CH` puts a comma
+ * between them and French does not. One formatter reading "samedi, 5 septembre
+ * 2026" was tolerable; the two-day form it produced was not — "du samedi,
+ * 3 octobre 2026, 09:00 au dimanche, 4 octobre 2026, 16:00" carries four
+ * commas and the reader has to work out which ones separate the two halves.
+ * Looked at on the rendered page on 2026-09-12, which is where the earlier
+ * version of this comment said the decision belonged rather than beside a
+ * string literal in a test.
+ *
+ * The two-day form says "à" before each time for the same reason: with the
+ * comma gone it is the only thing left marking where the date stops.
  */
 
 const ZONE = "Europe/Zurich";
 
+const WEEKDAY = new Intl.DateTimeFormat("fr-CH", { timeZone: ZONE, weekday: "long" });
+
 const DATE = new Intl.DateTimeFormat("fr-CH", {
   timeZone: ZONE,
-  weekday: "long",
   day: "numeric",
   month: "long",
   year: "numeric",
 });
+
+/** "samedi 5 septembre 2026" — the two parts joined the way French joins them. */
+function dayAndDate(value: Date): string {
+  return `${WEEKDAY.format(value)} ${DATE.format(value)}`;
+}
 
 const TIME = new Intl.DateTimeFormat("fr-CH", {
   timeZone: ZONE,
@@ -60,8 +69,8 @@ export function formatEventWhen(startsAt: string, endsAt: string): string {
   const end = new Date(endsAt);
 
   if (dayIn(ZONE, startsAt) === dayIn(ZONE, endsAt)) {
-    return `${DATE.format(start)}, ${TIME.format(start)} – ${TIME.format(end)}`;
+    return `${dayAndDate(start)}, ${TIME.format(start)} – ${TIME.format(end)}`;
   }
 
-  return `du ${DATE.format(start)}, ${TIME.format(start)} au ${DATE.format(end)}, ${TIME.format(end)}`;
+  return `du ${dayAndDate(start)} à ${TIME.format(start)} au ${dayAndDate(end)} à ${TIME.format(end)}`;
 }

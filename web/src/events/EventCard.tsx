@@ -26,7 +26,9 @@ export function EventCard({ event, actions }: { event: EventResource; actions?: 
     >
       <div className="flex flex-wrap items-start justify-between gap-related">
         <div className="min-w-0">
-          <h2 className="font-display text-xl text-ink">{event.title}</h2>
+          <h2 data-testid="event-title" className="font-display text-xl text-ink">
+            {event.title}
+          </h2>
 
           <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
             {formatEventWhen(event.startsAt, event.endsAt)}
