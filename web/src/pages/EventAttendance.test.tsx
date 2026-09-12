@@ -54,6 +54,17 @@ test("a withdrawal is shown with its reason beside the name", async () => {
   expect(within(row).getByText("Malade")).toBeInTheDocument();
 });
 
+test("the phone layout writes an answer as one line", async () => {
+  // BOTH LAYOUTS ARE IN THE DOM AT ONCE — Tailwind picks by viewport and jsdom
+  // applies no CSS — so this has to be scoped to the cards or it also matches
+  // the table. The sentence is the spec's own example of what the direction
+  // should be able to read: a name, an answer, and the reason for it.
+  await renderChaseList();
+
+  const cards = screen.getByTestId("chase-cards");
+  expect(within(cards).getByText("Camille Committee — non — « Malade »")).toBeInTheDocument();
+});
+
 test("an answer the committee entered says so", async () => {
   await renderChaseList();
 
