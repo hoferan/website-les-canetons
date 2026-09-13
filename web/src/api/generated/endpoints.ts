@@ -320,6 +320,8 @@ import type {
   AccountPassword403,
   AccountPassword429,
   AccountPasswordRequest,
+  AgendaIndex200,
+  AgendaIndexParams,
   AttendanceDestroy200,
   AttendanceDestroy409,
   AttendanceIndex200,
@@ -333,6 +335,10 @@ import type {
   AuthLoginBody,
   AuthLogout200,
   AuthMe200,
+  BandIndex200,
+  BandIndexParams,
+  CommitteeIndex200,
+  CommitteeIndexParams,
   ConfigShow200,
   ContactRequest,
   ContactStore200,
@@ -6435,6 +6441,482 @@ export const useMemberPasswordReset = <
 > => {
   return useMutation(getMemberPasswordResetMutationOptions(options), queryClient);
 };
+
+export type agendaIndexResponse200 = {
+  data: AgendaIndex200;
+  status: 200;
+};
+
+export type agendaIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type agendaIndexResponseSuccess = agendaIndexResponse200 & {
+  headers: Headers;
+};
+export type agendaIndexResponseError = agendaIndexResponse503 & {
+  headers: Headers;
+};
+
+export type agendaIndexResponse = agendaIndexResponseSuccess | agendaIndexResponseError;
+
+export const getAgendaIndexUrl = (params?: AgendaIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/agenda?${stringifiedParams}` : `/agenda`;
+};
+
+/**
+ * Anonymous. Returns the upcoming events the committee has marked public,
+ * soonest first — the appearances anybody may come and watch.
+ *
+ * **A rehearsal is not on this list.** `isPublic` is set per event and
+ * defaults to off, so the planning stays private and a public appearance
+ * is a decision somebody made about that event rather than the default for
+ * everything in the diary.
+ *
+ * Four fields per event, each one a fact already on a poster. Nothing here
+ * says who is coming: attendance is the members' business.
+ * @summary List what the band is doing next, for a visitor
+ */
+export const agendaIndex = async (
+  params?: AgendaIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<agendaIndexResponse> => {
+  return customFetch<agendaIndexResponse>(getAgendaIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAgendaIndexQueryKey = (params?: AgendaIndexParams) => {
+  return [`/agenda`, ...(params ? [params] : [])] as const;
+};
+
+export const getAgendaIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAgendaIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof agendaIndex>>> = ({ signal }) =>
+    agendaIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof agendaIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type AgendaIndexQueryResult = NonNullable<Awaited<ReturnType<typeof agendaIndex>>>;
+export type AgendaIndexQueryError = Problem503Response;
+
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | AgendaIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof agendaIndex>>,
+          TError,
+          Awaited<ReturnType<typeof agendaIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof agendaIndex>>,
+          TError,
+          Awaited<ReturnType<typeof agendaIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List what the band is doing next, for a visitor
+ */
+
+export function useAgendaIndex<
+  TData = Awaited<ReturnType<typeof agendaIndex>>,
+  TError = Problem503Response,
+>(
+  params?: AgendaIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof agendaIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getAgendaIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type bandIndexResponse200 = {
+  data: BandIndex200;
+  status: 200;
+};
+
+export type bandIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type bandIndexResponseSuccess = bandIndexResponse200 & {
+  headers: Headers;
+};
+export type bandIndexResponseError = bandIndexResponse503 & {
+  headers: Headers;
+};
+
+export type bandIndexResponse = bandIndexResponseSuccess | bandIndexResponseError;
+
+export const getBandIndexUrl = (params?: BandIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/band?${stringifiedParams}` : `/band`;
+};
+
+/**
+ * Anonymous. Returns every register in the band's own order, each with the
+ * members who play in it and the instructors who teach it.
+ *
+ * **Only people who have consented to appear are listed.** Consent is per
+ * person and defaults to off, because most of the band are minors. A
+ * register whose members have all withheld it comes back with an empty
+ * `members` list rather than being dropped, so a reader cannot mistake
+ * withheld consent for an empty register.
+ *
+ * Nothing here is an account detail: three fields per person, and a name is
+ * the only one a visitor learns.
+ * @summary List the band, register by register
+ */
+export const bandIndex = async (
+  params?: BandIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<bandIndexResponse> => {
+  return customFetch<bandIndexResponse>(getBandIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getBandIndexQueryKey = (params?: BandIndexParams) => {
+  return [`/band`, ...(params ? [params] : [])] as const;
+};
+
+export const getBandIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof bandIndex>>,
+  TError = Problem503Response,
+>(
+  params?: BandIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bandIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getBandIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof bandIndex>>> = ({ signal }) =>
+    bandIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof bandIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type BandIndexQueryResult = NonNullable<Awaited<ReturnType<typeof bandIndex>>>;
+export type BandIndexQueryError = Problem503Response;
+
+export function useBandIndex<
+  TData = Awaited<ReturnType<typeof bandIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | BandIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof bandIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof bandIndex>>,
+          TError,
+          Awaited<ReturnType<typeof bandIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useBandIndex<
+  TData = Awaited<ReturnType<typeof bandIndex>>,
+  TError = Problem503Response,
+>(
+  params?: BandIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bandIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof bandIndex>>,
+          TError,
+          Awaited<ReturnType<typeof bandIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useBandIndex<
+  TData = Awaited<ReturnType<typeof bandIndex>>,
+  TError = Problem503Response,
+>(
+  params?: BandIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bandIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the band, register by register
+ */
+
+export function useBandIndex<
+  TData = Awaited<ReturnType<typeof bandIndex>>,
+  TError = Problem503Response,
+>(
+  params?: BandIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof bandIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getBandIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type committeeIndexResponse200 = {
+  data: CommitteeIndex200;
+  status: 200;
+};
+
+export type committeeIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type committeeIndexResponseSuccess = committeeIndexResponse200 & {
+  headers: Headers;
+};
+export type committeeIndexResponseError = committeeIndexResponse503 & {
+  headers: Headers;
+};
+
+export type committeeIndexResponse = committeeIndexResponseSuccess | committeeIndexResponseError;
+
+export const getCommitteeIndexUrl = (params?: CommitteeIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/committee?${stringifiedParams}` : `/committee`;
+};
+
+/**
+ * Anonymous. Returns everyone holding a committee seat who has consented
+ * to appear, with the title they hold.
+ *
+ * The title is free text the committee typed, so it is rendered verbatim
+ * and is never translated.
+ * @summary List the committee
+ */
+export const committeeIndex = async (
+  params?: CommitteeIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<committeeIndexResponse> => {
+  return customFetch<committeeIndexResponse>(getCommitteeIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCommitteeIndexQueryKey = (params?: CommitteeIndexParams) => {
+  return [`/committee`, ...(params ? [params] : [])] as const;
+};
+
+export const getCommitteeIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof committeeIndex>>,
+  TError = Problem503Response,
+>(
+  params?: CommitteeIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof committeeIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCommitteeIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof committeeIndex>>> = ({ signal }) =>
+    committeeIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof committeeIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type CommitteeIndexQueryResult = NonNullable<Awaited<ReturnType<typeof committeeIndex>>>;
+export type CommitteeIndexQueryError = Problem503Response;
+
+export function useCommitteeIndex<
+  TData = Awaited<ReturnType<typeof committeeIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | CommitteeIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof committeeIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeIndex<
+  TData = Awaited<ReturnType<typeof committeeIndex>>,
+  TError = Problem503Response,
+>(
+  params?: CommitteeIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof committeeIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeIndex<
+  TData = Awaited<ReturnType<typeof committeeIndex>>,
+  TError = Problem503Response,
+>(
+  params?: CommitteeIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof committeeIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the committee
+ */
+
+export function useCommitteeIndex<
+  TData = Awaited<ReturnType<typeof committeeIndex>>,
+  TError = Problem503Response,
+>(
+  params?: CommitteeIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof committeeIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getCommitteeIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type formTokenShowResponse200 = {
   data: FormTokenShow200;

@@ -307,12 +307,15 @@ import type { RequestHandlerOptions } from "msw";
 import { AttendanceStatus, Environment } from "./model";
 import type {
   AccountPassword200,
+  AgendaIndex200,
   AttendanceDestroy200,
   AttendanceIndex200,
   AttendanceResource,
   AuthLogin200,
   AuthLogout200,
   AuthMe200,
+  BandIndex200,
+  CommitteeIndex200,
   ConfigShow200,
   ContactStore200,
   EventDestroy200,
@@ -1027,6 +1030,57 @@ export const getMemberPasswordResetResponseMock = (
 ): MemberPasswordReset200 => ({
   generatedPassword: faker.string.alpha({ length: { min: 10, max: 20 } }),
   sessionsEnded: faker.number.int(),
+  ...overrideResponse,
+});
+
+export const getAgendaIndexResponseMock = (
+  overrideResponse: Partial<Extract<AgendaIndex200, object>> = {},
+): AgendaIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getBandIndexResponseMock = (
+  overrideResponse: Partial<Extract<BandIndex200, object>> = {},
+): BandIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    members: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+    instructors: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getCommitteeIndexResponseMock = (
+  overrideResponse: Partial<Extract<CommitteeIndex200, object>> = {},
+): CommitteeIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    title: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
 });
 
@@ -1849,6 +1903,78 @@ export const getMemberPasswordResetMockHandler = (
   );
 };
 
+export const getAgendaIndexMockHandler = (
+  overrideResponse?:
+    | AgendaIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<AgendaIndex200> | AgendaIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/agenda",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getAgendaIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getBandIndexMockHandler = (
+  overrideResponse?:
+    | BandIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<BandIndex200> | BandIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/band",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getBandIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getCommitteeIndexMockHandler = (
+  overrideResponse?:
+    | CommitteeIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<CommitteeIndex200> | CommitteeIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/committee",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getCommitteeIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getFormTokenShowMockHandler = (
   overrideResponse?:
     | FormTokenShow200
@@ -1954,6 +2080,9 @@ export const getLesCanetonsAPIMock = () => [
   getMemberDestroyMockHandler(),
   getMemberRoleReplaceMockHandler(),
   getMemberPasswordResetMockHandler(),
+  getAgendaIndexMockHandler(),
+  getBandIndexMockHandler(),
+  getCommitteeIndexMockHandler(),
   getFormTokenShowMockHandler(),
   getContactStoreMockHandler(),
   getConfigShowMockHandler(),

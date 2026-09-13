@@ -348,7 +348,11 @@ function initialMembers(): MemberResource[] {
       sectionName: "Trompettes",
       isPlayer: true,
       committeeTitle: null,
-      instructorOfSectionId: null,
+      // THE ONE INSTRUCTOR, mirroring DevSeeder. A different column from
+      // sectionId, so the public band page lists them under the trumpets as a
+      // player and under the drummers as an instructor — the only place that
+      // branch can be looked at without a server.
+      instructorOfSectionId: 1,
       publicVisible: true,
       roleIds: [1],
     },
@@ -362,7 +366,11 @@ function initialMembers(): MemberResource[] {
       sectionId: 6,
       sectionName: "Trombones",
       isPlayer: true,
-      committeeTitle: null,
+      // The TITLE, not the role, is what puts somebody on the public committee
+      // page. `committee` grants registrations.view; this string is a caption
+      // the committee typed. A demo roster where the two coincide is how
+      // somebody comes to believe they are one field.
+      committeeTitle: "Responsable intendance",
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [2],
@@ -393,8 +401,54 @@ function initialMembers(): MemberResource[] {
  */
 let members: MemberResource[] = initialMembers();
 
+/**
+ * A roster row as the PUBLIC endpoints render it: three fields, and not one of
+ * them an account detail.
+ *
+ * Written out rather than spread-and-delete, for the reason
+ * App\Http\Resources\PublicMemberResource gives: the protection against
+ * publishing a username is that no line here mentions one, and a `{...member}`
+ * with two deletions publishes every field added after it.
+ */
+function publicly(member: MemberResource): {
+  id: number;
+  firstName: string;
+  lastName: string;
+} {
+  return { id: member.id, firstName: member.firstName, lastName: member.lastName };
+}
+
 /** The next id, mirroring an auto-increment: never reuses a deleted one. */
 let nextMemberId = 6;
+
+/**
+ * Test seam: withdraw or grant one member's consent to appear publicly.
+ *
+ * A seam rather than a `server.use()` override of /band, because the point of
+ * the two public handlers is that they READ THE ROSTER — a test that replaced
+ * the endpoint would prove the page renders a list and nothing about the one
+ * rule the endpoint exists to enforce.
+ */
+export function setMemberVisibility(id: number, visible: boolean): void {
+  const member = members.find((row) => row.id === id);
+  if (member) {
+    member.publicVisible = visible;
+  }
+}
+
+/**
+ * Test seam: give one member a committee seat, or take it away.
+ *
+ * The empty and whitespace-only values are the interesting ones — the roster
+ * form writes '' rather than null when somebody clears the field, and both the
+ * API and this mock have to read that as no seat.
+ */
+export function setMemberTitle(id: number, title: string | null): void {
+  const member = members.find((row) => row.id === id);
+  if (member) {
+    member.committeeTitle = title;
+  }
+}
 
 function resetRoster(): void {
   members = initialMembers();
@@ -588,6 +642,23 @@ function wouldOrphanAdministration(excludedMemberIds: number[]): boolean {
  * into the past the moment it is a month old, and `/events` then renders empty
  * for every future reader — including every screenshot and every demo.
  */
+/**
+ * The upcoming/past boundary, mirroring EventController::index and
+ * App\Support\BandTime::startOfToday: the START OF TODAY, not now, so an
+ * event that began an hour ago stays in the planning of somebody running late.
+ *
+ * The browser's own midnight rather than Fribourg's, which is the one place
+ * this mock knowingly differs from the server. A test runner and a developer
+ * are both in the band's zone in practice, and teaching the mock about
+ * Europe/Zurich would mean reimplementing BandTime in TypeScript to answer a
+ * question no screen asks.
+ */
+function startOfTodayMs(): number {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  return midnight.getTime();
+}
+
 function at(dayOffset: number, time: string): string {
   const [hours, minutes] = time.split(":").map(Number);
   const when = new Date();
@@ -672,13 +743,19 @@ function initialEvents(): EventResource[] {
     },
     {
       // The missing-attire case: the card has to render without one.
+      //
+      // AND THE ONLY PUBLIC ONE, which is what gives the front page's agenda
+      // something to render. It is also the honest split: a gig is somewhere
+      // anybody may come and watch, and five rehearsals are not. With every
+      // event private the agenda renders nothing, which is correct and
+      // unlookable-at.
       id: 5,
       title: "Vendanges Cheyres",
       startsAt: at(35, "11:00"),
       endsAt: at(35, "16:30"),
       location: "Cheyres",
       attire: null,
-      isPublic: false,
+      isPublic: true,
       notes: null,
       registrationOpensAt: null,
       registrationClosesAt: null,
@@ -837,6 +914,9 @@ export function resetMockState(): void {
  * a field the API no longer has. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
 
+/** One fixed stamp, so a test can send a wrong one and watch the guard refuse. */
+const MOCK_FORM_TOKEN = "mock-form-token";
+
 const overrides = [
   // NOT in the OpenAPI document — it is Sanctum's own route, outside /api — so
   // orval generates no handler for it. But http.ts primes it before every
@@ -853,13 +933,104 @@ const overrides = [
 
   http.get("/api/v1/me", () => (currentUser ? HttpResponse.json(currentUser) : unauthenticated())),
 
+  // THE TWO PUBLIC PEOPLE-PAGES, derived from the same mutable roster the
+  // members screen edits rather than from a second fixture. That is what makes
+  // the mocked app answer the question this endpoint exists for: tick
+  // "Visible publiquement" off for Perrine in /members and she leaves the band
+  // page, which is the behaviour a committee has to be able to trust.
+  //
+  // Both mirror the server's filter — `publicVisible`, and for the committee a
+  // non-empty title — because a mocked handler that served everybody would let
+  // a screen ship having never rendered the empty state that today's roster
+  // actually produces.
+  // The public agenda, read off the same event store the planning uses — so
+  // ticking "Visible publiquement" on an event in /events/:id/edit puts it on
+  // the front page, which is the only way that flag can be seen to work.
+  http.get("/api/v1/agenda", ({ request }) =>
+    collection(
+      events
+        .filter((event) => event.isPublic && Date.parse(event.startsAt) >= startOfTodayMs())
+        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+        .map((event) => ({
+          title: event.title,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+          location: event.location,
+        })),
+      request,
+    ),
+  ),
+
+  http.get("/api/v1/band", ({ request }) =>
+    collection(
+      SECTIONS.map((section) => ({
+        id: section.id,
+        name: section.name,
+        members: members
+          .filter((member) => member.publicVisible && member.sectionId === section.id)
+          .map(publicly),
+        instructors: members
+          .filter((member) => member.publicVisible && member.instructorOfSectionId === section.id)
+          .map(publicly),
+      })),
+      request,
+    ),
+  ),
+
+  http.get("/api/v1/committee", ({ request }) =>
+    collection(
+      members
+        .filter((member) => member.publicVisible && (member.committeeTitle ?? "").trim() !== "")
+        .sort((a, b) => a.lastName.localeCompare(b.lastName, "fr"))
+        .map((member) => ({
+          id: member.id,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          title: member.committeeTitle,
+        })),
+      request,
+    ),
+  ),
+
   // Hand-written because the generated handler always succeeds, and the whole
   // point of a contact form is what it does when it does not. The required set
   // mirrors api/app/Http/Requests/ContactRequest.php exactly — including
   // `subject`, which the OLD HTML form did not mark required even though the
   // API always has.
+  // The stamp every anonymous form fetches as it renders. The real one is
+  // signed and carries the minting time; this one only has to be a string the
+  // handler below can recognise, because nothing in the SPA reads it.
+  http.get("/api/v1/form-token", () => HttpResponse.json({ token: MOCK_FORM_TOKEN })),
+
   http.post("/api/v1/contact", async ({ request }) => {
+    // THE GUARD RUNS AHEAD OF VALIDATION, exactly as PublicWriteGuard does on
+    // the server — which is the ordering `npm run smoke` got wrong for a week,
+    // asserting a 400 on a bare POST and receiving the 422. A mocked handler
+    // that validated first would let a form ship with no token at all and only
+    // fail against Apache.
+    //
+    // WHAT IS DELIBERATELY NOT MIRRORED IS THE TWO-SECOND FLOOR. The server
+    // refuses a token younger than that; enforcing it here would make every
+    // test of this form sleep two seconds to pass, and the rule it protects —
+    // fetch the token when the form renders — is already structural in
+    // Contact.tsx, where the query is pinned. Presence is checked; age is the
+    // server's.
     const body = (await request.json()) as Partial<Record<keyof ContactRequest, string>>;
+
+    // `website` must arrive PRESENT and empty. An absent field is refused as
+    // firmly as a filled one: omitting it is how a hand-written body would
+    // otherwise walk past a honeypot.
+    if (request.headers.get("X-Form-Token") !== MOCK_FORM_TOKEN || body.website !== "") {
+      return problem(422, "spam_suspected", "Submission looks automated");
+    }
+
+    const key = request.headers.get("Idempotency-Key");
+    if (key === null) {
+      return problem(400, "idempotency_key_required", "Idempotency-Key header required");
+    }
+    if (key.length < 16 || key.length > 255) {
+      return problem(400, "idempotency_key_invalid", "Idempotency-Key is not usable");
+    }
     // Laravel's `required` treats "0" as present and a whitespace-only string
     // as absent — the opposite of plain falsiness in both cases. `!body[field]`
     // used to disagree with the real API on exactly those two values.
@@ -1172,12 +1343,8 @@ const overrides = [
       return unauthenticated();
     }
 
-    // The split is on the START OF TODAY, not on now: a rehearsal that began
-    // an hour ago stays in the planning of somebody running late. Mirrors
-    // EventController::index and BandTime::startOfToday.
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-    const boundary = startOfToday.getTime();
+    // The split is on the START OF TODAY, not on now — see startOfTodayMs().
+    const boundary = startOfTodayMs();
 
     // Anything that is not exactly '1' is the default upcoming view, the same
     // fail-safe direction the real endpoint takes: a truncated or misspelled

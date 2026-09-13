@@ -70,3 +70,73 @@ test("sends an anonymous visitor from /events to the login page", async () => {
   await renderWithSession(<AppRoutes />, { route: "/events" });
   expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
+
+/**
+ * THE PUBLIC PAGES. Each is asserted by the heading it renders rather than by
+ * "something appeared", because the catch-all below answers 200 for every
+ * unknown path — a route that is not registered renders the 404 view, which is
+ * a page, and a laxer assertion would pass for a URL that does not exist.
+ */
+test("/history renders the band's history", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/history" });
+  expect(
+    await screen.findByRole("heading", { name: /L’Histoire des Canetons/ }),
+  ).toBeInTheDocument();
+});
+
+test("/join renders the joining page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+  expect(
+    await screen.findByRole("heading", { name: /Tu veux commencer la guggen/ }),
+  ).toBeInTheDocument();
+});
+
+test("/contact renders the contact form", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/contact" });
+  expect(await screen.findByRole("heading", { name: "Contact" })).toBeInTheDocument();
+});
+
+/**
+ * The public pages sit OUTSIDE MustChangePassword, deliberately — see
+ * routes.tsx. A member holding a committee-issued password is held away from
+ * the members' tool (the test above proves it) and is NOT bounced off a page
+ * that a stranger can read anyway.
+ *
+ * Mutation-tested: moving these three routes back inside the gate fails this
+ * test and nothing else.
+ */
+test("does not hold a member with a committee-issued password away from the public pages", async () => {
+  setMockUser("demo.mustchange");
+  await renderWithSession(<AppRoutes />, { route: "/history" });
+  expect(
+    await screen.findByRole("heading", { name: /L’Histoire des Canetons/ }),
+  ).toBeInTheDocument();
+});
+
+/**
+ * THE FRONT DOOR. Until R2 there was no `/` at all: the site's own address
+ * fell through to the catch-all and answered 200 with the 404 view, which is
+ * the worst possible first impression and was invisible to every test because
+ * a page did render.
+ */
+test("/ renders the home page rather than the 404 view", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/" });
+  expect(
+    await screen.findByRole("heading", { name: /La guggen d’enfants de Fribourg/ }),
+  ).toBeInTheDocument();
+});
+
+test("/agenda renders the public agenda", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/agenda" });
+  expect(await screen.findByRole("heading", { name: "Où nous voir" })).toBeInTheDocument();
+});
+
+test("/band renders the band", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/band" });
+  expect(await screen.findByRole("heading", { name: "Nos Canetons" })).toBeInTheDocument();
+});
+
+test("/committee renders the committee", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/committee" });
+  expect(await screen.findByRole("heading", { name: "Le comité" })).toBeInTheDocument();
+});

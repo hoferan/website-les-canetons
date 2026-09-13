@@ -1,8 +1,11 @@
 <?php
 
 use App\Http\Controllers\Api\AccountPasswordController;
+use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BandController;
+use App\Http\Controllers\Api\CommitteeController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\EventController;
@@ -65,6 +68,25 @@ Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->grou
 // behind the write guard — but it answers 404 for an event that takes no
 // registrations, so it cannot be used to enumerate the band's planning.
 Route::get('/events/{event}/registration', [RegistrationController::class, 'form']);
+
+// Public: the two people-pages of the public site, generated from the roster
+// rather than authored (design §8, R2). Both are read-only and both list ONLY
+// the people who have consented to appear — the filter lives in the relations
+// and the query, never in a caller.
+//
+// NOT BEHIND THE `public-write` THROTTLE, which fronts the anonymous WRITES.
+// These are reads of the same forty-five rows the band prints on a flyer, so a
+// limiter here would buy nothing and would break the site for a school whose
+// pupils share one address.
+// Public: what the band is doing next, and the ONLY thing that has ever read
+// `is_public`. The column has been settable since R1c-1 and meant nothing
+// until now — a rehearsal stays off this list because the flag defaults to
+// false, so appearing in public is a decision somebody made about an event
+// rather than the default for the whole diary.
+Route::get('/agenda', [AgendaController::class, 'index']);
+
+Route::get('/band', [BandController::class, 'index']);
+Route::get('/committee', [CommitteeController::class, 'index']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
