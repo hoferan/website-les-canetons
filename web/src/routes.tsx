@@ -9,6 +9,7 @@ import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
 import { EventAttendance } from "./pages/EventAttendance";
+import { EventBooking } from "./pages/EventBooking";
 import { EventEdit } from "./pages/EventEdit";
 import { EventNew } from "./pages/EventNew";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
@@ -51,7 +52,12 @@ import { NotFound } from "./pages/NotFound";
  * that page is what a stranger sees and owes nothing to who is logged in. The
  * gate still covers everything the password actually unlocks.
  *
- * Still absent, waiting on R3: /events/:id/registrations.
+ * R3 adds three: `/events/:id/book` above with the public pages, and
+ * `/events/:id/registrations` and `/events/:id/registration-options` below
+ * with the committee's. The three sit under one prefix and answer to three
+ * different guards, which is the argument against an `/admin` namespace made
+ * concrete: "who may book", "who may read the guest list" and "who may
+ * configure the event" are three different people.
  */
 export function AppRoutes() {
   return (
@@ -66,6 +72,19 @@ export function AppRoutes() {
         <Route path="/history" element={<History />} />
         <Route path="/join" element={<Join />} />
         <Route path="/contact" element={<Contact />} />
+
+        {/* THE BOOKING FORM IS A PUBLIC PAGE under a path whose other
+            segments are not, and that is deliberate rather than untidy:
+            registration is a property of an EVENT (D9), so the event is what
+            the URL is about, and inventing /booking/:id would say the souper
+            is a feature of its own — which is the shape R3 exists to delete.
+            Nothing leaks by sitting here: the endpoint behind it answers 404
+            for an event that takes no bookings, whether or not it exists.
+
+            `book`, NOT `register`. In this project a register is a PUPITRE —
+            RegisterIndex, `sections`, "Trompettes" — so /events/:id/register
+            would read as the drummers' page. */}
+        <Route path="/events/:id/book" element={<EventBooking />} />
 
         <Route element={<MustChangePassword />}>
           <Route path="/login" element={<Login />} />

@@ -7,16 +7,18 @@ import { renderWithSession } from "../test/renderWithSession";
 import { Agenda } from "./Agenda";
 import { Home } from "./Home";
 
-/** An enveloped agenda of `count` appearances, a week apart. */
-function agendaOf(count: number) {
+/** An enveloped agenda of `count` appearances, a week apart, none bookable. */
+function agendaOf(count: number, registrationOpen = false) {
   const data = Array.from({ length: count }, (_, index) => {
     const start = new Date(Date.now() + (index + 1) * 7 * 86400000);
     const end = new Date(start.getTime() + 2 * 3600000);
     return {
+      id: index + 1,
       title: `Sortie ${index + 1}`,
       startsAt: start.toISOString(),
       endsAt: end.toISOString(),
       location: "Fribourg",
+      registrationOpen,
     };
   });
 
@@ -93,4 +95,36 @@ test("the front page offers no link when it is already showing everything", asyn
   const block = await screen.findByRole("region", { name: "Où nous voir" });
   expect(within(block).getAllByRole("listitem")).toHaveLength(2);
   expect(within(block).queryByRole("link", { name: "Toutes les dates" })).not.toBeInTheDocument();
+});
+
+/* ---------------------------------------------------------------------------
+ * The way in to the booking form (R3)
+ * -------------------------------------------------------------------------- */
+
+/**
+ * THE ONLY WAY A VISITOR REACHES THE BOOKING FORM from inside the site, and
+ * the reason PublicEventResource gained an id at all. Without this link the
+ * form is typed-URL-only, which is the shape of defect that hid the missing
+ * logout for three releases.
+ */
+test("offers a booking link on an event that is taking bookings", async () => {
+  await renderWithSession(<Agenda />, { route: "/agenda" });
+
+  const link = await screen.findByRole("link", { name: "S’inscrire — Souper de soutien" });
+  expect(link).toHaveAttribute("href", "/events/7/book");
+});
+
+/**
+ * MUTATION TEST: link on `takesRegistrations` rather than on
+ * `registrationOpen` and this fails. Both events below take bookings; only one
+ * of them is taking them now, and offering "S’inscrire" on the other sends a
+ * reader to a form that refuses them.
+ */
+test("offers none on an event whose window is shut", async () => {
+  server.use(http.get("/api/v1/agenda", () => agendaOf(1)));
+
+  await renderWithSession(<Agenda />, { route: "/agenda" });
+
+  await screen.findByText("Sortie 1");
+  expect(screen.queryByRole("link", { name: /S’inscrire/ })).not.toBeInTheDocument();
 });

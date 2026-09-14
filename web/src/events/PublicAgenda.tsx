@@ -15,9 +15,16 @@ const SHOWN = 3;
  * the committee's notes and an answer slot. This has four fields, each one
  * already on a poster, and no caller who may see the rest.
  *
- * Keyed by its CALLER on the start and the title together. The public resource
- * carries no id — an internal identifier is not a fact on a poster — and two
- * events do collide on a date here: the live planning had two on 3 October.
+ * Keyed by its CALLER on the event's id, which the resource gained when R3's
+ * booking form was built: two events do collide on a date here — the live
+ * planning had two on 3 October — so the start and the title together were
+ * only nearly unique.
+ *
+ * THE BOOKING LINK APPEARS ONLY WHILE BOOKINGS ARE OPEN, and `registrationOpen`
+ * is the server's answer rather than anything derived from a date here. An
+ * event whose window has not opened is on this list like any other; offering
+ * "S'inscrire" on it would send a reader to a form that refuses them, which is
+ * the same promise broken either way round.
  */
 export function AgendaEntry({ event }: { event: PublicEventResource }) {
   return (
@@ -27,6 +34,17 @@ export function AgendaEntry({ event }: { event: PublicEventResource }) {
         {formatEventWhen(event.startsAt, event.endsAt)}
       </p>
       <p className="mt-tight text-sm text-ink-muted">{event.location}</p>
+
+      {event.registrationOpen ? (
+        <ButtonLink
+          to={`/events/${event.id}/book`}
+          variant="outline"
+          className="mt-related"
+          ariaLabel={`S’inscrire — ${event.title}`}
+        >
+          S’inscrire
+        </ButtonLink>
+      ) : null}
     </li>
   );
 }
@@ -70,7 +88,7 @@ export function PublicAgenda() {
 
       <ul className="mt-related grid gap-3">
         {upcoming.map((event) => (
-          <AgendaEntry key={`${event.startsAt}-${event.title}`} event={event} />
+          <AgendaEntry key={event.id} event={event} />
         ))}
       </ul>
 

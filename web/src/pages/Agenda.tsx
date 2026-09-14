@@ -42,7 +42,7 @@ export function Agenda() {
       {upcoming.length > 0 ? (
         <ul className="mt-block grid gap-3">
           {upcoming.map((event) => (
-            <AgendaEntry key={`${event.startsAt}-${event.title}`} event={event} />
+            <AgendaEntry key={event.id} event={event} />
           ))}
         </ul>
       ) : (
