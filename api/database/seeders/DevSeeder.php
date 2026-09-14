@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
@@ -63,14 +64,14 @@ class DevSeeder extends Seeder
         // Holds the committee role and plays: the guest list is the only
         // thing they can see, and they are still in the attendance list.
         //
-        // The TITLE is what puts them on the public committee page, and it is
+        // The SEAT is what puts them on the public committee page, and it is
         // deliberately not the same thing as the role: `committee` grants
-        // `registrations.view`, while 'Responsable intendance' is free text the
-        // committee typed and the site renders verbatim. One is authorisation
-        // and the other is a caption, and a demo roster where they coincide is
-        // how somebody comes to believe they are one field.
+        // `registrations.view`, while 'Responsable intendance' is a row in
+        // committee_functions that the site renders verbatim. One is
+        // authorisation and the other is a caption, and a demo roster where they
+        // coincide is how somebody comes to believe they are one field.
         $this->member('demo.committee', 'Camille', 'Committee', $sections['Trombones']->id, [
-            'committee_title' => 'Responsable intendance',
+            'committee_function_id' => CommitteeFunction::where('name', 'Responsable intendance')->value('id'),
         ])->roles()->syncWithoutDetaching([$committee->id]);
 
         // A young member whose PARENT uses the login on their behalf. Every
