@@ -43,10 +43,10 @@ test("an organiser is offered both ways to create", async () => {
 test("the past REPLACES the planning rather than extending it", async () => {
   await renderPlanning();
 
-  // The seeded mock has five upcoming and exactly one past, so the two halves
+  // The seeded mock has six upcoming and exactly one past, so the two halves
   // are distinguishable by count as well as by content — a toggle that merely
-  // appended would show six.
-  expect(screen.getAllByTestId("event-card")).toHaveLength(5);
+  // appended would show seven.
+  expect(screen.getAllByTestId("event-card")).toHaveLength(6);
 
   await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
 
@@ -191,14 +191,14 @@ test("a delete carries the tag of the read it was confirmed from", async () => {
  * -------------------------------------------------------------------------- */
 
 test("what you still owe an answer on is pinned above the rest", async () => {
-  // The seeded answers give demo.player one answered event out of five, so the
+  // The seeded answers give demo.player one answered event out of six, so the
   // two blocks are distinguishable by count as well as by heading.
   await renderPlanning();
 
   const awaiting = screen.getByRole("region", { name: "À répondre" });
   const rest = screen.getByRole("region", { name: "Le reste du planning" });
 
-  expect(within(awaiting).getAllByTestId("event-card")).toHaveLength(4);
+  expect(within(awaiting).getAllByTestId("event-card")).toHaveLength(5);
   expect(within(rest).getAllByTestId("event-card")).toHaveLength(1);
 });
 
@@ -217,7 +217,7 @@ test("answering is one tap and moves the event out of what is owed", async () =>
         within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card")
           .length,
     )
-    .toBe(3);
+    .toBe(4);
 
   const rest = screen.getByRole("region", { name: "Le reste du planning" });
   expect(
@@ -370,5 +370,5 @@ test("a narrowed planning says so at every width, and can be widened again", asy
 
   await userEvent.click(screen.getByRole("button", { name: "Voir tout le planning" }));
   await expect.poll(() => screen.queryByTestId("day-filter")).toBeNull();
-  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(5);
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(6);
 });

@@ -80,6 +80,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "attendance.record_for_others",
       "members.manage",
       "registrations.view",
+      "registrations.manage",
     ],
   });
 });
@@ -581,6 +582,6 @@ test("forgets a created event between tests", async () => {
   // If resetMockState() misses the events store, an event created by an
   // earlier test leaks into this count and it fails only when the whole file
   // runs — which reads as flakiness and is not.
-  // Five upcoming of the six seeded; the sixth is the past one.
-  expect(before).toBe(5);
+  // Six upcoming of the seven seeded; the seventh is the past one.
+  expect(before).toBe(6);
 });
