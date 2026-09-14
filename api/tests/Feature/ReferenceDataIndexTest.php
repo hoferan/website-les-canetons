@@ -9,17 +9,29 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * The read-only reference data the roster form needs: the register dropdown and
- * the role checklist.
+ * The read-only reference data the roster form needs: the register dropdown,
+ * the committee-seat dropdown and the role checklist.
  *
- * Both are gated on members.manage even though a register name is hardly a
- * secret. That is YAGNI, not secrecy: /members is the only consumer that
- * exists, and R2's public band page can widen the gate when it has a second one
- * to justify it.
+ * All three are gated on members.manage even though a register name is hardly
+ * a secret. That is YAGNI, not secrecy: /members is the only consumer that
+ * exists. The public band and committee pages read the same rows, but they read
+ * them through /api/v1/band and /api/v1/committee, which project a member down
+ * to a name and a heading rather than handing out the reference tables.
  */
-class SectionAndRoleIndexTest extends TestCase
+class ReferenceDataIndexTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Every read-only list the roster form renders a control from. Kept as one
+     * constant so a fourth cannot be added without inheriting the envelope,
+     * cache and authorization assertions the other three already make.
+     */
+    private const REFERENCE_LISTS = [
+        '/api/v1/sections',
+        '/api/v1/roles',
+        '/api/v1/committee-functions',
+    ];
 
     /**
      * Every authenticated request in this suite needs BOTH the Origin header
@@ -60,6 +72,20 @@ class SectionAndRoleIndexTest extends TestCase
         $this->assertArrayHasKey('id', $body[0]);
     }
 
+    public function test_the_committee_seats_come_back_in_rank_order(): void
+    {
+        // RANK ORDER IS THE ONLY REASON THIS TABLE EXISTS. A seat used to be
+        // free text on the member row with nothing beside it saying which
+        // outranks which, so the public page could only sort alphabetically and
+        // printed the caissière above the présidente.
+        $body = $this->actingAsAdministrator()->getJson('/api/v1/committee-functions')
+            ->assertOk()->json('data');
+
+        $this->assertSame('Présidente', $body[0]['name']);
+        $this->assertSame('Membre', $body[7]['name']);
+        $this->assertSame(range(1, 8), array_column($body, 'sortOrder'));
+    }
+
     public function test_the_roles_come_back_with_what_they_grant(): void
     {
         // The permissions travel with the role because that is how the UI
@@ -90,21 +116,21 @@ class SectionAndRoleIndexTest extends TestCase
     /**
      * REVERSED ON 2026-09-12, and the reversal is the point.
      *
-     * This test used to assert the opposite — that these two lists were bare
-     * arrays — because /api/v1/me and /api/v1/config return bare payloads and a
-     * wrapper here looked like two shapes for no reason. What that argument
-     * missed is that `me` and `config` are not collections: the choice was never
+     * This test used to assert the opposite — that these lists were bare arrays —
+     * because /api/v1/me and /api/v1/config return bare payloads and a wrapper
+     * here looked like two shapes for no reason. What that argument missed is
+     * that `me` and `config` are not collections: the choice was never
      * "envelope or not", it was "do collections all look alike". They did not.
      *
-     * Reference data is where it mattered most. `/sections` and `/roles` are the
-     * two lists nobody would ever page, so they are exactly the ones a
-     * pagination change is tempted to skip — and a client that needs one code
-     * path for "read a list" cannot have one if two endpoints opt out. See
+     * Reference data is where it mattered most. These are the lists nobody
+     * would ever page, so they are exactly the ones a pagination change is
+     * tempted to skip — and a client that needs one code path for "read a list"
+     * cannot have one if some endpoints opt out. See
      * App\Http\Middleware\PaginatesCollections.
      */
-    public function test_both_lists_come_in_the_collection_envelope(): void
+    public function test_every_list_comes_in_the_collection_envelope(): void
     {
-        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
+        foreach (self::REFERENCE_LISTS as $url) {
             $body = $this->actingAsAdministrator()->getJson($url)->assertOk()->json();
 
             $this->assertArrayHasKey('data', $body, "{$url} must be enveloped");
@@ -113,12 +139,12 @@ class SectionAndRoleIndexTest extends TestCase
         }
     }
 
-    public function test_neither_list_may_be_cached(): void
+    public function test_no_list_may_be_cached(): void
     {
         // Not an exact-match assertion: Symfony's Response::prepare() appends
         // ", private" whenever a session cookie is present. See
         // ConfigEndpointTest::test_it_is_not_cacheable for the full reasoning.
-        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
+        foreach (self::REFERENCE_LISTS as $url) {
             $header = $this->actingAsAdministrator()->getJson($url)->assertOk()
                 ->headers->get('Cache-Control');
 
@@ -132,14 +158,14 @@ class SectionAndRoleIndexTest extends TestCase
         // Pairing auth:sanctum with permission: is what makes this a 401. With
         // only the permission gate, an anonymous caller would be told they are
         // forbidden rather than that they are nobody.
-        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
+        foreach (self::REFERENCE_LISTS as $url) {
             $this->getJson($url)->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
         }
     }
 
     public function test_a_member_without_members_manage_gets_403(): void
     {
-        foreach (['/api/v1/sections', '/api/v1/roles'] as $url) {
+        foreach (self::REFERENCE_LISTS as $url) {
             $this->actingAsAdministrator(withPermission: false)
                 ->getJson($url)
                 ->assertStatus(403)

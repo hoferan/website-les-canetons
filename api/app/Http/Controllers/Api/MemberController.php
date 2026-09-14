@@ -92,7 +92,7 @@ class MemberController extends Controller
      *
      * Requires `members.manage`. Creating a person creates their account:
      * every member has one. Send `firstName`, `lastName`, `username` and
-     * `publicVisible`, and optionally `sectionId`, `committeeTitle` and
+     * `publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
      * `instructorOfSectionId`.
      *
      * Answers `201` with `member` and `generatedPassword`, a readable password
@@ -149,7 +149,7 @@ class MemberController extends Controller
                 'password' => $password,
                 'must_change_password' => true,
                 'section_id' => $data['sectionId'] ?? null,
-                'committee_title' => $data['committeeTitle'] ?? null,
+                'committee_function_id' => $data['committeeFunctionId'] ?? null,
                 'instructor_of_section_id' => $data['instructorOfSectionId'] ?? null,
                 'public_visible' => $data['publicVisible'],
             ]);
@@ -175,7 +175,7 @@ class MemberController extends Controller
      *
      * Requires `members.manage`. Send only the fields that change: an omitted
      * field is left alone, and an explicit `null` clears an optional one such
-     * as the register or the committee title. Returns the updated member.
+     * as the register or the committee seat. Returns the updated member.
      *
      * Roles and passwords are not editable here. They are
      * `PUT /api/v1/members/{member}/roles` and
@@ -200,7 +200,7 @@ class MemberController extends Controller
             'lastName' => 'last_name',
             'username' => 'username',
             'sectionId' => 'section_id',
-            'committeeTitle' => 'committee_title',
+            'committeeFunctionId' => 'committee_function_id',
             'instructorOfSectionId' => 'instructor_of_section_id',
             'publicVisible' => 'public_visible',
         ];

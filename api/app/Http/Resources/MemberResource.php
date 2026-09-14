@@ -55,9 +55,14 @@ class MemberResource extends JsonResource
             /** Whether they play in a register. Only players are answerable for events. */
             'isPlayer' => $this->isPlayer(),
 
-            // Text a person typed, so it is stored and rendered verbatim and is
-            // never translated — unlike a role's name, which is a key.
-            'committeeTitle' => $this->committee_title,
+            // THE ID, NOT THE NAME, unlike sectionName above. The roster
+            // screen renders the register in its table and so needs the name
+            // here; nothing renders the committee seat outside the form, which
+            // resolves it from GET /api/v1/committee-functions. A name here
+            // would also be hashed into the member's entity tag — so fixing a
+            // typo in one seat would move the tag of everybody holding it and
+            // refuse whatever roster edits were open at the time.
+            'committeeFunctionId' => $this->committee_function_id,
             'instructorOfSectionId' => $this->instructor_of_section_id,
             'publicVisible' => $this->public_visible,
 
