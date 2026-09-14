@@ -256,14 +256,19 @@ See [Laravel's server-side `.env`](#laravels-server-side-env) below for what
 goes in it.
 
 `config.php` used to sit beside it, holding the old front end's `env` key and DB
-credentials. That application is gone. The file is still on every server —
-`config.php` is a protected path, so no deploy will ever remove it — and it
-still contains live database credentials, so **delete it by hand, once per
-server**. Nothing reads it, and the SPA fallback makes it unreachable over HTTP,
-but there is no reason to leave credentials lying in a web root.
+credentials. That application is gone. `config.php` is a protected path, so no
+deploy will ever remove it, and it still contains live database credentials —
+so **delete it by hand, once per server**. Nothing reads it, and the SPA
+fallback makes it unreachable over HTTP, but there is no reason to leave
+credentials lying in a web root.
+
+**Done on TEST** (verified 2026-09-14: the site root holds nine entries and
+`config.php` is not among them). **Still outstanding on QA and PROD**, and note
+that HTTP cannot tell you either way — the catch-all answers the SPA shell for
+any path, present or absent — so the only way to check is an FTP listing.
 
 The non-prod corner ribbon no longer comes from a file at all: the SPA reads it
-from `GET /api/config`, which derives it from `APP_ENV` in `_api/.env`.
+from `GET /api/v1/config`, which derives it from `APP_ENV` in `_api/.env`.
 
 ### Keeping `_api/.env` in shape with `api/.env.example`
 

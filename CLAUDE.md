@@ -50,7 +50,16 @@ load-bearing:
 
 1. **The `/api/*` dispatch must stay first**, above the SPA fallback, because
    the fallback matches every path. Nothing sits between the two any more — see
-   the note below.
+   the note below. One rule does sit *above* the dispatch, added 2026-09-14:
+   the canonical-host redirect, `www.<anything>` → `<anything>`, 301. Every
+   environment's `www.` name is a DNS alias of its apex, so the SPA served
+   there perfectly and then could not log anybody in — Sanctum reads
+   Origin/Referer against `SANCTUM_STATEFUL_DOMAINS`, which names the apex
+   only, so no session started and `POST /api/v1/login` answered
+   `400 stateful_request_required`. It is mod_rewrite rather than
+   `RedirectMatch` and is guarded on `REDIRECT_STATUS`, for the reasons the
+   template gives at length; `tools/build-overlays.test.mjs` pins both
+   conditions and their order.
 2. **`[L]`, not `[END]`.** `END` is Apache 2.3.9+; this host's version is
    unresolved (it 500s on `<RequireAny>`, which leans 2.2) and an unknown
    `RewriteRule` flag is a syntax error — a 500 on *every* request to the whole
@@ -128,6 +137,22 @@ by tags named `YYYY-MM-DD-<short-sha>` (or a custom name — see
 target commit already deployed successfully to `qa`, and refuses otherwise even
 with `dry_run`. Rolling back is redeploying an older tag.
 
+**Where each server actually stands, as of 2026-09-14.** TEST runs the rebuild:
+the whole of `main` was deployed and verified there, the ten pending migrations
+applied on the first request after the upload, and it carries a seeded roster
+and a season. Its Apache authorization boundary is **confirmed working** —
+`/_api/.env` answers 403 — which settles the open question in
+`staging/README.md` about whether this host accepts those directives at all.
+**QA and PROD are still pre-cutover and run the old server-rendered site**;
+production answers `<title>Accueil</title>` and 404s `/api/v1/config` into its
+own HTML. Two consequences follow. Their `_api/.env` still lacks the five keys
+TEST gained (`BOOTSTRAP_ADMIN_*`, `FEATURE_CALENDAR`), so the config-shape
+pre-flight refuses their next deploy until each is hand-edited. And **do not run
+`npm run put-overlay:qa` or `:prod` on their own**: the template is the SPA
+front controller and falls back to `index.html`, so placing it on a server still
+running the old `index.php` app takes that server down. The overlay and the
+artifact move together, at the cutover.
+
 Every upload **excludes the server-owned files** — `.htaccess`, `robots.txt`,
 `_api/.env` (and `config.php`, which still exists on each server and should be
 deleted by hand once). Those are placed per server: `npm run build:overlay`
@@ -158,9 +183,11 @@ classifies every server's hand-placed API configuration as stale and deletes it.
 Every bulk phase fans out over `FTP_CONCURRENCY` connections (default 6, clamped
 1-8) with exponential-backoff reconnect; the host is flaky under concurrency.
 
-> **The `.env.*` files use `FTP_PASSWORD`; the CLI reads `FTP_PASS`.** That is a
-> known, deliberate mismatch — do not "fix" the env files. Inject it for a
-> one-off command instead.
+> **The `.env.*` files define `FTP_PASS`, which is what the CLI reads.** This
+> note used to describe a mismatch with `FTP_PASSWORD` and tell you to inject
+> the variable for a one-off command. That was true once and is not any more:
+> all three files were corrected, and `npm run status:test` runs with nothing
+> injected. Verified 2026-09-14.
 
 **Sync state (`.sync-state.json`):** each deploy writes a manifest at the site
 root (deployed path → `{size, sha256}` plus commit/status). Routine deploys diff
@@ -200,6 +227,10 @@ since Apache logs query strings in plain text. `?mode=dry-run` (the default for
 anything that is not exactly `apply`) reports pending without touching the
 schema.
 
+**That default belongs to the endpoint, not to the command.** `npm run
+dbmigrate:<env>` with no argument sends `mode=apply`, so it migrates. Do not
+reach for it expecting a safe preview.
+
 **CI never runs it, and cannot: the host firewalls the GitHub runner's IP.** A
 runner can push a deploy out over FTP, but no inbound HTTP request from a runner
 ever reaches the site.
@@ -223,9 +254,20 @@ half-applied schema. Run it by hand *before* the deploy that needs it.
 **Failure mode: a migration that fails takes the whole API down.** The
 middleware refuses to serve against a schema it cannot vouch for, so every
 `/api/*` request answers **503 `service_unavailable`**, and the failing
-migration retries on every request. The emergency switch is
-`AUTO_MIGRATE=false`. This is why migrations must stay idempotent *and*
-backward-compatible.
+migration retries on every request. This is why migrations must stay idempotent
+*and* backward-compatible.
+
+**`AUTO_MIGRATE=false` does not fail closed, whatever this file used to say.**
+`RunPendingMigrations::handle()` skips `maybeMigrate()` entirely when the flag
+is off and calls `$next($request)`, so a server with it false serves normally
+against whatever schema it has — it does not answer 503 on pending work. The
+503 comes only from the flag being **on** and the advisory lock being
+unobtainable, or from a migration throwing. So the switch stops the retry loop
+rather than pinning the schema behind a refusal, and a server left on false
+will happily answer requests against a schema the code has outgrown. The same
+claim is repeated in `api/.env.example`; both were wrong until 2026-09-14, and
+whether the code or the documentation should move is
+[#112](https://github.com/hoferan/website-les-canetons/issues/112).
 
 ## Traps
 
@@ -550,6 +592,25 @@ timeout.
 command. **The Laravel suite does not run in a web session** — it needs the
 stack's `php artisan test`. Run it locally in Docker before claiming API work is
 done.
+
+## How work is tracked
+
+**The backlog is GitHub issues. There is no `state.md` and there must not be
+one.** Two trackers contradict each other within a week, and a prose file goes
+stale silently: `docs/continue-here.md` claimed 17 content placeholders for over
+a month when the real count was 23. An issue cannot drift the same way, because
+a merged PR closes it whether or not anyone remembers.
+
+- **A milestone is a slice.** `gh issue list --milestone "<title>"` is how you
+  find what is next; do not invent an ordering.
+- **One issue, one branch, one PR**, closed with a `Closes #N`. Work that needs
+  two PRs is two issues.
+- **Read the issue before starting.** The bodies carry the measurement and the
+  decision — the 223px, the file and line, why an option was rejected — so that
+  nothing has to be re-derived or re-argued.
+- **Close with evidence, not assertion.** A green suite is routinely green over
+  a visibly broken page here, so the closing PR carries the screenshot, the
+  measured number or the failing-then-passing guard.
 
 ## Pull Requests
 
