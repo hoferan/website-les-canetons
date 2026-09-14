@@ -55,16 +55,16 @@ test("a first answer can be taken back from the toast", async () => {
     within(awaiting).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
   );
 
-  // Four of the five upcoming events were unanswered; answering one leaves
-  // three.
-  await expect.poll(() => awaitingCount()).toBe(3);
+  // Five of the six upcoming events were unanswered; answering one leaves
+  // four.
+  await expect.poll(() => awaitingCount()).toBe(4);
 
   const toast = await toastSaying("Vous venez.");
   await userEvent.click(within(toast).getByRole("button", { name: "Annuler" }));
 
   // Back to UNANSWERED rather than to the opposite answer — the state a second
   // PUT cannot express, and the whole reason DELETE exists at all.
-  await expect.poll(() => awaitingCount()).toBe(4);
+  await expect.poll(() => awaitingCount()).toBe(5);
   expect(
     within(screen.getByRole("region", { name: "À répondre" })).getByRole("button", {
       name: "Je viens à Vendanges Cheyres",

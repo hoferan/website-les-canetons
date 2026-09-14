@@ -8,7 +8,9 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Events } from "./Events";
 
-async function renderPlanning(as: "demo.player" | "demo.direction" = "demo.player") {
+async function renderPlanning(
+  as: "demo.player" | "demo.direction" | "demo.committee" = "demo.player",
+) {
   setMockUser(as);
   const result = await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
@@ -43,10 +45,10 @@ test("an organiser is offered both ways to create", async () => {
 test("the past REPLACES the planning rather than extending it", async () => {
   await renderPlanning();
 
-  // The seeded mock has five upcoming and exactly one past, so the two halves
+  // The seeded mock has six upcoming and exactly one past, so the two halves
   // are distinguishable by count as well as by content — a toggle that merely
-  // appended would show six.
-  expect(screen.getAllByTestId("event-card")).toHaveLength(5);
+  // appended would show seven.
+  expect(screen.getAllByTestId("event-card")).toHaveLength(6);
 
   await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
 
@@ -191,14 +193,14 @@ test("a delete carries the tag of the read it was confirmed from", async () => {
  * -------------------------------------------------------------------------- */
 
 test("what you still owe an answer on is pinned above the rest", async () => {
-  // The seeded answers give demo.player one answered event out of five, so the
+  // The seeded answers give demo.player one answered event out of six, so the
   // two blocks are distinguishable by count as well as by heading.
   await renderPlanning();
 
   const awaiting = screen.getByRole("region", { name: "À répondre" });
   const rest = screen.getByRole("region", { name: "Le reste du planning" });
 
-  expect(within(awaiting).getAllByTestId("event-card")).toHaveLength(4);
+  expect(within(awaiting).getAllByTestId("event-card")).toHaveLength(5);
   expect(within(rest).getAllByTestId("event-card")).toHaveLength(1);
 });
 
@@ -217,7 +219,7 @@ test("answering is one tap and moves the event out of what is owed", async () =>
         within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card")
           .length,
     )
-    .toBe(3);
+    .toBe(4);
 
   const rest = screen.getByRole("region", { name: "Le reste du planning" });
   expect(
@@ -370,5 +372,54 @@ test("a narrowed planning says so at every width, and can be widened again", asy
 
   await userEvent.click(screen.getByRole("button", { name: "Voir tout le planning" }));
   await expect.poll(() => screen.queryByTestId("day-filter")).toBeNull();
-  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(5);
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(6);
+});
+
+/* ---------------------------------------------------------------------------
+ * The way in to R3's two committee screens
+ * -------------------------------------------------------------------------- */
+
+/**
+ * MUTATION TEST: drop `event.takesRegistrations` from the condition and this
+ * fails. The planning is mostly rehearsals, and every one of their cards would
+ * otherwise carry a link to a guest list that can never fill up.
+ */
+test("offers the guest list only on an event that takes bookings", async () => {
+  await renderPlanning("demo.direction");
+
+  expect(screen.getByRole("link", { name: "Inscriptions à Souper de soutien" })).toHaveAttribute(
+    "href",
+    "/events/7/registrations",
+  );
+  expect(screen.queryByRole("link", { name: /^Inscriptions à Répétition/ })).toBeNull();
+});
+
+/**
+ * The options editor, unlike the guest list, belongs on EVERY card: an event
+ * that takes no bookings yet is exactly when the committee fills it in.
+ */
+test("offers the options editor on every event, bookable or not", async () => {
+  await renderPlanning("demo.direction");
+
+  expect(
+    screen.getByRole("link", { name: "Ce qui peut être réservé à Souper de soutien" }),
+  ).toHaveAttribute("href", "/events/7/registration-options");
+  expect(
+    screen.getAllByRole("link", { name: /^Ce qui peut être réservé à Répétition/ }).length,
+  ).toBeGreaterThan(0);
+});
+
+/**
+ * `registrations.view` is ALL the `committee` role holds. It opens the guest
+ * list and nothing else — no event form, no chase list, no options editor.
+ */
+test("a guest-list reader gets that link and no other", async () => {
+  await renderPlanning("demo.committee");
+
+  expect(
+    screen.getByRole("link", { name: "Inscriptions à Souper de soutien" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /^Ce qui peut être réservé/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /^Modifier/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /^Qui vient/ })).toBeNull();
 });

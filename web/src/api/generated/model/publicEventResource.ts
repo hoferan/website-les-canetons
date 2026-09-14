@@ -301,6 +301,7 @@
  */
 
 export interface PublicEventResource {
+  id: number;
   title: string;
   /** When it starts, in UTC. */
   startsAt: string;
@@ -308,4 +309,6 @@ export interface PublicEventResource {
   endsAt: string;
   /** Where it happens, as free text. */
   location: string;
+  /** Whether this event is taking public bookings right now. Link to the booking form only when it is true. */
+  registrationOpen: boolean;
 }

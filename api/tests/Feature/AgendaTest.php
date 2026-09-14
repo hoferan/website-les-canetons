@@ -110,10 +110,14 @@ class AgendaTest extends TestCase
     }
 
     /**
-     * Four fields, and not one of them internal. `notes` is the committee's
+     * Six fields, and not one of them internal. `notes` is the committee's
      * own note and `isPublic` is the decision itself — publishing either would
      * tell a visitor things about the band's diary that the filter above is
      * there to keep out.
+     *
+     * `id` and `registrationOpen` joined the four when R3's booking form was
+     * built: the agenda is the only public list of events, so without them a
+     * visitor has no way to reach the form. See PublicEventResource.
      */
     public function test_it_publishes_what_is_on_a_poster_and_nothing_else(): void
     {
@@ -127,9 +131,67 @@ class AgendaTest extends TestCase
         $response = $this->getJson('/api/v1/agenda')->assertStatus(200);
 
         $this->assertSame(
-            ['title', 'startsAt', 'endsAt', 'location'],
+            ['id', 'title', 'startsAt', 'endsAt', 'location', 'registrationOpen'],
             array_keys($response->json('data.0')),
         );
         $response->assertDontSee('parapluies');
+    }
+
+    /**
+     * The flag the public agenda decides whether to offer a booking link on.
+     *
+     * Both events below take bookings — `registration_closes_at` is what
+     * enables that at all — and they differ only in whether the window has
+     * opened. A resource that published `takesRegistrations()` instead of
+     * `registrationIsOpen()` would pass every other test here and send a
+     * visitor to a form that refuses them.
+     */
+    public function test_it_says_which_events_are_taking_bookings_right_now(): void
+    {
+        Event::factory()->create([
+            'title' => 'Souper de soutien',
+            'is_public' => true,
+            'starts_at' => now()->addWeeks(4),
+            'ends_at' => now()->addWeeks(4)->addHours(5),
+            'registration_closes_at' => now()->addWeeks(3),
+        ]);
+
+        Event::factory()->create([
+            'title' => 'Loto',
+            'is_public' => true,
+            'starts_at' => now()->addWeeks(6),
+            'ends_at' => now()->addWeeks(6)->addHours(4),
+            // Enabled, but the form does not appear until next month.
+            'registration_opens_at' => now()->addWeek(),
+            'registration_closes_at' => now()->addWeeks(5),
+        ]);
+
+        $response = $this->getJson('/api/v1/agenda')->assertStatus(200);
+
+        $this->assertSame(
+            [['Souper de soutien', true], ['Loto', false]],
+            array_map(
+                fn (array $event): array => [$event['title'], $event['registrationOpen']],
+                $response->json('data'),
+            ),
+        );
+    }
+
+    /**
+     * An event nobody may book answers `false`, not null and not absent — the
+     * ordinary case, and the one every rehearsal-shaped event is in.
+     */
+    public function test_an_event_that_takes_no_bookings_says_so(): void
+    {
+        $event = Event::factory()->create([
+            'is_public' => true,
+            'starts_at' => now()->addWeek(),
+            'ends_at' => now()->addWeek()->addHours(2),
+        ]);
+
+        $response = $this->getJson('/api/v1/agenda')->assertStatus(200);
+
+        $this->assertSame($event->id, $response->json('data.0.id'));
+        $this->assertFalse($response->json('data.0.registrationOpen'));
     }
 }

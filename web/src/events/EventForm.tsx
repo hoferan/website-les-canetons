@@ -17,7 +17,26 @@ export type EventDraft = {
   attire: string;
   isPublic: boolean;
   notes: string;
+  registrationOpensDate: string;
+  registrationOpensTime: string;
+  registrationClosesDate: string;
+  registrationClosesTime: string;
+  registrationMaxGuests: string;
 };
+
+/**
+ * The times a registration window gets when the committee has typed only its
+ * dates.
+ *
+ * A window is a decision about DAYS — "the form goes up on the 1st and comes
+ * down on the 20th" — and asking for a minute as well would be asking for
+ * something nobody has an opinion about. The two defaults make the dates mean
+ * what they look like: bookings open at the start of the opening day and shut
+ * at the end of the closing one. Both fields are editable, so a committee that
+ * does want a minute still has one.
+ */
+const OPENS_AT_DEFAULT = "00:00";
+const CLOSES_AT_DEFAULT = "23:59";
 
 /** An existing event as an editable draft, or an empty one for a new event. */
 export function draftFromEvent(event: EventResource | null): EventDraft {
@@ -26,6 +45,8 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
   // form a day early. See ./bandTime.
   const start = event ? bandZoneParts(event.startsAt) : null;
   const end = event ? bandZoneParts(event.endsAt) : null;
+  const opens = event?.registrationOpensAt ? bandZoneParts(event.registrationOpensAt) : null;
+  const closes = event?.registrationClosesAt ? bandZoneParts(event.registrationClosesAt) : null;
 
   return {
     title: event?.title ?? "",
@@ -37,6 +58,17 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
     attire: event?.attire ?? "",
     isPublic: event?.isPublic ?? false,
     notes: event?.notes ?? "",
+    registrationOpensDate: opens?.date ?? "",
+    registrationOpensTime: opens?.time ?? OPENS_AT_DEFAULT,
+    registrationClosesDate: closes?.date ?? "",
+    registrationClosesTime: closes?.time ?? CLOSES_AT_DEFAULT,
+    // A number in a text box. The empty string is "no cap", which is a
+    // different answer from any number including zero, and String(null) would
+    // put the word "null" in the field.
+    registrationMaxGuests:
+      event?.registrationMaxGuests === null || event?.registrationMaxGuests === undefined
+        ? ""
+        : String(event.registrationMaxGuests),
   };
 }
 
@@ -63,7 +95,29 @@ export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
     attire: draft.attire.trim() === "" ? null : draft.attire,
     isPublic: draft.isPublic,
     notes: draft.notes.trim() === "" ? null : draft.notes,
+    // THE DATE IS THE SWITCH, and the time beside it is never consulted on
+    // its own. An empty closing date sends null, which is what turns public
+    // registration off — there is no separate boolean, per D9, because a flag
+    // beside a date is a flag that drifts out of step with it. Bookings
+    // already taken survive being switched off.
+    registrationOpensAt: instantOrNull(draft.registrationOpensDate, draft.registrationOpensTime),
+    registrationClosesAt: instantOrNull(draft.registrationClosesDate, draft.registrationClosesTime),
+    // Trimmed and re-read rather than passed through `Number`: `Number("")`
+    // is 0, and a cap of zero is an event nobody may book rather than an
+    // event with no cap. NaN for anything else, which the server refuses
+    // against the field the committee typed in.
+    registrationMaxGuests:
+      draft.registrationMaxGuests.trim() === "" ? null : Number(draft.registrationMaxGuests),
   };
+}
+
+/** A typed date and time as an instant, or null when no date was given. */
+function instantOrNull(date: string, time: string): string | null {
+  if (date.trim() === "") {
+    return null;
+  }
+
+  return composeInBandZone(date, time);
 }
 
 /**
@@ -239,6 +293,74 @@ export function EventForm({
         onChange={(value) => set("notes", value)}
         problem={problemFor("notes")}
       />
+
+      {/* THE REGISTRATION WINDOW, and the closing date is the switch. There is
+          no "activer les inscriptions" checkbox to go out of step with the
+          dates — D9, and the same call the API makes. The copy below is what
+          carries that, because a date field is not self-evidently a switch. */}
+      <fieldset className="flex flex-col gap-related rounded-md border border-line p-4">
+        <legend className="px-1 font-display text-lg">Inscriptions du public</legend>
+
+        <p className="text-sm text-ink-muted">
+          Renseignez une date de clôture pour ouvrir cet événement aux inscriptions. Laissez-la vide
+          si personne ne s’inscrit&nbsp;: c’est le cas de presque tout le planning.
+        </p>
+
+        <div className="grid gap-related sm:grid-cols-2">
+          <FormField
+            id="registrationClosesDate"
+            label="Clôture des inscriptions"
+            type="date"
+            value={draft.registrationClosesDate}
+            onChange={(value) => set("registrationClosesDate", value)}
+            problem={problemFor("registrationClosesAt")}
+          />
+          <FormField
+            id="registrationClosesTime"
+            label="Heure de clôture"
+            type="time"
+            value={draft.registrationClosesTime}
+            onChange={(value) => set("registrationClosesTime", value)}
+          />
+        </div>
+
+        <div className="grid gap-related sm:grid-cols-2">
+          <FormField
+            id="registrationOpensDate"
+            label="Ouverture des inscriptions"
+            type="date"
+            value={draft.registrationOpensDate}
+            onChange={(value) => set("registrationOpensDate", value)}
+            problem={problemFor("registrationOpensAt")}
+          />
+          <FormField
+            id="registrationOpensTime"
+            label="Heure d’ouverture"
+            type="time"
+            value={draft.registrationOpensTime}
+            onChange={(value) => set("registrationOpensTime", value)}
+          />
+        </div>
+
+        <p className="text-sm text-ink-muted">
+          Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour
+          préparer un événement dont les inscriptions ne doivent pas encore apparaître.
+        </p>
+
+        <FormField
+          id="registrationMaxGuests"
+          label="Personnes par inscription"
+          type="number"
+          value={draft.registrationMaxGuests}
+          onChange={(value) => set("registrationMaxGuests", value)}
+          problem={problemFor("registrationMaxGuests")}
+        />
+        <p className="text-sm text-ink-muted">
+          Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas
+          limiter. La salle, elle, n’est jamais limitée&nbsp;: le comité surveille la liste et
+          avance la clôture si nécessaire.
+        </p>
+      </fieldset>
 
       <FormError error={error} />
 

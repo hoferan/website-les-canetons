@@ -12,7 +12,13 @@ import type {
   MemberResource,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
+  RegistrationOptionResource,
+  RegistrationResource,
+  RegistrationResourceChoicesItem,
+  ReplaceRegistrationOptionsRequest,
   RoleResource,
+  StoreRegistrationRequest,
+  UpdateRegistrationRequest,
   SectionResource,
 } from "../api/generated/model";
 
@@ -66,6 +72,7 @@ const USERS = {
       "attendance.record_for_others",
       "members.manage",
       "registrations.view",
+      "registrations.manage",
     ],
   },
   // Plays, organises nothing.
@@ -93,6 +100,7 @@ const USERS = {
       "attendance.record_for_others",
       "members.manage",
       "registrations.view",
+      "registrations.manage",
     ],
   },
   // The `committee` role's single permission. Somebody has to hold it, or the
@@ -297,6 +305,7 @@ const ROLES: RoleResource[] = [
       "attendance.record_for_others",
       "members.manage",
       "registrations.view",
+      "registrations.manage",
     ],
   },
   { id: 2, key: "committee", permissions: ["registrations.view"] },
@@ -541,7 +550,16 @@ const MAX_LIMIT = 1000;
  * ignored rather than refused" is a behaviour a screen may one day depend on
  * and there is nowhere else for it to be exercised in the browser.
  */
-function collection<T>(rows: T[], request: Request, status = 200): Response {
+function collection<T>(
+  rows: T[],
+  request: Request,
+  status = 200,
+  // An enveloped list can still carry an entity tag: `etag:event.options` sits
+  // on a route whose body is a collection, because the facet is the option
+  // LIST rather than any one row. It is the one collection in this API that
+  // hands a tag out, which is also what makes its write conditional.
+  extraHeaders: Record<string, string> = {},
+): Response {
   const query = new URL(request.url).searchParams;
 
   const whole = (value: string | null, fallback: number, min: number, max: number): number => {
@@ -576,7 +594,9 @@ function collection<T>(rows: T[], request: Request, status = 200): Response {
     // The Link header goes on reads only, matching the middleware: a
     // `rel="next"` on a URL you would have to POST or PUT again is not a link
     // anybody should follow.
-    status === 200 ? { headers: { Link: links.join(", ") } } : { status },
+    status === 200
+      ? { headers: { Link: links.join(", "), ...extraHeaders } }
+      : { status, headers: extraHeaders },
   );
 }
 
@@ -810,17 +830,42 @@ function initialEvents(): EventResource[] {
       takesRegistrations: false,
       myAttendance: null,
     },
+    {
+      // THE ONLY EVENT THAT TAKES BOOKINGS, and the one R3's four screens are
+      // looked at against. The souper generalised (D9): registration is a
+      // property of an event, so this is an ordinary row with three dates
+      // filled in rather than a second kind of thing.
+      //
+      // Its window is open NOW and closes before the event, which is the
+      // ordinary state and the only one in which the public form can be
+      // filled in at all. Both other states — not yet open, and closed — are
+      // reachable by editing those two dates in /events/:id/edit, which is
+      // also the only way to check that the form says the right thing in each.
+      id: 7,
+      title: "Souper de soutien",
+      startsAt: at(42, "18:30"),
+      endsAt: at(42, "23:30"),
+      location: "Salle de la Grenette, Fribourg",
+      attire: "Costume complet",
+      isPublic: true,
+      notes: "Le comité tient la caisse.",
+      registrationOpensAt: at(-14, "00:00"),
+      registrationClosesAt: at(35, "23:59"),
+      registrationMaxGuests: 6,
+      takesRegistrations: true,
+      myAttendance: null,
+    },
   ];
 }
 
 let events: EventResource[] = initialEvents();
 
 /** Mirrors an auto-increment: never reuses a deleted id. */
-let nextEventId = 7;
+let nextEventId = 8;
 
 function resetEvents(): void {
   events = initialEvents();
-  nextEventId = 7;
+  nextEventId = 8;
 }
 
 /* ------------------------------------------------------------------------ *
@@ -930,6 +975,295 @@ function refuseIfEndsBeforeStart(startsAt: string, endsAt: string) {
   ]);
 }
 
+/* ------------------------------------------------------------------------ *
+ * Registration
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The event id lives beside the resource rather than inside it, in both
+ * stores below, because the API never publishes it: an option is only ever
+ * read through its event's URL, and a booking through the guest list of one.
+ * Modelling it as a field of the resource would make every handler able to
+ * typecheck against a shape the server does not send.
+ */
+type MockOption = RegistrationOptionResource & { eventId: number };
+type MockRegistration = RegistrationResource & { eventId: number };
+
+/**
+ * What event 7 offers.
+ *
+ * ONE PRICED, ONE CHEAPER, ONE WITHOUT A PRICE AT ALL, which is the shape the
+ * screens have to be looked at against: `priceCents: null` is an option whose
+ * price lives in its description or which is simply not sold, and it is a
+ * different thing from a free one. A seed where every option had a price
+ * would let a booking total ship having never met the null it must not print
+ * as "CHF 0.00".
+ */
+function initialOptions(): MockOption[] {
+  return [
+    {
+      eventId: 7,
+      id: 1,
+      label: "Repas adulte",
+      description: "Jambon, gratin et salade",
+      priceCents: 4500,
+      sortOrder: 0,
+    },
+    {
+      eventId: 7,
+      id: 2,
+      label: "Repas enfant",
+      description: "Jusqu’à 12 ans",
+      priceCents: 2000,
+      sortOrder: 1,
+    },
+    {
+      eventId: 7,
+      id: 3,
+      label: "Sans repas",
+      description: "Vous venez écouter, vous ne mangez pas",
+      priceCents: null,
+      sortOrder: 2,
+    },
+  ];
+}
+
+/**
+ * Two bookings, and between them they exercise everything the guest list has
+ * to render: several lines against one booking, an option nobody took, an
+ * optional field left empty, and a booking whose total is null because
+ * nothing it took carries a price.
+ *
+ * `createdAt` is FIXED rather than relative, unlike the planning's dates. A
+ * guest list is a record of what happened, so nothing about it goes stale as
+ * the seed ages, and a fixed stamp is what lets a test assert the column.
+ */
+function initialRegistrations(): MockRegistration[] {
+  return [
+    {
+      eventId: 7,
+      id: 1,
+      firstName: "Jeanne",
+      lastName: "Aebischer",
+      email: "jeanne.aebischer@example.ch",
+      phone: "079 123 45 67",
+      address: "Route des Alpes 12, 1700 Fribourg",
+      tableName: "Avec la famille Python",
+      choices: [
+        { optionId: 1, label: "Repas adulte", quantity: 2, priceCents: 4500 },
+        { optionId: 2, label: "Repas enfant", quantity: 3, priceCents: 2000 },
+      ],
+      guestCount: 5,
+      totalCents: 15000,
+      createdAt: "2026-09-01T18:24:00.000Z",
+    },
+    {
+      eventId: 7,
+      id: 2,
+      firstName: "Marc",
+      lastName: "Python",
+      email: "marc.python@example.ch",
+      phone: "026 322 10 10",
+      address: null,
+      tableName: null,
+      choices: [{ optionId: 3, label: "Sans repas", quantity: 1, priceCents: null }],
+      guestCount: 1,
+      // Null, not zero: this booking owes an unknown amount rather than
+      // nothing, and the two must be visibly different on screen.
+      totalCents: null,
+      createdAt: "2026-09-02T09:05:00.000Z",
+    },
+  ];
+}
+
+let options: MockOption[] = initialOptions();
+let registrations: MockRegistration[] = initialRegistrations();
+let nextOptionId = 4;
+let nextRegistrationId = 3;
+
+function resetRegistrations(): void {
+  options = initialOptions();
+  registrations = initialRegistrations();
+  nextOptionId = 4;
+  nextRegistrationId = 3;
+}
+
+/**
+ * A stored row as the API publishes it: without the event id it is keyed on.
+ *
+ * `delete` on a copy rather than a rest destructure, matching
+ * `withoutMyAttendance` above — the destructure leaves a bound name nothing
+ * reads, which this project's eslint rules refuse, and a cast would be a lie
+ * the compiler stops checking.
+ */
+function published<T extends { eventId: number }>(row: T): Omit<T, "eventId"> {
+  const resource = { ...row };
+  delete (resource as Partial<T>).eventId;
+  return resource;
+}
+
+/** One event's options, in the order both the form and the editor show them. */
+function optionsFor(eventId: number): RegistrationOptionResource[] {
+  return options
+    .filter((option) => option.eventId === eventId)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+    .map(published);
+}
+
+/**
+ * The `event.options` facet, which is a SEPARATE tag from the event's.
+ *
+ * The options are absent from EventResource, so conditioning their write on
+ * the event's tag would both miss every option change and refuse a good
+ * options edit because somebody corrected the dress code. Mirroring the two
+ * facets here is what lets a screen be wrong about which one it quotes and
+ * be caught for it.
+ */
+function optionsTag(eventId: number): string {
+  return mockEntityTag(optionsFor(eventId));
+}
+
+function registrationTag(registration: MockRegistration): string {
+  return mockEntityTag(published(registration));
+}
+
+/**
+ * What a booking covers and what it comes to, recomputed from its lines.
+ *
+ * The server sends both as fields of RegistrationResource so the spreadsheet,
+ * the screen and the confirmation mail cannot disagree; a mock that let a
+ * screen sum the lines itself would leave that agreement untested. Null when
+ * nothing taken carries a price, which is not zero.
+ */
+function totalsOf(choices: RegistrationResourceChoicesItem[]): {
+  guestCount: number;
+  totalCents: number | null;
+} {
+  const priced = choices.filter((choice) => choice.priceCents !== null);
+
+  return {
+    guestCount: choices.reduce((sum, choice) => sum + choice.quantity, 0),
+    totalCents:
+      priced.length === 0
+        ? null
+        : priced.reduce((sum, choice) => sum + (choice.priceCents ?? 0) * choice.quantity, 0),
+  };
+}
+
+/** Mirrors Event::registrationIsOpen(): the close date is the switch. */
+function registrationIsOpen(event: EventResource): boolean {
+  if (event.registrationClosesAt === null) {
+    return false;
+  }
+
+  const now = Date.now();
+  const opens = event.registrationOpensAt;
+
+  return (
+    (opens === null || Date.parse(opens) <= now) && now <= Date.parse(event.registrationClosesAt)
+  );
+}
+
+/**
+ * An event with its DERIVED field put back.
+ *
+ * `takesRegistrations` is computed by the server from `registration_closes_at`
+ * and is not a column. A mocked write that spread the request body over the
+ * stored row left it at its old value, so switching registration on through
+ * the event form produced an event the rest of the mocked app still thought
+ * took no bookings.
+ */
+function withRegistrationFlag(event: EventResource): EventResource {
+  return { ...event, takesRegistrations: event.registrationClosesAt !== null };
+}
+
+/** The four facts PublicEventResource publishes, plus what R3 added to it. */
+function publicEvent(event: EventResource) {
+  return {
+    id: event.id,
+    title: event.title,
+    startsAt: event.startsAt,
+    endsAt: event.endsAt,
+    location: event.location,
+    registrationOpen: registrationIsOpen(event),
+  };
+}
+
+/**
+ * The guest list as rows, mirroring App\Support\GuestList.
+ *
+ * ONE ROW-BUILDER, FOUR FORMATS on the server, and the same here for the same
+ * reason: the four downloads must not be able to disagree. One column per
+ * option, because that is what the kitchen counts, and a zero rather than a
+ * blank for an option a booking did not take, because a column of blanks and
+ * numbers does not sum.
+ */
+function guestListOf(eventId: number): {
+  headers: string[];
+  rows: (string | number | null)[][];
+  totals: (string | number | null)[];
+} {
+  const eventOptions = optionsFor(eventId);
+  const bookings = registrations
+    .filter((registration) => registration.eventId === eventId)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  const francs = (cents: number | null) => (cents === null ? null : Math.round(cents) / 100);
+
+  const headers = [
+    "Nom",
+    "Prénom",
+    "E-mail",
+    "Téléphone",
+    "Adresse",
+    "Table",
+    ...eventOptions.map((option) => option.label),
+    "Personnes",
+    "Total CHF",
+    "Inscrit le",
+  ];
+
+  const rows = bookings.map((booking) => [
+    booking.lastName,
+    booking.firstName,
+    booking.email,
+    booking.phone,
+    booking.address,
+    booking.tableName,
+    ...eventOptions.map(
+      (option) => booking.choices.find((choice) => choice.optionId === option.id)?.quantity ?? 0,
+    ),
+    booking.guestCount,
+    francs(booking.totalCents),
+    booking.createdAt.slice(0, 16).replace("T", " "),
+  ]);
+
+  const priced = bookings
+    .map((booking) => booking.totalCents)
+    .filter((cents): cents is number => cents !== null);
+
+  const totals = [
+    "Total",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ...eventOptions.map((option) =>
+      bookings.reduce(
+        (sum, booking) =>
+          sum + (booking.choices.find((choice) => choice.optionId === option.id)?.quantity ?? 0),
+        0,
+      ),
+    ),
+    bookings.reduce((sum, booking) => sum + booking.guestCount, 0),
+    priced.length === 0 ? null : francs(priced.reduce((sum, cents) => sum + cents, 0)),
+    "",
+  ];
+
+  return { headers, rows, totals };
+}
+
 /** Test seam: every mock store is module state, so every test must reset them all. */
 export function resetMockState(): void {
   setCurrentUser(null);
@@ -938,6 +1272,7 @@ export function resetMockState(): void {
   // as flakiness and is not — R1b proved it on the roster store.
   resetEvents();
   resetAnswers();
+  resetRegistrations();
 }
 
 /** Tied to the model, not retyped as a bare string[]: a field rename in
@@ -982,12 +1317,7 @@ const overrides = [
       events
         .filter((event) => event.isPublic && Date.parse(event.startsAt) >= startOfTodayMs())
         .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-        .map((event) => ({
-          title: event.title,
-          startsAt: event.startsAt,
-          endsAt: event.endsAt,
-          location: event.location,
-        })),
+        .map(publicEvent),
       request,
     ),
   ),
@@ -1476,7 +1806,7 @@ const overrides = [
       return invalid;
     }
 
-    const event: EventResource = { ...body, id: nextEventId++ };
+    const event = withRegistrationFlag({ ...body, id: nextEventId++ });
     events = [...events, event];
     return HttpResponse.json(event, { status: 201 });
   }),
@@ -1517,7 +1847,7 @@ const overrides = [
     }
 
     const patch = (await request.json()) as Partial<Omit<EventResource, "id">>;
-    const updated: EventResource = { ...existing, ...patch };
+    const updated = withRegistrationFlag({ ...existing, ...patch });
 
     // The comparison reaches for the STORED start when the patch does not
     // carry one — the real Form Request's whole subtlety, mirrored so the
@@ -1721,6 +2051,405 @@ const overrides = [
 
     answers.delete(answerKey(Number(params.id), memberId));
     return HttpResponse.json({ ok: true });
+  }),
+
+  /* ---------------------------------------------------------------------- *
+   * Registration
+   * ---------------------------------------------------------------------- */
+
+  // What the public booking form needs to render itself. ANONYMOUS, and 404
+  // for an event that takes no bookings whether or not it exists — a stranger
+  // must not be able to walk the ids and learn the band's planning.
+  //
+  // An event that IS enabled but outside its window answers 200 with
+  // `open: false`, so the form can say when bookings start or that they have
+  // closed. `open` is the server's answer and never derived from the two
+  // dates by the client, whose clock may be wrong.
+  http.get("/api/v1/events/:id/registration", ({ params }) => {
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+
+    if (!event || event.registrationClosesAt === null) {
+      return notFound();
+    }
+
+    return HttpResponse.json({
+      event: publicEvent(event),
+      options: optionsFor(event.id),
+      maxGuests: event.registrationMaxGuests,
+      opensAt: event.registrationOpensAt,
+      closesAt: event.registrationClosesAt,
+      open: registrationIsOpen(event),
+    });
+  }),
+
+  // Booking a place. The second anonymous write in the whole API, and it
+  // meets the same three protections the contact form does — see that handler
+  // for why the two-second floor is the server's alone.
+  http.post("/api/v1/events/:id/registrations", async ({ request, params }) => {
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+
+    // BEFORE the guard and before validation, matching
+    // StoreRegistrationRequest::prepareForValidation. With this check later,
+    // booking an event that takes none answered a complaint about
+    // `choices.0.optionId` — because the option genuinely is not this
+    // event's — and leaked that the event exists.
+    if (!event || event.registrationClosesAt === null) {
+      return notFound();
+    }
+
+    const body = (await request.json()) as Partial<StoreRegistrationRequest>;
+
+    if (request.headers.get("X-Form-Token") !== MOCK_FORM_TOKEN || body.website !== "") {
+      return problem(422, "spam_suspected", "Submission looks automated");
+    }
+
+    const key = request.headers.get("Idempotency-Key");
+    if (key === null) {
+      return problem(400, "idempotency_key_required", "Idempotency-Key header required");
+    }
+    if (key.length < 16 || key.length > 255) {
+      return problem(400, "idempotency_key_invalid", "Idempotency-Key is not usable");
+    }
+
+    if (!registrationIsOpen(event)) {
+      // Two codes, because the two are different news: "come back on the 3rd"
+      // and "you have missed it" send the reader to different places.
+      return event.registrationOpensAt !== null &&
+        Date.parse(event.registrationOpensAt) > Date.now()
+        ? conflict("registration_not_open", "Registration has not opened yet")
+        : conflict("registration_closed", "Registration has closed");
+    }
+
+    const required: (keyof StoreRegistrationRequest)[] = [
+      "firstName",
+      "lastName",
+      "email",
+      "phone",
+    ];
+    const missing = required.filter((field) => String(body[field] ?? "").trim() === "");
+    const chosen = (body.choices ?? []).filter((choice) => choice.quantity > 0);
+
+    if (missing.length > 0 || chosen.length === 0) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        ...missing.map((field) => ({ field, reason: "required" })),
+        ...(chosen.length === 0 ? [{ field: "choices", reason: "required" }] : []),
+      ]);
+    }
+
+    // The per-booking cap, which is a property of the WHOLE choices array
+    // against a number on the event — so it is raised against `choices` and
+    // its token is PARAMLESS, exactly as the closure validator on the server
+    // must be: that path emits field and reason only, and an interpolating
+    // French string would print a literal {{max}} on a guest's screen.
+    const guests = chosen.reduce((sum, choice) => sum + choice.quantity, 0);
+    if (event.registrationMaxGuests !== null && guests > event.registrationMaxGuests) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "choices", reason: "too_many_guests" },
+      ]);
+    }
+
+    const eventOptions = optionsFor(event.id);
+    const choices: RegistrationResourceChoicesItem[] = [];
+
+    for (const choice of chosen) {
+      const option = eventOptions.find((candidate) => candidate.id === choice.optionId);
+      if (!option) {
+        return problem(400, "validation_failed", "Invalid form submission", [
+          { field: "choices.0.optionId", reason: "exists" },
+        ]);
+      }
+      choices.push({
+        optionId: option.id,
+        label: option.label,
+        quantity: choice.quantity,
+        priceCents: option.priceCents,
+      });
+    }
+
+    const booking: MockRegistration = {
+      eventId: event.id,
+      id: nextRegistrationId++,
+      firstName: String(body.firstName),
+      lastName: String(body.lastName),
+      email: String(body.email),
+      phone: String(body.phone),
+      address: body.address?.trim() ? body.address : null,
+      tableName: body.tableName?.trim() ? body.tableName : null,
+      choices,
+      ...totalsOf(choices),
+      createdAt: new Date().toISOString(),
+    };
+
+    registrations = [...registrations, booking];
+
+    return HttpResponse.json(published(booking), { status: 201 });
+  }),
+
+  // THE GUEST LIST. `registrations.view` and nothing more — the `committee`
+  // role holds that as its only permission, so this must not also let anybody
+  // amend or cancel.
+  http.get("/api/v1/events/:id/registrations", ({ request, params }) => {
+    const refusal = refuseWithout("registrations.view");
+    if (refusal) {
+      return refusal;
+    }
+
+    return collection(
+      registrations
+        .filter((registration) => registration.eventId === Number(params.id))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map(published),
+      request,
+    );
+  }),
+
+  // The same list as a file. THE XLSX BODY IS A PLACEHOLDER and not a real
+  // workbook: nothing in the SPA parses it — the screen hands the blob
+  // straight to the browser — so what a test of this can establish is that the
+  // request is made, refused or allowed, and named. The other three are the
+  // real thing, because they are legible and cost nothing to produce honestly.
+  http.get("/api/v1/events/:id/registrations.:format", ({ params }) => {
+    const refusal = refuseWithout("registrations.view");
+    if (refusal) {
+      return refusal;
+    }
+
+    const format = String(params.format);
+    const event = events.find((candidate) => candidate.id === Number(params.id));
+    const list = guestListOf(Number(params.id));
+    const stem =
+      (event?.title ?? "evenement")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") + "-inscriptions";
+
+    const attachment = (type: string, body: BodyInit) =>
+      new HttpResponse(body, {
+        headers: {
+          "Content-Type": type,
+          "Content-Disposition": `attachment; filename="${stem}.${format}"`,
+        },
+      });
+
+    const cell = (value: string | number | null) => (value === null ? "" : String(value));
+
+    if (format === "json") {
+      return HttpResponse.json(list, {
+        headers: { "Content-Disposition": `attachment; filename="${stem}.json"` },
+      });
+    }
+
+    if (format === "csv") {
+      // The BOM and the semicolons are the server's, and they are the whole
+      // reason that export is usable: Swiss Excel reads a BOM-less UTF-8 CSV
+      // in the system codepage and splits on ';', not ','.
+      const lines = [list.headers, ...list.rows, list.totals].map((row) =>
+        row.map((value) => `"${cell(value).replace(/"/g, '""')}"`).join(";"),
+      );
+      return attachment("text/csv; charset=UTF-8", `\ufeff${lines.join("\r\n")}\r\n`);
+    }
+
+    if (format === "md") {
+      const line = (row: (string | number | null)[]) => `| ${row.map(cell).join(" | ")} |`;
+      const body = [
+        line(list.headers),
+        `| ${list.headers.map(() => "---").join(" | ")} |`,
+        ...list.rows.map(line),
+        line(list.totals),
+      ].join("\n");
+      return attachment("text/markdown; charset=UTF-8", `${body}\n`);
+    }
+
+    return attachment(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "not a real workbook: see the mocked backend",
+    );
+  }),
+
+  // The read the two conditional writes below start from, and the reason it
+  // is gated on `registrations.manage` rather than on view: it exists for the
+  // people who amend a booking, and the guest list already shows the rest of
+  // the committee everything it carries.
+  http.get("/api/v1/registrations/:id", ({ params }) => {
+    const refusal = refuseWithout("registrations.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const booking = registrations.find((candidate) => candidate.id === Number(params.id));
+    if (!booking) {
+      return notFound();
+    }
+
+    return HttpResponse.json(published(booking), {
+      headers: { ETag: registrationTag(booking) },
+    });
+  }),
+
+  http.patch("/api/v1/registrations/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("registrations.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const index = registrations.findIndex((candidate) => candidate.id === Number(params.id));
+    const existing = registrations[index];
+    if (!existing) {
+      return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, registrationTag(existing));
+    if (stale) {
+      return stale;
+    }
+
+    const patch = (await request.json()) as UpdateRegistrationRequest;
+
+    // WHAT WAS ORDERED IS NOT EDITABLE, and the allow-list is what says so:
+    // `choices` on the body is ignored rather than applied, matching
+    // UpdateRegistrationRequest, which has no such field. A wrong order is
+    // cancelled and re-booked.
+    const updated: MockRegistration = {
+      ...existing,
+      firstName: patch.firstName ?? existing.firstName,
+      lastName: patch.lastName ?? existing.lastName,
+      email: patch.email ?? existing.email,
+      phone: patch.phone ?? existing.phone,
+      // array_key_exists, not `??`: both an omitted field and an explicit
+      // null are nullish, so `??` would make clearing an address silently do
+      // nothing — the exact trap the server's own comment names.
+      address: "address" in patch ? (patch.address ?? null) : existing.address,
+      tableName: "tableName" in patch ? (patch.tableName ?? null) : existing.tableName,
+    };
+
+    registrations = registrations.map((candidate) =>
+      candidate.id === updated.id ? updated : candidate,
+    );
+
+    return HttpResponse.json(published(updated), {
+      headers: { ETag: registrationTag(updated) },
+    });
+  }),
+
+  http.delete("/api/v1/registrations/:id", ({ request, params }) => {
+    const refusal = refuseWithout("registrations.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const existing = registrations.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, registrationTag(existing));
+    if (stale) {
+      return stale;
+    }
+
+    registrations = registrations.filter((candidate) => candidate.id !== existing.id);
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // WHAT AN EVENT OFFERS IS PART OF THE EVENT, so both of these are
+  // `events.manage` rather than a registration permission — the same act as
+  // setting its date.
+  http.get("/api/v1/events/:id/registration-options", ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const eventId = Number(params.id);
+
+    // An empty list rather than a 404 for an event taking no bookings, unlike
+    // the public read: configuring an event that does not take them YET is
+    // exactly when the committee opens this.
+    return collection(optionsFor(eventId), request, 200, {
+      ETag: optionsTag(eventId),
+    });
+  }),
+
+  http.put("/api/v1/events/:id/registration-options", async ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const eventId = Number(params.id);
+    if (!events.some((candidate) => candidate.id === eventId)) {
+      return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, optionsTag(eventId));
+    if (stale) {
+      return stale;
+    }
+
+    const incoming = ((await request.json()) as ReplaceRegistrationOptionsRequest).options;
+
+    const labelled = (id: number) =>
+      registrations.some(
+        (registration) =>
+          registration.eventId === eventId &&
+          registration.choices.some((choice) => choice.optionId === id),
+      );
+
+    // CHECKED BEFORE ANYTHING IS WRITTEN, and against what SURVIVES rather
+    // than against the ids sent: an entry with no id adopts an existing
+    // option of the same label, which is what makes a replayed first save
+    // converge instead of deleting and re-creating the list. Checking ids
+    // alone would refuse a plain retry.
+    const keptIds = incoming
+      .map((option) => option.id)
+      .filter((id): id is number => typeof id === "number");
+    const labels = incoming.map((option) => option.label);
+
+    const booked = options
+      .filter((option) => option.eventId === eventId)
+      .filter((option) => !keptIds.includes(option.id) && !labels.includes(option.label))
+      .filter((option) => labelled(option.id));
+
+    if (booked.length > 0) {
+      return conflict(
+        "option_has_registrations",
+        `An option cannot be removed while people have booked it: ${booked
+          .map((option) => option.label)
+          .join(", ")}`,
+      );
+    }
+
+    const claimed: number[] = [];
+    let next = options.filter((option) => option.eventId !== eventId);
+
+    incoming.forEach((option, index) => {
+      const adopted =
+        option.id ??
+        options.find(
+          (candidate) => candidate.eventId === eventId && candidate.label === option.label,
+        )?.id;
+
+      const id = adopted ?? nextOptionId++;
+      claimed.push(id);
+
+      next = [
+        ...next,
+        {
+          eventId,
+          id,
+          label: option.label,
+          description: option.description ?? null,
+          priceCents: option.priceCents ?? null,
+          // Falls back to the entry's position, so a client sending the list
+          // in order gets that order without numbering it.
+          sortOrder: option.sortOrder ?? index,
+        },
+      ];
+    });
+
+    options = next.filter((option) => option.eventId !== eventId || claimed.includes(option.id));
+
+    return collection(optionsFor(eventId), request, 200, { ETag: optionsTag(eventId) });
   }),
 ];
 
