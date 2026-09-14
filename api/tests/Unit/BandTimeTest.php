@@ -44,4 +44,29 @@ class BandTimeTest extends TestCase
 
         $this->assertSame('00:00:00', $startOfToday->setTimezone(BandTime::ZONE)->format('H:i:s'));
     }
+
+    /**
+     * AND IT HAS TO ARRIVE AT THE DATABASE AS UTC, which is a different claim
+     * from the one above and was false until 2026-09-12.
+     *
+     * Laravel's query grammar formats a bound DateTimeInterface in the value's
+     * own timezone, so a Zurich-based midnight was compared against a UTC
+     * column as the literal wall-clock string and the boundary sat two hours
+     * late — dropping an event between midnight and 02:00 Fribourg time out of
+     * the planning on the day it happened. The instant was never wrong; only
+     * its serialisation was, which is why the test above stayed green
+     * throughout.
+     */
+    public function test_the_start_of_today_is_carried_in_utc_so_a_query_binds_it_correctly(): void
+    {
+        $startOfToday = BandTime::startOfToday();
+
+        $this->assertSame('UTC', $startOfToday->getTimezone()->getName());
+        // What a query literally sends. Dropping `->utc()` from startOfToday()
+        // fails on this line and on nothing else in this file.
+        $this->assertSame(
+            $startOfToday->clone()->setTimezone('UTC')->format('Y-m-d H:i:s'),
+            $startOfToday->format('Y-m-d H:i:s'),
+        );
+    }
 }

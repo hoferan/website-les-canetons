@@ -73,9 +73,23 @@ final class BandTime
      * in `config('app.timezone')` (UTC). At 00:30 in Fribourg it is still
      * 22:30 UTC the previous day, so a UTC-based "start of today" would drop
      * this evening's event out of the planning two hours early.
+     *
+     * `->utc()` IS LOAD-BEARING, and its absence was a real defect until
+     * 2026-09-12. The instant was always right; what was wrong is how it
+     * reached the database. Laravel's query grammar formats a bound
+     * DateTimeInterface as `Y-m-d H:i:s` IN THE VALUE'S OWN TIMEZONE, so a
+     * Zurich-based midnight arrived as the literal '2026-09-12 00:00:00' and
+     * was compared against a column holding UTC — moving the boundary two
+     * hours late in summer and one in winter. Measured with `toRawSql()`, not
+     * inferred. The effect was that an event between midnight and 02:00
+     * Fribourg time dropped out of the planning on the day it happened, which
+     * for a Guggenmusik at carnival is precisely the hours they are out
+     * playing. Converting here keeps the instant and fixes every caller;
+     * `startOfDay()` still has to run in the band's zone, which is why the
+     * conversion is second rather than first.
      */
     public static function startOfToday(): CarbonImmutable
     {
-        return CarbonImmutable::now(self::ZONE)->startOfDay();
+        return CarbonImmutable::now(self::ZONE)->startOfDay()->utc();
     }
 }

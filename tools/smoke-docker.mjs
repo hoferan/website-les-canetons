@@ -296,6 +296,29 @@ check('POST /api/contact is Laravel, answering in the problem-document contract'
     : `expected a non-empty errors[] alongside the code, got ${JSON.stringify(body)}`;
 });
 
+check('the public band page reads without a session', async () => {
+  // THE ONE THING THE WHOLE PUBLIC SITE RESTS ON. Every other /api check here
+  // asserts a REFUSAL — 401, 403, a validation failure — so all of them would
+  // still pass on a server that had quietly started refusing everybody. This is
+  // the only check that proves an anonymous caller can read something, which is
+  // what /, /band and /committee each need before they can render at all.
+  //
+  // 401 here means the route drifted inside the auth:sanctum group; 403 means
+  // the deny-all caught it; 404 means the SPA fallback answered instead of
+  // Laravel.
+  const res = await request('/api/v1/band', { headers: { Accept: 'application/json' } });
+  if (res.status !== 200) return `expected 200 for an anonymous read, got ${await detail(res)}`;
+
+  const body = await res.json().catch(() => ({}));
+  // The collection envelope, over real Apache and FastCGI: PaginatesCollections
+  // keys on the SHAPE of the answer, so a middleware that stopped running would
+  // leave a bare array here and every list screen reading `data.data` would go
+  // blank with nothing in the log.
+  return Array.isArray(body.data) && typeof body.meta?.total === 'number'
+    ? null
+    : `expected the {data, meta} envelope, got ${JSON.stringify(body).slice(0, 200)}`;
+});
+
 check('hashed bundles are served with the immutable cache policy', async () => {
   // Read the bundle URL out of the built shell rather than a Vite manifest:
   // the SPA build emits no manifest (nothing server-side reads one any more),

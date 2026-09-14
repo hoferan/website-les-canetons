@@ -4,11 +4,18 @@ import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { Agenda } from "./pages/Agenda";
+import { Band } from "./pages/Band";
+import { Committee } from "./pages/Committee";
+import { Contact } from "./pages/Contact";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventEdit } from "./pages/EventEdit";
 import { EventNew } from "./pages/EventNew";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
+import { History } from "./pages/History";
+import { Home } from "./pages/Home";
+import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
@@ -36,13 +43,30 @@ import { NotFound } from "./pages/NotFound";
  * compatibility (design §7/D11) — so they fall through to the 404 view like
  * every other unknown path.
  *
- * Still absent, each waiting on its own release: /band, /committee, /join,
- * /history (R2), /events/:id/registrations (R3).
+ * THE PUBLIC PAGES SIT OUTSIDE MustChangePassword, and that is the one thing
+ * about this table worth reading twice. The gate holds a member on /account
+ * until they have replaced a committee-issued password — which is right for
+ * the members' tool and wrong for the public site: a member in that state who
+ * taps "Histoire" has no business being bounced to a password form, because
+ * that page is what a stranger sees and owes nothing to who is logged in. The
+ * gate still covers everything the password actually unlocks.
+ *
+ * Still absent, waiting on R3: /events/:id/registrations.
  */
 export function AppRoutes() {
   return (
     <Routes>
       <Route element={<Layout />}>
+        {/* THE PUBLIC FACE. No session, no gate, no guard — see the note
+            above on why these sit outside MustChangePassword. */}
+        <Route index element={<Home />} />
+        <Route path="/agenda" element={<Agenda />} />
+        <Route path="/band" element={<Band />} />
+        <Route path="/committee" element={<Committee />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/join" element={<Join />} />
+        <Route path="/contact" element={<Contact />} />
+
         <Route element={<MustChangePassword />}>
           <Route path="/login" element={<Login />} />
           <Route path="/account" element={<Account />} />

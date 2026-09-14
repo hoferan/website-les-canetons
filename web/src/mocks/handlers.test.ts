@@ -8,6 +8,7 @@ import {
   contactStore,
 } from "../api/generated/endpoints";
 import { ApiError } from "../api/http";
+import { publicWriteHeaders } from "../api/publicWrite";
 import { setMockUser } from "./handlers";
 
 /**
@@ -87,17 +88,24 @@ test("GET /me reports whoever setMockUser logged in", async () => {
 // failure tests in Contact.test.tsx replace the handler outright, so nothing
 // else exercised it.
 test("POST /contact rejects a missing field the way the real API does", async () => {
-  const error = (await contactStore({
-    lastName: "Canard",
-    firstName: "Donald",
-    email: "donald@example.com",
-    subject: "",
-    message: "Coin",
-    // The honeypot. Present and empty is what a person's browser sends; the
-    // generated type now requires it, which is the point — a client that
-    // omits it used to compile and then 422 on every submission.
-    website: "",
-  }).catch((thrown: unknown) => thrown)) as ApiError;
+  const error = (await contactStore(
+    {
+      lastName: "Canard",
+      firstName: "Donald",
+      email: "donald@example.com",
+      subject: "",
+      message: "Coin",
+      // The honeypot. Present and empty is what a person's browser sends; the
+      // generated type now requires it, which is the point — a client that
+      // omits it used to compile and then 422 on every submission.
+      website: "",
+      // THE GUARD RUNS BEFORE VALIDATION, so a bare POST never reaches the
+      // missing-field branch this test is about — it is refused as automated
+      // first. That ordering is not a detail of the mock: `npm run smoke`
+      // asserted a 400 here for a week and was getting the 422.
+    },
+    publicWriteHeaders("mock-form-token", "handlers-test-idempotency-key"),
+  ).catch((thrown: unknown) => thrown)) as ApiError;
 
   expect(error).toBeInstanceOf(ApiError);
   // 400, not Laravel's default 422: every validation failure in this API goes
@@ -105,6 +113,28 @@ test("POST /contact rejects a missing field the way the real API does", async ()
   expect(error.status).toBe(400);
   expect(error.code).toBe("validation_failed");
   expect(error.fields).toEqual([{ field: "subject", reason: "required" }]);
+});
+
+/**
+ * The other half of that ordering, pinned so the mock cannot quietly start
+ * validating first and let a screen ship having never sent a form token.
+ */
+test("POST /contact refuses a submission with no form token before it validates", async () => {
+  const error = (await contactStore({
+    lastName: "",
+    firstName: "",
+    email: "",
+    subject: "",
+    message: "",
+    website: "",
+  }).catch((thrown: unknown) => thrown)) as ApiError;
+
+  expect(error).toBeInstanceOf(ApiError);
+  expect(error.status).toBe(422);
+  expect(error.code).toBe("spam_suspected");
+  // Five empty required fields, and not one of them is named: a script must
+  // not learn which check it tripped.
+  expect(error.fields).toEqual([]);
 });
 
 test("logging in as an unknown username is refused, not a crash", async () => {
