@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BandController;
 use App\Http\Controllers\Api\CommitteeController;
+use App\Http\Controllers\Api\CommitteeFunctionController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\EventController;
@@ -115,6 +116,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // R2's public band page can widen it when it has a second one.
         Route::get('/sections', [SectionController::class, 'index']);
         Route::get('/roles', [RoleController::class, 'index']);
+
+        // The committee's seats. Gated with the other two rather than made
+        // public alongside /committee: that page projects a member down to a
+        // name and a heading, and the reference table is the roster form's
+        // business.
+        Route::get('/committee-functions', [CommitteeFunctionController::class, 'index']);
 
         // The roster. Everyone associated with the band, account or not — one
         // roster (design §8), so a person with no credentials is listed here

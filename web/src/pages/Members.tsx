@@ -17,6 +17,7 @@ import {
   memberRoleReplace,
   memberShow,
   memberUpdate,
+  useCommitteeFunctionIndex,
   useMemberIndex,
   useMemberPasswordReset,
   useMemberStore,
@@ -24,6 +25,7 @@ import {
   useSectionIndex,
 } from "../api/generated/endpoints";
 import type {
+  CommitteeFunctionResource,
   MemberResource,
   RoleResource,
   SectionResource,
@@ -64,6 +66,7 @@ import { MemberForm, type MemberDraft } from "../members/MemberForm";
 export function Members() {
   const roster = useMemberIndex();
   const sections = useSectionIndex();
+  const committeeFunctions = useCommitteeFunctionIndex();
   const roles = useRoleIndex();
 
   const queryClient = useQueryClient();
@@ -130,6 +133,7 @@ export function Members() {
   const members = rowsOf<MemberResource>(roster.data);
   const rosterCount = totalOf(roster.data);
   const sectionList = rowsOf<SectionResource>(sections.data);
+  const committeeFunctionList = rowsOf<CommitteeFunctionResource>(committeeFunctions.data);
   const roleList = rowsOf<RoleResource>(roles.data);
 
   const labelForRole = (id: number) => {
@@ -202,7 +206,7 @@ export function Members() {
       lastName: draft.lastName,
       username: draft.username,
       sectionId: draft.sectionId,
-      committeeTitle: draft.committeeTitle === "" ? null : draft.committeeTitle,
+      committeeFunctionId: draft.committeeFunctionId,
       instructorOfSectionId: draft.instructorOfSectionId,
       publicVisible: draft.publicVisible,
     };
@@ -331,6 +335,7 @@ export function Members() {
           key={editing.member?.id ?? "new"}
           member={editing.member}
           sections={sectionList}
+          committeeFunctions={committeeFunctionList}
           roles={roleList}
           busy={create.isPending || update.isPending || replaceRoles.isPending}
           error={form.error}

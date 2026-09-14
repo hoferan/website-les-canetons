@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
@@ -80,7 +81,7 @@ class MemberIndexTest extends TestCase
             ->inSection($section)
             ->publiclyVisible()
             ->committee()
-            ->create(['committee_title' => 'Présidente']);
+            ->create(['committee_function_id' => CommitteeFunction::where('name', 'Présidente')->sole()->id]);
 
         $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
         $camille = collect($body)->firstWhere('lastName', 'Committee');
@@ -91,9 +92,17 @@ class MemberIndexTest extends TestCase
         $this->assertSame($section->id, $camille['sectionId']);
         $this->assertSame('Cloches', $camille['sectionName']);
         $this->assertTrue($camille['isPlayer']);
-        // committee_title is text a person typed, so it is stored and rendered
-        // verbatim — never translated. Contrast a role's name, which is a key.
-        $this->assertSame('Présidente', $camille['committeeTitle']);
+        // THE ID, NOT THE NAME. The roster form renders a select over
+        // GET /api/v1/committee-functions, so it resolves the name itself; a
+        // `committeeFunctionName` here would be a second copy of the same fact
+        // that nothing reads, and App\Support\EntityTag hashes this rendered
+        // resource — so it would also move every committee member's tag
+        // whenever somebody fixed a typo in a seat name, refusing roster edits
+        // that were open at the time.
+        $this->assertSame(
+            CommitteeFunction::where('name', 'Présidente')->sole()->id,
+            $camille['committeeFunctionId'],
+        );
         $this->assertTrue($camille['publicVisible']);
         $this->assertFalse($camille['mustChangePassword']);
         $this->assertSame([$role->id], $camille['roleIds']);

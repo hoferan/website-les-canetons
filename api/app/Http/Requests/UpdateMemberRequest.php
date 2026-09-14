@@ -73,8 +73,8 @@ class UpdateMemberRequest extends FormRequest
 
             /** The register the member plays in, from `GET /api/v1/sections`. Send `null` to take them out of every register, which also takes them off attendance lists. */
             'sectionId' => ['sometimes', 'nullable', 'integer', 'exists:sections,id'],
-            /** The member's function on the committee. Send `null` to clear it. */
-            'committeeTitle' => ['sometimes', 'nullable', 'string', 'max:255'],
+            /** The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Send `null` to take them off the committee. */
+            'committeeFunctionId' => ['sometimes', 'nullable', 'integer', 'exists:committee_functions,id'],
             /** The register this member instructs, if any. Send `null` to clear it. */
             'instructorOfSectionId' => ['sometimes', 'nullable', 'integer', 'exists:sections,id'],
             /** Whether the member's name may appear on the public site. */

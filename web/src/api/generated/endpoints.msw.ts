@@ -315,6 +315,7 @@ import type {
   AuthLogout200,
   AuthMe200,
   BandIndex200,
+  CommitteeFunctionIndex200,
   CommitteeIndex200,
   ConfigShow200,
   ContactStore200,
@@ -858,6 +859,18 @@ export const getRoleIndexResponseMock = (
   ...overrideResponse,
 });
 
+export const getCommitteeFunctionIndexResponseMock = (
+  overrideResponse: Partial<Extract<CommitteeFunctionIndex200, object>> = {},
+): CommitteeFunctionIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    sortOrder: faker.number.int(),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
 export const getMemberIndexResponseMock = (
   overrideResponse: Partial<Extract<MemberIndex200, object>> = {},
 ): MemberIndex200 => ({
@@ -877,10 +890,7 @@ export const getMemberIndexResponseMock = (
       null,
     ]),
     isPlayer: faker.datatype.boolean(),
-    committeeTitle: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
+    committeeFunctionId: faker.helpers.arrayElement([faker.number.int(), null]),
     instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
     publicVisible: faker.datatype.boolean(),
     roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
@@ -910,10 +920,7 @@ export const getMemberStoreResponseMock = (
       null,
     ]),
     isPlayer: faker.datatype.boolean(),
-    committeeTitle: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
+    committeeFunctionId: faker.helpers.arrayElement([faker.number.int(), null]),
     instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
     publicVisible: faker.datatype.boolean(),
     roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
@@ -942,10 +949,7 @@ export const getMemberShowResponseMock = (
     null,
   ]),
   isPlayer: faker.datatype.boolean(),
-  committeeTitle: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
+  committeeFunctionId: faker.helpers.arrayElement([faker.number.int(), null]),
   instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
   publicVisible: faker.datatype.boolean(),
   roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
@@ -972,10 +976,7 @@ export const getMemberUpdateResponseMock = (
     null,
   ]),
   isPlayer: faker.datatype.boolean(),
-  committeeTitle: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
+  committeeFunctionId: faker.helpers.arrayElement([faker.number.int(), null]),
   instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
   publicVisible: faker.datatype.boolean(),
   roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() =>
@@ -1011,10 +1012,7 @@ export const getMemberRoleReplaceResponseMock = (
       null,
     ]),
     isPlayer: faker.datatype.boolean(),
-    committeeTitle: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
+    committeeFunctionId: faker.helpers.arrayElement([faker.number.int(), null]),
     instructorOfSectionId: faker.helpers.arrayElement([faker.number.int(), null]),
     publicVisible: faker.datatype.boolean(),
     roleIds: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
@@ -1078,7 +1076,7 @@ export const getCommitteeIndexResponseMock = (
     id: faker.number.int(),
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    title: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    function: faker.string.alpha({ length: { min: 10, max: 20 } }),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1735,6 +1733,30 @@ export const getRoleIndexMockHandler = (
   );
 };
 
+export const getCommitteeFunctionIndexMockHandler = (
+  overrideResponse?:
+    | CommitteeFunctionIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<CommitteeFunctionIndex200> | CommitteeFunctionIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/committee-functions",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getCommitteeFunctionIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getMemberIndexMockHandler = (
   overrideResponse?:
     | MemberIndex200
@@ -2073,6 +2095,7 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationOptionReplaceMockHandler(),
   getSectionIndexMockHandler(),
   getRoleIndexMockHandler(),
+  getCommitteeFunctionIndexMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),
   getMemberShowMockHandler(),

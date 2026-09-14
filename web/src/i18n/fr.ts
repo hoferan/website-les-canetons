@@ -132,7 +132,7 @@ export const fr = {
     registrationClosesAt: "Clôture des inscriptions",
     registrationMaxGuests: "Personnes par inscription",
     sectionId: "Pupitre",
-    committeeTitle: "Fonction au comité",
+    committeeFunctionId: "Fonction au comité",
     instructorOfSectionId: "Moniteur du pupitre",
     publicVisible: "Visible publiquement",
     roleIds: "Rôles",

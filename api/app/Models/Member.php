@@ -42,7 +42,7 @@ class Member extends Authenticatable
         'username',
         'password',
         'must_change_password',
-        'committee_title',
+        'committee_function_id',
         'instructor_of_section_id',
         'public_visible',
     ];
@@ -63,6 +63,20 @@ class Member extends Authenticatable
     public function section(): BelongsTo
     {
         return $this->belongsTo(Section::class);
+    }
+
+    /**
+     * The seat this person holds on the committee, if any.
+     *
+     * Null is the ordinary answer — most of the band sit on no committee — and
+     * it is also what puts somebody on the public /committee page or keeps
+     * them off it.
+     *
+     * @return BelongsTo<CommitteeFunction, $this>
+     */
+    public function committeeFunction(): BelongsTo
+    {
+        return $this->belongsTo(CommitteeFunction::class);
     }
 
     public function fullName(): string

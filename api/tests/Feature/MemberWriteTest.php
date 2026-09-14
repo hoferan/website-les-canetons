@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AuditEntry;
+use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
@@ -47,6 +48,17 @@ class MemberWriteTest extends TestCase
         return Section::where('name', $name)->sole();
     }
 
+    /**
+     * A committee seat BY NAME. Every one of the eight is already in a fresh
+     * test database — 2026_09_14_000001 seeds them as reference data and
+     * RefreshDatabase runs it — so a test that created its own would be
+     * asserting against a ninth seat nobody has.
+     */
+    private function seat(string $name): CommitteeFunction
+    {
+        return CommitteeFunction::where('name', $name)->sole();
+    }
+
     /** @return array<string, mixed> */
     private function payload(array $overrides = []): array
     {
@@ -65,7 +77,7 @@ class MemberWriteTest extends TestCase
 
         $body = $this->acting()->postJson('/api/v1/members', $this->payload([
             'sectionId' => $section->id,
-            'committeeTitle' => 'Présidente',
+            'committeeFunctionId' => $this->seat('Présidente')->id,
             'publicVisible' => true,
         ]))->assertCreated()->json();
 
@@ -73,7 +85,7 @@ class MemberWriteTest extends TestCase
 
         $this->assertSame('Perrine', $body['member']['firstName']);
         $this->assertSame($section->id, $member->section_id);
-        $this->assertSame('Présidente', $member->committee_title);
+        $this->assertSame($this->seat('Présidente')->id, $member->committee_function_id);
         $this->assertTrue($member->public_visible);
         $this->assertSame([], $member->roles->pluck('id')->all());
     }
@@ -155,6 +167,26 @@ class MemberWriteTest extends TestCase
             ->assertJsonPath('errors.0.reason', 'already_taken');
     }
 
+    public function test_a_seat_that_does_not_exist_is_refused(): void
+    {
+        // A GUARD THE FREE-TEXT COLUMN COULD NOT HAVE. Anything at all was a
+        // valid committee title, so a typo was published and nothing anywhere
+        // could tell. Now the field names a row, and a seat that does not exist
+        // is a refusal rather than a card on the public page reading
+        // "Prsidente".
+        //
+        // `invalid_format` rather than a token of its own, and that is
+        // ApiError's standing decision about `exists` rather than a choice made
+        // here: the only way to reach it is a stale form holding a seat
+        // somebody has since deleted, which the user fixes by reloading.
+        // `sectionId` answers the same way.
+        $this->acting()->postJson('/api/v1/members', $this->payload(['committeeFunctionId' => 9999]))
+            ->assertStatus(400)
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('errors.0.field', 'committeeFunctionId')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
+    }
+
     public function test_a_missing_name_is_a_validation_failure_not_a_500(): void
     {
         $this->acting()->postJson('/api/v1/members', ['username' => 'x.y', 'publicVisible' => false])
@@ -183,7 +215,7 @@ class MemberWriteTest extends TestCase
             ->named('Perrine', 'Player')
             ->inSection($this->section())
             ->publiclyVisible()
-            ->create(['committee_title' => 'Caissière']);
+            ->create(['committee_function_id' => $this->seat('Responsable caisse')->id]);
 
         $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", ['lastName' => 'Joueuse'])
             ->assertOk();
@@ -192,7 +224,7 @@ class MemberWriteTest extends TestCase
         $this->assertSame('Joueuse', $member->last_name);
         $this->assertSame('Perrine', $member->first_name);
         $this->assertSame('perrine.player', $member->username);
-        $this->assertSame('Caissière', $member->committee_title);
+        $this->assertSame($this->seat('Responsable caisse')->id, $member->committee_function_id);
         $this->assertTrue($member->public_visible);
         $this->assertNotNull($member->section_id);
     }
@@ -205,16 +237,16 @@ class MemberWriteTest extends TestCase
         $member = Member::factory()
             ->named('Perrine', 'Player')
             ->inSection($this->section())
-            ->create(['committee_title' => 'Caissière']);
+            ->create(['committee_function_id' => $this->seat('Responsable caisse')->id]);
 
         $this->acting()->withHeaders($this->ifMatch('member', $member))->patchJson("/api/v1/members/{$member->id}", [
             'sectionId' => null,
-            'committeeTitle' => null,
+            'committeeFunctionId' => null,
         ])->assertOk();
 
         $member->refresh();
         $this->assertNull($member->section_id);
-        $this->assertNull($member->committee_title);
+        $this->assertNull($member->committee_function_id);
     }
 
     public function test_updating_a_person_keeps_their_own_username(): void

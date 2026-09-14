@@ -70,8 +70,8 @@ class StoreMemberRequest extends FormRequest
 
             /** The register the member plays in, from `GET /api/v1/sections`. Null for somebody who organises but does not play; they are then never listed for attendance. */
             'sectionId' => ['nullable', 'integer', 'exists:sections,id'],
-            /** The member's function on the committee, shown on the public committee page. Free text, null for most members. */
-            'committeeTitle' => ['nullable', 'string', 'max:255'],
+            /** The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Null for most members, who hold none and do not appear on the public committee page. */
+            'committeeFunctionId' => ['nullable', 'integer', 'exists:committee_functions,id'],
             /** The register this member instructs, if any. Separate from `sectionId`: an instructor need not play in the register they teach. */
             'instructorOfSectionId' => ['nullable', 'integer', 'exists:sections,id'],
 

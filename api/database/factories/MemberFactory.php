@@ -55,7 +55,7 @@ class MemberFactory extends Factory
             // false. The factory agrees rather than quietly differing.
             'public_visible' => false,
             'section_id' => null,
-            'committee_title' => null,
+            'committee_function_id' => null,
             'instructor_of_section_id' => null,
         ];
     }

@@ -337,6 +337,8 @@ import type {
   AuthMe200,
   BandIndex200,
   BandIndexParams,
+  CommitteeFunctionIndex200,
+  CommitteeFunctionIndexParams,
   CommitteeIndex200,
   CommitteeIndexParams,
   ConfigShow200,
@@ -5132,6 +5134,192 @@ export function useRoleIndex<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type committeeFunctionIndexResponse200 = {
+  data: CommitteeFunctionIndex200;
+  status: 200;
+};
+
+export type committeeFunctionIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type committeeFunctionIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type committeeFunctionIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type committeeFunctionIndexResponseSuccess = committeeFunctionIndexResponse200 & {
+  headers: Headers;
+};
+export type committeeFunctionIndexResponseError = (
+  | committeeFunctionIndexResponse401
+  | committeeFunctionIndexResponse403
+  | committeeFunctionIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type committeeFunctionIndexResponse =
+  committeeFunctionIndexResponseSuccess | committeeFunctionIndexResponseError;
+
+export const getCommitteeFunctionIndexUrl = (params?: CommitteeFunctionIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/committee-functions?${stringifiedParams}`
+    : `/committee-functions`;
+};
+
+/**
+ * Requires `members.manage`. Read-only reference data, for a client
+ * building the roster form.
+ *
+ * Returns every seat with its name and its rank, in rank order. A member
+ * holding one appears on the public committee page under that heading;
+ * a member holding none does not appear there at all.
+ * @summary List the committee's seats
+ */
+export const committeeFunctionIndex = async (
+  params?: CommitteeFunctionIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<committeeFunctionIndexResponse> => {
+  return customFetch<committeeFunctionIndexResponse>(getCommitteeFunctionIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCommitteeFunctionIndexQueryKey = (params?: CommitteeFunctionIndexParams) => {
+  return [`/committee-functions`, ...(params ? [params] : [])] as const;
+};
+
+export const getCommitteeFunctionIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCommitteeFunctionIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof committeeFunctionIndex>>> = ({ signal }) =>
+    committeeFunctionIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof committeeFunctionIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type CommitteeFunctionIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof committeeFunctionIndex>>
+>;
+export type CommitteeFunctionIndexQueryError =
+  Problem401Response | Problem403Response | Problem503Response;
+
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params: undefined | CommitteeFunctionIndexParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeFunctionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeFunctionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeFunctionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeFunctionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the committee's seats
+ */
+
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getCommitteeFunctionIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type memberIndexResponse200 = {
   data: MemberIndex200;
   status: 200;
@@ -5355,7 +5543,7 @@ export const getMemberStoreUrl = () => {
 /**
  * Requires `members.manage`. Creating a person creates their account:
  * every member has one. Send `firstName`, `lastName`, `username` and
- * `publicVisible`, and optionally `sectionId`, `committeeTitle` and
+ * `publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
  * `instructorOfSectionId`.
  *
  * Answers `201` with `member` and `generatedPassword`, a readable password
@@ -5728,7 +5916,7 @@ export const getMemberUpdateUrl = (member: number) => {
 /**
  * Requires `members.manage`. Send only the fields that change: an omitted
  * field is left alone, and an explicit `null` clears an optional one such
- * as the register or the committee title. Returns the updated member.
+ * as the register or the committee seat. Returns the updated member.
  *
  * Roles and passwords are not editable here. They are
  * `PUT /api/v1/members/{member}/roles` and
@@ -6798,10 +6986,11 @@ export const getCommitteeIndexUrl = (params?: CommitteeIndexParams) => {
 
 /**
  * Anonymous. Returns everyone holding a committee seat who has consented
- * to appear, with the title they hold.
+ * to appear, in the band's own rank order, with the name of the seat they
+ * hold.
  *
- * The title is free text the committee typed, so it is rendered verbatim
- * and is never translated.
+ * The seat name is content the committee maintains, so it is rendered
+ * verbatim and is never translated.
  * @summary List the committee
  */
 export const committeeIndex = async (

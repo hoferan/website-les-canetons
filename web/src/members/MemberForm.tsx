@@ -2,7 +2,12 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
-import type { MemberResource, RoleResource, SectionResource } from "../api/generated/model";
+import type {
+  CommitteeFunctionResource,
+  MemberResource,
+  RoleResource,
+  SectionResource,
+} from "../api/generated/model";
 import { FormError, FormField } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
 import { roleHint, roleLabel } from "../i18n";
@@ -12,7 +17,7 @@ export type MemberDraft = {
   lastName: string;
   username: string;
   sectionId: number | null;
-  committeeTitle: string;
+  committeeFunctionId: number | null;
   instructorOfSectionId: number | null;
   publicVisible: boolean;
   roleIds: number[];
@@ -25,7 +30,7 @@ export function draftFrom(member: MemberResource | null): MemberDraft {
     lastName: member?.lastName ?? "",
     username: member?.username ?? "",
     sectionId: member?.sectionId ?? null,
-    committeeTitle: member?.committeeTitle ?? "",
+    committeeFunctionId: member?.committeeFunctionId ?? null,
     instructorOfSectionId: member?.instructorOfSectionId ?? null,
     publicVisible: member?.publicVisible ?? false,
     roleIds: member?.roleIds ?? [],
@@ -67,6 +72,7 @@ export function draftFrom(member: MemberResource | null): MemberDraft {
 export function MemberForm({
   member,
   sections,
+  committeeFunctions,
   roles,
   busy,
   error,
@@ -76,6 +82,7 @@ export function MemberForm({
 }: {
   member: MemberResource | null;
   sections: SectionResource[];
+  committeeFunctions: CommitteeFunctionResource[];
   roles: RoleResource[];
   busy: boolean;
   error: TranslatedError | null;
@@ -161,13 +168,37 @@ export function MemberForm({
         </select>
       </div>
 
-      <FormField
-        id="committeeTitle"
-        label="Fonction au comité"
-        value={draft.committeeTitle}
-        onChange={(value) => set("committeeTitle", value)}
-        problem={problemFor("committeeTitle")}
-      />
+      {/* A SELECT SINCE 2026-09-14, and it was free text before that. Three
+          things went wrong with typing it: a typo reached a page the band hands
+          out, nothing beside the text ranked the seats so /committee could only
+          sort alphabetically, and a typed name is content no translation layer
+          can ever reach. The list is reference data on the same rung as the
+          registers, which is why this renders exactly like the two selects
+          around it. */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="committeeFunctionId">Fonction au comité</label>
+        <select
+          id="committeeFunctionId"
+          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          value={draft.committeeFunctionId ?? ""}
+          onChange={(event) =>
+            set(
+              "committeeFunctionId",
+              event.target.value === "" ? null : Number(event.target.value),
+            )
+          }
+        >
+          {/* Empty is the ordinary answer: most of the band sit on no
+              committee, and holding no seat is what keeps them off the public
+              committee page. */}
+          <option value="">Aucune fonction</option>
+          {committeeFunctions.map((seat) => (
+            <option key={seat.id} value={seat.id}>
+              {seat.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* A SECOND REGISTER FIELD, and it is not a duplicate of the one above.
           `sectionId` is where somebody PLAYS and is what makes them answerable

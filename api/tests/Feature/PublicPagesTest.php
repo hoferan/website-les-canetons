@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Section;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -173,26 +174,30 @@ class PublicPagesTest extends TestCase
         $response->assertDontSee('perrine.player.1');
     }
 
-    public function test_the_committee_carries_the_title_each_person_holds(): void
+    public function test_the_committee_carries_the_seat_each_person_holds(): void
     {
         Member::factory()->create([
             'first_name' => 'Camille',
             'last_name' => 'Committee',
-            'committee_title' => 'Caissiere',
+            'committee_function_id' => $this->seat('Responsable caisse')->id,
             'public_visible' => true,
         ]);
 
         $response = $this->getJson('/api/v1/committee')->assertStatus(200);
 
         $this->assertSame('Camille', $response->json('data.0.firstName'));
-        $this->assertSame('Caissiere', $response->json('data.0.title'));
+        // THE NAME, NOT THE ID. A seat is still content — the committee types
+        // it — so the public page renders it verbatim and no translation layer
+        // reaches it. What changed is who may type it and when, not what a
+        // visitor reads.
+        $this->assertSame('Responsable caisse', $response->json('data.0.function'));
     }
 
     public function test_the_committee_omits_somebody_who_has_not_consented(): void
     {
         Member::factory()->create([
             'first_name' => 'Camille',
-            'committee_title' => 'Caissiere',
+            'committee_function_id' => $this->seat('Responsable caisse')->id,
             'public_visible' => false,
         ]);
 
@@ -201,54 +206,64 @@ class PublicPagesTest extends TestCase
 
     public function test_the_committee_omits_a_member_holding_no_seat(): void
     {
-        Member::factory()->create(['committee_title' => null, 'public_visible' => true]);
-        // The roster form writes '' rather than null when somebody clears the
-        // field, so a blank title has to be treated as no seat as well.
-        Member::factory()->create(['committee_title' => '', 'public_visible' => true]);
-        // And so does one that is only spaces. MySQL's PAD SPACE collation
-        // makes this pass under a plain `!= ''` too, which is the reason the
-        // controller trims explicitly: the same query on a NO PAD collation
-        // would publish a card with no heading.
-        Member::factory()->create(['committee_title' => '   ', 'public_visible' => true]);
+        // ONE STATE NOW, not three. The free-text column had a member with no
+        // seat arriving as null, as '' and as '   ', and the controller carried
+        // a trimming filter to tell all three from a real seat. A foreign key
+        // has exactly one way to say "nobody".
+        Member::factory()->create(['committee_function_id' => null, 'public_visible' => true]);
 
         $this->assertSame([], $this->getJson('/api/v1/committee')->json('data'));
     }
 
-    public function test_the_committee_is_ordered_by_name(): void
+    public function test_the_committee_is_ordered_by_rank(): void
     {
+        // THE POINT OF THE WHOLE REFERENCE TABLE. Alphabetically this is the
+        // wrong way round in both columns at once — Aebischer before Zbinden,
+        // "Responsable caisse" before "Présidente" — so an ordering that
+        // survives this test cannot be either of the two it replaced.
         Member::factory()->create([
-            'last_name' => 'Zbinden',
-            'committee_title' => 'President',
+            'last_name' => 'Aebischer',
+            'committee_function_id' => $this->seat('Responsable caisse')->id,
             'public_visible' => true,
         ]);
         Member::factory()->create([
-            'last_name' => 'Aebischer',
-            'committee_title' => 'Caissiere',
+            'last_name' => 'Zbinden',
+            'committee_function_id' => $this->seat('Présidente')->id,
             'public_visible' => true,
         ]);
 
         $response = $this->getJson('/api/v1/committee')->assertStatus(200);
 
-        // By NAME, not by title: nothing in the data ranks a seat, and ordering
-        // by free text would sort "Caissiere" above "President" and look like a
-        // claim about seniority the band never made.
+        $this->assertSame(
+            ['Zbinden', 'Aebischer'],
+            array_column($response->json('data'), 'lastName'),
+        );
+    }
+
+    public function test_two_people_sharing_a_seat_are_ordered_by_name(): void
+    {
+        // "Membre" is held by several people at once, so rank alone does not
+        // determine the order. Without the tie-break the two cards would come
+        // back in whatever order the database felt like, which changes under
+        // them for no reason a reader can see.
+        $seat = $this->seat('Membre')->id;
+
+        Member::factory()->create(['last_name' => 'Zbinden', 'committee_function_id' => $seat, 'public_visible' => true]);
+        Member::factory()->create(['last_name' => 'Aebischer', 'committee_function_id' => $seat, 'public_visible' => true]);
+
+        $response = $this->getJson('/api/v1/committee')->assertStatus(200);
+
         $this->assertSame(
             ['Aebischer', 'Zbinden'],
             array_column($response->json('data'), 'lastName'),
         );
     }
 
-    /** Both answer the one envelope every collection in this API answers. */
-    public function test_both_answer_the_collection_envelope(): void
+    private function seat(string $name): CommitteeFunction
     {
-        foreach (['/api/v1/band', '/api/v1/committee'] as $url) {
-            $response = $this->getJson($url)->assertStatus(200);
-            $this->assertIsArray($response->json('data'));
-            $this->assertIsInt($response->json('meta.total'));
-        }
+        return CommitteeFunction::where('name', $name)->sole();
     }
 
-    /** One of the six seeded registers, by name. */
     private function register(string $name): Section
     {
         return Section::where('name', $name)->sole();

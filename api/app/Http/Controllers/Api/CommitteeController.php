@@ -19,41 +19,40 @@ class CommitteeController extends Controller
      * List the committee.
      *
      * Anonymous. Returns everyone holding a committee seat who has consented
-     * to appear, with the title they hold.
+     * to appear, in the band's own rank order, with the name of the seat they
+     * hold.
      *
-     * The title is free text the committee typed, so it is rendered verbatim
-     * and is never translated.
+     * The seat name is content the committee maintains, so it is rendered
+     * verbatim and is never translated.
      */
     #[Endpoint(operationId: 'committee.index')]
     public function index(): AnonymousResourceCollection
     {
-        // ORDERED BY NAME, NOT BY TITLE, and that is a decision rather than a
-        // default. A committee has a conventional hierarchy — président first,
-        // then vice-président, then the rest — but nothing in the data says so:
-        // `committee_title` is free text with no rank beside it. Ordering by it
-        // would sort "Caissier" above "Président" and look like a claim about
-        // seniority that the band never made, and hardcoding a list of titles
-        // in PHP would make a developer the owner of something the committee
-        // types (design §3.1, the editability ladder). Alphabetical is the
-        // honest answer until a rank column exists.
+        // ORDERED BY RANK, then by name. Until 2026-09-14 this was ordered by
+        // name alone and carried a long comment saying why it had to be: a seat
+        // was free text on the member row with nothing beside it ranking one
+        // above another, so the page printed the caissière above the présidente
+        // and sorting by the text itself would have been a claim about
+        // seniority the band never made. `committee_functions.sort_order` is
+        // that missing fact, which is the whole reason the table exists.
         //
-        // A BLANK `committee_title` IS NO SEAT, not a seat with a blank name:
-        // the roster form writes '' rather than null when somebody clears the
-        // field, and a card headed by nothing above a member's name is worse
-        // than their absence.
+        // The name tie-break is not decoration: several people hold "Membre" at
+        // once, and without it their cards reorder themselves between two
+        // requests for no reason a reader can see.
         //
-        // TRIM rather than `!= ''`, and the difference is a collation. MySQL's
-        // PAD SPACE collations already treat '   ' as equal to '', so the
-        // simpler comparison happens to work on this database and would stop
-        // working on one built with a NO PAD collation — which is the default
-        // for utf8mb4_0900_* on MySQL 8. Depending on that silently is how a
-        // filter comes apart on a server nobody tested against.
+        // THE TRIM FILTER IS GONE WITH THE COLUMN. A typed title had three ways
+        // to say "no seat" — null, '', and '   ' — and the last two survived a
+        // plain `!= ''` only because MySQL's PAD SPACE collation says so, which
+        // would have stopped being true on a NO PAD database. A foreign key has
+        // one way to say nobody.
         $committee = Member::query()
-            ->where('public_visible', true)
-            ->whereNotNull('committee_title')
-            ->whereRaw('TRIM(committee_title) != ?', [''])
-            ->orderBy('last_name')
-            ->orderBy('first_name')
+            ->select('members.*')
+            ->with('committeeFunction')
+            ->join('committee_functions', 'committee_functions.id', '=', 'members.committee_function_id')
+            ->where('members.public_visible', true)
+            ->orderBy('committee_functions.sort_order')
+            ->orderBy('members.last_name')
+            ->orderBy('members.first_name')
             ->get();
 
         return CommitteeMemberResource::collection($committee);

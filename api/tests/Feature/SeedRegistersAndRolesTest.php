@@ -29,9 +29,10 @@ class SeedRegistersAndRolesTest extends TestCase
 
         // The band's own order, recovered from the pre-rebuild /canetons page.
         // "Direction" was listed there too and is NOT a register: a musical
-        // director is a member with a committee_title, or one whose
-        // instructor_of_section_id points at the register they teach. Putting
-        // it here would make it selectable as somebody's instrument.
+        // director is a member holding the "Responsable Team Direction" seat in
+        // committee_functions, or one whose instructor_of_section_id points at
+        // the register they teach. Putting it here would make it selectable as
+        // somebody's instrument.
         $this->assertSame([
             'Batteurs',
             'Grosses-caisses',
