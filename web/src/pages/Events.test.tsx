@@ -8,7 +8,9 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Events } from "./Events";
 
-async function renderPlanning(as: "demo.player" | "demo.direction" = "demo.player") {
+async function renderPlanning(
+  as: "demo.player" | "demo.direction" | "demo.committee" = "demo.player",
+) {
   setMockUser(as);
   const result = await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
@@ -371,4 +373,53 @@ test("a narrowed planning says so at every width, and can be widened again", asy
   await userEvent.click(screen.getByRole("button", { name: "Voir tout le planning" }));
   await expect.poll(() => screen.queryByTestId("day-filter")).toBeNull();
   await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(6);
+});
+
+/* ---------------------------------------------------------------------------
+ * The way in to R3's two committee screens
+ * -------------------------------------------------------------------------- */
+
+/**
+ * MUTATION TEST: drop `event.takesRegistrations` from the condition and this
+ * fails. The planning is mostly rehearsals, and every one of their cards would
+ * otherwise carry a link to a guest list that can never fill up.
+ */
+test("offers the guest list only on an event that takes bookings", async () => {
+  await renderPlanning("demo.direction");
+
+  expect(screen.getByRole("link", { name: "Inscriptions à Souper de soutien" })).toHaveAttribute(
+    "href",
+    "/events/7/registrations",
+  );
+  expect(screen.queryByRole("link", { name: /^Inscriptions à Répétition/ })).toBeNull();
+});
+
+/**
+ * The options editor, unlike the guest list, belongs on EVERY card: an event
+ * that takes no bookings yet is exactly when the committee fills it in.
+ */
+test("offers the options editor on every event, bookable or not", async () => {
+  await renderPlanning("demo.direction");
+
+  expect(
+    screen.getByRole("link", { name: "Ce qui peut être réservé à Souper de soutien" }),
+  ).toHaveAttribute("href", "/events/7/registration-options");
+  expect(
+    screen.getAllByRole("link", { name: /^Ce qui peut être réservé à Répétition/ }).length,
+  ).toBeGreaterThan(0);
+});
+
+/**
+ * `registrations.view` is ALL the `committee` role holds. It opens the guest
+ * list and nothing else — no event form, no chase list, no options editor.
+ */
+test("a guest-list reader gets that link and no other", async () => {
+  await renderPlanning("demo.committee");
+
+  expect(
+    screen.getByRole("link", { name: "Inscriptions à Souper de soutien" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /^Ce qui peut être réservé/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /^Modifier/ })).toBeNull();
+  expect(screen.queryByRole("link", { name: /^Qui vient/ })).toBeNull();
 });

@@ -11,6 +11,8 @@ import { Contact } from "./pages/Contact";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventBooking } from "./pages/EventBooking";
 import { EventEdit } from "./pages/EventEdit";
+import { EventRegistrationOptions } from "./pages/EventRegistrationOptions";
+import { EventRegistrations } from "./pages/EventRegistrations";
 import { EventNew } from "./pages/EventNew";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
@@ -108,6 +110,13 @@ export function AppRoutes() {
             <Route path="/events/new" element={<EventNew />} />
             <Route path="/events/new/series" element={<EventSeriesNew />} />
             <Route path="/events/:id/edit" element={<EventEdit />} />
+
+            {/* What the event OFFERS, which is part of the event — hence
+                `events.manage` and not a registration permission. It writes on
+                its own entity-tag facet, `event.options`, so correcting a
+                dress code cannot refuse a pending options edit and changing an
+                option cannot slip past one. */}
+            <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
           </Route>
 
           {/* The chase list. A SEPARATE PERMISSION from managing events:
@@ -116,6 +125,15 @@ export function AppRoutes() {
               real — this guard only mirrors it. */}
           <Route element={<RequirePermission permission="attendance.view_all" />}>
             <Route path="/events/:id/attendance" element={<EventAttendance />} />
+          </Route>
+
+          {/* The guest list. `registrations.view` is ALL the `committee` role
+              holds, so this route is guarded on it and nothing more — the
+              amend and cancel controls inside answer to `registrations.manage`
+              instead, which is a different act on somebody else's personal
+              data and a different set of people. */}
+          <Route element={<RequirePermission permission="registrations.view" />}>
+            <Route path="/events/:id/registrations" element={<EventRegistrations />} />
           </Route>
 
           <Route element={<RequirePermission permission="members.manage" />}>

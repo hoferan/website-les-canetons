@@ -97,6 +97,7 @@ export function Events() {
   // something baked into a bundle three environments share.
   const calendarEnabled = config.features?.calendar === true;
   const maySeeAnswers = can("attendance.view_all");
+  const maySeeGuests = can("registrations.view");
 
   // Applied BEFORE the split, so a chosen day narrows both blocks. The day is
   // the Fribourg one, which is what bandZoneParts is for: slicing the ISO
@@ -126,7 +127,7 @@ export function Events() {
         // player is passed no actions at all, so their card has no empty
         // control row rather than a row of refusals.
         actions={
-          mayManage || maySeeAnswers ? (
+          mayManage || maySeeAnswers || (maySeeGuests && event.takesRegistrations) ? (
             <>
               {maySeeAnswers ? (
                 <ButtonLink
@@ -137,8 +138,28 @@ export function Events() {
                   Qui vient&nbsp;?
                 </ButtonLink>
               ) : null}
+              {/* ONLY ON AN EVENT THAT TAKES BOOKINGS. Every other card would
+                  otherwise carry a link to an empty list that can never fill
+                  up, and the planning is mostly rehearsals. `takesRegistrations`
+                  is the server's own derivation from the closing date. */}
+              {maySeeGuests && event.takesRegistrations ? (
+                <ButtonLink
+                  to={`/events/${event.id}/registrations`}
+                  variant="outline"
+                  ariaLabel={`Inscriptions à ${event.title}`}
+                >
+                  Inscriptions
+                </ButtonLink>
+              ) : null}
               {mayManage ? (
                 <>
+                  <ButtonLink
+                    to={`/events/${event.id}/registration-options`}
+                    variant="outline"
+                    ariaLabel={`Ce qui peut être réservé à ${event.title}`}
+                  >
+                    Ce qu’on réserve
+                  </ButtonLink>
                   <ButtonLink
                     to={`/events/${event.id}/edit`}
                     variant="outline"
