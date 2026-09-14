@@ -5366,17 +5366,16 @@ export const getMemberIndexUrl = (params?: MemberIndexParams) => {
 };
 
 /**
- * @summary List the roster.
-
-Requires `members.manage`. Returns everyone the band tracks, ordered by
-last name then first name. Each entry carries the person's register
-(`sectionId` and `sectionName`), whether they play (`isPlayer`), their
-committee title, whether they may be shown on the public site, and
-`roleIds`, the roles they hold.
-
-No password and no hash is ever included, and neither are effective
-permissions: a role is what grants them, so read `GET /api/v1/roles` and
-join on `roleIds`
+ * Requires `members.manage`. Returns everyone the band tracks, ordered by
+ * last name then first name. Each entry carries the person's register
+ * (`sectionId` and `sectionName`), whether they play (`isPlayer`), their
+ * committee title, whether they may be shown on the public site, and
+ * `roleIds`, the roles they hold.
+ *
+ * No password and no hash is ever included, and neither are effective
+ * permissions: a role is what grants them, so read `GET /api/v1/roles` and
+ * join on `roleIds`.
+ * @summary List the roster
  */
 export const memberIndex = async (
   params?: MemberIndexParams,
@@ -5469,17 +5468,7 @@ export function useMemberIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List the roster.
-
-Requires `members.manage`. Returns everyone the band tracks, ordered by
-last name then first name. Each entry carries the person's register
-(`sectionId` and `sectionName`), whether they play (`isPlayer`), their
-committee title, whether they may be shown on the public site, and
-`roleIds`, the roles they hold.
-
-No password and no hash is ever included, and neither are effective
-permissions: a role is what grants them, so read `GET /api/v1/roles` and
-join on `roleIds`
+ * @summary List the roster
  */
 
 export function useMemberIndex<
@@ -5552,28 +5541,27 @@ export const getMemberStoreUrl = () => {
 };
 
 /**
- * @summary Add a member to the roster.
-
-Requires `members.manage`. Creating a person creates their account:
-every member has one. Send `firstName`, `lastName`, `username` and
-`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
-`instructorOfSectionId`.
-
-Answers `201` with `member` and `generatedPassword`, a readable password
-the server minted for the new account. It is shown in this response and
-nowhere else: it is hashed on the way into the database, is never
-written to the audit log, and no later call returns it. An administrator
-who loses it issues a new one at
-`POST /api/v1/members/{member}/password`. The new member is required to
-change it before doing anything else.
-
-No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
-no password may be chosen here.
-
-A missing required field answers `400 validation_failed` naming the
-field with `required`. A username already in use answers the same with
-`already_taken`; one containing anything but lower-case letters, digits,
-dot, hyphen or underscore answers `invalid_format`
+ * Requires `members.manage`. Creating a person creates their account:
+ * every member has one. Send `firstName`, `lastName`, `username` and
+ * `publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
+ * `instructorOfSectionId`.
+ *
+ * Answers `201` with `member` and `generatedPassword`, a readable password
+ * the server minted for the new account. It is shown in this response and
+ * nowhere else: it is hashed on the way into the database, is never
+ * written to the audit log, and no later call returns it. An administrator
+ * who loses it issues a new one at
+ * `POST /api/v1/members/{member}/password`. The new member is required to
+ * change it before doing anything else.
+ *
+ * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
+ * no password may be chosen here.
+ *
+ * A missing required field answers `400 validation_failed` naming the
+ * field with `required`. A username already in use answers the same with
+ * `already_taken`; one containing anything but lower-case letters, digits,
+ * dot, hyphen or underscore answers `invalid_format`.
+ * @summary Add a member to the roster
  */
 export const memberStore = async (
   storeMemberRequest: StoreMemberRequest,
@@ -5660,28 +5648,7 @@ export type MemberStoreMutationError =
 export type MemberStoreMutationVariables = { data: StoreMemberRequest };
 
 /**
- * @summary Add a member to the roster.
-
-Requires `members.manage`. Creating a person creates their account:
-every member has one. Send `firstName`, `lastName`, `username` and
-`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
-`instructorOfSectionId`.
-
-Answers `201` with `member` and `generatedPassword`, a readable password
-the server minted for the new account. It is shown in this response and
-nowhere else: it is hashed on the way into the database, is never
-written to the audit log, and no later call returns it. An administrator
-who loses it issues a new one at
-`POST /api/v1/members/{member}/password`. The new member is required to
-change it before doing anything else.
-
-No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
-no password may be chosen here.
-
-A missing required field answers `400 validation_failed` naming the
-field with `required`. A username already in use answers the same with
-`already_taken`; one containing anything but lower-case letters, digits,
-dot, hyphen or underscore answers `invalid_format`
+ * @summary Add a member to the roster
  */
 export const useMemberStore = <
   TError =
@@ -5752,15 +5719,14 @@ export const getMemberShowUrl = (member: number) => {
 };
 
 /**
- * @summary Read one person.
-
-Requires `members.manage`. The same fields the roster list carries, for
-a single member.
-
-Read this before editing somebody, and quote the `ETag` it returns in
-the `If-Match` header of the write. The list hands out no tag — one tag
-cannot validate forty-five rows — so a form filled from the list and
-submitted without a read is the lost update this API refuses
+ * Requires `members.manage`. The same fields the roster list carries, for
+ * a single member.
+ *
+ * Read this before editing somebody, and quote the `ETag` it returns in
+ * the `If-Match` header of the write. The list hands out no tag — one tag
+ * cannot validate forty-five rows — so a form filled from the list and
+ * submitted without a read is the lost update this API refuses.
+ * @summary Read one person
  */
 export const memberShow = async (
   member: number,
@@ -5857,15 +5823,7 @@ export function useMemberShow<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary Read one person.
-
-Requires `members.manage`. The same fields the roster list carries, for
-a single member.
-
-Read this before editing somebody, and quote the `ETag` it returns in
-the `If-Match` header of the write. The list hands out no tag — one tag
-cannot validate forty-five rows — so a form filled from the list and
-submitted without a read is the lost update this API refuses
+ * @summary Read one person
  */
 
 export function useMemberShow<
@@ -5956,20 +5914,19 @@ export const getMemberUpdateUrl = (member: number) => {
 };
 
 /**
- * @summary Correct a member's details.
-
-Requires `members.manage`. Send only the fields that change: an omitted
-field is left alone, and an explicit `null` clears an optional one such
-as the register or the committee seat. Returns the updated member.
-
-Roles and passwords are not editable here. They are
-`PUT /api/v1/members/{member}/roles` and
-`POST /api/v1/members/{member}/password`, each of which also ends the
-member's sessions.
-
-A username already in use answers `400 validation_failed` with
-`already_taken` against `username`, and one that is not lower-case
-letters, digits, dot, hyphen or underscore answers `invalid_format`
+ * Requires `members.manage`. Send only the fields that change: an omitted
+ * field is left alone, and an explicit `null` clears an optional one such
+ * as the register or the committee seat. Returns the updated member.
+ *
+ * Roles and passwords are not editable here. They are
+ * `PUT /api/v1/members/{member}/roles` and
+ * `POST /api/v1/members/{member}/password`, each of which also ends the
+ * member's sessions.
+ *
+ * A username already in use answers `400 validation_failed` with
+ * `already_taken` against `username`, and one that is not lower-case
+ * letters, digits, dot, hyphen or underscore answers `invalid_format`.
+ * @summary Correct a member's details
  */
 export const memberUpdate = async (
   member: number,
@@ -6063,20 +6020,7 @@ export type MemberUpdateMutationError =
 export type MemberUpdateMutationVariables = { member: number; data?: UpdateMemberRequest };
 
 /**
- * @summary Correct a member's details.
-
-Requires `members.manage`. Send only the fields that change: an omitted
-field is left alone, and an explicit `null` clears an optional one such
-as the register or the committee seat. Returns the updated member.
-
-Roles and passwords are not editable here. They are
-`PUT /api/v1/members/{member}/roles` and
-`POST /api/v1/members/{member}/password`, each of which also ends the
-member's sessions.
-
-A username already in use answers `400 validation_failed` with
-`already_taken` against `username`, and one that is not lower-case
-letters, digits, dot, hyphen or underscore answers `invalid_format`
+ * @summary Correct a member's details
  */
 export const useMemberUpdate = <
   TError =
@@ -6177,19 +6121,18 @@ export const getMemberDestroyUrl = (member: number) => {
 };
 
 /**
- * @summary Remove a member from the roster.
-
-Requires `members.manage`. Deletes the person outright and ends every
-session they have open, so a deleted member stops being logged in at
-once. There is no deactivation flag and no undo: leaving the band is
-this call. Answers `{"ok": true, "sessionsEnded": n}`.
-
-Refuses with `409 cannot_remove_last_administrator` when the target is
-the only member left who could administer members, and
-`409 cannot_delete_self` when the target is the caller. Both are `409`
-rather than `403` because the caller does hold the permission; the
-request conflicts with the state of the roster. When both apply, the
-last-administrator refusal is the one returned
+ * Requires `members.manage`. Deletes the person outright and ends every
+ * session they have open, so a deleted member stops being logged in at
+ * once. There is no deactivation flag and no undo: leaving the band is
+ * this call. Answers `{"ok": true, "sessionsEnded": n}`.
+ *
+ * Refuses with `409 cannot_remove_last_administrator` when the target is
+ * the only member left who could administer members, and
+ * `409 cannot_delete_self` when the target is the caller. Both are `409`
+ * rather than `403` because the caller does hold the permission; the
+ * request conflicts with the state of the roster. When both apply, the
+ * last-administrator refusal is the one returned.
+ * @summary Remove a member from the roster
  */
 export const memberDestroy = async (
   member: number,
@@ -6261,19 +6204,7 @@ export type MemberDestroyMutationError =
 export type MemberDestroyMutationVariables = { member: number };
 
 /**
- * @summary Remove a member from the roster.
-
-Requires `members.manage`. Deletes the person outright and ends every
-session they have open, so a deleted member stops being logged in at
-once. There is no deactivation flag and no undo: leaving the band is
-this call. Answers `{"ok": true, "sessionsEnded": n}`.
-
-Refuses with `409 cannot_remove_last_administrator` when the target is
-the only member left who could administer members, and
-`409 cannot_delete_self` when the target is the caller. Both are `409`
-rather than `403` because the caller does hold the permission; the
-request conflicts with the state of the roster. When both apply, the
-last-administrator refusal is the one returned
+ * @summary Remove a member from the roster
  */
 export const useMemberDestroy = <
   TError =
@@ -7054,14 +6985,13 @@ export const getCommitteeIndexUrl = (params?: CommitteeIndexParams) => {
 };
 
 /**
- * @summary List the committee.
-
-Anonymous. Returns everyone holding a committee seat who has consented
-to appear, in the band's own rank order, with the name of the seat they
-hold.
-
-The seat name is content the committee maintains, so it is rendered
-verbatim and is never translated
+ * Anonymous. Returns everyone holding a committee seat who has consented
+ * to appear, in the band's own rank order, with the name of the seat they
+ * hold.
+ *
+ * The seat name is content the committee maintains, so it is rendered
+ * verbatim and is never translated.
+ * @summary List the committee
  */
 export const committeeIndex = async (
   params?: CommitteeIndexParams,
@@ -7154,14 +7084,7 @@ export function useCommitteeIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List the committee.
-
-Anonymous. Returns everyone holding a committee seat who has consented
-to appear, in the band's own rank order, with the name of the seat they
-hold.
-
-The seat name is content the committee maintains, so it is rendered
-verbatim and is never translated
+ * @summary List the committee
  */
 
 export function useCommitteeIndex<

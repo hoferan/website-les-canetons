@@ -2970,7 +2970,8 @@
         "/members": {
             "get": {
                 "operationId": "member.index",
-                "summary": "List the roster.\r\n\r\nRequires `members.manage`. Returns everyone the band tracks, ordered by\r\nlast name then first name. Each entry carries the person's register\r\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\r\ncommittee title, whether they may be shown on the public site, and\r\n`roleIds`, the roles they hold.\r\n\r\nNo password and no hash is ever included, and neither are effective\r\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\r\njoin on `roleIds`",
+                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`.",
+                "summary": "List the roster",
                 "tags": [
                     "Members"
                 ],
@@ -3066,7 +3067,8 @@
             },
             "post": {
                 "operationId": "member.store",
-                "summary": "Add a member to the roster.\r\n\r\nRequires `members.manage`. Creating a person creates their account:\r\nevery member has one. Send `firstName`, `lastName`, `username` and\r\n`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and\r\n`instructorOfSectionId`.\r\n\r\nAnswers `201` with `member` and `generatedPassword`, a readable password\r\nthe server minted for the new account. It is shown in this response and\r\nnowhere else: it is hashed on the way into the database, is never\r\nwritten to the audit log, and no later call returns it. An administrator\r\nwho loses it issues a new one at\r\n`POST /api/v1/members/{member}/password`. The new member is required to\r\nchange it before doing anything else.\r\n\r\nNo roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and\r\nno password may be chosen here.\r\n\r\nA missing required field answers `400 validation_failed` naming the\r\nfield with `required`. A username already in use answers the same with\r\n`already_taken`; one containing anything but lower-case letters, digits,\r\ndot, hyphen or underscore answers `invalid_format`",
+                "description": "Requires `members.manage`. Creating a person creates their account:\nevery member has one. Send `firstName`, `lastName`, `username` and\n`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and\n`instructorOfSectionId`.\n\nAnswers `201` with `member` and `generatedPassword`, a readable password\nthe server minted for the new account. It is shown in this response and\nnowhere else: it is hashed on the way into the database, is never\nwritten to the audit log, and no later call returns it. An administrator\nwho loses it issues a new one at\n`POST /api/v1/members/{member}/password`. The new member is required to\nchange it before doing anything else.\n\nNo roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and\nno password may be chosen here.\n\nA missing required field answers `400 validation_failed` naming the\nfield with `required`. A username already in use answers the same with\n`already_taken`; one containing anything but lower-case letters, digits,\ndot, hyphen or underscore answers `invalid_format`.",
+                "summary": "Add a member to the roster",
                 "tags": [
                     "Members"
                 ],
@@ -3124,7 +3126,8 @@
         "/members/{member}": {
             "get": {
                 "operationId": "member.show",
-                "summary": "Read one person.\r\n\r\nRequires `members.manage`. The same fields the roster list carries, for\r\na single member.\r\n\r\nRead this before editing somebody, and quote the `ETag` it returns in\r\nthe `If-Match` header of the write. The list hands out no tag \u2014 one tag\r\ncannot validate forty-five rows \u2014 so a form filled from the list and\r\nsubmitted without a read is the lost update this API refuses",
+                "description": "Requires `members.manage`. The same fields the roster list carries, for\na single member.\n\nRead this before editing somebody, and quote the `ETag` it returns in\nthe `If-Match` header of the write. The list hands out no tag \u2014 one tag\ncannot validate forty-five rows \u2014 so a form filled from the list and\nsubmitted without a read is the lost update this API refuses.",
+                "summary": "Read one person",
                 "tags": [
                     "Members"
                 ],
@@ -3175,7 +3178,8 @@
             },
             "patch": {
                 "operationId": "member.update",
-                "summary": "Correct a member's details.\r\n\r\nRequires `members.manage`. Send only the fields that change: an omitted\r\nfield is left alone, and an explicit `null` clears an optional one such\r\nas the register or the committee seat. Returns the updated member.\r\n\r\nRoles and passwords are not editable here. They are\r\n`PUT /api/v1/members/{member}/roles` and\r\n`POST /api/v1/members/{member}/password`, each of which also ends the\r\nmember's sessions.\r\n\r\nA username already in use answers `400 validation_failed` with\r\n`already_taken` against `username`, and one that is not lower-case\r\nletters, digits, dot, hyphen or underscore answers `invalid_format`",
+                "description": "Requires `members.manage`. Send only the fields that change: an omitted\nfield is left alone, and an explicit `null` clears an optional one such\nas the register or the committee seat. Returns the updated member.\n\nRoles and passwords are not editable here. They are\n`PUT /api/v1/members/{member}/roles` and\n`POST /api/v1/members/{member}/password`, each of which also ends the\nmember's sessions.\n\nA username already in use answers `400 validation_failed` with\n`already_taken` against `username`, and one that is not lower-case\nletters, digits, dot, hyphen or underscore answers `invalid_format`.",
+                "summary": "Correct a member's details",
                 "tags": [
                     "Members"
                 ],
@@ -3256,7 +3260,8 @@
             },
             "delete": {
                 "operationId": "member.destroy",
-                "summary": "Remove a member from the roster.\r\n\r\nRequires `members.manage`. Deletes the person outright and ends every\r\nsession they have open, so a deleted member stops being logged in at\r\nonce. There is no deactivation flag and no undo: leaving the band is\r\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\r\n\r\nRefuses with `409 cannot_remove_last_administrator` when the target is\r\nthe only member left who could administer members, and\r\n`409 cannot_delete_self` when the target is the caller. Both are `409`\r\nrather than `403` because the caller does hold the permission; the\r\nrequest conflicts with the state of the roster. When both apply, the\r\nlast-administrator refusal is the one returned",
+                "description": "Requires `members.manage`. Deletes the person outright and ends every\nsession they have open, so a deleted member stops being logged in at\nonce. There is no deactivation flag and no undo: leaving the band is\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\n\nRefuses with `409 cannot_remove_last_administrator` when the target is\nthe only member left who could administer members, and\n`409 cannot_delete_self` when the target is the caller. Both are `409`\nrather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. When both apply, the\nlast-administrator refusal is the one returned.",
+                "summary": "Remove a member from the roster",
                 "tags": [
                     "Members"
                 ],
@@ -3787,7 +3792,8 @@
         "/committee": {
             "get": {
                 "operationId": "committee.index",
-                "summary": "List the committee.\r\n\r\nAnonymous. Returns everyone holding a committee seat who has consented\r\nto appear, in the band's own rank order, with the name of the seat they\r\nhold.\r\n\r\nThe seat name is content the committee maintains, so it is rendered\r\nverbatim and is never translated",
+                "description": "Anonymous. Returns everyone holding a committee seat who has consented\nto appear, in the band's own rank order, with the name of the seat they\nhold.\n\nThe seat name is content the committee maintains, so it is rendered\nverbatim and is never translated.",
+                "summary": "List the committee",
                 "tags": [
                     "Public pages"
                 ],
@@ -5177,7 +5183,7 @@
             },
             "StoreMemberRequest": {
                 "type": "object",
-                "description": "A new person on the roster, which is also a new account: every member has a\r\nlogin.\r\n\r\n`username` is therefore required, must be unique, and may hold only lower\r\ncase letters, digits, dot, hyphen and underscore. It gets dictated over the\r\nphone, so it is deliberately narrow.\r\n\r\nThere is no `password` field. The API generates one and returns it in the\r\nresponse exactly once, for an administrator to pass on; it is never\r\nretrievable afterwards.\r\n\r\nThere is no `roleIds` field either. A new member starts with no roles and\r\nno permissions; granting any is a separate call to\r\n`PUT /api/v1/members/{member}/roles`.\r\n\r\n`sectionId` is the register the member plays in. A member with no register\r\nis not answerable for events and never appears in an attendance list, which\r\nis how somebody who organises but does not play is recorded.",
+                "description": "A new person on the roster, which is also a new account: every member has a\nlogin.\n\n`username` is therefore required, must be unique, and may hold only lower\ncase letters, digits, dot, hyphen and underscore. It gets dictated over the\nphone, so it is deliberately narrow.\n\nThere is no `password` field. The API generates one and returns it in the\nresponse exactly once, for an administrator to pass on; it is never\nretrievable afterwards.\n\nThere is no `roleIds` field either. A new member starts with no roles and\nno permissions; granting any is a separate call to\n`PUT /api/v1/members/{member}/roles`.\n\n`sectionId` is the register the member plays in. A member with no register\nis not answerable for events and never appears in an attendance list, which\nis how somebody who organises but does not play is recorded.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -5390,7 +5396,7 @@
             },
             "UpdateMemberRequest": {
                 "type": "object",
-                "description": "Changes to a person already on the roster.\r\n\r\nA PATCH: send only the fields that change. An omitted field is left as it\r\nis, and an explicit `null` clears one of the optional fields.\r\n\r\n`username` is the exception. It may be changed but not cleared, because it\r\nis the login and every member has one. It keeps the same shape as at\r\ncreation, and must stay unique across the roster.\r\n\r\nRoles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,\r\nwhich checks the roster's lockout invariants and ends the member's open\r\nsessions. Neither is the password, which has its own endpoint.",
+                "description": "Changes to a person already on the roster.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\n`username` is the exception. It may be changed but not cleared, because it\nis the login and every member has one. It keeps the same shape as at\ncreation, and must stay unique across the roster.\n\nRoles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,\nwhich checks the roster's lockout invariants and ends the member's open\nsessions. Neither is the password, which has its own endpoint.",
                 "properties": {
                     "firstName": {
                         "type": "string",
