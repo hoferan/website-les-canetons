@@ -1,314 +1,170 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { SEED, isoDaysFromToday, setMockUser } from "../mocks/handlers";
-import { server } from "../mocks/node";
+import { eventIndex } from "../api/generated/endpoints";
+import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
-import { PlanningRepet } from "./PlanningRepet";
-import { Toaster } from "@/components/ui/sonner";
+import { EventNew } from "./EventNew";
 
-/** The list, addressed by its accessible name so the layout's nav cannot leak in. */
-const CONCERT = SEED.find((event) => event.title === "Concert d'automne")!;
-
-const rows = async () =>
-  within(await screen.findByRole("list", { name: "Événements" })).getAllByRole("listitem");
-
-/**
- * Fills every required input with something valid.
- *
- * Submitting an empty form does not reach the API — the inputs are `required`
- * and jsdom runs interactive validation, so no submit event fires — so a test
- * about the SERVER's answer has to hand the form a valid payload and let the
- * handler reject it.
- */
-async function fillValidEvent(user: ReturnType<typeof userEvent.setup>) {
-  // An offset rather than a literal: the add test asserts this event shows up
-  // in a list that filters to upcoming events.
-  await user.type(await screen.findByLabelText("Date :"), isoDaysFromToday(95));
-  await user.type(screen.getByLabelText("Titre :"), "Cortège");
-  await user.type(screen.getByLabelText("Heure de début :"), "14:00");
-  await user.type(screen.getByLabelText("Heure de fin :"), "17:00");
-  await user.type(screen.getByLabelText("Lieu :"), "Vieille-Ville");
+async function renderForm() {
+  setMockUser("demo.direction");
+  const result = await renderWithSession(<EventNew />, { route: "/events/new" });
+  await screen.findByLabelText("Titre");
+  return result;
 }
 
-test("an admin sees the form and the per-event controls", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-  expect(await screen.findByLabelText("Date :")).toBeInTheDocument();
-  expect(await screen.findAllByRole("button", { name: /^Supprimer/ })).toHaveLength(3);
+test("labels every field", async () => {
+  await renderForm();
+  expect(screen.getByLabelText("Titre")).toBeInTheDocument();
+  expect(screen.getByLabelText("Date de début")).toBeInTheDocument();
+  expect(screen.getByLabelText("Heure de début")).toBeInTheDocument();
+  expect(screen.getByLabelText("Date de fin")).toBeInTheDocument();
+  expect(screen.getByLabelText("Heure de fin")).toBeInTheDocument();
+  expect(screen.getByLabelText("Lieu")).toBeInTheDocument();
 });
 
-test("each per-event control is named for its own event", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-  // Three buttons all called "Supprimer" are indistinguishable to a screen
-  // reader, which is the same class of bug as the old spans being unreachable
-  // by keyboard. The visible label stays short; the accessible name does not.
+test("the end date defaults to the start date as it is typed", async () => {
+  // Almost every event is one day. Making the committee type the same date
+  // twice, forty times a season, is the friction that stops a planning being
+  // entered at all — and a two-day event is still one field away.
+  await renderForm();
+  await userEvent.type(screen.getByLabelText("Date de début"), "2026-09-05");
+
+  expect(screen.getByLabelText("Date de fin")).toHaveValue("2026-09-05");
+});
+
+test("an end before the start is reported against its own field, in French", async () => {
+  await renderForm();
+  await userEvent.type(screen.getByLabelText("Titre"), "Répétition");
+  await userEvent.type(screen.getByLabelText("Lieu"), "Werkhof");
+  await userEvent.type(screen.getByLabelText("Date de début"), "2026-09-05");
+  await userEvent.type(screen.getByLabelText("Heure de début"), "12:00");
+  await userEvent.clear(screen.getByLabelText("Heure de fin"));
+  await userEvent.type(screen.getByLabelText("Heure de fin"), "10:00");
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByText(/Fin .*après/)).toBeInTheDocument();
+  // The form stays open so the wrong field can be corrected where it was typed.
+  expect(screen.getByLabelText("Titre")).toHaveValue("Répétition");
+});
+
+test("shows the submit as busy without disabling it", async () => {
+  await renderForm();
+  // Never the disabled attribute: disabling the focused control blurs it to
+  // <body> and throws focus away mid-submit.
+  const submit = screen.getByRole("button", { name: "Enregistrer" });
+  expect(submit).not.toBeDisabled();
+});
+
+/* ---------------------------------------------------------------------------
+ * The registration window (R3)
+ * -------------------------------------------------------------------------- */
+
+test("offers the registration window, and says which field is the switch", async () => {
+  // THE CONTROL, not the label in fr.ts. `registrationClosesAt` has had a
+  // French label since R3's API half shipped and no input rendering it — the
+  // same shape as `instructor_of_section_id`, which sat in a draft, was sent
+  // on every write, and could only ever be null.
+  await renderForm();
+
+  expect(screen.getByLabelText("Clôture des inscriptions")).toBeInTheDocument();
+  expect(screen.getByLabelText("Heure de clôture")).toBeInTheDocument();
+  expect(screen.getByLabelText("Ouverture des inscriptions")).toBeInTheDocument();
+  expect(screen.getByLabelText("Heure d’ouverture")).toBeInTheDocument();
+  expect(screen.getByLabelText("Personnes par inscription")).toBeInTheDocument();
+
+  // A date field is not self-evidently a switch, so the copy beside it is
+  // load-bearing rather than decorative.
   expect(
-    await screen.findByRole("button", { name: "Supprimer Concert d'automne" }),
+    screen.getByText(/date de clôture pour ouvrir cet événement aux inscriptions/),
   ).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Modifier Concert d'automne" })).toBeInTheDocument();
 });
 
-test("a member without manage_events sees neither the form nor the controls", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(<PlanningRepet />);
-  await rows();
-  expect(screen.queryByLabelText("Date :")).toBeNull();
-  expect(screen.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
-});
+/**
+ * An event the form has just created, read back out of the mocked backend.
+ *
+ * Through the API rather than off the screen, because what these two tests are
+ * about is the BODY the form sends: `registrationClosesAt` and the flag
+ * derived from it are not rendered on a card, so a screen assertion could not
+ * tell a null from an instant.
+ */
+async function createdEvent(title: string) {
+  const planning = await eventIndex({ limit: 1000 });
+  const rows = planning.status === 200 ? planning.data.data : [];
+  const created = rows.find((event) => event.title === title);
 
-test("creating an event adds it to the list", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-  expect(await rows()).toHaveLength(3);
+  if (!created) {
+    throw new Error(`no event titled "${title}" was created`);
+  }
 
-  await fillValidEvent(user);
-  await user.click(screen.getByRole("button", { name: "Ajouter" }));
+  return created;
+}
 
-  await waitFor(async () => expect(await rows()).toHaveLength(4));
-  // No "Titre :" label: the card shows the title on its own line now.
-  expect((await rows())[3]).toHaveTextContent("Cortège");
-});
+async function fillIn(fields: Record<string, string>) {
+  for (const [label, value] of Object.entries(fields)) {
+    const field = screen.getByLabelText(label);
+    await userEvent.clear(field);
+    await userEvent.type(field, value);
+  }
+}
 
-test("editing an event fills the form and saves the change", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
+test("a new event takes no bookings until a closing date is typed", async () => {
+  // MUTATION TEST: make eventBodyFrom compose the closing instant
+  // unconditionally and this fails — every rehearsal in the planning would
+  // open itself to the public.
+  await renderForm();
 
-  await user.click(await screen.findByRole("button", { name: "Modifier Concert d'automne" }));
-
-  // Times come back from the API as SQL TIMEs ("19:00:00"); an <input type=time>
-  // is fed HH:MM, exactly as the old page's edit handler sliced them.
-  // Read off SEED rather than pinned as a literal: the fixture's dates are
-  // offsets from today now, so a literal here would fail on a date nobody
-  // chose. What this asserts is that the form is filled from the event it was
-  // opened on, which is the same assertion it always made.
-  expect(screen.getByLabelText("Date :")).toHaveValue(CONCERT.date);
-  expect(screen.getByLabelText("Heure de début :")).toHaveValue("19:00");
-  expect(screen.getByLabelText("Titre :")).toHaveValue("Concert d'automne");
-
-  const title = screen.getByLabelText("Titre :");
-  await user.clear(title);
-  await user.type(title, "Concert d'hiver");
-  await user.click(screen.getByRole("button", { name: "Modifier" }));
-
-  await waitFor(async () => expect((await rows())[0]).toHaveTextContent("Concert d'hiver"));
-  // The form returns to create mode once the edit lands.
-  expect(await screen.findByRole("button", { name: "Ajouter" })).toBeInTheDocument();
-});
-
-test("cancelling an edit empties the form and returns it to create mode", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-
-  await user.click(await screen.findByRole("button", { name: "Modifier Concert d'automne" }));
-  await user.click(screen.getByRole("button", { name: "Annuler" }));
-
-  expect(screen.getByLabelText("Titre :")).toHaveValue("");
-  expect(screen.getByRole("button", { name: "Ajouter" })).toBeInTheDocument();
-});
-
-test("deleting an event removes it from the list", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-
-  await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
-  // The dialog's own confirm button, not the row's trigger — the trigger
-  // carries the event title in its accessible name, the dialog's does not.
-  await user.click(
-    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
-  );
-
-  await waitFor(async () => expect(await rows()).toHaveLength(2));
-});
-
-// The trigger is aria-disabled rather than disabled, so it stays focusable AND
-// stays clickable — which makes the handler's early return the only thing
-// preventing a second delete prompt over an in-flight one. Nothing else in the
-// suite exercises that pending state. This replaces a window.confirm call-count
-// assertion; the property is the same one.
-test("a delete in flight marks the trigger unavailable and refuses to reopen", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
+  await fillIn({
+    Titre: "Répétition de novembre",
+    Lieu: "Werkhof",
+    "Date de début": "2026-11-07",
+    "Heure de début": "10:00",
+    "Heure de fin": "12:00",
   });
-  server.use(
-    http.delete("/api/events/:id", async () => {
-      await held;
-      return HttpResponse.json({ ok: true });
-    }),
-  );
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  await renderWithSession(<PlanningRepet />);
-  const remove = await screen.findByRole("button", { name: "Supprimer Concert d'automne" });
-  await user.click(remove);
-  await user.click(
-    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
-  );
-
-  await waitFor(() => expect(remove).toHaveAttribute("aria-disabled", "true"));
-
-  // Clickable, because aria-disabled does not block the event — the guard does.
-  await user.click(remove);
-  expect(screen.queryByRole("alertdialog")).toBeNull();
-
-  // Released, the trigger becomes available again. The row itself does not
-  // vanish here: this override replaces the mock's real DELETE, which is what
-  // removes it from the store — the test above covers that half.
-  release();
-  await waitFor(() => expect(remove).not.toHaveAttribute("aria-disabled", "true"));
+  const created = await createdEvent("Répétition de novembre");
+  expect(created.registrationClosesAt).toBeNull();
+  expect(created.takesRegistrations).toBe(false);
 });
 
-// The failure path had NO coverage while it was a window.alert, and replacing it
-// with a toast is exactly the moment to give it some: a toast that never renders
-// looks identical to a delete that quietly did nothing.
-//
-// The Toaster is rendered HERE rather than relied upon, because it lives in
-// Layout and renderWithSession mounts a page without one. That is not a fudge --
-// it is the same reason the app mounts it once in the layout route, and without
-// it toast.error() resolves into nothing at all, in a test as in a browser.
-test("a failed delete says so, and leaves the row in place", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  server.use(
-    http.delete("/api/events/:id", () =>
-      HttpResponse.json({ error: "Server error", code: "server_error" }, { status: 500 }),
-    ),
-  );
-  await renderWithSession(
-    <>
-      <PlanningRepet />
-      <Toaster />
-    </>,
-  );
+test("typing a closing date is what opens an event to the public", async () => {
+  await renderForm();
 
-  await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
-  await user.click(
-    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Supprimer" }),
-  );
-
-  expect(
-    await screen.findByText("La suppression de l’événement a échoué. Veuillez réessayer."),
-  ).toBeInTheDocument();
-  expect(await rows()).toHaveLength(3);
-});
-
-test("declining the delete confirmation leaves the list alone", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(<PlanningRepet />);
-
-  await user.click(await screen.findByRole("button", { name: "Supprimer Concert d'automne" }));
-  await user.click(
-    within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Annuler" }),
-  );
-
-  expect(await rows()).toHaveLength(3);
-});
-
-test("a validation error renders in French against the offending field", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  // Override the create handler for this test only: the mocked backend accepts
-  // everything, and the point here is the error path.
-  server.use(
-    http.post("/api/events", () =>
-      HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: [{ field: "startTime", reason: "required" }],
-        },
-        { status: 400 },
-      ),
-    ),
-  );
-
-  await renderWithSession(<PlanningRepet />);
-  await fillValidEvent(user);
-  await user.click(screen.getByRole("button", { name: "Ajouter" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
-  );
-  expect(screen.getByText("Heure de début est requis")).toBeInTheDocument();
-  expect(screen.getByLabelText("Heure de début :")).toHaveAttribute("aria-invalid", "true");
-});
-
-test("a rejected submission keeps what the admin typed", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  server.use(
-    http.post("/api/events", () =>
-      HttpResponse.json(
-        { error: "Invalid form submission", code: "validation_failed", fields: [] },
-        { status: 400 },
-      ),
-    ),
-  );
-
-  await renderWithSession(<PlanningRepet />);
-  await fillValidEvent(user);
-  await user.click(screen.getByRole("button", { name: "Ajouter" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
-  );
-  expect(screen.getByLabelText("Titre :")).toHaveValue("Cortège");
-});
-
-// The fallback branch: not every failure is an ApiError. A network drop makes
-// fetch itself reject, and the form still has to say something in French
-// rather than fall through to an empty alert or an English message.
-test("a network failure falls back to a French message", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  server.use(http.post("/api/events", () => HttpResponse.error()));
-
-  await renderWithSession(<PlanningRepet />);
-  await fillValidEvent(user);
-  await user.click(screen.getByRole("button", { name: "Ajouter" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "L’enregistrement a échoué. Veuillez réessayer.",
-    ),
-  );
-});
-
-test("the submit button is marked unavailable while the request is in flight", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-
-  // A handler held open on purpose, rather than racing a fast one: "still
-  // pending" is otherwise a timing assertion, and a flaky test about a disabled
-  // button is worse than no test at all.
-  let release!: () => void;
-  const held = new Promise<void>((resolve) => {
-    release = resolve;
+  await fillIn({
+    Titre: "Souper de novembre",
+    Lieu: "Grenette",
+    "Date de début": "2026-11-21",
+    "Heure de début": "18:30",
+    "Heure de fin": "23:30",
+    "Clôture des inscriptions": "2026-11-14",
   });
-  server.use(
-    http.post("/api/events", async () => {
-      await held;
-      return HttpResponse.json({ ok: true }, { status: 201 });
-    }),
-  );
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  await renderWithSession(<PlanningRepet />);
-  await fillValidEvent(user);
-  const submit = screen.getByRole("button", { name: "Ajouter" });
-  await user.click(submit);
+  const created = await createdEvent("Souper de novembre");
+  // November, so +01:00 — the season runs through both offsets, which is why
+  // bandTime exists at all. 23:59 is the default beside the date field, so a
+  // closing DAY means the whole of it.
+  expect(created.registrationClosesAt).toBe("2026-11-14T23:59:00+01:00");
+  expect(created.takesRegistrations).toBe(true);
+});
 
-  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
-  release();
-  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "false"));
+test("an empty guest cap is no cap, not a cap of zero", async () => {
+  // MUTATION TEST: pass the field through `Number()` unguarded and this fails.
+  // `Number("")` is 0, and an event nobody may book is not an event with no
+  // limit.
+  await renderForm();
+
+  await fillIn({
+    Titre: "Loto de novembre",
+    Lieu: "Grenette",
+    "Date de début": "2026-11-28",
+    "Heure de début": "19:00",
+    "Heure de fin": "22:00",
+    "Clôture des inscriptions": "2026-11-21",
+  });
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect((await createdEvent("Loto de novembre")).registrationMaxGuests).toBeNull();
 });

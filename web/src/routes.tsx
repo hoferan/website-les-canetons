@@ -1,140 +1,147 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 
 import { Layout } from "./components/Layout";
-import { RequireCapability } from "./components/guards";
-import { Accueil } from "./pages/Accueil";
-import { Canetons } from "./pages/Canetons";
-// HIDDEN 2026-08-31 — see the comment on the routes below.
-// import { Cd } from "./pages/Cd";
-import { ComiteTeamDirection } from "./pages/ComiteTeamDirection";
-import { Commencement } from "./pages/Commencement";
-import { Confirmation } from "./pages/Confirmation";
+import { MustChangePassword } from "./components/MustChangePassword";
+import { RequirePermission, RequireSession } from "./components/guards";
+import { Account } from "./pages/Account";
+import { Agenda } from "./pages/Agenda";
+import { Band } from "./pages/Band";
+import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
-import { Historique } from "./pages/Historique";
-import { InscriptionsAdmin } from "./pages/InscriptionsAdmin";
-import { InscriptionsUtilisateurs } from "./pages/InscriptionsUtilisateurs";
+import { EventAttendance } from "./pages/EventAttendance";
+import { EventBooking } from "./pages/EventBooking";
+import { EventEdit } from "./pages/EventEdit";
+import { EventNew } from "./pages/EventNew";
+import { EventRegistrationOptions } from "./pages/EventRegistrationOptions";
+import { EventRegistrations } from "./pages/EventRegistrations";
+import { EventSeriesNew } from "./pages/EventSeriesNew";
+import { Events } from "./pages/Events";
+import { History } from "./pages/History";
+import { Home } from "./pages/Home";
+import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
-import { Moniteurs } from "./pages/Moniteurs";
-// HIDDEN 2026-08-31 — see the comment on the routes below.
-// import { Multimedia } from "./pages/Multimedia";
+import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
-import { PlanningRepet } from "./pages/PlanningRepet";
-import { Signup } from "./pages/Signup";
-import { SignupThanks } from "./pages/SignupThanks";
-import { SignupsAdmin } from "./pages/SignupsAdmin";
-// HIDDEN 2026-08-31 — see the comment on the routes below.
-// import { Sponsors } from "./pages/Sponsors";
-import { useSession } from "./session/SessionProvider";
 
 /**
- * The route table.
+ * The route table after R1b.
  *
- * The URL set is FROZEN: these are the paths the live site serves today, and
- * "no URL changes" is an explicit non-goal of the cutover. The French slugs and
- * the underscores are not tidied — every one of them is in somebody's
- * bookmarks and in Google's index.
+ * URLs ARE RESOURCE-ORIENTED, and there is deliberately no `/admin` or
+ * `/manage` namespace: under real RBAC there is no single privileged area —
+ * `events.manage` and `members.manage` are different people — and a namespace
+ * named after a permission level is a lie about the model (design §4). The nav
+ * still groups Direction screens under one heading; nav grouping and URL
+ * structure are different problems, and only one of them has to encode
+ * authorization.
  *
- * The three souper routes exist only while the feature is on, exactly as the
- * old route table registered them conditionally: a server with the feature off
- * genuinely has no such page rather than an empty one, which is what makes a
- * disabled route indistinguishable from an absent one.
+ * MustChangePassword wraps everything INSIDE the layout: a committee-issued
+ * password must be replaced before any other screen is usable, and the gate has
+ * to see the pathname to exempt /account from its own redirect. `/login` sits
+ * inside it on purpose — a member who must change their password and navigates
+ * there is already logged in, so sending them to /account is right. It cannot
+ * trap anyone, because logging out is a button in the chrome rather than a
+ * route.
+ *
+ * Legacy French paths are NOT redirected — the rebuild owes no backwards
+ * compatibility (design §7/D11) — so they fall through to the 404 view like
+ * every other unknown path.
+ *
+ * THE PUBLIC PAGES SIT OUTSIDE MustChangePassword, and that is the one thing
+ * about this table worth reading twice. The gate holds a member on /account
+ * until they have replaced a committee-issued password — which is right for
+ * the members' tool and wrong for the public site: a member in that state who
+ * taps "Histoire" has no business being bounced to a password form, because
+ * that page is what a stranger sees and owes nothing to who is logged in. The
+ * gate still covers everything the password actually unlocks.
+ *
+ * R3 adds three: `/events/:id/book` above with the public pages, and
+ * `/events/:id/registrations` and `/events/:id/registration-options` below
+ * with the committee's. The three sit under one prefix and answer to three
+ * different guards, which is the argument against an `/admin` namespace made
+ * concrete: "who may book", "who may read the guest list" and "who may
+ * configure the event" are three different people.
  */
 export function AppRoutes() {
-  const { config } = useSession();
-
   return (
     <Routes>
-      {/* One layout route wrapping every page, so the header, nav, ribbon and
-          footer mount once and survive navigation instead of remounting. */}
       <Route element={<Layout />}>
-        <Route path="/" element={<Accueil />} />
-        <Route path="/historique" element={<Historique />} />
-        <Route path="/canetons" element={<Canetons />} />
-        {/* HIDDEN 2026-08-31, not deleted.
-            /cd was headed "2022 - Les Canetons ont 20 ans !!!" and still said
-            the CD "vient de sortir"; /multimedia was a single France 3
-            reportage from 2016. The 2026-08-31 content audit asked whether
-            either was still wanted and the answer was "don't know yet — just
-            hide the page for now".
-
-            Commented out rather than feature-flagged, deliberately. A flag
-            would need a key in api/config/app.php and api/.env.example, and the
-            deploy's config-shape preflight REFUSES (exit 2) against any server
-            whose api-laravel/.env lacks a key it expects — so hiding two pages
-            would become a coordinated hand-edit of .env on TEST, QA and PROD.
-            Uncommenting these four lines is the whole of the reverse.
-
-            The components and their content are untouched in
-            web/src/pages/Cd.tsx and web/src/pages/Multimedia.tsx. All three
-            URLs now fall through to the SPA's own 404 view, which is what every
-            unknown path already does.
-
-            /sponsors joined them on the same day, after its links had just been
-            audited and repaired. That work is not wasted — it is correct
-            whenever the page returns — but the page itself is hidden for now. */}
-        {/* <Route path="/cd" element={<Cd />} /> */}
-        <Route path="/commencement" element={<Commencement />} />
-        <Route path="/moniteurs" element={<Moniteurs />} />
-        {/* <Route path="/sponsors" element={<Sponsors />} /> */}
-        {/* <Route path="/multimedia" element={<Multimedia />} /> */}
+        {/* THE PUBLIC FACE. No session, no gate, no guard — see the note
+            above on why these sit outside MustChangePassword. */}
+        <Route index element={<Home />} />
+        <Route path="/agenda" element={<Agenda />} />
+        <Route path="/band" element={<Band />} />
+        <Route path="/committee" element={<Committee />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/join" element={<Join />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/comite_teamdirection" element={<ComiteTeamDirection />} />
-        <Route path="/authentification_inscription" element={<Login />} />
-        {/* MERGED into /planning_repet on 2026-09-01. The URL is kept and
-            REDIRECTED rather than dropped, because URLs are frozen here: members
-            have it bookmarked and the nav pointed at it for years. Nothing in
-            the app links here any more — every internal link goes straight to
-            the surviving URL — so this exists for bookmarks alone, which is why
-            routes.test.tsx pins it. */}
-        <Route path="/sinscrire" element={<Navigate to="/planning_repet" replace />} />
-        <Route path="/confirmation" element={<Confirmation />} />
-        <Route
-          path="/inscriptions_utilisateurs"
-          element={
-            <RequireCapability capability="respond">
-              <InscriptionsUtilisateurs />
-            </RequireCapability>
-          }
-        />
-        <Route path="/planning_repet" element={<PlanningRepet />} />
-        {/* DELETED 2026-09-03. /admin was an orphan: nothing in the app linked
-            here, and its one card duplicated the nav's "Événements" entry,
-            which already sends everyone to /planning_repet. The URL is kept
-            and REDIRECTED rather than dropped, because URLs are frozen here
-            and it is in bookmarks from the old site.
 
-            Deliberately NOT capability-guarded any more, unlike /sinscrire's
-            guarded destination: /planning_repet is itself public and gates its
-            own admin controls, so an anonymous visitor now lands on the public
-            planning instead of being bounced to login for a page that no
-            longer exists. Nothing in the app links here any more, which is why
-            routes.test.tsx pins it. */}
-        <Route path="/admin" element={<Navigate to="/planning_repet" replace />} />
-        <Route
-          path="/inscriptions_admin"
-          element={
-            <RequireCapability capability="view_summary">
-              <InscriptionsAdmin />
-            </RequireCapability>
-          }
-        />
+        {/* THE BOOKING FORM IS A PUBLIC PAGE under a path whose other
+            segments are not, and that is deliberate rather than untidy:
+            registration is a property of an EVENT (D9), so the event is what
+            the URL is about, and inventing /booking/:id would say the souper
+            is a feature of its own — which is the shape R3 exists to delete.
+            Nothing leaks by sitting here: the endpoint behind it answers 404
+            for an event that takes no bookings, whether or not it exists.
 
-        {config.features.souper_signup ? (
-          <>
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/signup_thanks" element={<SignupThanks />} />
-            <Route
-              path="/signups_admin"
-              element={
-                <RequireCapability capability="view_summary">
-                  <SignupsAdmin />
-                </RequireCapability>
-              }
-            />
-          </>
-        ) : null}
+            `book`, NOT `register`. In this project a register is a PUPITRE —
+            RegisterIndex, `sections`, "Trompettes" — so /events/:id/register
+            would read as the drummers' page. */}
+        <Route path="/events/:id/book" element={<EventBooking />} />
 
-        <Route path="*" element={<NotFound />} />
+        <Route element={<MustChangePassword />}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/account" element={<Account />} />
+
+          {/* Needs a SESSION and nothing more — reading the planning is
+              something everybody in the band does. It still sits behind
+              login: R1c is the members' tool, and a public planning is R2's
+              (C1). */}
+          <Route element={<RequireSession />}>
+            <Route path="/events" element={<Events />} />
+          </Route>
+
+          {/* Entering the planning, which is the committee's job and nobody
+              else's. The static segments are written before the dynamic one
+              on purpose: React Router already ranks `/events/new` above
+              `/events/:id/edit` whatever the order, and relying on that
+              silently is how a route table acquires a collision nobody can
+              see. */}
+          <Route element={<RequirePermission permission="events.manage" />}>
+            <Route path="/events/new" element={<EventNew />} />
+            <Route path="/events/new/series" element={<EventSeriesNew />} />
+            <Route path="/events/:id/edit" element={<EventEdit />} />
+
+            {/* What the event OFFERS, which is part of the event — hence
+                `events.manage` and not a registration permission. It writes on
+                its own entity-tag facet, `event.options`, so correcting a
+                dress code cannot refuse a pending options edit and changing an
+                option cannot slip past one. */}
+            <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
+          </Route>
+
+          {/* The chase list. A SEPARATE PERMISSION from managing events:
+              seeing who has not answered and entering the planning are
+              different jobs, and App\Support\Capability is what makes that
+              real — this guard only mirrors it. */}
+          <Route element={<RequirePermission permission="attendance.view_all" />}>
+            <Route path="/events/:id/attendance" element={<EventAttendance />} />
+          </Route>
+
+          {/* The guest list. `registrations.view` is ALL the `committee` role
+              holds, so this route is guarded on it and nothing more — the
+              amend and cancel controls inside answer to `registrations.manage`
+              instead, which is a different act on somebody else's personal
+              data and a different set of people. */}
+          <Route element={<RequirePermission permission="registrations.view" />}>
+            <Route path="/events/:id/registrations" element={<EventRegistrations />} />
+          </Route>
+
+          <Route element={<RequirePermission permission="members.manage" />}>
+            <Route path="/members" element={<Members />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Route>
       </Route>
     </Routes>
   );

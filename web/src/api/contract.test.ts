@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from "vitest";
 
-import { eventIndex } from "./generated/endpoints";
+import { authMe } from "./generated/endpoints";
 
 /**
  * A COMPILE-TIME guard, not a runtime one.
@@ -23,7 +23,7 @@ import { eventIndex } from "./generated/endpoints";
  * fail with TS2345.
  */
 test("the generated response type carries orval's envelope", () => {
-  expectTypeOf(eventIndex).returns.resolves.toHaveProperty("data");
-  expectTypeOf(eventIndex).returns.resolves.toHaveProperty("status");
-  expectTypeOf(eventIndex).returns.resolves.toHaveProperty("headers");
+  expectTypeOf(authMe).returns.resolves.toHaveProperty("data");
+  expectTypeOf(authMe).returns.resolves.toHaveProperty("status");
+  expectTypeOf(authMe).returns.resolves.toHaveProperty("headers");
 });

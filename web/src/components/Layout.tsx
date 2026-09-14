@@ -4,40 +4,61 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
 
+import { LogoutButton } from "../session/LogoutButton";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * Link set and ORDER copied from the deleted app/partials/navigation.php
- * (`git show dcd7862^:app/partials/navigation.php`). It is neither alphabetical
- * nor the route table's order — it is the order the band is used to, so it is
- * reproduced rather than tidied.
+ * The public nav — what a stranger sees, in the order a stranger wants it.
+ *
+ * "Nous rejoindre" is first because recruiting is what this site is for: the
+ * band takes players from 7 to 18 and loses them at 18, so the visitor worth
+ * optimising for is a parent deciding whether to turn up on Saturday. The two
+ * people pages follow, then the prose, then the way to write in.
+ *
+ * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
+ * than a missing one.
  */
-const NAV = [
-  { to: "/", label: "Accueil" },
-  { to: "/commencement", label: "Commencer les Canetons" },
-  { to: "/comite_teamdirection", label: "Contact Canetons" },
-  { to: "/canetons", label: "Les canetons" },
-  { to: "/moniteurs", label: "Moniteurs" },
-  { to: "/planning_repet", label: "Événements" },
-  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-  // { to: "/cd", label: "CD" },
-  // HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-  // { to: "/sponsors", label: "Sponsors et liens amis" },
-  { to: "/historique", label: "Historique" },
+const NAV: Array<{ to: string; label: string }> = [
+  { to: "/join", label: "Nous rejoindre" },
+  { to: "/agenda", label: "Où nous voir" },
+  { to: "/band", label: "Les canetons" },
+  { to: "/committee", label: "Comité" },
+  { to: "/history", label: "Histoire" },
+  { to: "/contact", label: "Contact" },
 ];
 
 /**
- * The two inscription sub-pages highlight the "Événements" item, matching the
- * old setActiveNavigation() behaviour. They pointed at /sinscrire until that
- * page was merged into /planning_repet on 2026-09-01.
+ * Screens grouped under "Direction", each gated by the permission that gates
+ * the API route behind it.
+ *
+ * THE GROUP IS ABSENT, NOT REFUSED (design §4). A member who cannot use
+ * /members never sees the word: showing a link that leads to "Accès refusé"
+ * teaches people that parts of the site are broken for them.
+ *
+ * Gated on a PERMISSION, never a role name — the same rule the middleware and
+ * the route guards follow.
  */
-const ACTIVE_ALIASES: Record<string, string> = {
-  "/inscriptions_admin": "/planning_repet",
-  "/inscriptions_utilisateurs": "/planning_repet",
-};
+const DIRECTION_NAV: Array<{ to: string; label: string; permission: string }> = [
+  { to: "/members", label: "Membres", permission: "members.manage" },
+];
+
+/**
+ * THE THIRD NAV CATEGORY: needs a session and nothing more.
+ *
+ * Neither public like Galerie nor permission-gated like Membres. Reading the
+ * planning is something everybody in the band does, so gating it on a
+ * permission would be the same mistake as gating the ability to answer for an
+ * event — but it is not for strangers either, because R1c is the members' tool
+ * and the public planning is R2's (C1).
+ *
+ * An array rather than an entry special-cased inside the map, for the reason
+ * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
+ * item is added.
+ */
+const MEMBER_NAV: Array<{ to: string; label: string }> = [{ to: "/events", label: "Événements" }];
 
 /**
  * One nav row. On a phone this is a 48px full-width row on the dark stage
@@ -62,11 +83,46 @@ const NAV_ROW_IDLE = "text-white/80 hover:text-white md:text-ink-muted md:hover:
 /** The divider between phone rows, gone above `md`. */
 const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
 
+/**
+ * One internal nav row. Extracted when the third category arrived and the
+ * same nine lines would have been written a third time — see NAV_ROW's own
+ * comment on rules applied by hand.
+ *
+ * Link, not NavLink: NavLink's own aria-current is gated by its internal
+ * isActive, which matches `to` literally against the URL. Link leaves
+ * aria-current and className to us instead.
+ */
+function NavItem({
+  to,
+  label,
+  active,
+  close,
+}: {
+  to: string;
+  label: string;
+  active: string;
+  close: () => void;
+}) {
+  return (
+    <li className={NAV_ITEM}>
+      <Link
+        to={to}
+        onClick={close}
+        aria-current={active === to ? "page" : undefined}
+        className={`${NAV_ROW} ${active === to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
+      >
+        {label}
+      </Link>
+    </li>
+  );
+}
+
 export function Layout() {
-  const { config, user } = useSession();
+  const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
-  const active = ACTIVE_ALIASES[pathname] ?? pathname;
+  const active = pathname;
+  const close = () => setOpen(false);
 
   return (
     <>
@@ -85,7 +141,16 @@ export function Layout() {
           <Logo />
         </div>
 
-        <nav className="border-t border-white/10 bg-panel text-ink">
+        {/* NAMED, and it has to be. The band page carries a second nav (the
+            register index), and the front page repeats four of these links as
+            destination cards — so "the link called Nous rejoindre" matches two
+            elements on / and a query has nothing to scope to. Two navs without
+            names are also indistinguishable to a screen-reader user moving by
+            landmark. */}
+        <nav
+          aria-label="Navigation principale"
+          className="border-t border-white/10 bg-panel text-ink"
+        >
           <button
             type="button"
             aria-label="Menu de navigation"
@@ -103,23 +168,36 @@ export function Layout() {
             className={`${open ? "block" : "hidden"} animate-reveal border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
           >
             {NAV.map((item) => (
-              <li key={item.to} className={NAV_ITEM}>
-                {/*
-                  Link, not NavLink: NavLink's own aria-current is gated by its
-                  internal isActive, which matches `to` literally against the
-                  URL and has no idea about ACTIVE_ALIASES below. Link leaves
-                  aria-current and className to us, so the alias page and the
-                  real page agree.
-                */}
-                <Link
-                  to={item.to}
-                  onClick={() => setOpen(false)}
-                  aria-current={active === item.to ? "page" : undefined}
-                  className={`${NAV_ROW} ${active === item.to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-                >
-                  {item.label}
-                </Link>
-              </li>
+              <NavItem
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                active={active}
+                close={close}
+              />
+            ))}
+
+            {/* Logged in, whatever they can do. */}
+            {user
+              ? MEMBER_NAV.map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    active={active}
+                    close={close}
+                  />
+                ))
+              : null}
+
+            {DIRECTION_NAV.filter((item) => can(item.permission)).map((item) => (
+              <NavItem
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                active={active}
+                close={close}
+              />
             ))}
 
             <li className={NAV_ITEM}>
@@ -149,15 +227,28 @@ export function Layout() {
             </li>
             */}
 
+            {/* Points at /account once somebody is logged in: their own name
+                leading back to a login form is a dead end, and /account is the
+                one screen every account holder has. */}
             <li className={`nav-auth ${NAV_ITEM} md:ml-auto`}>
               <NavLink
-                to="/authentification_inscription"
+                to={user ? "/account" : "/login"}
                 onClick={() => setOpen(false)}
                 className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
               >
                 {user ? user.username : "Connexion"}
               </NavLink>
             </li>
+
+            {/* THE WAY OUT, and it is here rather than on /account because the
+                forced-password gate lets a member reach the chrome and nothing
+                else. See LogoutButton for what its absence had been costing
+                since R1a. */}
+            {user ? (
+              <li className={NAV_ITEM}>
+                <LogoutButton onDone={close} />
+              </li>
+            ) : null}
           </ul>
         </nav>
       </header>

@@ -1,0 +1,190 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Exceptions\AccessIntegrityViolation;
+use App\Models\Member;
+use App\Models\Role;
+use App\Support\AccessIntegrity;
+use App\Support\Permission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+class AccessIntegrityTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Role $admins;
+
+    private Role $plain;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // FIXTURE KEYS, not 'direction'/'committee'. Those two are reference
+        // data now, seeded by the 2026_09_07_000001 migration that
+        // RefreshDatabase runs, so re-creating them here is a duplicate-key
+        // error. Reading the seeded ones instead would be worse: this suite
+        // needs a role granting exactly one permission (below, `plain` grants
+        // events.manage, which the real committee role does not), and roles
+        // are editable data — a committee changing what `direction` grants
+        // must not turn this suite red.
+        $this->admins = Role::factory()->granting(Permission::MembersManage)->create();
+        $this->plain = Role::factory()->granting(Permission::EventsManage)->create();
+    }
+
+    private function member(string $username, ?Role $role = null): Member
+    {
+        $factory = Member::factory()->named('Demo', ucfirst($username), $username);
+
+        return ($role !== null ? $factory->withRole($role) : $factory)->create();
+    }
+
+    public function test_the_last_administrator_cannot_be_deleted(): void
+    {
+        $only = $this->member('only', $this->admins);
+        $other = $this->member('other', $this->admins);
+
+        // Two exist, so removing one is fine.
+        AccessIntegrity::assertMayDelete($only, $other);
+
+        $other->delete();
+
+        $this->expectException(AccessIntegrityViolation::class);
+        AccessIntegrity::assertMayDelete($only, $only->fresh());
+    }
+
+    public function test_the_violation_carries_the_last_administrator_code(): void
+    {
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayDelete($only, $only);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+
+            // Exception::$code is inherited, untyped, and expected by the
+            // wider PHP ecosystem to stay an int — it must NOT be shadowed
+            // with the machine token above. Pins the fix; don't "simplify"
+            // the property back to `code`.
+            $this->assertSame(0, $e->getCode());
+        }
+    }
+
+    public function test_nobody_may_delete_themselves(): void
+    {
+        $actor = $this->member('actor', $this->admins);
+        $this->member('spare', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayDelete($actor, $actor);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_delete_self', $e->errorCode);
+        }
+    }
+
+    public function test_a_member_without_the_permission_may_be_deleted_freely(): void
+    {
+        // The assertion IS that the call returns rather than throwing.
+        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
+        // would only be silencing PHPUnit's risky-test warning.
+        $this->expectNotToPerformAssertions();
+
+        $actor = $this->member('actor', $this->admins);
+        $target = $this->member('target', $this->plain);
+
+        AccessIntegrity::assertMayDelete($actor, $target);
+    }
+
+    public function test_the_last_administrator_cannot_be_demoted(): void
+    {
+        $actor = $this->member('actor', $this->admins);
+        $only = $this->member('only', $this->admins);
+        $actor->roles()->detach($this->admins);
+
+        $this->expectException(AccessIntegrityViolation::class);
+        AccessIntegrity::assertMayReplaceRoles($actor, $only, [$this->plain->id]);
+    }
+
+    public function test_nobody_may_strip_their_own_administration(): void
+    {
+        $actor = $this->member('actor', $this->admins);
+        $this->member('spare', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($actor, $actor, [$this->plain->id]);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_demote_self', $e->errorCode);
+        }
+    }
+
+    public function test_a_sole_administrator_demoting_themselves_gets_the_last_administrator_code(): void
+    {
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($only, $only, [$this->plain->id]);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            // Both conditions apply here: $only is the sole administrator,
+            // AND is acting on themselves. The orphan check must win —
+            // see the ordering comment in assertMayReplaceRoles().
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_replacing_with_an_empty_role_list_on_the_sole_administrator_is_refused(): void
+    {
+        $only = $this->member('only', $this->admins);
+
+        try {
+            AccessIntegrity::assertMayReplaceRoles($only, $only, []);
+            $this->fail('Expected AccessIntegrityViolation');
+        } catch (AccessIntegrityViolation $e) {
+            $this->assertSame('cannot_remove_last_administrator', $e->errorCode);
+        }
+    }
+
+    public function test_replacing_with_an_empty_role_list_on_a_non_administrator_is_allowed(): void
+    {
+        // The assertion IS that the call returns rather than throwing.
+        // expectNotToPerformAssertions() says so honestly; assertTrue(true)
+        // would only be silencing PHPUnit's risky-test warning.
+        $this->expectNotToPerformAssertions();
+
+        $actor = $this->member('actor', $this->admins);
+        $target = $this->member('target', $this->plain);
+
+        AccessIntegrity::assertMayReplaceRoles($actor, $target, []);
+    }
+
+    public function test_keeping_administration_while_adding_a_role_is_allowed(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        $actor = $this->member('actor', $this->admins);
+
+        AccessIntegrity::assertMayReplaceRoles(
+            $actor,
+            $actor,
+            [$this->admins->id, $this->plain->id],
+        );
+    }
+
+    public function test_a_violation_renders_as_409_in_the_error_contract(): void
+    {
+        Route::middleware('api')->get(
+            '/api/v1/_test/violation',
+            fn () => throw new AccessIntegrityViolation('cannot_delete_self', 'Cannot delete self'),
+        );
+
+        $this->getJson('/api/v1/_test/violation')
+            ->assertStatus(409)
+            ->assertJson(['code' => 'cannot_delete_self']);
+    }
+}

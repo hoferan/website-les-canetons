@@ -2,35 +2,70 @@
 
 namespace App\Exceptions;
 
+use App\Http\Middleware\RequestId;
+use App\Support\ErrorVocabulary;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Renders exceptions into the JSON error contract the front-end consumes:
+ * Renders every failure as an RFC 9457 problem document:
  *
- *     {"error": "...", "code": "...", "fields": [{"field", "reason", "params"?}]}
+ *     Content-Type: application/problem+json
+ *
+ *     {
+ *       "title":     "Invalid form submission",
+ *       "status":    400,
+ *       "code":      "validation_failed",
+ *       "instance":  "/api/v1/events/42",
+ *       "errors":    [{"field": "endsAt", "reason": "must_be_after", "params"?: {}}],
+ *       "requestId": "01JB3K7QW8ZX...",
+ *       "detail":    "One or more submitted fields were rejected. …"
+ *     }
  *
  * This deliberately replaces Laravel's native {message, errors:{}} shape.
- * app/assets/js/i18n.js's translateApiError() is the ONLY place French is
- * computed in the whole system, and it maps `code` and `fields[].reason` —
- * stable machine tokens — onto French text. Laravel's native shape carries
- * English prose instead, which that layer cannot translate. Keeping this
- * contract is also what upholds the project rule that API bodies stay English.
+ * web/src/i18n/'s translateApiError() is the ONLY place French is computed in
+ * the whole system, and it maps `code` and `errors[].reason` — stable machine
+ * tokens — onto French text. Laravel's native shape carries English prose
+ * instead, which that layer cannot translate. Keeping this contract is also what
+ * upholds the project rule that API bodies stay English.
  *
  * Every `reason` and `field` token emitted here must exist as a key in
- * i18n.js; a later task adds ApiErrorVocabularyTest to enforce this.
+ * web/src/i18n/fr.ts; ApiErrorVocabularyTest enforces this.
+ *
+ * WHY A STANDARD SHAPE RATHER THAN OUR OWN. The previous contract —
+ * {error, code, fields[]} — did the same job perfectly well for one known
+ * consumer. This API is held to genuinely-public standards, and a third-party
+ * integrator with only the document in hand should not have to learn a bespoke
+ * error envelope to write a `catch` block. The tokens that carry the meaning are
+ * unchanged; only the envelope around them moved, which is why no French copy
+ * was rewritten when it did.
+ *
+ * NO `type` MEMBER, which RFC 9457 allows — it is optional, and an absent one
+ * formally reads as `about:blank`. It went through three designs here (an
+ * absolute URL, a relative URL with an endpoint behind it, a URN) before André
+ * ended the argument with the observation that settled it: every one of them
+ * was a constant prefix plus the `code`, so it carried exactly zero information
+ * the document did not already have.
+ *
+ * `code` is the discriminator and `detail` is the explanation, carried in the
+ * same response. See App\Support\ErrorVocabulary for why that replaced a
+ * documentation endpoint, a link member and twenty-one sections of reference.
  */
 final class ApiError
 {
+    /** RFC 9457 §3. Not application/json — that is the point of the media type. */
+    public const MEDIA_TYPE = 'application/problem+json';
+
     /**
      * Laravel rule name => legacy reason token.
      *
-     * 'invalid_value' is RESERVED for the `in` rule. i18n.js renders it as
-     * "doit être l'une des valeurs suivantes : {{allowed}}", and `in` is the
+     * 'invalid_value' is RESERVED for the `in` rule. web/src/i18n/fr.ts renders
+     * it as "doit être l'une des valeurs suivantes : {{allowed}}", and `in` is the
      * only rule for which validation() supplies that `allowed` parameter —
      * i18next emits the placeholder literally when no value is given. Numeric
      * failures therefore use the paramless 'invalid_number' instead.
@@ -50,6 +85,16 @@ final class ApiError
     private const REASONS = [
         'required' => 'required',
         'max' => 'too_long',
+        // The likeliest failure on the roster form, so it does not get the
+        // generic fallback: an unmapped rule renders "n'est pas dans un format
+        // valide", which for a taken username is both wrong and useless.
+        //
+        // `exists` is deliberately left unmapped. It can only fail from a stale
+        // form holding a register or role that has since been deleted, and the
+        // generic sentence is survivable for a case the user fixes by
+        // reloading — adding a token would mean French copy for a message
+        // nobody should ever see.
+        'unique' => 'already_taken',
         'email' => 'invalid_format',
         'date' => 'invalid_format',
         'date_format' => 'invalid_format',
@@ -60,11 +105,33 @@ final class ApiError
         'in' => 'invalid_value',
         // Laravel's `min` is polymorphic — numeric value, string length and
         // array count all report as `Min`, with nothing in failedRules to tell
-        // them apart. This mapping suits the numeric case; a string or array
-        // `min` would render "n'est pas un nombre valide" and needs its own
-        // too_short token (mirroring too_long) rather than reusing this entry.
-        'min' => 'invalid_number',
+        // them apart. This entry commits to the STRING-LENGTH reading, which is
+        // the only one this API uses (the password minimum), and mirrors
+        // too_long including its params branch in validation() below.
+        //
+        // A NUMERIC minimum must therefore use `gt` instead, which keeps
+        // 'invalid_number'. Adding `min:1` to a numeric field would tell the
+        // user their number "est trop court".
+        'min' => 'too_short',
         'gt' => 'invalid_number',
+        // `after:<other field>` on the event form's end time. Without an entry
+        // it would land on the fallback and tell the committee that a
+        // perfectly well-formed timestamp "n'est pas dans un format valide",
+        // which sends them re-typing the one thing that was right.
+        //
+        // Paramless on purpose, so it needs no branch in validation() below:
+        // `after`'s single parameter is the OTHER FIELD's name — 'startsAt',
+        // an English identifier — and interpolating that into French copy
+        // would put a raw column name on the user's screen. The French names
+        // the start in words instead.
+        //
+        // WHICH MAKES THE COPY FIELD-PAIR-SPECIFIC: "doit être après le début"
+        // is right only because `after:startsAt` on the event form is the only
+        // `after:` rule in the system. A second one against a different pair
+        // cannot share this token — being paramless, it has no way to say
+        // which field — so it needs its own. Noted in fr.ts too, next to the
+        // sentence.
+        'after' => 'must_be_after',
     ];
 
     /**
@@ -75,26 +142,26 @@ final class ApiError
      * rule failures. The two idiomatic ways to raise a business-rule error —
      * ValidationException::withMessages() and
      * $validator->after(fn ($v) => $v->errors()->add(...)) — never touch
-     * failedRules, so on their own they would render with NO `fields` entry and
+     * failedRules, so on their own they would render with NO `errors` entry and
      * the UI would have nothing to highlight. The second loop closes that gap:
      * for any field carrying a message but no failed rule, the MESSAGE IS THE
      * REASON TOKEN, emitted as-is. So a closure validator must add a bare token
-     * (e.g. 'invalid_format'), never a prose sentence — see
-     * App\Http\Requests\SignupRequest::after().
+     * (e.g. 'invalid_format'), never a prose sentence — see any FormRequest's
+     * withValidator()/after() hook that calls $validator->errors()->add().
      *
      * That token must also be a PARAMLESS one. This path emits `field` and
      * `reason` only, with no way to attach `params`, and i18next prints a
      * missing interpolation value literally — so a token whose French
      * interpolates (today: 'too_long' and the `in`-only 'invalid_value') would
      * put a raw {{max}} or {{allowed}} on the user's screen. Raise those
-     * through ApiError::json() with an explicit `fields` array instead.
+     * through ApiError::json() with an explicit `errors` array instead.
      */
     public static function validation(ValidationException $e): JsonResponse
     {
         $fields = [];
 
         // One entry per field, first failure only — the old Validator broke out
-        // of its constraint loop on the first hit, and i18n.js renders one
+        // of its constraint loop on the first hit, and web/src/i18n/ renders one
         // message per field.
         foreach ($e->validator->failed() as $field => $rules) {
             $failedRule = (string) array_key_first($rules);
@@ -114,6 +181,11 @@ final class ApiError
             $entry = ['field' => (string) $field, 'reason' => $reason];
             if ($rule === 'max') {
                 $entry['params'] = ['max' => (int) $parameters[0]];
+            } elseif ($rule === 'min') {
+                // Required, not optional: 'too_short' interpolates {{min}}, and
+                // i18next prints a missing interpolation value literally — so
+                // without this the user reads "minimum {{min}} caractères".
+                $entry['params'] = ['min' => (int) $parameters[0]];
             } elseif ($rule === 'in') {
                 $entry['params'] = ['allowed' => $parameters];
             }
@@ -169,16 +241,30 @@ final class ApiError
     }
 
     /**
+     * 404, for an unknown route and for route-model binding alike.
+     *
+     * ONE CODE FOR BOTH, and the message says no more than the code does. "No
+     * such event" and "no such route" are the same answer to a caller who may
+     * not know the thing exists, and telling the two apart is exactly the
+     * enumeration a 404 is supposed to prevent. The API's own reference already
+     * documents 404 as "no such thing, or nothing you may know exists".
+     *
+     * $e is unused deliberately; see unauthenticated().
+     */
+    public static function notFound(NotFoundHttpException $e): JsonResponse
+    {
+        return self::json(404, 'not_found', 'Not found');
+    }
+
+    /**
      * The schema is not known to be current, so the request was refused rather
      * than served against a possibly half-applied database — see
      * App\Http\Middleware\RunPendingMigrations.
      *
-     * 503 and the EXISTING `service_unavailable` code, not a new one:
-     * AltchaController already emits that pair for its own fail-closed case,
-     * i18n.js already renders it as "Service indisponible", and that is exactly
-     * what this is from the visitor's side — a temporary refusal to serve, retry
-     * shortly. Minting a second code would have added French copy that says the
-     * same thing. $e is unused deliberately; see unauthenticated().
+     * 503 and the generic `service_unavailable` code, not a bespoke one:
+     * web/src/i18n/fr.ts already renders it as "Service indisponible", and that
+     * is exactly what this is from the visitor's side — a temporary refusal to
+     * serve, retry shortly. $e is unused deliberately; see unauthenticated().
      */
     public static function serviceUnavailable(SchemaUnavailable $e): JsonResponse
     {
@@ -199,22 +285,91 @@ final class ApiError
         return self::json(419, 'invalid_session', 'Invalid session');
     }
 
-    /** @param array<int, array<string, mixed>> $fields */
+    /**
+     * The single place a problem document is built.
+     *
+     * RFC 9457 members first, then the two extensions this API adds. Extension
+     * members are explicitly allowed by §3.2, and both earn their place:
+     *
+     *   `code`      is the discriminator: the stable machine token
+     *               web/src/i18n/ maps to French, and the member any client
+     *               should branch on.
+     *
+     *   `requestId` is what a member reads out over the telephone. See
+     *               App\Http\Middleware\RequestId.
+     *
+     *   `detail`    is RFC 9457's own member: what happened and what to do,
+     *               from App\Support\ErrorVocabulary. It is prose for a
+     *               developer reading a response — never rendered to a member,
+     *               who sees French computed from `code`.
+     *
+     * `errors` is ALWAYS present, empty where there is nothing field-level to
+     * say. The previous contract omitted `fields` when empty, which made it
+     * optional in the document and meant every consumer needed a null check for
+     * a case that carries no information.
+     *
+     * @param  array<int, array<string, mixed>>  $errors
+     */
     public static function json(
         int $status,
         string $code,
         string $message,
-        array $fields = []
+        array $errors = []
     ): JsonResponse {
-        $body = ['error' => $message, 'code' => $code];
-        if ($fields !== []) {
-            // array_values, because an associative array would serialise as a
-            // JSON object and i18n.js calls .map() on this — a TypeError in the
-            // browser. Nothing statically checks the @param above.
-            $body['fields'] = array_values($fields);
+        // array_values, because an associative array would serialise as a JSON
+        // object and web/src/i18n/ calls .map() on this — a TypeError in the
+        // browser. Nothing statically checks the @param above.
+        //
+        // Hoisted out of the literal below deliberately: Scramble reads a
+        // comment sitting above an array key as that property's DESCRIPTION,
+        // and this one was being published into the OpenAPI document as the
+        // documentation for `errors`.
+        $orderedErrors = array_values($errors);
+
+        $body = [
+            'title' => $message,
+            'status' => $status,
+            'code' => $code,
+            'instance' => self::instance(),
+            'errors' => $orderedErrors,
+            'requestId' => RequestId::current(),
+        ];
+
+        // RFC 9457 §3.1.1's own member, and the reason there is no longer a
+        // `documentation` link or an endpoint behind it: a problem description
+        // is wanted by somebody who has that problem, at the moment they have
+        // it. Making them fetch it separately is friction for the one member
+        // that can remove it.
+        //
+        // Placed after `code` rather than in the literal above so the key order
+        // reads title, status, code, instance, errors, requestId, detail — the
+        // machine-readable members first, the paragraph last.
+        $detail = ErrorVocabulary::detailFor($code);
+
+        if ($detail !== null) {
+            $body['detail'] = $detail;
         }
 
-        return response()->json($body, $status);
+        return response()
+            ->json($body, $status)
+            // RFC 9457 §3. Overriding response()->json()'s application/json is
+            // the whole point: it is what tells a standards-aware client that
+            // this body is a problem document and not the resource it asked for.
+            ->header('Content-Type', self::MEDIA_TYPE);
+    }
+
+    /**
+     * RFC 9457 §3.1's `instance`: what was being asked for, as a path.
+     *
+     * Path only, never the query string — Apache logs query strings in plain
+     * text on this host, and a problem document is a thing people paste into
+     * chat messages and issue trackers.
+     */
+    private static function instance(): string
+    {
+        // request() is always a Request, even in a console context, where it is
+        // an empty one whose path is "/". There is no null case to guard.
+        return request()->getPathInfo();
     }
 
     /**

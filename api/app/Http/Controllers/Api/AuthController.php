@@ -4,75 +4,156 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Member;
+use App\Support\Emits;
+use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use RuntimeException;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
+// ONE description per group, on the controller that owns it. Scramble keeps
+// whichever #[Group] carries one, and the other controllers in a group repeat
+// only the name and the weight — a description written out at each of the five
+// Members controllers would be four copies waiting to disagree.
+#[Group('Session', 'Logging in, reading who you are, and changing your own password.', weight: 10)]
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    /**
+     * Five failures per username+IP, then a flat lock of DECAY_SECONDS measured
+     * from the FIRST failure — it does not grow. RateLimiter::hit() calls
+     * cache->add() for both the attempt counter and its `:timer`, which is a
+     * no-op once either key already exists, so the TTL is set once, on the
+     * first hit, and never extended by subsequent ones. Attempts made WHILE
+     * throttled are not counted either: login() returns 429 before ever
+     * calling hit(), so hammering a locked account does not push the lock out
+     * further.
+     *
+     * Keyed on BOTH so that neither dimension alone defeats it: per-IP only
+     * lets a botnet spread attempts across addresses, per-username only lets
+     * one attacker lock a member out of their own account by hammering it.
+     */
+    private const MAX_ATTEMPTS = 5;
+
+    private const DECAY_SECONDS = 900;
+
+    /**
+     * Log in.
+     *
+     * Anonymous. Send `username` and `password`. A successful call answers
+     * `{"ok": true}` and establishes the session cookie every authenticated
+     * endpoint reads. It deliberately carries no identity of its own: call
+     * `GET /api/v1/me` afterwards for who you are and what you may do.
+     *
+     * A username that does not exist and a wrong password both answer
+     * `401 invalid_credentials`, the same code for each, so that neither can
+     * be used to discover which accounts exist.
+     *
+     * After five failures for one username from one address, further attempts
+     * answer `429 too_many_attempts` for fifteen minutes, counted from the
+     * first failure. A correct password during the lockout is still refused,
+     * and attempts made while locked out do not extend it.
+     */
+    #[Response(200, 'Logged in. The session cookie is set; nothing in the body is needed.')]
+    #[Emits('invalid_credentials', 'too_many_attempts', 'stateful_request_required')]
+    public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'username' => ['required', 'string'],
+            'username' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string'],
         ]);
 
-        // Standard framework auth: Auth::attempt retrieves the user by
-        // username and verifies the password against its bcrypt hash via the
-        // configured hasher. Passwords are always stored hashed (User's
-        // 'hashed' cast); any pre-hashing legacy rows are converted once, out
-        // of band, by a manual DB-level migration — not by the app.
-        try {
-            $authenticated = Auth::attempt($credentials);
-        } catch (RuntimeException $e) {
-            // ...but "always" is an invariant of the DATA, and the app cannot
-            // enforce it. A row the out-of-band conversion missed makes
-            // BcryptHasher::check() throw a bare RuntimeException ("This
-            // password does not use the Bcrypt algorithm.") rather than return
-            // false, so an unguarded attempt() answers HTTP 500 — outside the
-            // {error, code, fields[]} contract, and, with APP_DEBUG=false on
-            // every server, with nothing the member or an operator can act on.
-            //
-            // Narrow the catch by re-deriving the condition instead of matching
-            // the message (untranslated framework prose, free to change): only
-            // swallow this when the stored value really is not a bcrypt hash.
-            // Any other RuntimeException from the auth stack is genuinely
-            // unexpected and must keep surfacing as a 500.
-            if (! $this->storedPasswordIsNotBcrypt($credentials['username'])) {
-                throw $e;
-            }
+        $key = $this->throttleKey($credentials['username'], $request->ip());
 
-            // The username, never the password or the hash: an operator needs
-            // to find the unconverted row, and nothing more.
-            Log::error('Login refused: stored password is not a bcrypt hash; re-hash this row.', [
-                'username' => $credentials['username'],
-            ]);
-
-            $authenticated = false;
+        // Checked BEFORE the password is verified, so a throttled attacker who
+        // finally guesses correctly is still refused. Verifying first and
+        // throttling after would make the limit decorative.
+        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+            return ApiError::json(429, 'too_many_attempts', 'Too many attempts');
         }
 
-        if (! $authenticated) {
-            // One generic code, never a per-field error: that would reveal
-            // which of username/password was wrong, and enable enumeration.
-            // The unconverted-row case lands here too, deliberately — the
-            // member sees the same 401 as any other failure, and the detail
-            // goes to the log.
+        // One generic code, never per-field: saying which of username or
+        // password was wrong enables enumeration. A member with no username
+        // never reaches here — the `required` rule above rejects an empty
+        // one, and a NULL username matches nothing.
+        if (! Auth::attempt($credentials)) {
+            RateLimiter::hit($key, self::DECAY_SECONDS);
+
             return ApiError::json(401, 'invalid_credentials', 'Incorrect username or password');
         }
 
+        // THE CREDENTIALS WERE RIGHT, and everything below needs a session. A
+        // request Sanctum did not treat as stateful has none, and calling
+        // session() on it throws — which used to surface as a 500 carrying a
+        // stack trace, to an anonymous caller, on the very first request any
+        // integrator makes. Found by a black-box review on 2026-09-11; no test
+        // caught it because the SPA and the test client are both stateful, so
+        // the failing path is the one nothing internal exercises.
+        //
+        // Refused cleanly instead, and deliberately AFTER the attempt, so this
+        // cannot be used to probe credentials without a session: a wrong
+        // password still answers invalid_credentials either way.
+        //
+        // Not 419 invalid_session, which means "prime the cookie and retry" —
+        // advice that would loop forever here, because the request will never
+        // become stateful by retrying. Session auth needs a browser on a
+        // configured origin; a server-to-server caller needs the token
+        // credential that A6 adds.
+        if (! $request->hasSession()) {
+            return ApiError::json(400, 'stateful_request_required', 'This endpoint requires a session');
+        }
+
+        RateLimiter::clear($key);
+
+        // Fixation defence: the pre-login session id must not survive the
+        // privilege change.
         $request->session()->regenerate();
 
-        /** @var User $user */
-        $user = Auth::user();
+        // The absolute-lifetime clock. Written after regenerate(), because
+        // regenerating migrates the session data and writing before it would
+        // work but reads as though the order did not matter — it does the day
+        // someone switches to a driver that does not migrate.
+        // now()->timestamp, so the stamp and the check in
+        // EnforceAbsoluteSessionLifetime read the same clock — the one a test
+        // can move.
+        $request->session()->put('auth.started_at', now()->timestamp);
 
-        return response()->json(['role' => $user->role]);
+        /** @var Member $member */
+        $member = Auth::user();
+        $member->forceFill(['last_login_at' => now()])->save();
+
+        // Deliberately no role or permissions in this body. The client asks
+        // GET /api/v1/me for identity, so there is exactly one shape describing
+        // who you are and one place to change it.
+        $body = ['ok' => true];
+
+        return response()->json($body);
     }
 
-    public function logout(Request $request)
+    /**
+     * Log out.
+     *
+     * Any logged-in member. Ends the current session, discards its cookie and
+     * issues a fresh CSRF token, so the page that called this can go straight
+     * on to log in again. Answers `{"ok": true}`.
+     *
+     * An anonymous caller answers `401 not_authenticated`.
+     */
+    #[Response(200, 'Logged out. The session is destroyed server-side.')]
+    public function logout(Request $request): JsonResponse
     {
+        // Three steps, each doing a different half of the job. logout() forgets
+        // the member on this request; invalidate() destroys the session data
+        // and its id, so a copy of the cookie taken beforehand is worth nothing
+        // afterwards; regenerateToken() replaces the CSRF token, because the
+        // SPA stays on the same page and would otherwise send the dead one with
+        // its next mutating request.
+        //
+        // The `web` guard by name, not the default: Sanctum's stateful SPA mode
+        // authenticates these routes through the session, and that is the guard
+        // holding the login.
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -81,26 +162,51 @@ class AuthController extends Controller
     }
 
     /**
-     * Mirrors BcryptHasher::isUsingCorrectAlgorithm() — the single condition
-     * under which check() throws — against the row attempt() just read.
+     * Read the current member and what they may do.
      *
-     * Reads the column directly: the 'hashed' cast is set-only, so this is the
-     * value as stored. Costs one extra query, on the failure path only.
+     * Any logged-in member. Returns the caller's id, username, first and last
+     * name, whether they play in a register (`isPlayer`, the single fact that
+     * decides who is answerable for an event), whether they must change their
+     * password before anything else (`mustChangePassword`), and `permissions`.
+     *
+     * `permissions` is the flat list of permission tokens the caller's roles
+     * add up to, and it is what a client shows or hides a screen on. Roles are
+     * not sent, because nothing in this API is authorised by role name.
+     *
+     * The response is never cacheable. An anonymous caller answers
+     * `401 not_authenticated`.
      */
-    private function storedPasswordIsNotBcrypt(string $username): bool
+    #[Response(200, 'Who the caller is, and every permission their roles add up to.')]
+    public function me(Request $request): JsonResponse
     {
-        $stored = User::where('username', $username)->value('password');
-
-        return is_string($stored) && $stored !== '' && Hash::info($stored)['algoName'] !== 'bcrypt';
-    }
-
-    public function user(Request $request)
-    {
-        $user = $request->user();
+        /** @var Member $member */
+        $member = $request->user();
 
         return response()->json([
-            'username' => $user->username,
-            'role' => $user->role,
-        ]);
+            'id' => $member->id,
+            'username' => $member->username,
+            'firstName' => $member->first_name,
+            'lastName' => $member->last_name,
+            'isPlayer' => $member->isPlayer(),
+            'mustChangePassword' => $member->must_change_password,
+            'permissions' => $member->permissions()->map(fn ($p) => $p->value)->all(),
+            // Redundant with the `no-store` middleware the whole authenticated
+            // group carries, and kept: this body IS an identity, so it should
+            // not depend on a route registration elsewhere to stay out of a
+            // shared proxy.
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * Normalises the username before keying, exactly as Laravel's own
+     * LoginRequest::throttleKey() does: members.username collates
+     * utf8mb4_unicode_ci (case-insensitive, PAD SPACE), so the database
+     * authenticates spellings that a raw concatenation would count as
+     * separate accounts — letting an attacker exhaust the limit as
+     * "lea.keller" and then walk straight past it as "LEA.Keller".
+     */
+    private function throttleKey(string $username, ?string $ip): string
+    {
+        return 'login:'.Str::lower(trim($username)).'|'.($ip ?? 'unknown');
     }
 }

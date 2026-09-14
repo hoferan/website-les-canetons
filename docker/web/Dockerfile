@@ -23,9 +23,16 @@ FROM php:8.4-fpm
 # rm -f .../index.html: the apache2 package ships a "It works!" default page
 # at the default DocumentRoot; harmless once a real docroot is bind-mounted
 # over it, but there is no reason to ship it in the image.
+# ext-zip is for the XLSX guest-list export (openspout writes a zip container).
+# MEASURED 2026-09-10: php:8.4-fpm does NOT ship it, so without this the export
+# fails locally with "Class ZipArchive not found" — and the failure looked at
+# first like a shared-host problem, because the R3 spec had flagged ext-zip as
+# unverified on the host. It is unverified there AND was absent here.
+#
+# libzip-dev is the build dependency; the extension itself is ext-zip.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends apache2 libonig-dev \
- && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring \
+ && apt-get install -y --no-install-recommends apache2 libonig-dev libzip-dev \
+ && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring zip \
  && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
  && a2enmod proxy_fcgi setenvif rewrite headers expires \
  && a2dissite 000-default \

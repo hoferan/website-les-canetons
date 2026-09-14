@@ -1,177 +1,192 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Route, Routes } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
 
-import { server } from "../mocks/node";
 import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Login } from "./Login";
 
-/**
- * The login route plus a couple of destinations, so a test can assert on where
- * a successful login LANDED rather than on the fact that a request was made.
- * Navigating is half the behaviour.
- */
-const app = (
-  <Routes>
-    <Route path="/authentification_inscription" element={<Login />} />
-    <Route path="/" element={<p>Accueil</p>} />
-    <Route path="/planning_repet" element={<p>Planning</p>} />
-  </Routes>
-);
+/** Where the screen navigated to. There is no route table in these renders. */
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().pathname}</span>;
+}
 
-const signIn = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
-  await user.type(await screen.findByLabelText("Identifiant :"), name);
-  await user.type(screen.getByLabelText("Mot de passe :"), "demo");
-  await user.click(screen.getByRole("button", { name: "Se connecter" }));
-};
+async function fillAndSubmit(username: string, password: string) {
+  await userEvent.type(screen.getByLabelText("Identifiant"), username);
+  await userEvent.type(screen.getByLabelText("Mot de passe"), password);
+  await userEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+}
 
-test("an anonymous visitor gets the old form", async () => {
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  expect(await screen.findByRole("heading", { name: "Authentification" })).toBeInTheDocument();
-  expect(screen.getByLabelText("Identifiant :")).toBeRequired();
-  expect(screen.getByLabelText("Mot de passe :")).toBeRequired();
-  expect(screen.getByLabelText("Mot de passe :")).toHaveAttribute("type", "password");
+test("labels both fields, so a password manager can fill them", async () => {
+  await renderWithSession(<Login />, { route: "/login" });
+
+  // getByLabelText, not a placeholder or a testid: a field a screen reader can
+  // name is the same field a password manager can recognise, and autoComplete
+  // is what tells it which one this is.
+  expect(screen.getByLabelText("Identifiant")).toHaveAttribute("autocomplete", "username");
+  expect(screen.getByLabelText("Mot de passe")).toHaveAttribute("autocomplete", "current-password");
 });
 
-test("a successful login lands on the home page", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  await signIn(user, "demo.admin");
-  expect(await screen.findByText("Accueil")).toBeInTheDocument();
+test("reports a wrong password in French, against the form", async () => {
+  await renderWithSession(<Login />, { route: "/login" });
+  await fillAndSubmit("demo.direction", "wrong");
+
+  // findByTEXT, not findByRole("alert"). FormError keeps its role="alert"
+  // element in the tree ALWAYS — deliberately, so the region is announced
+  // reliably — which means findByRole resolves immediately against an empty
+  // div and the content assertion races the mutation. Waiting on the string is
+  // the only form that actually waits.
+  //
+  // The token invalid_credentials, translated: never the API's English, and
+  // never a raw i18next key.
+  expect(
+    await screen.findByText("Nom d'utilisateur ou mot de passe incorrect"),
+  ).toBeInTheDocument();
 });
 
-// The session is cached at staleTime: Infinity, so nothing shows the new user
-// unless the login invalidates it. Without that the app stays anonymous until
-// the next full page load — which the old site's window.location.href hid.
-test("the session is visible afterwards, with no reload", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(
-    <Routes>
-      <Route path="/authentification_inscription" element={<Login />} />
-      <Route path="/" element={<Login />} />
-    </Routes>,
-    { route: "/authentification_inscription" },
-  );
-  await signIn(user, "demo.admin");
-  expect(await screen.findByText(/Connecté en tant que/)).toHaveTextContent("demo.admin");
+test("keeps the username on a failure so only the wrong part is retyped", async () => {
+  await renderWithSession(<Login />, { route: "/login" });
+  await fillAndSubmit("demo.direction", "wrong");
+
+  // Same reason as above: wait on the message, not on the always-present region.
+  await screen.findByText("Nom d'utilisateur ou mot de passe incorrect");
+
+  expect(screen.getByLabelText("Identifiant")).toHaveValue("demo.direction");
+  expect(screen.getByLabelText("Mot de passe")).toHaveValue("");
 });
 
-test("a bad password shows the French message and does NOT navigate", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  await user.type(await screen.findByLabelText("Identifiant :"), "demo.admin");
-  await user.type(screen.getByLabelText("Mot de passe :"), "wrong");
-  await user.click(screen.getByRole("button", { name: "Se connecter" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Nom d'utilisateur ou mot de passe incorrect",
-    ),
-  );
-  expect(screen.queryByText("Accueil")).toBeNull();
-  expect(screen.getByLabelText("Identifiant :")).toBeInTheDocument();
-  // Re-enabled by the mutation settling: a slow or refused login must never
-  // leave a legitimate retry permanently blocked.
-  expect(screen.getByRole("button", { name: "Se connecter" })).toHaveAttribute(
-    "aria-disabled",
-    "false",
-  );
-});
-
-// The 401 path carries no fields — per-field auth errors would enable
-// username enumeration. But AuthController validates the request first, and
-// that path does, so the wiring has to be pinned or a typo in the field name
-// renders nothing and passes every other test.
-test("a field error from the API lands on the offending input", async () => {
-  const user = userEvent.setup();
+test("does not submit an empty form to the API", async () => {
+  let attempts = 0;
   server.use(
-    http.post("/api/login", () =>
-      HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: [{ field: "password", reason: "required" }],
-        },
-        { status: 400 },
-      ),
-    ),
+    http.post("/api/v1/login", () => {
+      attempts++;
+      return HttpResponse.json({ ok: true });
+    }),
   );
 
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  await signIn(user, "demo.admin");
+  await renderWithSession(<Login />, { route: "/login" });
+  await userEvent.click(screen.getByRole("button", { name: "Se connecter" }));
 
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
-  );
-  expect(screen.getByText("Mot de passe est requis")).toBeInTheDocument();
-  expect(screen.getByLabelText("Mot de passe :")).toHaveAttribute("aria-invalid", "true");
+  // Both fields are `required`, so the browser stops it. Asserted because the
+  // alternative — a 400 round-trip to be told a field is required — is a worse
+  // experience for the commonest mistake there is.
+  expect(attempts).toBe(0);
 });
 
-test("the submit button is marked unavailable while the request is in flight", async () => {
-  const user = userEvent.setup();
-  let release!: () => void;
+test("shows the submit as busy without disabling it", async () => {
+  let release: () => void = () => {};
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
   server.use(
-    http.post("/api/login", async () => {
+    http.post("/api/v1/login", async () => {
       await held;
-      return HttpResponse.json({ role: "admin" });
+      return HttpResponse.json({ ok: true });
     }),
   );
 
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  await signIn(user, "demo.admin");
-  const submit = screen.getByRole("button", { name: "Se connecter" });
-  await waitFor(() => expect(submit).toHaveAttribute("aria-disabled", "true"));
+  await renderWithSession(<Login />, { route: "/login" });
+  await fillAndSubmit("demo.direction", "demo");
+
+  const submit = await screen.findByRole("button", { name: "Connexion…" });
+  // NEVER the disabled attribute: disabling the focused control blurs it to
+  // <body> and throws focus away mid-submit. aria-disabled says the same thing
+  // to assistive technology while the element keeps focus, and an early return
+  // in the handler is what actually prevents the second submit.
+  expect(submit).toHaveAttribute("aria-disabled", "true");
+  expect(submit).not.toBeDisabled();
+
   release();
 });
 
-test("an authenticated visitor gets the logout view, not the form", async () => {
-  setMockUser("demo.moderator");
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  expect(await screen.findByText(/Connecté en tant que/)).toHaveTextContent("demo.moderator");
-  expect(screen.queryByLabelText("Identifiant :")).toBeNull();
-});
-
-test("logging out clears the session and returns to the home page", async () => {
-  const user = userEvent.setup();
-  setMockUser("demo.admin");
-  await renderWithSession(app, { route: "/authentification_inscription" });
-  await user.click(await screen.findByRole("button", { name: "Se déconnecter" }));
-  expect(await screen.findByText("Accueil")).toBeInTheDocument();
-});
-
-test("a returnTo in router state is honoured", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, {
-    route: "/authentification_inscription",
-    state: { from: "/planning_repet" },
+test("a second click while the first is in flight sends nothing", async () => {
+  let attempts = 0;
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
   });
-  await signIn(user, "demo.admin");
-  expect(await screen.findByText("Planning")).toBeInTheDocument();
+  server.use(
+    http.post("/api/v1/login", async () => {
+      attempts++;
+      await held;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  await renderWithSession(<Login />, { route: "/login" });
+  await fillAndSubmit("demo.direction", "demo");
+
+  // aria-disabled sets pointer-events-none in CSS, and jsdom applies no CSS —
+  // so this click lands, which is the point: the ONLY thing preventing the
+  // second request is the early return in the handler. Remove it and this
+  // test is what says so.
+  await userEvent.click(await screen.findByRole("button", { name: "Connexion…" }));
+  expect(attempts).toBe(1);
+
+  release();
 });
 
-test("a legacy ?returnTo= query is honoured", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, {
-    route: "/authentification_inscription?returnTo=%2Fplanning_repet",
-  });
-  await signIn(user, "demo.admin");
-  expect(await screen.findByText("Planning")).toBeInTheDocument();
+test("a member who must change their password lands on /account", async () => {
+  // A committee-issued password was read out loud down a phone, so it is not a
+  // secret. MustChangePassword enforces this globally; going straight there
+  // avoids a pointless bounce through a page they cannot use.
+  server.use(
+    http.get("/api/v1/me", () =>
+      HttpResponse.json({
+        id: 5,
+        username: "demo.young",
+        firstName: "Nadia",
+        lastName: "Sansconnexion",
+        isPlayer: true,
+        mustChangePassword: true,
+        permissions: [],
+      }),
+    ),
+  );
+
+  await renderWithSession(
+    <>
+      <Login />
+      <LocationProbe />
+    </>,
+    { route: "/login" },
+  );
+  await fillAndSubmit("demo.young", "demo");
+
+  expect(await screen.findByTestId("location")).toHaveTextContent("/account");
 });
 
-// The whole point of safeReturnTo, asserted through the page rather than only
-// as a unit: a hostile destination must land on the home page.
-test("a hostile returnTo falls back to the home page", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, {
-    route: "/authentification_inscription",
-    state: { from: "//evil.com" },
-  });
-  await signIn(user, "demo.admin");
-  expect(await screen.findByText("Accueil")).toBeInTheDocument();
+test("otherwise it returns to wherever the guard turned them away from", async () => {
+  setMockUser(null);
+  await renderWithSession(
+    <>
+      <Login />
+      <LocationProbe />
+    </>,
+    // The route guard hands the attempted path over in router STATE, not in a
+    // query string, so nobody can craft it. safeReturnTo normalises it anyway.
+    { route: "/login", state: { from: "/members" } },
+  );
+  await fillAndSubmit("demo.direction", "demo");
+
+  expect(await screen.findByTestId("location")).toHaveTextContent("/members");
+});
+
+test("an absolute URL in the router state is not honoured", async () => {
+  await renderWithSession(
+    <>
+      <Login />
+      <LocationProbe />
+    </>,
+    { route: "/login", state: { from: "https://evil.example" } },
+  );
+  await fillAndSubmit("demo.direction", "demo");
+
+  // safeReturnTo refuses anything that is not a same-origin path, so an
+  // off-site destination degrades to "/" rather than becoming an open redirect.
+  expect(await screen.findByTestId("location")).toHaveTextContent("/");
+  expect(screen.getByTestId("location")).not.toHaveTextContent("evil");
 });

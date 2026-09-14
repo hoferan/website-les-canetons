@@ -2,13 +2,13 @@
 
 namespace App\Support\Scramble;
 
+use App\Exceptions\ApiError;
 use Dedoc\Scramble\Extensions\ExceptionToResponseExtension;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
 use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Type\ObjectType;
 use Dedoc\Scramble\Support\Type\Type;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -25,15 +25,23 @@ final class ValidationExceptionResponse extends ExceptionToResponseExtension
     public function toResponse(Type $type)
     {
         return Response::make(400)
-            ->setDescription('Validation failed. See App\Exceptions\ApiError::validation().')
+            ->setDescription('The submitted fields were rejected. `errors` names each one and why.')
             ->setContent(
-                'application/json',
-                Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withFields: true))
+                ApiError::MEDIA_TYPE,
+                Schema::fromType(ErrorResponseSchema::schema(['validation_failed'], withErrors: true))
             );
     }
 
+    /**
+     * Named for the STATUS, not for the exception class that happens to raise
+     * it. `#/components/responses/AuthenticationException` published a PHP class
+     * name to readers with no PHP, and it would become a lie the day the
+     * renderer typed on a different exception. Matches the components
+     * App\Support\Scramble\DocumentsFailureModes registers, so one failure has
+     * one name whichever half of the machinery declared it.
+     */
     public function reference(ObjectType $type)
     {
-        return new Reference('responses', Str::start($type->name, '\\'), $this->components);
+        return new Reference('responses', 'Problem400', $this->components);
     }
 }

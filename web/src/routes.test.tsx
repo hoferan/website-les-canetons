@@ -1,109 +1,142 @@
 import { screen } from "@testing-library/react";
-import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { server } from "./mocks/node";
+import { setMockUser } from "./mocks/handlers";
 import { AppRoutes } from "./routes";
 import { renderWithSession } from "./test/renderWithSession";
 
-// The souper pages read the occasion copy, so an override that turns the flag
-// on MUST carry it. `occasion: null` with the flag on is a state the real API
-// never produces (ConfigController ties the two together) and it crashes the
-// pages.
-const OCCASION_FIXTURE = {
-  title: "Souper des 25 ans des Canetons",
-  subtitle: "Sortie du nouveau costume · Soirée guggen",
-  date: "2027-11-13",
-  dateDisplay: "13 novembre 2027",
-  teaser:
-    "Fêtez avec nous les 25 ans des Canetons ! Nouveau costume, un souper d'anniversaire et une soirée guggen.",
-  invitation: "Amis et familles, réservez votre place et votre menu.",
-  maxGuests: 30,
-  menus: [
-    { value: "meat", label: "Viande", description: "Rôti de bœuf.", price: "CHF 45.–" },
-    { value: "child", label: "Enfant", description: "Émincé de poulet.", price: "CHF 20.–" },
-    { value: "vegetarian", label: "Végétarien", description: "Risotto.", price: "CHF 40.–" },
-  ],
-};
-
-test.each([
-  ["/", "La guggen d’enfants de Fribourg, depuis 2002."],
-  ["/historique", "L’Histoire des Canetons"],
-  ["/canetons", "Nos Canetons"],
-  ["/moniteurs", "Nos Moniteurs"],
-  ["/planning_repet", "Événements"],
-  ["/comite_teamdirection", "Le comité"],
-  ["/commencement", "Tu veux commencer la guggen ?"],
-])("%s renders its page", async (route, heading) => {
-  await renderWithSession(<AppRoutes />, { route });
-  expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+/**
+ * The route table after R1b: /login, /account and /members, plus the 404
+ * fallback. The public pages and the events domain are still absent and each
+ * waits on its own release — see routes.tsx.
+ */
+test("/login renders its page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
-
-// /cd, /multimedia and /sponsors were all HIDDEN on 2026-08-31 (see routes.tsx). Their
-// components still exist, so "hidden" has to mean the route is gone, not that
-// the file was deleted — this is what proves it.
-test.each([["/cd"], ["/multimedia"], ["/sponsors"]])(
-  "%s is hidden and falls through to the 404 view",
-  async (route) => {
-    await renderWithSession(<AppRoutes />, { route });
-    expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
-  },
-);
 
 test("an unknown URL renders the 404 view rather than nothing", async () => {
   await renderWithSession(<AppRoutes />, { route: "/pas-une-page" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
 
-// /sinscrire was MERGED into /planning_repet, not deleted: the URL is frozen and
-// is in members' bookmarks. A redirect that nothing in the app relies on is a
-// redirect nobody notices has broken, so it is pinned here.
-test("/sinscrire redirects to the planning rather than 404ing", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/sinscrire" });
-  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
-});
-
-// /admin was DELETED, not merged: the page was an orphan (nothing linked to
-// it) whose one card duplicated the nav's "Événements" entry. The URL is
-// frozen and is in bookmarks from the old site, so it redirects rather than
-// 404ing, same as /sinscrire above — and it lands on the same page, so this
-// asserts on the same heading.
-test("/admin redirects to the planning rather than 404ing", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/admin" });
-  expect(await screen.findByRole("heading", { name: "Événements" })).toBeInTheDocument();
-});
-
-// The souper routes are feature-gated, and "off" must mean ABSENT, not empty:
-// a disabled route has to be indistinguishable from one that never existed,
-// which is what stops a server with the feature off advertising an unannounced
-// event through a stray URL.
-test("the souper routes 404 while the feature is off", async () => {
-  // The mocked backend now ships the feature ON, so "off" is the case that
-  // needs an override here — it used to be the other way round.
-  server.use(
-    http.get("/api/config", () =>
-      HttpResponse.json({ env: "dev", features: { souper_signup: false }, occasion: null }),
-    ),
-  );
-
-  await renderWithSession(<AppRoutes />, { route: "/signup" });
+// Legacy French paths are NOT redirected — the rebuild owes no backwards
+// compatibility (design §7) — so the old login URL now falls through to 404
+// like any other unknown path.
+test("the legacy login URL is not redirected and falls through to 404", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/authentification_inscription" });
   expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
 });
 
-test("the souper routes exist when the feature is on", async () => {
-  server.use(
-    http.get("/api/config", () =>
-      HttpResponse.json({
-        env: "dev",
-        features: { souper_signup: true },
-        occasion: OCCASION_FIXTURE,
-      }),
-    ),
-  );
+test("renders the roster at /members for somebody who may administer it", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/members" });
+  expect(await screen.findByRole("heading", { name: "Membres" })).toBeInTheDocument();
+});
 
-  await renderWithSession(<AppRoutes />, { route: "/signup" });
-  // The heading is the occasion's own title, read from the config override
-  // above — /signup is no longer a Placeholder. That the fixture's copy reaches
-  // the page is the point: it proves the route resolved to the real form.
-  expect(await screen.findByRole("heading", { name: OCCASION_FIXTURE.title })).toBeInTheDocument();
+test("refuses /members in place for a member who may not", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/members" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});
+
+test("sends an anonymous visitor from /members to the login page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/members" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
+});
+
+test("holds a member with a committee-issued password on /account", async () => {
+  setMockUser("demo.mustchange");
+  await renderWithSession(<AppRoutes />, { route: "/members" });
+  expect(await screen.findByRole("heading", { name: "Mon compte" })).toBeInTheDocument();
+});
+
+// The catch-all must survive the new nesting. Apache serves the SPA shell for
+// every unknown path by design, so this view IS the site's 404.
+test("still answers an unknown path with the 404 view", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/rien-du-tout" });
+  expect(await screen.findByRole("heading", { name: "Page introuvable" })).toBeInTheDocument();
+});
+
+test("renders the planning at /events for any logged-in member", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Planning" })).toBeInTheDocument();
+});
+
+test("sends an anonymous visitor from /events to the login page", async () => {
+  // RequireSession REDIRECTS rather than refusing in place: logging in is a
+  // thing this visitor can actually do, unlike the permission case.
+  await renderWithSession(<AppRoutes />, { route: "/events" });
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
+});
+
+/**
+ * THE PUBLIC PAGES. Each is asserted by the heading it renders rather than by
+ * "something appeared", because the catch-all below answers 200 for every
+ * unknown path — a route that is not registered renders the 404 view, which is
+ * a page, and a laxer assertion would pass for a URL that does not exist.
+ */
+test("/history renders the band's history", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/history" });
+  expect(
+    await screen.findByRole("heading", { name: /L’Histoire des Canetons/ }),
+  ).toBeInTheDocument();
+});
+
+test("/join renders the joining page", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/join" });
+  expect(
+    await screen.findByRole("heading", { name: /Tu veux commencer la guggen/ }),
+  ).toBeInTheDocument();
+});
+
+test("/contact renders the contact form", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/contact" });
+  expect(await screen.findByRole("heading", { name: "Contact" })).toBeInTheDocument();
+});
+
+/**
+ * The public pages sit OUTSIDE MustChangePassword, deliberately — see
+ * routes.tsx. A member holding a committee-issued password is held away from
+ * the members' tool (the test above proves it) and is NOT bounced off a page
+ * that a stranger can read anyway.
+ *
+ * Mutation-tested: moving these three routes back inside the gate fails this
+ * test and nothing else.
+ */
+test("does not hold a member with a committee-issued password away from the public pages", async () => {
+  setMockUser("demo.mustchange");
+  await renderWithSession(<AppRoutes />, { route: "/history" });
+  expect(
+    await screen.findByRole("heading", { name: /L’Histoire des Canetons/ }),
+  ).toBeInTheDocument();
+});
+
+/**
+ * THE FRONT DOOR. Until R2 there was no `/` at all: the site's own address
+ * fell through to the catch-all and answered 200 with the 404 view, which is
+ * the worst possible first impression and was invisible to every test because
+ * a page did render.
+ */
+test("/ renders the home page rather than the 404 view", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/" });
+  expect(
+    await screen.findByRole("heading", { name: /La guggen d’enfants de Fribourg/ }),
+  ).toBeInTheDocument();
+});
+
+test("/agenda renders the public agenda", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/agenda" });
+  expect(await screen.findByRole("heading", { name: "Où nous voir" })).toBeInTheDocument();
+});
+
+test("/band renders the band", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/band" });
+  expect(await screen.findByRole("heading", { name: "Nos Canetons" })).toBeInTheDocument();
+});
+
+test("/committee renders the committee", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/committee" });
+  expect(await screen.findByRole("heading", { name: "Le comité" })).toBeInTheDocument();
 });

@@ -1,112 +1,110 @@
 import { screen } from "@testing-library/react";
-import { expect, test } from "vitest";
 import { Route, Routes, useLocation } from "react-router-dom";
+import { expect, test } from "vitest";
 
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
-import { RequireCapability } from "./guards";
+import { RequirePermission, RequireSession } from "./guards";
 
-/** Renders whatever the guard put in router state, so a test can read it. */
-function ShowState() {
+/**
+ * Stands in for the login page, and reports the router STATE it was handed.
+ * `from` never appears in a URL — it is state, so nobody can craft it — which
+ * also means it is not observable from the path alone.
+ */
+function Whereabouts() {
   const { state } = useLocation();
-  return <p data-testid="from">{(state as { from?: string } | null)?.from ?? "(none)"}</p>;
+  return <p data-testid="from">{(state as { from?: string } | null)?.from ?? ""}</p>;
 }
 
-const SECRET = "contenu réservé";
-const secret = <p>{SECRET}</p>;
-
-// The negative cases are the point of this file. The capability matrix is NOT a
-// hierarchy — admin organises events but does not vote in them — and every
-// intuition about roles says otherwise, so both directions are pinned.
-test("a user may respond", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
-  expect(await screen.findByText(SECRET)).toBeInTheDocument();
-});
-
-test("a moderator may respond", async () => {
-  setMockUser("demo.moderator");
-  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
-  expect(await screen.findByText(SECRET)).toBeInTheDocument();
-});
-
-test("an admin may NOT respond", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
-  expect(screen.queryByText(SECRET)).toBeNull();
-  expect(screen.getByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
-});
-
-test("an admin may manage events", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(
-    <RequireCapability capability="manage_events">{secret}</RequireCapability>,
+/**
+ * A miniature route table. The guard is a layout route, so what it does is
+ * decide which of its children renders — not observable without one.
+ */
+function tree() {
+  return (
+    <Routes>
+      <Route path="/login" element={<h1>Connexion</h1>} />
+      <Route element={<RequirePermission permission="members.manage" />}>
+        <Route path="/members" element={<h1>Membres</h1>} />
+      </Route>
+    </Routes>
   );
-  expect(await screen.findByText(SECRET)).toBeInTheDocument();
+}
+
+test("renders the page for a member who holds the permission", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(tree(), { route: "/members" });
+
+  expect(await screen.findByRole("heading", { name: "Membres" })).toBeInTheDocument();
 });
 
-test("a user may NOT manage events", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(
-    <RequireCapability capability="manage_events">{secret}</RequireCapability>,
-  );
-  expect(screen.queryByText(SECRET)).toBeNull();
-  expect(screen.getByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+test("sends an anonymous visitor to the login page", async () => {
+  await renderWithSession(tree(), { route: "/members" });
+
+  expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
 
-// A refusal, not a redirect: bouncing someone already logged in to a login form
-// reads as "your session expired" and invites them to log in again at something
-// they will never be allowed to see.
-test("a logged-in user without the capability is refused in place, not redirected", async () => {
-  setMockUser("demo.user");
-  await renderWithSession(
-    <RequireCapability capability="manage_events">{secret}</RequireCapability>,
-  );
-  expect(screen.getByRole("alert")).toBeInTheDocument();
-});
+test("refuses a logged-in member IN PLACE rather than bouncing them to login", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(tree(), { route: "/members" });
 
-// A REFUSAL IS A PAGE, AND THIS FILE USED TO PROVE ONLY THAT IT WAS A STRING.
-// Every assertion above is on getByRole("alert") having the right text, and all
-// of them were true of a bare `<p role="alert">` that carried no heading and sat
-// outside the page shell — so at 390px the words hit the left edge with no
-// gutter, and a screen reader navigating by heading found an empty document.
-// Four green tests over a visible defect. Assert the structure, not the string.
-test("a refusal has a heading, so the page is not empty to a screen reader", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
+  // Bouncing somebody who is already logged in to a login form reads as "your
+  // session expired" and invites them to log in again, repeatedly, at
+  // something they will never be allowed to see.
   expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Connexion" })).toBeNull();
 });
 
-// The refusal is a dead end unless it offers one, and the visitor is logged in
-// and legitimate: they followed a link to something their role does not cover.
-test("a refusal offers a way out", async () => {
-  setMockUser("demo.admin");
-  await renderWithSession(<RequireCapability capability="respond">{secret}</RequireCapability>);
-  expect(await screen.findByRole("link", { name: /accueil/i })).toHaveAttribute("href", "/");
+test("gives the refusal a heading, a gutter and a way out", async () => {
+  setMockUser("demo.player");
+  const { container } = await renderWithSession(tree(), { route: "/members" });
+
+  // A refusal is a real page. This assertion exists because the previous
+  // version of this guard rendered a bare <p role="alert"> with no heading — an
+  // empty document to anyone navigating by heading — outside PageSection, so at
+  // 390px the words sat flush against the left edge. Four tests passed over it
+  // for weeks because they only checked the string was in the DOM.
+  expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Accès refusé");
+
+  // The refusal is ANNOUNCED: the route changed without a navigation, and a
+  // screen-reader user who hears nothing has no idea why the page they asked
+  // for is not there.
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+
+  // A way out, not a dead end.
+  expect(screen.getByRole("link", { name: /accueil/i })).toHaveAttribute("href", "/");
+
+  // The shell, which is what carries the gutter.
+  expect(container.querySelector("section.px-4")).not.toBeNull();
 });
 
-test("an anonymous visitor is redirected rather than shown a refusal", async () => {
-  await renderWithSession(
-    <RequireCapability capability="manage_events">{secret}</RequireCapability>,
-  );
-  expect(screen.queryByText(SECRET)).toBeNull();
-  expect(screen.queryByRole("alert")).toBeNull();
-});
-
-// The bounce has to carry the attempted location, or a guard sends everyone to
-// the home page after login and the deep link they clicked is lost. Asserted on
-// the rendered Location rather than on the guard's internals: what matters is
-// what the router receives.
-test("RequireCapability carries the location too, query string included", async () => {
+test("RequireSession lets a logged-in member through, whatever they can do", async () => {
+  // demo.player holds no permission at all — that is the point: a session is
+  // the whole requirement.
+  setMockUser("demo.player");
   await renderWithSession(
     <Routes>
-      <Route
-        path="/admin"
-        element={<RequireCapability capability="manage_events">{secret}</RequireCapability>}
-      />
-      <Route path="/authentification_inscription" element={<ShowState />} />
+      <Route element={<RequireSession />}>
+        <Route path="/planning" element={<p>Le planning</p>} />
+      </Route>
+      <Route path="/login" element={<h1>Connexion</h1>} />
     </Routes>,
-    { route: "/admin?tab=events" },
+    { route: "/planning" },
   );
-  expect(await screen.findByTestId("from")).toHaveTextContent("/admin?tab=events");
+
+  expect(await screen.findByText("Le planning")).toBeInTheDocument();
+});
+
+test("RequireSession redirects an anonymous visitor, and remembers where they were going", async () => {
+  await renderWithSession(
+    <Routes>
+      <Route element={<RequireSession />}>
+        <Route path="/planning" element={<p>Le planning</p>} />
+      </Route>
+      <Route path="/login" element={<Whereabouts />} />
+    </Routes>,
+    { route: "/planning" },
+  );
+
+  expect(await screen.findByTestId("from")).toHaveTextContent("/planning");
 });

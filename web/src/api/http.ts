@@ -14,9 +14,10 @@
  *    returning the body alone type-checks everywhere and is undefined at
  *    runtime. Call sites read `.data`; through a TanStack Query hook that
  *    reads `query.data.data`, the outer one being Query's own.
- *  - Errors use this API's own contract, {error, code, fields[]}, not Laravel's
- *    {message, errors}. `code` and `fields[].reason` are stable machine tokens
- *    the display layer translates into French; they are never shown raw.
+ *  - Errors are RFC 9457 problem documents on application/problem+json, not
+ *    Laravel's {message, errors}. `code` and `errors[].reason` are stable
+ *    machine tokens the display layer translates into French; they are never
+ *    shown raw. `title` is English prose for a log and must never be rendered.
  *
  * Signature note: orval's `httpClient: 'fetch'` mode calls its mutator as
  * `customFetch<T>(url, options)` — a URL string (already spec-relative, with
@@ -27,8 +28,12 @@
  * hand-designed one.
  */
 
-/** Spec paths are relative to /api; the SPA is served from the same origin. */
-const API_BASE = "/api";
+/**
+ * Spec paths are relative to /api/v1; the SPA is served from the same origin.
+ * The version prefix is part of the contract — App\Http\Middleware\ApiVersion::PREFIX
+ * on the Laravel side — and moving to a v2 means changing it here too.
+ */
+const API_BASE = "/api/v1";
 const CSRF_COOKIE_PATH = "/sanctum/csrf-cookie";
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -43,18 +48,34 @@ export type ApiErrorField = {
  * state) always receive one type. `code` falls back to 'unknown_error' when the
  * body is not the contract at all — an HTML 502 from the host, say — because the
  * display layer must always have a token to translate.
+ *
+ * `fields` keeps its name here even though the wire calls it `errors`: on this
+ * side it is one property of an Error object, and `error.errors` reads as a
+ * mistake. The wire name follows RFC 9457 convention; this one follows what the
+ * UI does with it, which is highlight fields.
+ *
+ * `requestId` is the string a member reads out when something failed. It is
+ * optional because a body that is not our contract has none.
  */
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: ApiErrorField[];
+  readonly requestId?: string;
 
-  constructor(status: number, code: string, message: string, fields: ApiErrorField[] = []) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields: ApiErrorField[] = [],
+    requestId?: string,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.requestId = requestId;
   }
 }
 
@@ -114,15 +135,33 @@ async function toApiError(response: Response): Promise<ApiError> {
     return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
   }
 
-  const contract = body as { error?: string; code?: string; fields?: ApiErrorField[] };
-  if (typeof contract?.code !== "string") {
+  // An RFC 9457 problem document. `title`, `status`, `detail` and `instance`
+  // are the standard members; `code`, `errors` and `requestId` are this API's
+  // extensions — see App\Exceptions\ApiError. There is no `type`: it could only
+  // have been a constant prefix in front of `code`.
+  //
+  // Only `code` is load-bearing here — it is the token the French layer maps,
+  // and a body without one is not our contract at all. `detail` is declared but
+  // deliberately not carried onto ApiError: it is English prose for a developer
+  // reading a response, and nothing English reaches a member's screen. It is
+  // typed so this stays an honest description of the wire.
+  const problem = body as {
+    title?: string;
+    code?: string;
+    errors?: ApiErrorField[];
+    requestId?: string;
+    detail?: string;
+  };
+
+  if (typeof problem?.code !== "string") {
     return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
   }
 
   return new ApiError(
     response.status,
-    contract.code,
-    contract.error ?? `HTTP ${response.status}`,
-    contract.fields ?? [],
+    problem.code,
+    problem.title ?? `HTTP ${response.status}`,
+    problem.errors ?? [],
+    typeof problem.requestId === "string" ? problem.requestId : undefined,
   );
 }

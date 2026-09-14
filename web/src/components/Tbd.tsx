@@ -9,12 +9,13 @@
  * gets a wrong answer, whereas a parent who sees a gap asks.
  *
  * So this renders something no reader can mistake for real content, and that
- * `grep -c "<Tbd" web/src` counts exactly. That count is the to-do list.
+ * `grep -c "<Tbd" web/src` counts exactly. That count is the to-do list, and
+ * the open questions behind it are §3 of `docs/content-audit-2026-08-31.md`.
  *
  * IT MUST BE EMPTY BEFORE PROD. TEST and QA are behind HTTP Basic Auth, so
  * placeholders there are seen only by the band. PROD is public and has never
- * been deployed. Deploying it while any of these remain would publish "à
- * compléter" where the committee should be. See docs/continue-here.md.
+ * been deployed with the rebuild. Deploying it while any of these remain would
+ * publish "à compléter" where the committee should be.
  */
 export function Tbd({ what }: { what?: string }) {
   return (

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Exceptions\ApiError;
+use App\Support\ErrorVocabulary;
 use Illuminate\Foundation\Http\FormRequest;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -44,10 +45,10 @@ class ApiErrorVocabularyTest extends TestCase
      * In the repository tree — a developer's checkout and CI — it sits at
      * <root>/web/src/i18n/fr.ts, three levels up from this file. In the dev
      * container the document root is the BUILT artifact, which contains only
-     * hashed bundles, so the source is not reachable from api-laravel/ at all;
+     * hashed bundles, so the source is not reachable from _api/ at all;
      * docker-compose.yml mounts the tracked web/ read-only at /srv/web purely
      * so this guard can still read it. The suite runs with a -w of
-     * /var/www/html/api-laravel, so neither cwd nor one absolute path would do.
+     * /var/www/html/_api, so neither cwd nor one absolute path would do.
      *
      * (api/app/ needs no such list: this file sits inside api/, so ../../app is
      * the same relative path in both layouts.)
@@ -61,13 +62,22 @@ class ApiErrorVocabularyTest extends TestCase
     private const APP_DIR = __DIR__.'/../../app';
 
     /**
+     * Scanned alongside app/, because several exception renderers live there and
+     * emit codes directly.
+     *
+     * This was a blind spot twice over. The scan originally covered app/ only,
+     * so `rate_limited` — raised by the ThrottleRequestsException renderer in
+     * bootstrap/app.php — read as "documented but never emitted" while being
+     * emitted on every rate-limited public request. Directories are not the
+     * boundary that matters here; "everywhere a code literal can appear" is.
+     */
+    private const BOOTSTRAP_FILE = __DIR__.'/../../bootstrap/app.php';
+
+    /**
      * Reason tokens no scan of `'reason' =>` literals can see.
      *
      * - invalid_format: ApiError::validation()'s fallback for any rule absent
-     *   from REASONS, written as `self::REASONS[$rule] ?? 'invalid_format'`, and
-     *   also the token SignupRequest::after() adds for `menus` through
-     *   $validator->errors()->add() — where the MESSAGE IS THE REASON, so the
-     *   token never appears next to a `'reason' =>` key at all.
+     *   from REASONS, written as `self::REASONS[$rule] ?? 'invalid_format'`.
      */
     private const EXTRA_REASONS = ['invalid_format'];
 
@@ -77,11 +87,32 @@ class ApiErrorVocabularyTest extends TestCase
      * - username, password: AuthController::login() validates them with an
      *   inline $request->validate([...]) rather than a FormRequest, so they are
      *   not reachable through the Requests/ reflection below.
-     * - menus: added by SignupRequest::after() via $validator->errors()->add(),
-     *   deliberately NOT a rules() key (Occasion::normalizeMenus() validates it),
-     *   so reflecting rules() cannot see it.
      */
-    private const EXTRA_FIELDS = ['username', 'password', 'menus'];
+    private const EXTRA_FIELDS = ['username', 'password'];
+
+    /**
+     * The second way a code reaches a response: carried on an exception.
+     *
+     * These four classes take the code as a constructor argument and are
+     * rendered by closures in bootstrap/app.php, which sits outside APP_DIR —
+     * so a scan for `::json(<status>, '<code>'` never encounters them.
+     *
+     * THIS REPLACED A HAND-WRITTEN EXTRA_CODES LIST, and the replacement is the
+     * point. That list named the three AccessIntegrityViolation codes and was
+     * never extended when AttendanceRefused and ReauthenticationFailed arrived,
+     * so `answer_already_settled`, `cannot_record_for_self`, `not_answerable`
+     * and `reauth_failed` were invisible to the scan — and
+     * test_every_emittable_code_has_french_copy was quietly not checking any of
+     * them. They happened to have French. A list that must be remembered is a
+     * list that will not be; a pattern that matches the CONSTRUCT covers every
+     * future one for free.
+     */
+    private const CODE_CARRYING_EXCEPTIONS = [
+        'AccessIntegrityViolation',
+        'AttendanceRefused',
+        'ReauthenticationFailed',
+        'SchemaUnavailable',
+    ];
 
     /**
      * Floors for the derived lists, so a derivation that silently stops working
@@ -97,22 +128,19 @@ class ApiErrorVocabularyTest extends TestCase
     private const MUST_INCLUDE_CODES = [
         'validation_failed', 'not_authenticated', 'access_denied',
         'method_not_allowed', 'invalid_session', 'invalid_credentials',
-        'event_not_found', 'service_unavailable', 'captcha_failed',
+        'service_unavailable', 'cannot_remove_last_administrator',
+        'cannot_demote_self', 'cannot_delete_self',
+        // One from each code-carrying exception class, so a regex that stops
+        // matching that construct fails here rather than silently shrinking the
+        // derived set — which is exactly how these four went unchecked before.
+        'not_answerable', 'reauth_failed', 'answer_already_settled',
+        // Emitted from bootstrap/app.php, not from app/ — the floor that keeps
+        // that file in the scan.
+        'rate_limited',
     ];
 
-    // 'id' used to belong here: EventController::update()/destroy() each had a
-    // `['field' => 'id', ...]` branch when the id travelled in the PUT body /
-    // DELETE query string. Both were deleted once the id became a
-    // whereNumber()-constrained /events/{id} route parameter — an absent or
-    // non-numeric id is now a 404/405 the router produces before the
-    // controller runs, never a `fields[].field === 'id'` validation error. The
-    // token genuinely can no longer be emitted, so it is intentionally absent
-    // below (see the caveat in normalise()'s failure message).
     private const MUST_INCLUDE_FIELDS = [
         'lastName', 'firstName', 'email', 'subject', 'message',
-        'date', 'title', 'startTime', 'endTime', 'location', 'attire',
-        'first_name', 'last_name', 'address', 'phone', 'table_name',
-        'eventId', 'participation',
     ];
 
     /*
@@ -141,6 +169,65 @@ class ApiErrorVocabularyTest extends TestCase
     public function test_every_emittable_field_has_french_copy(): void
     {
         $this->assertVocabularyCovered('fields', 'fields', $this->emittableFields());
+    }
+
+    /**
+     * App\Support\ErrorVocabulary is CHECKED against the source scan, in both
+     * directions, rather than trusted.
+     *
+     * That is what makes it a description of the API rather than a wish about
+     * it. It feeds three readers — the OpenAPI `code` enum, the problem-type
+     * pages at /api/problems, and the French-coverage test above — and a
+     * hand-maintained list feeding three readers is exactly the sort of thing
+     * that rots six months after the person who wrote it moved on.
+     *
+     * Both directions matter, and they catch opposite mistakes. A code the
+     * source emits but the vocabulary omits ships a problem type with no
+     * documentation, and a `type` URI that 404s. A code the vocabulary
+     * documents but nothing emits publishes a page for an error that cannot
+     * happen, which is worse than no page: a developer reads it and writes a
+     * branch that never runs.
+     */
+    public function test_the_error_vocabulary_matches_what_the_code_emits(): void
+    {
+        $emitted = $this->emittableCodes();
+        $documented = ErrorVocabulary::codes();
+
+        sort($emitted);
+        sort($documented);
+
+        self::assertSame($documented, $emitted, sprintf(
+            "App\\Support\\ErrorVocabulary and the codes app/ actually emits disagree.\n"
+            ."Emitted but undocumented: %s\n"
+            ."Documented but never emitted: %s\n"
+            .'Every code needs a status, a title and a detail sentence there — '
+            .'it is what /api/problems/{code} serves, and what the `type` URI in '
+            .'every problem document points at.',
+            implode(', ', array_diff($emitted, $documented)) ?: '(none)',
+            implode(', ', array_diff($documented, $emitted)) ?: '(none)',
+        ));
+    }
+
+    /**
+     * The reasons half of the same guarantee.
+     *
+     * Derived from ApiError::REASONS plus EXTRA_REASONS by emittableReasons(),
+     * so this catches a rule mapped to a reason token nobody listed.
+     */
+    public function test_the_error_vocabulary_lists_every_emittable_reason(): void
+    {
+        $emitted = $this->emittableReasons();
+        $documented = ErrorVocabulary::REASONS;
+
+        sort($emitted);
+        sort($documented);
+
+        self::assertSame($documented, $emitted, sprintf(
+            "App\\Support\\ErrorVocabulary::REASONS and the reasons app/ can emit disagree.\n"
+            ."Emitted but unlisted: %s\nListed but never emitted: %s",
+            implode(', ', array_diff($emitted, $documented)) ?: '(none)',
+            implode(', ', array_diff($documented, $emitted)) ?: '(none)',
+        ));
     }
 
     // ----------------------------------------------------------- the assertion
@@ -194,21 +281,159 @@ class ApiErrorVocabularyTest extends TestCase
         ), self::MUST_INCLUDE_REASONS, 'reasons');
     }
 
+    public function test_every_code_carries_the_status_the_source_emits_it_with(): void
+    {
+        // WHY THIS IS SCANNED AND NOT DERIVED. App\Support\ErrorVocabulary now
+        // carries a status per code, and that status is what the OpenAPI
+        // document groups its responses by — so the document, the extension
+        // that builds it and the tests that read it all agree with the map by
+        // construction. Filing a code under the wrong number would be invisible
+        // to every one of them and wrong in every generated client. The only
+        // way to catch it is to read the status off the CODE THAT RAISES IT,
+        // which is what this does.
+        $pairs = $this->emittedStatuses();
+
+        // The floor, for the reason every derivation here has one: a regex that
+        // stopped matching would make this vacuously green.
+        self::assertGreaterThanOrEqual(
+            20,
+            count($pairs),
+            'Found almost no status/code pairs in app/; this scan has stopped matching.'
+        );
+
+        $wrong = [];
+
+        foreach ($pairs as $code => $statuses) {
+            $declared = ErrorVocabulary::statusFor($code);
+
+            foreach (array_unique($statuses) as $status) {
+                if ($declared !== $status) {
+                    $wrong[] = sprintf(
+                        '%s is raised with %d and the vocabulary says %s',
+                        $code,
+                        $status,
+                        $declared === null ? 'nothing' : (string) $declared,
+                    );
+                }
+            }
+        }
+
+        self::assertSame([], $wrong, sprintf(
+            'The vocabulary disagrees with the code about what status a failure carries:
+  - %s
+
+'
+            .'One status per code is a property of this vocabulary: where a refusal has two '
+            .'statuses it has two codes, so that a caller branching on `code` never has to read '
+            .'`status` as well.',
+            implode('
+  - ', $wrong)
+        ));
+    }
+
+    /**
+     * code => the statuses app/ actually raises it with.
+     *
+     * Three sources, because a status reaches a response three ways:
+     *
+     *  - a literal `::json(<status>, '<code>'`, which covers ApiError's own
+     *    renderers, the controllers and the middleware;
+     *  - `new AttendanceRefused(<status>, '<code>'` and ReauthenticationFailed,
+     *    which carry their own because theirs varies;
+     *  - AccessIntegrityViolation, which carries NO status — the render closure
+     *    in bootstrap/app.php supplies it, so that literal is read from there
+     *    rather than assumed here.
+     *
+     * @return array<string, list<int>>
+     */
+    private function emittedStatuses(): array
+    {
+        $pairs = [];
+
+        $collect = function (string $pattern) use (&$pairs): void {
+            foreach ([...$this->phpFiles(self::APP_DIR), self::BOOTSTRAP_FILE] as $file) {
+                if (! preg_match_all($pattern, (string) file_get_contents($file), $m, PREG_SET_ORDER)) {
+                    continue;
+                }
+
+                foreach ($m as $match) {
+                    $pairs[$match[2]][] = (int) $match[1];
+                }
+            }
+        };
+
+        $collect("/::json\(\s*(\d{3})\s*,\s*'([a-z_]+)'/");
+        $collect(sprintf(
+            "/new\s+(?:%s)\(\s*(\d{3})\s*,\s*'([a-z_]+)'/",
+            implode('|', self::CODE_CARRYING_EXCEPTIONS),
+        ));
+
+        foreach ($this->rendererSuppliedStatuses() as $code => $status) {
+            $pairs[$code][] = $status;
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * The codes whose status lives in a render closure rather than at the throw.
+     *
+     * AccessIntegrityViolation is the only one: every violation it carries is a
+     * conflict, so bootstrap/app.php renders the lot at one status and the
+     * throw sites name only the code. Reading that literal out of the closure
+     * keeps this test anchored on the source rather than on a number repeated
+     * here.
+     *
+     * @return array<string, int>
+     */
+    private function rendererSuppliedStatuses(): array
+    {
+        $bootstrap = (string) file_get_contents(self::BOOTSTRAP_FILE);
+
+        if (! preg_match('/AccessIntegrityViolation \$e.*?ApiError::json\(\s*(\d{3})/s', $bootstrap, $m)) {
+            self::fail('Cannot find the AccessIntegrityViolation renderer in bootstrap/app.php, so its status is unchecked.');
+        }
+
+        $status = (int) $m[1];
+        $found = [];
+
+        foreach ($this->phpFiles(self::APP_DIR) as $file) {
+            if (preg_match_all("/new\s+AccessIntegrityViolation\(\s*'([a-z_]+)'/", (string) file_get_contents($file), $codes)) {
+                foreach ($codes[1] as $code) {
+                    $found[$code] = $status;
+                }
+            }
+        }
+
+        self::assertNotEmpty($found, 'Found no AccessIntegrityViolation throw sites; this scan has stopped matching.');
+
+        return $found;
+    }
+
     /**
      * Code tokens: every `::json(<status>, '<code>'` call site in app/ — which
      * covers both ApiError's own named helpers (self::json(401,
      * 'not_authenticated', …)) and the controllers' direct ApiError::json(…)
-     * calls, including SignupController's multi-line one.
+     * calls, including SignupController's multi-line one — plus EXTRA_CODES.
      *
      * @return list<string>
      */
     private function emittableCodes(): array
     {
-        return $this->normalise(
-            $this->scanAppFor("/::json\(\s*\d+\s*,\s*'([a-z_]+)'/"),
-            self::MUST_INCLUDE_CODES,
-            'codes'
+        // `new SomeRefusal(..., 'the_code', ...)` — the code is not always the
+        // first argument (AttendanceRefused and ReauthenticationFailed put the
+        // status first, because theirs varies), so this takes the first
+        // snake_case string literal inside the constructor call rather than
+        // assuming a position. [^)]* keeps it inside that call.
+        $carried = sprintf(
+            "/new\s+(?:%s)\(\s*[^)]*?'([a-z_]{4,})'/",
+            implode('|', self::CODE_CARRYING_EXCEPTIONS),
         );
+
+        return $this->normalise(array_merge(
+            $this->scanAppFor("/::json\(\s*\d+\s*,\s*'([a-z_]+)'/"),
+            $this->scanAppFor($carried),
+        ), self::MUST_INCLUDE_CODES, 'codes');
     }
 
     /**
@@ -233,9 +458,37 @@ class ApiErrorVocabularyTest extends TestCase
                 "{$class} is not a FormRequest; this derivation assumes it is."
             );
 
-            $rules = (new $class)->rules();
+            $instance = new $class;
+            self::assertTrue(
+                method_exists($instance, 'rules'),
+                "{$class} has no rules() for this derivation to read."
+            );
+            $rules = $instance->rules();
             self::assertNotEmpty($rules, "{$class}::rules() came back empty.");
-            $fields = array_merge($fields, array_map('strval', array_keys($rules)));
+
+            // Two reductions, each mirroring exactly what translateApiError
+            // does before it looks a label up. Asking for a token the SPA
+            // never requests would demand French copy for a key nothing reads,
+            // while leaving the real one unchecked.
+            //
+            // 1. `roleIds.*` is rule syntax, not a field name. Laravel reports
+            //    the failure against `roleIds.0`, and the SPA strips the index
+            //    — so the token that must exist is `roleIds`.
+            // 2. A NESTED path resolves to its last segment.
+            //    StoreEventSeriesRequest nests the event under `template`, so
+            //    Laravel reports `template.endTime`; the SPA tries that whole
+            //    path, then falls back to `endTime`, whose French is the same
+            //    words. This checks the fallback target, which is the one the
+            //    catalogue actually carries.
+            $fields = array_merge($fields, array_map(
+                function (string $key): string {
+                    $stripped = preg_replace('/\.(\*|\d+)(?=\.|$)/', '', $key) ?? $key;
+                    $segments = explode('.', $stripped);
+
+                    return end($segments) ?: $stripped;
+                },
+                array_map('strval', array_keys($rules)),
+            ));
         }
 
         return $this->normalise(array_merge(
@@ -252,8 +505,10 @@ class ApiErrorVocabularyTest extends TestCase
      */
     private function scanAppFor(string $pattern): array
     {
+        self::assertFileExists(self::BOOTSTRAP_FILE, 'Cannot scan bootstrap/app.php for hand-rolled tokens.');
+
         $found = [];
-        foreach ($this->phpFiles(self::APP_DIR) as $file) {
+        foreach ([...$this->phpFiles(self::APP_DIR), self::BOOTSTRAP_FILE] as $file) {
             if (preg_match_all($pattern, (string) file_get_contents($file), $m)) {
                 $found = array_merge($found, $m[1]);
             }

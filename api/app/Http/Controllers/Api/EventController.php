@@ -3,255 +3,314 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\EventRequest;
+use App\Http\Requests\StoreEventRequest;
+use App\Http\Requests\UpdateEventRequest;
+use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Support\Audit;
+use App\Support\BandTime;
+use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
-use Dedoc\Scramble\Attributes\Response as ApiResponse;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
-/**
- * /api/events — the members' rehearsal-and-events planning feature.
- *
- * A straight port of the legacy app/api/events.php, whose access rules are
- * deliberately asymmetric and are the whole point of this class:
- *
- *   GET    /api/events        — PUBLIC. Anonymous visitors get the events with
- *                               `response: null`; a logged-in caller additionally
- *                               gets each event annotated with THEIR OWN answer.
- *   POST   /api/events        — admin only (`manage_events`).
- *   PUT    /api/events/{id}   — admin only (`manage_events`).
- *   DELETE /api/events/{id}   — admin only (`manage_events`).
- *
- * The capability matrix is not a hierarchy: `user`/`moderator` hold `respond`
- * and must be refused by all three writes; `admin` holds `manage_events` and
- * cannot respond. See App\Support\Capability.
- *
- * Request and response keys are camelCase (startTime/endTime/weekend) while the
- * columns are snake_case. That is fixed by two existing consumers —
- * planning_repet.js reads the response and posts the request in camelCase, and
- * app/assets/js/i18n.js looks up fields[].field by those same camelCase names.
- * The mapping therefore happens HERE, in one place, and is not normalised in
- * either direction.
- */
+#[Group('Events', 'The planning: what the band is doing and when. Every member reads it; changing it needs `events.manage`.', weight: 20)]
 class EventController extends Controller
 {
     /**
-     * GET /api/events — public index, UPCOMING BY DEFAULT, ordered by date.
+     * List the planning.
      *
-     * `?include=past` returns everything; anything else returns `date >= today`.
+     * Any logged-in member; no permission is needed. Returns the events still
+     * to come, soonest first, each carrying `myAttendance`: the caller's own
+     * answer, or `null` where they have not given one.
      *
-     * WHY THE DEFAULT IS THE FILTERED ONE. This used to return every event ever,
-     * ascending — "exactly the old query". So /sinscrire, headed "Événements à
-     * venir", listed events that had already happened at the TOP of the list,
-     * each with a dead "Choix enregistré" button, and /planning_repet put the
-     * next rehearsal at the BOTTOM of a list that grows every season. On the one
-     * screen whose purpose is "do I play Saturday?", that was the worst defect
-     * in the app.
+     * `?past=1` returns the history instead, the events that have already
+     * happened, newest first. Any other value, or none, gives the upcoming
+     * planning. The two are halves of the list rather than a list and a
+     * superset of it.
      *
-     * The safe answer is the default rather than something a caller opts into,
-     * for the same reason this endpoint deliberately has no ?username=
-     * parameter: a page that forgets to ask should not be able to reintroduce
-     * the bug.
-     *
-     * The boundary is INCLUSIVE of today — an event happening today has not
-     * happened yet — and `where`, not `whereDate`, so the comparison stays
-     * index-friendly if `events.date` is ever indexed (it is not today, and at
-     * this band's volume it does not need to be).
-     *
-     * now() is UTC, because api/config/app.php hardcodes it and there is no
-     * APP_TIMEZONE key. Fribourg is UTC+1/+2, so a UTC "today" LAGS local time
-     * and today's event stays listed for the first hour or two of tomorrow. That
-     * errs in the safe direction; the dangerous direction would be hiding an
-     * event before it happened, which needs UTC to run ahead of local time and
-     * never does here. Do not "fix" this by setting APP_TIMEZONE as a side
-     * effect — timestamps were standardised on UTC deliberately.
-     *
-     * `response` is the CALLER'S OWN answer or null. There is deliberately no
-     * request parameter naming a user (no ?username=, no ?userId=): that
-     * absence is what keeps a previously-fixed IDOR closed. The `responses`
-     * relation is additionally CONSTRAINED to the caller's own user_id, so the
-     * rows fetched from the database cannot carry another member's answer at
-     * all — a mistake in the shaping code below could not leak one.
-     *
-     * Eager-loaded rather than queried per event: one events query plus one
-     * responses query, instead of the N+1 a per-event lookup would cost. It is
-     * also closer to the old single LEFT JOIN than N queries would be. A JOIN
-     * was avoided only because Eloquent would then need a raw select alias to
-     * carry `answer` alongside the model's own columns; the constrained
-     * eager-load expresses the same restriction declaratively.
-     *
-     * OPTIONAL authentication, on the DEFAULT guard. This route deliberately
-     * carries no auth middleware — it must serve anonymous visitors — so
-     * nothing has called Auth::shouldUse() and $request->user() resolves the
-     * default `web` guard. Under Sanctum SPA mode that is exactly right:
-     * statefulApi() only starts a session for a request whose referer/origin
-     * matches a configured stateful domain, so the `web` guard sees a user in
-     * precisely the cases Sanctum considers authenticated, and nowhere else. No
-     * user resolved is not an error here; it is the anonymous case, which is a
-     * legitimate 200 with `response: null` throughout.
-     *
-     * $request->user('sanctum') was tried and deliberately reverted. It behaves
-     * identically over real HTTP (both were verified against a live login), but
-     * Sanctum's RequestGuard memoizes the user it resolved, and actingAs() sets
-     * the user on the `web` guard without clearing that memo — so a second
-     * request in one test kept the FIRST user. That makes the harness unable to
-     * detect a cross-user leak across requests, i.e. a false negative on exactly
-     * the property EventIndexTest exists to guard. The token case it would have
-     * covered is hypothetical (this API is SPA cookie mode — see
-     * bootstrap/app.php) and its failure mode is a caller seeing no answers, not
-     * someone else's.
+     * An event taking place today stays in the planning for the whole of that
+     * day; it does not move to the history the moment it starts.
      */
-    /*
-     * The shape is spelled out here because Scramble cannot infer it: this
-     * method maps a Collection through Event::toFrontendShape(), and without
-     * this attribute the OpenAPI document described the response as an array of
-     * STRING — which the generated TypeScript client faithfully repeated,
-     * leaving the SPA's main endpoint untyped.
-     *
-     * It is a LITERAL and not Event's @phpstan-type EventShape alias: Scramble
-     * resolves `list<EventShape>` to a bare object with no properties, so the
-     * alias buys nothing here. That leaves the shape written twice — and
-     * EventShapeContractTest fails if the two ever disagree, so this is
-     * duplication a test catches rather than a comment asks you to remember.
-     */
+    // `type` is the LITERAL '1', not `string`. Scramble parses this argument as
+    // a PHPDoc type, so a constant string becomes an enum of one value — which
+    // is the contract: send `1`, or leave the parameter off. The controller is
+    // lenient about anything else on purpose (see below), and leniency is not
+    // something a document should invite a client to rely on.
     #[QueryParameter(
-        'include',
-        description: 'Set to `past` to receive the whole history. Any other value, or none, returns only events from today onwards.',
-        type: 'string',
+        'past',
+        'Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.',
         required: false,
-        example: 'past',
+        type: "'1'",
+        example: '1',
     )]
-    #[ApiResponse(status: 200, type: 'list<array{id: int, date: string, title: string, startTime: string, endTime: string, location: string, attire: string|null, weekend: int, response: string|null}>')]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        $userId = $request->user()?->id;
-
-        // Only the exact string opts in, mirroring POST /api/migrate's ?mode.
-        $includePast = $request->query('include') === 'past';
-
-        $events = Event::query()
-            ->when(
-                ! $includePast,
-                fn ($query) => $query->where('date', '>=', now()->toDateString())
-            )
-            ->when(
-                $userId !== null,
-                fn ($query) => $query->with([
-                    'responses' => fn ($responses) => $responses->where('user_id', $userId),
-                ])
-            )
-            // ORDER BY date only — exactly the old query. No secondary key is
-            // added: that would change the order of same-date events relative
-            // to the endpoint being replaced.
-            ->orderBy('date')
-            ->get()
-            ->map(fn (Event $event): array => $event->toFrontendShape(
-                // relationLoaded() distinguishes "anonymous, never asked" from
-                // "logged in, no answer yet"; both shape to null, but only the
-                // second may read the relation.
-                $event->relationLoaded('responses')
-                    ? $event->responses->first()?->answer
-                    : null
-            ))
-            ->all();
-
-        // ->all() first: an empty collection serialises as `{}` through some
-        // paths, and planning_repet.js calls .sort() on the parsed body.
-        return response()->json($events);
-    }
-
-    /** POST /api/events — admin only. 201 {"ok":true}, matching the old endpoint. */
-    public function store(EventRequest $request): JsonResponse
-    {
-        Event::create($this->columns($request));
-
-        return response()->json(['ok' => true], 201);
-    }
-
-    /**
-     * PUT /api/events/{id} — admin only. The id is a route parameter,
-     * constrained to digits by whereNumber() in routes/api.php, so it is
-     * always present and numeric by the time this method runs.
-     *
-     * The EventRequest is injected, so field validation still runs before the
-     * Event::find() lookup below — the legacy endpoint's order, now simply a
-     * consequence of Laravel resolving the FormRequest before the controller
-     * body executes, rather than an explicit id check this method used to do.
-     *
-     * A well-formed id for an event that no longer exists is a 200 {"ok":true}
-     * no-op, NOT a 404: the old `UPDATE ... WHERE id=?` matched no rows and
-     * reported success just the same. planning_repet.js treats any non-2xx as a
-     * failure and shows a French error, so turning a stale list entry into a 404
-     * would be a user-visible behaviour change, out of scope for this port.
-     */
-    public function update(EventRequest $request, int $id): JsonResponse
-    {
-        $event = Event::find($id);
-        if ($event === null) {
-            return response()->json(['ok' => true]);
-        }
-
-        // `weekend` PRESERVATION, reproducing EventRepository::update()'s
-        // currentWeekend() lookup: when the key is absent from the payload the
-        // stored flag is kept, rather than defaulting to 0. Defaulting would let
-        // any client that omits the field silently downgrade a weekend event to
-        // a single-day one — a silent data change on an otherwise valid edit.
-        // planning_repet.js always sends the checkbox's state, so this branch is
-        // for other clients; an EXPLICIT false still clears the flag.
+        // `?past=1` is the OTHER HALF of the list, not a superset of it — by
+        // next carnival the full list is a hundred rehearsals to scroll past
+        // on a phone. It also reverses the order, because history is read
+        // backwards from now, while the planning ahead is read soonest-first.
         //
-        // No extra query is needed for it: the row is already loaded above.
-        $columns = $this->columns($request);
-        if (! $request->has('weekend')) {
-            unset($columns['weekend']);
-        }
-        $event->update($columns);
+        // Anything that is not exactly the magic word '1' is the default,
+        // upcoming view — the same fail-safe direction MigrateController
+        // takes with its `mode` parameter: a missing, misspelled or truncated
+        // value must never be the one that hides events.
+        //
+        // ONE eager load below, and it is the one R1c-2 was given room for:
+        // the caller's own answer, constrained to them in the query.
+        // MEASURED 2026-09-09 at exactly 1 query before attendance existed;
+        // the join makes it 2, against the budget of 3 that
+        // test_listing_the_planning_costs_a_fixed_number_of_queries has
+        // always asserted. The spare room was deliberate and is now spent.
+        //
+        // This note lives HERE and not immediately above the return, because
+        // Scramble publishes the comment directly preceding a return as the
+        // 200 response description. Measured 2026-09-10: it had shipped this
+        // paragraph, decision codes and test names included, to /api/docs.
+        $past = $request->query('past') === '1';
 
-        return response()->json(['ok' => true]);
+        // The split is on BandTime::startOfToday(), not now(): a rehearsal
+        // that began an hour ago must stay in the planning of somebody
+        // running late. Pinned by
+        // EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,
+        // and mutation-tested by hand against now() — see Task 4 step 7.
+        $startOfToday = BandTime::startOfToday();
+
+        $query = $past
+            ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
+            : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
+
+        return EventResource::collection(
+            $query->with(self::myAttendance($request))->get()
+        );
     }
 
     /**
-     * DELETE /api/events/{id} — admin only. The id is a route parameter,
-     * constrained to digits by whereNumber() in routes/api.php, so it is
-     * always present and numeric by the time this method runs — unlike the
-     * legacy query-string id, an absent or non-numeric one never reaches this
-     * method at all (the route itself 404s).
+     * The eager load that puts the CALLER's own answer on an event, and only
+     * theirs.
      *
-     * The event's responses go with it via the FK's ON DELETE CASCADE; nothing
-     * here deletes them explicitly.
+     * One extra query for a whole list, not one per row — and constrained to
+     * the caller inside the QUERY rather than filtered afterwards, so
+     * another member's answer is never loaded into memory at all. That is
+     * the half a post-hoc filter gets wrong: it works, until somebody reads
+     * `$event->attendance` for a different purpose and quietly gets
+     * everybody's. Pinned by
+     * MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
+     *
+     * @return array<string, \Closure>
      */
-    public function destroy(int $id): JsonResponse
+    private static function myAttendance(Request $request): array
     {
-        Event::where('id', $id)->delete();
-
-        return response()->json(['ok' => true]);
-    }
-
-    /**
-     * Map the validated camelCase request onto the snake_case columns. This is
-     * the ONE place the two naming conventions meet.
-     *
-     * `attire` is normalised exactly as the old endpoint did — trimmed, and ''
-     * for anything that is not a string (absent or null included) — because the
-     * column is `NOT NULL`-shaped in practice and planning_repet.js assigns
-     * `event.attire` straight into an input's value, where null would render the
-     * literal text "null".
-     *
-     * @return array<string, mixed>
-     */
-    private function columns(EventRequest $request): array
-    {
-        $data = $request->validated();
-        $attire = $data['attire'] ?? null;
+        $memberId = $request->user()?->id;
 
         return [
-            'date' => $data['date'],
-            'title' => $data['title'],
-            'start_time' => $data['startTime'],
-            'end_time' => $data['endTime'],
-            'location' => $data['location'],
-            'attire' => is_string($attire) ? trim($attire) : '',
-            'weekend' => (int) ($data['weekend'] ?? 0),
+            'attendance' => fn ($query) => $query->where('member_id', $memberId),
         ];
+    }
+
+    /**
+     * Read one event.
+     *
+     * Any logged-in member; no permission is needed. Returns the event with
+     * `myAttendance`, the caller's own answer or `null`.
+     *
+     * Works for a past event as well as an upcoming one, unlike the default
+     * list. An unknown id answers `404`.
+     */
+    public function show(Request $request, Event $event): EventResource
+    {
+        // Not redundant with index(): the edit form loads through this rather
+        // than hunting the list, because a past event is absent from the
+        // default list entirely — finding it there would work right up until
+        // somebody edited last month's rehearsal.
+        //
+        // Route-model binding turns an unknown id into a
+        // ModelNotFoundException; Laravel's own exception handler rewrites
+        // that into a 404 before any render() closure sees it (checked against
+        // bootstrap/app.php — no closure there is typed on it, so this 404 is
+        // the FRAMEWORK's default JSON shape, not App\Exceptions\ApiError's
+        // {error, code, fields[]} contract; EventIndexTest only asserts the
+        // status for that reason).
+        $event->load(self::myAttendance($request));
+
+        return new EventResource($event);
+    }
+
+    /**
+     * Put a rehearsal or a gig on the planning.
+     *
+     * Requires `events.manage`. Answers `201` with the created event.
+     *
+     * `startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and
+     * `endsAt` must come after `startsAt` or it fails validation against that
+     * field with `must_be_after`. An event spanning two days is an ordinary
+     * row, not an error. `title`, `location`, `startsAt`, `endsAt` and
+     * `isPublic` are required; a missing one fails validation against itself
+     * with `required`.
+     *
+     * Setting `registrationClosesAt` is what opens the event to public
+     * registration. It must come after `registrationOpensAt`, which may be
+     * left null to mean the form opens as soon as the closing date is set,
+     * and `registrationMaxGuests` caps how many people one booking may cover.
+     */
+    public function store(StoreEventRequest $request): JsonResponse
+    {
+        // 201 with the created row, not 204: the SPA drops the response
+        // straight into the list it is already showing, and a second GET to
+        // learn the id would race the next writer.
+        //
+        // The two timestamps go in as the SPA sent them, offset and all.
+        // Turning them into UTC instants is App\Casts\UtcDateTime's job, on
+        // the column — this endpoint deliberately knows nothing about it,
+        // which is what makes every other writer of these columns correct too.
+        $data = $request->validated();
+
+        $event = Event::create([
+            'title' => $data['title'],
+            'starts_at' => $data['startsAt'],
+            'ends_at' => $data['endsAt'],
+            'location' => $data['location'],
+            'attire' => $data['attire'] ?? null,
+            'is_public' => $data['isPublic'],
+            'notes' => $data['notes'] ?? null,
+            'registration_opens_at' => $data['registrationOpensAt'] ?? null,
+            'registration_closes_at' => $data['registrationClosesAt'] ?? null,
+            'registration_max_guests' => $data['registrationMaxGuests'] ?? null,
+        ]);
+
+        // Audited, like every other privileged mutation, with the title
+        // captured as the label — see App\Support\Audit for why the CALLER
+        // reads it.
+        Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
+
+        return response()->json(new EventResource($event), 201);
+    }
+
+    /**
+     * Correct an event already on the planning.
+     *
+     * Requires `events.manage`. Send only the fields that change: an omitted
+     * field is left alone, and an explicit `null` clears an optional one such
+     * as `attire` or `notes`. Returns the updated event, including the
+     * caller's own `myAttendance`.
+     *
+     * `endsAt` must still come after the start. A request that sends a new end
+     * and no new start is compared against the stored `startsAt`, and fails
+     * against `endsAt` with `must_be_after` if it falls before it.
+     *
+     * Clearing `registrationClosesAt` switches public registration off again.
+     */
+    public function update(UpdateEventRequest $request, Event $event): EventResource
+    {
+        // The fields go through array_key_exists(), not isset(): isset() is
+        // false for an explicitly-sent null, so clearing the attire or the
+        // notes — the committee deciding a gig is in ordinary clothes after
+        // all — would answer 200 and silently change nothing.
+        // MemberController::update() carries the same loop for the same
+        // reason.
+        //
+        // (That comment there also names $request->has(). MEASURED
+        // 2026-09-10: has() is in fact TRUE for an explicitly-sent null —
+        // Arr::has() is array_key_exists underneath, and it is filled() that
+        // reads false. So has() would work here; array_key_exists is still the
+        // right shape, because it asks the question of validated() — the array
+        // the rules have already vetted — rather than of the raw input.)
+        //
+        // The two timestamps go in as the SPA sent them, offset and all — see
+        // store(), and App\Casts\UtcDateTime for why no endpoint converts
+        // them.
+        $data = $request->validated();
+
+        $columns = [
+            'title' => 'title',
+            'startsAt' => 'starts_at',
+            'endsAt' => 'ends_at',
+            'location' => 'location',
+            'attire' => 'attire',
+            'isPublic' => 'is_public',
+            'notes' => 'notes',
+            'registrationOpensAt' => 'registration_opens_at',
+            'registrationClosesAt' => 'registration_closes_at',
+            'registrationMaxGuests' => 'registration_max_guests',
+        ];
+
+        foreach ($columns as $field => $column) {
+            if (array_key_exists($field, $data)) {
+                $event->{$column} = $data[$field];
+            }
+        }
+
+        $event->save();
+
+        // Audited with the NEW title: a row still labelled with the old one
+        // names an event that no longer exists under that name.
+        Audit::record($request->user(), 'event.updated', 'event', $event->id, $event->title);
+
+        // Loaded explicitly: an organiser who also plays has their own answer
+        // on this event, and a response reporting myAttendance as null would
+        // reset the buttons on their own screen. See EventResource.
+        $event->load(self::myAttendance($request));
+
+        return new EventResource($event);
+    }
+
+    /**
+     * Take an event off the planning.
+     *
+     * Requires `events.manage`. Deletes the event and everything attached to
+     * it: every attendance answer given for it, and every public registration
+     * booked for it.
+     *
+     * Answers `{"ok": true, "attendanceDeleted": n, "registrationsDeleted": n}`
+     * with the counts of what went with it, so a confirmation can say what is
+     * about to be discarded rather than merely asking again.
+     */
+    #[Response(200, 'Deleted, with the counts of answers and bookings that went with it.')]
+    public function destroy(Request $request, Event $event): JsonResponse
+    {
+        // NO AccessIntegrity EQUIVALENT, unlike deleting a member: an event has
+        // no lockout invariant to violate, and nothing references `events` yet.
+        //
+        // The title and the id are captured BEFORE the delete, because the row
+        // is gone by the time anybody reads the audit back — the label is then
+        // the only part of that entry that still means anything.
+        //
+        // NO TEST PINS THAT ORDERING, and cannot. MEASURED 2026-09-10 by moving
+        // both reads after $event->delete(): all 25 tests stay green, because
+        // Eloquent leaves the deleted model's attributes in memory. It is kept
+        // first for the reason MemberController::destroy() keeps its own
+        // ordering — the audit must not depend on what a soft delete, a
+        // cascading delete or a refreshed model would leave behind.
+        $label = $event->title;
+        $id = $event->id;
+
+        // COUNTED BEFORE THE DELETE, because the cascade removes the rows
+        // this counts. Deleting an event destroys every answer given for it,
+        // and saying so is the difference between a confirmation that warns
+        // and one that merely asks again — see the R1c-1 plan Task 12, and
+        // the R3 spec §4 which adds registrationsDeleted beside it.
+        //
+        // {ok: true} rather than 204 for the same reason: R1c-2 needed
+        // somewhere to put the count of answers that went with the event, and
+        // a 204 has no body to say it in.
+        $attendanceDeleted = $event->attendance()->count();
+        $registrationsDeleted = $event->registrations()->count();
+
+        // ONE TRANSACTION: the delete now spans four tables — the choices
+        // Event::booted() clears first, then the cascades into registrations,
+        // options and attendance. A failure part-way through would leave a
+        // half-deleted event whose bookings point at nothing.
+        DB::transaction(fn () => $event->delete());
+
+        Audit::record($request->user(), 'event.deleted', 'event', $id, $label);
+
+        return response()->json([
+            'ok' => true,
+            'attendanceDeleted' => $attendanceDeleted,
+            'registrationsDeleted' => $registrationsDeleted,
+        ]);
     }
 }

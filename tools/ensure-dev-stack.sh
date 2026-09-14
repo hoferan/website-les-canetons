@@ -4,7 +4,8 @@
 # docker compose (site + MariaDB via Apache/php:8.4-fpm) is how this repo
 # normally does local dev, but Claude Code web sessions have no Docker daemon.
 # When that's the case, this stands up an equivalent stack natively: MariaDB
-# directly, both databases seeded, and api/.env pointing at it.
+# directly, the databases created (empty — Laravel's migrations populate
+# them), and api/.env pointing at it.
 #
 # Invoked on-demand by the DB-dependent npm scripts (via ensure-dev-stack.mjs),
 # NOT from the SessionStart hook — session startup must stay fast and must not
@@ -51,22 +52,31 @@ fi
 sudo mysql -e "
   CREATE DATABASE IF NOT EXISTS lescanetons CHARACTER SET utf8mb4;
   CREATE DATABASE IF NOT EXISTS lescanetons_test CHARACTER SET utf8mb4;
+  CREATE DATABASE IF NOT EXISTS laravel_api_test CHARACTER SET utf8mb4;
   CREATE USER IF NOT EXISTS 'canetons'@'127.0.0.1' IDENTIFIED BY 'canetons';
   CREATE USER IF NOT EXISTS 'canetons'@'localhost' IDENTIFIED BY 'canetons';
   GRANT ALL PRIVILEGES ON lescanetons.* TO 'canetons'@'127.0.0.1';
   GRANT ALL PRIVILEGES ON lescanetons.* TO 'canetons'@'localhost';
   GRANT ALL PRIVILEGES ON lescanetons_test.* TO 'canetons'@'127.0.0.1';
   GRANT ALL PRIVILEGES ON lescanetons_test.* TO 'canetons'@'localhost';
+  GRANT ALL PRIVILEGES ON laravel_api_test.* TO 'canetons'@'127.0.0.1';
+  GRANT ALL PRIVILEGES ON laravel_api_test.* TO 'canetons'@'localhost';
   FLUSH PRIVILEGES;
 "
 
-for db in lescanetons lescanetons_test; do
-  table_count=$(sudo mysql -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${db}';")
-  if [ "${table_count:-0}" -eq 0 ]; then
-    sudo mysql "$db" < "$PROJECT_DIR/docker/db/init/01-schema.sql"
-    sudo mysql "$db" < "$PROJECT_DIR/docker/db/init/02-seed.sql"
-  fi
-done
+# Laravel owns the schema outright — there is no SQL to seed here. The
+# databases created above are left empty; `php artisan migrate` (run by hand,
+# or by RunPendingMigrations on the first request) populates them. Nothing
+# below needs to branch on whether a database already has tables — `migrate`
+# is itself idempotent against a database that already has some or all of its
+# tables.
+#
+# This script deliberately does NOT also run `php artisan db:seed` (unlike
+# docker/web/entrypoint.sh, which runs both migrate and seed on every
+# container start): this script never runs migrate either, so there would be
+# no schema yet for the seeder to insert into. Run both by hand once the
+# schema exists: `cd api && php artisan migrate && php artisan db:seed`
+# (DevSeeder is idempotent, so re-running it is always safe).
 
 # app/src/bootstrap.php does `require __DIR__ . '/../vendor/autoload.php'`,
 # i.e. it expects vendor/ as a sibling of app/src/ — true both under Docker

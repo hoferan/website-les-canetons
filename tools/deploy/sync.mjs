@@ -29,9 +29,9 @@ export function groupByDir(files) {
 
 // FAST-PATH diff (no remote LIST): classify local files against the remote
 // state file alone. `localEntries` is Map<rel, {size, hash}>; `remoteFiles` is
-// the state file's `files` object (or null on bootstrap); `protectedSet` holds
-// basenames that are never uploaded or deleted.
-export function classify(localEntries, remoteFiles, protectedSet) {
+// the state file's `files` object (or null on bootstrap); `protectedPaths`
+// holds ROOT-RELATIVE PATHS that are never uploaded or deleted.
+export function classify(localEntries, remoteFiles, protectedPaths) {
   const remote = remoteFiles || {};
   const newFiles = [];
   const changed = [];
@@ -48,7 +48,7 @@ export function classify(localEntries, remoteFiles, protectedSet) {
   }
   const localSet = new Set(localEntries.keys());
   const stale = Object.keys(remote)
-    .filter((rel) => !localSet.has(rel) && !protectedSet.has(path.posix.basename(rel)))
+    .filter((rel) => !localSet.has(rel) && !protectedPaths.has(rel))
     .sort();
   return { newFiles, changed, unchanged, stale };
 }
@@ -56,7 +56,7 @@ export function classify(localEntries, remoteFiles, protectedSet) {
 // AUTHORITATIVE diff (--relist / bootstrap): the remote LIST is the source of
 // truth for what EXISTS (so deletion is grounded in the server's real tree)
 // and for byte sizes (drift check); the state file supplies content hashes.
-export function classifyWithList(localEntries, remoteSizes, remoteFiles, protectedSet) {
+export function classifyWithList(localEntries, remoteSizes, remoteFiles, protectedPaths) {
   const remote = remoteFiles || {};
   const newFiles = [];
   const changed = [];
@@ -76,7 +76,7 @@ export function classifyWithList(localEntries, remoteSizes, remoteFiles, protect
   }
   const localSet = new Set(localEntries.keys());
   const stale = [...remoteSizes.keys()]
-    .filter((rel) => !localSet.has(rel) && !protectedSet.has(path.posix.basename(rel)))
+    .filter((rel) => !localSet.has(rel) && !protectedPaths.has(rel))
     .sort();
   return { newFiles, changed, unchanged, stale };
 }

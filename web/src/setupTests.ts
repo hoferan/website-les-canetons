@@ -7,10 +7,10 @@ import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
 
 // Guarded on `typeof window`: this file is the global setupFiles entry for
-// EVERY test, including altcha.test.ts, which opts into `@vitest-environment
-// node` for a real WebCrypto SubtleCrypto and so has no window/document at
-// all. Referencing them unguarded turned "window is not defined" into a
-// failure of that whole file.
+// EVERY test, including any that opt into `@vitest-environment node` (for a
+// real WebCrypto SubtleCrypto, say) and so have no window/document at all.
+// Referencing them unguarded turned "window is not defined" into a failure of
+// that whole file.
 if (typeof window !== "undefined") {
   // jsdom does not implement window.scrollTo — calling it logs
   // "Error: Not implemented: window.scrollTo" to stderr instead of doing
@@ -21,6 +21,16 @@ if (typeof window !== "undefined") {
   // itself (see ScrollToTop.test.tsx — spying on a stub function works, and
   // afterEach's vi.restoreAllMocks() below restores it back to this stub).
   window.scrollTo = () => {};
+
+  // Pointer capture is not implemented in jsdom either, and a component that
+  // reaches for it throws rather than degrading: sonner calls
+  // setPointerCapture on pointerdown so a toast can be swiped away, which
+  // takes down the whole test file as an unhandled exception the moment
+  // userEvent clicks anything inside one. No-ops, because nothing here is
+  // testing a swipe.
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
 }
 
 // onUnhandledRequest: "error", not "bypass". In a test an unhandled request is
@@ -37,8 +47,8 @@ afterEach(() => {
   cleanup();
 
   // Both are needed: resetHandlers() drops per-test server.use() overrides,
-  // resetMockState() clears the session and events the handlers keep in module
-  // state. Forget the second and a test that logs in leaks into the next one.
+  // resetMockState() clears the session the handlers keep in module state.
+  // Forget the second and a test that logs in leaks into the next one.
   server.resetHandlers();
   resetMockState();
 

@@ -3,9 +3,10 @@
  *
  * WHY EVERY PHOTO WENT AT ONCE. The instructors' picture was already missing
  * nine of its seventeen subjects, and on 2026-08-31 the band's instruction was
- * to treat the rest the same way — "because we have to assume that those are out
- * of date". A youth band turns over yearly, so a group photograph is a claim
- * about who is in the band, and a wrong claim is worse than an honest gap.
+ * to treat the rest the same way — "because we have to assume that those are
+ * out of date". A youth band turns over yearly, so a group photograph is a
+ * claim about who is in the band, and a wrong claim is worse than an honest
+ * gap.
  *
  * The header LOGO is deliberately not one of these: it is the band's identity,
  * not a photograph that can go stale.
@@ -18,12 +19,12 @@
  */
 export function PhotoPending({ what }: { what: string }) {
   return (
-    // ONE LINE, NOT A BOX. This was a 160px-minimum panel, and /canetons shows
-    // eight of them: 1280px, 42% of the page, reserved for content that is not
-    // there. The photographed page is LONGER than the placeholder page — about
-    // 3554px against 3034px at 390px — so the height was never standing in for
-    // anything. See the E2a spec. Dashed and muted so it still reads as a gap
-    // rather than as copy.
+    // ONE LINE, NOT A BOX. This was a 160px-minimum panel, and the band page
+    // shows eight of them: 1280px, 42% of the page, reserved for content that
+    // is not there. The photographed page is LONGER than the placeholder page
+    // — about 3554px against 3034px at 390px — so the height was never
+    // standing in for anything. See the E2a spec. Dashed and muted so it still
+    // reads as a gap rather than as copy.
     <p
       className="mt-related rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
       data-photo-pending={what}

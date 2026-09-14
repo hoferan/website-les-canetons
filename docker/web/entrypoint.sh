@@ -38,7 +38,17 @@ retry() {
 # there is no deploy step locally, so run them before Apache accepts its first
 # request. Laravel has no internal connection retry of its own, so this
 # genuinely needs the wrapper above.
-retry php api-laravel/artisan migrate --force
+retry php _api/artisan migrate --force
+
+# Dev-only synthetic data (sections, roles, three demo logins). DevSeeder is
+# idempotent (firstOrCreate throughout) and never overwrites an existing
+# member's fields (including a hand-changed password) or re-creates a
+# hand-edited role, so running it on every container start is safe. It DOES
+# still re-attach each demo member to their intended role if you detach it by
+# hand, and it seeds a role's permissions only once, at creation — a role's
+# hand-edited permissions survive a re-seed (DevSeeder only calls
+# syncPermissions() for a role it just created).
+retry php _api/artisan db:seed --force
 
 # The artisan call above ran as root (this entrypoint's own user); php-fpm
 # serves every subsequent request as www-data. Without this, any log line
@@ -49,7 +59,7 @@ retry php api-laravel/artisan migrate --force
 # append mode: Permission denied". Reproduced empirically; re-chowning here
 # (rather than running artisan as www-data) also repairs a tree a previous,
 # pre-fix run already left broken.
-chown -R www-data:www-data api-laravel/storage api-laravel/bootstrap/cache
+chown -R www-data:www-data _api/storage _api/bootstrap/cache
 
 # php-fpm in the background, Apache in the foreground so the container's
 # lifetime tracks Apache. No supervisor: two processes, one of them daemonised

@@ -99,7 +99,7 @@ test('classifyWithList: unchanged needs matching hash AND matching server size (
 test('classifyWithList: never marks a protected file stale', () => {
   const remoteSizes = new Map([
     ['.htaccess', 1],
-    ['sub/config.php', 2],
+    ['config.php', 2],
     ['junk.js', 3],
   ]);
   const r = classifyWithList(entries({}), remoteSizes, null, PROT);

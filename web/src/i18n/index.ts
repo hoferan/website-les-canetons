@@ -27,8 +27,30 @@ export type TranslatedError = {
  */
 export function translateApiError(error: Pick<ApiError, "code" | "fields">): TranslatedError {
   const fields = error.fields.map((entry: ApiErrorField) => {
-    const fieldKey = `fields.${entry.field}`;
-    const label = i18next.exists(fieldKey) ? i18next.t(fieldKey) : entry.field;
+    // Laravel reports an array element as `roleIds.0`, not `roleIds`, so the
+    // index is stripped before the lookup. Without this the key misses and the
+    // fallback prints the RAW ENGLISH IDENTIFIER on a French screen — exactly
+    // the silent leak this module exists to prevent, and exactly what
+    // ApiErrorVocabularyTest caught when roleIds.* first appeared.
+    //
+    // entry.field keeps its index in the returned object: the label is for a
+    // human, but the UI needs the precise path to highlight the right input.
+    const lookupField = entry.field.replace(/\.\d+(?=\.|$)/g, "");
+    const fieldKey = `fields.${lookupField}`;
+    // A NESTED path falls back to its last segment. POST /api/events/series
+    // takes its event under a `template` object, so Laravel reports
+    // `template.endTime` — and the French label for that is "Heure de fin",
+    // exactly as it is for a bare `endTime`. Trying the full path first keeps
+    // the override available for the day two parents need different words for
+    // the same leaf; without the fallback every nested field would have to be
+    // spelled out twice, and a miss prints the RAW ENGLISH IDENTIFIER on a
+    // French screen. Same failure the index-stripping above prevents.
+    const leafKey = `fields.${lookupField.split(".").pop() ?? lookupField}`;
+    const label = i18next.exists(fieldKey)
+      ? i18next.t(fieldKey)
+      : i18next.exists(leafKey)
+        ? i18next.t(leafKey)
+        : entry.field;
     const reasonKey = `validation.${entry.reason}`;
     const reason = i18next.exists(reasonKey) ? i18next.t(reasonKey, entry.params ?? {}) : FALLBACK;
     return { field: entry.field, message: `${label} ${reason}` };
@@ -39,4 +61,30 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
     message: i18next.exists(codeKey) ? i18next.t(codeKey) : FALLBACK,
     fields,
   };
+}
+
+/**
+ * A role's French name and help text, resolved from its `key`.
+ *
+ * The API carries NO display name (decision B6): it is English without
+ * exception, and a seeded role's name is system text a developer chose in a
+ * migration rather than something a user typed. `key` is the fixed identifier,
+ * and this is the only place it becomes French — the same rule
+ * translateApiError follows for error tokens.
+ *
+ * An unknown key falls back to the key itself rather than to i18next's miss
+ * behaviour, which returns the lookup path ("roles.whatever.label") and would
+ * print that on screen. A key with no copy is a role somebody added by hand in
+ * the database; showing its key is honest and legible, and it is what the
+ * deferred role editor replaces.
+ */
+export function roleLabel(key: string): string {
+  const path = `roles.${key}.label`;
+  return i18next.exists(path) ? i18next.t(path) : key;
+}
+
+/** The one-line explanation of what a role grants. Empty when there is none. */
+export function roleHint(key: string): string {
+  const path = `roles.${key}.hint`;
+  return i18next.exists(path) ? i18next.t(path) : "";
 }

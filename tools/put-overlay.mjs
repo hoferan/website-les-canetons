@@ -5,11 +5,15 @@
 //
 //   npm run put-overlay:test|qa|prod   [-- --dry-run]
 //
-// Why this is not part of tools/deploy/cli.mjs: there, .htaccess is a PROTECTED
-// basename, and that protection is load-bearing — it is what stops a --relist
-// run deleting server files the tool never placed. This tool uploads one or two
-// named files and deletes nothing, which is what makes it safe to run in the
-// seconds after a deploy, when the site is mid-cutover.
+// Why this is not part of tools/deploy/cli.mjs: there, the root .htaccess is an
+// exact PROTECTED_PATHS entry, and that protection is load-bearing — it is what
+// stops a --relist run deleting server files the tool never placed. (Exact
+// paths, not basenames at any depth: the nested _api/.htaccess and
+// _api/public/.htaccess are unprotected on purpose, so they deploy.)
+//
+// This tool uploads one or two named files and deletes nothing, which is what
+// makes it safe to run in the seconds after a deploy, when the site is
+// mid-cutover.
 //
 // It does NOT upload .htpasswd, even when the overlay contains one: that is
 // credentials, and re-uploading it during a cutover window is a way to lock
@@ -78,7 +82,7 @@ export function hasUnsubstitutedAuthPath(text) {
  * "post-cutover" from "old front controller".
  */
 export function hasPostCutoverRules(text) {
-  return text.includes('api-laravel/public/index.php') && text.includes('index.html');
+  return text.includes('_api/public/index.php') && text.includes('index.html');
 }
 
 // .htaccess is required; robots.txt is uploaded only when the overlay emits one
@@ -286,7 +290,7 @@ async function main() {
   if (!hasPostCutoverRules(htaccess)) {
     console.error(
       `${localDir}/.htaccess does not look like a post-cutover overlay (missing the API dispatch to ` +
-        `api-laravel/public/index.php and/or the SPA fallback to index.html). It may be stale — ` +
+        `_api/public/index.php and/or the SPA fallback to index.html). It may be stale — ` +
         `regenerate it with \`npm run build:overlay ${target}\` before uploading.`
     );
     process.exit(2);

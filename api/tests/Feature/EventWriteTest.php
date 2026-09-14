@@ -3,456 +3,602 @@
 namespace Tests\Feature;
 
 use App\Models\Event;
-use App\Models\Response;
-use App\Models\User;
+use App\Models\Member;
+use App\Models\Role;
+use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-/**
- * POST /api/events, PUT/DELETE /api/events/{id} — the admin-only writes.
- *
- * The access rule is the exact opposite of the GET in EventIndexTest: reading
- * the planning is public, changing it needs `manage_events`, which `admin`
- * alone holds. The capability matrix is not a hierarchy, so `user` and
- * `moderator` — who may `respond` — are refused here, and an anonymous caller
- * gets 401 rather than 403.
- *
- * Beyond the happy paths this pins:
- *   1. a refused write changes NOTHING (a 403 that still inserted would be the
- *      real bug, and the status code alone would not catch it);
- *   2. validation reports the camelCase field names in rules() order, because
- *      app/assets/js/i18n.js and planning_repet.js's EVENT_FIELD_INPUT_IDS both
- *      look them up by exactly those names;
- *   3. `attire` is optional — an event with no dress code is legitimate;
- *   4. an update that omits `weekend` PRESERVES the stored flag instead of
- *      defaulting it to 0, matching EventRepository::update()'s currentWeekend()
- *      lookup. Silently defaulting would flip a weekend event to non-weekend;
- *   5. deleting an event takes its responses with it (FK ON DELETE CASCADE) and
- *      does not error.
- *
- * CONTRACT CHANGE (this class was updated alongside it): the id used to travel
- * in the PUT body / DELETE query string, purely because that is what
- * planning_repet.js sent. It is now a `/events/{id}` path parameter,
- * constrained by `whereNumber()`, so a non-numeric id no longer reaches the
- * controller at all — it is a 404 (a routing concern), not the old 400
- * `validation_failed` (a validation concern). An id segment missing entirely
- * (`/api/events` with PUT/DELETE) is a 405 Method Not Allowed rather than a
- * 404, because that bare URI still matches the GET/POST routes registered at
- * it — Laravel only 404s a URI matching no route at all. Several tests below
- * were rewritten in place to pin the new shapes; nothing they used to cover
- * was dropped, only reworded to match where the check now lives.
- */
 class EventWriteTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** The payload planning_repet.js posts: camelCase, `weekend` a real bool. */
-    private function payload(array $overrides = []): array
+    private Member $organiser;
+
+    private Member $player;
+
+    protected function setUp(): void
     {
-        return $overrides + [
-            'date' => '2027-11-13',
-            'title' => 'Carnaval',
-            'startTime' => '20:00',
-            'endTime' => '22:00',
-            'location' => 'Local',
-            'attire' => 'Uniforme',
-            'weekend' => false,
-        ];
+        parent::setUp();
+        // administrator() grants the seeded `direction` role, which
+        // 2026_09_07_000001 gives Permission::cases() — events.manage
+        // included. Its name predates the role being more than members.manage.
+        $this->organiser = Member::factory()->administrator()->create();
+        // 'Cloches' is one of the six registers that same migration seeds.
+        $this->player = Member::factory()->inSection('Cloches')->create();
     }
 
-    private function user(string $role, string $username = 'demo.someone'): User
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function validPayload(array $overrides = []): array
     {
-        return User::create(['username' => $username, 'password' => 'x', 'role' => $role]);
+        return array_merge([
+            'title' => 'Répétition',
+            'startsAt' => '2026-09-05T10:00:00+02:00',
+            'endsAt' => '2026-09-05T12:00:00+02:00',
+            'location' => 'Werkhof',
+            'attire' => 'Libre',
+            'isPublic' => false,
+            'notes' => null,
+        ], $overrides);
     }
 
-    private function event(array $overrides = []): Event
+    public function test_a_player_cannot_create_an_event(): void
     {
-        return Event::create($overrides + [
-            'date' => '2027-01-09',
-            'title' => 'Repetition',
-            'start_time' => '20:00:00',
-            'end_time' => '22:00:00',
-            'location' => 'Local',
-            'attire' => 'Casual',
-            'weekend' => 0,
-        ]);
-    }
-
-    // ---------------------------------------------------------------- create
-
-    public function test_an_admin_creates_an_event(): void
-    {
-        $this->actingAs($this->user('admin'))
-            ->postJson('/api/events', $this->payload(['weekend' => true]))
-            ->assertStatus(201)
-            ->assertExactJson(['ok' => true]);
-
-        // The camelCase request keys must have landed on the snake_case columns.
-        $this->assertDatabaseHas('events', [
-            'date' => '2027-11-13',
-            'title' => 'Carnaval',
-            'start_time' => '20:00',
-            'end_time' => '22:00',
-            'location' => 'Local',
-            'attire' => 'Uniforme',
-            'weekend' => 1,
-        ]);
-    }
-
-    public function test_an_empty_attire_is_accepted_and_stored_as_an_empty_string(): void
-    {
-        // A rehearsal with no dress code — the old DTO used TypeString, not
-        // Required, and normalised a missing/blank tenue to ''.
-        $this->actingAs($this->user('admin'))
-            ->postJson('/api/events', $this->payload(['attire' => '  ']))
-            ->assertStatus(201);
-
-        $this->assertSame('', Event::sole()->attire);
-    }
-
-    public function test_an_omitted_attire_is_accepted(): void
-    {
-        $payload = $this->payload();
-        unset($payload['attire']);
-
-        $this->actingAs($this->user('admin'))->postJson('/api/events', $payload)
-            ->assertStatus(201);
-
-        $this->assertSame('', Event::sole()->attire);
-    }
-
-    public function test_a_user_role_may_not_create_an_event(): void
-    {
-        // user and moderator hold `respond` only — not a hierarchy.
-        $this->actingAs($this->user('user'))
-            ->postJson('/api/events', $this->payload())
+        // 403, not 401: they are logged in, they simply do not organise.
+        $this->actingAsMember($this->player)
+            ->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(403)
-            ->assertExactJson(['error' => 'Access denied', 'code' => 'access_denied']);
+            ->assertJson(['code' => 'access_denied']);
 
-        // The refusal must be total: a 403 that still inserted is the real bug.
+        // The refusal has to be a refusal to WRITE, not merely a refused
+        // status: a gate that answered 403 after inserting would pass the
+        // assertion above and still put the row on everybody's planning.
         $this->assertDatabaseCount('events', 0);
     }
 
-    public function test_a_moderator_may_not_create_an_event(): void
+    public function test_a_role_holder_without_events_manage_is_refused(): void
     {
-        $this->actingAs($this->user('moderator'))
-            ->postJson('/api/events', $this->payload())
-            ->assertStatus(403);
+        // The player above holds NO role at all, so they cannot tell
+        // `permission:events.manage` apart from a gate reading "is in some
+        // role" or "holds some permission". `committee` grants exactly one
+        // permission, registrations.view: this member passes every weaker
+        // reading of the check and must still be refused.
+        $this->actingAsMember(Member::factory()->committee()->create())
+            ->postJson('/api/v1/events', $this->validPayload())
+            ->assertStatus(403)
+            ->assertJson(['code' => 'access_denied']);
 
         $this->assertDatabaseCount('events', 0);
     }
 
-    public function test_an_anonymous_caller_may_not_create_an_event(): void
+    public function test_events_manage_alone_is_enough_to_create(): void
     {
-        $this->postJson('/api/events', $this->payload())
+        // PINS THE PERMISSION STRING ITSELF. The organiser holds `direction`,
+        // which the seed grants Permission::cases() — every permission — so
+        // any string at all in that middleware separates them from a player
+        // with none, and swapping events.manage for members.manage left the
+        // whole file green. This member holds a fixture role granting exactly
+        // events.manage and nothing else, so only the right string admits
+        // them. It is also the realistic case: roles are editable data, and
+        // "runs the planning, does not administer members" is a role the band
+        // may well create.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $this->actingAsMember($organiserOnly)
+            ->postJson('/api/v1/events', $this->validPayload())
+            ->assertStatus(201);
+
+        $this->assertDatabaseCount('events', 1);
+    }
+
+    public function test_an_anonymous_caller_gets_401_not_403(): void
+    {
+        // The code as well as the status, the same pairing EventIndexTest
+        // makes: 401 is also what a stale CSRF token or a dead session would
+        // produce, and the SPA acts on the code — "log in" and "your session
+        // ended" are different screens.
+        $this->postJson('/api/v1/events', $this->validPayload())
             ->assertStatus(401)
-            ->assertExactJson(['error' => 'Not authenticated', 'code' => 'not_authenticated']);
+            ->assertJson(['code' => 'not_authenticated']);
 
         $this->assertDatabaseCount('events', 0);
     }
 
-    // ------------------------------------------------------------ validation
-
-    public function test_missing_fields_report_the_camel_case_names_in_order(): void
+    public function test_an_organiser_creates_an_event(): void
     {
-        $this->actingAs($this->user('admin'))->postJson('/api/events', [])
+        // isPublic and notes are sent NON-DEFAULT, here and only here. With
+        // the payload's own `false`/`null` a controller that never writes
+        // those two columns is indistinguishable from one that does: false is
+        // both the column default and Event::$attributes', and null is the
+        // column's. Dropping either from Event::create() left this whole file
+        // green until this test sent something else. The other tests keep the
+        // default shape, which is the one the plan pinned.
+        $response = $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload([
+                'isPublic' => true,
+                'notes' => 'Apporter la partition de Carnaval.',
+            ]))
+            ->assertStatus(201)
+            ->assertJsonPath('title', 'Répétition');
+
+        $this->assertDatabaseHas('events', ['title' => 'Répétition', 'location' => 'Werkhof']);
+
+        // On the stored row first: this is what the next reader of the
+        // planning gets, and is_public in particular is the column that
+        // decides whether the rehearsal schedule is visible to strangers.
+        $event = Event::query()->sole();
+        $this->assertSame('Werkhof', $event->location);
+        $this->assertSame('Libre', $event->attire);
+        $this->assertTrue($event->is_public);
+        $this->assertSame('Apporter la partition de Carnaval.', $event->notes);
+
+        // Then on the 201 body, which the SPA puts straight into the list it
+        // is already showing rather than re-fetching.
+        $this->assertSame($event->id, $response->json('id'));
+        $this->assertSame('Werkhof', $response->json('location'));
+        $this->assertSame('Libre', $response->json('attire'));
+        $this->assertTrue($response->json('isPublic'));
+        $this->assertSame('Apporter la partition de Carnaval.', $response->json('notes'));
+    }
+
+    public function test_the_end_must_come_after_the_start(): void
+    {
+        // Without this a mistyped time produces an event of negative length,
+        // which sorts and renders in ways nobody has designed for.
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload([
+                'startsAt' => '2026-09-05T12:00:00+02:00',
+                'endsAt' => '2026-09-05T10:00:00+02:00',
+            ]))
             ->assertStatus(400)
-            ->assertExactJson([
-                'error' => 'Invalid form submission',
-                'code' => 'validation_failed',
-                'fields' => [
-                    ['field' => 'date', 'reason' => 'required'],
-                    ['field' => 'title', 'reason' => 'required'],
-                    ['field' => 'startTime', 'reason' => 'required'],
-                    ['field' => 'endTime', 'reason' => 'required'],
-                    ['field' => 'location', 'reason' => 'required'],
-                ],
-            ]);
+            ->assertJson(['code' => 'validation_failed'])
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            // The token, not just the field: `after` is absent from
+            // ApiError::REASONS by default and would silently fall back to
+            // 'invalid_format' — "n'est pas dans un format valide" for a
+            // perfectly well-formed timestamp.
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
 
         $this->assertDatabaseCount('events', 0);
     }
 
-    /**
-     * Rule order is load-bearing: ApiError reports only the FIRST failed rule
-     * per field, so `max` must precede any format-ish rule and follow `required`.
-     */
-    public function test_an_over_long_title_reports_too_long(): void
+    public function test_an_unparseable_end_is_reported_as_a_format_error(): void
     {
-        $this->actingAs($this->user('admin'))
-            ->postJson('/api/events', $this->payload(['title' => str_repeat('x', 256)]))
+        // PINS THE RULE ORDER on endsAt, which StoreEventRequest calls
+        // load-bearing and nothing else checked. ApiError reports only the
+        // FIRST failed rule per field; measured 2026-09-10 on this stack, the
+        // shipped `date`-then-`after` order reports Date for this payload and
+        // the reversed order reports After. So with the rules the other way
+        // round the committee is told that 'pas une date' "doit être après le
+        // début" — sent to fix the one thing that was not wrong.
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload(['endsAt' => 'pas une date']))
             ->assertStatus(400)
-            ->assertExactJson([
-                'error' => 'Invalid form submission',
-                'code' => 'validation_failed',
-                'fields' => [
-                    ['field' => 'title', 'reason' => 'too_long', 'params' => ['max' => 255]],
-                ],
-            ]);
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
     }
 
-    public function test_a_non_string_start_time_reports_invalid_type(): void
+    public function test_an_event_may_span_two_days(): void
     {
-        $this->actingAs($this->user('admin'))
-            ->postJson('/api/events', $this->payload(['startTime' => ['20:00']]))
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'startTime', 'reason' => 'invalid_type']);
+        // "Weekend musical, 3-4 October" from the live planning. The rule is
+        // "after", not "same day".
+        $response = $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload([
+                'title' => 'Weekend musical',
+                'startsAt' => '2026-10-03T09:00:00+02:00',
+                'endsAt' => '2026-10-04T16:00:00+02:00',
+            ]))
+            ->assertStatus(201);
+
+        // 201 alone cannot tell "the two-day event was stored" from "an event
+        // was stored": a controller that dropped endsAt onto the start date
+        // would answer 201 and quietly turn C6's whole reason for existing
+        // back into a one-day row. Assert the two dates actually differ.
+        $event = Event::query()->sole();
+        $this->assertSame('2026-10-03 07:00', $event->starts_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('2026-10-04 14:00', $event->ends_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame($event->ends_at->toIso8601String(), $response->json('endsAt'));
     }
 
-    // ---------------------------------------------------------------- update
-
-    public function test_an_admin_updates_an_event(): void
+    public function test_a_missing_title_is_reported_against_its_own_field(): void
     {
-        $event = $this->event();
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload(['title' => '']))
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'title')
+            ->assertJsonPath('errors.0.reason', 'required');
+    }
 
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events/'.$event->id, $this->payload())
+    public function test_creating_an_event_is_audited(): void
+    {
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events', $this->validPayload());
+
+        $this->assertDatabaseHas('audit_log', [
+            'actor_member_id' => $this->organiser->id,
+            'action' => 'event.created',
+            'target_type' => 'event',
+            // The id and the label both, because the label is the only part of
+            // an audit row that still means something after the event is
+            // deleted — an entry naming neither is a timestamp.
+            'target_id' => Event::query()->sole()->id,
+            'target_label' => 'Répétition',
+        ]);
+    }
+
+    public function test_the_wall_clock_time_survives_the_round_trip(): void
+    {
+        // Typed as 10:00 in Fribourg, stored as 08:00 UTC, read back as 10:00.
+        // This is the whole reason BandTime exists.
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events', $this->validPayload());
+
+        $event = Event::query()->sole();
+        $this->assertSame('08:00', $event->starts_at->utc()->format('H:i'));
+    }
+    // -------------------------------------------------- editing and deleting
+
+    public function test_an_organiser_edits_one_field_without_blanking_the_others(): void
+    {
+        // PATCH, so every rule is `sometimes`: a form posting only what changed
+        // must not clear everything else.
+        $event = Event::factory()->create(['title' => 'Répétition', 'location' => 'Werkhof']);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif'])
             ->assertOk()
-            ->assertExactJson(['ok' => true]);
+            ->assertJsonPath('title', 'Répétition + apéritif');
 
-        $fresh = $event->fresh();
-        $this->assertSame('2027-11-13', $fresh->date);
-        $this->assertSame('Carnaval', $fresh->title);
-        // '20:00' went in; MariaDB's TIME column normalises it, exactly as under
-        // the old endpoint — planning_repet.js .slice(0, 5)s it back for display.
-        $this->assertSame('20:00:00', $fresh->start_time);
-        $this->assertSame('Uniforme', $fresh->attire);
-        $this->assertSame(0, (int) $fresh->weekend);
-        // One event, updated in place — not a second row.
-        $this->assertDatabaseCount('events', 1);
+        // The STORED title as well as the echoed one. A handler that assigned
+        // the attribute and never called save() answers 200 with the new title
+        // and leaves the planning exactly as it was — and the location
+        // assertion below would pass right alongside it.
+        $event->refresh();
+        $this->assertSame('Répétition + apéritif', $event->title);
+        $this->assertSame('Werkhof', $event->location);
     }
 
-    /**
-     * CONTRACT CHANGE: `whereNumber('id')` matches "0" just like any other
-     * digit string — it is a numeric-shape check, not a positivity check — so
-     * an update whose id happens to be 0 is no longer the old 400
-     * `invalid_value`. It is simply a well-formed id that matches no Event
-     * row, which is already a 200 {"ok":true} no-op for any nonexistent id
-     * (see EventController::update()'s docblock). Nothing is created or
-     * changed.
-     */
-    public function test_an_update_with_id_zero_is_a_noop_because_it_matches_no_event(): void
+    public function test_every_editable_field_can_be_changed(): void
     {
-        $event = $this->event();
+        // Every value here is one the factory does NOT produce, which is the
+        // whole point: `isPublic` false and `attire`/`notes` null coincide with
+        // the column defaults, so a PATCH that silently drops a field is
+        // indistinguishable from one that writes it unless the test sends
+        // something else. Task 5 lost `is_public` out of its insert with all
+        // eight tests green for exactly that reason (see 6250d7f).
+        $event = Event::factory()->create();
 
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events/0', $this->payload())
-            ->assertOk()
-            ->assertExactJson(['ok' => true]);
-
-        $this->assertSame('Repetition', $event->fresh()->title, 'no event has id 0, so nothing should have changed');
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    /**
-     * CONTRACT CHANGE: the id is now a URL path parameter, not a body field.
-     * A PUT with no id segment at all is `/api/events`, which is a URI that
-     * DOES still match a route — GET and POST are both registered there — so
-     * this is a routing concern, but a 405 Method Not Allowed rather than a
-     * 404: Laravel only 404s a URI that matches no route at all, and 405s one
-     * that matches a route but not this HTTP verb. Either way it is no longer
-     * the old 400 `invalid_value`.
-     */
-    public function test_an_update_without_a_path_id_is_a_405_not_a_400(): void
-    {
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events', $this->payload())
-            ->assertStatus(405)
-            ->assertExactJson(['error' => 'Method not allowed', 'code' => 'method_not_allowed']);
-    }
-
-    /**
-     * Field validation (via EventRequest) still runs before the Event::find()
-     * lookup inside the controller — the same ordering the legacy endpoint
-     * had, now demonstrated against a numeric id that matches no event, since
-     * a MALFORMED id can no longer even reach the controller (see
-     * EventWriteTest's non-numeric-id tests below).
-     */
-    public function test_field_errors_are_still_reported_for_a_numeric_id_matching_no_event(): void
-    {
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events/0', [])
-            ->assertStatus(400)
-            ->assertJsonPath('fields.0', ['field' => 'date', 'reason' => 'required']);
-    }
-
-    /**
-     * THE WEEKEND-PRESERVATION SUBTLETY. EventRepository::update() looks the
-     * stored flag up (currentWeekend()) when the key is absent rather than
-     * defaulting to 0, so an API client that omits it cannot silently downgrade
-     * a weekend event. Reproduced here deliberately.
-     */
-    public function test_an_update_omitting_weekend_preserves_the_stored_flag(): void
-    {
-        $event = $this->event(['weekend' => 1]);
-        $payload = $this->payload();
-        unset($payload['weekend']);
-
-        $this->actingAs($this->user('admin'))->putJson('/api/events/'.$event->id, $payload)->assertOk();
-
-        $this->assertSame(1, (int) $event->fresh()->weekend, 'the stored weekend flag was not preserved');
-    }
-
-    public function test_an_update_sending_weekend_false_clears_the_flag(): void
-    {
-        // The other half of the property above: an EXPLICIT false must still
-        // win. planning_repet.js always sends the checkbox's state, so this is
-        // the path the real UI takes when unticking "week-end".
-        $event = $this->event(['weekend' => 1]);
-
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events/'.$event->id, $this->payload(['weekend' => false]))
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", [
+                'title' => 'Cortège du Carnaval',
+                'startsAt' => '2027-02-13T14:00:00+01:00',
+                'endsAt' => '2027-02-13T18:00:00+01:00',
+                'location' => 'Place Georges-Python',
+                'attire' => 'Costume complet',
+                'isPublic' => true,
+                'notes' => 'Rendez-vous une heure avant.',
+            ])
             ->assertOk();
 
-        $this->assertSame(0, (int) $event->fresh()->weekend);
+        $event->refresh();
+        $this->assertSame('Cortège du Carnaval', $event->title);
+        $this->assertSame('2027-02-13 13:00', $event->starts_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('2027-02-13 17:00', $event->ends_at->utc()->format('Y-m-d H:i'));
+        $this->assertSame('Place Georges-Python', $event->location);
+        $this->assertSame('Costume complet', $event->attire);
+        $this->assertTrue($event->is_public);
+        $this->assertSame('Rendez-vous une heure avant.', $event->notes);
     }
 
-    public function test_an_update_sending_weekend_true_sets_the_flag(): void
+    public function test_clearing_a_nullable_field_stores_null(): void
     {
-        $event = $this->event(['weekend' => 0]);
+        // THE array_key_exists() CASE, and the only one in this file: isset()
+        // reads false for an explicitly-sent null, so clearing the attire —
+        // the committee deciding a gig is in ordinary clothes after all —
+        // would answer 200 and change nothing. Every other test here sends a
+        // value, which is how that stays invisible.
+        $event = Event::factory()->create([
+            'attire' => 'Costume complet',
+            'notes' => 'Rendez-vous une heure avant.',
+        ]);
 
-        $this->actingAs($this->user('admin'))
-            ->putJson('/api/events/'.$event->id, $this->payload(['weekend' => true]))
-            ->assertOk();
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['attire' => null, 'notes' => null])
+            ->assertOk()
+            ->assertJsonPath('attire', null)
+            ->assertJsonPath('notes', null);
 
-        $this->assertSame(1, (int) $event->fresh()->weekend);
+        $event->refresh();
+        $this->assertNull($event->attire);
+        $this->assertNull($event->notes);
     }
 
-    public function test_a_user_role_may_not_update_an_event(): void
+    public function test_editing_still_refuses_an_end_before_the_start(): void
     {
-        $event = $this->event();
+        // The rule has to hold on PATCH too, and this is the sharp case: only the
+        // END is sent, so the comparison must reach for the STORED start rather
+        // than a startsAt that is not in the request.
+        $event = Event::factory()->create([
+            'starts_at' => '2026-09-05 08:00:00',
+            'ends_at' => '2026-09-05 10:00:00',
+        ]);
 
-        $this->actingAs($this->user('user'))
-            ->putJson('/api/events/'.$event->id, $this->payload())
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => '2026-09-05T09:00:00+02:00'])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            // The token as well as the field, for the reason the POST's own
+            // test gives: `after` would otherwise fall back to
+            // 'invalid_format' and call a well-formed timestamp malformed.
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
+
+        // 400 does not by itself prove nothing was written.
+        $this->assertSame('2026-09-05 10:00', $event->fresh()->ends_at->utc()->format('Y-m-d H:i'));
+    }
+
+    public function test_editing_reports_an_unparseable_end_as_a_format_error(): void
+    {
+        // PINS THE RULE ORDER on the PATCH's endsAt, the same load-bearing
+        // order StoreEventRequest documents and for the same reason: ApiError
+        // reports only the FIRST failed rule per field. Measured 2026-09-10 on
+        // this stack — with `date` moved after the comparison, this payload is
+        // reported as must_be_after, so the committee is told that 'pas une
+        // date' "doit être après le début", about the one thing that was not
+        // wrong.
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['endsAt' => 'pas une date'])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'invalid_format');
+    }
+
+    public function test_editing_cannot_blank_the_title(): void
+    {
+        // `sometimes` on its own would let this through: it skips an ABSENT
+        // field, and '' is present and a string. The `required` paired with it
+        // is what refuses an emptied title, and nothing else in this file
+        // would notice if it were dropped.
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => ''])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'title')
+            ->assertJsonPath('errors.0.reason', 'required');
+
+        $this->assertSame('Répétition', $event->fresh()->title);
+    }
+
+    public function test_a_player_cannot_edit(): void
+    {
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->player)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Non'])
             ->assertStatus(403);
 
-        $this->assertSame('Repetition', $event->fresh()->title);
+        // As with creating: a gate that answered 403 after writing would pass
+        // the status assertion and still have edited everybody's planning.
+        $this->assertSame('Répétition', $event->fresh()->title);
     }
 
-    // ---------------------------------------------------------------- delete
-
-    public function test_an_admin_deletes_an_event(): void
+    public function test_events_manage_alone_is_enough_to_edit(): void
     {
-        $event = $this->event();
+        // PINS THE PERMISSION STRING ON THIS ROUTE. The middleware argument is
+        // written once per route, so the create test's pin says nothing about
+        // this one: the organiser holds `direction` (every permission) and the
+        // player holds none, so any string at all separates them and a typo
+        // here would be caught by nothing. A member holding a fixture role
+        // that grants exactly events.manage admits only the right string.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
 
-        $this->actingAs($this->user('admin'))
-            ->deleteJson('/api/events/'.$event->id)
-            ->assertOk()
-            ->assertExactJson(['ok' => true]);
+        $event = Event::factory()->create(['title' => 'Répétition']);
 
-        $this->assertDatabaseCount('events', 0);
-    }
-
-    /**
-     * CONTRACT CHANGE: same as the PUT case above — `/api/events` with no id
-     * segment still matches the GET/POST route registered at that URI, so
-     * DELETE there is a 405 Method Not Allowed, not a 404 (Laravel 404s only
-     * a URI matching no route at all). Either way it is no longer the old
-     * 400 `required`.
-     */
-    public function test_a_delete_without_a_path_id_is_a_405_not_a_400(): void
-    {
-        $this->event();
-
-        $this->actingAs($this->user('admin'))->deleteJson('/api/events')
-            ->assertStatus(405)
-            ->assertExactJson(['error' => 'Method not allowed', 'code' => 'method_not_allowed']);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    /**
-     * CONTRACT CHANGE: `whereNumber('id')` constrains the route itself, so a
-     * non-numeric id never reaches the controller at all — it is a 404,
-     * not the old `invalid_value` 400.
-     */
-    public function test_a_delete_with_a_non_numeric_id_is_a_404(): void
-    {
-        $this->event();
-
-        $this->actingAs($this->user('admin'))->deleteJson('/api/events/abc')
-            ->assertStatus(404);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    /**
-     * CONTRACT CHANGE: as with update() above, `whereNumber` matches "0" — it
-     * is not a positivity check — so a delete whose id happens to be 0 is no
-     * longer the old 400 `invalid_value`. It reaches the controller as an
-     * ordinary numeric id that matches no event: a no-op delete of zero rows.
-     */
-    public function test_a_delete_with_id_zero_is_a_noop(): void
-    {
-        $this->event();
-
-        $this->actingAs($this->user('admin'))->deleteJson('/api/events/0')
-            ->assertOk()
-            ->assertExactJson(['ok' => true]);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    /**
-     * CONTRACT CHANGE: a negative id contains a `-`, outside `whereNumber`'s
-     * `[0-9]+` pattern, so it never matches the route at all — a 404, not the
-     * old `invalid_value` 400.
-     */
-    public function test_a_delete_with_a_negative_id_is_a_404(): void
-    {
-        $this->event();
-
-        $this->actingAs($this->user('admin'))->deleteJson('/api/events/-3')
-            ->assertStatus(404);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    public function test_a_user_role_may_not_delete_an_event(): void
-    {
-        $event = $this->event();
-
-        $this->actingAs($this->user('user'))
-            ->deleteJson('/api/events/'.$event->id)
-            ->assertStatus(403);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    public function test_an_anonymous_caller_may_not_delete_an_event(): void
-    {
-        $event = $this->event();
-
-        $this->deleteJson('/api/events/'.$event->id)->assertStatus(401);
-
-        $this->assertDatabaseCount('events', 1);
-    }
-
-    /**
-     * The FK on `responses` is ON DELETE CASCADE, so removing an event takes its
-     * members' answers with it. Pinned because the alternative — an FK error —
-     * would make every delete of an event anyone had answered fail.
-     */
-    public function test_deleting_an_event_cascades_to_its_responses(): void
-    {
-        $event = $this->event();
-        $other = $this->event(['date' => '2027-02-14']);
-        $member = $this->user('user', 'demo.member');
-        Response::create(['user_id' => $member->id, 'event_id' => $event->id, 'answer' => 'participate']);
-        Response::create(['user_id' => $member->id, 'event_id' => $other->id, 'answer' => 'notparticipate']);
-
-        $this->actingAs($this->user('admin'))
-            ->deleteJson('/api/events/'.$event->id)
+        $this->actingAsMember($organiserOnly)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition avancée'])
             ->assertOk();
 
-        $this->assertDatabaseMissing('responses', ['event_id' => $event->id]);
-        // Only the deleted event's responses went — the other event's survive.
-        $this->assertDatabaseHas('responses', ['event_id' => $other->id]);
+        $this->assertSame('Répétition avancée', $event->fresh()->title);
     }
 
-    public function test_an_unsupported_method_is_rejected(): void
+    public function test_editing_is_audited(): void
     {
-        $this->actingAs($this->user('admin'))->patchJson('/api/events', $this->payload())
-            ->assertStatus(405)
-            ->assertExactJson(['error' => 'Method not allowed', 'code' => 'method_not_allowed']);
+        $event = Event::factory()->create(['title' => 'Répétition']);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Répétition + apéritif']);
+
+        $this->assertDatabaseHas('audit_log', [
+            'actor_member_id' => $this->organiser->id,
+            'action' => 'event.updated',
+            'target_type' => 'event',
+            'target_id' => $event->id,
+            // The NEW title: a row still labelled with the old one names an
+            // event that no longer exists under that name.
+            'target_label' => 'Répétition + apéritif',
+        ]);
+    }
+
+    public function test_an_organiser_deletes_an_event(): void
+    {
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->deleteJson("/api/v1/events/{$event->id}")
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        // {ok: true} is exactly what a handler that deleted nothing would also
+        // answer; this line is the one that says the row is gone.
+        $this->assertDatabaseMissing('events', ['id' => $event->id]);
+    }
+
+    public function test_a_player_cannot_delete(): void
+    {
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->player)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->deleteJson("/api/v1/events/{$event->id}")
+            ->assertStatus(403);
+
+        $this->assertDatabaseHas('events', ['id' => $event->id]);
+    }
+
+    public function test_events_manage_alone_is_enough_to_delete(): void
+    {
+        // The DELETE route carries its own copy of the middleware string, so
+        // it needs its own pin — see the edit case above for why neither the
+        // organiser nor the player can supply one.
+        $organiserOnly = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::EventsManage)->create())
+            ->create();
+
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($organiserOnly)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->deleteJson("/api/v1/events/{$event->id}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('events', ['id' => $event->id]);
+    }
+
+    public function test_deleting_is_audited_with_the_title_it_had(): void
+    {
+        // Captured BEFORE the delete: the row is gone by the time anybody reads
+        // the audit back.
+        $event = Event::factory()->create(['title' => 'Vendanges Cheyres']);
+
+        $this->actingAsMember($this->organiser)->withHeaders($this->ifMatch('event', $event))->deleteJson("/api/v1/events/{$event->id}");
+
+        $this->assertDatabaseHas('audit_log', [
+            'actor_member_id' => $this->organiser->id,
+            'action' => 'event.deleted',
+            'target_type' => 'event',
+            'target_id' => $event->id,
+            'target_label' => 'Vendanges Cheyres',
+        ]);
+    }
+
+    public function test_an_unknown_event_is_a_404_not_a_500(): void
+    {
+        // assertStatus(404) alone cannot tell "route-model binding refused an
+        // unknown id" from "there is no such route": in Task 4 that bare
+        // assertion passed with the route deleted outright.
+        //
+        // It used to be told apart by Laravel's internal "No query results for
+        // model [...]" message, which was only visible because 404 escaped this
+        // API's error contract. A2 closed that escape. The route is proved to
+        // exist by driving the same verb against an id that resolves — same
+        // pairing as EventIndexTest::test_an_unknown_event_is_a_404, and
+        // stronger than the message match was.
+        $event = Event::factory()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['title' => 'Toujours là'])
+            ->assertOk();
+
+        $this->actingAsMember($this->organiser)
+            ->patchJson('/api/v1/events/99999', ['title' => 'X'])
+            ->assertStatus(404)
+            ->assertJsonPath('code', 'not_found');
+    }
+
+    public function test_an_organiser_switches_registration_on_and_off(): void
+    {
+        // THE HOLE THIS CLOSES. registration_closes_at is the enable switch
+        // for the whole R3 feature, and until 2026-09-10 no endpoint wrote
+        // it — the only way to run a souper was an Adminer edit, on a host
+        // with no shell, which is the constraint the release exists to work
+        // around.
+        $event = Event::factory()->create();
+        $this->assertFalse($event->takesRegistrations());
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", [
+                'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
+                'registrationMaxGuests' => 6,
+            ])
+            ->assertOk()
+            ->assertJsonPath('takesRegistrations', true)
+            ->assertJsonPath('registrationMaxGuests', 6);
+
+        $this->assertTrue($event->fresh()->takesRegistrations());
+
+        // And off again: clearing the close date is how it is switched off,
+        // which is why the rule needs `sometimes` AND `nullable`.
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", ['registrationClosesAt' => null])
+            ->assertOk()
+            ->assertJsonPath('takesRegistrations', false);
+
+        $this->assertFalse($event->fresh()->takesRegistrations());
+    }
+
+    public function test_registration_can_be_enabled_at_creation(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload([
+                'registrationOpensAt' => '2026-10-01T00:00:00+02:00',
+                'registrationClosesAt' => '2026-11-30T23:59:00+01:00',
+                'registrationMaxGuests' => 6,
+            ]))
+            ->assertStatus(201)
+            ->assertJsonPath('takesRegistrations', true);
+
+        $event = Event::query()->sole();
+        $this->assertNotNull($event->registration_opens_at);
+        $this->assertSame(6, $event->registration_max_guests);
+    }
+
+    public function test_the_registration_window_cannot_close_before_it_opens(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload([
+                'registrationOpensAt' => '2026-11-30T00:00:00+01:00',
+                'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
+            ]))
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'registrationClosesAt');
+    }
+
+    public function test_patching_only_the_close_date_compares_against_the_stored_opening(): void
+    {
+        // The same PATCH trap UpdateEventRequest::afterTheStart() exists
+        // for, on the other date pair: `after:registrationOpensAt` compares
+        // against an INPUT field, and the request below sends no opening.
+        $event = Event::factory()->create([
+            'registration_opens_at' => '2026-11-01 00:00:00',
+            'registration_closes_at' => '2026-11-30 00:00:00',
+        ]);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $event))
+            ->patchJson("/api/v1/events/{$event->id}", [
+                'registrationClosesAt' => '2026-10-01T00:00:00+02:00',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'registrationClosesAt');
     }
 }

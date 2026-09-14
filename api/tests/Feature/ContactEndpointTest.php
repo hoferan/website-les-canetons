@@ -20,7 +20,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_stores_a_message(): void
     {
-        $this->postJson('/api/contact', self::VALID)
+        $this->postJson('/api/v1/contact', $this->publicWriteBody(self::VALID), $this->publicWriteHeaders())
             ->assertOk()
             ->assertExactJson(['ok' => true]);
 
@@ -35,20 +35,20 @@ class ContactEndpointTest extends TestCase
 
     public function test_it_reports_missing_fields_with_camelcase_names(): void
     {
-        $response = $this->postJson('/api/contact', []);
+        $response = $this->postJson('/api/v1/contact', $this->publicWriteBody(), $this->publicWriteHeaders());
 
         $response->assertStatus(400)->assertJsonPath('code', 'validation_failed');
 
         // These names must match i18n.js's fields.* keys exactly.
-        $fields = array_column($response->json('fields'), 'field');
+        $fields = array_column($response->json('errors'), 'field');
         $this->assertSame(['lastName', 'firstName', 'email', 'subject', 'message'], $fields);
     }
 
     public function test_it_rejects_a_malformed_email(): void
     {
-        $response = $this->postJson('/api/contact', ['email' => 'not-an-email'] + self::VALID);
+        $response = $this->postJson('/api/v1/contact', $this->publicWriteBody(['email' => 'not-an-email'] + self::VALID), $this->publicWriteHeaders());
 
-        $response->assertStatus(400)->assertJsonPath('fields.0', [
+        $response->assertStatus(400)->assertJsonPath('errors.0', [
             'field' => 'email',
             'reason' => 'invalid_format',
         ]);
@@ -57,13 +57,13 @@ class ContactEndpointTest extends TestCase
     public function test_it_stores_raw_input_without_escaping(): void
     {
         // Escaping happens at output time, not storage time.
-        $this->postJson('/api/contact', ['message' => '<b>hi</b>'] + self::VALID)->assertOk();
+        $this->postJson('/api/v1/contact', $this->publicWriteBody(['message' => '<b>hi</b>'] + self::VALID), $this->publicWriteHeaders())->assertOk();
 
         $this->assertSame('<b>hi</b>', ContactMessage::latest('id')->first()->message);
     }
 
     public function test_it_rejects_a_get(): void
     {
-        $this->getJson('/api/contact')->assertStatus(405);
+        $this->getJson('/api/v1/contact')->assertStatus(405);
     }
 }

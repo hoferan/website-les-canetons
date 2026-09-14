@@ -31,16 +31,20 @@ const CEILING_BYTES = 2 * 1024 * 1024;
  * commented-out routes in web/src/routes.tsx. Adding one is meant to be a
  * deliberate, reviewable act rather than a threshold nudge.
  *
- * comite.jpg and Flyer.jpeg are not in the tree; they went in de750d9. They
- * stay listed so restoring them does not trip a guard that was never about
- * them. A listed name matching no file is reported, not failed.
+ * comite.jpg and Flyer.jpeg were listed here while absent from the tree, so
+ * that restoring them would not trip a guard that was never about them. Dropped
+ * 2026-09-12: the reason an exemption carries is "THIS file is already small",
+ * and neither file exists to be small any more -- comite.jpg went in de750d9,
+ * Flyer.jpeg in 85bf1f9. Whatever arrives under those names next is a new
+ * photograph from the band, which is precisely what the budget is for.
+ *
+ * A listed name matching no file is still reported rather than failed, because
+ * that is how this file says an exemption has gone stale.
  */
 const EXEMPT = {
   'Les_Canetons_Fribourg_logo_2.jpg':
     'the band identity at 237x174, not a photograph that can go stale',
   'CD_img.png': 'the CD sleeve, already 536x489',
-  'comite.jpg': 'already small (CLAUDE.md); absent from the tree since de750d9',
-  'Flyer.jpeg': 'already small (CLAUDE.md); absent from the tree since de750d9',
 };
 
 const IMAGE = /\.(jpe?g|png|gif|webp|avif)$/i;

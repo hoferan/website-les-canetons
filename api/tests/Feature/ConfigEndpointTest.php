@@ -2,31 +2,26 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Api\ConfigController;
-use App\Support\Occasion;
-use ReflectionMethod;
-use RuntimeException;
 use Tests\TestCase;
 
 /**
  * The SPA's only source of server configuration.
  *
- * Replaces what the old app rendered server-side from config.php: the env ribbon
- * (App\Env), the souper_signup gate (App\Features) and the occasion copy. Public
- * on purpose — an anonymous visitor sees both the ribbon and the signup form.
+ * Replaces what the old app rendered server-side from config.php: the env
+ * ribbon (App\Env). Public on purpose — an anonymous visitor sees the ribbon.
  */
 class ConfigEndpointTest extends TestCase
 {
     public function test_it_is_public(): void
     {
-        $this->getJson('/api/config')->assertStatus(200);
+        $this->getJson('/api/v1/config')->assertStatus(200);
     }
 
     public function test_it_reports_the_environment(): void
     {
         config(['app.env' => 'test']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'test');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'test');
     }
 
     /**
@@ -38,7 +33,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'staging-2']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'prod');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'prod');
     }
 
     /**
@@ -54,7 +49,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'local']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'dev');
     }
 
     /**
@@ -67,7 +62,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'production']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'prod');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'prod');
     }
 
     /**
@@ -79,7 +74,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'dev']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'dev');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'dev');
     }
 
     /**
@@ -91,89 +86,7 @@ class ConfigEndpointTest extends TestCase
     {
         config(['app.env' => 'qa']);
 
-        $this->getJson('/api/config')->assertJsonPath('env', 'qa');
-    }
-
-    public function test_the_occasion_is_absent_when_the_feature_is_off(): void
-    {
-        config(['app.souper_signup_enabled' => false]);
-
-        $this->getJson('/api/config')
-            ->assertJsonPath('features.souper_signup', false)
-            ->assertJsonPath('occasion', null);
-    }
-
-    public function test_the_occasion_is_served_when_the_feature_is_on(): void
-    {
-        config(['app.souper_signup_enabled' => true]);
-
-        $response = $this->getJson('/api/config');
-
-        $response->assertJsonPath('occasion.title', Occasion::active()['title']);
-        $response->assertJsonPath('occasion.maxGuests', Occasion::MAX_GUESTS);
-        $response->assertJsonPath('occasion.menus.0.value', Occasion::MENU_VALUES[0]);
-        $response->assertJsonPath('occasion.menus.0.label', Occasion::MENU_LABELS[Occasion::MENU_VALUES[0]]);
-    }
-
-    /**
-     * MENU_INFO (description + price) is the reason MENU_INFO was moved into
-     * App\Support\Occasion at all — this pins it so a future refactor cannot
-     * silently drop it from the response while the label/value fields above
-     * keep passing.
-     */
-    public function test_the_menus_carry_description_and_price(): void
-    {
-        config(['app.souper_signup_enabled' => true]);
-
-        $response = $this->getJson('/api/config');
-
-        $value = Occasion::MENU_VALUES[0];
-        $response->assertJsonPath('occasion.menus.0.description', Occasion::MENU_INFO[$value]['description']);
-        $response->assertJsonPath('occasion.menus.0.price', Occasion::MENU_INFO[$value]['price']);
-    }
-
-    /**
-     * Every menu the endpoint serves must carry a real description and price
-     * from the response itself, not just the first one (the previous test
-     * only pinned index 0). This is the "catch it from the outside" guard the
-     * loud-failure test below cannot provide by itself: it proves the CURRENT
-     * data is fully in lockstep, in addition to proving a future mismatch
-     * would throw.
-     */
-    public function test_every_menu_has_a_non_empty_description_and_price(): void
-    {
-        config(['app.souper_signup_enabled' => true]);
-
-        $menus = $this->getJson('/api/config')->json('occasion.menus');
-
-        $this->assertCount(count(Occasion::MENU_VALUES), $menus);
-        foreach ($menus as $menu) {
-            $this->assertNotSame('', $menu['description'], "Menu '{$menu['value']}' has a blank description.");
-            $this->assertNotSame('', $menu['price'], "Menu '{$menu['value']}' has a blank price.");
-        }
-    }
-
-    /**
-     * LOUD FAILURE GUARD. MENU_VALUES/MENU_LABELS and MENU_INFO are
-     * separately-maintained parallel constants (Occasion's own docblock says
-     * so) that must stay in lockstep. This cannot be provoked through the real
-     * constants — PHP class constants cannot be mutated at runtime — so this
-     * exercises ConfigController::menuEntry() directly via reflection with a
-     * menu value that exists in neither MENU_VALUES nor MENU_INFO, standing in
-     * for the two constants having drifted apart. Proves the guard throws
-     * rather than the old `?? ''` fallback silently shipping a blank
-     * description/price on a public reservation form.
-     */
-    public function test_a_menu_missing_from_menu_info_fails_loudly(): void
-    {
-        $controller = new ConfigController;
-        $method = new ReflectionMethod($controller, 'menuEntry');
-        $method->setAccessible(true);
-
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessageMatches('/no-such-menu/');
-
-        $method->invoke($controller, 'no-such-menu');
+        $this->getJson('/api/v1/config')->assertJsonPath('env', 'qa');
     }
 
     /**
@@ -184,12 +97,9 @@ class ConfigEndpointTest extends TestCase
      */
     public function test_it_exposes_only_allowlisted_keys(): void
     {
-        config(['app.souper_signup_enabled' => true]);
+        $body = $this->getJson('/api/v1/config')->json();
 
-        $body = $this->getJson('/api/config')->json();
-
-        $this->assertSame(['env', 'features', 'occasion'], array_keys($body));
-        $this->assertSame(['souper_signup'], array_keys($body['features']));
+        $this->assertSame(['env', 'features'], array_keys($body));
 
         $serialised = (string) json_encode($body);
         foreach (['password', 'secret', 'token', 'DB_', 'MAIL_', 'hmac'] as $needle) {
@@ -202,8 +112,68 @@ class ConfigEndpointTest extends TestCase
     }
 
     /**
-     * A stale flag or ribbon would survive a server-side change, so this must
-     * never be cached — the old app re-read config.php on every request.
+     * The KEY SET is fixed in code, not read from the environment. This
+     * response is public and unauthenticated, and the config it draws from
+     * also carries database and mail secrets — so the shape is a reviewed
+     * list, never a dump.
+     */
+    public function test_it_reports_every_known_feature_flag(): void
+    {
+        $this->getJson('/api/v1/config')
+            ->assertOk()
+            ->assertJsonStructure(['env', 'features' => ['calendar']]);
+    }
+
+    public function test_a_flag_is_off_when_the_environment_says_nothing(): void
+    {
+        config(['features.calendar' => null]);
+
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    public function test_a_flag_is_on_only_when_the_environment_turns_it_on(): void
+    {
+        config(['features.calendar' => true]);
+
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', true);
+    }
+
+    /**
+     * .env values arrive as strings. Without a cast, "false" is truthy in
+     * JavaScript and the flag is permanently on wherever somebody wrote it out
+     * longhand.
+     */
+    public function test_the_flags_are_booleans_not_strings(): void
+    {
+        config(['features.calendar' => 'false']);
+
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    /**
+     * The other two falsy strings PHP's boolean cast gets wrong: (bool) '0'
+     * and (bool) '' both mean something different from what filter_var()
+     * reports here. Pinned separately from 'false' above so the fail-closed
+     * rule is proven on all three shapes a longhand .env value can take, not
+     * assumed from the one string that happens to spell out the word.
+     */
+    public function test_the_digit_zero_string_reads_as_false(): void
+    {
+        config(['features.calendar' => '0']);
+
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    public function test_the_empty_string_reads_as_false(): void
+    {
+        config(['features.calendar' => '']);
+
+        $this->getJson('/api/v1/config')->assertOk()->assertJsonPath('features.calendar', false);
+    }
+
+    /**
+     * A stale ribbon would survive a server-side change, so this must never be
+     * cached — the old app re-read config.php on every request.
      *
      * Not an exact-match assertion: Symfony's Response::prepare() appends
      * ", private" to Cache-Control whenever a session cookie is present (this
@@ -215,7 +185,7 @@ class ConfigEndpointTest extends TestCase
      */
     public function test_it_is_not_cacheable(): void
     {
-        $header = $this->getJson('/api/config')->headers->get('Cache-Control');
+        $header = $this->getJson('/api/v1/config')->headers->get('Cache-Control');
 
         $this->assertNotNull($header, 'Expected a Cache-Control header.');
         $this->assertStringContainsString('no-store', $header);

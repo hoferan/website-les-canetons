@@ -19,14 +19,31 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- The SESSION COOKIE'S NAME comes from here, and that is the whole
+             reason this is pinned. config/session.php derives it as
+             `Str::slug(APP_NAME).'-session'`, so every environment that has an
+             .env answers `les-canetons-api-session` and one that has none
+             answers Laravel's default `laravel-session`.
+
+             CI has no .env. So ResponseHygieneTest::
+             test_the_document_names_the_cookie_the_api_actually_sets compared
+             the committed document — exported in Docker, where APP_NAME is set
+             — against a name no server ever uses, and failed on the runner
+             while passing everywhere a developer could see. It had been failing
+             since the document gained that security scheme; nothing noticed,
+             because no pull request had been opened in between.
+
+             Same class as SESSION_SECURE_COOKIE and AUTO_MIGRATE below, one
+             environment further out: the suite must measure what ships, not
+             what the ambient environment happens to provide. -->
+        <env name="APP_NAME" value="Les Canetons API"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
-        <!-- database, not array: App\Support\ChallengeGuard uses the cache as
-             the Altcha single-use replay guard, so its tests have to exercise a
-             shared, durable store the way production does. The array store is
-             per-process and would let a replay succeed. laravel_api_test is
-             dedicated, so the cache table here touches no real data. -->
+        <!-- database, not array: the login throttle (AuthController) runs on
+             the RateLimiter, which is cache-backed. The array store is
+             per-process, so it would let a throttled attempt through on a real
+             multi-worker server while the suite stayed green. -->
         <env name="CACHE_STORE" value="database"/>
         <!-- Tests run against a real MariaDB (matches prod): the migrations use
              MariaDB-specific features (enum, char, raw ALTER TABLE for the
@@ -51,15 +68,6 @@
              localhost:8090,127.0.0.1:8090 — which does not match and leaves the
              request session-less (500: "Session store not set on request"). -->
         <env name="SANCTUM_STATEFUL_DOMAINS" value="localhost"/>
-        <!-- Off, matching config/app.php's default and the old app's
-             App\Features (a missing flag is a disabled flag). Pinned here
-             rather than left to the ambient environment because the suite runs
-             INSIDE the web container, where docker/api/env.docker is mounted as
-             api-laravel/.env with SOUPER_SIGNUP_ENABLED=true — inheriting that
-             would make the gate untestable locally while it still bit in CI.
-             The three classes that need the feature ON turn it on themselves
-             with config([...]); see SouperSignupFlagTest for the OFF path. -->
-        <env name="SOUPER_SIGNUP_ENABLED" value="false"/>
         <!-- OFF here, though config/app.php defaults it ON — the suite must
              never migrate implicitly. Two reasons, either sufficient:
              MigrateTest deliberately leaves a probe migration PENDING to prove
@@ -68,14 +76,48 @@
              fail; and more generally a test that silently repaired the schema
              underneath itself would hide exactly the breakage a suite is for.
              AutoMigrateTest turns it back on with config([...]) per test, the
-             same way SouperSignupFlagTest does. Pinned rather than left to the
-             ambient environment because the suite runs INSIDE the web
-             container, where docker/api/env.docker is mounted as
-             api-laravel/.env with AUTO_MIGRATE=true. -->
+             same way MigrateTest (named above) sets app.migrate_token in each
+             of its own. Pinned rather than left to the ambient environment
+             because the suite runs INSIDE the web container, where
+             docker/api/env.docker is mounted as _api/.env with
+             AUTO_MIGRATE=true. -->
         <env name="AUTO_MIGRATE" value="false"/>
+        <!--
+            The bootstrap administrator must NOT be created during the suite.
+            docker/api/env.docker sets these so the local stack can bootstrap
+            itself, and without pinning them here every test's RefreshDatabase
+            migration would create comite.local — which holds members.manage,
+            so AccessIntegrityTest's "last administrator" fixtures stop being
+            the last administrator and BootstrapAdministratorTest starts from a
+            bootstrapped database.
+
+            Empty, not absent: `blank()` is what the migration checks, and an
+            explicit empty value is immune to whatever a container or a
+            developer's shell happens to export. Same reasoning as
+            SESSION_SECURE_COOKIE below, which was pinned after two tests were
+            green natively and red in Docker for a day.
+        -->
+        <env name="BOOTSTRAP_ADMIN_USERNAME" value=""/>
+        <env name="BOOTSTRAP_ADMIN_PASSWORD" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
+        <!-- The DEPLOYED posture, pinned for the same reason as AUTO_MIGRATE
+             above: the suite runs INSIDE the web container, where
+             docker/api/env.docker is mounted as _api/.env and sets
+             SESSION_SECURE_COOKIE=false. That override is correct for local dev
+             — :8090 is plain http, and a browser will not send a Secure-only
+             cookie back over it, so login breaks outright without it — but a
+             suite that inherits it is measuring a dev workaround instead of
+             what ships. Left unpinned, SessionLifetimeTest's two cookie tests
+             fail in Docker while passing natively in a Claude Code web session,
+             where api/.env comes from api/.env.example and omits the variable
+             altogether. They did exactly that.
+             The fallback this pin hides — what a server gets when its .env says
+             nothing — is asserted by
+             SessionLifetimeTest::test_the_secure_cookie_default_is_true_when_a_server_sets_nothing,
+             which clears the variable and re-reads config/session.php. -->
+        <env name="SESSION_SECURE_COOKIE" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>

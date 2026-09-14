@@ -1,0 +1,84 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Member;
+use App\Models\Role;
+use App\Support\Permission;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
+
+class PermissionMiddlewareTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Route::middleware(['api', 'auth:sanctum', 'permission:events.manage'])
+            ->get('/api/v1/_test/guarded', fn () => response()->json(['ok' => true]));
+    }
+
+    private function memberWith(?Permission $permission): Member
+    {
+        $member = Member::factory()->named('Demo', 'Person', 'demo')->create();
+
+        if ($permission !== null) {
+            $role = Role::factory()->create();
+            $role->syncPermissions([$permission]);
+            $member->roles()->attach($role);
+        }
+
+        return $member;
+    }
+
+    public function test_an_anonymous_caller_gets_401_not_403(): void
+    {
+        $this->getJson('/api/v1/_test/guarded')
+            ->assertStatus(401)
+            ->assertJson(['code' => 'not_authenticated']);
+    }
+
+    public function test_a_member_without_the_permission_gets_403(): void
+    {
+        // App\Http\Middleware\EnforceAbsoluteSessionLifetime (appended to the
+        // `api` group) reads auth.started_at off the request's session, so
+        // every actingAs() call needs both the Origin header (which makes
+        // Sanctum treat this as a stateful frontend request and actually
+        // attach a session store to the request) and the stamp itself — see
+        // MeTest for the full explanation.
+        $this->actingAsMember($this->memberWith(null))
+            ->getJson('/api/v1/_test/guarded')
+            ->assertStatus(403)
+            ->assertJson(['code' => 'access_denied']);
+    }
+
+    public function test_a_member_with_the_permission_passes(): void
+    {
+        $this->actingAsMember($this->memberWith(Permission::EventsManage))
+            ->getJson('/api/v1/_test/guarded')
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+    }
+
+    public function test_a_different_permission_does_not_open_the_route(): void
+    {
+        $this->actingAsMember($this->memberWith(Permission::MembersManage))
+            ->getJson('/api/v1/_test/guarded')
+            ->assertStatus(403);
+    }
+
+    public function test_an_unknown_permission_name_is_a_loud_failure(): void
+    {
+        Route::middleware(['api', 'auth:sanctum', 'permission:events.mangle'])
+            ->get('/api/v1/_test/typo', fn () => response()->json(['ok' => true]));
+
+        $this->withoutExceptionHandling();
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->actingAsMember($this->memberWith(Permission::EventsManage))
+            ->getJson('/api/v1/_test/typo');
+    }
+}

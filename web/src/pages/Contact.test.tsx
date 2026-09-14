@@ -1,134 +1,133 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { Route, Routes, useNavigate } from "react-router-dom";
 import { expect, test } from "vitest";
 
+import { problem } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Contact } from "./Contact";
 
-/** A confirmation page that can go back, so the PUSH is observable. */
-function Confirmed() {
-  const navigate = useNavigate();
-  return (
-    <>
-      <p>Merci</p>
-      <button type="button" onClick={() => navigate(-1)}>
-        retour
-      </button>
-    </>
-  );
+/** Fills every visible field with something the API would accept. */
+async function fillIn(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("Nom:"), "Rossier");
+  await user.type(screen.getByLabelText("Prénom:"), "Claire");
+  await user.type(screen.getByLabelText("E-mail:"), "claire@example.ch");
+  await user.type(screen.getByLabelText("Sujet:"), "Mon fils aimerait essayer");
+  await user.type(screen.getByLabelText("Contenu du message:"), "Bonjour, est-ce possible ?");
 }
 
-const app = (
-  <Routes>
-    <Route path="/contact" element={<Contact />} />
-    <Route path="/confirmation" element={<Confirmed />} />
-  </Routes>
-);
+test("sends the message and answers in place, without navigating", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<Contact />, { route: "/contact" });
 
-async function fillValidMessage(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText("Nom:"), "Canard");
-  await user.type(screen.getByLabelText("Prénom:"), "Donald");
-  await user.type(screen.getByLabelText("E-mail:"), "donald@example.com");
-  await user.type(screen.getByLabelText("Sujet:"), "Une question");
-  await user.type(screen.getByLabelText("Contenu du message:"), "Bonjour les canetons !");
-}
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
-// Order, not just presence. The old page's field sequence is the thing a
-// returning member's muscle memory knows, and reordering FIELDS in Contact.tsx
-// used to leave every test in this file green.
-test("the five old fields are present, in the old order", async () => {
-  await renderWithSession(app, { route: "/contact" });
-  expect(await screen.findByRole("heading", { name: "Contact" })).toBeInTheDocument();
-
-  const labels = screen
-    .getAllByText(/^(Nom:|Prénom:|E-mail:|Sujet:|Contenu du message:)$/)
-    .map((node) => node.textContent);
-  expect(labels).toEqual(["Nom:", "Prénom:", "E-mail:", "Sujet:", "Contenu du message:"]);
-
-  // Only the last one is a textarea; the rest are inputs.
-  expect(screen.getByLabelText("Contenu du message:").tagName).toBe("TEXTAREA");
-  expect(screen.getByLabelText("Sujet:").tagName).toBe("INPUT");
+  expect(await screen.findByRole("heading", { name: "Message envoyé" })).toBeInTheDocument();
+  // The form is GONE, not merely covered: a success panel above a live form
+  // invites a second send of the same message.
+  expect(screen.queryByLabelText("Nom:")).not.toBeInTheDocument();
 });
 
-// The old markup left `subject` optional while the API always required it, so a
-// blank subject made a round trip and came back as a generic alert. Pinned so
-// the fix is not "tidied" back to parity.
-test("every field is required, subject included", async () => {
-  await renderWithSession(app, { route: "/contact" });
+/**
+ * THE THREE HEADERS THE GUARD REQUIRES, asserted on the wire rather than on
+ * the helper that builds them. `publicWriteHeaders` returning the right object
+ * proves nothing if the screen forgets to pass it — which is the whole failure
+ * mode, since `contactStore` compiles perfectly well without its second
+ * argument.
+ */
+test("carries the form token and an idempotency key on the request itself", async () => {
+  const user = userEvent.setup();
+  let seen: Headers | null = null;
+  server.use(
+    http.post("/api/v1/contact", ({ request }) => {
+      seen = request.headers;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact" });
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+  await screen.findByRole("heading", { name: "Message envoyé" });
+
+  const headers = seen as Headers | null;
+  expect(headers?.get("X-Form-Token")).toBe("mock-form-token");
+  // Not the value — that is a fresh UUID every mount — but the window the API
+  // enforces. A key under 16 characters answers 400 idempotency_key_invalid.
+  expect((headers?.get("Idempotency-Key") ?? "").length).toBeGreaterThanOrEqual(16);
+});
+
+/**
+ * The honeypot must be SENT and EMPTY. An absent field is refused exactly like
+ * a filled one, so "we just don't render it" is not an implementation of this.
+ */
+test("sends the honeypot present and empty, and hides it from assistive technology", async () => {
+  const user = userEvent.setup();
+  let body: Record<string, unknown> = {};
+  server.use(
+    http.post("/api/v1/contact", async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact" });
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+  await screen.findByRole("heading", { name: "Message envoyé" });
+
+  expect(body).toHaveProperty("website", "");
+  // Nothing a person can reach: not in the accessibility tree, so a
+  // screen-reader user is never asked to leave a field blank.
+  expect(screen.queryByLabelText(/website/i)).not.toBeInTheDocument();
+});
+
+test("shows the refusal in French when the guard rejects the submission", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.post("/api/v1/contact", () =>
+      problem(422, "spam_suspected", "Submission looks automated"),
+    ),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact" });
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Envoi refusé. Rechargez la page et réessayez.",
+  );
+  // NOTHING English reaches the screen: `title` is for a log.
+  expect(screen.queryByText(/Submission looks automated/)).not.toBeInTheDocument();
+});
+
+test("keeps what was typed when the send fails", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.post("/api/v1/contact", () =>
+      problem(422, "spam_suspected", "Submission looks automated"),
+    ),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact" });
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+  await screen.findByRole("alert");
+
+  // A rejected message must not make someone retype it.
+  expect(screen.getByLabelText("Sujet:")).toHaveValue("Mon fils aimerait essayer");
+});
+
+/**
+ * Every field is required, `subject` included — which the legacy markup was
+ * not, even though the API has always required it.
+ */
+test("marks every field required, subject included", async () => {
+  await renderWithSession(<Contact />, { route: "/contact" });
+
   for (const label of ["Nom:", "Prénom:", "E-mail:", "Sujet:", "Contenu du message:"]) {
-    expect(await screen.findByLabelText(label)).toBeRequired();
+    expect(screen.getByLabelText(label)).toBeRequired();
   }
-});
-
-test("a sent message lands on the confirmation page", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, { route: "/contact" });
-  await fillValidMessage(user);
-  await user.click(screen.getByRole("button", { name: "Envoyer" }));
-  expect(await screen.findByText("Merci")).toBeInTheDocument();
-});
-
-test("a validation error renders in French against the offending field", async () => {
-  const user = userEvent.setup();
-  server.use(
-    http.post("/api/contact", () =>
-      HttpResponse.json(
-        {
-          error: "Invalid form submission",
-          code: "validation_failed",
-          fields: [{ field: "email", reason: "invalid_format" }],
-        },
-        { status: 400 },
-      ),
-    ),
-  );
-
-  await renderWithSession(app, { route: "/contact" });
-  await fillValidMessage(user);
-  await user.click(screen.getByRole("button", { name: "Envoyer" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
-  );
-  expect(screen.getByText("E-mail n'est pas dans un format valide")).toBeInTheDocument();
-  expect(screen.getByLabelText("E-mail:")).toHaveAttribute("aria-invalid", "true");
-  expect(screen.queryByText("Merci")).toBeNull();
-});
-
-test("a rejected message keeps what was typed", async () => {
-  const user = userEvent.setup();
-  server.use(
-    http.post("/api/contact", () =>
-      HttpResponse.json(
-        { error: "Invalid form submission", code: "validation_failed", fields: [] },
-        { status: 400 },
-      ),
-    ),
-  );
-
-  await renderWithSession(app, { route: "/contact" });
-  await fillValidMessage(user);
-  await user.click(screen.getByRole("button", { name: "Envoyer" }));
-
-  await waitFor(() =>
-    expect(screen.getByRole("alert")).toHaveTextContent("Le formulaire contient des erreurs."),
-  );
-  expect(screen.getByLabelText("Contenu du message:")).toHaveValue("Bonjour les canetons !");
-});
-
-// The old page assigned window.location.href, which pushes — so Back returned
-// to the form with its values gone but the page still there. `replace: true`
-// would swallow the form entirely, and nothing else in this suite would notice.
-test("Back returns to the form, as the old page did", async () => {
-  const user = userEvent.setup();
-  await renderWithSession(app, { route: "/contact" });
-  await fillValidMessage(user);
-  await user.click(screen.getByRole("button", { name: "Envoyer" }));
-  await screen.findByText("Merci");
-
-  await user.click(screen.getByRole("button", { name: "retour" }));
-  expect(await screen.findByLabelText("Sujet:")).toBeInTheDocument();
 });
