@@ -163,3 +163,38 @@ test('the SPA fallback keeps both of its guards', () => {
   assert.match(lines[fallback - 1], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
   assert.match(lines[fallback - 2], /^RewriteCond %\{REQUEST_URI\} !\^\/assets\//);
 });
+
+test('the canonical-host redirect fires only on the browser pass, and only for www.', () => {
+  // A mod_rewrite rule, deliberately: mod_alias sees internal paths on the
+  // re-entered pass, including this host's /cgi-bin/php5.fcgi/ prefix, which
+  // is what made the three legacy 301s dangerous.
+  //
+  // Mutation-tested: drop either RewriteCond and this fails.
+  const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
+  const lines = template.split(/\r?\n/);
+
+  const rule = lines.findIndex((line) => /^RewriteRule \^\(\.\*\)\$ https:\/\/%1\/\$1 \[R=301,L\]/.test(line));
+  assert.notEqual(rule, -1, 'the canonical-host redirect is gone');
+
+  // Both conditions must be the two lines IMMEDIATELY above: a RewriteCond
+  // binds only to the rule that follows it.
+  assert.match(lines[rule - 1], /^RewriteCond %\{HTTP_HOST\} \^www\\.\(\.\+\)\$ \[NC\]/);
+  assert.match(lines[rule - 2], /^RewriteCond %\{ENV:REDIRECT_STATUS\} \^\$/);
+
+  // The host condition must come SECOND. %1 is the last matching condition's
+  // capture, and the REDIRECT_STATUS guard captures nothing — swap them and
+  // the redirect targets https:///$1.
+  assert.ok(
+    lines[rule - 1].includes('HTTP_HOST'),
+    'the host condition must be the one immediately above the rule, or %1 is not the host'
+  );
+
+  // It must run before the dispatch, so /api/* on a www. host is redirected
+  // rather than answered.
+  const dispatch = lines.findIndex((line) => /^RewriteRule \^api\(\/\|\$\)/.test(line));
+  assert.ok(rule < dispatch, 'the canonical redirect must precede the API dispatch');
+
+  // [END] does not exist on Apache 2.2 and an unknown flag is a syntax error,
+  // which is a 500 on every request to the whole site.
+  assert.ok(!/\[R=301,END\]/.test(template), 'never the END flag');
+});

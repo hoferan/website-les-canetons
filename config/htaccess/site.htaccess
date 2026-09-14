@@ -1,6 +1,49 @@
 RewriteEngine on
 
 # ---------------------------------------------------------------------------
+# Canonical host: www.<anything> -> <anything>, permanently.
+#
+# NOT COSMETIC, and not about SEO. Every environment's `www.` name resolves —
+# each is a DNS alias of its apex on the same address — so the SPA serves there
+# perfectly and then cannot log anybody in. Sanctum decides statefulness from a
+# request's Origin/Referer against SANCTUM_STATEFUL_DOMAINS, which names the
+# apex and nothing else, so no session is ever started and POST /api/v1/login
+# answers 400 stateful_request_required. Reported from a phone on
+# www.test.lescanetons.org on 2026-09-14; see issue #90 for the reproduction.
+#
+# Widening SANCTUM_STATEFUL_DOMAINS instead is the tempting one-line version
+# and is worse: SESSION_DOMAIN is empty, so the cookie is host-only and the two
+# names would hold two unrelated sessions. The certificate argument points the
+# same way. On test and qa it does not cover the www. name, so a visitor gets a
+# warning first; on PROD it does cover it, which is worse rather than better,
+# because there the site looks entirely correct and login simply fails with
+# nothing on screen to say why.
+#
+# mod_rewrite, NOT RedirectMatch. mod_alias runs on the re-entered pass and
+# sees INTERNAL paths, including the /cgi-bin/php5.fcgi/ prefix this host
+# prepends — which is exactly what made the three legacy 301s dangerous. The
+# block further down, where they used to sit, carries the full mechanism.
+#
+# FIRST in the file and guarded on REDIRECT_STATUS, so it can only fire on the
+# pass carrying the browser's own URL. Without that guard a later internal
+# rewrite re-enters this ruleset with a substituted path and this rule would
+# 301 the visitor to it — which is precisely how the old .php rule put
+# _api/public/index.php into a public redirect and took the entire API down
+# while every page still rendered.
+#
+# %1 is the host capture: it refers to the LAST RewriteCond that matched, and
+# the REDIRECT_STATUS guard above captures nothing, so the order of these two
+# conditions is load-bearing. The query string travels on its own because the
+# substitution contains no `?`.
+#
+# [R=301,L], with [L] rather than [END] for the reason the dispatch block
+# below gives at length.
+# ---------------------------------------------------------------------------
+RewriteCond %{ENV:REDIRECT_STATUS} ^$
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# ---------------------------------------------------------------------------
 # Laravel API dispatch.
 #
 #   /api/*     -> the Laravel app in _api/
