@@ -193,6 +193,34 @@ test("changing a name and a role in one save does both", async () => {
   expect(within(changed as HTMLElement).getByText("Comité")).toBeInTheDocument();
 });
 
+test("seats somebody on the committee by picking from the list, not by typing", async () => {
+  // FREE TEXT UNTIL 2026-09-14, and all three of its problems were invisible
+  // from this screen: a typo here was published on a page the band hands out,
+  // nothing beside the text ranked the seats so /committee could only sort
+  // alphabetically, and a typed name is content no translation layer reaches.
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+  const seat = await screen.findByLabelText("Fonction au comité");
+  expect(seat.tagName).toBe("SELECT");
+
+  await userEvent.selectOptions(seat, "Présidente");
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  // RE-OPENING THE FORM IS THE ROUND TRIP. Nothing on the roster table renders
+  // the seat, so reading it back is the only way to prove the value survived
+  // the PATCH — whose allow-list mirrors what UpdateMemberRequest validates,
+  // and would silently drop a field the API does not accept.
+  await screen.findByRole("button", { name: "Ajouter une personne" });
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+
+  expect(await screen.findByLabelText("Fonction au comité")).toHaveValue("1");
+});
+
 test("refuses to save over a change somebody else made while the form was open", async () => {
   // THE WHOLE POINT OF A4, at the screen. Two administrators have the roster
   // open, one corrects a register while the other is typing a name, and before
@@ -213,7 +241,7 @@ test("refuses to save over a change somebody else made while the form was open",
       "Content-Type": "application/json",
       "If-Match": read.headers.get("ETag") ?? "",
     },
-    body: JSON.stringify({ committeeTitle: "Caissière" }),
+    body: JSON.stringify({ committeeFunctionId: 4 }),
   });
 
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));

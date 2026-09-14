@@ -6,6 +6,7 @@ import type {
   AttendanceResource,
   AuthMe200,
   ChaseListEntryResource,
+  CommitteeFunctionResource,
   ContactRequest,
   EventResource,
   MemberResource,
@@ -261,6 +262,24 @@ const SECTIONS: SectionResource[] = [
 ];
 
 /**
+ * The committee's seats, mirroring the 2026_09_14_000001 migration exactly —
+ * the band's own RANK order, ids in insertion order.
+ *
+ * The order is the whole reason the table exists, so a mock that listed them
+ * alphabetically would hide the only bug this feature was built to fix.
+ */
+const COMMITTEE_FUNCTIONS: CommitteeFunctionResource[] = [
+  { id: 1, name: "Présidente", sortOrder: 1 },
+  { id: 2, name: "Vice-présidente - secrétaire", sortOrder: 2 },
+  { id: 3, name: "Responsable prestations", sortOrder: 3 },
+  { id: 4, name: "Responsable caisse", sortOrder: 4 },
+  { id: 5, name: "Responsable intendance", sortOrder: 5 },
+  { id: 6, name: "Responsable costumes", sortOrder: 6 },
+  { id: 7, name: "Responsable Team Direction", sortOrder: 7 },
+  { id: 8, name: "Membre", sortOrder: 8 },
+];
+
+/**
  * The two roles the same migration seeds, with what each grants.
  *
  * No display name, deliberately (decision B6): the API is English without
@@ -327,7 +346,7 @@ function initialMembers(): MemberResource[] {
       sectionId: null,
       sectionName: null,
       isPlayer: false,
-      committeeTitle: null,
+      committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [1],
@@ -342,7 +361,7 @@ function initialMembers(): MemberResource[] {
       sectionId: 4,
       sectionName: "Cloches",
       isPlayer: true,
-      committeeTitle: null,
+      committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [],
@@ -359,7 +378,7 @@ function initialMembers(): MemberResource[] {
       sectionId: 5,
       sectionName: "Trompettes",
       isPlayer: true,
-      committeeTitle: null,
+      committeeFunctionId: null,
       // THE ONE INSTRUCTOR, mirroring DevSeeder. A different column from
       // sectionId, so the public band page lists them under the trumpets as a
       // player and under the drummers as an instructor — the only place that
@@ -378,11 +397,11 @@ function initialMembers(): MemberResource[] {
       sectionId: 6,
       sectionName: "Trombones",
       isPlayer: true,
-      // The TITLE, not the role, is what puts somebody on the public committee
-      // page. `committee` grants registrations.view; this string is a caption
-      // the committee typed. A demo roster where the two coincide is how
+      // The SEAT, not the role, is what puts somebody on the public committee
+      // page. `committee` grants registrations.view; this is a row in
+      // committee_functions. A demo roster where the two coincide is how
       // somebody comes to believe they are one field.
-      committeeTitle: "Responsable intendance",
+      committeeFunctionId: 5,
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [2],
@@ -399,7 +418,7 @@ function initialMembers(): MemberResource[] {
       sectionId: 1,
       sectionName: "Batteurs",
       isPlayer: true,
-      committeeTitle: null,
+      committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
       roleIds: [],
@@ -451,14 +470,14 @@ export function setMemberVisibility(id: number, visible: boolean): void {
 /**
  * Test seam: give one member a committee seat, or take it away.
  *
- * The empty and whitespace-only values are the interesting ones — the roster
- * form writes '' rather than null when somebody clears the field, and both the
- * API and this mock have to read that as no seat.
+ * Null is the only way to say "no seat" now. It used to be three — null, '' and
+ * '   ' — because the seat was free text the roster form blanked rather than
+ * cleared, and both the API and this mock had to read all three the same way.
  */
-export function setMemberTitle(id: number, title: string | null): void {
+export function setMemberSeat(id: number, committeeFunctionId: number | null): void {
   const member = members.find((row) => row.id === id);
   if (member) {
-    member.committeeTitle = title;
+    member.committeeFunctionId = committeeFunctionId;
   }
 }
 
@@ -989,16 +1008,31 @@ const overrides = [
     ),
   ),
 
+  // BY RANK, then by name — mirroring CommitteeController, whose ordering IS
+  // the feature. Several people hold "Membre" at once, so the name tie-break is
+  // what keeps two cards from swapping places between renders.
   http.get("/api/v1/committee", ({ request }) =>
     collection(
       members
-        .filter((member) => member.publicVisible && (member.committeeTitle ?? "").trim() !== "")
-        .sort((a, b) => a.lastName.localeCompare(b.lastName, "fr"))
-        .map((member) => ({
+        .flatMap((member) => {
+          const seat = COMMITTEE_FUNCTIONS.find((row) => row.id === member.committeeFunctionId);
+
+          // Reading the seat IS the "holds one" check: an id pointing at
+          // nothing and no id at all are the same answer, and the real
+          // endpoint's inner join says so too.
+          return member.publicVisible && seat ? [{ member, seat }] : [];
+        })
+        .sort(
+          (a, b) =>
+            a.seat.sortOrder - b.seat.sortOrder ||
+            a.member.lastName.localeCompare(b.member.lastName, "fr") ||
+            a.member.firstName.localeCompare(b.member.firstName, "fr"),
+        )
+        .map(({ member, seat }) => ({
           id: member.id,
           firstName: member.firstName,
           lastName: member.lastName,
-          title: member.committeeTitle,
+          function: seat.name,
         })),
       request,
     ),
@@ -1099,6 +1133,11 @@ const overrides = [
     ({ request }) => refuseWithoutMembersManage() ?? collection(ROLES, request),
   ),
 
+  http.get(
+    "/api/v1/committee-functions",
+    ({ request }) => refuseWithoutMembersManage() ?? collection(COMMITTEE_FUNCTIONS, request),
+  ),
+
   // Ordered by name, like the real endpoint: this screen is scanned for a
   // person, and a mock answering in insertion order would hide a sorting bug.
   http.get("/api/v1/members", ({ request }) => {
@@ -1158,7 +1197,7 @@ const overrides = [
       sectionId: body.sectionId ?? null,
       sectionName: sectionOf(body.sectionId ?? null),
       isPlayer: (body.sectionId ?? null) !== null,
-      committeeTitle: body.committeeTitle ?? null,
+      committeeFunctionId: body.committeeFunctionId ?? null,
       instructorOfSectionId: body.instructorOfSectionId ?? null,
       publicVisible: body.publicVisible ?? false,
       roleIds: [],
@@ -1197,7 +1236,7 @@ const overrides = [
       "lastName",
       "username",
       "sectionId",
-      "committeeTitle",
+      "committeeFunctionId",
       "instructorOfSectionId",
       "publicVisible",
     ] as const;

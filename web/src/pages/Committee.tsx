@@ -13,14 +13,16 @@ import type { CommitteeMemberResource } from "../api/generated/model";
  *
  * GENERATED FROM THE ROSTER, unlike the legacy page, which carried eight
  * hardcoded offices and eight placeholders where the names should have been.
- * A seat is now `committee_title` on a member row: the committee types it, the
- * committee changes it, and nobody has to ship a deploy to add a ninth.
+ * A seat is a row in `committee_functions` that a member points at: the
+ * committee maintains the list, and nobody has to ship a deploy to add a ninth.
  *
- * THE SEATS ARE IN NAME ORDER, and the API's own comment explains why rather
- * than this one — but the consequence is visible here: the legacy page read
- * présidente first, and this one does not, because nothing in the data says a
- * présidente outranks a caissière. A rank column would fix it. Nobody has
- * asked for one.
+ * THE SEATS ARE IN THE BAND'S OWN RANK ORDER, which they were not until
+ * 2026-09-14. A seat was free text on the member row with nothing beside it
+ * ranking one above another, so this page could only sort alphabetically and
+ * printed the caissière above the présidente. `sort_order` on the reference
+ * table is the missing fact; the ordering itself is the API's, and this
+ * component deliberately does no sorting of its own — re-sorting here is how
+ * the two would come to disagree.
  *
  * THE EMAIL ADDRESS IS GONE. The 2026-08-31 audit flagged comite@lescanetons.org
  * appearing on page after page; this one now sends people to the contact form
@@ -53,12 +55,12 @@ export function Committee() {
           {seats.map((seat) => (
             <Card key={seat.id} asChild className="gap-0 p-4">
               <li>
-                {/* The title, then the person. That order is the legacy page's
+                {/* The seat, then the person. That order is the legacy page's
                     and it is the one a visitor reads: they arrive looking for
                     "the person who handles costumes", not for a name they
                     already know. */}
                 <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                  {seat.title}
+                  {seat.function}
                 </p>
                 <p className="mt-tight">
                   {seat.firstName} {seat.lastName}
