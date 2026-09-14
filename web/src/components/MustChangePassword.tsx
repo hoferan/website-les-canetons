@@ -19,7 +19,13 @@ import { useSession } from "../session/SessionProvider";
  * redirecting from and the app renders nothing at all.
  *
  * Logout stays reachable throughout, because it is a button in the layout
- * chrome rather than a route — so nobody is trapped in a screen with no way out.
+ * chrome rather than a route — so nobody is trapped in a screen with no way
+ * out.
+ *
+ * THAT SENTENCE WAS FALSE UNTIL 2026-09-14, and it is why nobody noticed: the
+ * invariant was documented as satisfied by a control that had never been
+ * written. `POST /api/v1/logout` existed and was tested; nothing on screen
+ * called it. See web/src/session/LogoutButton.tsx.
  */
 export function MustChangePassword() {
   const { user } = useSession();

@@ -169,6 +169,40 @@ export function MemberForm({
         problem={problemFor("committeeTitle")}
       />
 
+      {/* A SECOND REGISTER FIELD, and it is not a duplicate of the one above.
+          `sectionId` is where somebody PLAYS and is what makes them answerable
+          for an event; this is the register they TEACH. An instructor commonly
+          teaches one and plays in another, and the public band page lists them
+          under both — correctly, because both are true.
+
+          IT HAD NO CONTROL UNTIL 2026-09-14. The column shipped in R1a, the
+          draft carried it, and Members.tsx sent it on every write — but nothing
+          ever rendered an input, so the value could only ever be whatever it
+          already was, which for every member was null. Found by André during
+          R2's manual pass, on the first release where anything READ it. */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="instructorOfSectionId">Moniteur du pupitre</label>
+        <select
+          id="instructorOfSectionId"
+          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          value={draft.instructorOfSectionId ?? ""}
+          onChange={(event) =>
+            set(
+              "instructorOfSectionId",
+              event.target.value === "" ? null : Number(event.target.value),
+            )
+          }
+        >
+          {/* Empty is the ordinary answer: most of the band teach nothing. */}
+          <option value="">Pas moniteur</option>
+          {sections.map((section) => (
+            <option key={section.id} value={section.id}>
+              {section.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <label className="flex min-h-touch items-center gap-2">
         <input
           type="checkbox"

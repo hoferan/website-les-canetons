@@ -176,6 +176,18 @@ function setCurrentUser(user: MockUser | null): void {
   writeSession(user);
 }
 
+/**
+ * Test seam: who the mocked backend currently believes is logged in.
+ *
+ * The read half of setMockUser, and it exists for logout: the button hands the
+ * browser to `/` with a full page load, which jsdom does not perform, so the
+ * only way to see that the SERVER half happened is to ask the mock whether the
+ * session is gone.
+ */
+export function currentMockUser(): MockUser | null {
+  return currentUser;
+}
+
 /** Test seam: start a test from a known session. */
 export function setMockUser(username: keyof typeof USERS | null): void {
   setCurrentUser(username ? (USERS[username] ?? null) : null);

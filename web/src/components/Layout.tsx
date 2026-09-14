@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
 
+import { LogoutButton } from "../session/LogoutButton";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
@@ -238,6 +239,16 @@ export function Layout() {
                 {user ? user.username : "Connexion"}
               </NavLink>
             </li>
+
+            {/* THE WAY OUT, and it is here rather than on /account because the
+                forced-password gate lets a member reach the chrome and nothing
+                else. See LogoutButton for what its absence had been costing
+                since R1a. */}
+            {user ? (
+              <li className={NAV_ITEM}>
+                <LogoutButton onDone={close} />
+              </li>
+            ) : null}
           </ul>
         </nav>
       </header>
