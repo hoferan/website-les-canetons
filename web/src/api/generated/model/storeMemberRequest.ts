@@ -337,11 +337,10 @@ export interface StoreMemberRequest {
    */
   sectionId?: number | null;
   /**
-   * The member's function on the committee, shown on the public committee page. Free text, null for most members.
-   * @maxLength 255
+   * The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Null for most members, who hold none and do not appear on the public committee page.
    * @nullable
    */
-  committeeTitle?: string | null;
+  committeeFunctionId?: number | null;
   /**
    * The register this member instructs, if any. Separate from `sectionId`: an instructor need not play in the register they teach.
    * @nullable

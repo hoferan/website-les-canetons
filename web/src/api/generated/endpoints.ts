@@ -337,6 +337,8 @@ import type {
   AuthMe200,
   BandIndex200,
   BandIndexParams,
+  CommitteeFunctionIndex200,
+  CommitteeFunctionIndexParams,
   CommitteeIndex200,
   CommitteeIndexParams,
   ConfigShow200,
@@ -5132,6 +5134,192 @@ export function useRoleIndex<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type committeeFunctionIndexResponse200 = {
+  data: CommitteeFunctionIndex200;
+  status: 200;
+};
+
+export type committeeFunctionIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type committeeFunctionIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type committeeFunctionIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type committeeFunctionIndexResponseSuccess = committeeFunctionIndexResponse200 & {
+  headers: Headers;
+};
+export type committeeFunctionIndexResponseError = (
+  | committeeFunctionIndexResponse401
+  | committeeFunctionIndexResponse403
+  | committeeFunctionIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type committeeFunctionIndexResponse =
+  committeeFunctionIndexResponseSuccess | committeeFunctionIndexResponseError;
+
+export const getCommitteeFunctionIndexUrl = (params?: CommitteeFunctionIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/committee-functions?${stringifiedParams}`
+    : `/committee-functions`;
+};
+
+/**
+ * Requires `members.manage`. Read-only reference data, for a client
+ * building the roster form.
+ *
+ * Returns every seat with its name and its rank, in rank order. A member
+ * holding one appears on the public committee page under that heading;
+ * a member holding none does not appear there at all.
+ * @summary List the committee's seats
+ */
+export const committeeFunctionIndex = async (
+  params?: CommitteeFunctionIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<committeeFunctionIndexResponse> => {
+  return customFetch<committeeFunctionIndexResponse>(getCommitteeFunctionIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCommitteeFunctionIndexQueryKey = (params?: CommitteeFunctionIndexParams) => {
+  return [`/committee-functions`, ...(params ? [params] : [])] as const;
+};
+
+export const getCommitteeFunctionIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getCommitteeFunctionIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof committeeFunctionIndex>>> = ({ signal }) =>
+    committeeFunctionIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof committeeFunctionIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type CommitteeFunctionIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof committeeFunctionIndex>>
+>;
+export type CommitteeFunctionIndexQueryError =
+  Problem401Response | Problem403Response | Problem503Response;
+
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params: undefined | CommitteeFunctionIndexParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeFunctionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeFunctionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof committeeFunctionIndex>>,
+          TError,
+          Awaited<ReturnType<typeof committeeFunctionIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the committee's seats
+ */
+
+export function useCommitteeFunctionIndex<
+  TData = Awaited<ReturnType<typeof committeeFunctionIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: CommitteeFunctionIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof committeeFunctionIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getCommitteeFunctionIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type memberIndexResponse200 = {
   data: MemberIndex200;
   status: 200;
@@ -5178,16 +5366,17 @@ export const getMemberIndexUrl = (params?: MemberIndexParams) => {
 };
 
 /**
- * Requires `members.manage`. Returns everyone the band tracks, ordered by
- * last name then first name. Each entry carries the person's register
- * (`sectionId` and `sectionName`), whether they play (`isPlayer`), their
- * committee title, whether they may be shown on the public site, and
- * `roleIds`, the roles they hold.
- *
- * No password and no hash is ever included, and neither are effective
- * permissions: a role is what grants them, so read `GET /api/v1/roles` and
- * join on `roleIds`.
- * @summary List the roster
+ * @summary List the roster.
+
+Requires `members.manage`. Returns everyone the band tracks, ordered by
+last name then first name. Each entry carries the person's register
+(`sectionId` and `sectionName`), whether they play (`isPlayer`), their
+committee title, whether they may be shown on the public site, and
+`roleIds`, the roles they hold.
+
+No password and no hash is ever included, and neither are effective
+permissions: a role is what grants them, so read `GET /api/v1/roles` and
+join on `roleIds`
  */
 export const memberIndex = async (
   params?: MemberIndexParams,
@@ -5280,7 +5469,17 @@ export function useMemberIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List the roster
+ * @summary List the roster.
+
+Requires `members.manage`. Returns everyone the band tracks, ordered by
+last name then first name. Each entry carries the person's register
+(`sectionId` and `sectionName`), whether they play (`isPlayer`), their
+committee title, whether they may be shown on the public site, and
+`roleIds`, the roles they hold.
+
+No password and no hash is ever included, and neither are effective
+permissions: a role is what grants them, so read `GET /api/v1/roles` and
+join on `roleIds`
  */
 
 export function useMemberIndex<
@@ -5353,27 +5552,28 @@ export const getMemberStoreUrl = () => {
 };
 
 /**
- * Requires `members.manage`. Creating a person creates their account:
- * every member has one. Send `firstName`, `lastName`, `username` and
- * `publicVisible`, and optionally `sectionId`, `committeeTitle` and
- * `instructorOfSectionId`.
- *
- * Answers `201` with `member` and `generatedPassword`, a readable password
- * the server minted for the new account. It is shown in this response and
- * nowhere else: it is hashed on the way into the database, is never
- * written to the audit log, and no later call returns it. An administrator
- * who loses it issues a new one at
- * `POST /api/v1/members/{member}/password`. The new member is required to
- * change it before doing anything else.
- *
- * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
- * no password may be chosen here.
- *
- * A missing required field answers `400 validation_failed` naming the
- * field with `required`. A username already in use answers the same with
- * `already_taken`; one containing anything but lower-case letters, digits,
- * dot, hyphen or underscore answers `invalid_format`.
- * @summary Add a member to the roster
+ * @summary Add a member to the roster.
+
+Requires `members.manage`. Creating a person creates their account:
+every member has one. Send `firstName`, `lastName`, `username` and
+`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
+`instructorOfSectionId`.
+
+Answers `201` with `member` and `generatedPassword`, a readable password
+the server minted for the new account. It is shown in this response and
+nowhere else: it is hashed on the way into the database, is never
+written to the audit log, and no later call returns it. An administrator
+who loses it issues a new one at
+`POST /api/v1/members/{member}/password`. The new member is required to
+change it before doing anything else.
+
+No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
+no password may be chosen here.
+
+A missing required field answers `400 validation_failed` naming the
+field with `required`. A username already in use answers the same with
+`already_taken`; one containing anything but lower-case letters, digits,
+dot, hyphen or underscore answers `invalid_format`
  */
 export const memberStore = async (
   storeMemberRequest: StoreMemberRequest,
@@ -5460,7 +5660,28 @@ export type MemberStoreMutationError =
 export type MemberStoreMutationVariables = { data: StoreMemberRequest };
 
 /**
- * @summary Add a member to the roster
+ * @summary Add a member to the roster.
+
+Requires `members.manage`. Creating a person creates their account:
+every member has one. Send `firstName`, `lastName`, `username` and
+`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and
+`instructorOfSectionId`.
+
+Answers `201` with `member` and `generatedPassword`, a readable password
+the server minted for the new account. It is shown in this response and
+nowhere else: it is hashed on the way into the database, is never
+written to the audit log, and no later call returns it. An administrator
+who loses it issues a new one at
+`POST /api/v1/members/{member}/password`. The new member is required to
+change it before doing anything else.
+
+No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
+no password may be chosen here.
+
+A missing required field answers `400 validation_failed` naming the
+field with `required`. A username already in use answers the same with
+`already_taken`; one containing anything but lower-case letters, digits,
+dot, hyphen or underscore answers `invalid_format`
  */
 export const useMemberStore = <
   TError =
@@ -5531,14 +5752,15 @@ export const getMemberShowUrl = (member: number) => {
 };
 
 /**
- * Requires `members.manage`. The same fields the roster list carries, for
- * a single member.
- *
- * Read this before editing somebody, and quote the `ETag` it returns in
- * the `If-Match` header of the write. The list hands out no tag — one tag
- * cannot validate forty-five rows — so a form filled from the list and
- * submitted without a read is the lost update this API refuses.
- * @summary Read one person
+ * @summary Read one person.
+
+Requires `members.manage`. The same fields the roster list carries, for
+a single member.
+
+Read this before editing somebody, and quote the `ETag` it returns in
+the `If-Match` header of the write. The list hands out no tag — one tag
+cannot validate forty-five rows — so a form filled from the list and
+submitted without a read is the lost update this API refuses
  */
 export const memberShow = async (
   member: number,
@@ -5635,7 +5857,15 @@ export function useMemberShow<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary Read one person
+ * @summary Read one person.
+
+Requires `members.manage`. The same fields the roster list carries, for
+a single member.
+
+Read this before editing somebody, and quote the `ETag` it returns in
+the `If-Match` header of the write. The list hands out no tag — one tag
+cannot validate forty-five rows — so a form filled from the list and
+submitted without a read is the lost update this API refuses
  */
 
 export function useMemberShow<
@@ -5726,19 +5956,20 @@ export const getMemberUpdateUrl = (member: number) => {
 };
 
 /**
- * Requires `members.manage`. Send only the fields that change: an omitted
- * field is left alone, and an explicit `null` clears an optional one such
- * as the register or the committee title. Returns the updated member.
- *
- * Roles and passwords are not editable here. They are
- * `PUT /api/v1/members/{member}/roles` and
- * `POST /api/v1/members/{member}/password`, each of which also ends the
- * member's sessions.
- *
- * A username already in use answers `400 validation_failed` with
- * `already_taken` against `username`, and one that is not lower-case
- * letters, digits, dot, hyphen or underscore answers `invalid_format`.
- * @summary Correct a member's details
+ * @summary Correct a member's details.
+
+Requires `members.manage`. Send only the fields that change: an omitted
+field is left alone, and an explicit `null` clears an optional one such
+as the register or the committee seat. Returns the updated member.
+
+Roles and passwords are not editable here. They are
+`PUT /api/v1/members/{member}/roles` and
+`POST /api/v1/members/{member}/password`, each of which also ends the
+member's sessions.
+
+A username already in use answers `400 validation_failed` with
+`already_taken` against `username`, and one that is not lower-case
+letters, digits, dot, hyphen or underscore answers `invalid_format`
  */
 export const memberUpdate = async (
   member: number,
@@ -5832,7 +6063,20 @@ export type MemberUpdateMutationError =
 export type MemberUpdateMutationVariables = { member: number; data?: UpdateMemberRequest };
 
 /**
- * @summary Correct a member's details
+ * @summary Correct a member's details.
+
+Requires `members.manage`. Send only the fields that change: an omitted
+field is left alone, and an explicit `null` clears an optional one such
+as the register or the committee seat. Returns the updated member.
+
+Roles and passwords are not editable here. They are
+`PUT /api/v1/members/{member}/roles` and
+`POST /api/v1/members/{member}/password`, each of which also ends the
+member's sessions.
+
+A username already in use answers `400 validation_failed` with
+`already_taken` against `username`, and one that is not lower-case
+letters, digits, dot, hyphen or underscore answers `invalid_format`
  */
 export const useMemberUpdate = <
   TError =
@@ -5933,18 +6177,19 @@ export const getMemberDestroyUrl = (member: number) => {
 };
 
 /**
- * Requires `members.manage`. Deletes the person outright and ends every
- * session they have open, so a deleted member stops being logged in at
- * once. There is no deactivation flag and no undo: leaving the band is
- * this call. Answers `{"ok": true, "sessionsEnded": n}`.
- *
- * Refuses with `409 cannot_remove_last_administrator` when the target is
- * the only member left who could administer members, and
- * `409 cannot_delete_self` when the target is the caller. Both are `409`
- * rather than `403` because the caller does hold the permission; the
- * request conflicts with the state of the roster. When both apply, the
- * last-administrator refusal is the one returned.
- * @summary Remove a member from the roster
+ * @summary Remove a member from the roster.
+
+Requires `members.manage`. Deletes the person outright and ends every
+session they have open, so a deleted member stops being logged in at
+once. There is no deactivation flag and no undo: leaving the band is
+this call. Answers `{"ok": true, "sessionsEnded": n}`.
+
+Refuses with `409 cannot_remove_last_administrator` when the target is
+the only member left who could administer members, and
+`409 cannot_delete_self` when the target is the caller. Both are `409`
+rather than `403` because the caller does hold the permission; the
+request conflicts with the state of the roster. When both apply, the
+last-administrator refusal is the one returned
  */
 export const memberDestroy = async (
   member: number,
@@ -6016,7 +6261,19 @@ export type MemberDestroyMutationError =
 export type MemberDestroyMutationVariables = { member: number };
 
 /**
- * @summary Remove a member from the roster
+ * @summary Remove a member from the roster.
+
+Requires `members.manage`. Deletes the person outright and ends every
+session they have open, so a deleted member stops being logged in at
+once. There is no deactivation flag and no undo: leaving the band is
+this call. Answers `{"ok": true, "sessionsEnded": n}`.
+
+Refuses with `409 cannot_remove_last_administrator` when the target is
+the only member left who could administer members, and
+`409 cannot_delete_self` when the target is the caller. Both are `409`
+rather than `403` because the caller does hold the permission; the
+request conflicts with the state of the roster. When both apply, the
+last-administrator refusal is the one returned
  */
 export const useMemberDestroy = <
   TError =
@@ -6797,12 +7054,14 @@ export const getCommitteeIndexUrl = (params?: CommitteeIndexParams) => {
 };
 
 /**
- * Anonymous. Returns everyone holding a committee seat who has consented
- * to appear, with the title they hold.
- *
- * The title is free text the committee typed, so it is rendered verbatim
- * and is never translated.
- * @summary List the committee
+ * @summary List the committee.
+
+Anonymous. Returns everyone holding a committee seat who has consented
+to appear, in the band's own rank order, with the name of the seat they
+hold.
+
+The seat name is content the committee maintains, so it is rendered
+verbatim and is never translated
  */
 export const committeeIndex = async (
   params?: CommitteeIndexParams,
@@ -6895,7 +7154,14 @@ export function useCommitteeIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary List the committee
+ * @summary List the committee.
+
+Anonymous. Returns everyone holding a committee seat who has consented
+to appear, in the band's own rank order, with the name of the seat they
+hold.
+
+The seat name is content the committee maintains, so it is rendered
+verbatim and is never translated
  */
 
 export function useCommitteeIndex<

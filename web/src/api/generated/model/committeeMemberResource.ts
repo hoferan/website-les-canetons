@@ -304,9 +304,6 @@ export interface CommitteeMemberResource {
   id: number;
   firstName: string;
   lastName: string;
-  /**
-   * The seat they hold, as the committee typed it. Content, so never translated.
-   * @nullable
-   */
-  title: string | null;
+  /** The seat they hold, as the committee named it. Content, so never translated. */
+  function: string;
 }

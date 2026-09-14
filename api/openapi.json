@@ -2868,11 +2868,109 @@
                 }
             }
         },
+        "/committee-functions": {
+            "get": {
+                "operationId": "committeeFunction.index",
+                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every seat with its name and its rank, in rank order. A member\nholding one appears on the public committee page under that heading;\na member holding none does not appear there at all.",
+                "summary": "List the committee's seats",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `CommitteeFunctionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CommitteeFunctionResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/members": {
             "get": {
                 "operationId": "member.index",
-                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`.",
-                "summary": "List the roster",
+                "summary": "List the roster.\r\n\r\nRequires `members.manage`. Returns everyone the band tracks, ordered by\r\nlast name then first name. Each entry carries the person's register\r\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\r\ncommittee title, whether they may be shown on the public site, and\r\n`roleIds`, the roles they hold.\r\n\r\nNo password and no hash is ever included, and neither are effective\r\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\r\njoin on `roleIds`",
                 "tags": [
                     "Members"
                 ],
@@ -2968,8 +3066,7 @@
             },
             "post": {
                 "operationId": "member.store",
-                "description": "Requires `members.manage`. Creating a person creates their account:\nevery member has one. Send `firstName`, `lastName`, `username` and\n`publicVisible`, and optionally `sectionId`, `committeeTitle` and\n`instructorOfSectionId`.\n\nAnswers `201` with `member` and `generatedPassword`, a readable password\nthe server minted for the new account. It is shown in this response and\nnowhere else: it is hashed on the way into the database, is never\nwritten to the audit log, and no later call returns it. An administrator\nwho loses it issues a new one at\n`POST /api/v1/members/{member}/password`. The new member is required to\nchange it before doing anything else.\n\nNo roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and\nno password may be chosen here.\n\nA missing required field answers `400 validation_failed` naming the\nfield with `required`. A username already in use answers the same with\n`already_taken`; one containing anything but lower-case letters, digits,\ndot, hyphen or underscore answers `invalid_format`.",
-                "summary": "Add a member to the roster",
+                "summary": "Add a member to the roster.\r\n\r\nRequires `members.manage`. Creating a person creates their account:\r\nevery member has one. Send `firstName`, `lastName`, `username` and\r\n`publicVisible`, and optionally `sectionId`, `committeeFunctionId` and\r\n`instructorOfSectionId`.\r\n\r\nAnswers `201` with `member` and `generatedPassword`, a readable password\r\nthe server minted for the new account. It is shown in this response and\r\nnowhere else: it is hashed on the way into the database, is never\r\nwritten to the audit log, and no later call returns it. An administrator\r\nwho loses it issues a new one at\r\n`POST /api/v1/members/{member}/password`. The new member is required to\r\nchange it before doing anything else.\r\n\r\nNo roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and\r\nno password may be chosen here.\r\n\r\nA missing required field answers `400 validation_failed` naming the\r\nfield with `required`. A username already in use answers the same with\r\n`already_taken`; one containing anything but lower-case letters, digits,\r\ndot, hyphen or underscore answers `invalid_format`",
                 "tags": [
                     "Members"
                 ],
@@ -3027,8 +3124,7 @@
         "/members/{member}": {
             "get": {
                 "operationId": "member.show",
-                "description": "Requires `members.manage`. The same fields the roster list carries, for\na single member.\n\nRead this before editing somebody, and quote the `ETag` it returns in\nthe `If-Match` header of the write. The list hands out no tag \u2014 one tag\ncannot validate forty-five rows \u2014 so a form filled from the list and\nsubmitted without a read is the lost update this API refuses.",
-                "summary": "Read one person",
+                "summary": "Read one person.\r\n\r\nRequires `members.manage`. The same fields the roster list carries, for\r\na single member.\r\n\r\nRead this before editing somebody, and quote the `ETag` it returns in\r\nthe `If-Match` header of the write. The list hands out no tag \u2014 one tag\r\ncannot validate forty-five rows \u2014 so a form filled from the list and\r\nsubmitted without a read is the lost update this API refuses",
                 "tags": [
                     "Members"
                 ],
@@ -3079,8 +3175,7 @@
             },
             "patch": {
                 "operationId": "member.update",
-                "description": "Requires `members.manage`. Send only the fields that change: an omitted\nfield is left alone, and an explicit `null` clears an optional one such\nas the register or the committee title. Returns the updated member.\n\nRoles and passwords are not editable here. They are\n`PUT /api/v1/members/{member}/roles` and\n`POST /api/v1/members/{member}/password`, each of which also ends the\nmember's sessions.\n\nA username already in use answers `400 validation_failed` with\n`already_taken` against `username`, and one that is not lower-case\nletters, digits, dot, hyphen or underscore answers `invalid_format`.",
-                "summary": "Correct a member's details",
+                "summary": "Correct a member's details.\r\n\r\nRequires `members.manage`. Send only the fields that change: an omitted\r\nfield is left alone, and an explicit `null` clears an optional one such\r\nas the register or the committee seat. Returns the updated member.\r\n\r\nRoles and passwords are not editable here. They are\r\n`PUT /api/v1/members/{member}/roles` and\r\n`POST /api/v1/members/{member}/password`, each of which also ends the\r\nmember's sessions.\r\n\r\nA username already in use answers `400 validation_failed` with\r\n`already_taken` against `username`, and one that is not lower-case\r\nletters, digits, dot, hyphen or underscore answers `invalid_format`",
                 "tags": [
                     "Members"
                 ],
@@ -3161,8 +3256,7 @@
             },
             "delete": {
                 "operationId": "member.destroy",
-                "description": "Requires `members.manage`. Deletes the person outright and ends every\nsession they have open, so a deleted member stops being logged in at\nonce. There is no deactivation flag and no undo: leaving the band is\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\n\nRefuses with `409 cannot_remove_last_administrator` when the target is\nthe only member left who could administer members, and\n`409 cannot_delete_self` when the target is the caller. Both are `409`\nrather than `403` because the caller does hold the permission; the\nrequest conflicts with the state of the roster. When both apply, the\nlast-administrator refusal is the one returned.",
-                "summary": "Remove a member from the roster",
+                "summary": "Remove a member from the roster.\r\n\r\nRequires `members.manage`. Deletes the person outright and ends every\r\nsession they have open, so a deleted member stops being logged in at\r\nonce. There is no deactivation flag and no undo: leaving the band is\r\nthis call. Answers `{\"ok\": true, \"sessionsEnded\": n}`.\r\n\r\nRefuses with `409 cannot_remove_last_administrator` when the target is\r\nthe only member left who could administer members, and\r\n`409 cannot_delete_self` when the target is the caller. Both are `409`\r\nrather than `403` because the caller does hold the permission; the\r\nrequest conflicts with the state of the roster. When both apply, the\r\nlast-administrator refusal is the one returned",
                 "tags": [
                     "Members"
                 ],
@@ -3693,8 +3787,7 @@
         "/committee": {
             "get": {
                 "operationId": "committee.index",
-                "description": "Anonymous. Returns everyone holding a committee seat who has consented\nto appear, with the title they hold.\n\nThe title is free text the committee typed, so it is rendered verbatim\nand is never translated.",
-                "summary": "List the committee",
+                "summary": "List the committee.\r\n\r\nAnonymous. Returns everyone holding a committee seat who has consented\r\nto appear, in the band's own rank order, with the name of the seat they\r\nhold.\r\n\r\nThe seat name is content the committee maintains, so it is rendered\r\nverbatim and is never translated",
                 "tags": [
                     "Public pages"
                 ],
@@ -4190,6 +4283,28 @@
                 ],
                 "title": "ChaseListEntryResource"
             },
+            "CommitteeFunctionResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The seat's name, as the committee writes it. Content, so never translated."
+                    },
+                    "sortOrder": {
+                        "type": "integer",
+                        "description": "Ascending rank order. What the public committee page sorts by."
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "sortOrder"
+                ],
+                "title": "CommitteeFunctionResource"
+            },
             "CommitteeMemberResource": {
                 "type": "object",
                 "properties": {
@@ -4202,19 +4317,16 @@
                     "lastName": {
                         "type": "string"
                     },
-                    "title": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
-                        "description": "The seat they hold, as the committee typed it. Content, so never translated."
+                    "function": {
+                        "type": "string",
+                        "description": "The seat they hold, as the committee named it. Content, so never translated."
                     }
                 },
                 "required": [
                     "id",
                     "firstName",
                     "lastName",
-                    "title"
+                    "function"
                 ],
                 "title": "CommitteeMemberResource"
             },
@@ -4406,12 +4518,12 @@
                         "type": "boolean",
                         "description": "Whether they play in a register. Only players are answerable for events."
                     },
-                    "committeeTitle": {
+                    "committeeFunctionId": {
                         "type": [
-                            "string",
+                            "integer",
                             "null"
                         ],
-                        "description": "Text a person typed, so it is stored and rendered verbatim and is\nnever translated \u2014 unlike a role's name, which is a key."
+                        "description": "THE ID, NOT THE NAME, unlike sectionName above. The roster\nscreen renders the register in its table and so needs the name\nhere; nothing renders the committee seat outside the form, which\nresolves it from GET /api/v1/committee-functions. A name here\nwould also be hashed into the member's entity tag \u2014 so fixing a\ntypo in one seat would move the tag of everybody holding it and\nrefuse whatever roster edits were open at the time."
                     },
                     "instructorOfSectionId": {
                         "type": [
@@ -4440,7 +4552,7 @@
                     "sectionId",
                     "sectionName",
                     "isPlayer",
-                    "committeeTitle",
+                    "committeeFunctionId",
                     "instructorOfSectionId",
                     "publicVisible",
                     "roleIds"
@@ -5065,7 +5177,7 @@
             },
             "StoreMemberRequest": {
                 "type": "object",
-                "description": "A new person on the roster, which is also a new account: every member has a\nlogin.\n\n`username` is therefore required, must be unique, and may hold only lower\ncase letters, digits, dot, hyphen and underscore. It gets dictated over the\nphone, so it is deliberately narrow.\n\nThere is no `password` field. The API generates one and returns it in the\nresponse exactly once, for an administrator to pass on; it is never\nretrievable afterwards.\n\nThere is no `roleIds` field either. A new member starts with no roles and\nno permissions; granting any is a separate call to\n`PUT /api/v1/members/{member}/roles`.\n\n`sectionId` is the register the member plays in. A member with no register\nis not answerable for events and never appears in an attendance list, which\nis how somebody who organises but does not play is recorded.",
+                "description": "A new person on the roster, which is also a new account: every member has a\r\nlogin.\r\n\r\n`username` is therefore required, must be unique, and may hold only lower\r\ncase letters, digits, dot, hyphen and underscore. It gets dictated over the\r\nphone, so it is deliberately narrow.\r\n\r\nThere is no `password` field. The API generates one and returns it in the\r\nresponse exactly once, for an administrator to pass on; it is never\r\nretrievable afterwards.\r\n\r\nThere is no `roleIds` field either. A new member starts with no roles and\r\nno permissions; granting any is a separate call to\r\n`PUT /api/v1/members/{member}/roles`.\r\n\r\n`sectionId` is the register the member plays in. A member with no register\r\nis not answerable for events and never appears in an attendance list, which\r\nis how somebody who organises but does not play is recorded.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -5088,13 +5200,12 @@
                         ],
                         "description": "The register the member plays in, from `GET /api/v1/sections`. Null for somebody who organises but does not play; they are then never listed for attendance."
                     },
-                    "committeeTitle": {
+                    "committeeFunctionId": {
                         "type": [
-                            "string",
+                            "integer",
                             "null"
                         ],
-                        "description": "The member's function on the committee, shown on the public committee page. Free text, null for most members.",
-                        "maxLength": 255
+                        "description": "The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Null for most members, who hold none and do not appear on the public committee page."
                     },
                     "instructorOfSectionId": {
                         "type": [
@@ -5279,7 +5390,7 @@
             },
             "UpdateMemberRequest": {
                 "type": "object",
-                "description": "Changes to a person already on the roster.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\n`username` is the exception. It may be changed but not cleared, because it\nis the login and every member has one. It keeps the same shape as at\ncreation, and must stay unique across the roster.\n\nRoles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,\nwhich checks the roster's lockout invariants and ends the member's open\nsessions. Neither is the password, which has its own endpoint.",
+                "description": "Changes to a person already on the roster.\r\n\r\nA PATCH: send only the fields that change. An omitted field is left as it\r\nis, and an explicit `null` clears one of the optional fields.\r\n\r\n`username` is the exception. It may be changed but not cleared, because it\r\nis the login and every member has one. It keeps the same shape as at\r\ncreation, and must stay unique across the roster.\r\n\r\nRoles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,\r\nwhich checks the roster's lockout invariants and ends the member's open\r\nsessions. Neither is the password, which has its own endpoint.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -5302,13 +5413,12 @@
                         ],
                         "description": "The register the member plays in, from `GET /api/v1/sections`. Send `null` to take them out of every register, which also takes them off attendance lists."
                     },
-                    "committeeTitle": {
+                    "committeeFunctionId": {
                         "type": [
-                            "string",
+                            "integer",
                             "null"
                         ],
-                        "description": "The member's function on the committee. Send `null` to clear it.",
-                        "maxLength": 255
+                        "description": "The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Send `null` to take them off the committee."
                     },
                     "instructorOfSectionId": {
                         "type": [

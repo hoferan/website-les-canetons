@@ -316,11 +316,16 @@ export interface MemberResource {
   /** Whether they play in a register. Only players are answerable for events. */
   isPlayer: boolean;
   /**
-   * Text a person typed, so it is stored and rendered verbatim and is
-   * never translated — unlike a role's name, which is a key.
+   * THE ID, NOT THE NAME, unlike sectionName above. The roster
+   * screen renders the register in its table and so needs the name
+   * here; nothing renders the committee seat outside the form, which
+   * resolves it from GET /api/v1/committee-functions. A name here
+   * would also be hashed into the member's entity tag — so fixing a
+   * typo in one seat would move the tag of everybody holding it and
+   * refuse whatever roster edits were open at the time.
    * @nullable
    */
-  committeeTitle: string | null;
+  committeeFunctionId: number | null;
   /** @nullable */
   instructorOfSectionId: number | null;
   publicVisible: boolean;

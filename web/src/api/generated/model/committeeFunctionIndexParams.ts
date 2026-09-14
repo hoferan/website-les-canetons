@@ -300,46 +300,16 @@
  * OpenAPI spec version: 1.0.0
  */
 
-/**
- * Changes to a person already on the roster.
- *
- * A PATCH: send only the fields that change. An omitted field is left as it
- * is, and an explicit `null` clears one of the optional fields.
- *
- * `username` is the exception. It may be changed but not cleared, because it
- * is the login and every member has one. It keeps the same shape as at
- * creation, and must stay unique across the roster.
- *
- * Roles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,
- * which checks the roster's lockout invariants and ends the member's open
- * sessions. Neither is the password, which has its own endpoint.
- */
-export interface UpdateMemberRequest {
-  /** @maxLength 255 */
-  firstName?: string;
-  /** @maxLength 255 */
-  lastName?: string;
+export type CommitteeFunctionIndexParams = {
   /**
-   * The login. May be changed but never cleared. Lower case letters, digits, dot, hyphen and underscore only, and unique across the roster.
-   * @maxLength 255
-   * @pattern ^[a-z0-9._-]+$
+   * How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.
+   * @minimum 1
+   * @maximum 1000
    */
-  username?: string;
+  limit?: number;
   /**
-   * The register the member plays in, from `GET /api/v1/sections`. Send `null` to take them out of every register, which also takes them off attendance lists.
-   * @nullable
+   * How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.
+   * @minimum 0
    */
-  sectionId?: number | null;
-  /**
-   * The seat the member holds on the committee, from `GET /api/v1/committee-functions`. Send `null` to take them off the committee.
-   * @nullable
-   */
-  committeeFunctionId?: number | null;
-  /**
-   * The register this member instructs, if any. Send `null` to clear it.
-   * @nullable
-   */
-  instructorOfSectionId?: number | null;
-  /** Whether the member's name may appear on the public site. */
-  publicVisible?: boolean;
-}
+  offset?: number;
+};
