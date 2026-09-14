@@ -694,10 +694,12 @@ export const getRegistrationFormResponseMock = (
   overrideResponse: Partial<Extract<RegistrationFormResource, object>> = {},
 ): RegistrationFormResource => ({
   event: {
+    id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    registrationOpen: faker.datatype.boolean(),
   },
   options: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
     () => ({
@@ -1035,10 +1037,12 @@ export const getAgendaIndexResponseMock = (
   overrideResponse: Partial<Extract<AgendaIndex200, object>> = {},
 ): AgendaIndex200 => ({
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    registrationOpen: faker.datatype.boolean(),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,

@@ -4568,6 +4568,9 @@
             "PublicEventResource": {
                 "type": "object",
                 "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
                     "title": {
                         "type": "string"
                     },
@@ -4584,13 +4587,19 @@
                     "location": {
                         "type": "string",
                         "description": "Where it happens, as free text."
+                    },
+                    "registrationOpen": {
+                        "type": "boolean",
+                        "description": "Whether this event is taking public bookings right now. Link to the booking form only when it is true."
                     }
                 },
                 "required": [
+                    "id",
                     "title",
                     "startsAt",
                     "endsAt",
-                    "location"
+                    "location",
+                    "registrationOpen"
                 ],
                 "title": "PublicEventResource"
             },
