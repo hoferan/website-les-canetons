@@ -79,6 +79,14 @@ test("a member can be made the instructor of a register, and it reaches the publ
   await instructorOf.selectOption({ label: "Lyre" });
   await page.getByRole("button", { name: "Enregistrer" }).click();
 
+  // WAIT FOR THE SAVE TO LAND BEFORE NAVIGATING. The form closes only on a
+  // successful write, so this button reappearing is the signal; without it the
+  // nav click below races the PATCH, the band page reads the pre-edit roster
+  // out of the mocked backend's module state, and the failure reads as "the
+  // instructor field does not work". Latent since this test was written and it
+  // surfaced on CI, where two workers share one machine.
+  await expect(page.getByRole("button", { name: "Ajouter une personne" })).toBeVisible();
+
   // NAVIGATED IN THE SPA, NOT `page.goto`. The mocked backend keeps its roster
   // in module state, so a full page load resets it and the edit made two lines
   // ago is gone — only the session survives, because that one lives in
