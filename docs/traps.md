@@ -161,6 +161,29 @@ Two ways the exported document quietly stops matching the code:
   published into the OpenAPI document. Hoist the explanation above the whole
   statement, or out of the literal entirely.
 
+## Scramble: CRLF in a PHP file collapses summary and description
+
+Scramble splits a docblock into `summary` and `description` on a blank line,
+which it recognises as `\n\n`. A source file with CRLF endings has none, so the
+whole block becomes one `summary`, with literal `\r\n` inside it and the
+trailing full stop stripped the way summaries are. No `description` is emitted
+at all, and `/api/docs` then prints the entire paragraph as an operation title.
+
+This is easy to cause on Windows without touching a line ending on purpose: a
+script that rewrites a PHP file in text mode writes CRLF, the pre-commit hook's
+Pint pass normalises it back to LF, and `npm run openapi` run BETWEEN those two
+records a shape no checkout will ever reproduce. CI regenerates from an LF tree
+and `openapi-drift` fails with a diff that looks like an orval version
+disagreement.
+
+**Generate after the PHP is normalised, not before**, and if the job fails on a
+document you just regenerated, look at whether the summaries contain `\r\n`
+before looking anywhere else:
+
+```bash
+grep -cF '\r\n' api/openapi.json   # must be 0
+```
+
 ## Scalar: a heading wrapped in backticks gets no route
 
 Scalar builds each heading's anchor from its **plain text**, so a heading whose
