@@ -298,6 +298,19 @@ worked example.
 false — so the test fails with a confusing framework error rather than a failed
 assertion. Use `Hash::make()`, which follows the configured driver.
 
+## `fr.ts` writes an apostrophe differently from the rest of the French
+
+`web/src/i18n/fr.ts` uses the STRAIGHT apostrophe (`'`) throughout its `errors`
+and `validation` catalogues — "L'export Excel n'est pas disponible",
+"Quelqu'un a modifié cet élément" — while the page copy authored directly in
+the components uses the typographic one (`’`): "l’événement", "Ce qu’on
+réserve". The two therefore sit side by side on screen.
+
+It matters before you open a file rather than after, because a test that
+matches an error message on the wrong character fails as **"unable to find the
+text"**, which reads as a message that is not rendered rather than as a quote
+mark. Check the catalogue, not your keyboard.
+
 # Decisions taken in conversation, not visible in the code
 
 - **WordPress is abandoned.** A greenfield rebuild was designed and half-built
