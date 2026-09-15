@@ -2,18 +2,25 @@
 # On-demand dev-stack provisioner for Claude Code web sessions.
 #
 # docker compose (site + MariaDB via Apache/php:8.4-fpm) is how this repo
-# normally does local dev, but Claude Code web sessions have no Docker daemon.
-# When that's the case, this stands up an equivalent stack natively: MariaDB
-# directly, the databases created (empty — Laravel's migrations populate them),
-# api/'s Composer dependencies, and api/.env pointing at it.
+# normally does local dev, but a Claude Code web session starts with no Docker
+# daemon running. When that's the case, this stands up an equivalent stack
+# natively: MariaDB directly, the databases created (empty — Laravel's
+# migrations populate them), api/'s Composer dependencies, and api/.env
+# pointing at it.
+#
+# The daemon's absence is not the same as Docker being unavailable — the binary
+# ships in the session image and `dockerd` can be started by hand. It does not
+# get the compose stack up, because the `web` image cannot be built here; see
+# docs/web-session.md §4 for what it does buy (10.3 parity, chiefly) and what
+# it does not.
 #
 # THIS IS THE FALLBACK, NOT THE INTENDED SETUP. The supported way to provision
 # a cloud session is the environment's own setup script, which runs before
 # Claude starts and is snapshotted into the environment cache, so it costs
-# nothing per session. docs/web-session.md carries that script and the network
-# allowlist it needs. This file exists because a session may land in an
-# environment nobody has configured yet, and because provisioning on demand is
-# recoverable where a failed setup script is not.
+# nothing per session. docs/web-session.md carries that script. This file
+# exists because a session may land in an environment nobody has configured
+# yet, and because provisioning on demand is recoverable where a failed setup
+# script is not.
 #
 # Invoked on-demand by `npm run websession:init`, NOT from the SessionStart
 # hook — session startup must stay fast and must not block on apt/DB
@@ -36,6 +43,16 @@ fi
 # Composer disables plugins and prints two paragraphs about it on every call.
 # Package discovery is a script rather than a plugin, but Laravel needs both.
 export COMPOSER_ALLOW_SUPERUSER=1
+
+# Composer kills any child process after 300s by default, and the git install
+# below trips it. phpstan/phpstan carries a built phar across its whole history
+# (857 tags), so cloning it is slow even from the local VCS mirror — and slower
+# still here, because all 121 packages clone at once and contend for the disk.
+# MEASURED: it times out at 300s on a cold cache and succeeds on a warm one,
+# which is exactly the shape of bug that passes when you test it and fails for
+# the next person. 0 disables the timeout rather than picking a bigger number
+# to be wrong about later.
+export COMPOSER_PROCESS_TIMEOUT=0
 
 # ------------------------------------------------------------------ MariaDB
 
@@ -101,50 +118,102 @@ sudo mysql -e "
 
 # -------------------------------------------------------- Composer packages
 #
-# The step this script used to leave to the reader, and the one that actually
-# fails here. Everything PHP depends on it: artisan, the Laravel suite, Pint,
+# The step everything PHP depends on: artisan, the Laravel suite, Pint,
 # Larastan and the Scramble export behind `npm run openapi`.
 #
-# It needs the session's egress policy to allow GitHub's ARCHIVE hosts, not
-# just packagist. Composer reads metadata from repo.packagist.org and then
-# downloads each package's `dist` from api.github.com — so an allowlist with
-# packagist but without api.github.com is the worst case: resolution succeeds
-# and every download 403s. See docs/web-session.md.
+# THIS USED TO TELL YOU TO FIX THE NETWORK ALLOWLIST. That advice was wrong and
+# cost two sessions; the allowlist is not involved. GitHub traffic takes the
+# session's GitHub proxy, which scopes the API to the repositories ATTACHED to
+# the session — every other repository answers 403. Measured 2026-09-15:
+#
+#   api.github.com/repos/hoferan/website-les-canetons   200
+#   api.github.com/repos/symfony/var-dumper             403
+#     {"message":"GitHub access to this repository is not enabled for this
+#      session. Use add_repo to request access."}
+#
+# Every dist URL in api/composer.lock is an api.github.com zipball of a
+# third-party repository, so plain `composer install` cannot fetch a single
+# package, and reports the 403 as "Could not authenticate against github.com" —
+# which sends you hunting for a credential that was never the problem.
+#
+# Git is NOT scoped that way, so the whole install goes over git instead. Two
+# things are needed, and missing either one puts you back on the 403:
+#
+#   1. use-github-api=false. Left true, Composer turns a GitHub source back
+#      into an API zipball download, so --prefer-source silently does not.
+#   2. A `source` for the one package that publishes none (phpstan/phpstan),
+#      derived from its own dist URL — see tools/composer-lock-git-sources.mjs.
+#
+# The cost is that source installs are slower and carry each package's test
+# files, so the autoloader prints "Ambiguous class resolution" warnings. Those
+# are harmless. See docs/web-session.md.
 
 if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
-  echo "==> Installing api/ Composer dependencies"
+  echo "==> Installing api/ Composer dependencies (from git sources)"
 
-  # --prefer-source is a documented Composer install mode, not a trick: it
-  # clones each package from git instead of fetching its dist archive, and git
-  # to github.com reaches the session's GitHub proxy rather than the egress
-  # allowlist. It is the second attempt rather than the first because source
-  # installs are slower and pull each package's test files, which makes the
-  # autoloader warn about ambiguous classes.
-  if ! composer install --working-dir="$PROJECT_DIR/api" --no-interaction --no-progress; then
-    echo "==> dist download failed; retrying from git sources"
-    composer install --working-dir="$PROJECT_DIR/api" --no-interaction --no-progress --prefer-source || {
-      echo
-      echo "  ! Composer could not install api/vendor."
-      echo
-      echo "    Both attempts failed, so at least one package is reachable"
-      echo "    neither as a dist archive nor as a git clone. That is an egress"
-      echo "    policy problem, not a repository one: this environment's network"
-      echo "    access needs GitHub's archive hosts."
-      echo
-      echo "    Fix it on the environment rather than here — set Network access"
-      echo "    to Trusted, which already lists them, or add to a Custom"
-      echo "    allowlist:"
-      echo
-      echo "        api.github.com"
-      echo "        codeload.github.com"
-      echo "        objects.githubusercontent.com"
-      echo
-      echo "    Full instructions, and the setup script that makes this script"
-      echo "    unnecessary, are in docs/web-session.md."
-      echo
-      exit 1
-    }
+  composer config --global use-github-api false
+
+  # The lock is patched IN PLACE because Composer has no flag for "use this
+  # other lock file", and restored unconditionally by the trap — including when
+  # composer fails or the session interrupts it. The committed lock must never
+  # carry these entries: they exist only to work around one environment's
+  # GitHub proxy, and would follow everyone else to machines that have no such
+  # problem.
+  COMPOSER_LOCK="$PROJECT_DIR/api/composer.lock"
+  COMPOSER_LOCK_BACKUP="$(mktemp)"
+  cp "$COMPOSER_LOCK" "$COMPOSER_LOCK_BACKUP"
+  restore_composer_lock() {
+    [ -f "$COMPOSER_LOCK_BACKUP" ] || return 0
+    cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
+    rm -f "$COMPOSER_LOCK_BACKUP"
+  }
+  trap restore_composer_lock EXIT INT TERM
+
+  node "$PROJECT_DIR/tools/composer-lock-git-sources.mjs" "$COMPOSER_LOCK"
+
+  if ! composer install --working-dir="$PROJECT_DIR/api" \
+    --no-interaction --no-progress --prefer-source; then
+    echo
+    echo "  ! Composer could not install api/vendor."
+    echo
+    echo "    The install runs over git precisely because this session cannot"
+    echo "    reach GitHub's archive hosts for third-party repositories, so a"
+    echo "    network allowlist change will NOT fix this — see the comment"
+    echo "    above and docs/web-session.md."
+    echo
+    echo "    Check instead that git itself reaches github.com:"
+    echo
+    echo "        git ls-remote https://github.com/symfony/var-dumper.git"
+    echo
+    echo "    and that a package has not been added whose dist is somewhere"
+    echo "    other than api.github.com, which this script cannot derive a git"
+    echo "    source for."
+    echo
+    exit 1
   fi
+
+  restore_composer_lock
+  trap - EXIT INT TERM
+
+  # A source install is EXPENSIVE ON DISK, and a web session's writable space is
+  # a fixed per-session allowance rather than a real filesystem. MEASURED here:
+  # api/vendor 19 GB, because --prefer-source leaves a full-history .git in every
+  # one of the 121 packages, plus an 18 GB VCS mirror cache underneath it. That
+  # is enough to exhaust the allowance outright — this script hit
+  # "fatal: ... write error. Out of diskspace" mid-clone and left no
+  # vendor/autoload.php behind.
+  #
+  # Neither copy is needed once the files are on disk: nothing here runs
+  # `composer update`, and `git status` inside a vendored package answers a
+  # question nobody is asking. Dropping both takes api/vendor to roughly its
+  # dist-install size and hands the allowance back.
+  #
+  # The trade is that a later `composer install` can no longer reuse the mirrors
+  # and re-clones from github.com. That costs minutes once, against a failure
+  # mode that costs the whole session.
+  echo "==> Reclaiming disk (vendor .git dirs and the Composer VCS cache)"
+  find "$PROJECT_DIR/api/vendor" -type d -name .git -prune -exec rm -rf {} + 2>/dev/null || true
+  composer clear-cache --quiet || true
 fi
 
 # ----------------------------------------------------------------- api/.env
