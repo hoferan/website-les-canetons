@@ -32,6 +32,7 @@
     "lint:openapi": "redocly lint api/openapi.json",
     "generate:api": "orval --config orval.config.ts",
     "typecheck": "tsc --noEmit",
+    "test:api": "node tools/phpunit.mjs",
     "test:web": "vitest run",
     "test:e2e": "playwright test",
     "test:js": "node --test \"tools/deploy/*.test.mjs\" \"tools/*.test.mjs\"",

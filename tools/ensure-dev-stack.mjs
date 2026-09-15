@@ -20,5 +20,13 @@ function dockerAvailable() {
 
 if (process.env.CLAUDE_CODE_REMOTE === 'true' && !dockerAvailable()) {
   const script = join(dirname(fileURLToPath(import.meta.url)), 'ensure-dev-stack.sh');
-  execFileSync('bash', [script], { stdio: 'inherit' });
+  try {
+    execFileSync('bash', [script], { stdio: 'inherit' });
+  } catch (error) {
+    // Exit with the script's own status and NOTHING ELSE. execFileSync throws,
+    // and an uncaught throw here prints a Node stack trace that scrolls the
+    // script's diagnosis — the allowlist hosts to add, say — off the screen.
+    // The script has already said everything useful on stderr.
+    process.exit(typeof error.status === 'number' ? error.status : 1);
+  }
 }
