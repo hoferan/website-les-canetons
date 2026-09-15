@@ -7,6 +7,7 @@ use App\Http\Resources\InboxItemResource;
 use App\Support\Inbox\InboxRegistry;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -37,6 +38,7 @@ class InboxController extends Controller
      *
      * @return array{total: int, counts: array<string, int>}
      */
+    #[Response(200, 'How many items are open, in total and by kind. Counts only what the caller may act on, so a member with none of the relevant permissions sees zero rather than a refusal.')]
     #[Endpoint(operationId: 'inbox.summary')]
     public function summary(Request $request): JsonResponse
     {

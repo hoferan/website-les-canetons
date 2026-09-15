@@ -2684,7 +2684,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "How many items are open, in total and by kind. Counts only what the caller may act on, so a member with none of the relevant permissions sees zero rather than a refusal.",
                         "content": {
                             "application/json": {
                                 "schema": {
