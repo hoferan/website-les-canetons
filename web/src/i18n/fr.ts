@@ -144,6 +144,7 @@ export const fr = {
     email: "E-mail",
     subject: "Sujet",
     message: "Message",
+    handled: "Traité",
     first_name: "Prénom",
     last_name: "Nom",
     address: "Adresse",
