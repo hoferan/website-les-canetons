@@ -145,12 +145,20 @@ code — a message wrongly marked handled is a normal thing to correct.
 `App\Support\EntityTag::FACETS`, and `GET /api/v1/contact-messages/{m}` is the
 single-thing read that hands the tag out — a collection hands out none.
 
-The facet is computed over **`handled_at` and `updated_at` coalesced to
-`created_at`**, and the coalesce is load-bearing rather than defensive:
-`2026_07_23_000003` created `updated_at` as nullable with no default, so every
-message stored before this release has `updated_at IS NULL`. A facet reading it
-raw would hand the same tag to every legacy row, and `If-Match` would then let
-a write aimed at one of them succeed against any other. This follows the rule in CLAUDE.md
+**The facet renders `ContactMessageResource`**, like every other facet in
+`EntityTag::state()`, and does not read columns. That class is explicit about
+why: a hand-written list of the fields that count is a list somebody forgets to
+extend, and a forgotten field is a change the tag does not move for — which is
+the lost update the machinery exists to catch. `contact_message` therefore
+needs an arm in `state()` as well as an entry in `FACETS`; the default arm
+throws, and `test_every_facet_can_be_computed` walks the list.
+
+An earlier draft of this spec had the facet computed over `handled_at` and
+`updated_at`, which would have been wrong twice over. It reintroduces the
+column list, and it steps on a real hazard: `2026_07_23_000003` created
+`updated_at` as nullable with no default, so every message stored before this
+release has `updated_at IS NULL`. Rendering the resource sidesteps both, since
+the resource carries the row's id. This follows the rule in CLAUDE.md
 literally rather than claiming the attendance exemption, because more
 management is expected on this inbox and retrofitting concurrency control after
 the fact is how you end up without it.
