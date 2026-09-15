@@ -551,15 +551,19 @@ npm run test:js       # node:test over tools/
 npm run lint:api      # Laravel Pint (--test)
 ```
 
-**`npm run check` does not run the Laravel suite.** It needs a live database, so
-it runs inside the stack:
+**`npm run check` does not run the Laravel suite.** It needs a live database,
+so it has a command of its own:
 
 ```bash
-docker compose exec -w /var/www/html/_api web php artisan test
+npm run test:api
 ```
 
-In Git Bash, prefix that with `MSYS_NO_PATHCONV=1` or the `-w` argument is
+`tools/phpunit.mjs` picks where to run it: inside the compose `web` service
+when the stack is up, natively otherwise. The raw form is still
+`docker compose exec -w /var/www/html/_api web php artisan test`, and in Git
+Bash that one needs `MSYS_NO_PATHCONV=1` in front or the `-w` argument is
 rewritten to a Windows path and Docker rejects it. PowerShell is unaffected.
+`npm run test:api` is not affected either way.
 
 **Run the web suite from PowerShell, not Git Bash.** Git Bash reports the cwd
 with a **lowercase** drive letter (`c:\Workspace\...`); PowerShell reports
@@ -589,9 +593,26 @@ Docker is reachable. It is
 timeout.
 
 `npm run websession:init` chains `npm install` and `ensure-dev-stack` in one
-command. **The Laravel suite does not run in a web session** — it needs the
-stack's `php artisan test`. Run it locally in Docker before claiming API work is
-done.
+command.
+
+**The Laravel suite DOES run in a web session**, and so do Pint, Larastan and
+the Scramble export — this file claimed otherwise until 2026-09-15 and it was
+never true. What blocks them is a network allowlist, not the absence of Docker:
+Composer reads metadata from packagist and then downloads every package's
+`dist` from `api.github.com`, so an environment that allows the first and not
+the second resolves fine and then 403s on every download, reporting it as
+`Could not authenticate against github.com`. Git keeps working throughout,
+because git traffic takes the GitHub proxy rather than the allowlist, which is
+what makes the failure so confusing.
+
+**`docs/web-session.md` is the whole story** — the three hosts to allow, the
+environment setup script that makes provisioning free, and what this stack
+still cannot do. Read it before concluding anything is unrunnable here.
+
+Two limits are real. **MariaDB is 10.11 from `apt`, not production's 10.3**, so
+anything schema-shaped still wants a Docker run before it ships. And there is
+**no `:8090` parity stack**, so `npm run smoke` and every Apache behaviour are
+out of reach in a web session.
 
 ## How work is tracked
 
@@ -668,7 +689,7 @@ repair it.
 
 ## Dos
 
-- Run `npm run check` before pushing, and the Laravel suite in Docker for API work.
+- Run `npm run check` before pushing, and `npm run test:api` for API work.
 - Match production versions (PHP 8.4, MariaDB 10.3).
 - Put new tooling/config at the repo root.
 - Add a new **page** route in `web/src/routes.tsx`, and a new **API** route in
