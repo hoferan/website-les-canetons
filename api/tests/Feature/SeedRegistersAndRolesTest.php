@@ -62,11 +62,14 @@ class SeedRegistersAndRolesTest extends TestCase
         $this->assertEqualsCanonicalizing(Permission::cases(), $direction->permissions()->all());
     }
 
-    public function test_the_committee_role_grants_only_the_guest_list(): void
+    public function test_the_committee_role_grants_the_guest_list_and_the_inbox(): void
     {
         $committee = Role::where('key', 'committee')->sole();
 
-        $this->assertSame([Permission::RegistrationsView], $committee->permissions()->all());
+        $this->assertEqualsCanonicalizing(
+            [Permission::RegistrationsView, Permission::MessagesView],
+            $committee->permissions()->all(),
+        );
     }
 
     public function test_re_running_the_migration_neither_duplicates_nor_resets(): void
