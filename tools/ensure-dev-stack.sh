@@ -194,6 +194,26 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
 
   restore_composer_lock
   trap - EXIT INT TERM
+
+  # A source install is EXPENSIVE ON DISK, and a web session's writable space is
+  # a fixed per-session allowance rather than a real filesystem. MEASURED here:
+  # api/vendor 19 GB, because --prefer-source leaves a full-history .git in every
+  # one of the 121 packages, plus an 18 GB VCS mirror cache underneath it. That
+  # is enough to exhaust the allowance outright — this script hit
+  # "fatal: ... write error. Out of diskspace" mid-clone and left no
+  # vendor/autoload.php behind.
+  #
+  # Neither copy is needed once the files are on disk: nothing here runs
+  # `composer update`, and `git status` inside a vendored package answers a
+  # question nobody is asking. Dropping both takes api/vendor to roughly its
+  # dist-install size and hands the allowance back.
+  #
+  # The trade is that a later `composer install` can no longer reuse the mirrors
+  # and re-clones from github.com. That costs minutes once, against a failure
+  # mode that costs the whole session.
+  echo "==> Reclaiming disk (vendor .git dirs and the Composer VCS cache)"
+  find "$PROJECT_DIR/api/vendor" -type d -name .git -prune -exec rm -rf {} + 2>/dev/null || true
+  composer clear-cache --quiet || true
 fi
 
 # ----------------------------------------------------------------- api/.env

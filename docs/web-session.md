@@ -110,6 +110,27 @@ Source installs are slower and carry each package's test files, so the
 autoloader prints `Ambiguous class resolution` warnings — including one naming
 `App\Providers\AppServiceProvider` against `laravel/pint`'s own copy. Harmless.
 
+**The disk cost is not harmless.** A web session's writable space is a fixed
+per-session allowance, not a real filesystem, and a source install of this repo
+peaks at roughly 37 GB:
+
+| | |
+| --- | --- |
+| `api/vendor` | ~19 GB — a full-history `.git` in each of the 121 packages |
+| Composer's VCS mirror cache | ~18 GB |
+
+That is enough to exhaust the allowance outright, and it fails as
+`fatal: ... write error. Out of diskspace` mid-clone, leaving no
+`vendor/autoload.php` — which looks exactly like the §1 failure and is not.
+`ensure-dev-stack.sh` drops both afterwards (strips `vendor/**/.git`, then
+`composer clear-cache`), taking `api/vendor` back to roughly its dist-install
+size. Nothing here runs `composer update`, so neither copy is missed.
+
+The peak is still the peak, so **do not fill the disk with anything else first**
+— pulling Docker images (§4) before provisioning is what exhausted it the one
+time this was measured. `df -h /` reporting `Avail` at 0 with low `Used` means
+the allowance is spent, not that the machine is broken.
+
 ## 2. The environment setup script
 
 Provisioning belongs in the environment's **Setup script**, which runs once
