@@ -103,3 +103,38 @@ test("a member can be made the instructor of a register, and it reaches the publ
   await expect(lyre).toContainText("Perrine");
   await expect(page.getByRole("article", { name: "Cloches" })).toContainText("Perrine");
 });
+
+/**
+ * THE MIRROR OF public.spec.ts's overflow guard, for the side of the site that
+ * had none — which is how #89 shipped. `/events` at 390px measured
+ * `scrollWidth` 613 against `clientWidth` 390 for anybody holding
+ * `events.manage`: the card's action row carried `shrink-0`, which pins a flex
+ * item at its unwrapped width, so its own `flex-wrap` could never fire.
+ *
+ * AS demo.direction, because the overflow needs the widest row there is — the
+ * five buttons the souper gets, which wants `events.manage`,
+ * `attendance.view_all` and `registrations.view` at once. A player sees no
+ * actions at all and would have measured clean over the bug.
+ *
+ * MEASURED, not eyeballed. A row that escapes its card still looks like
+ * buttons.
+ */
+test("the members' pages carry no horizontal overflow on a phone", async ({ page }) => {
+  // LOGGED IN FIRST, THEN NARROWED. The nav collapses at 390px, so the
+  // helper's landing assertion reads a link that is deliberately hidden there.
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  for (const path of ["/events", "/members", "/account"]) {
+    await page.goto(path);
+    // Anchored on the card rather than on load, so the measurement cannot run
+    // against a page that has not painted its rows yet.
+    if (path === "/events") {
+      await expect(page.getByTestId("event-card").first()).toBeVisible();
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, `${path} scrolls sideways at 390px`).toBeLessThanOrEqual(0);
+  }
+});

@@ -49,8 +49,18 @@ export function EventCard({
         </div>
 
         {/* Only rendered when the screen passed some, so a player's card has
-            no empty control row taking up space. */}
-        {actions ? <div className="flex shrink-0 flex-wrap gap-tight">{actions}</div> : null}
+            no empty control row taking up space.
+
+            NO `shrink-0` HERE, and that is the fix for #89 rather than a
+            tidy-up. It pinned this box at its own unwrapped width — 459px on
+            four buttons, 580px on the souper's five — so the `flex-wrap` beside
+            it could never fire and the row ran 223px past a 390px phone,
+            dragging the whole document with it. Without it the box may shrink
+            to its min-content, which for a wrapping flex container is its
+            widest single button, and the wrap happens. The buttons keep their
+            own `shrink-0` from the base class in components/ui/button.tsx:
+            individual buttons should not squash, the ROW should wrap. */}
+        {actions ? <div className="flex flex-wrap gap-tight">{actions}</div> : null}
       </div>
 
       <dl className="mt-related grid gap-tight text-sm">
