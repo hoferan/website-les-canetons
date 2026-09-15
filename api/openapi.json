@@ -413,7 +413,7 @@
         "/me/password": {
             "post": {
                 "operationId": "account.password",
-                "description": "Any logged-in account holder, for their own account. No permission is\nneeded: this is the screen every member has and nobody administers, and\nit is where a member sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`.",
+                "description": "Any logged-in account holder, for their own account. No permission is\nneeded: this is the screen every member has and nobody administers, and\nit is where a member sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`. A\n`newPassword` equal to the current one answers `409 password_unchanged`\nand changes nothing, the forced-change flag included.",
                 "summary": "Change your own password",
                 "tags": [
                     "Session"
@@ -542,6 +542,61 @@
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
                                                 "too_many_attempts"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "password_unchanged"
                                             ]
                                         },
                                         "errors": {

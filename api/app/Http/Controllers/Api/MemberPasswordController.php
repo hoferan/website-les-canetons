@@ -52,10 +52,11 @@ class MemberPasswordController extends Controller
         // NOT make(): a reissue must not land on the password already stored
         // (#92). See GeneratedPassword::makeDifferentFrom for why a guard
         // against a one-in-10^17 event is worth one hash verification here.
-        $current = $member->password;
-
+        // No null guard on the hash: 2026_09_08_000001_require_member_credentials
+        // made a password mandatory, so the column is non-nullable and Larastan
+        // rejects the check as dead code.
         $password = GeneratedPassword::makeDifferentFrom(
-            fn (string $candidate): bool => $current !== null && Hash::check($candidate, $current),
+            fn (string $candidate): bool => Hash::check($candidate, $member->password),
         );
 
         $sessionsEnded = DB::transaction(function () use ($request, $member, $password): int {
