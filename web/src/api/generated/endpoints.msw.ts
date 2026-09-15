@@ -318,6 +318,8 @@ import type {
   CommitteeFunctionIndex200,
   CommitteeIndex200,
   ConfigShow200,
+  ContactMessageIndex200,
+  ContactMessageShow200,
   ContactStore200,
   EventDestroy200,
   EventIndex200,
@@ -833,6 +835,58 @@ export const getRegistrationOptionReplaceResponseMock = (
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
+});
+
+export const getContactMessageIndexResponseMock = (
+  overrideResponse: Partial<Extract<ContactMessageIndex200, object>> = {},
+): ContactMessageIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    ...{
+      id: faker.number.int(),
+      lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      subject: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      receivedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      handledAt: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      handledBy: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    },
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getContactMessageShowResponseMock = (): ContactMessageShow200 => ({
+  ...{
+    id: faker.number.int(),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    subject: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    receivedAt: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    handledAt: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    handledBy: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  },
 });
 
 export const getSectionIndexResponseMock = (
@@ -1689,6 +1743,54 @@ export const getRegistrationOptionReplaceMockHandler = (
   );
 };
 
+export const getContactMessageIndexMockHandler = (
+  overrideResponse?:
+    | ContactMessageIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ContactMessageIndex200> | ContactMessageIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/contact-messages",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getContactMessageIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getContactMessageShowMockHandler = (
+  overrideResponse?:
+    | ContactMessageShow200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ContactMessageShow200> | ContactMessageShow200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/contact-messages/:contactMessage",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getContactMessageShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getSectionIndexMockHandler = (
   overrideResponse?:
     | SectionIndex200
@@ -2097,6 +2199,8 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationDestroyMockHandler(),
   getRegistrationOptionIndexMockHandler(),
   getRegistrationOptionReplaceMockHandler(),
+  getContactMessageIndexMockHandler(),
+  getContactMessageShowMockHandler(),
   getSectionIndexMockHandler(),
   getRoleIndexMockHandler(),
   getCommitteeFunctionIndexMockHandler(),

@@ -29,6 +29,10 @@
             "description": "Public bookings for an event that takes them, and the guest list the committee works from."
         },
         {
+            "name": "Committee inbox",
+            "description": "The messages the public has sent, and whether anybody has dealt with them."
+        },
+        {
             "name": "Members",
             "description": "The roster, and the reference data a roster form needs. All of it behind `members.manage`."
         },
@@ -2670,6 +2674,179 @@
                 }
             }
         },
+        "/contact-messages": {
+            "get": {
+                "operationId": "contactMessage.index",
+                "description": "Newest first. `?handled=0` returns only what is still open \u2014 the same\nset the inbox shows \u2014 and `?handled=1` only what has been dealt with.\nOmit the parameter for everything.\n\nPaginated: read `data` for the rows and `meta.total` for the count.",
+                "summary": "List the messages the public has sent",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/ContactMessageResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "handledBy"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/contact-messages/{contactMessage}": {
+            "get": {
+                "operationId": "contactMessage.show",
+                "description": "This is the read that hands out the `ETag` the two writes below require:\na collection hands out none. A screen reads the message as it opens it\nand writes with that read's tag, never a fresher one.",
+                "summary": "Read one message",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ContactMessageResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "handledBy"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/sections": {
             "get": {
                 "operationId": "section.index",
@@ -4335,6 +4512,62 @@
                     "function"
                 ],
                 "title": "CommitteeMemberResource"
+            },
+            "ContactMessageResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "subject": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "receivedAt": {
+                        "type": "string",
+                        "description": "When the visitor sent it."
+                    },
+                    "handledAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "When somebody dealt with it, or null while it is still open."
+                    },
+                    "handledBy": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Who dealt with it. Null while open, and null again if that member has since left the band."
+                    }
+                },
+                "required": [
+                    "id",
+                    "lastName",
+                    "firstName",
+                    "email",
+                    "subject",
+                    "message",
+                    "receivedAt",
+                    "handledAt",
+                    "handledBy"
+                ],
+                "title": "ContactMessageResource"
             },
             "ContactRequest": {
                 "type": "object",
