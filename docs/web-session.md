@@ -57,17 +57,17 @@ git ls-remote https://github.com/symfony/var-dumper.git   ->  e9d9cf5...
 ```
 
 So the install goes over git instead of over HTTP. **`npm run websession:init`
-already does this** — `tools/ensure-dev-stack.sh` handles both halves. By hand
-it is:
+already does this** — `tools/ensure-dev-stack.sh` handles all three steps. By
+hand it is:
 
 ```bash
+export COMPOSER_PROCESS_TIMEOUT=0
 composer config --global use-github-api false
 node tools/composer-lock-git-sources.mjs api/composer.lock   # then restore it
 composer install --working-dir=api --prefer-source
 ```
 
-Both halves are needed, and each fails silently in its own way without the
-other:
+All three are needed, and each fails in its own quiet way without the others:
 
 1. **`use-github-api false`.** Left at its default `true`, Composer converts a
    GitHub *source* back into an API zipball download, so `--prefer-source` puts
@@ -80,6 +80,11 @@ other:
    with 43 of 43 vendor directories populated and **no `vendor/autoload.php`**,
    because Composer aborts before dumping the autoloader. It looks like a total
    failure and is one package short.
+3. **`COMPOSER_PROCESS_TIMEOUT=0`.** Composer kills any child process after
+   300s, and cloning `phpstan/phpstan` exceeds that — it carries a built phar
+   across 857 tags, and all 121 packages clone at once. It times out on a cold
+   cache and succeeds on a warm one, so it passes when you test it and fails
+   for the next person.
 
 `tools/composer-lock-git-sources.mjs` derives that source from the package's own
 dist URL — a zipball URL names the owner, the repository and the exact commit —
@@ -122,9 +127,10 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server || true
 
 npm ci || true
 
-# Composer, the same two steps tools/ensure-dev-stack.sh takes, and for the
-# reasons in §1. Without BOTH of these the install fails on every package.
+# Composer, the same three steps tools/ensure-dev-stack.sh takes, and for the
+# reasons in §1. Without ALL of these the install fails on every package.
 export COMPOSER_ALLOW_SUPERUSER=1
+export COMPOSER_PROCESS_TIMEOUT=0
 composer config --global use-github-api false || true
 node tools/composer-lock-git-sources.mjs api/composer.lock || true
 composer install --working-dir=api --no-interaction --no-progress \

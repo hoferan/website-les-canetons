@@ -44,6 +44,16 @@ fi
 # Package discovery is a script rather than a plugin, but Laravel needs both.
 export COMPOSER_ALLOW_SUPERUSER=1
 
+# Composer kills any child process after 300s by default, and the git install
+# below trips it. phpstan/phpstan carries a built phar across its whole history
+# (857 tags), so cloning it is slow even from the local VCS mirror — and slower
+# still here, because all 121 packages clone at once and contend for the disk.
+# MEASURED: it times out at 300s on a cold cache and succeeds on a warm one,
+# which is exactly the shape of bug that passes when you test it and fails for
+# the next person. 0 disables the timeout rather than picking a bigger number
+# to be wrong about later.
+export COMPOSER_PROCESS_TIMEOUT=0
+
 # ------------------------------------------------------------------ MariaDB
 
 if ! command -v mariadbd >/dev/null 2>&1 && ! command -v mysqld >/dev/null 2>&1; then
