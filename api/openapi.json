@@ -2691,19 +2691,13 @@
                                     "type": "object",
                                     "properties": {
                                         "total": {
-                                            "description": "Open items across every kind you may act on.",
-                                            "anyOf": [
-                                                {
-                                                    "type": "integer"
-                                                },
-                                                {
-                                                    "type": "number"
-                                                }
-                                            ]
+                                            "type": "integer"
                                         },
                                         "counts": {
-                                            "type": "string",
-                                            "description": "The same, broken down by kind. Absent kinds are ones you may not see."
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
                                         }
                                     },
                                     "required": [

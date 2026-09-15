@@ -69,10 +69,16 @@ class InboxEndpointTest extends TestCase
         ContactMessage::factory()->count(3)->create();
         $perrine = Member::factory()->named('Perrine', 'Player', 'perrine')->create();
 
-        $this->actingAsMember($perrine)
+        $response = $this->actingAsMember($perrine)
             ->getJson('/api/v1/inbox/summary')
             ->assertOk()
             ->assertJsonPath('total', 0);
+
+        // An empty counts map must serialize as `{}`, never `[]` — a client
+        // reading `counts.contactMessage` against an array is a different
+        // bug. json_decode() (object mode) only ever produces a stdClass for
+        // `{}`; an empty JSON array decodes to a plain PHP array instead.
+        $this->assertInstanceOf(\stdClass::class, json_decode($response->getContent())->counts);
     }
 
     private function committeeMember(): Member

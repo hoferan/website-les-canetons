@@ -34,6 +34,8 @@ class InboxController extends Controller
      *
      * Deliberately not a list, so it is not enveloped: this is called on
      * navigation and should stay as small as an answer can be.
+     *
+     * @return array{total: int, counts: array<string, int>}
      */
     #[Endpoint(operationId: 'inbox.summary')]
     public function summary(Request $request): JsonResponse

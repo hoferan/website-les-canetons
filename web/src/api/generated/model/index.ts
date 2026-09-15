@@ -384,6 +384,7 @@ export * from "./inboxIndex200Meta";
 export * from "./inboxIndexParams";
 export * from "./inboxItemResource";
 export * from "./inboxSummary200";
+export * from "./inboxSummary200Counts";
 export * from "./memberAttendanceDestroy200";
 export * from "./memberAttendanceDestroy409";
 export * from "./memberAttendanceDestroy409Code";

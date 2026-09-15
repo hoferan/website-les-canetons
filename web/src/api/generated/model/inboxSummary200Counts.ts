@@ -299,9 +299,5 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { InboxSummary200Counts } from "./inboxSummary200Counts";
 
-export type InboxSummary200 = {
-  total: number;
-  counts: InboxSummary200Counts;
-};
+export type InboxSummary200Counts = { [key: string]: number };

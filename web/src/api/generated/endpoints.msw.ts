@@ -843,11 +843,10 @@ export const getRegistrationOptionReplaceResponseMock = (
 export const getInboxSummaryResponseMock = (
   overrideResponse: Partial<Extract<InboxSummary200, object>> = {},
 ): InboxSummary200 => ({
-  total: faker.helpers.arrayElement([
-    faker.number.int(),
-    faker.number.float({ fractionDigits: 2 }),
-  ]),
-  counts: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  total: faker.number.int(),
+  counts: {
+    [faker.string.alphanumeric(5)]: faker.number.int(),
+  },
   ...overrideResponse,
 });
 
