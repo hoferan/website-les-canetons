@@ -357,6 +357,9 @@ import type {
   EventSeries201,
   FormTokenShow200,
   HandleContactMessageRequest,
+  InboxIndex200,
+  InboxIndexParams,
+  InboxSummary200,
   MemberAttendanceDestroy200,
   MemberAttendanceDestroy409,
   MemberAttendanceUpdate403,
@@ -4802,6 +4805,303 @@ export const useRegistrationOptionReplace = <
 > => {
   return useMutation(getRegistrationOptionReplaceMutationOptions(options), queryClient);
 };
+
+export type inboxSummaryResponse200 = {
+  data: InboxSummary200;
+  status: 200;
+};
+
+export type inboxSummaryResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type inboxSummaryResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type inboxSummaryResponseSuccess = inboxSummaryResponse200 & {
+  headers: Headers;
+};
+export type inboxSummaryResponseError = (inboxSummaryResponse401 | inboxSummaryResponse503) & {
+  headers: Headers;
+};
+
+export type inboxSummaryResponse = inboxSummaryResponseSuccess | inboxSummaryResponseError;
+
+export const getInboxSummaryUrl = () => {
+  return `/inbox/summary`;
+};
+
+/**
+ * Deliberately not a list, so it is not enveloped: this is called on
+ * navigation and should stay as small as an answer can be.
+ * @summary How much is waiting, for the nav badge
+ */
+export const inboxSummary = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<inboxSummaryResponse> => {
+  return customFetch<inboxSummaryResponse>(getInboxSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getInboxSummaryQueryKey = () => {
+  return [`/inbox/summary`] as const;
+};
+
+export const getInboxSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getInboxSummaryQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof inboxSummary>>> = ({ signal }) =>
+    inboxSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof inboxSummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type InboxSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof inboxSummary>>>;
+export type InboxSummaryQueryError = Problem401Response | Problem503Response;
+
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxSummary>>,
+          TError,
+          Awaited<ReturnType<typeof inboxSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxSummary>>,
+          TError,
+          Awaited<ReturnType<typeof inboxSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary How much is waiting, for the nav badge
+ */
+
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getInboxSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type inboxIndexResponse200 = {
+  data: InboxIndex200;
+  status: 200;
+};
+
+export type inboxIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type inboxIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type inboxIndexResponseSuccess = inboxIndexResponse200 & {
+  headers: Headers;
+};
+export type inboxIndexResponseError = (inboxIndexResponse401 | inboxIndexResponse503) & {
+  headers: Headers;
+};
+
+export type inboxIndexResponse = inboxIndexResponseSuccess | inboxIndexResponseError;
+
+export const getInboxIndexUrl = (params?: InboxIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/inbox?${stringifiedParams}` : `/inbox`;
+};
+
+/**
+ * Newest first across every kind. Filtered by permission rather than
+ * refused: a member who may act on nothing gets an empty list, so this is
+ * safe to call for anybody with a session.
+ * @summary Everything open that you may act on
+ */
+export const inboxIndex = async (
+  params?: InboxIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<inboxIndexResponse> => {
+  return customFetch<inboxIndexResponse>(getInboxIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getInboxIndexQueryKey = (params?: InboxIndexParams) => {
+  return [`/inbox`, ...(params ? [params] : [])] as const;
+};
+
+export const getInboxIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getInboxIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof inboxIndex>>> = ({ signal }) =>
+    inboxIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof inboxIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type InboxIndexQueryResult = NonNullable<Awaited<ReturnType<typeof inboxIndex>>>;
+export type InboxIndexQueryError = Problem401Response | Problem503Response;
+
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params: undefined | InboxIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxIndex>>,
+          TError,
+          Awaited<ReturnType<typeof inboxIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxIndex>>,
+          TError,
+          Awaited<ReturnType<typeof inboxIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Everything open that you may act on
+ */
+
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getInboxIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type contactMessageIndexResponse200 = {
   data: ContactMessageIndex200;

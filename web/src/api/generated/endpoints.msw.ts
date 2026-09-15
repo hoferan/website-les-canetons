@@ -327,6 +327,8 @@ import type {
   EventResource,
   EventSeries201,
   FormTokenShow200,
+  InboxIndex200,
+  InboxSummary200,
   MemberAttendanceDestroy200,
   MemberDestroy200,
   MemberIndex200,
@@ -833,6 +835,32 @@ export const getRegistrationOptionReplaceResponseMock = (
     ]),
     priceCents: faker.helpers.arrayElement([faker.number.int(), null]),
     sortOrder: faker.number.int(),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getInboxSummaryResponseMock = (
+  overrideResponse: Partial<Extract<InboxSummary200, object>> = {},
+): InboxSummary200 => ({
+  total: faker.helpers.arrayElement([
+    faker.number.int(),
+    faker.number.float({ fractionDigits: 2 }),
+  ]),
+  counts: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  ...overrideResponse,
+});
+
+export const getInboxIndexResponseMock = (
+  overrideResponse: Partial<Extract<InboxIndex200, object>> = {},
+): InboxIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    kind: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    id: faker.number.int(),
+    title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    summary: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    arrivedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    path: faker.string.alpha({ length: { min: 10, max: 20 } }),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1776,6 +1804,54 @@ export const getRegistrationOptionReplaceMockHandler = (
   );
 };
 
+export const getInboxSummaryMockHandler = (
+  overrideResponse?:
+    | InboxSummary200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<InboxSummary200> | InboxSummary200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/inbox/summary",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInboxSummaryResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getInboxIndexMockHandler = (
+  overrideResponse?:
+    | InboxIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<InboxIndex200> | InboxIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/inbox",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getInboxIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getContactMessageIndexMockHandler = (
   overrideResponse?:
     | ContactMessageIndex200
@@ -2274,6 +2350,8 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationDestroyMockHandler(),
   getRegistrationOptionIndexMockHandler(),
   getRegistrationOptionReplaceMockHandler(),
+  getInboxSummaryMockHandler(),
+  getInboxIndexMockHandler(),
   getContactMessageIndexMockHandler(),
   getContactMessageShowMockHandler(),
   getContactMessageHandleMockHandler(),

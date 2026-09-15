@@ -2674,6 +2674,151 @@
                 }
             }
         },
+        "/inbox/summary": {
+            "get": {
+                "operationId": "inbox.summary",
+                "description": "Deliberately not a list, so it is not enveloped: this is called on\nnavigation and should stay as small as an answer can be.",
+                "summary": "How much is waiting, for the nav badge",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "description": "Open items across every kind you may act on.",
+                                            "anyOf": [
+                                                {
+                                                    "type": "integer"
+                                                },
+                                                {
+                                                    "type": "number"
+                                                }
+                                            ]
+                                        },
+                                        "counts": {
+                                            "type": "string",
+                                            "description": "The same, broken down by kind. Absent kinds are ones you may not see."
+                                        }
+                                    },
+                                    "required": [
+                                        "total",
+                                        "counts"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/inbox": {
+            "get": {
+                "operationId": "inbox.index",
+                "description": "Newest first across every kind. Filtered by permission rather than\nrefused: a member who may act on nothing gets an empty list, so this is\nsafe to call for anybody with a session.",
+                "summary": "Everything open that you may act on",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `InboxItemResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InboxItemResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/contact-messages": {
             "get": {
                 "operationId": "contactMessage.index",
@@ -4879,6 +5024,42 @@
                     "handled"
                 ],
                 "title": "HandleContactMessageRequest"
+            },
+            "InboxItemResource": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "description": "Which source this came from, e.g. `contactMessage`."
+                    },
+                    "id": {
+                        "type": "integer",
+                        "description": "The id of the underlying row, unique only within its kind."
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "arrivedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Where to go to deal with it, relative to the site root."
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id",
+                    "title",
+                    "summary",
+                    "arrivedAt",
+                    "path"
+                ],
+                "title": "InboxItemResource"
             },
             "MemberResource": {
                 "type": "object",

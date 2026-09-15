@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\FormTokenController;
 use App\Http\Controllers\Api\GuestListExportController;
+use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
@@ -290,6 +291,16 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy'])
             ->middleware('etag:registration');
     });
+
+    // THE INBOX NEEDS A SESSION AND NOTHING MORE. It filters by permission
+    // rather than refusing, so the nav can ask for the count without first
+    // working out whether it is allowed to — see InboxRegistry.
+    //
+    // `/inbox/summary` is written before `/inbox/{anything}` would be, if one
+    // ever exists; there is no dynamic segment here today and adding one must
+    // not shadow this.
+    Route::get('/inbox/summary', [InboxController::class, 'summary']);
+    Route::get('/inbox', [InboxController::class, 'index']);
 
     // THE COMMITTEE INBOX. `committee` holds messages.view as its second
     // permission — a prestation enquiry is committee business and somebody has
