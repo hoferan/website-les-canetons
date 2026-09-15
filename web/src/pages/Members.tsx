@@ -443,7 +443,14 @@ export function Members() {
         // event dialog made the same call for the same reason.
         //
         // Registrations arrive in R3 and this sentence gains them then.
-        description={`${deleting?.member.firstName} ${deleting?.member.lastName} sera retiré de la liste et perdra immédiatement son accès au site. Ses réponses de présence seront effacées du planning. Cette action est définitive.`}
+        //
+        // "CETTE PERSONNE", NOT THE NAME. The name is in the title and in the
+        // phrase that has to be typed, so the description loses nothing by
+        // dropping it — and interpolating it here meant a fixed masculine
+        // participle agreeing over whoever it named (#91). Agreeing with
+        // "personne" is right for everybody, and costs the roster no gender
+        // field the band has no reason to hold.
+        description="Cette personne sera retirée de la liste et perdra immédiatement son accès au site. Ses réponses de présence seront effacées du planning. Cette action est définitive."
         confirmLabel="Supprimer"
         confirmPhrase={
           deleting ? `${deleting.member.firstName} ${deleting.member.lastName}` : undefined
@@ -462,7 +469,11 @@ export function Members() {
         title={`Réinitialiser le mot de passe de ${resetting?.firstName} ${resetting?.lastName}`}
         // No typed phrase: this is disruptive rather than irreversible — it can
         // simply be done again — so it names the damage and asks for a press.
-        description={`Un nouveau mot de passe sera généré et affiché une seule fois. ${resetting?.firstName} sera déconnecté partout et devra le changer à la prochaine connexion.`}
+        //
+        // The title names who; this sentence says "cette personne" rather than
+        // interpolating the first name, for the agreement reason given on the
+        // delete dialog above (#91).
+        description="Un nouveau mot de passe sera généré et affiché une seule fois. Cette personne sera déconnectée partout et devra le changer à la prochaine connexion."
         confirmLabel="Réinitialiser"
         busy={issuePassword.isPending}
         error={destructive.error}

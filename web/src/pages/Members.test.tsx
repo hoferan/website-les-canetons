@@ -335,3 +335,55 @@ test("issues a replacement password and shows it once", async () => {
 
   expect(await screen.findByTestId("generated-password")).toHaveTextContent("kanu-7rex-mp34");
 });
+
+/**
+ * The text Radix points `aria-describedby` at — the dialog's description, as
+ * distinct from its title and the confirmation field's label, both of which
+ * carry the person's name on purpose.
+ */
+function descriptionOf(dialog: HTMLElement): string {
+  const id = dialog.getAttribute("aria-describedby");
+  const described = id === null ? null : document.getElementById(id);
+  if (described === null) {
+    throw new Error("the dialog describes itself with nothing");
+  }
+  return described.textContent ?? "";
+}
+
+/**
+ * #91: both dialogs interpolated a first name into a fixed masculine participle
+ * — "Amélie sera déconnecté partout" — and four of the seven members seeded on
+ * TEST are women.
+ *
+ * The fix writes round the agreement rather than asking the roster for a gender
+ * field the band has no reason to hold, so what each test pins is that the
+ * sentence agrees with "personne" and carries NO name at all. The second
+ * assertion is the one that survives a copy rewrite: a name back in the
+ * description is a masculine participle back with it, because that is the only
+ * reason to put one there.
+ */
+test("the reset dialog does not agree in the masculine over the person it names", async () => {
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", {
+      name: "Réinitialiser le mot de passe de Perrine Player",
+    }),
+  );
+  const description = descriptionOf(await screen.findByRole("alertdialog"));
+
+  expect(description).toContain("Cette personne sera déconnectée partout");
+  expect(description).not.toContain("Perrine");
+});
+
+test("the delete dialog does not agree in the masculine over the person it names", async () => {
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Supprimer Perrine Player" }),
+  );
+  const description = descriptionOf(await screen.findByRole("alertdialog"));
+
+  expect(description).toContain("Cette personne sera retirée de la liste");
+  expect(description).not.toContain("Perrine");
+});
