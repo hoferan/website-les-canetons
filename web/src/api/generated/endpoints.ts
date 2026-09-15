@@ -318,6 +318,7 @@ import type {
 import type {
   AccountPassword200,
   AccountPassword403,
+  AccountPassword409,
   AccountPassword429,
   AccountPasswordRequest,
   AgendaIndex200,
@@ -853,6 +854,11 @@ export type accountPasswordResponse403 = {
   status: 403;
 };
 
+export type accountPasswordResponse409 = {
+  data: AccountPassword409;
+  status: 409;
+};
+
 export type accountPasswordResponse419 = {
   data: Problem419Response;
   status: 419;
@@ -875,6 +881,7 @@ export type accountPasswordResponseError = (
   | accountPasswordResponse400
   | accountPasswordResponse401
   | accountPasswordResponse403
+  | accountPasswordResponse409
   | accountPasswordResponse419
   | accountPasswordResponse429
   | accountPasswordResponse503
@@ -905,7 +912,9 @@ export const getAccountPasswordUrl = () => {
  * ones the account answers `429 too_many_attempts` for fifteen minutes,
  * and a correct password during that window is still refused. A
  * `newPassword` shorter than eight characters answers
- * `400 validation_failed` with `too_short` against `newPassword`.
+ * `400 validation_failed` with `too_short` against `newPassword`. A
+ * `newPassword` equal to the current one answers `409 password_unchanged`
+ * and changes nothing, the forced-change flag included.
  * @summary Change your own password
  */
 export const accountPassword = async (
@@ -946,6 +955,7 @@ export const getAccountPasswordMutationOptions = <
     | Problem400Response
     | Problem401Response
     | AccountPassword403
+    | AccountPassword409
     | Problem419Response
     | AccountPassword429
     | Problem503Response,
@@ -991,6 +1001,7 @@ export type AccountPasswordMutationError =
   | Problem400Response
   | Problem401Response
   | AccountPassword403
+  | AccountPassword409
   | Problem419Response
   | AccountPassword429
   | Problem503Response;
@@ -1004,6 +1015,7 @@ export const useAccountPassword = <
     | Problem400Response
     | Problem401Response
     | AccountPassword403
+    | AccountPassword409
     | Problem419Response
     | AccountPassword429
     | Problem503Response,

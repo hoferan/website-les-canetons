@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Support\GeneratedPassword;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 /**
  * §4.4: a committee-issued password, shown exactly once, to read down the phone
@@ -48,6 +49,80 @@ class GeneratedPasswordTest extends TestCase
     public function test_two_calls_do_not_agree(): void
     {
         $this->assertNotSame(GeneratedPassword::make(), GeneratedPassword::make());
+    }
+
+    /**
+     * #92: a reset must not hand back the password the account already has.
+     *
+     * A PREDICATE RATHER THAN A HASH, so this class stays free of the framework
+     * as the rest of it is. The caller owns "is this the current password?" and
+     * answers it with Hash::check, which cannot drift from whichever driver
+     * actually hashed the stored value — HASH_DRIVER is argon2id here and
+     * bcrypt on a host without it.
+     *
+     * A MINT PASSED IN, because the real generator cannot be made to collide:
+     * 27 characters over 12 positions puts a natural collision at roughly one
+     * reset in 10^17, so a test that waited for one would pass whether or not
+     * the loop existed. Injecting both is the only way to watch the branch run,
+     * and it is the branch rather than the odds being asserted.
+     */
+    public function test_it_skips_a_candidate_that_matches_the_current_password(): void
+    {
+        $minted = ['abcd-efgh-jkmn', 'pqrt-uvwx-y346'];
+        $mint = function () use (&$minted): string {
+            return array_shift($minted);
+        };
+
+        // The first candidate IS the current password, so it must be discarded
+        // and the second one returned.
+        $password = GeneratedPassword::makeDifferentFrom(
+            fn (string $candidate): bool => $candidate === 'abcd-efgh-jkmn',
+            $mint,
+        );
+
+        $this->assertSame('pqrt-uvwx-y346', $password);
+        $this->assertSame([], $minted, 'both candidates were drawn');
+    }
+
+    public function test_it_keeps_the_first_candidate_that_does_not_match(): void
+    {
+        $draws = 0;
+        $mint = function () use (&$draws): string {
+            $draws++;
+
+            return 'pqrt-uvwx-y346';
+        };
+
+        $password = GeneratedPassword::makeDifferentFrom(fn (): bool => false, $mint);
+
+        $this->assertSame('pqrt-uvwx-y346', $password);
+        // Drawn ONCE. Every extra draw is a wasted hash verification on an
+        // endpoint a committee member is waiting on.
+        $this->assertSame(1, $draws);
+    }
+
+    /**
+     * A predicate that never says no must fail loudly rather than spin.
+     *
+     * Unreachable with the real generator, and that is exactly why it is worth
+     * bounding: a caller whose predicate is inverted by mistake would otherwise
+     * hold a PHP-FPM worker until max_execution_time kills the request, on a
+     * shared host, with no error naming the cause.
+     */
+    public function test_it_gives_up_rather_than_looping_for_ever(): void
+    {
+        $this->expectException(RuntimeException::class);
+
+        GeneratedPassword::makeDifferentFrom(fn (): bool => true, fn (): string => 'abcd-efgh-jkmn');
+    }
+
+    public function test_it_defaults_to_the_real_generator(): void
+    {
+        // Without a mint it is make() with a guard in front, so the result still
+        // has to look like a password this class would produce.
+        $password = GeneratedPassword::makeDifferentFrom(fn (): bool => false);
+
+        $this->assertMatchesRegularExpression('/^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/', $password);
     }
 
     public function test_it_carries_enough_entropy_to_be_worth_generating(): void

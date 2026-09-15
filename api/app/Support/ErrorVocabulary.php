@@ -186,6 +186,14 @@ final class ErrorVocabulary
         'cannot_remove_last_administrator' => [409, 'This change would leave nobody able to administer '
             .'members. Grant members.manage to somebody else first.'],
 
+        // Says what to do and nothing about why the rule exists. The reason is
+        // mustChangePassword: a committee-issued password has been read out
+        // loud, so an account allowed to "change" it to itself keeps a
+        // credential somebody else has heard while the forced-change flag
+        // clears. The caller only needs to know to pick a different one.
+        'password_unchanged' => [409, 'The new password is the one the account is already using. Choose a '
+            .'different one; nothing was changed.'],
+
         // The rule being protected: a member answering for THEMSELVES owes a
         // reason when withdrawing a yes, and the on-behalf route is exempt — so
         // aiming it at yourself would be a way around that. Saying so in the
