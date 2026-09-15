@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ContactMessage;
 use App\Models\Event;
 use App\Models\Member;
 use App\Models\Registration;
@@ -388,6 +389,7 @@ class ConditionalWriteTest extends TestCase
             'event.options' => Event::factory()->create(),
             'member' => Member::factory()->inSection('Cloches')->create(),
             'registration' => Registration::factory()->create(),
+            'contact_message' => ContactMessage::factory()->create(),
         ];
 
         foreach (EntityTag::facets() as $facet) {
