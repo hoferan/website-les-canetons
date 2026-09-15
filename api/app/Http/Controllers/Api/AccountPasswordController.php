@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AccountPasswordRequest;
 use App\Support\Audit;
@@ -36,7 +37,9 @@ class AccountPasswordController extends Controller
      * ones the account answers `429 too_many_attempts` for fifteen minutes,
      * and a correct password during that window is still refused. A
      * `newPassword` shorter than eight characters answers
-     * `400 validation_failed` with `too_short` against `newPassword`.
+     * `400 validation_failed` with `too_short` against `newPassword`. A
+     * `newPassword` equal to the current one answers `409 password_unchanged`
+     * and changes nothing, the forced-change flag included.
      */
     // An invokable controller has no method name for Scramble to build an
     // operationId from, so it falls back to the class name and the operation
@@ -45,7 +48,7 @@ class AccountPasswordController extends Controller
     // rather than a documentation detail.
     #[Response(200, 'Changed. `sessionsEnded` counts the caller other sessions that were revoked.')]
     #[Endpoint(operationId: 'account.password')]
-    #[Emits('reauth_failed', 'too_many_attempts')]
+    #[Emits('reauth_failed', 'too_many_attempts', 'password_unchanged')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {
         // GATED ON AUTHENTICATION ALONE — no permission. This is the one screen
@@ -62,7 +65,28 @@ class AccountPasswordController extends Controller
         // caller: the destructive roster endpoints no longer re-authenticate.
         $member = $request->user();
 
-        Reauthentication::assert($member, $request->string('currentPassword')->value());
+        $current = $request->string('currentPassword')->value();
+
+        Reauthentication::assert($member, $current);
+
+        // #92, AND IT IS A STRING COMPARISON RATHER THAN A HASH CHECK, which is
+        // exact rather than a shortcut: assert() above has just proved $current
+        // IS this account's password, so the new one equals the stored password
+        // exactly when it equals $current. A second Hash::check would answer the
+        // same question and cost an argon2id verification to do it.
+        //
+        // AFTER the re-authentication, deliberately. Checking equality first
+        // would answer `password_unchanged` to somebody who does not know the
+        // password at all, telling them their guess was wrong in a way that
+        // `reauth_failed` does not.
+        //
+        // The refusal matters most under must_change_password: a committee
+        // password is dictated down a phone, so somebody else has heard it, and
+        // "changing" it to itself would clear the very flag protecting the
+        // account while leaving that credential live.
+        if ($request->string('newPassword')->value() === $current) {
+            return ApiError::json(409, 'password_unchanged', 'The new password is the current one');
+        }
 
         $sessionsEnded = DB::transaction(function () use ($request, $member): int {
             $member->password = $request->string('newPassword')->value();

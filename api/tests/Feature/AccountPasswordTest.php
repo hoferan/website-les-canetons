@@ -148,6 +148,56 @@ class AccountPasswordTest extends TestCase
         $this->assertStringNotContainsString('a-password-they-chose', $log);
     }
 
+    /**
+     * #92. The forced-change gate is the reason this matters rather than tidiness.
+     *
+     * A committee-issued password is read out down a phone, so somebody else has
+     * heard it; must_change_password exists to make sure that credential does not
+     * outlive its first use. Letting it be "changed" to itself leaves the account
+     * on the password a third party knows while clearing the flag that was
+     * protecting it — the gate reports success and defeats itself.
+     */
+    public function test_a_new_password_identical_to_the_current_one_is_refused(): void
+    {
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
+            'currentPassword' => self::CURRENT,
+            'newPassword' => self::CURRENT,
+        ])->assertStatus(409)->assertJson(['code' => 'password_unchanged']);
+    }
+
+    public function test_a_refused_change_leaves_the_forced_change_gate_standing(): void
+    {
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
+            'currentPassword' => self::CURRENT,
+            'newPassword' => self::CURRENT,
+        ])->assertStatus(409);
+
+        // The whole point: refusing is worth nothing if the flag clears anyway,
+        // because the next login would then sail past the gate on the password
+        // that was dictated over the phone.
+        $fresh = $this->member->fresh();
+        $this->assertTrue($fresh->must_change_password);
+        $this->assertTrue(Hash::check(self::CURRENT, $fresh->password));
+    }
+
+    /**
+     * ORDER, and it is the one thing this check could plausibly get wrong.
+     *
+     * Re-authentication runs first, so a caller who gets the current password
+     * wrong is told THAT, even when the two fields they sent happen to match
+     * each other. The alternative — checking equality before knowing the current
+     * password — would answer `password_unchanged` to somebody who does not know
+     * the password at all, which both misleads them and confirms, for free, that
+     * their guess was wrong in a different way than they think.
+     */
+    public function test_a_wrong_current_password_still_answers_reauth_failed(): void
+    {
+        $this->actingAsMember($this->member)->postJson('/api/v1/me/password', [
+            'currentPassword' => 'not-the-current-one',
+            'newPassword' => 'not-the-current-one',
+        ])->assertStatus(403)->assertJson(['code' => 'reauth_failed']);
+    }
+
     public function test_an_anonymous_caller_gets_401(): void
     {
         $this->postJson('/api/v1/me/password', [

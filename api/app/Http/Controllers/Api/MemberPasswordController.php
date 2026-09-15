@@ -13,6 +13,7 @@ use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 #[Group('Members', weight: 50)]
 class MemberPasswordController extends Controller
@@ -47,7 +48,15 @@ class MemberPasswordController extends Controller
         // this person an account" case is POST /api/v1/members, which mints one at
         // creation using the same generator and the same forced-change
         // semantics.
-        $password = GeneratedPassword::make();
+        //
+        // NOT make(): a reissue must not land on the password already stored
+        // (#92). See GeneratedPassword::makeDifferentFrom for why a guard
+        // against a one-in-10^17 event is worth one hash verification here.
+        $current = $member->password;
+
+        $password = GeneratedPassword::makeDifferentFrom(
+            fn (string $candidate): bool => $current !== null && Hash::check($candidate, $current),
+        );
 
         $sessionsEnded = DB::transaction(function () use ($request, $member, $password): int {
             // The 'hashed' cast on Member::casts() hashes this on save.
