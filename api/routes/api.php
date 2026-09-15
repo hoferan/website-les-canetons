@@ -305,6 +305,16 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:contact_message');
     });
 
+    // Clearing the inbox, which is a different act from reading it and a
+    // different set of people: `committee` sees a prestation enquiry, and
+    // binning a stranger's message is direction's call.
+    Route::middleware('permission:messages.manage')->group(function () {
+        Route::patch('/contact-messages/{contactMessage}', [ContactMessageController::class, 'handle'])
+            ->middleware('etag:contact_message');
+        Route::delete('/contact-messages/{contactMessage}', [ContactMessageController::class, 'destroy'])
+            ->middleware('etag:contact_message');
+    });
+
     // What an event OFFERS is part of the event, so this is events.manage
     // rather than a registration permission — the same act as setting its
     // date. PUT and replace-all, matching /members/{member}/roles: an "add

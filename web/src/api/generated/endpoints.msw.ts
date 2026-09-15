@@ -318,6 +318,7 @@ import type {
   CommitteeFunctionIndex200,
   CommitteeIndex200,
   ConfigShow200,
+  ContactMessageHandle200,
   ContactMessageIndex200,
   ContactMessageShow200,
   ContactStore200,
@@ -870,6 +871,32 @@ export const getContactMessageIndexResponseMock = (
 });
 
 export const getContactMessageShowResponseMock = (): ContactMessageShow200 => ({
+  ...{
+    id: faker.number.int(),
+    lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    email: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    subject: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    message: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    receivedAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
+    handledAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
+    handledBy: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+  },
+});
+
+export const getContactMessageHandleResponseMock = (): ContactMessageHandle200 => ({
   ...{
     id: faker.number.int(),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1797,6 +1824,48 @@ export const getContactMessageShowMockHandler = (
   );
 };
 
+export const getContactMessageHandleMockHandler = (
+  overrideResponse?:
+    | ContactMessageHandle200
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<ContactMessageHandle200> | ContactMessageHandle200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/contact-messages/:contactMessage",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getContactMessageHandleResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getContactMessageDestroyMockHandler = (
+  overrideResponse?:
+    void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/contact-messages/:contactMessage",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      if (typeof overrideResponse === "function") {
+        await overrideResponse(info);
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    },
+    options,
+  );
+};
+
 export const getSectionIndexMockHandler = (
   overrideResponse?:
     | SectionIndex200
@@ -2207,6 +2276,8 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationOptionReplaceMockHandler(),
   getContactMessageIndexMockHandler(),
   getContactMessageShowMockHandler(),
+  getContactMessageHandleMockHandler(),
+  getContactMessageDestroyMockHandler(),
   getSectionIndexMockHandler(),
   getRoleIndexMockHandler(),
   getCommitteeFunctionIndexMockHandler(),

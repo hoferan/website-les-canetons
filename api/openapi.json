@@ -2845,6 +2845,153 @@
                         "$ref": "#/components/responses/Problem503"
                     }
                 }
+            },
+            "patch": {
+                "operationId": "contactMessage.handle",
+                "description": "`{\"handled\": true}` stamps who did it and when; `{\"handled\": false}`\nclears both. Reopening is not an error \u2014 a message marked handled by\nmistake is a normal thing to correct.\n\nRequires `If-Match` with the tag from reading this message. Without one\nthe request answers `428`; with a stale one, `412`.",
+                "summary": "Mark a message handled, or put it back",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HandleContactMessageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ContactMessageResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "handledBy"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "contactMessage.destroy",
+                "description": "For what the form catches that the spam guard did not. Requires\n`If-Match`, so a message somebody else has just dealt with cannot be\ndeleted by a screen that has not seen that yet.",
+                "summary": "Delete a message",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
             }
         },
         "/sections": {
@@ -4719,6 +4866,19 @@
                     "myAttendance"
                 ],
                 "title": "EventResource"
+            },
+            "HandleContactMessageRequest": {
+                "type": "object",
+                "description": "Marking a message handled, or putting it back.\n\n`required` rather than defaulting to true: a PATCH with an empty body would\notherwise silently handle the message, and this endpoint is also how one is\nreopened.",
+                "properties": {
+                    "handled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "handled"
+                ],
+                "title": "HandleContactMessageRequest"
             },
             "MemberResource": {
                 "type": "object",

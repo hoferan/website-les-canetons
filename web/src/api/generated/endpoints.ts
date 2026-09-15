@@ -342,6 +342,7 @@ import type {
   CommitteeIndex200,
   CommitteeIndexParams,
   ConfigShow200,
+  ContactMessageHandle200,
   ContactMessageIndex200,
   ContactMessageIndexParams,
   ContactMessageShow200,
@@ -355,6 +356,7 @@ import type {
   EventResource,
   EventSeries201,
   FormTokenShow200,
+  HandleContactMessageRequest,
   MemberAttendanceDestroy200,
   MemberAttendanceDestroy409,
   MemberAttendanceUpdate403,
@@ -5155,6 +5157,383 @@ export function useContactMessageShow<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type contactMessageHandleResponse200 = {
+  data: ContactMessageHandle200;
+  status: 200;
+};
+
+export type contactMessageHandleResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type contactMessageHandleResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageHandleResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageHandleResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type contactMessageHandleResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type contactMessageHandleResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type contactMessageHandleResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type contactMessageHandleResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageHandleResponseSuccess = contactMessageHandleResponse200 & {
+  headers: Headers;
+};
+export type contactMessageHandleResponseError = (
+  | contactMessageHandleResponse400
+  | contactMessageHandleResponse401
+  | contactMessageHandleResponse403
+  | contactMessageHandleResponse404
+  | contactMessageHandleResponse412
+  | contactMessageHandleResponse419
+  | contactMessageHandleResponse428
+  | contactMessageHandleResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageHandleResponse =
+  contactMessageHandleResponseSuccess | contactMessageHandleResponseError;
+
+export const getContactMessageHandleUrl = (contactMessage: number) => {
+  return `/contact-messages/${contactMessage}`;
+};
+
+/**
+ * `{"handled": true}` stamps who did it and when; `{"handled": false}`
+ * clears both. Reopening is not an error — a message marked handled by
+ * mistake is a normal thing to correct.
+ *
+ * Requires `If-Match` with the tag from reading this message. Without one
+ * the request answers `428`; with a stale one, `412`.
+ * @summary Mark a message handled, or put it back
+ */
+export const contactMessageHandle = async (
+  contactMessage: number,
+  handleContactMessageRequest: HandleContactMessageRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageHandleResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<contactMessageHandleResponse>(getContactMessageHandleUrl(contactMessage), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(handleContactMessageRequest),
+  });
+};
+
+export const getContactMessageHandleMutationKey = () => ["contactMessageHandle"] as const;
+
+export const getContactMessageHandleMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof contactMessageHandle>>,
+    TError,
+    ContactMessageHandleMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof contactMessageHandle>>,
+  TError,
+  ContactMessageHandleMutationVariables,
+  TContext
+> => {
+  const mutationKey = getContactMessageHandleMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof contactMessageHandle>>,
+    ContactMessageHandleMutationVariables
+  > = (props) => {
+    const { contactMessage, data } = props ?? {};
+
+    return contactMessageHandle(contactMessage, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ContactMessageHandleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageHandle>>
+>;
+export type ContactMessageHandleMutationBody = HandleContactMessageRequest;
+export type ContactMessageHandleMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ContactMessageHandleMutationVariables = {
+  contactMessage: number;
+  data: HandleContactMessageRequest;
+};
+
+/**
+ * @summary Mark a message handled, or put it back
+ */
+export const useContactMessageHandle = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof contactMessageHandle>>,
+      TError,
+      ContactMessageHandleMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof contactMessageHandle>>,
+  TError,
+  ContactMessageHandleMutationVariables,
+  TContext
+> => {
+  return useMutation(getContactMessageHandleMutationOptions(options), queryClient);
+};
+
+export type contactMessageDestroyResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type contactMessageDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type contactMessageDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type contactMessageDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type contactMessageDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type contactMessageDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageDestroyResponseSuccess = contactMessageDestroyResponse204 & {
+  headers: Headers;
+};
+export type contactMessageDestroyResponseError = (
+  | contactMessageDestroyResponse401
+  | contactMessageDestroyResponse403
+  | contactMessageDestroyResponse404
+  | contactMessageDestroyResponse412
+  | contactMessageDestroyResponse419
+  | contactMessageDestroyResponse428
+  | contactMessageDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageDestroyResponse =
+  contactMessageDestroyResponseSuccess | contactMessageDestroyResponseError;
+
+export const getContactMessageDestroyUrl = (contactMessage: number) => {
+  return `/contact-messages/${contactMessage}`;
+};
+
+/**
+ * For what the form catches that the spam guard did not. Requires
+ * `If-Match`, so a message somebody else has just dealt with cannot be
+ * deleted by a screen that has not seen that yet.
+ * @summary Delete a message
+ */
+export const contactMessageDestroy = async (
+  contactMessage: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageDestroyResponse> => {
+  return customFetch<contactMessageDestroyResponse>(getContactMessageDestroyUrl(contactMessage), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getContactMessageDestroyMutationKey = () => ["contactMessageDestroy"] as const;
+
+export const getContactMessageDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof contactMessageDestroy>>,
+    TError,
+    ContactMessageDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof contactMessageDestroy>>,
+  TError,
+  ContactMessageDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getContactMessageDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof contactMessageDestroy>>,
+    ContactMessageDestroyMutationVariables
+  > = (props) => {
+    const { contactMessage } = props ?? {};
+
+    return contactMessageDestroy(contactMessage, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ContactMessageDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageDestroy>>
+>;
+
+export type ContactMessageDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ContactMessageDestroyMutationVariables = { contactMessage: number };
+
+/**
+ * @summary Delete a message
+ */
+export const useContactMessageDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof contactMessageDestroy>>,
+      TError,
+      ContactMessageDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof contactMessageDestroy>>,
+  TError,
+  ContactMessageDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getContactMessageDestroyMutationOptions(options), queryClient);
+};
 
 export type sectionIndexResponse200 = {
   data: SectionIndex200;
