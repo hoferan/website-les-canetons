@@ -3,10 +3,10 @@
 # session context. Must stay fast and non-blocking: it runs in the critical
 # path of session initialization and is subject to the hook timeout.
 #
-# The Docker-free dev stack for Claude Code web sessions (MariaDB + config.php)
-# is NOT provisioned here — apt/DB setup is slow enough to blow the hook timeout
-# and stall session init. It is provisioned on-demand instead, by the
-# DB-dependent npm scripts via tools/ensure-dev-stack.{mjs,sh}.
+# The native dev stack for Claude Code web sessions (MariaDB + api/vendor +
+# api/.env) is NOT provisioned here — apt/DB setup is slow enough to blow the
+# hook timeout and stall session init. It is provisioned on-demand instead, by
+# the DB-dependent npm scripts via tools/ensure-dev-stack.{mjs,sh}.
 set -euo pipefail
 
 SKILLS_DIR="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}/.claude/skills"

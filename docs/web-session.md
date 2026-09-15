@@ -1,75 +1,109 @@
 # Working on this repo from a Claude Code web session
 
-A web session is a cloud VM with no Docker daemon, so `npm run dev` cannot
-bring up the compose stack. Everything else works — including the Laravel
-suite, Pint, Larastan and the Scramble export — provided the environment is
-configured. This page is how to configure it once, and what to do in a session
-that lands in an environment nobody has configured yet.
+A web session is a cloud VM. `npm run dev` cannot bring up the compose stack
+there, but **everything else works — including the Laravel suite, Pint, Larastan
+and the Scramble export.** Measured 2026-09-15: `npm run test:api` green at
+585 tests / 3885 assertions, `npm run check` green end to end.
 
-Read this before concluding that something "cannot run in a web session". That
+This page is what makes that true, and what to do in a session that lands
+somewhere it is not.
+
+Read it before concluding that something "cannot run in a web session". That
 claim was in `CLAUDE.md` for a while and it was wrong; it cost a session most of
 a day and shipped a pull request with three declared verification gaps that all
 turned out to be the same misconfiguration.
 
-## 1. Network access — the part that actually matters
+Read §1 before concluding the opposite, too. The **first** version of this page
+blamed the network allowlist, which is not involved at all, and cost two more
+sessions — one of them spent changing an environment setting that could never
+have helped.
 
-Composer reads package metadata from `repo.packagist.org` and then downloads
-each package's **`dist`** archive from **`api.github.com`**. Both hosts are in
-the **Trusted** allowlist, so on Trusted everything works with no further
-setup.
+## 1. Composer, and the failure that looks like everything else
 
-The failure mode worth recognising is an environment on **Custom** whose list
-has packagist but not GitHub's archive hosts. That is the worst combination,
-because resolution succeeds and every single download then answers `403`:
+`composer install` fails in a fresh web session. The error names a credential:
 
 ```
-Failed to download phpstan/phpstan from dist: Could not authenticate against github.com
+In AuthHelper.php line 132:
+  Could not authenticate against github.com
 ```
 
-"Could not authenticate" is misleading. Nothing is wrong with your credentials;
-the proxy refused the host, and Composer reports a policy denial the same way it
-reports an auth failure.
+**Nothing is wrong with any credential, and nothing is wrong with the network
+allowlist.** GitHub traffic does not travel through the session's egress
+allowlist at all — it takes the session's **GitHub proxy**, which scopes the
+GitHub **API** to the repositories *attached to the session*. Every other
+repository answers 403:
 
-Set **Network access** to **Trusted**, or — if the environment has to stay on
-**Custom** — add these three:
-
-```text
-api.github.com
-codeload.github.com
-objects.githubusercontent.com
+```
+api.github.com/repos/hoferan/website-les-canetons   200
+api.github.com/repos/symfony/var-dumper             403
+  {"message":"GitHub access to this repository is not enabled for this
+   session. Use add_repo to request access."}
 ```
 
-Note that **git to `github.com` keeps working regardless**, because git traffic
-goes through the session's GitHub proxy rather than the network allowlist. That
-is exactly why the failure is confusing: `git clone` and `git push` are fine
-while `composer install` cannot fetch a single package.
+Every one of the 121 dist URLs in `api/composer.lock` is an `api.github.com`
+zipball of a third-party repository. So **every** dist download 403s, Composer
+reads 403 as "needs authentication", and reports it as the line above.
 
-### Why `--prefer-source` is only a partial answer
+This is why adding hosts to a Custom allowlist does nothing, and why setting
+Network access to **Trusted** does nothing either. Both were tried. The hosts
+were reachable the whole time.
 
-`tools/ensure-dev-stack.sh` retries with `--prefer-source`, which clones each
-package from git and so rides the GitHub proxy. It is a documented Composer
-mode, not a trick, and it gets 120 of this repo's 121 packages.
+### What does work: git
 
-It does not get **`phpstan/phpstan`**, which publishes no `source` in
-`composer.lock` — dist only. It arrives transitively through `larastan/larastan`
-(the repo requires larastan, never phpstan directly), and larastan genuinely
-requires it, so it cannot simply be dropped. One dist-only package is enough to
-fail the whole install, because `composer install` is all-or-nothing.
+Git is not scoped the same way. Arbitrary public repositories clone fine:
 
-So `--prefer-source` buys a working install only if that package is already in
-Composer's cache. Fix the allowlist instead.
+```
+git ls-remote https://github.com/symfony/var-dumper.git   ->  e9d9cf5...
+```
 
-### How the wider PHP world solves this
+So the install goes over git instead of over HTTP. **`npm run websession:init`
+already does this** — `tools/ensure-dev-stack.sh` handles both halves. By hand
+it is:
 
-The ecosystem answer to "our network cannot reach GitHub's archive hosts" is to
-put a mirror you control in between — [Private
-Packagist](https://blog.packagist.com/closing-composers-download-fallback-paths-in-private-packagist/),
-[Satis](https://github.com/composer/satis), Packeton, Nexus or Artifactory —
-which re-hosts the dist zips on a host your network does allow. That is the
-right answer when you own the network and cannot change it.
+```bash
+composer config --global use-github-api false
+node tools/composer-lock-git-sources.mjs api/composer.lock   # then restore it
+composer install --working-dir=api --prefer-source
+```
 
-Here we do own the allowlist and can change it in one field, so a mirror would
-be infrastructure bought to work around a checkbox.
+Both halves are needed, and each fails silently in its own way without the
+other:
+
+1. **`use-github-api false`.** Left at its default `true`, Composer converts a
+   GitHub *source* back into an API zipball download, so `--prefer-source` puts
+   you straight back on the 403. This is the step that is easy to miss, because
+   `--prefer-source` looks like it should be sufficient on its own.
+2. **A `source` for `phpstan/phpstan`.** It is the only package in this lock
+   that publishes none — dist-only on packagist, pulled in transitively by
+   larastan (this repo never requires phpstan directly). `composer install` is
+   all-or-nothing, so that single package fails all 121, and you get `vendor/`
+   with 43 of 43 vendor directories populated and **no `vendor/autoload.php`**,
+   because Composer aborts before dumping the autoloader. It looks like a total
+   failure and is one package short.
+
+`tools/composer-lock-git-sources.mjs` derives that source from the package's own
+dist URL — a zipball URL names the owner, the repository and the exact commit —
+so the clone lands on the commit the archive was built from. It patches the lock
+in place and `ensure-dev-stack.sh` restores it afterwards: **the committed lock
+must never carry those entries**, since they work around one environment's proxy
+and everyone else would inherit them.
+
+Nothing here is a trick. `--prefer-source` and `use-github-api` are both
+documented Composer modes.
+
+### Two things that are not the cause
+
+- **`GH_TOKEN` and `GITHUB_TOKEN` read as the literal string `proxy-injected`.**
+  That is the documented placeholder for the GitHub proxy, not a broken token.
+  Composer does not read either variable (it reads `COMPOSER_AUTH`, which is
+  unset), so it is not the cause of the auth error however much it looks like it.
+- **Rate limiting.** 15000/hour, and a failing run has used about 20.
+
+### The cost of the source install
+
+Source installs are slower and carry each package's test files, so the
+autoloader prints `Ambiguous class resolution` warnings — including one naming
+`App\Providers\AppServiceProvider` against `laravel/pint`'s own copy. Harmless.
 
 ## 2. The environment setup script
 
@@ -82,25 +116,32 @@ later sessions start with it already done.
 set -x
 
 # MariaDB. Ubuntu 24.04 ships 10.11; docker-compose.yml and production both
-# pin 10.3. Fine for everything this repo does, but see the note below.
+# pin 10.3. Fine for everything this repo does, but see §4.
 DEBIAN_FRONTEND=noninteractive apt-get update -y || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server || true
 
-# Dependencies. Both are cached into the snapshot, which is the whole point:
-# a session starts with them on disk instead of spending minutes installing.
-export COMPOSER_ALLOW_SUPERUSER=1
-composer install --working-dir=api --no-interaction --no-progress || true
 npm ci || true
+
+# Composer, the same two steps tools/ensure-dev-stack.sh takes, and for the
+# reasons in §1. Without BOTH of these the install fails on every package.
+export COMPOSER_ALLOW_SUPERUSER=1
+composer config --global use-github-api false || true
+node tools/composer-lock-git-sources.mjs api/composer.lock || true
+composer install --working-dir=api --no-interaction --no-progress \
+  --prefer-source || true
+git checkout -- api/composer.lock || true
 ```
 
 Keep every line `|| true`: a setup script that exits non-zero fails the whole
-session, and the script has to finish inside roughly five minutes.
+session, and the script has to finish inside roughly five minutes. Note that
+`|| true` also hides a real failure — if a session starts without `api/vendor`,
+run `npm run websession:init` and read its output rather than assuming the
+setup script succeeded.
 
 **The snapshot keeps files, not processes.** A MariaDB the setup script started
 is gone by the time a session runs; only the installed packages survive. Start
-the daemon per session — a `SessionStart` hook is the right home, or just run
-`npm run websession:init`, which is idempotent and will skip the work the
-snapshot already did.
+the daemon per session — `npm run websession:init` is idempotent and will skip
+the work the snapshot already did.
 
 ## 3. In a session
 
@@ -108,10 +149,7 @@ snapshot already did.
 npm run websession:init    # npm install, MariaDB, Composer, api/.env, APP_KEY
 ```
 
-Idempotent, and a no-op when Docker is reachable. If the allowlist is wrong it
-stops with the host list from §1 rather than leaving a half-built stack.
-
-Then:
+Idempotent. It ends with `==> Dev stack ready.` and nothing else needs doing.
 
 | Command | Notes |
 | --- | --- |
@@ -127,15 +165,57 @@ compose service name, which resolves inside the stack and nowhere else. PHPUnit
 does not overwrite a variable that is already set, so one export is the whole
 difference; the committed `phpunit.xml` needs no profile and no edit.
 
-## 4. What this stack is not
+**`npm install` rewrites `package-lock.json` here.** This image ships npm
+10.9.7 and the committed lock was written by npm 11+, which records a `libc`
+field on optional platform packages; 10.9.7 strips them, for a 24-line deletion
+that is pure version churn. Discard it (`git checkout -- package-lock.json`)
+rather than committing it.
 
-- **MariaDB is 10.11, production is 10.3.** Everything here stays well inside
-  both, but a migration leaning on 10.11 syntax would pass in a web session and
-  fail on the host. Run anything schema-shaped in Docker before it ships.
-- **There is no `:8090` parity stack**, so `npm run smoke` and any Apache
-  behaviour — the `.htaccess` dispatch, the SPA fallback, the authorization
-  boundary around `_api/` — cannot be exercised here at all. Those want Docker.
+## 4. Docker, and what this stack is not
+
+**Docker is installed** — `docker`, `dockerd`, `containerd`, `runc`, buildx and
+the compose plugin all ship in the session image, and the cloud-environment
+documentation lists them. No daemon is running, but one starts fine:
+
+```bash
+nohup dockerd >/tmp/dockerd.log 2>&1 &     # ~1s to accept connections
+```
+
+Verified 2026-09-15: `docker run hello-world` works, and **`mariadb:10.3` runs
+and answers on TCP**, which is production's version and the one thing the native
+stack cannot give you.
+
+Two things stand between that and `npm run dev`, and the second is a wall:
+
+- **Image pulls need a registry mirror.** Docker Hub serves blobs from
+  `production.cloudfront.docker.com`, which is refused; the environment's
+  default allowlist names `production.clou**dflare**.docker.com`, an older host.
+  One letter. Work around it with
+  `/etc/docker/daemon.json` → `{"registry-mirrors": ["https://mirror.gcr.io"]}`,
+  after which all six of this repo's images pull.
+- **The `web` image cannot be built.** `docker/web/Dockerfile` runs
+  `apt-get install apache2 …` on `php:8.4-fpm`, which is Debian trixie, and
+  **no Debian mirror is on the allowlist** — `deb.debian.org` answers 403 over
+  plain HTTP and is refused at CONNECT over HTTPS, while Ubuntu's archives are
+  allowed. There is no way around this from inside the session.
+
+So **there is still no `:8090` parity stack**, and `npm run smoke` and every
+Apache behaviour — the `.htaccess` dispatch, the SPA fallback, the
+authorization boundary around `_api/` — remain out of reach. Those want a real
+Docker host. What a web session's Docker buys is a 10.3 database, which is worth
+having when something is schema-shaped.
+
+Also true regardless:
+
+- **The native MariaDB is 10.11, production is 10.3.** Everything here stays
+  well inside both, but a migration leaning on 10.11 syntax would pass in a web
+  session and fail on the host. Either run it against the `mariadb:10.3`
+  container above, or in Docker proper, before it ships.
 - **No Mailpit and no DbGate.** Read the database with `sudo mysql`.
-- **`--prefer-source` installs carry each package's test files**, so the
-  autoloader prints `Ambiguous class resolution` warnings. Harmless, and absent
-  once the allowlist lets dist archives through.
+
+### A note on the agent proxy
+
+Outbound HTTPS goes through a CONNECT proxy. It answers **405 to plain HTTP for
+every host**, allowed or not — plain-HTTP egress goes direct and is filtered
+separately. So passing `http_proxy`/`https_proxy` into a `docker build` makes
+apt fail *worse*, not better. Don't.

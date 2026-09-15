@@ -580,39 +580,41 @@ CI's `build` job covers the artifact.
 
 A Husky pre-commit hook runs `lint-staged` on staged files.
 
-### Claude Code web sessions (no Docker)
+### Claude Code web sessions
 
-Web sessions have no Docker daemon. `tools/ensure-dev-stack.sh` (via the
-cross-platform `tools/ensure-dev-stack.mjs` entry) detects a web session
-(`$CLAUDE_CODE_REMOTE=true`, `docker info` failing) and stands up an equivalent
-stack natively: MariaDB via `apt`, `lescanetons` + `lescanetons_test` created
-empty (Laravel's own migrations populate them), and `api/.env` generated from
+A web session starts with no Docker daemon running, so `npm run dev` is out.
+`tools/ensure-dev-stack.sh` (via the cross-platform `tools/ensure-dev-stack.mjs`
+entry) detects that (`$CLAUDE_CODE_REMOTE=true`, `docker info` failing) and
+stands up an equivalent stack natively: MariaDB via `apt`, `lescanetons` +
+`lescanetons_test` created empty (Laravel's own migrations populate them),
+`api/`'s Composer dependencies, and `api/.env` generated from
 `api/.env.example` pointed at `127.0.0.1`. It is idempotent and a no-op when
-Docker is reachable. It is
-**not** run from the SessionStart hook — apt/DB provisioning would blow the hook
-timeout.
+Docker is reachable. It is **not** run from the SessionStart hook — apt/DB
+provisioning would blow the hook timeout.
 
 `npm run websession:init` chains `npm install` and `ensure-dev-stack` in one
-command.
+command, and is all a fresh session needs.
 
-**The Laravel suite DOES run in a web session**, and so do Pint, Larastan and
-the Scramble export — this file claimed otherwise until 2026-09-15 and it was
-never true. What blocks them is a network allowlist, not the absence of Docker:
-Composer reads metadata from packagist and then downloads every package's
-`dist` from `api.github.com`, so an environment that allows the first and not
-the second resolves fine and then 403s on every download, reporting it as
-`Could not authenticate against github.com`. Git keeps working throughout,
-because git traffic takes the GitHub proxy rather than the allowlist, which is
-what makes the failure so confusing.
+**The Laravel suite runs in a web session**, and so do Pint, Larastan and the
+Scramble export — verified 2026-09-15, `npm run test:api` green at 585 tests.
+What breaks a naive `composer install` is **not** the network allowlist,
+whatever this file and `docs/web-session.md` said until then: GitHub traffic
+takes the session's GitHub proxy, which scopes the API to the repositories
+*attached to the session*, so every third-party `dist` zipball 403s and Composer
+reports it as `Could not authenticate against github.com`. Git is not scoped, so
+the install goes over git instead — `use-github-api false` plus a derived
+`source` for the one dist-only package. `ensure-dev-stack.sh` does both. **Do
+not try to fix this by changing the environment's network access**; it cannot
+help, and two sessions have now spent themselves proving it.
 
-**`docs/web-session.md` is the whole story** — the three hosts to allow, the
-environment setup script that makes provisioning free, and what this stack
-still cannot do. Read it before concluding anything is unrunnable here.
+**`docs/web-session.md` is the whole story.** Read it before concluding anything
+is unrunnable here — and before changing an environment setting to make it run.
 
-Two limits are real. **MariaDB is 10.11 from `apt`, not production's 10.3**, so
-anything schema-shaped still wants a Docker run before it ships. And there is
-**no `:8090` parity stack**, so `npm run smoke` and every Apache behaviour are
-out of reach in a web session.
+Two limits are real. **MariaDB from `apt` is 10.11, not production's 10.3**, so
+anything schema-shaped wants either a real Docker host or the `mariadb:10.3`
+container a hand-started `dockerd` can run (see the doc). And there is **no
+`:8090` parity stack** — the compose `web` image cannot be built here — so
+`npm run smoke` and every Apache behaviour are out of reach in a web session.
 
 ## How work is tracked
 
