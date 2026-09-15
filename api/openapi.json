@@ -4538,7 +4538,11 @@
                         "type": "string"
                     },
                     "receivedAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
                         "description": "When the visitor sent it."
                     },
                     "handledAt": {
@@ -4546,6 +4550,7 @@
                             "string",
                             "null"
                         ],
+                        "format": "date-time",
                         "description": "When somebody dealt with it, or null while it is still open."
                     },
                     "handledBy": {

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\ContactMessage;
+use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,9 +29,9 @@ class ContactMessageResource extends JsonResource
             'subject' => $this->subject,
             'message' => $this->message,
             /** When the visitor sent it. */
-            'receivedAt' => $this->created_at?->toIso8601String(),
+            'receivedAt' => $this->created_at === null ? null : Iso8601::utc($this->created_at),
             /** When somebody dealt with it, or null while it is still open. */
-            'handledAt' => $this->handled_at?->toIso8601String(),
+            'handledAt' => $this->handled_at === null ? null : Iso8601::utc($this->handled_at),
             /** Who dealt with it. Null while open, and null again if that member has since left the band. */
             'handledBy' => $this->whenLoaded(
                 'handledBy',

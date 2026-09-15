@@ -308,8 +308,11 @@ export interface ContactMessageResource {
   /** @nullable */
   subject: string | null;
   message: string;
-  /** When the visitor sent it. */
-  receivedAt: string;
+  /**
+   * When the visitor sent it.
+   * @nullable
+   */
+  receivedAt: string | null;
   /**
    * When somebody dealt with it, or null while it is still open.
    * @nullable
