@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -562,8 +563,21 @@ function MessagePanel({
             {message.email}
           </a>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          {fr.contactMessages.close}
+        {/* Icon-only, so the French moves from the label to the accessible
+            name rather than disappearing: a bare X is unreadable to a screen
+            reader, and this is the only way out of the panel. */}
+        {/* min-w-touch because the size variants only set a min HEIGHT: an
+            icon-only button is 32px wide otherwise, which is a poor tap target
+            on the 390px phones this band actually uses. */}
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="min-w-touch"
+          onClick={onClose}
+          aria-label={fr.contactMessages.close}
+        >
+          <X aria-hidden="true" />
         </Button>
       </div>
 

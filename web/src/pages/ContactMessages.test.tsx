@@ -78,6 +78,19 @@ test("expands the message named by ?open=", async () => {
   );
 });
 
+test("the close control keeps its French name once it is only an icon", async () => {
+  await renderArchive("/contact-messages?open=2");
+  await screen.findByTestId("message-panel");
+
+  // Queried by accessible name on purpose. The button shows an X and no text,
+  // so "Fermer" survives only in aria-label — drop it and this is an unlabelled
+  // button that a screen reader announces as nothing, on the only way out of
+  // the panel.
+  await userEvent.click(panel().getByRole("button", { name: "Fermer" }));
+
+  expect(screen.queryByTestId("message-panel")).not.toBeInTheDocument();
+});
+
 test("hides the handle and delete controls from someone with only messages.view", async () => {
   setMockUser("demo.committee");
   await renderWithSession(<ContactMessages />, { route: "/contact-messages" });
