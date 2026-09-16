@@ -7,13 +7,17 @@ import { cn } from "@/lib/utils";
  *
  * The registry version wraps the table in its own
  * `<div className="relative w-full overflow-x-auto">`. Both pages that use this
- * already own a scroller of their own, and each one is deliberate:
+ * own a scroller of their own instead.
  *
- *   /signups_admin's is a role="region" with tabIndex={0} and its own label,
- *   because a container that scrolls has to be reachable by keyboard; and
- *   both carry a `min-w-*` on the TABLE, which is the thing that actually gives
- *   a container something to scroll -- `w-full` inside an overflow-x container
- *   is 100% OF THAT CONTAINER, so the table squeezes instead of scrolling.
+ * This paragraph used to cite `/signups_admin` as the precedent for doing that
+ * well -- a role="region" with tabIndex={0} and its own label, plus a `min-w-*`
+ * on the TABLE, which is the thing that actually gives a container something to
+ * scroll (`w-full` inside an overflow-x container is 100% OF THAT CONTAINER, so
+ * the table squeezes instead of scrolling). THAT PAGE NO LONGER EXISTS: it
+ * belonged to the `app/` front-controller app deleted in the SPA cutover, and
+ * neither surviving caller does any of it. Both are plain divs. Making them
+ * keyboard-reachable is issue #15; the rule below is still right and still
+ * load-bearing, it just has no live example any more.
  *
  * Keeping shadcn's div as well would nest two scroll containers, which on a
  * phone is a genuinely unpleasant bug: the inner one swallows the gesture and
@@ -67,10 +71,23 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
+/**
+ * DIVERGES FROM THE REGISTRY VERSION: `scope="col"`.
+ *
+ * shadcn's `TableHead` emits a bare `<th>`. In both of this project's tables it
+ * is a column header in a single header row, so `scope="col"` is the right
+ * default and nothing in the SPA declared one before this.
+ *
+ * It is written ABOVE `{...props}` on purpose. JSX takes the last occurrence,
+ * so putting it below would make a caller's `scope="row"` silently vanish —
+ * `table.test.tsx` pins the override to keep that honest. Re-vendoring from
+ * the registry drops this; put it back.
+ */
 function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope="col"
       className={cn(
         "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className,
