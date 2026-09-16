@@ -131,6 +131,46 @@ The peak is still the peak, so **do not fill the disk with anything else first**
 time this was measured. `df -h /` reporting `Avail` at 0 with low `Used` means
 the allowance is spent, not that the machine is broken.
 
+### One install at a time, across processes
+
+Four things install `api/vendor`, and until 2026-09-16 none of them knew about
+the others:
+
+| Entry point | Reached by |
+| --- | --- |
+| `tools/ensure-dev-stack.sh` | `npm run websession:init` |
+| `tools/pint.mjs` | `npm run lint:api` — **and every `git commit`**, via Husky and lint-staged |
+| `tools/phpstan.mjs` | `npm run lint:types` |
+| `tools/openapi.mjs` | `npm run openapi` |
+
+Each self-heals a missing `api/vendor`. Here that install takes minutes rather
+than seconds, so two of them overlapping is ordinary rather than unlucky — and
+one of the triggers is *committing*, which is what an agent does in the middle
+of a task.
+
+MEASURED 2026-09-16: a provisioning run and a pre-commit Pint ran together,
+wrote the same vendor tree and the same VCS mirror, took phpstan's mirror alone
+to 15 GB against the 2.9 GB one writer produces, and ended with no
+`vendor/autoload.php` at all. Killing one left its `git fetch` orphaned and
+still writing into the shared mirror, which is the same failure a second time.
+
+They now share a lock: a directory `.api-vendor-install.lock` at the repo root,
+holding the owner's pid. `tools/api-vendor.mjs` implements it for the three Node
+tools and `ensure-dev-stack.sh` implements the same protocol in shell, so a Node
+tool and the script serialise against each other rather than only among
+themselves. `mkdir` is the atomic step; "test then create" is not.
+
+Two properties matter:
+
+- **A waiter re-checks and skips.** It does not queue its own install behind
+  the first. One install is the point; installs in an orderly line is the same
+  wasted session, just tidier.
+- **A lock whose holder is gone is taken over**, not waited on. A Composer
+  killed mid-clone would otherwise wedge every later run until the session ends.
+
+If a run ever reports waiting on an install that is not happening, delete
+`.api-vendor-install.lock` and try again.
+
 ## 2. The environment setup script
 
 Provisioning belongs in the environment's **Setup script**, which runs once

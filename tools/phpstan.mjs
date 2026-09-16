@@ -21,21 +21,18 @@
 // map and package discovery both have to be real.
 //
 // Usage: node tools/phpstan.mjs [extra phpstan args]
-import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-
+import { ensureApiVendor } from './api-vendor.mjs';
 import { runInPhp } from './php-in-docker.mjs';
 
 const args = process.argv.slice(2);
 
-if (!existsSync('api/vendor/bin/phpstan')) {
-  console.log('phpstan: api/vendor missing — installing the Laravel API dev dependencies once...');
-  execFileSync(
-    process.execPath,
-    ['tools/composer.mjs', 'install', '--working-dir=api', '--no-interaction', '--no-progress'],
-    { stdio: 'inherit' }
-  );
-}
+// NOTE the missing --no-scripts, which is deliberate and explained above: the
+// autoload map and package discovery both have to be real for Larastan.
+ensureApiVendor({
+  marker: 'api/vendor/bin/phpstan',
+  label: 'phpstan',
+  args: ['install', '--working-dir=api', '--no-interaction', '--no-progress'],
+});
 
 // --memory-limit: Larastan holds the whole framework's type graph, and the
 // default 128M is not enough to finish this project's app/ + tests/.

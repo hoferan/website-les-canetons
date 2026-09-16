@@ -89,3 +89,7 @@ prod-*.sql
 Thumbs.db
 desktop.ini
 .idea/
+
+# Cross-process lock held while api/vendor is being installed
+# (tools/api-vendor.mjs and tools/ensure-dev-stack.sh share it).
+/.api-vendor-install.lock/

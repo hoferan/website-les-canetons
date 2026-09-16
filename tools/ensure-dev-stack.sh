@@ -148,8 +148,69 @@ sudo mysql -e "
 # files, so the autoloader prints "Ambiguous class resolution" warnings. Those
 # are harmless. See docs/web-session.md.
 
+# ONE INSTALL AT A TIME, ACROSS PROCESSES. This script is not the only thing
+# that installs api/vendor: pint, phpstan and openapi each self-heal a missing
+# one, and pint is reached by every `git commit` through Husky. Two installs
+# running together write the same vendor tree and the same Composer VCS mirror.
+# MEASURED 2026-09-16: that took the mirror to 15 GB against a documented 3 GB
+# and finished with no autoload.php at all.
+#
+# The protocol is shared with tools/api-vendor.mjs, which the three Node tools
+# use — same lock directory, same pid file, same takeover rule — so a Node tool
+# and this script serialise against each other, not just among themselves.
+# mkdir is the atomic step; "test then create" is not.
+VENDOR_LOCK_DIR="$PROJECT_DIR/.api-vendor-install.lock"
+VENDOR_LOCK_HELD=0
+
+release_vendor_lock() {
+  [ "$VENDOR_LOCK_HELD" = 1 ] || return 0
+  rm -rf "$VENDOR_LOCK_DIR"
+  VENDOR_LOCK_HELD=0
+}
+
+# Returns with the lock held, or with api/vendor already installed by whoever
+# held it. A lock whose holder is gone is taken over rather than waited on:
+# this session killed a Composer mid-clone, and without takeover every later
+# run would wait for a process that will never finish.
+acquire_vendor_lock() {
+  local waited=0 holder
+  while ! mkdir "$VENDOR_LOCK_DIR" 2>/dev/null; do
+    [ -f "$PROJECT_DIR/api/vendor/autoload.php" ] && return 0
+
+    holder="$(cat "$VENDOR_LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+      echo "    process $holder left an install lock behind and is gone - taking it over"
+      rm -rf "$VENDOR_LOCK_DIR"
+      continue
+    fi
+
+    if [ "$waited" -ge 1200 ]; then
+      echo
+      echo "  ! Waited 20 minutes for another process to finish installing api/vendor."
+      echo "    If nothing is installing, delete $VENDOR_LOCK_DIR and try again."
+      echo
+      exit 1
+    fi
+
+    [ "$waited" -eq 0 ] && echo "    another process is installing api/vendor - waiting for it"
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  printf '%s' "$$" > "$VENDOR_LOCK_DIR/pid"
+  VENDOR_LOCK_HELD=1
+}
+
 if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
   echo "==> Installing api/ Composer dependencies (from git sources)"
+
+  acquire_vendor_lock
+  trap release_vendor_lock EXIT INT TERM
+fi
+
+# Re-tested, because acquire_vendor_lock may have spent minutes waiting for
+# another process that installed it for us.
+if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
 
   composer config --global use-github-api false
 
@@ -167,7 +228,7 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
     cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
     rm -f "$COMPOSER_LOCK_BACKUP"
   }
-  trap restore_composer_lock EXIT INT TERM
+  trap 'restore_composer_lock; release_vendor_lock' EXIT INT TERM
 
   node "$PROJECT_DIR/tools/composer-lock-git-sources.mjs" "$COMPOSER_LOCK"
 
@@ -214,6 +275,8 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
   echo "==> Reclaiming disk (vendor .git dirs and the Composer VCS cache)"
   find "$PROJECT_DIR/api/vendor" -type d -name .git -prune -exec rm -rf {} + 2>/dev/null || true
   composer clear-cache --quiet || true
+
+  release_vendor_lock
 fi
 
 # ----------------------------------------------------------------- api/.env
