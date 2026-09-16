@@ -1376,7 +1376,7 @@ function toInboxItem(message: ContactMessageResource): InboxItemResource {
     kind: "contactMessage",
     id: message.id,
     title: `${message.firstName} ${message.lastName}`.trim(),
-    summary: message.subject ?? limitedTo(message.message, 120),
+    summary: message.subject || limitedTo(message.message, 120),
     // `receivedAt` is non-null on ContactMessageResource, so this is a plain
     // pass-through rather than a fallback for a nullable field.
     arrivedAt: message.receivedAt,
