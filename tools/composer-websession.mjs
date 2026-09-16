@@ -25,17 +25,24 @@
 // ~200 KB zipball into a full-history clone, and one package dominates
 // completely:
 //
-//   phpstan/phpstan mirror   2.9 GB      MEASURED 2026-09-16
-//   everything else, total   ~0.6 GB
+//   phpstan/phpstan mirror alone   2.9 GB
+//   the rest of the install         3.4 GB VCS cache, 6m52s wall
 //
-// phpstan/phpstan is the distribution repo: every release commits a compiled
-// phar, and binaries do not delta-compress between versions. 857 releases of
-// that is the gigabytes and most of the minutes — for a tool that this project
-// only ever runs through `npm run lint:types`, which CI's lint-api job already
-// runs on every pull request.
+// MEASURED 2026-09-16, the second figure from a cold run with the pair already
+// omitted. phpstan/phpstan is the distribution repo: every release commits a
+// compiled phar, and binaries do not delta-compress between versions, so 857
+// releases of it is ~2.9 GB on its own — for a tool this project runs only
+// through `npm run lint:types`, which CI's lint-api job already runs on every
+// pull request. So a web session skips it, and CI is the gate.
 //
-// So a web session skips it, and CI is the gate. Removing rather than
-// tolerating is deliberate: leaving it in the lock means cloning it.
+// IT IS NOT THE WHOLE COST, and an earlier version of this comment implied it
+// was. PHPUnit's dependencies each VENDOR a phpstan.phar into their own git
+// history — sebastian/cli-parser, complexity, object-reflector, php-invoker and
+// their siblings, ~28 MB a copy and several copies deep — and laravel/pint's
+// mirror is 621 MB. Those packages are needed, so they stay, and the remaining
+// 3.4 GB is theirs. Removing this pair roughly halves the install; it does not
+// make it cheap. The cure for the rest is a treeless (--filter=blob:none)
+// clone, which no longer downloads historical phars at all.
 //
 // WHY THESE TWO NAMES. This repo never requires phpstan directly — larastan
 // pulls it in. Only larastan hard-requires phpstan, and nothing hard-requires

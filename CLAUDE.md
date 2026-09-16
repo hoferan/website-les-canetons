@@ -597,9 +597,11 @@ command, and is all a fresh session needs.
 
 **The Laravel suite runs in a web session**, and so do Pint and the Scramble
 export — verified 2026-09-15, `npm run test:api` green at 585 tests. **Larastan
-does not, by choice since 2026-09-16:** `phpstan/phpstan` was 2.9 GB of a 3.5 GB
-install and most of its wall time, so a web session omits it and CI's `lint-api`
-job is the gate. `npm run lint:types` there prints that and exits 0 — which
+does not, by choice since 2026-09-16:** `phpstan/phpstan` is a 2.9 GB clone from
+git sources, about half of what provisioning cost, so a web session omits it and
+CI's `lint-api` job is the gate. The other half is PHPUnit's dependencies, which
+vendor the same phar into their own history and cannot be dropped —
+`docs/web-session.md` has the measurements. `npm run lint:types` there prints that and exits 0 — which
 means `npm run check` can be green in a web session without any PHP having been
 type-checked. Push and read the PR.
 What breaks a naive `composer install` is **not** the network allowlist,

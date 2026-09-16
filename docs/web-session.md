@@ -82,8 +82,9 @@ All three are needed, and each fails in its own quiet way without the others:
    autoloader. It looks like a total failure and is one package short.
 
    It was given a derived git source until 2026-09-16. It is now simply not
-   installed, because it is also **2.9 GB of a 3.5 GB install** and most of its
-   wall time, for a tool this project runs only through `npm run lint:types`.
+   installed, because it is also **2.9 GB on its own**, for a tool this project
+   runs only through `npm run lint:types`. That roughly halves the install; see
+   *What the install still costs* below for the half that remains.
 3. **`COMPOSER_PROCESS_TIMEOUT=0`.** Composer kills any child process after
    300s. The clone that used to exceed it was `phpstan/phpstan` — a built phar
    across 857 tags — which is no longer installed; this stays because the
@@ -106,6 +107,29 @@ Removing them is safe because only larastan hard-requires phpstan and nothing
 hard-requires larastan — an invariant `tools/composer-websession.test.mjs`
 checks against the real lock, so a future dev tool that requires either name
 fails a test here rather than provisioning for the next person.
+
+### What the install still costs
+
+MEASURED 2026-09-16, a cold run with the pair already omitted:
+
+| | |
+| --- | --- |
+| Wall time | **6m52s** |
+| VCS mirror cache, before `composer clear-cache` | **3.4 GB** |
+| `api/vendor`, before the `.git` prune | **4.0 GB** |
+| `api/vendor`, after it | **908 MB** |
+
+**Dropping phpstan did not fix the phar problem, it only halved it.** The phars
+are everywhere: PHPUnit's own dependencies vendor a `phpstan.phar` into their
+committed history — `sebastian/cli-parser` carries five copies at ~28 MB each,
+and `complexity`, `object-reflector`, `php-invoker` and `lines-of-code` are the
+same — while `laravel/pint`'s mirror is 621 MB. Those packages are needed, so
+they stay.
+
+The real cure is a **treeless clone**: `git clone --filter=blob:none` fetches
+blobs on demand, so a historical phar nobody checks out is never downloaded.
+Composer has no flag for it, so it would mean pre-seeding its VCS cache
+ourselves. Not done, and worth measuring before anyone believes a number for it.
 
 **What you give up, and where it is caught instead.** `npm run lint:types` does
 not run in a web session: `tools/phpstan.mjs` says so and exits 0, which keeps

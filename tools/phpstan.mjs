@@ -31,8 +31,8 @@ const args = process.argv.slice(2);
 // NOT INSTALLED IN A WEB SESSION, and this exits 0 rather than failing.
 //
 // There the install runs from git sources, where phpstan/phpstan alone is
-// 2.9 GB and most of the wall time of provisioning the whole API — a built
-// phar across 857 tags. tools/composer-websession.mjs therefore leaves it
+// 2.9 GB — a built phar across 857 tags — roughly half of what provisioning
+// the API used to cost. tools/composer-websession.mjs therefore leaves it
 // and larastan out, so the binary is simply absent and self-healing it here
 // would reinstate the cost this is meant to remove.
 //

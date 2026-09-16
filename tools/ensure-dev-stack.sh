@@ -144,9 +144,11 @@ sudo mysql -e "
 #   2. No static analysis. larastan and phpstan/phpstan are removed from the
 #      lock before installing — see tools/composer-websession.mjs. phpstan
 #      is the only package here that publishes no source, so it would need a
-#      derived one; it is also 2.9 GB of the 3.5 GB this install used to cost,
-#      for a tool only `npm run lint:types` uses and CI's lint-api job already
-#      runs on every pull request. Skipping it retires both problems.
+#      derived one; it is also a 2.9 GB clone on its own, for a tool only
+#      `npm run lint:types` uses and CI's lint-api job already runs on every
+#      pull request. Skipping it retires both problems — and halves the
+#      install rather than fixing it, because PHPUnit's dependencies vendor
+#      the same phar into their own history. See docs/web-session.md.
 #
 # The cost is that source installs are slower and carry each package's test
 # files, so the autoloader prints "Ambiguous class resolution" warnings. Those
@@ -265,13 +267,16 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
     exit 1
   fi
 
-  restore_composer_lock
+  restore_composer_files
   trap - EXIT INT TERM
 
   # A source install is EXPENSIVE ON DISK, and a web session's writable space is
-  # a fixed per-session allowance rather than a real filesystem. MEASURED here:
-  # api/vendor 19 GB, because --prefer-source leaves a full-history .git in every
-  # one of the 121 packages, plus an 18 GB VCS mirror cache underneath it. That
+  # a fixed per-session allowance rather than a real filesystem. MEASURED
+  # 2026-09-16, without the static-analysis pair: api/vendor 4.0 GB and a 3.4 GB
+  # VCS mirror cache, because --prefer-source leaves a full-history .git in every
+  # package — and PHPUnit's dependencies each carry a vendored phpstan.phar
+  # (~28 MB a copy, several copies deep) in that history. An earlier measurement
+  # of 19 GB + 18 GB was taken when phpstan/phpstan was installed too. That
   # is enough to exhaust the allowance outright — this script hit
   # "fatal: ... write error. Out of diskspace" mid-clone and left no
   # vendor/autoload.php behind.
