@@ -595,8 +595,13 @@ provisioning would blow the hook timeout.
 `npm run websession:init` chains `npm install` and `ensure-dev-stack` in one
 command, and is all a fresh session needs.
 
-**The Laravel suite runs in a web session**, and so do Pint, Larastan and the
-Scramble export — verified 2026-09-15, `npm run test:api` green at 585 tests.
+**The Laravel suite runs in a web session**, and so do Pint and the Scramble
+export — verified 2026-09-15, `npm run test:api` green at 585 tests. **Larastan
+does not, by choice since 2026-09-16:** `phpstan/phpstan` was 2.9 GB of a 3.5 GB
+install and most of its wall time, so a web session omits it and CI's `lint-api`
+job is the gate. `npm run lint:types` there prints that and exits 0 — which
+means `npm run check` can be green in a web session without any PHP having been
+type-checked. Push and read the PR.
 What breaks a naive `composer install` is **not** the network allowlist,
 whatever this file and `docs/web-session.md` said until then: GitHub traffic
 takes the session's GitHub proxy, which scopes the API to the repositories

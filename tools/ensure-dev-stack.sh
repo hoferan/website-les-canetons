@@ -45,13 +45,13 @@ fi
 export COMPOSER_ALLOW_SUPERUSER=1
 
 # Composer kills any child process after 300s by default, and the git install
-# below trips it. phpstan/phpstan carries a built phar across its whole history
-# (857 tags), so cloning it is slow even from the local VCS mirror — and slower
-# still here, because all 121 packages clone at once and contend for the disk.
-# MEASURED: it times out at 300s on a cold cache and succeeds on a warm one,
-# which is exactly the shape of bug that passes when you test it and fails for
-# the next person. 0 disables the timeout rather than picking a bigger number
-# to be wrong about later.
+# below used to trip it on phpstan/phpstan — a built phar across 857 tags, slow
+# to clone even from a local mirror. That package is no longer installed here
+# (see the block below), so the known trigger is gone; this stays because all
+# remaining packages still clone at once and contend for the disk, and because
+# the failure it prevents is the shape that passes when you test it on a warm
+# cache and fails for the next person. 0 disables the timeout rather than
+# picking a bigger number to be wrong about later.
 export COMPOSER_PROCESS_TIMEOUT=0
 
 # ------------------------------------------------------------------ MariaDB
@@ -141,8 +141,12 @@ sudo mysql -e "
 #
 #   1. use-github-api=false. Left true, Composer turns a GitHub source back
 #      into an API zipball download, so --prefer-source silently does not.
-#   2. A `source` for the one package that publishes none (phpstan/phpstan),
-#      derived from its own dist URL — see tools/composer-lock-git-sources.mjs.
+#   2. No static analysis. larastan and phpstan/phpstan are removed from the
+#      lock before installing — see tools/composer-websession.mjs. phpstan
+#      is the only package here that publishes no source, so it would need a
+#      derived one; it is also 2.9 GB of the 3.5 GB this install used to cost,
+#      for a tool only `npm run lint:types` uses and CI's lint-api job already
+#      runs on every pull request. Skipping it retires both problems.
 #
 # The cost is that source installs are slower and carry each package's test
 # files, so the autoloader prints "Ambiguous class resolution" warnings. Those
@@ -214,23 +218,31 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
 
   composer config --global use-github-api false
 
-  # The lock is patched IN PLACE because Composer has no flag for "use this
-  # other lock file", and restored unconditionally by the trap — including when
-  # composer fails or the session interrupts it. The committed lock must never
-  # carry these entries: they exist only to work around one environment's
-  # GitHub proxy, and would follow everyone else to machines that have no such
-  # problem.
+  # BOTH FILES are patched IN PLACE, because Composer has no flag for "use this
+  # other manifest", and both are restored unconditionally by the trap —
+  # including when composer fails or the session interrupts it. Neither edit may
+  # ever be committed: a machine with no proxy problem wants its static analysis
+  # installed like everywhere else.
+  #
+  # composer.json as well as the lock, because `composer install` validates one
+  # against the other and refuses when they disagree — "Required (in
+  # require-dev) package larastan/larastan is not present in the lock file".
+  # MEASURED: patching only the lock fails in 0.7s and leaves no vendor at all.
+  COMPOSER_JSON="$PROJECT_DIR/api/composer.json"
   COMPOSER_LOCK="$PROJECT_DIR/api/composer.lock"
+  COMPOSER_JSON_BACKUP="$(mktemp)"
   COMPOSER_LOCK_BACKUP="$(mktemp)"
+  cp "$COMPOSER_JSON" "$COMPOSER_JSON_BACKUP"
   cp "$COMPOSER_LOCK" "$COMPOSER_LOCK_BACKUP"
-  restore_composer_lock() {
-    [ -f "$COMPOSER_LOCK_BACKUP" ] || return 0
-    cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
-    rm -f "$COMPOSER_LOCK_BACKUP"
+  restore_composer_files() {
+    [ -f "$COMPOSER_JSON_BACKUP" ] && cp "$COMPOSER_JSON_BACKUP" "$COMPOSER_JSON"
+    [ -f "$COMPOSER_LOCK_BACKUP" ] && cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
+    rm -f "$COMPOSER_JSON_BACKUP" "$COMPOSER_LOCK_BACKUP"
+    return 0
   }
-  trap 'restore_composer_lock; release_vendor_lock' EXIT INT TERM
+  trap 'restore_composer_files; release_vendor_lock' EXIT INT TERM
 
-  node "$PROJECT_DIR/tools/composer-lock-git-sources.mjs" "$COMPOSER_LOCK"
+  node "$PROJECT_DIR/tools/composer-websession.mjs" "$PROJECT_DIR/api"
 
   if ! composer install --working-dir="$PROJECT_DIR/api" \
     --no-interaction --no-progress --prefer-source; then
@@ -246,9 +258,9 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
     echo
     echo "        git ls-remote https://github.com/symfony/var-dumper.git"
     echo
-    echo "    and that a package has not been added whose dist is somewhere"
-    echo "    other than api.github.com, which this script cannot derive a git"
-    echo "    source for."
+    echo "    and that no new dev dependency hard-requires larastan or"
+    echo "    phpstan/phpstan, which this script omits — tools/"
+    echo "    composer-websession.test.mjs checks that invariant."
     echo
     exit 1
   fi

@@ -63,7 +63,7 @@ hand it is:
 ```bash
 export COMPOSER_PROCESS_TIMEOUT=0
 composer config --global use-github-api false
-node tools/composer-lock-git-sources.mjs api/composer.lock   # then restore it
+node tools/composer-websession.mjs api            # patches BOTH composer files
 composer install --working-dir=api --prefer-source
 ```
 
@@ -73,25 +73,45 @@ All three are needed, and each fails in its own quiet way without the others:
    GitHub *source* back into an API zipball download, so `--prefer-source` puts
    you straight back on the 403. This is the step that is easy to miss, because
    `--prefer-source` looks like it should be sufficient on its own.
-2. **A `source` for `phpstan/phpstan`.** It is the only package in this lock
-   that publishes none — dist-only on packagist, pulled in transitively by
-   larastan (this repo never requires phpstan directly). `composer install` is
-   all-or-nothing, so that single package fails all 121, and you get `vendor/`
-   with 43 of 43 vendor directories populated and **no `vendor/autoload.php`**,
-   because Composer aborts before dumping the autoloader. It looks like a total
-   failure and is one package short.
-3. **`COMPOSER_PROCESS_TIMEOUT=0`.** Composer kills any child process after
-   300s, and cloning `phpstan/phpstan` exceeds that — it carries a built phar
-   across 857 tags, and all 121 packages clone at once. It times out on a cold
-   cache and succeeds on a warm one, so it passes when you test it and fails
-   for the next person.
+2. **No static analysis.** `larastan/larastan` and `phpstan/phpstan` are
+   removed from the lock before installing. phpstan is the only package here
+   that publishes no source — dist-only on packagist, pulled in transitively by
+   larastan (this repo never requires phpstan directly) — and `composer install`
+   is all-or-nothing, so left in it fails all 121 and leaves `vendor/` populated
+   with **no `vendor/autoload.php`**, because Composer aborts before dumping the
+   autoloader. It looks like a total failure and is one package short.
 
-`tools/composer-lock-git-sources.mjs` derives that source from the package's own
-dist URL — a zipball URL names the owner, the repository and the exact commit —
-so the clone lands on the commit the archive was built from. It patches the lock
-in place and `ensure-dev-stack.sh` restores it afterwards: **the committed lock
-must never carry those entries**, since they work around one environment's proxy
-and everyone else would inherit them.
+   It was given a derived git source until 2026-09-16. It is now simply not
+   installed, because it is also **2.9 GB of a 3.5 GB install** and most of its
+   wall time, for a tool this project runs only through `npm run lint:types`.
+3. **`COMPOSER_PROCESS_TIMEOUT=0`.** Composer kills any child process after
+   300s. The clone that used to exceed it was `phpstan/phpstan` — a built phar
+   across 857 tags — which is no longer installed; this stays because the
+   remaining packages still clone at once and contend for the disk, and because
+   the failure it prevents times out on a cold cache and succeeds on a warm one,
+   so it passes when you test it and fails for the next person.
+
+`tools/composer-websession.mjs` removes the pair — from **`composer.json` and
+`composer.lock` both**, because `composer install` validates one against the
+other and refuses when they disagree (`Required (in require-dev) package
+larastan/larastan is not present in the lock file`). Patching only the lock
+fails in 0.7s and leaves no vendor at all; that is measured, not theoretical.
+
+`ensure-dev-stack.sh` restores both afterwards through a trap: **neither edit
+may ever be committed**, since a machine with no proxy problem wants its static
+analysis installed like everywhere else. Only `require-dev` and `packages-dev`
+are touched; the runtime tree the API boots from is never altered.
+
+Removing them is safe because only larastan hard-requires phpstan and nothing
+hard-requires larastan — an invariant `tools/composer-websession.test.mjs`
+checks against the real lock, so a future dev tool that requires either name
+fails a test here rather than provisioning for the next person.
+
+**What you give up, and where it is caught instead.** `npm run lint:types` does
+not run in a web session: `tools/phpstan.mjs` says so and exits 0, which keeps
+`npm run check` usable here at the cost of `check` being green without having
+type-checked any PHP. CI's `lint-api` job runs Larastan on every pull request
+and reports failures as annotations on the diff.
 
 Nothing here is a trick. `--prefer-source` and `use-github-api` are both
 documented Composer modes.
@@ -140,7 +160,7 @@ the others:
 | --- | --- |
 | `tools/ensure-dev-stack.sh` | `npm run websession:init` |
 | `tools/pint.mjs` | `npm run lint:api` — **and every `git commit`**, via Husky and lint-staged |
-| `tools/phpstan.mjs` | `npm run lint:types` |
+| `tools/phpstan.mjs` | `npm run lint:types` — **no longer installs in a web session**, see §1 |
 | `tools/openapi.mjs` | `npm run openapi` |
 
 Each self-heals a missing `api/vendor`. Here that install takes minutes rather
@@ -193,10 +213,10 @@ npm ci || true
 export COMPOSER_ALLOW_SUPERUSER=1
 export COMPOSER_PROCESS_TIMEOUT=0
 composer config --global use-github-api false || true
-node tools/composer-lock-git-sources.mjs api/composer.lock || true
+node tools/composer-websession.mjs api || true
 composer install --working-dir=api --no-interaction --no-progress \
   --prefer-source || true
-git checkout -- api/composer.lock || true
+git checkout -- api/composer.json api/composer.lock || true
 ```
 
 Keep every line `|| true`: a setup script that exits non-zero fails the whole

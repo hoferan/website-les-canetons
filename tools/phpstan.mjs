@@ -21,10 +21,33 @@
 // map and package discovery both have to be real.
 //
 // Usage: node tools/phpstan.mjs [extra phpstan args]
+import { existsSync } from 'node:fs';
+
 import { ensureApiVendor } from './api-vendor.mjs';
 import { runInPhp } from './php-in-docker.mjs';
 
 const args = process.argv.slice(2);
+
+// NOT INSTALLED IN A WEB SESSION, and this exits 0 rather than failing.
+//
+// There the install runs from git sources, where phpstan/phpstan alone is
+// 2.9 GB and most of the wall time of provisioning the whole API — a built
+// phar across 857 tags. tools/composer-websession.mjs therefore leaves it
+// and larastan out, so the binary is simply absent and self-healing it here
+// would reinstate the cost this is meant to remove.
+//
+// Exiting 0 keeps `npm run check` usable in the environment being optimised.
+// The trade is real and deliberate: `check` is then green there WITHOUT having
+// type-checked any PHP, so CI's lint-api job is the gate — it runs Larastan on
+// every pull request and reports type errors as annotations on the diff.
+// Anywhere else (a Docker host, CI, a developer's machine) this is unchanged.
+if (process.env.CLAUDE_CODE_REMOTE === 'true' && !existsSync('api/vendor/bin/phpstan')) {
+  console.log(
+    'phpstan: not installed in a Claude Code web session — static analysis is gated by CI.\n' +
+      '         See docs/web-session.md for why, and what runs here instead.'
+  );
+  process.exit(0);
+}
 
 // NOTE the missing --no-scripts, which is deliberate and explained above: the
 // autoload map and package discovery both have to be real for Larastan.

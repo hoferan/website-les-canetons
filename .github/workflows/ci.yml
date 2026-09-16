@@ -115,9 +115,16 @@ jobs:
       # Static analysis. Pint only formats — it will happily format a null
       # dereference, which is how one shipped and surfaced as a PHPUnit warning
       # nobody reads. Level 5, with api/phpstan.neon explaining why not higher.
+      #
+      # --error-format=github emits GitHub annotations, so a type error lands
+      # ON THE DIFF rather than inside a log somebody has to open. That matters
+      # more since 2026-09-16: a Claude Code web session no longer installs
+      # phpstan at all (it was 2.9 GB and most of the provisioning time — see
+      # docs/web-session.md), so this job is the FIRST place a type error is
+      # seen rather than the second.
       - name: Larastan (api/)
         working-directory: api
-        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress --error-format=github
       # Known-vulnerability check against composer.lock.
       #
       # ADDED 2026-09-08 because nobody had ever run one, and the first run
@@ -276,6 +283,14 @@ jobs:
         run: npm run lint:css
       - name: Prettier
         run: npm run format:check
+      # The photograph budget: longest edge 1920px, 600 KB, with exemptions by
+      # name in tools/image-budget.mjs. It has always been part of
+      # `npm run check` and was never gated here, so the only thing standing
+      # between a 19 MB camera original and the repository was a developer
+      # remembering to run check — on the one file type git makes expensive to
+      # take back out.
+      - name: Image budget
+        run: npm run guard:images
 
   # Playwright, in a real browser. SEPARATE FROM `assets` ON PURPOSE: it needs a
   # browser download and its own dev server, which is a minute of setup no other
