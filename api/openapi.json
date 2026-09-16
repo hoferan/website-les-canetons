@@ -4386,7 +4386,7 @@
         "/contact": {
             "post": {
                 "operationId": "contact.store",
-                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message for the committee to read and answers\n`{\"ok\": true}`. Nothing is sent back to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message and answers `{\"ok\": true}`. The committee reads it in\ntheir inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
                 "summary": "Send a message to the committee",
                 "tags": [
                     "Public forms"
@@ -4423,7 +4423,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Accepted and sent to the committee. Nothing is stored beyond the message itself.",
+                        "description": "Stored for the committee to read in their inbox. Nothing is sent to the address given.",
                         "content": {
                             "application/json": {
                                 "schema": {

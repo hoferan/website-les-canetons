@@ -23,13 +23,13 @@ class ContactController extends Controller
      * submitted, because one less than two seconds old is refused. Rate
      * limited to 10 a minute per IP.
      *
-     * Stores the message for the committee to read and answers
-     * `{"ok": true}`. Nothing is sent back to the address given.
+     * Stores the message and answers `{"ok": true}`. The committee reads it in
+     * their inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.
      *
      * A missing or malformed field answers `400 validation_failed`, with each
      * problem named in `fields[]`.
      */
-    #[Response(200, 'Accepted and sent to the committee. Nothing is stored beyond the message itself.')]
+    #[Response(200, 'Stored for the committee to read in their inbox. Nothing is sent to the address given.')]
     #[Endpoint(operationId: 'contact.store')]
     public function __invoke(ContactRequest $request): JsonResponse
     {

@@ -8357,8 +8357,8 @@ export const getContactStoreUrl = () => {
  * submitted, because one less than two seconds old is refused. Rate
  * limited to 10 a minute per IP.
  *
- * Stores the message for the committee to read and answers
- * `{"ok": true}`. Nothing is sent back to the address given.
+ * Stores the message and answers `{"ok": true}`. The committee reads it in
+ * their inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.
  *
  * A missing or malformed field answers `400 validation_failed`, with each
  * problem named in `fields[]`.
