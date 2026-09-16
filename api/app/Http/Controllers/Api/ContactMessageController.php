@@ -8,6 +8,7 @@ use App\Http\Resources\ContactMessageResource;
 use App\Models\ContactMessage;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -25,6 +26,13 @@ class ContactMessageController extends Controller
      * Paginated: read `data` for the rows and `meta.total` for the count.
      */
     #[Endpoint(operationId: 'contactMessage.index')]
+    #[QueryParameter(
+        'handled',
+        'Filter by whether the message has been dealt with. `0` returns only what is still open, `1` only what has been handled. Omit it for everything.',
+        required: false,
+        type: "'0'|'1'",
+        example: '0',
+    )]
     public function index(Request $request): AnonymousResourceCollection
     {
         $messages = ContactMessage::query()

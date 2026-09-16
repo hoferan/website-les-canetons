@@ -299,8 +299,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { ContactMessageIndexHandled } from "./contactMessageIndexHandled";
 
 export type ContactMessageIndexParams = {
+  /**
+   * Filter by whether the message has been dealt with. `0` returns only what is still open, `1` only what has been handled. Omit it for everything.
+   */
+  handled?: ContactMessageIndexHandled;
   /**
    * How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.
    * @minimum 1
