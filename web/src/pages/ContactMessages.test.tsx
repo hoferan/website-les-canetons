@@ -119,3 +119,110 @@ test("the phone layout lists exactly the same people as the table", async () => 
       .map((cell) => cell.textContent),
   );
 });
+
+test("filtering to a status with nothing in it explains itself, not as an error", async () => {
+  // Overrides the list wholesale, so the fixture is exactly "every message is
+  // open" — no reliance on which of the three seeded rows happen to be
+  // handled today. Filtering to "Traités" then has nothing to show.
+  server.use(
+    http.get("/api/v1/contact-messages", () =>
+      HttpResponse.json({
+        data: [
+          {
+            id: 1,
+            firstName: "Sophie",
+            lastName: "Chappuis",
+            email: "sophie.chappuis@example.ch",
+            subject: null,
+            message: "Bonjour.",
+            receivedAt: "2026-09-08T09:15:00+00:00",
+            handledAt: null,
+            handledBy: null,
+          },
+        ],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  setMockUser("demo.direction");
+  await renderWithSession(<ContactMessages />, { route: "/contact-messages" });
+  await screen.findAllByText("Chappuis");
+
+  await userEvent.click(screen.getByRole("button", { name: "Traités" }));
+
+  const empty = await screen.findByText(/aucun message ne correspond/i);
+  expect(empty).not.toHaveAttribute("role", "alert");
+  // Distinct from the true-empty copy: there ARE messages, just none in this
+  // filter.
+  expect(screen.queryByText(/prêt à en recevoir/i)).not.toBeInTheDocument();
+});
+
+/**
+ * MUTATION-TESTED GUARD (per docs/traps.md's standing rule): reintroduce the
+ * "fetch a fresher tag immediately before the write" anti-pattern and confirm
+ * this fails, then confirm it passes again. See task-10-report.md for both
+ * runs.
+ *
+ * The scenario: open a message (the component's own read captures tag A),
+ * then move the SERVER's stored tag to B by driving a second write through
+ * the same mock store directly — exactly as if another committee member
+ * acted first, and the same technique Members.test.tsx uses for the
+ * equivalent roster guard. Clicking "Marquer comme traité" must still send
+ * the PATCH with tag A: never a tag re-read at write time, which is the
+ * whole point of a conditional write (web/src/api/ifMatch.ts).
+ *
+ * `server.events` — not a `server.use()` override — is what lets this
+ * capture the header the browser actually sent without touching or
+ * duplicating the handler's own staleness logic.
+ */
+test("writes the handled PATCH with the tag from the read the user saw, not a fresher one", async () => {
+  await renderArchive();
+
+  // Open message 3 (Dupasquier) — the component's own read, tag A.
+  await userEvent.click(table().getAllByRole("button", { name: /Lire/ })[0]!);
+  await screen.findByRole("button", { name: "Marquer comme traité" });
+
+  // Move the server's stored tag for message 3, through the mock store
+  // directly rather than through the component under test. `tagA` is read
+  // independently here — nothing has changed the message since the
+  // component's own read moments ago, so the two reads agree; this is what
+  // the assertion below actually checks the PATCH against.
+  const independentRead = await fetch("/api/v1/contact-messages/3");
+  const tagA = independentRead.headers.get("ETag");
+  expect(tagA).not.toBeNull();
+
+  await fetch("/api/v1/contact-messages/3", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "If-Match": tagA ?? "" },
+    body: JSON.stringify({ handled: true }),
+  });
+  // The server's tag for message 3 is now B — different from A, since the
+  // PATCH above changed handledAt/handledBy, which mockEntityTag hashes.
+
+  let capturedIfMatch: string | null | undefined;
+  const captureHeader = ({ request }: { request: Request }) => {
+    if (request.method === "PATCH" && request.url.includes("/contact-messages/3")) {
+      capturedIfMatch = request.headers.get("If-Match");
+    }
+  };
+  server.events.on("request:start", captureHeader);
+
+  try {
+    await userEvent.click(screen.getByRole("button", { name: "Marquer comme traité" }));
+
+    // THE LOAD-BEARING ASSERTION: the outgoing header is tag A, the read the
+    // component itself performed — never tag B, the one a re-read just
+    // before the write would have picked up.
+    expect(capturedIfMatch).toBe(tagA);
+
+    // The mock's own staleness enforcement surfaces this as a 412, since the
+    // component's tag A no longer matches the server's B. Asserted too, but
+    // it is not the half that catches the anti-pattern: a re-read immediately
+    // before the write would send tag B and this would succeed instead of
+    // refusing — passing every other test in this file while the header
+    // assertion above is what would catch it.
+    expect(await screen.findByText(/modifié cet élément entre-temps/i)).toBeInTheDocument();
+  } finally {
+    server.events.removeListener("request:start", captureHeader);
+  }
+});
