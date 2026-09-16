@@ -148,6 +148,7 @@ export const fr = {
     email: "E-mail",
     subject: "Sujet",
     message: "Message",
+    handled: "Traité",
     first_name: "Prénom",
     last_name: "Nom",
     address: "Adresse",
@@ -184,5 +185,66 @@ export const fr = {
     description: "Description",
     priceCents: "Prix",
     sortOrder: "Ordre",
+  },
+
+  /**
+   * The contact messages archive (/contact-messages).
+   *
+   * Chrome for the screen the committee reads the public's messages on — not
+   * looked up through translateApiError(), so these are read as plain
+   * `fr.contactMessages.*` values rather than i18next keys. `handledBy` and
+   * `deleteConfirmDescription` carry `{name}`/`{date}` placeholders the
+   * component fills in with a plain string replace.
+   */
+  contactMessages: {
+    heading: "Messages",
+    messageWord: "message",
+    messagesWord: "messages",
+    // {visible} and {total}, filled in by the component. Used once a filter
+    // button other than "Tous" is active, so the heading's count never claims
+    // more than the rows shown beneath it.
+    countFiltered: "{visible} sur {total} {word}",
+    filterAll: "Tous",
+    filterOpen: "Ouverts",
+    filterHandled: "Traités",
+    openStatus: "Ouvert",
+    handledStatus: "Traité",
+    read: "Lire",
+    close: "Fermer",
+    handle: "Marquer comme traité",
+    reopen: "Rouvrir",
+    delete: "Supprimer",
+    deleteConfirmTitle: "Supprimer ce message ?",
+    deleteConfirmDescription:
+      "Le message de {name} sera définitivement supprimé. Cette action est irréversible.",
+    // {name} and {date}, filled in by the component — the only member the
+    // resource itself carries who handled a message and when.
+    handledBy: "Traité par {name}, le {date}",
+    // THE NORMAL CASE, NOT AN ERROR: an inbox with nothing in it is good news.
+    empty: "Aucun message pour l’instant. Le formulaire de contact est prêt à en recevoir.",
+    emptyFiltered: "Aucun message ne correspond à ce filtre.",
+    loadError: "La liste des messages n’a pas pu être chargée.",
+    readError: "Ce message n’a pas pu être chargé. Rechargez la page.",
+  },
+
+  /**
+   * The inbox worklist (/inbox) and its nav badge.
+   *
+   * `kinds` maps the API's machine `kind` token to what a committee member
+   * reads — never render the token itself. Today there is one source,
+   * `contactMessage`; a second source adds a key here, not a branch in the
+   * page.
+   */
+  inbox: {
+    heading: "Boîte de réception",
+    kinds: {
+      contactMessage: "Message du site",
+    },
+    // THE NORMAL CASE, NOT AN ERROR: nothing waiting means the committee is
+    // caught up. Distinct wording from contactMessages.empty on purpose — that
+    // one describes an archive with nothing in it yet, this one a worklist
+    // that has been cleared.
+    empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
+    loadError: "La boîte de réception n’a pas pu être chargée.",
   },
 };

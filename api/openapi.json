@@ -29,6 +29,10 @@
             "description": "Public bookings for an event that takes them, and the guest list the committee works from."
         },
         {
+            "name": "Committee inbox",
+            "description": "The messages the public has sent, and whether anybody has dealt with them."
+        },
+        {
             "name": "Members",
             "description": "The roster, and the reference data a roster form needs. All of it behind `members.manage`."
         },
@@ -2725,6 +2729,478 @@
                 }
             }
         },
+        "/inbox/summary": {
+            "get": {
+                "operationId": "inbox.summary",
+                "description": "Deliberately not a list, so it is not enveloped: this is called on\nnavigation and should stay as small as an answer can be.",
+                "summary": "How much is waiting, for the nav badge",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "How many items are open, in total and by kind. Counts only what the caller may act on, so a member with none of the relevant permissions sees zero rather than a refusal.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "total": {
+                                            "type": "integer"
+                                        },
+                                        "counts": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "total",
+                                        "counts"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/inbox": {
+            "get": {
+                "operationId": "inbox.index",
+                "description": "Newest first across every kind. Filtered by permission rather than\nrefused: a member who may act on nothing gets an empty list, so this is\nsafe to call for anybody with a session.",
+                "summary": "Everything open that you may act on",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `InboxItemResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/InboxItemResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/contact-messages": {
+            "get": {
+                "operationId": "contactMessage.index",
+                "description": "Newest first. `?handled=0` returns only what is still open \u2014 the same\nset the inbox shows \u2014 and `?handled=1` only what has been dealt with.\nOmit the parameter for everything.\n\nPaginated: read `data` for the rows and `meta.total` for the count.",
+                "summary": "List the messages the public has sent",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "handled",
+                        "in": "query",
+                        "description": "Filter by whether the message has been dealt with. `0` returns only what is still open, `1` only what has been handled. Omit it for everything.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "0",
+                                "1"
+                            ]
+                        },
+                        "example": "0"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/ContactMessageResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "handledBy"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/contact-messages/{contactMessage}": {
+            "get": {
+                "operationId": "contactMessage.show",
+                "description": "This is the read that hands out the `ETag` the two writes below require:\na collection hands out none. A screen reads the message as it opens it\nand writes with that read's tag, never a fresher one.",
+                "summary": "Read one message",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ContactMessageResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "handledBy"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "contactMessage.handle",
+                "description": "`{\"handled\": true}` stamps who did it and when; `{\"handled\": false}`\nclears both. Reopening is not an error \u2014 a message marked handled by\nmistake is a normal thing to correct.\n\nRequires `If-Match` with the tag from reading this message. Without one\nthe request answers `428`; with a stale one, `412`.",
+                "summary": "Mark a message handled, or put it back",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/HandleContactMessageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`ContactMessageResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ContactMessageResource"
+                                        },
+                                        {
+                                            "type": "object",
+                                            "required": [
+                                                "handledBy"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "contactMessage.destroy",
+                "description": "For what the form catches that the spam guard did not. Requires\n`If-Match`, so a message somebody else has just dealt with cannot be\ndeleted by a screen that has not seen that yet.",
+                "summary": "Delete a message",
+                "tags": [
+                    "Committee inbox"
+                ],
+                "parameters": [
+                    {
+                        "name": "contactMessage",
+                        "in": "path",
+                        "required": true,
+                        "description": "The contact message ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
         "/sections": {
             "get": {
                 "operationId": "section.index",
@@ -3978,7 +4454,7 @@
         "/contact": {
             "post": {
                 "operationId": "contact.store",
-                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message for the committee to read and answers\n`{\"ok\": true}`. Nothing is sent back to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message and answers `{\"ok\": true}`. The committee reads it in\ntheir inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
                 "summary": "Send a message to the committee",
                 "tags": [
                     "Public forms"
@@ -4015,7 +4491,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Accepted and sent to the committee. Nothing is stored beyond the message itself.",
+                        "description": "Stored for the committee to read in their inbox. Nothing is sent to the address given.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -4391,6 +4867,64 @@
                 ],
                 "title": "CommitteeMemberResource"
             },
+            "ContactMessageResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "lastName": {
+                        "type": "string"
+                    },
+                    "firstName": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "subject": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "receivedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "When the visitor sent it."
+                    },
+                    "handledAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When somebody dealt with it, or null while it is still open."
+                    },
+                    "handledBy": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Who dealt with it. Null while open, and null again if that member has since left the band."
+                    }
+                },
+                "required": [
+                    "id",
+                    "lastName",
+                    "firstName",
+                    "email",
+                    "subject",
+                    "message",
+                    "receivedAt",
+                    "handledAt",
+                    "handledBy"
+                ],
+                "title": "ContactMessageResource"
+            },
             "ContactRequest": {
                 "type": "object",
                 "description": "A message sent through the public contact form.\n\nAnonymous, so it also has to satisfy the public write guard: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field that\nis present and empty, or the request answers `422 spam_suspected`.\n\nEvery field here is required. The body is capped at 5000 characters, which\nis a long letter; anything longer is refused rather than truncated.",
@@ -4536,6 +5070,55 @@
                     "myAttendance"
                 ],
                 "title": "EventResource"
+            },
+            "HandleContactMessageRequest": {
+                "type": "object",
+                "description": "Marking a message handled, or putting it back.\n\n`required` rather than defaulting to true: a PATCH with an empty body would\notherwise silently handle the message, and this endpoint is also how one is\nreopened.",
+                "properties": {
+                    "handled": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "handled"
+                ],
+                "title": "HandleContactMessageRequest"
+            },
+            "InboxItemResource": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "description": "Which source this came from, e.g. `contactMessage`."
+                    },
+                    "id": {
+                        "type": "integer",
+                        "description": "The id of the underlying row, unique only within its kind."
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "summary": {
+                        "type": "string"
+                    },
+                    "arrivedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "Where to go to deal with it, relative to the site root."
+                    }
+                },
+                "required": [
+                    "kind",
+                    "id",
+                    "title",
+                    "summary",
+                    "arrivedAt",
+                    "path"
+                ],
+                "title": "InboxItemResource"
             },
             "MemberResource": {
                 "type": "object",

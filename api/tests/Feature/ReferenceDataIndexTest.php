@@ -99,7 +99,10 @@ class ReferenceDataIndexTest extends TestCase
             array_map(fn (Permission $p) => $p->value, Permission::cases()),
             $byKey['direction']['permissions'],
         );
-        $this->assertSame(['registrations.view'], $byKey['committee']['permissions']);
+        $this->assertEqualsCanonicalizing(
+            ['registrations.view', 'messages.view'],
+            $byKey['committee']['permissions'],
+        );
     }
 
     public function test_a_role_carries_no_display_name_for_the_api_to_translate(): void

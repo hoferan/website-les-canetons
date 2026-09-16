@@ -50,10 +50,16 @@ const buttonVariants = cva(
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8",
-        "icon-lg": "size-10",
+        // THE ICON SIZES CARRY `min-w-touch` BECAUSE THE BASE ONLY SETS A
+        // MINIMUM HEIGHT. A text button reaches a usable width through its
+        // padding; an icon-only one does not, so `size-8` here would render
+        // 32px wide and 44px tall — a sliver, on the 390px phones this band
+        // actually uses. The `size-*` still sets the resting square; the
+        // minimum is what a thumb gets.
+        icon: "size-9 min-w-touch",
+        "icon-xs": "size-6 min-w-touch rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8 min-w-touch",
+        "icon-lg": "size-10 min-w-touch",
       },
     },
     defaultVariants: {

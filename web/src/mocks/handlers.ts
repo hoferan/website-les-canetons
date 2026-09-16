@@ -7,8 +7,12 @@ import type {
   AuthMe200,
   ChaseListEntryResource,
   CommitteeFunctionResource,
+  ContactMessageResource,
   ContactRequest,
   EventResource,
+  HandleContactMessageRequest,
+  InboxItemResource,
+  InboxSummary200Counts,
   MemberResource,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
@@ -73,6 +77,10 @@ const USERS = {
       "members.manage",
       "registrations.view",
       "registrations.manage",
+      // The 2026_09_15_000002 migration's own grant: `direction` reads AND
+      // clears the inbox.
+      "messages.view",
+      "messages.manage",
     ],
   },
   // Plays, organises nothing.
@@ -101,11 +109,16 @@ const USERS = {
       "members.manage",
       "registrations.view",
       "registrations.manage",
+      "messages.view",
+      "messages.manage",
     ],
   },
-  // The `committee` role's single permission. Somebody has to hold it, or the
-  // one screen it opens is never looked at — and it is the case that proves
-  // the guards read a PERMISSION rather than "is this person privileged".
+  // The `committee` role's own permissions: registrations.view is the reason
+  // the role exists, and messages.view was added by the 2026_09_15_000002
+  // migration — a prestation enquiry is committee business, so somebody in
+  // this role has to be able to read one. Both are read-only: this is the
+  // case that proves the guards read a PERMISSION rather than "is this
+  // person privileged".
   "demo.committee": {
     id: 4,
     username: "demo.committee",
@@ -113,7 +126,7 @@ const USERS = {
     lastName: "Committee",
     isPlayer: true,
     mustChangePassword: false,
-    permissions: ["registrations.view"],
+    permissions: ["registrations.view", "messages.view"],
   },
   // A FIRST LOGIN: a committee-issued password that must be replaced. A
   // session fixture with no roster row, deliberately — the five above mirror
@@ -288,7 +301,10 @@ const COMMITTEE_FUNCTIONS: CommitteeFunctionResource[] = [
 ];
 
 /**
- * The two roles the same migration seeds, with what each grants.
+ * The two roles 2026_09_07_000001 seeds, with what each grants — including
+ * the committee inbox tokens 2026_09_15_000002 granted onto both roles
+ * afterwards, which is why they are not part of that first migration's own
+ * set.
  *
  * No display name, deliberately (decision B6): the API is English without
  * exception, and the UI resolves the French from `key` through
@@ -306,9 +322,11 @@ const ROLES: RoleResource[] = [
       "members.manage",
       "registrations.view",
       "registrations.manage",
+      "messages.view",
+      "messages.manage",
     ],
   },
-  { id: 2, key: "committee", permissions: ["registrations.view"] },
+  { id: 2, key: "committee", permissions: ["registrations.view", "messages.view"] },
 ];
 
 /** The password the seeded accounts use, and so the one re-authentication takes. */
@@ -1264,6 +1282,128 @@ function guestListOf(eventId: number): {
   return { headers, rows, totals };
 }
 
+/* ------------------------------------------------------------------------ *
+ * The committee inbox
+ * ------------------------------------------------------------------------ */
+
+/**
+ * The public's own words, in the order GET /contact-messages returns them:
+ * newest first, `id` descending to match — so this array needs no re-sort
+ * before that handler hands it out.
+ *
+ * TWO OPEN, ONE HANDLED, which is what both the inbox and its summary read.
+ * One open message carries no subject, so its inbox row falls back to the
+ * opening of the body, mirroring ContactMessageSource exactly; the other
+ * carries a long one, so the archive is looked at against a body that
+ * actually wraps. The handled one carries who dealt with it and when, so the
+ * archive's "handled" column has something other than null to render.
+ */
+function initialContactMessages(): ContactMessageResource[] {
+  return [
+    {
+      id: 3,
+      firstName: "Isabelle",
+      lastName: "Dupasquier",
+      email: "isabelle.dupasquier@example.ch",
+      subject: "Prestation pour un mariage",
+      message:
+        "Bonjour, nous nous marions le 20 juin 2027 à Fribourg et aimerions beaucoup surprendre nos invités avec votre guggenmusik pendant le cocktail. Seriez-vous disponibles à cette date, et quel serait le tarif pour une prestation d'une trentaine de minutes ? Nous sommes flexibles sur l'horaire. Merci d'avance et au plaisir de vous lire.",
+      receivedAt: "2026-09-15T10:05:00+00:00",
+      handledAt: null,
+      handledBy: null,
+    },
+    {
+      id: 2,
+      firstName: "Yannick",
+      lastName: "Rossier",
+      email: "y.rossier@example.ch",
+      subject: null,
+      message:
+        "Bonjour, vous cherchez des musiciens ? Je joue de la trompette depuis trois ans et j'aimerais bien essayer une répétition.",
+      receivedAt: "2026-09-12T14:20:00+00:00",
+      handledAt: null,
+      handledBy: null,
+    },
+    {
+      id: 1,
+      firstName: "Sophie",
+      lastName: "Chappuis",
+      email: "sophie.chappuis@example.ch",
+      subject: null,
+      message:
+        "Bonjour, est-ce que les Canetons pourraient venir jouer pour l'anniversaire de mon papa le 3 mai ? C'est une petite fête de famille à Marly. Merci d'avance !",
+      receivedAt: "2026-09-08T09:15:00+00:00",
+      handledAt: "2026-09-09T07:40:00+00:00",
+      handledBy: "Dominique Direction",
+    },
+  ];
+}
+
+let contactMessages: ContactMessageResource[] = initialContactMessages();
+
+function resetContactMessages(): void {
+  contactMessages = initialContactMessages();
+}
+
+/**
+ * Mirrors Iso8601::utc's own rendering: ISO 8601, UTC, an explicit offset —
+ * `+00:00`, not `.toISOString()`'s `Z`. The real API's Carbon formatter never
+ * emits `Z`, so a write handler that did would hand a screen a timestamp
+ * shape it never sees from the server.
+ */
+function isoNowUtc(): string {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, "+00:00");
+}
+
+/** `str($message)->limit(120)` mirrored: the same suffix, the same cut. */
+function limitedTo(text: string, length: number): string {
+  return text.length > length ? `${text.slice(0, length)}...` : text;
+}
+
+/** Still open, newest first — the set both GET /inbox and its summary count. */
+function openContactMessages(): ContactMessageResource[] {
+  return contactMessages.filter((message) => message.handledAt === null);
+}
+
+/**
+ * One open message as InboxItemResource, mirroring ContactMessageSource: the
+ * subject when there is one, else the opening of the body, and a deep link
+ * back to the archive with this row already open — the inbox is a way
+ * through to the work, not a second place to do it.
+ */
+function toInboxItem(message: ContactMessageResource): InboxItemResource {
+  return {
+    kind: "contactMessage",
+    id: message.id,
+    title: `${message.firstName} ${message.lastName}`.trim(),
+    summary: message.subject || limitedTo(message.message, 120),
+    // `receivedAt` is non-null on ContactMessageResource, so this is a plain
+    // pass-through rather than a fallback for a nullable field.
+    arrivedAt: message.receivedAt,
+    path: `/contact-messages?open=${message.id}`,
+  };
+}
+
+/**
+ * Whoever is logged in, the way ContactMessageResource renders `handledBy`
+ * once a message is handled.
+ */
+function actorDisplayName(): string {
+  return `${currentUser?.firstName ?? ""} ${currentUser?.lastName ?? ""}`.trim();
+}
+
+/**
+ * Whether the caller holds `messages.view`.
+ *
+ * A plain boolean rather than another refuseWithout(), because GET /inbox and
+ * GET /inbox/summary FILTER on this permission rather than refusing its
+ * absence — mirrors InboxRegistry, whose whole point is that the nav badge is
+ * safe to call before a caller has worked out what they may do at all.
+ */
+function mayReadMessages(): boolean {
+  return currentUser?.permissions.includes("messages.view") ?? false;
+}
+
 /** Test seam: every mock store is module state, so every test must reset them all. */
 export function resetMockState(): void {
   setCurrentUser(null);
@@ -1273,6 +1413,7 @@ export function resetMockState(): void {
   resetEvents();
   resetAnswers();
   resetRegistrations();
+  resetContactMessages();
 }
 
 /** Tied to the model, not retyped as a bare string[]: a field rename in
@@ -2450,6 +2591,116 @@ const overrides = [
     options = next.filter((option) => option.eventId !== eventId || claimed.includes(option.id));
 
     return collection(optionsFor(eventId), request, 200, { ETag: optionsTag(eventId) });
+  }),
+
+  /* ---------------------------------------------------------------------- *
+   * The committee inbox
+   * ---------------------------------------------------------------------- */
+
+  // FILTERED, NOT REFUSED — mirrors InboxRegistry exactly: a caller holding
+  // none of the relevant permissions gets an empty inbox rather than a 403,
+  // because the nav badge has to stay safe to call before anybody has worked
+  // out what a session may act on.
+  http.get("/api/v1/inbox", ({ request }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    return collection(mayReadMessages() ? openContactMessages().map(toInboxItem) : [], request);
+  }),
+
+  // NOT A LIST: bare {total, counts}, matching InboxController::summary
+  // exactly. `counts` is an OBJECT even when it is empty, never `[]` — the
+  // real API forces this with an `(object)` cast, because a client reading
+  // `counts.contactMessage` against an array is a different bug.
+  http.get("/api/v1/inbox/summary", () => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    const open = mayReadMessages() ? openContactMessages().length : 0;
+    const counts: InboxSummary200Counts = mayReadMessages() ? { contactMessage: open } : {};
+    return HttpResponse.json({ total: open, counts });
+  }),
+
+  // THE ARCHIVE. Gated on messages.view, unlike the inbox above: a caller who
+  // may not read a message must not be able to count them either by paging
+  // through this instead.
+  http.get("/api/v1/contact-messages", ({ request }) => {
+    const refusal = refuseWithout("messages.view");
+    if (refusal) {
+      return refusal;
+    }
+    const handled = new URL(request.url).searchParams.get("handled");
+    const rows =
+      handled === null
+        ? contactMessages
+        : contactMessages.filter((message) => (message.handledAt !== null) === (handled === "1"));
+    return collection(rows, request);
+  }),
+
+  // ONE MESSAGE, UNWRAPPED, carrying the ETag the two writes below require —
+  // the list above hands out none, so a screen acting straight from a row
+  // would be refused with 428.
+  http.get("/api/v1/contact-messages/:id", ({ params }) => {
+    const refusal = refuseWithout("messages.view");
+    if (refusal) {
+      return refusal;
+    }
+    const message = contactMessages.find((candidate) => candidate.id === Number(params.id));
+    if (!message) {
+      return notFound();
+    }
+    return HttpResponse.json(message, { headers: { ETag: mockEntityTag(message) } });
+  }),
+
+  // Marking a message handled, or putting it back — reopening is not an
+  // error, exactly as ContactMessageController::handle documents it: a
+  // message marked handled by mistake is a normal thing to correct.
+  http.patch("/api/v1/contact-messages/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("messages.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const index = contactMessages.findIndex((candidate) => candidate.id === Number(params.id));
+    // Reading the row IS the existence check: noUncheckedIndexedAccess types
+    // contactMessages[index] as possibly undefined, and findIndex's -1 lands
+    // there too.
+    const existing = contactMessages[index];
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const body = (await request.json()) as Partial<HandleContactMessageRequest>;
+    const updated: ContactMessageResource = {
+      ...existing,
+      handledAt: body.handled ? isoNowUtc() : null,
+      handledBy: body.handled ? actorDisplayName() : null,
+    };
+    contactMessages[index] = updated;
+    return HttpResponse.json(updated, { headers: { ETag: mockEntityTag(updated) } });
+  }),
+
+  // Deleting what the spam guard did not catch. Requires If-Match, so a
+  // message somebody else has just dealt with cannot be removed by a screen
+  // that has not seen that yet.
+  http.delete("/api/v1/contact-messages/:id", ({ request, params }) => {
+    const refusal = refuseWithout("messages.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const index = contactMessages.findIndex((candidate) => candidate.id === Number(params.id));
+    const existing = contactMessages[index];
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    contactMessages.splice(index, 1);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];
 

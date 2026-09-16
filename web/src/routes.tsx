@@ -8,6 +8,7 @@ import { Agenda } from "./pages/Agenda";
 import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
+import { ContactMessages } from "./pages/ContactMessages";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventBooking } from "./pages/EventBooking";
 import { EventEdit } from "./pages/EventEdit";
@@ -18,6 +19,7 @@ import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
 import { Home } from "./pages/Home";
+import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
@@ -138,6 +140,16 @@ export function AppRoutes() {
 
           <Route element={<RequirePermission permission="members.manage" />}>
             <Route path="/members" element={<Members />} />
+          </Route>
+
+          {/* messages.view, both routes: the worklist across every open
+              source (Task 11) and the archive for one of them (Task 10). The
+              nav only offers either link to someone who holds the
+              permission, so guarding the routes on the same token keeps each
+              page consistent with its own entry. */}
+          <Route element={<RequirePermission permission="messages.view" />}>
+            <Route path="/inbox" element={<Inbox />} />
+            <Route path="/contact-messages" element={<ContactMessages />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

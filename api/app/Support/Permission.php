@@ -33,4 +33,22 @@ enum Permission: string
      * from it.
      */
     case RegistrationsManage = 'registrations.manage';
+
+    /**
+     * Reading the committee inbox, and the messages the public has sent.
+     *
+     * `committee` holds this as its second permission: a prestation enquiry is
+     * committee business, and somebody has to be able to read one.
+     */
+    case MessagesView = 'messages.view';
+
+    /**
+     * Marking a message handled, reopening it, and deleting it.
+     *
+     * SEPARATE FROM MessagesView for the same reason RegistrationsManage is
+     * separate from RegistrationsView: the token that merely looks must not
+     * carry the power to destroy. Binning a stranger's message is direction's
+     * call, and `committee` deliberately does not hold this.
+     */
+    case MessagesManage = 'messages.manage';
 }

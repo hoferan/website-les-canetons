@@ -9,10 +9,12 @@ use App\Http\Controllers\Api\CommitteeController;
 use App\Http\Controllers\Api\CommitteeFunctionController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\ContactController;
+use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\FormTokenController;
 use App\Http\Controllers\Api\GuestListExportController;
+use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
@@ -288,6 +290,40 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:registration');
         Route::delete('/registrations/{registration}', [RegistrationController::class, 'destroy'])
             ->middleware('etag:registration');
+    });
+
+    // THE INBOX NEEDS A SESSION AND NOTHING MORE. It filters by permission
+    // rather than refusing, so the nav can ask for the count without first
+    // working out whether it is allowed to — see InboxRegistry.
+    //
+    // `/inbox/summary` is written before `/inbox/{anything}` would be, if one
+    // ever exists; there is no dynamic segment here today and adding one must
+    // not shadow this.
+    Route::get('/inbox/summary', [InboxController::class, 'summary']);
+    Route::get('/inbox', [InboxController::class, 'index']);
+
+    // THE COMMITTEE INBOX. `committee` holds messages.view as its second
+    // permission — a prestation enquiry is committee business and somebody has
+    // to be able to read one — so reading is all this token grants.
+    Route::middleware('permission:messages.view')->group(function () {
+        Route::get('/contact-messages', [ContactMessageController::class, 'index']);
+
+        // The read that hands out the tag the writes below require. Gated with
+        // the readers rather than the managers, unlike /registrations/{id}:
+        // this one is also how a screen displays the message body, so the
+        // people who merely read need it too.
+        Route::get('/contact-messages/{contactMessage}', [ContactMessageController::class, 'show'])
+            ->middleware('etag:contact_message');
+    });
+
+    // Clearing the inbox, which is a different act from reading it and a
+    // different set of people: `committee` sees a prestation enquiry, and
+    // binning a stranger's message is direction's call.
+    Route::middleware('permission:messages.manage')->group(function () {
+        Route::patch('/contact-messages/{contactMessage}', [ContactMessageController::class, 'handle'])
+            ->middleware('etag:contact_message');
+        Route::delete('/contact-messages/{contactMessage}', [ContactMessageController::class, 'destroy'])
+            ->middleware('etag:contact_message');
     });
 
     // What an event OFFERS is part of the event, so this is events.manage

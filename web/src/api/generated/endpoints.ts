@@ -343,6 +343,10 @@ import type {
   CommitteeIndex200,
   CommitteeIndexParams,
   ConfigShow200,
+  ContactMessageHandle200,
+  ContactMessageIndex200,
+  ContactMessageIndexParams,
+  ContactMessageShow200,
   ContactRequest,
   ContactStore200,
   ContactStore400,
@@ -353,6 +357,10 @@ import type {
   EventResource,
   EventSeries201,
   FormTokenShow200,
+  HandleContactMessageRequest,
+  InboxIndex200,
+  InboxIndexParams,
+  InboxSummary200,
   MemberAttendanceDestroy200,
   MemberAttendanceDestroy409,
   MemberAttendanceUpdate403,
@@ -4810,6 +4818,1035 @@ export const useRegistrationOptionReplace = <
   return useMutation(getRegistrationOptionReplaceMutationOptions(options), queryClient);
 };
 
+export type inboxSummaryResponse200 = {
+  data: InboxSummary200;
+  status: 200;
+};
+
+export type inboxSummaryResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type inboxSummaryResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type inboxSummaryResponseSuccess = inboxSummaryResponse200 & {
+  headers: Headers;
+};
+export type inboxSummaryResponseError = (inboxSummaryResponse401 | inboxSummaryResponse503) & {
+  headers: Headers;
+};
+
+export type inboxSummaryResponse = inboxSummaryResponseSuccess | inboxSummaryResponseError;
+
+export const getInboxSummaryUrl = () => {
+  return `/inbox/summary`;
+};
+
+/**
+ * Deliberately not a list, so it is not enveloped: this is called on
+ * navigation and should stay as small as an answer can be.
+ * @summary How much is waiting, for the nav badge
+ */
+export const inboxSummary = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<inboxSummaryResponse> => {
+  return customFetch<inboxSummaryResponse>(getInboxSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getInboxSummaryQueryKey = () => {
+  return [`/inbox/summary`] as const;
+};
+
+export const getInboxSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getInboxSummaryQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof inboxSummary>>> = ({ signal }) =>
+    inboxSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof inboxSummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type InboxSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof inboxSummary>>>;
+export type InboxSummaryQueryError = Problem401Response | Problem503Response;
+
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxSummary>>,
+          TError,
+          Awaited<ReturnType<typeof inboxSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxSummary>>,
+          TError,
+          Awaited<ReturnType<typeof inboxSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary How much is waiting, for the nav badge
+ */
+
+export function useInboxSummary<
+  TData = Awaited<ReturnType<typeof inboxSummary>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getInboxSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type inboxIndexResponse200 = {
+  data: InboxIndex200;
+  status: 200;
+};
+
+export type inboxIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type inboxIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type inboxIndexResponseSuccess = inboxIndexResponse200 & {
+  headers: Headers;
+};
+export type inboxIndexResponseError = (inboxIndexResponse401 | inboxIndexResponse503) & {
+  headers: Headers;
+};
+
+export type inboxIndexResponse = inboxIndexResponseSuccess | inboxIndexResponseError;
+
+export const getInboxIndexUrl = (params?: InboxIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/inbox?${stringifiedParams}` : `/inbox`;
+};
+
+/**
+ * Newest first across every kind. Filtered by permission rather than
+ * refused: a member who may act on nothing gets an empty list, so this is
+ * safe to call for anybody with a session.
+ * @summary Everything open that you may act on
+ */
+export const inboxIndex = async (
+  params?: InboxIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<inboxIndexResponse> => {
+  return customFetch<inboxIndexResponse>(getInboxIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getInboxIndexQueryKey = (params?: InboxIndexParams) => {
+  return [`/inbox`, ...(params ? [params] : [])] as const;
+};
+
+export const getInboxIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getInboxIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof inboxIndex>>> = ({ signal }) =>
+    inboxIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof inboxIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type InboxIndexQueryResult = NonNullable<Awaited<ReturnType<typeof inboxIndex>>>;
+export type InboxIndexQueryError = Problem401Response | Problem503Response;
+
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params: undefined | InboxIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxIndex>>,
+          TError,
+          Awaited<ReturnType<typeof inboxIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof inboxIndex>>,
+          TError,
+          Awaited<ReturnType<typeof inboxIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Everything open that you may act on
+ */
+
+export function useInboxIndex<
+  TData = Awaited<ReturnType<typeof inboxIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: InboxIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof inboxIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getInboxIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type contactMessageIndexResponse200 = {
+  data: ContactMessageIndex200;
+  status: 200;
+};
+
+export type contactMessageIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageIndexResponseSuccess = contactMessageIndexResponse200 & {
+  headers: Headers;
+};
+export type contactMessageIndexResponseError = (
+  contactMessageIndexResponse401 | contactMessageIndexResponse403 | contactMessageIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageIndexResponse =
+  contactMessageIndexResponseSuccess | contactMessageIndexResponseError;
+
+export const getContactMessageIndexUrl = (params?: ContactMessageIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/contact-messages?${stringifiedParams}`
+    : `/contact-messages`;
+};
+
+/**
+ * Newest first. `?handled=0` returns only what is still open — the same
+ * set the inbox shows — and `?handled=1` only what has been dealt with.
+ * Omit the parameter for everything.
+ *
+ * Paginated: read `data` for the rows and `meta.total` for the count.
+ * @summary List the messages the public has sent
+ */
+export const contactMessageIndex = async (
+  params?: ContactMessageIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageIndexResponse> => {
+  return customFetch<contactMessageIndexResponse>(getContactMessageIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getContactMessageIndexQueryKey = (params?: ContactMessageIndexParams) => {
+  return [`/contact-messages`, ...(params ? [params] : [])] as const;
+};
+
+export const getContactMessageIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof contactMessageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ContactMessageIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getContactMessageIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof contactMessageIndex>>> = ({ signal }) =>
+    contactMessageIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof contactMessageIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ContactMessageIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageIndex>>
+>;
+export type ContactMessageIndexQueryError =
+  Problem401Response | Problem403Response | Problem503Response;
+
+export function useContactMessageIndex<
+  TData = Awaited<ReturnType<typeof contactMessageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params: undefined | ContactMessageIndexParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageIndex>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof contactMessageIndex>>,
+          TError,
+          Awaited<ReturnType<typeof contactMessageIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useContactMessageIndex<
+  TData = Awaited<ReturnType<typeof contactMessageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ContactMessageIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageIndex>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof contactMessageIndex>>,
+          TError,
+          Awaited<ReturnType<typeof contactMessageIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useContactMessageIndex<
+  TData = Awaited<ReturnType<typeof contactMessageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ContactMessageIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary List the messages the public has sent
+ */
+
+export function useContactMessageIndex<
+  TData = Awaited<ReturnType<typeof contactMessageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ContactMessageIndexParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageIndex>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getContactMessageIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type contactMessageShowResponse200 = {
+  data: ContactMessageShow200;
+  status: 200;
+};
+
+export type contactMessageShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type contactMessageShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageShowResponseSuccess = contactMessageShowResponse200 & {
+  headers: Headers;
+};
+export type contactMessageShowResponseError = (
+  | contactMessageShowResponse401
+  | contactMessageShowResponse403
+  | contactMessageShowResponse404
+  | contactMessageShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageShowResponse =
+  contactMessageShowResponseSuccess | contactMessageShowResponseError;
+
+export const getContactMessageShowUrl = (contactMessage: number) => {
+  return `/contact-messages/${contactMessage}`;
+};
+
+/**
+ * This is the read that hands out the `ETag` the two writes below require:
+ * a collection hands out none. A screen reads the message as it opens it
+ * and writes with that read's tag, never a fresher one.
+ * @summary Read one message
+ */
+export const contactMessageShow = async (
+  contactMessage: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageShowResponse> => {
+  return customFetch<contactMessageShowResponse>(getContactMessageShowUrl(contactMessage), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getContactMessageShowQueryKey = (contactMessage: number) => {
+  return [`/contact-messages/${contactMessage}`] as const;
+};
+
+export const getContactMessageShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof contactMessageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  contactMessage: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getContactMessageShowQueryKey(contactMessage);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof contactMessageShow>>> = ({ signal }) =>
+    contactMessageShow(contactMessage, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: contactMessage !== null && contactMessage !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type ContactMessageShowQueryResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageShow>>
+>;
+export type ContactMessageShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useContactMessageShow<
+  TData = Awaited<ReturnType<typeof contactMessageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  contactMessage: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof contactMessageShow>>,
+          TError,
+          Awaited<ReturnType<typeof contactMessageShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useContactMessageShow<
+  TData = Awaited<ReturnType<typeof contactMessageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  contactMessage: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof contactMessageShow>>,
+          TError,
+          Awaited<ReturnType<typeof contactMessageShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useContactMessageShow<
+  TData = Awaited<ReturnType<typeof contactMessageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  contactMessage: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Read one message
+ */
+
+export function useContactMessageShow<
+  TData = Awaited<ReturnType<typeof contactMessageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  contactMessage: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof contactMessageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getContactMessageShowQueryOptions(contactMessage, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type contactMessageHandleResponse200 = {
+  data: ContactMessageHandle200;
+  status: 200;
+};
+
+export type contactMessageHandleResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type contactMessageHandleResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageHandleResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageHandleResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type contactMessageHandleResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type contactMessageHandleResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type contactMessageHandleResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type contactMessageHandleResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageHandleResponseSuccess = contactMessageHandleResponse200 & {
+  headers: Headers;
+};
+export type contactMessageHandleResponseError = (
+  | contactMessageHandleResponse400
+  | contactMessageHandleResponse401
+  | contactMessageHandleResponse403
+  | contactMessageHandleResponse404
+  | contactMessageHandleResponse412
+  | contactMessageHandleResponse419
+  | contactMessageHandleResponse428
+  | contactMessageHandleResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageHandleResponse =
+  contactMessageHandleResponseSuccess | contactMessageHandleResponseError;
+
+export const getContactMessageHandleUrl = (contactMessage: number) => {
+  return `/contact-messages/${contactMessage}`;
+};
+
+/**
+ * `{"handled": true}` stamps who did it and when; `{"handled": false}`
+ * clears both. Reopening is not an error — a message marked handled by
+ * mistake is a normal thing to correct.
+ *
+ * Requires `If-Match` with the tag from reading this message. Without one
+ * the request answers `428`; with a stale one, `412`.
+ * @summary Mark a message handled, or put it back
+ */
+export const contactMessageHandle = async (
+  contactMessage: number,
+  handleContactMessageRequest: HandleContactMessageRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageHandleResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<contactMessageHandleResponse>(getContactMessageHandleUrl(contactMessage), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(handleContactMessageRequest),
+  });
+};
+
+export const getContactMessageHandleMutationKey = () => ["contactMessageHandle"] as const;
+
+export const getContactMessageHandleMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof contactMessageHandle>>,
+    TError,
+    ContactMessageHandleMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof contactMessageHandle>>,
+  TError,
+  ContactMessageHandleMutationVariables,
+  TContext
+> => {
+  const mutationKey = getContactMessageHandleMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof contactMessageHandle>>,
+    ContactMessageHandleMutationVariables
+  > = (props) => {
+    const { contactMessage, data } = props ?? {};
+
+    return contactMessageHandle(contactMessage, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ContactMessageHandleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageHandle>>
+>;
+export type ContactMessageHandleMutationBody = HandleContactMessageRequest;
+export type ContactMessageHandleMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ContactMessageHandleMutationVariables = {
+  contactMessage: number;
+  data: HandleContactMessageRequest;
+};
+
+/**
+ * @summary Mark a message handled, or put it back
+ */
+export const useContactMessageHandle = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof contactMessageHandle>>,
+      TError,
+      ContactMessageHandleMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof contactMessageHandle>>,
+  TError,
+  ContactMessageHandleMutationVariables,
+  TContext
+> => {
+  return useMutation(getContactMessageHandleMutationOptions(options), queryClient);
+};
+
+export type contactMessageDestroyResponse204 = {
+  data: void;
+  status: 204;
+};
+
+export type contactMessageDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type contactMessageDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type contactMessageDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type contactMessageDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type contactMessageDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type contactMessageDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type contactMessageDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type contactMessageDestroyResponseSuccess = contactMessageDestroyResponse204 & {
+  headers: Headers;
+};
+export type contactMessageDestroyResponseError = (
+  | contactMessageDestroyResponse401
+  | contactMessageDestroyResponse403
+  | contactMessageDestroyResponse404
+  | contactMessageDestroyResponse412
+  | contactMessageDestroyResponse419
+  | contactMessageDestroyResponse428
+  | contactMessageDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type contactMessageDestroyResponse =
+  contactMessageDestroyResponseSuccess | contactMessageDestroyResponseError;
+
+export const getContactMessageDestroyUrl = (contactMessage: number) => {
+  return `/contact-messages/${contactMessage}`;
+};
+
+/**
+ * For what the form catches that the spam guard did not. Requires
+ * `If-Match`, so a message somebody else has just dealt with cannot be
+ * deleted by a screen that has not seen that yet.
+ * @summary Delete a message
+ */
+export const contactMessageDestroy = async (
+  contactMessage: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<contactMessageDestroyResponse> => {
+  return customFetch<contactMessageDestroyResponse>(getContactMessageDestroyUrl(contactMessage), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getContactMessageDestroyMutationKey = () => ["contactMessageDestroy"] as const;
+
+export const getContactMessageDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof contactMessageDestroy>>,
+    TError,
+    ContactMessageDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof contactMessageDestroy>>,
+  TError,
+  ContactMessageDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getContactMessageDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof contactMessageDestroy>>,
+    ContactMessageDestroyMutationVariables
+  > = (props) => {
+    const { contactMessage } = props ?? {};
+
+    return contactMessageDestroy(contactMessage, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ContactMessageDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof contactMessageDestroy>>
+>;
+
+export type ContactMessageDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ContactMessageDestroyMutationVariables = { contactMessage: number };
+
+/**
+ * @summary Delete a message
+ */
+export const useContactMessageDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof contactMessageDestroy>>,
+      TError,
+      ContactMessageDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof contactMessageDestroy>>,
+  TError,
+  ContactMessageDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getContactMessageDestroyMutationOptions(options), queryClient);
+};
+
 export type sectionIndexResponse200 = {
   data: SectionIndex200;
   status: 200;
@@ -7332,8 +8369,8 @@ export const getContactStoreUrl = () => {
  * submitted, because one less than two seconds old is refused. Rate
  * limited to 10 a minute per IP.
  *
- * Stores the message for the committee to read and answers
- * `{"ok": true}`. Nothing is sent back to the address given.
+ * Stores the message and answers `{"ok": true}`. The committee reads it in
+ * their inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.
  *
  * A missing or malformed field answers `400 validation_failed`, with each
  * problem named in `fields[]`.

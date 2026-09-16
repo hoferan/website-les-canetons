@@ -190,13 +190,21 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_committee_is_not_quietly_given_the_power_to_delete_bookings(): void
     {
-        // The role exists so somebody can LOOK at the guest list. Widening
-        // registrations.view would have handed it deletion instead.
+        // The role exists so somebody can LOOK at the guest list, and (since
+        // the committee inbox) the messages the public has sent. Widening
+        // registrations.view would have handed it deletion instead; widening
+        // messages.view to messages.manage would have handed it the power to
+        // clear the inbox. Neither happened.
         $roleId = DB::table('roles')->where('key', 'committee')->value('id');
 
         $permissions = DB::table('role_permissions')->where('role_id', $roleId)
             ->pluck('permission')->all();
 
-        $this->assertSame([Permission::RegistrationsView->value], $permissions);
+        $this->assertEqualsCanonicalizing(
+            [Permission::RegistrationsView->value, Permission::MessagesView->value],
+            $permissions,
+        );
+        $this->assertNotContains(Permission::RegistrationsManage->value, $permissions);
+        $this->assertNotContains(Permission::MessagesManage->value, $permissions);
     }
 }
