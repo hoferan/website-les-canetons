@@ -184,6 +184,24 @@ before looking anywhere else:
 grep -cF '\r\n' api/openapi.json   # must be 0
 ```
 
+## Scramble: an `(object)` cast publishes as a scalar
+
+`InboxController::summary()` returns `(object) $counts` so an empty map
+serializes as `{}` rather than `[]`. Scramble has no handler for cast
+expressions, so it inferred nothing from the cast and typed `counts` as
+`string`. The JSON on the wire was correct; the published type was simply
+false.
+
+`openapi-drift` cannot catch this. It only proves the document matches what
+Scramble inferred, not that the inference was right.
+
+The fix is a `@return array{...}` docblock on the method, steering Scramble to
+the real shape. That docblock then disagrees with the native `JsonResponse`
+return type, so PHPStan needs a targeted `@phpstan-ignore return.phpDocType`
+next to it. The two travel together — drop the `@phpstan-ignore` and PHPStan
+fails on the docblock; drop the docblock and the cast is back to typing as a
+string.
+
 ## Scalar: a heading wrapped in backticks gets no route
 
 Scalar builds each heading's anchor from its **plain text**, so a heading whose
