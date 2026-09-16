@@ -38,6 +38,7 @@ class InboxController extends Controller
      *
      * @return array{total: int, counts: array<string, int>}
      */
+    // @phpstan-ignore return.phpDocType (the @return above is Scramble's, not PHP's — it steers the OpenAPI schema so `counts` types as a map of integers instead of a string)
     #[Response(200, 'How many items are open, in total and by kind. Counts only what the caller may act on, so a member with none of the relevant permissions sees zero rather than a refusal.')]
     #[Endpoint(operationId: 'inbox.summary')]
     public function summary(Request $request): JsonResponse

@@ -879,10 +879,7 @@ export const getContactMessageIndexResponseMock = (
         null,
       ]),
       message: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      receivedAt: faker.helpers.arrayElement([
-        faker.date.past().toISOString().slice(0, 19) + "Z",
-        null,
-      ]),
+      receivedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
       handledAt: faker.helpers.arrayElement([
         faker.date.past().toISOString().slice(0, 19) + "Z",
         null,
@@ -908,10 +905,7 @@ export const getContactMessageShowResponseMock = (): ContactMessageShow200 => ({
       null,
     ]),
     message: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    receivedAt: faker.helpers.arrayElement([
-      faker.date.past().toISOString().slice(0, 19) + "Z",
-      null,
-    ]),
+    receivedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     handledAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
@@ -934,10 +928,7 @@ export const getContactMessageHandleResponseMock = (): ContactMessageHandle200 =
       null,
     ]),
     message: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    receivedAt: faker.helpers.arrayElement([
-      faker.date.past().toISOString().slice(0, 19) + "Z",
-      null,
-    ]),
+    receivedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     handledAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,

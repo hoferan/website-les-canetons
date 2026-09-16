@@ -4824,10 +4824,7 @@
                         "type": "string"
                     },
                     "receivedAt": {
-                        "type": [
-                            "string",
-                            "null"
-                        ],
+                        "type": "string",
                         "format": "date-time",
                         "description": "When the visitor sent it."
                     },

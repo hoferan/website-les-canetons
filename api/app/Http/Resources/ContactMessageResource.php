@@ -29,7 +29,7 @@ class ContactMessageResource extends JsonResource
             'subject' => $this->subject,
             'message' => $this->message,
             /** When the visitor sent it. */
-            'receivedAt' => $this->created_at === null ? null : Iso8601::utc($this->created_at),
+            'receivedAt' => Iso8601::utc($this->created_at),
             /** When somebody dealt with it, or null while it is still open. */
             'handledAt' => $this->handled_at === null ? null : Iso8601::utc($this->handled_at),
             /** Who dealt with it. Null while open, and null again if that member has since left the band. */
