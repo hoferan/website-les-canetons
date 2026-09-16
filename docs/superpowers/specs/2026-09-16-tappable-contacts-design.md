@@ -147,10 +147,13 @@ into a scroll container that is not keyboard-reachable (left to #15 above). The
 address span overrides that with `whitespace-normal` and a `max-w`, so it wraps
 inside the cell.
 
-**The `<br />` at `EventRegistrations.tsx:391-393` goes.** A `<br>` is
-announced as nothing, so the cell currently reads as one run-on string —
-"jean@example.ch 079 123 45 67". Three sibling elements in a `flex flex-col`
-are announced as three facts.
+**The `<br />` at `EventRegistrations.tsx:391-393` goes** — but not for the
+reason usually given. NVDA and JAWS *do* honour a `<br>` as a line boundary in
+browse mode, so the cell is not read as one run-on string. It goes because a
+`<br>`-separated run is a single text flow: there is no element to hang the
+address's `whitespace-normal` and `max-w` on, and no three things for a
+screen-reader user to select between. Three siblings in a `flex flex-col` are
+three facts that can each be styled and reached.
 
 ### 4. `scope="col"` on `TableHead`
 
@@ -166,6 +169,23 @@ justifies stripping shadcn's own scroll wrapper on the grounds that
 deleted in the SPA cutover, and neither surviving table page does what the
 comment claims. The comment is describing dead code as if it were a live
 precedent.
+
+### Two classes that are inert unless authored exactly
+
+Both of these pass code review and pass a jsdom test while doing nothing in a
+real browser, so neither can be verified by a green suite — only by the 390px
+screenshot.
+
+- **`min-h-8` on a bare `<a>` does nothing.** `min-height` does not apply to a
+  non-replaced inline box. The link must carry `inline-flex items-center` for
+  the tap target to exist at all.
+- **`max-w-*` on a bare `<span>` does nothing**, for the same reason. The
+  address span must be `block`.
+
+And one that is a silent lie rather than inert: **`scope="col"` must be
+authored *above* `{...props}`** in `TableHead`. JSX takes the last occurrence,
+so `<th {...props} scope="col">` cannot be overridden by a caller, and this
+design's claim that it can would be false.
 
 ## Testing
 
