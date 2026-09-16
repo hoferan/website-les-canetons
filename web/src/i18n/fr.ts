@@ -218,4 +218,25 @@ export const fr = {
     loadError: "La liste des messages n’a pas pu être chargée.",
     readError: "Ce message n’a pas pu être chargé. Rechargez la page.",
   },
+
+  /**
+   * The inbox worklist (/inbox) and its nav badge.
+   *
+   * `kinds` maps the API's machine `kind` token to what a committee member
+   * reads — never render the token itself. Today there is one source,
+   * `contactMessage`; a second source adds a key here, not a branch in the
+   * page.
+   */
+  inbox: {
+    heading: "Boîte de réception",
+    kinds: {
+      contactMessage: "Message du site",
+    },
+    // THE NORMAL CASE, NOT AN ERROR: nothing waiting means the committee is
+    // caught up. Distinct wording from contactMessages.empty on purpose — that
+    // one describes an archive with nothing in it yet, this one a worklist
+    // that has been cleared.
+    empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
+    loadError: "La boîte de réception n’a pas pu être chargée.",
+  },
 };

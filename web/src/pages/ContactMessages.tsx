@@ -26,6 +26,7 @@ import {
   contactMessageHandle,
   contactMessageShow,
   getContactMessageIndexQueryKey,
+  getInboxSummaryQueryKey,
   useContactMessageIndex,
 } from "../api/generated/endpoints";
 import type { ContactMessageResource } from "../api/generated/model";
@@ -136,8 +137,15 @@ export function ContactMessages() {
   const visible = messages.filter((message) => matchesFilter(filter, message));
   const mayManage = can("messages.manage");
 
+  // Both keys, every time: the archive's own list (staying accurate for the
+  // filter buttons below) AND the inbox's badge, which lives in Layout and
+  // never remounts, so nothing else would ever move its count after a handle
+  // or delete. See Layout.tsx for the other half — navigation, not a timer.
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: getContactMessageIndexQueryKey() });
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: getContactMessageIndexQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getInboxSummaryQueryKey() }),
+    ]);
 
   /** Reads the one message, and keeps the tag that read handed out. */
   async function openMessage(id: number) {

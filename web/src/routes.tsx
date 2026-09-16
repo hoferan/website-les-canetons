@@ -19,6 +19,7 @@ import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
 import { Home } from "./pages/Home";
+import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Members } from "./pages/Members";
@@ -141,10 +142,13 @@ export function AppRoutes() {
             <Route path="/members" element={<Members />} />
           </Route>
 
-          {/* The inbox's archive for one source: open and handled alike.
-              messages.view, because reading is what `committee` holds — the
-              controls inside answer to messages.manage instead. */}
+          {/* messages.view, both routes: the worklist across every open
+              source (Task 11) and the archive for one of them (Task 10). The
+              nav only offers either link to someone who holds the
+              permission, so guarding the routes on the same token keeps each
+              page consistent with its own entry. */}
           <Route element={<RequirePermission permission="messages.view" />}>
+            <Route path="/inbox" element={<Inbox />} />
             <Route path="/contact-messages" element={<ContactMessages />} />
           </Route>
 
