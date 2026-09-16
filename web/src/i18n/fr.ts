@@ -196,6 +196,10 @@ export const fr = {
     heading: "Messages",
     messageWord: "message",
     messagesWord: "messages",
+    // {visible} and {total}, filled in by the component. Used once a filter
+    // button other than "Tous" is active, so the heading's count never claims
+    // more than the rows shown beneath it.
+    countFiltered: "{visible} sur {total} {word}",
     filterAll: "Tous",
     filterOpen: "Ouverts",
     filterHandled: "Traités",

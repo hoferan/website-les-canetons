@@ -61,6 +61,22 @@ function preview(message: ContactMessageResource): string {
   return message.message.length > 120 ? `${message.message.slice(0, 120)}…` : message.message;
 }
 
+/**
+ * The heading's count. Unfiltered, it is the whole archive; filtered, it
+ * names both numbers, so it never claims a total the rows beneath it don't
+ * back up.
+ */
+function countLabel(filter: Filter, visible: number, total: number): string {
+  const word = total > 1 ? fr.contactMessages.messagesWord : fr.contactMessages.messageWord;
+  if (filter === "all") {
+    return `${total} ${word}`;
+  }
+  return fr.contactMessages.countFiltered
+    .replace("{visible}", String(visible))
+    .replace("{total}", String(total))
+    .replace("{word}", word);
+}
+
 function matchesFilter(filter: Filter, message: ContactMessageResource): boolean {
   if (filter === "open") {
     return message.handledAt === null;
@@ -264,7 +280,7 @@ export function ContactMessages() {
         <h1 className="font-display text-4xl">{fr.contactMessages.heading}</h1>
         {total === null ? null : (
           <span className="text-ink-muted" data-testid="message-count">
-            {total} {total > 1 ? fr.contactMessages.messagesWord : fr.contactMessages.messageWord}
+            {countLabel(filter, visible.length, total)}
           </span>
         )}
       </div>

@@ -120,6 +120,21 @@ test("the phone layout lists exactly the same people as the table", async () => 
   );
 });
 
+test("the heading count agrees with the filtered rows, not the whole archive", async () => {
+  await renderArchive();
+
+  // Unfiltered: the heading names the whole archive, all three seeded rows.
+  expect(screen.getByTestId("message-count")).toHaveTextContent("3 messages");
+
+  // The fixture seeds one handled message (Chappuis) among three, so
+  // "Traités" leaves exactly one row on screen. The heading must say so
+  // rather than repeat the archive's total of three.
+  await userEvent.click(screen.getByRole("button", { name: "Traités" }));
+
+  expect(table().getAllByTestId("message-last-name")).toHaveLength(1);
+  expect(screen.getByTestId("message-count")).toHaveTextContent("1 sur 3 messages");
+});
+
 test("filtering to a status with nothing in it explains itself, not as an error", async () => {
   // Overrides the list wholesale, so the fixture is exactly "every message is
   // open" — no reliance on which of the three seeded rows happen to be
