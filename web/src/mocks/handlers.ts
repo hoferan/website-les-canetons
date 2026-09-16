@@ -1377,9 +1377,9 @@ function toInboxItem(message: ContactMessageResource): InboxItemResource {
     id: message.id,
     title: `${message.firstName} ${message.lastName}`.trim(),
     summary: message.subject ?? limitedTo(message.message, 120),
-    // Every seeded row carries one; the fallback exists only so this stays a
-    // `string` rather than reopening the nullability the resource allows.
-    arrivedAt: message.receivedAt ?? isoNowUtc(),
+    // `receivedAt` is non-null on ContactMessageResource, so this is a plain
+    // pass-through rather than a fallback for a nullable field.
+    arrivedAt: message.receivedAt,
     path: `/contact-messages?open=${message.id}`,
   };
 }

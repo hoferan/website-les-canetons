@@ -8,6 +8,7 @@ import { Agenda } from "./pages/Agenda";
 import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
 import { Contact } from "./pages/Contact";
+import { ContactMessages } from "./pages/ContactMessages";
 import { EventAttendance } from "./pages/EventAttendance";
 import { EventBooking } from "./pages/EventBooking";
 import { EventEdit } from "./pages/EventEdit";
@@ -138,6 +139,13 @@ export function AppRoutes() {
 
           <Route element={<RequirePermission permission="members.manage" />}>
             <Route path="/members" element={<Members />} />
+          </Route>
+
+          {/* The inbox's archive for one source: open and handled alike.
+              messages.view, because reading is what `committee` holds — the
+              controls inside answer to messages.manage instead. */}
+          <Route element={<RequirePermission permission="messages.view" />}>
+            <Route path="/contact-messages" element={<ContactMessages />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
