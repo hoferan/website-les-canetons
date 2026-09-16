@@ -60,6 +60,24 @@ function rowSaying(text: string) {
   return row;
 }
 
+/** The card layout's half of the pair above. */
+function cards() {
+  return screen.getByTestId("guest-cards");
+}
+
+/** The one guest card containing this text. Mirrors rowSaying. */
+function cardFor(text: string) {
+  const card = within(cards())
+    .getAllByRole("listitem")
+    .find((candidate) => candidate.textContent?.includes(text));
+
+  if (!card) {
+    throw new Error(`no guest card contains "${text}"`);
+  }
+
+  return card;
+}
+
 test("leads with the three numbers the committee acts on", async () => {
   await renderGuestList();
 
@@ -184,9 +202,12 @@ test("a correction lands on the list", async () => {
   // The panel closes only on a successful write, so its absence IS the
   // assertion that the write went through.
   await expect.poll(() => screen.queryByLabelText("Téléphone")).toBeNull();
-  // On the ROW, not with getByText: the contact cell holds the e-mail and the
-  // number separated by a <br>, so no single element's text is the number.
-  expect(rowSaying("Aebischer Jeanne")).toHaveTextContent("079 999 99 99");
+  // The number is now its own element and its own link, so this asserts the
+  // amended value AND that the new markup survives an amendment round-trip --
+  // strictly stronger than the toHaveTextContent on the row it replaces.
+  expect(
+    within(rowSaying("Aebischer Jeanne")).getByRole("link", { name: "079 999 99 99" }),
+  ).toHaveAttribute("href", "tel:0799999999");
 });
 
 /**
@@ -291,4 +312,108 @@ test("an event nobody has booked says where the form is", async () => {
 
   expect(screen.getByText(/Personne ne s’est encore inscrit/)).toBeInTheDocument();
   expect(screen.queryByTestId("guest-table")).not.toBeInTheDocument();
+});
+
+test("the table carries the address, like the card always did", async () => {
+  await renderGuestList();
+
+  // The card has rendered `booking.address` since the screen was written and
+  // the table never has, so the desktop view carried LESS than the phone view
+  // for the same row. Two hand-maintained layouts, and only one of them was
+  // updated -- see #98.
+  expect(rowSaying("Aebischer Jeanne")).toHaveTextContent("Route des Alpes 12, 1700 Fribourg");
+});
+
+/**
+ * BOTH LAYOUTS GET THE SAME THREE ASSERTIONS, deliberately. They are
+ * hand-maintained copies of one row, which is the bug class that left the
+ * table with no address for the whole life of the screen.
+ */
+test("a table row's e-mail and phone are tappable and its address is not", async () => {
+  await renderGuestList();
+
+  const row = rowSaying("Aebischer Jeanne");
+  const links = within(row).getAllByRole("link");
+
+  // Corriger and Annuler are buttons, so the only links on the row are these.
+  expect(links).toHaveLength(2);
+  expect(links[0]).toHaveAttribute("href", "mailto:jeanne.aebischer@example.ch");
+  expect(links[1]).toHaveAttribute("href", "tel:0791234567");
+  // The "no geo:, no maps URL" decision, pinned: a max:255 free-text address
+  // makes a confidently wrong pin.
+  expect(within(row).queryByRole("link", { name: /Route des Alpes/ })).toBeNull();
+});
+
+test("a card's e-mail and phone are tappable and its address is not", async () => {
+  await renderGuestList();
+
+  const card = cardFor("Aebischer");
+  const links = within(card).getAllByRole("link");
+
+  expect(links).toHaveLength(2);
+  expect(links[0]).toHaveAttribute("href", "mailto:jeanne.aebischer@example.ch");
+  expect(links[1]).toHaveAttribute("href", "tel:0791234567");
+  expect(within(card).queryByRole("link", { name: /Route des Alpes/ })).toBeNull();
+});
+
+test("the contact cell reads as three separate facts, not one run-on string", async () => {
+  await renderGuestList();
+
+  const stack = within(rowSaying("Aebischer Jeanne")).getByTestId(
+    "guest-contact",
+  ).firstElementChild;
+
+  // Asserted POSITIVELY. A lone `querySelector("br")` null check passes on an
+  // empty cell and on a cell holding a single text node, so it is never the
+  // only assertion here.
+  expect(stack?.children).toHaveLength(3);
+  expect(stack?.children[0]).toHaveTextContent("jeanne.aebischer@example.ch");
+  expect(stack?.children[1]).toHaveTextContent("079 123 45 67");
+  expect(stack?.children[2]).toHaveTextContent("Route des Alpes 12, 1700 Fribourg");
+  expect(stack?.querySelector("br")).toBeNull();
+});
+
+test("a booking with no address gets two lines, not an empty third", async () => {
+  await renderGuestList();
+
+  // Marc Python's address is null. Render it unconditionally and this fails --
+  // the card's own guard, carried across correctly.
+  const stack = within(rowSaying("Python Marc")).getByTestId("guest-contact").firstElementChild;
+
+  expect(stack?.children).toHaveLength(2);
+});
+
+test("a phone nobody can dial stays plain text on both layouts", async () => {
+  server.use(
+    http.get("*/api/v1/events/:id/registrations", () =>
+      HttpResponse.json({
+        data: [
+          {
+            id: 1,
+            firstName: "Jeanne",
+            lastName: "Aebischer",
+            email: "jeanne.aebischer@example.ch",
+            phone: "à demander",
+            address: null,
+            tableName: null,
+            choices: [],
+            guestCount: 1,
+            totalCents: null,
+            createdAt: "2026-09-01T18:24:00.000Z",
+          },
+        ],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+
+  await renderGuestList();
+
+  // The PRESENCE half is what makes this honest: assert only the absence and
+  // the test passes just as well when the override never applied or the row
+  // never rendered at all.
+  for (const scope of [rowSaying("Aebischer"), cardFor("Aebischer")]) {
+    expect(within(scope).getByText("à demander")).toBeInTheDocument();
+    expect(within(scope).queryByRole("link", { name: "à demander" })).toBeNull();
+  }
 });

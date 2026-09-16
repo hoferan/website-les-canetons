@@ -27,6 +27,7 @@ import { ApiError } from "../api/http";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
+import { ContactLink } from "../components/ContactLink";
 import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
@@ -345,9 +346,19 @@ export function EventRegistrations() {
                 <p className="text-ink">
                   {booking.lastName} {booking.firstName}
                 </p>
-                <p className="text-ink-muted">{booking.email}</p>
-                <p className="text-ink-muted">{booking.phone}</p>
-                {booking.address ? <p className="text-ink-muted">{booking.address}</p> : null}
+                {/* The address stays TEXT. No geo: link and no maps URL: this
+                    is a `max:255` free-text field that may read "c/o Famille
+                    X", so a pin built from it is confidently wrong -- the
+                    failure the 2026-08-31 audit caught in Join.tsx, by another
+                    route. The committee's use here is posting an invitation,
+                    not navigating. */}
+                <div className="flex flex-col items-start gap-tight">
+                  <ContactLink kind="email" value={booking.email} />
+                  <ContactLink kind="phone" value={booking.phone} />
+                  {booking.address ? (
+                    <span className="text-ink-muted">{booking.address}</span>
+                  ) : null}
+                </div>
                 {booking.tableName ? (
                   <p className="text-ink-muted">Table&nbsp;: {booking.tableName}</p>
                 ) : null}
@@ -383,14 +394,31 @@ export function EventRegistrations() {
               </TableHeader>
               <TableBody>
                 {bookings.map((booking) => (
-                  <TableRow key={booking.id}>
+                  // align-top: with a ~116px contact cell, the base align-middle
+                  // floats Table and Commande in the vertical middle and a
+                  // reader scanning a column down 70 rows loses the line.
+                  <TableRow key={booking.id} className="[&>td]:align-top">
                     <TableCell>
                       {booking.lastName} {booking.firstName}
                     </TableCell>
-                    <TableCell className="text-ink-muted">
-                      {booking.email}
-                      <br />
-                      {booking.phone}
+                    {/* THREE SIBLINGS, NOT A `<br>` RUN. The address needs an
+                        element of its own to carry `whitespace-normal` and a
+                        width cap -- TableCell is `whitespace-nowrap`, and a
+                        `max:255` address in a column of its own would not wrap
+                        but force the whole table wide, into a scroll container
+                        that is not keyboard-reachable yet (#15). `items-start`
+                        stops the column flex stretching each link's target
+                        across the whole cell. */}
+                    <TableCell className="text-ink-muted" data-testid="guest-contact">
+                      <div className="flex flex-col items-start gap-tight">
+                        <ContactLink kind="email" value={booking.email} />
+                        <ContactLink kind="phone" value={booking.phone} />
+                        {booking.address ? (
+                          <span className="block max-w-xs whitespace-normal">
+                            {booking.address}
+                          </span>
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell className="text-ink-muted">{booking.tableName}</TableCell>
                     <TableCell>{orderOf(booking)}</TableCell>
