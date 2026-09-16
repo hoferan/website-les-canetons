@@ -4454,7 +4454,7 @@
         "/contact": {
             "post": {
                 "operationId": "contact.store",
-                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message and answers `{\"ok\": true}`. The committee reads it in\ntheir inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
+                "description": "Anonymous, and protected against automated submission: send the\n`X-Form-Token` header from `GET /api/v1/form-token` and a `website` field\nthat is present and empty, or the request answers `422 spam_suspected`.\nFetch that token when the form is rendered rather than when it is\nsubmitted, because one less than two seconds old is refused. Rate\nlimited to 10 a minute per IP.\n\nStores the message and answers `{\"ok\": true}`. The committee reads it in\ntheir inbox at `GET /api/v1/inbox`, and is notified by mail so nobody has\nto remember to look. Nothing is sent to the address the visitor gave.\n\nA missing or malformed field answers `400 validation_failed`, with each\nproblem named in `fields[]`.",
                 "summary": "Send a message to the committee",
                 "tags": [
                     "Public forms"
@@ -4491,7 +4491,7 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Stored for the committee to read in their inbox. Nothing is sent to the address given.",
+                        "description": "Stored for the committee to read in their inbox, and mailed to them. Nothing is sent to the address the visitor gave.",
                         "content": {
                             "application/json": {
                                 "schema": {
