@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
+import { memberAttendanceUpdate } from "../api/generated/endpoints";
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventAttendance } from "./EventAttendance";
@@ -123,4 +124,105 @@ test("the silent names are copied for WhatsApp, one per line", async () => {
   expect(writeText).toHaveBeenCalledWith("Bastien Both");
 
   vi.unstubAllGlobals();
+});
+
+test("an answer already recorded can be changed", async () => {
+  // The case the screen exists for and did not handle: "non, malade", then a
+  // phone call to say they can come after all.
+  await renderChaseList();
+
+  const row = within(screen.getByTestId("chase-table"))
+    .getByText("Camille Committee")
+    .closest("tr") as HTMLElement;
+  await userEvent.click(
+    within(row).getByRole("button", { name: "Corriger la réponse de Camille Committee" }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Oui" }));
+  await userEvent.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect
+    .poll(() => screen.getByTestId("chase-counts").textContent)
+    .toContain("3 oui · 0 non");
+
+  // The reason went with the answer it was given for: "malade" against a
+  // "oui" is worse than no reason at all.
+  const corrected = within(screen.getByTestId("chase-table"))
+    .getByText("Camille Committee")
+    .closest("tr") as HTMLElement;
+  expect(within(corrected).getByText("Oui")).toBeInTheDocument();
+  expect(within(corrected).queryByText("Malade")).toBeNull();
+});
+
+test("the reason can be corrected without touching the answer", async () => {
+  await renderChaseList();
+
+  const row = within(screen.getByTestId("chase-table"))
+    .getByText("Camille Committee")
+    .closest("tr") as HTMLElement;
+  await userEvent.click(
+    within(row).getByRole("button", { name: "Corriger la réponse de Camille Committee" }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  // PRE-FILLED with what is stored: a correction starts from the answer being
+  // corrected, or saving it would silently erase the other half.
+  const reason = within(dialog).getByLabelText("Raison");
+  expect(reason).toHaveValue("Malade");
+
+  await userEvent.clear(reason);
+  await userEvent.type(reason, "Grippe");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
+
+  await expect
+    .poll(
+      () =>
+        (
+          within(screen.getByTestId("chase-table"))
+            .getByText("Camille Committee")
+            .closest("tr") as HTMLElement
+        ).textContent,
+    )
+    .toContain("Grippe");
+
+  const corrected = within(screen.getByTestId("chase-table"))
+    .getByText("Camille Committee")
+    .closest("tr") as HTMLElement;
+  expect(within(corrected).getByText("Non")).toBeInTheDocument();
+});
+
+test("the correction is offered in both layouts", async () => {
+  // BOTH LAYOUTS ARE IN THE DOM AT ONCE, and a control added to one of them
+  // only is invisible to whichever half of the band is on the other. The
+  // phone layout is the one that gets forgotten.
+  await renderChaseList();
+
+  const name = "Corriger la réponse de Camille Committee";
+  expect(
+    within(screen.getByTestId("chase-cards")).getByRole("button", { name }),
+  ).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId("chase-table")).getByRole("button", { name }),
+  ).toBeInTheDocument();
+});
+
+test("the correction is absent from the caller's own answered row (C14)", async () => {
+  // Bastien plays AND holds the permission, so once he has an answer his own
+  // row appears among the Réponses — where a correction control would 409
+  // exactly as one in the Sans réponse block would. The direction records
+  // that answer first, because he cannot record it for himself.
+  setMockUser("demo.direction");
+  await memberAttendanceUpdate(1, 3, { status: "yes" });
+
+  await renderChaseList("demo.both");
+
+  const row = within(screen.getByTestId("chase-table"))
+    .getByText("Bastien Both")
+    .closest("tr") as HTMLElement;
+
+  expect(
+    within(row).queryByRole("button", { name: "Corriger la réponse de Bastien Both" }),
+  ).toBeNull();
+  expect(within(row).getByText("Modifiable depuis le planning.")).toBeInTheDocument();
 });
