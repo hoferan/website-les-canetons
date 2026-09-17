@@ -115,4 +115,27 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | The committee's own mailbox
+    |--------------------------------------------------------------------------
+    |
+    | Where App\Mail\ContactMessageReceived goes: the mailbox somebody on the
+    | committee opens. It is a separate key from `from.address` on purpose.
+    | That one holds the SMTP credentials and is usually named noreply@ or
+    | site@, so a notification addressed there arrives where nobody looks. A
+    | server whose sending mailbox is genuinely read may set both the same,
+    | but that is the server's decision to make.
+    |
+    | NO FALLBACK TO from.address. The deploy pre-flight already guarantees
+    | every server carries this key, and a fallback would put the notification
+    | back in the unread mailbox whenever somebody left the value blank. An
+    | unset value throws instead, and ContactController logs it at `error`.
+    |
+    */
+
+    'committee' => [
+        'address' => env('MAIL_COMMITTEE_ADDRESS'),
+    ],
+
 ];

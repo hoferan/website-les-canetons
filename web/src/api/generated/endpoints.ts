@@ -8370,7 +8370,8 @@ export const getContactStoreUrl = () => {
  * limited to 10 a minute per IP.
  *
  * Stores the message and answers `{"ok": true}`. The committee reads it in
- * their inbox at `GET /api/v1/inbox`. Nothing is sent to the address given.
+ * their inbox at `GET /api/v1/inbox`, and is notified by mail so nobody has
+ * to remember to look. Nothing is sent to the address the visitor gave.
  *
  * A missing or malformed field answers `400 validation_failed`, with each
  * problem named in `fields[]`.

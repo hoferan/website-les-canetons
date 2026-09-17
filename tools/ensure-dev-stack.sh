@@ -45,13 +45,13 @@ fi
 export COMPOSER_ALLOW_SUPERUSER=1
 
 # Composer kills any child process after 300s by default, and the git install
-# below trips it. phpstan/phpstan carries a built phar across its whole history
-# (857 tags), so cloning it is slow even from the local VCS mirror — and slower
-# still here, because all 121 packages clone at once and contend for the disk.
-# MEASURED: it times out at 300s on a cold cache and succeeds on a warm one,
-# which is exactly the shape of bug that passes when you test it and fails for
-# the next person. 0 disables the timeout rather than picking a bigger number
-# to be wrong about later.
+# below used to trip it on phpstan/phpstan — a built phar across 857 tags, slow
+# to clone even from a local mirror. That package is no longer installed here
+# (see the block below), so the known trigger is gone; this stays because all
+# remaining packages still clone at once and contend for the disk, and because
+# the failure it prevents is the shape that passes when you test it on a warm
+# cache and fails for the next person. 0 disables the timeout rather than
+# picking a bigger number to be wrong about later.
 export COMPOSER_PROCESS_TIMEOUT=0
 
 # ------------------------------------------------------------------ MariaDB
@@ -141,35 +141,110 @@ sudo mysql -e "
 #
 #   1. use-github-api=false. Left true, Composer turns a GitHub source back
 #      into an API zipball download, so --prefer-source silently does not.
-#   2. A `source` for the one package that publishes none (phpstan/phpstan),
-#      derived from its own dist URL — see tools/composer-lock-git-sources.mjs.
+#   2. No static analysis. larastan and phpstan/phpstan are removed from the
+#      lock before installing — see tools/composer-websession.mjs. phpstan
+#      is the only package here that publishes no source, so it would need a
+#      derived one; it is also a 2.9 GB clone on its own, for a tool only
+#      `npm run lint:types` uses and CI's lint-api job already runs on every
+#      pull request. Skipping it retires both problems — and halves the
+#      install rather than fixing it, because PHPUnit's dependencies vendor
+#      the same phar into their own history. See docs/web-session.md.
 #
 # The cost is that source installs are slower and carry each package's test
 # files, so the autoloader prints "Ambiguous class resolution" warnings. Those
 # are harmless. See docs/web-session.md.
 
+# ONE INSTALL AT A TIME, ACROSS PROCESSES. This script is not the only thing
+# that installs api/vendor: pint, phpstan and openapi each self-heal a missing
+# one, and pint is reached by every `git commit` through Husky. Two installs
+# running together write the same vendor tree and the same Composer VCS mirror.
+# MEASURED 2026-09-16: that took the mirror to 15 GB against a documented 3 GB
+# and finished with no autoload.php at all.
+#
+# The protocol is shared with tools/api-vendor.mjs, which the three Node tools
+# use — same lock directory, same pid file, same takeover rule — so a Node tool
+# and this script serialise against each other, not just among themselves.
+# mkdir is the atomic step; "test then create" is not.
+VENDOR_LOCK_DIR="$PROJECT_DIR/.api-vendor-install.lock"
+VENDOR_LOCK_HELD=0
+
+release_vendor_lock() {
+  [ "$VENDOR_LOCK_HELD" = 1 ] || return 0
+  rm -rf "$VENDOR_LOCK_DIR"
+  VENDOR_LOCK_HELD=0
+}
+
+# Returns with the lock held, or with api/vendor already installed by whoever
+# held it. A lock whose holder is gone is taken over rather than waited on:
+# this session killed a Composer mid-clone, and without takeover every later
+# run would wait for a process that will never finish.
+acquire_vendor_lock() {
+  local waited=0 holder
+  while ! mkdir "$VENDOR_LOCK_DIR" 2>/dev/null; do
+    [ -f "$PROJECT_DIR/api/vendor/autoload.php" ] && return 0
+
+    holder="$(cat "$VENDOR_LOCK_DIR/pid" 2>/dev/null || true)"
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+      echo "    process $holder left an install lock behind and is gone - taking it over"
+      rm -rf "$VENDOR_LOCK_DIR"
+      continue
+    fi
+
+    if [ "$waited" -ge 1200 ]; then
+      echo
+      echo "  ! Waited 20 minutes for another process to finish installing api/vendor."
+      echo "    If nothing is installing, delete $VENDOR_LOCK_DIR and try again."
+      echo
+      exit 1
+    fi
+
+    [ "$waited" -eq 0 ] && echo "    another process is installing api/vendor - waiting for it"
+    sleep 5
+    waited=$((waited + 5))
+  done
+
+  printf '%s' "$$" > "$VENDOR_LOCK_DIR/pid"
+  VENDOR_LOCK_HELD=1
+}
+
 if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
   echo "==> Installing api/ Composer dependencies (from git sources)"
 
+  acquire_vendor_lock
+  trap release_vendor_lock EXIT INT TERM
+fi
+
+# Re-tested, because acquire_vendor_lock may have spent minutes waiting for
+# another process that installed it for us.
+if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
+
   composer config --global use-github-api false
 
-  # The lock is patched IN PLACE because Composer has no flag for "use this
-  # other lock file", and restored unconditionally by the trap — including when
-  # composer fails or the session interrupts it. The committed lock must never
-  # carry these entries: they exist only to work around one environment's
-  # GitHub proxy, and would follow everyone else to machines that have no such
-  # problem.
+  # BOTH FILES are patched IN PLACE, because Composer has no flag for "use this
+  # other manifest", and both are restored unconditionally by the trap —
+  # including when composer fails or the session interrupts it. Neither edit may
+  # ever be committed: a machine with no proxy problem wants its static analysis
+  # installed like everywhere else.
+  #
+  # composer.json as well as the lock, because `composer install` validates one
+  # against the other and refuses when they disagree — "Required (in
+  # require-dev) package larastan/larastan is not present in the lock file".
+  # MEASURED: patching only the lock fails in 0.7s and leaves no vendor at all.
+  COMPOSER_JSON="$PROJECT_DIR/api/composer.json"
   COMPOSER_LOCK="$PROJECT_DIR/api/composer.lock"
+  COMPOSER_JSON_BACKUP="$(mktemp)"
   COMPOSER_LOCK_BACKUP="$(mktemp)"
+  cp "$COMPOSER_JSON" "$COMPOSER_JSON_BACKUP"
   cp "$COMPOSER_LOCK" "$COMPOSER_LOCK_BACKUP"
-  restore_composer_lock() {
-    [ -f "$COMPOSER_LOCK_BACKUP" ] || return 0
-    cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
-    rm -f "$COMPOSER_LOCK_BACKUP"
+  restore_composer_files() {
+    [ -f "$COMPOSER_JSON_BACKUP" ] && cp "$COMPOSER_JSON_BACKUP" "$COMPOSER_JSON"
+    [ -f "$COMPOSER_LOCK_BACKUP" ] && cp "$COMPOSER_LOCK_BACKUP" "$COMPOSER_LOCK"
+    rm -f "$COMPOSER_JSON_BACKUP" "$COMPOSER_LOCK_BACKUP"
+    return 0
   }
-  trap restore_composer_lock EXIT INT TERM
+  trap 'restore_composer_files; release_vendor_lock' EXIT INT TERM
 
-  node "$PROJECT_DIR/tools/composer-lock-git-sources.mjs" "$COMPOSER_LOCK"
+  node "$PROJECT_DIR/tools/composer-websession.mjs" "$PROJECT_DIR/api"
 
   if ! composer install --working-dir="$PROJECT_DIR/api" \
     --no-interaction --no-progress --prefer-source; then
@@ -185,20 +260,23 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
     echo
     echo "        git ls-remote https://github.com/symfony/var-dumper.git"
     echo
-    echo "    and that a package has not been added whose dist is somewhere"
-    echo "    other than api.github.com, which this script cannot derive a git"
-    echo "    source for."
+    echo "    and that no new dev dependency hard-requires larastan or"
+    echo "    phpstan/phpstan, which this script omits — tools/"
+    echo "    composer-websession.test.mjs checks that invariant."
     echo
     exit 1
   fi
 
-  restore_composer_lock
+  restore_composer_files
   trap - EXIT INT TERM
 
   # A source install is EXPENSIVE ON DISK, and a web session's writable space is
-  # a fixed per-session allowance rather than a real filesystem. MEASURED here:
-  # api/vendor 19 GB, because --prefer-source leaves a full-history .git in every
-  # one of the 121 packages, plus an 18 GB VCS mirror cache underneath it. That
+  # a fixed per-session allowance rather than a real filesystem. MEASURED
+  # 2026-09-16, without the static-analysis pair: api/vendor 4.0 GB and a 3.4 GB
+  # VCS mirror cache, because --prefer-source leaves a full-history .git in every
+  # package — and PHPUnit's dependencies each carry a vendored phpstan.phar
+  # (~28 MB a copy, several copies deep) in that history. An earlier measurement
+  # of 19 GB + 18 GB was taken when phpstan/phpstan was installed too. That
   # is enough to exhaust the allowance outright — this script hit
   # "fatal: ... write error. Out of diskspace" mid-clone and left no
   # vendor/autoload.php behind.
@@ -214,6 +292,8 @@ if [ ! -f "$PROJECT_DIR/api/vendor/autoload.php" ]; then
   echo "==> Reclaiming disk (vendor .git dirs and the Composer VCS cache)"
   find "$PROJECT_DIR/api/vendor" -type d -name .git -prune -exec rm -rf {} + 2>/dev/null || true
   composer clear-cache --quiet || true
+
+  release_vendor_lock
 fi
 
 # ----------------------------------------------------------------- api/.env

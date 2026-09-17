@@ -147,7 +147,12 @@ and a season. Its Apache authorization boundary is **confirmed working** —
 production answers `<title>Accueil</title>` and 404s `/api/v1/config` into its
 own HTML. Two consequences follow. Their `_api/.env` still lacks the five keys
 TEST gained (`BOOTSTRAP_ADMIN_*`, `FEATURE_CALENDAR`), so the config-shape
-pre-flight refuses their next deploy until each is hand-edited. And **do not run
+pre-flight refuses their next deploy until each is hand-edited, and
+`MAIL_COMMITTEE_ADDRESS` makes six. **TEST needs that sixth one too.** It is
+the first key added since TEST caught up, so the pre-flight refuses the next
+merge to `main` until somebody sets it there. It must name a mailbox the
+committee reads, never the `MAIL_FROM_ADDRESS` beside it; `api/.env.example`
+says why. And **do not run
 `npm run put-overlay:qa` or `:prod` on their own**: the template is the SPA
 front controller and falls back to `index.html`, so placing it on a server still
 running the old `index.php` app takes that server down. The overlay and the
@@ -595,8 +600,15 @@ provisioning would blow the hook timeout.
 `npm run websession:init` chains `npm install` and `ensure-dev-stack` in one
 command, and is all a fresh session needs.
 
-**The Laravel suite runs in a web session**, and so do Pint, Larastan and the
-Scramble export — verified 2026-09-15, `npm run test:api` green at 585 tests.
+**The Laravel suite runs in a web session**, and so do Pint and the Scramble
+export — verified 2026-09-15, `npm run test:api` green at 585 tests. **Larastan
+does not, by choice since 2026-09-16:** `phpstan/phpstan` is a 2.9 GB clone from
+git sources, about half of what provisioning cost, so a web session omits it and
+CI's `lint-api` job is the gate. The other half is PHPUnit's dependencies, which
+vendor the same phar into their own history and cannot be dropped —
+`docs/web-session.md` has the measurements. `npm run lint:types` there prints that and exits 0 — which
+means `npm run check` can be green in a web session without any PHP having been
+type-checked. Push and read the PR.
 What breaks a naive `composer install` is **not** the network allowlist,
 whatever this file and `docs/web-session.md` said until then: GitHub traffic
 takes the session's GitHub proxy, which scopes the API to the repositories

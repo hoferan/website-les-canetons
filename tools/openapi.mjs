@@ -32,21 +32,15 @@
 // database happens to be configured or reachable.
 //
 // Usage: node tools/openapi.mjs
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { ensureApiVendor } from "./api-vendor.mjs";
 import { runInPhp } from "./php-in-docker.mjs";
 
-if (!existsSync("api/vendor/dedoc/scramble")) {
-  console.log("openapi: api/vendor missing — installing the Laravel API dev dependencies once...");
-  const install = [
-    "install",
-    "--working-dir=api",
-    "--no-interaction",
-    "--no-progress",
-    "--no-scripts",
-  ];
-  execFileSync(process.execPath, ["tools/composer.mjs", ...install], { stdio: "inherit" });
-}
+ensureApiVendor({
+  marker: "api/vendor/dedoc/scramble",
+  label: "openapi",
+  args: ["install", "--working-dir=api", "--no-interaction", "--no-progress", "--no-scripts"],
+});
 
 // APP_NAME is pinned for the same reason as everything else here: determinism.
 // config/scramble.php leaves `info.title` null, so Scramble falls back to

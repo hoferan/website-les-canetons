@@ -15,17 +15,20 @@
 // which would boot the framework outside its container.
 //
 // Usage: node tools/pint.mjs [--test] [extra pint args]
-import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { ensureApiVendor } from './api-vendor.mjs';
 import { runInPhp } from './php-in-docker.mjs';
 
 const args = process.argv.slice(2);
 
-if (!existsSync('api/vendor/bin/pint')) {
-  console.log('pint: api/vendor missing — installing the Laravel API dev dependencies once...');
-  const install = ['install', '--working-dir=api', '--no-interaction', '--no-progress', '--no-scripts'];
-  execFileSync(process.execPath, ['tools/composer.mjs', ...install], { stdio: 'inherit' });
-}
+// Through ensureApiVendor rather than straight to Composer, because this is
+// the entry point a `git commit` reaches (Husky -> lint-staged -> pint-file),
+// so it is the one most likely to collide with a provisioning run already
+// under way. It waits for that install instead of starting a second one.
+ensureApiVendor({
+  marker: 'api/vendor/bin/pint',
+  label: 'pint',
+  args: ['install', '--working-dir=api', '--no-interaction', '--no-progress', '--no-scripts'],
+});
 
 // cd into api/ so Pint treats it as the project root (and would pick up an
 // api/pint.json), exactly as running it inside the container does.
