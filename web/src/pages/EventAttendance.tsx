@@ -14,8 +14,10 @@ import {
 } from "../api/generated/endpoints";
 import type { ChaseListEntryResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
+import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { answerLabel, answerLine, nameOf } from "../events/chaseList";
+import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -41,6 +43,8 @@ export function EventAttendance() {
   const queryClient = useQueryClient();
 
   const [recording, setRecording] = useState<number | null>(null);
+  const [correcting, setCorrecting] = useState<ChaseListEntryResource | null>(null);
+  const refusal = useApiFormError("La réponse n’a pas pu être enregistrée.");
 
   const event = useEventShow(eventId);
   const list = useAttendanceIndex(eventId);
@@ -54,22 +58,50 @@ export function EventAttendance() {
   const mayRecord = can("attendance.record_for_others");
 
   const record = useMutation({
-    mutationFn: ({ member, status }: { member: number; status: "yes" | "no" }) =>
-      memberAttendanceUpdate(eventId, member, { status }),
+    mutationFn: ({
+      member,
+      status,
+      note,
+    }: {
+      member: number;
+      status: "yes" | "no";
+      note?: string;
+    }) => memberAttendanceUpdate(eventId, member, { status, note: note || null }),
   });
 
-  async function recordFor(entry: ChaseListEntryResource, status: "yes" | "no") {
+  /**
+   * Write an answer down for somebody, first or corrected.
+   *
+   * ONE PATH FOR BOTH, because the endpoint makes no distinction: it is an
+   * upsert, and a correction is the same request with the member already
+   * having an answer. Reporting whether it landed is what the dialog needs —
+   * it stays open on a refusal, so the typed reason is not thrown away.
+   */
+  async function recordFor(
+    entry: ChaseListEntryResource,
+    status: "yes" | "no",
+    note?: string,
+  ): Promise<boolean> {
     setRecording(entry.memberId);
     try {
-      await record.mutateAsync({ member: entry.memberId, status });
+      await record.mutateAsync({ member: entry.memberId, status, note });
       await queryClient.invalidateQueries({ queryKey: getAttendanceIndexQueryKey(eventId) });
+      refusal.clear();
       toast.success(`${nameOf(entry)} : ${answerLabel(status).toLowerCase()}.`);
+      return true;
     } catch (thrown) {
-      toast.error(
-        thrown instanceof ApiError
-          ? translateApiError(thrown).message
-          : "La réponse n’a pas pu être enregistrée.",
-      );
+      refusal.setFromThrown(thrown);
+      // The dialog owns the message while it is open — a refused note lands
+      // against its own field there, and a toast over it would say the same
+      // thing twice in the place it is hardest to read.
+      if (!correcting) {
+        toast.error(
+          thrown instanceof ApiError
+            ? translateApiError(thrown).message
+            : "La réponse n’a pas pu être enregistrée.",
+        );
+      }
+      return false;
     } finally {
       setRecording(null);
     }
@@ -216,6 +248,15 @@ export function EventAttendance() {
                 {entry.attendance?.recordedByDirection ? (
                   <p className="text-ink-muted">Saisie par le comité.</p>
                 ) : null}
+
+                <div className="mt-tight">
+                  <CorrectionAction
+                    entry={entry}
+                    mayRecord={mayRecord}
+                    mine={entry.memberId === user?.id}
+                    onCorrect={setCorrecting}
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -227,7 +268,10 @@ export function EventAttendance() {
                   <th className="py-2 pr-4 font-normal">Nom</th>
                   <th className="py-2 pr-4 font-normal">Pupitre</th>
                   <th className="py-2 pr-4 font-normal">Réponse</th>
-                  <th className="py-2 font-normal">Raison</th>
+                  <th className="py-2 pr-4 font-normal">Raison</th>
+                  <th className="py-2 font-normal">
+                    <span className="sr-only">Correction</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -243,7 +287,15 @@ export function EventAttendance() {
                         <span className="text-ink-muted"> (comité)</span>
                       ) : null}
                     </td>
-                    <td className="py-2 text-ink-muted">{entry.attendance?.note}</td>
+                    <td className="py-2 pr-4 text-ink-muted">{entry.attendance?.note}</td>
+                    <td className="py-2">
+                      <CorrectionAction
+                        entry={entry}
+                        mayRecord={mayRecord}
+                        mine={entry.memberId === user?.id}
+                        onCorrect={setCorrecting}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -257,6 +309,74 @@ export function EventAttendance() {
           Personne n’est encore inscrit dans un pupitre, donc personne n’a de réponse à donner.
         </p>
       ) : null}
+
+      {/* MOUNTED PER ROW, and keyed by the member, so the form starts from the
+          answer it is correcting rather than from whichever row was opened
+          first — a `useState` initialiser runs once per mount and nothing else
+          would reset it. */}
+      {correcting?.attendance ? (
+        <CorrectAnswerDialog
+          key={correcting.memberId}
+          name={nameOf(correcting)}
+          answer={correcting.attendance}
+          busy={recording === correcting.memberId}
+          error={refusal.error}
+          problem={refusal.messageFor("note")}
+          onConfirm={(status, note) => {
+            void (async () => {
+              const entry = correcting;
+              if (await recordFor(entry, status, note)) {
+                setCorrecting(null);
+              }
+            })();
+          }}
+          onCancel={() => {
+            refusal.clear();
+            setCorrecting(null);
+          }}
+        />
+      ) : null}
     </PageSection>
+  );
+}
+
+/**
+ * The one control that corrects an answer, rendered in both layouts.
+ *
+ * WRITTEN ONCE because two copies is where the phone layout loses the next
+ * thing added to the table — the same reason MemberActions exists. The
+ * accessible name carries the person, so a screen-reader user hears whose
+ * answer they are about to change rather than the eleventh "Corriger" on the
+ * page.
+ *
+ * C14 ON SCREEN, here as in the Sans réponse block above: the on-behalf
+ * endpoint refuses its own caller, so Bastien — who plays and holds the
+ * permission — is told where his own answer lives instead of being offered a
+ * button that would 409.
+ */
+function CorrectionAction({
+  entry,
+  mayRecord,
+  mine,
+  onCorrect,
+}: {
+  entry: ChaseListEntryResource;
+  mayRecord: boolean;
+  mine: boolean;
+  onCorrect: (entry: ChaseListEntryResource) => void;
+}) {
+  if (!mayRecord) {
+    return null;
+  }
+
+  if (mine) {
+    return <span className="text-sm text-ink-muted">Modifiable depuis le planning.</span>;
+  }
+
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={() => onCorrect(entry)}>
+      <span aria-hidden="true">Corriger</span>
+      <span className="sr-only">Corriger la réponse de {nameOf(entry)}</span>
+    </Button>
   );
 }
