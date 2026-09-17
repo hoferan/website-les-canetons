@@ -75,9 +75,12 @@ function patchMyAttendance(
  *     read before it can be used. Which one is current is carried by
  *     `aria-pressed` and by the fill, so the control says what you answered
  *     and what you can answer in the same glance.
- *   - THE SCREEN MOVES BEFORE THE NETWORK DOES. The cache is patched on the
+ *   - THE CONTROL MOVES BEFORE THE NETWORK DOES. The cache is patched on the
  *     way out and rolled back if the server refuses, so a tap on a bad
- *     connection is not a button that does nothing for two seconds.
+ *     connection is not a button that does nothing for two seconds. The LIST
+ *     does not move at all, now by design — see the planning's docblock for
+ *     why an instant answer made a mis-tap likelier until the card was held in
+ *     place (#95).
  *   - A FIRST ANSWER IS UNDOABLE for five minutes (C12), from the toast and
  *     nowhere else. The window is what keeps C11 honest: without it a member
  *     could erase a `oui` and re-answer `non` for free, with no reason. A
@@ -90,7 +93,19 @@ function patchMyAttendance(
  * for her. `isPlayer` comes from the session, which is the same fact the
  * server checks.
  */
-export function AttendanceControls({ event }: { event: EventResource }) {
+export function AttendanceControls({
+  event,
+  inOwed = false,
+}: {
+  event: EventResource;
+  /**
+   * Whether this card is rendered inside "À répondre", where an answered card
+   * now stays put (#95). It is the only thing that needs saying there: the
+   * block's heading says these are owed, and the pressed button alone does not
+   * explain why an answered one is still under it.
+   */
+  inOwed?: boolean;
+}) {
   const { user } = useSession();
   const queryClient = useQueryClient();
 
@@ -167,15 +182,22 @@ export function AttendanceControls({ event }: { event: EventResource }) {
       // change was a withdrawal, throws away the reason C11 just collected
       // along with the `oui` it was given for. Somebody who mis-tapped a change
       // taps the other answer again, which costs nothing in that direction.
-      toast.success(status === "yes" ? "Vous venez." : "Vous ne venez pas.", {
-        action:
-          previous === null
-            ? {
-                label: "Annuler",
-                onClick: () => void undo(recorded),
-              }
-            : undefined,
-      });
+      // NAMED, because the undo below is only usable by somebody who can tell
+      // they answered the wrong event. "Vous venez." is the same sentence
+      // whichever card was tapped, so a mis-tap produced the toast the
+      // intended tap would have produced, and nothing said otherwise.
+      toast.success(
+        status === "yes" ? `Vous venez — ${event.title}.` : `Vous ne venez pas — ${event.title}.`,
+        {
+          action:
+            previous === null
+              ? {
+                  label: "Annuler",
+                  onClick: () => void undo(recorded),
+                }
+              : undefined,
+        },
+      );
     } catch (thrown) {
       patchMyAttendance(queryClient, event.id, previous);
       refusal.setFromThrown(thrown);
@@ -240,6 +262,12 @@ export function AttendanceControls({ event }: { event: EventResource }) {
           Non
         </Button>
       </div>
+
+      {inOwed && answer ? (
+        <p data-testid="answered-in-place" className="mt-tight text-sm text-ink-muted">
+          <span aria-hidden="true">✓</span> Répondu
+        </p>
+      ) : null}
 
       {/* The note beside the answer, not behind a click. It is usually the
           reason a `oui` was taken back, and the member who typed it should be

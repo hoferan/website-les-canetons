@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
@@ -15,6 +15,29 @@ async function renderPlanning(
   const result = await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
   return result;
+}
+
+/** The cards of the top block, which is the one #95 is about. */
+function owedCards(): HTMLElement[] {
+  return within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card");
+}
+
+/** An answer button inside the top block, re-queried because the tree rerenders. */
+function owedButton(name: string): HTMLElement {
+  return within(screen.getByRole("region", { name: "À répondre" })).getByRole("button", { name });
+}
+
+function owedCardFor(title: string): HTMLElement {
+  const card = owedCards().find((candidate) => within(candidate).queryByText(title) !== null);
+  if (!card) {
+    throw new Error(`no card for "${title}" in À répondre`);
+  }
+  return card;
+}
+
+/** Where a card sits among its neighbours, which is what must not change. */
+function positionOf(title: string): number {
+  return owedCards().findIndex((card) => within(card).queryByText(title) !== null);
 }
 
 test("lists the planning for an ordinary player", async () => {
@@ -204,7 +227,154 @@ test("what you still owe an answer on is pinned above the rest", async () => {
   expect(within(rest).getAllByTestId("event-card")).toHaveLength(1);
 });
 
-test("answering is one tap and moves the event out of what is owed", async () => {
+test("answering is one tap and leaves the card where it is", async () => {
+  // #95. The card used to drop out of À répondre the moment it was tapped, and
+  // the next event's buttons arrived under the finger — on a phone, roughly at
+  // the pixel the thumb had just left. The top block is a snapshot of what was
+  // owed when the screen was built, so answering changes the card and moves
+  // nothing.
+  await renderPlanning();
+
+  const before = owedCards().length;
+  const position = positionOf("Vendanges Cheyres");
+
+  await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
+
+  await expect
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("true");
+
+  expect(owedCards()).toHaveLength(before);
+  expect(positionOf("Vendanges Cheyres")).toBe(position);
+  expect(
+    within(screen.getByRole("region", { name: "Le reste du planning" })).getAllByTestId(
+      "event-card",
+    ),
+  ).toHaveLength(1);
+});
+
+test("the tapped answer keeps focus", async () => {
+  // The two blocks are two different parents, so a card that moves between
+  // them is unmounted and mounted — destroying the node the focus is on and
+  // sending a screen reader's cursor back to the top of the page after every
+  // answer.
+  //
+  // MUTATION TEST: partition on `myAttendance` alone in Events and this fails,
+  // because the button this holds is no longer in the document.
+  await renderPlanning();
+
+  const button = owedButton("Je viens à Vendanges Cheyres");
+  await userEvent.click(button);
+
+  await expect.poll(() => button.getAttribute("aria-pressed")).toBe("true");
+  expect(button).toHaveFocus();
+});
+
+test("a card answered in place says so, under a heading that says what is left", async () => {
+  // The pressed button says what was answered. It does not explain why an
+  // answered card is sitting under "À répondre", which is what the marker and
+  // the count line are for.
+  await renderPlanning();
+
+  expect(screen.getByTestId("owed-count")).toHaveTextContent("Il reste 5 événements sans réponse.");
+
+  await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
+
+  await expect
+    .poll(() => screen.getByTestId("owed-count").textContent)
+    .toContain("Il reste 4 événements sans réponse.");
+
+  const card = owedCardFor("Vendanges Cheyres");
+  expect(within(card).getByTestId("answered-in-place")).toHaveTextContent("Répondu");
+});
+
+test("answering everything says so without emptying the block", async () => {
+  await renderPlanning();
+
+  // Collected before the first click, which is safe only because none of them
+  // moves: the old behaviour reordered the list under each tap in turn.
+  const buttons = within(screen.getByRole("region", { name: "À répondre" })).getAllByRole(
+    "button",
+    { name: /^Je viens à/ },
+  );
+  for (const button of buttons) {
+    await userEvent.click(button);
+  }
+
+  await expect.poll(() => screen.getByTestId("owed-count").textContent).toBe("Tout est répondu.");
+  expect(owedCards()).toHaveLength(5);
+});
+
+test("switching to the past and back settles the answered card into the rest", async () => {
+  await renderPlanning();
+
+  await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
+  await expect
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("true");
+
+  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Voir le planning" }));
+
+  // The hold is released by rebuilding the list, never by a timer and never by
+  // data arriving on its own.
+  await expect.poll(() => owedCards().length).toBe(4);
+  expect(
+    within(screen.getByRole("region", { name: "Le reste du planning" })).getByRole("button", {
+      name: "Je viens à Vendanges Cheyres",
+    }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
+
+test("filtering by day settles the block too", async () => {
+  await renderPlanning();
+
+  await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
+  await expect
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("true");
+
+  await userEvent.click(screen.getByRole("button", { name: "Calendrier" }));
+  const calendar = await screen.findByTestId("event-calendar");
+  const [firstDay] = within(calendar)
+    .getAllByRole("button", { pressed: false })
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("événement"));
+  await userEvent.click(firstDay as HTMLElement);
+
+  // One event left on screen, and it is partitioned on what it actually is
+  // rather than on what was owed when the page opened.
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(1);
+  expect(screen.queryByTestId("answered-in-place")).toBeNull();
+});
+
+test("the answer is on screen before the server has replied", async () => {
+  // THE SCREEN MOVES BEFORE THE NETWORK DOES, which is the whole of #95's
+  // first half: a tap on a bad connection must not be a button that does
+  // nothing for two seconds. The handler here is held open, so every
+  // assertion below runs while the request is still in flight.
+  //
+  // MUTATION TEST: move the `patchMyAttendance` call in AttendanceControls
+  // below its `await record.mutateAsync` and this fails — the card sits in
+  // À répondre until the response lands.
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let answered = false;
+
+  server.use(
+    http.put("/api/v1/events/:id/attendance", async () => {
+      await held;
+      answered = true;
+      return HttpResponse.json({
+        status: "yes",
+        note: null,
+        recordedByDirection: false,
+        recordedAt: new Date().toISOString(),
+      });
+    }),
+  );
+
   await renderPlanning();
 
   const awaiting = screen.getByRole("region", { name: "À répondre" });
@@ -212,19 +382,19 @@ test("answering is one tap and moves the event out of what is owed", async () =>
     within(awaiting).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
   );
 
-  // No navigation, no dialog: the whole point of the screen.
   await expect
-    .poll(
-      () =>
-        within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card")
-          .length,
-    )
-    .toBe(4);
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("true");
 
-  const rest = screen.getByRole("region", { name: "Le reste du planning" });
-  expect(
-    within(rest).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
-  ).toHaveAttribute("aria-pressed", "true");
+  // ...and the list has not moved while it was in flight either.
+  expect(owedCards()).toHaveLength(5);
+
+  // Let the held request finish, so the component is not still writing to a
+  // cache while the next test tears the tree down. The toast that follows it
+  // is raised into a Toaster this test does not render — Layout owns that —
+  // so the handler itself is what says the round trip is over.
+  release();
+  await waitFor(() => expect(answered).toBe(true));
 });
 
 test("taking back a yes opens the dialog rather than answering", async () => {

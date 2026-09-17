@@ -31,10 +31,9 @@ async function renderPlanning() {
   return result;
 }
 
-/** How many events are still waiting on an answer. */
-function awaitingCount(): number {
-  return within(screen.getByRole("region", { name: "À répondre" })).getAllByTestId("event-card")
-    .length;
+/** The answer button for an event, inside the block that holds it (#95). */
+function owedButton(name: string): HTMLElement {
+  return within(screen.getByRole("region", { name: "À répondre" })).getByRole("button", { name });
 }
 
 /** The toast carrying this sentence, so a leftover one is never the match. */
@@ -50,26 +49,26 @@ async function toastSaying(sentence: string): Promise<HTMLElement> {
 test("a first answer can be taken back from the toast", async () => {
   await renderPlanning();
 
-  const awaiting = screen.getByRole("region", { name: "À répondre" });
-  await userEvent.click(
-    within(awaiting).getByRole("button", { name: "Je viens à Vendanges Cheyres" }),
-  );
+  await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
+  await expect
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("true");
 
-  // Five of the six upcoming events were unanswered; answering one leaves
-  // four.
-  await expect.poll(() => awaitingCount()).toBe(4);
-
-  const toast = await toastSaying("Vous venez.");
+  // Named, so somebody who tapped the wrong card can see that they did — the
+  // undo beside it is only usable by a reader who knows they need it.
+  const toast = await toastSaying("Vous venez — Vendanges Cheyres.");
   await userEvent.click(within(toast).getByRole("button", { name: "Annuler" }));
 
   // Back to UNANSWERED rather than to the opposite answer — the state a second
-  // PUT cannot express, and the whole reason DELETE exists at all.
-  await expect.poll(() => awaitingCount()).toBe(5);
-  expect(
-    within(screen.getByRole("region", { name: "À répondre" })).getByRole("button", {
-      name: "Je viens à Vendanges Cheyres",
-    }),
-  ).toHaveAttribute("aria-pressed", "false");
+  // PUT cannot express, and the whole reason DELETE exists at all. It happens
+  // WHERE THE CARD ALREADY IS (#95): the undo is offered from a toast at the
+  // bottom of the screen, so a card flying back up into a block the reader is
+  // no longer looking at said nothing to anybody.
+  await expect
+    .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("false");
+  expect(screen.queryByTestId("answered-in-place")).toBeNull();
+  expect(screen.getByTestId("owed-count")).toHaveTextContent("Il reste 5 événements sans réponse.");
 });
 
 test("a change offers no undo, because undo would erase the answer it changed", async () => {
@@ -87,6 +86,6 @@ test("a change offers no undo, because undo would erase the answer it changed", 
   await userEvent.click(within(dialog).getByRole("button", { name: "Je ne viens pas" }));
 
   // The toast still arrives. It just carries no way out.
-  const toast = await toastSaying("Vous ne venez pas.");
+  const toast = await toastSaying("Vous ne venez pas — Répétition.");
   expect(within(toast).queryByRole("button", { name: "Annuler" })).toBeNull();
 });
