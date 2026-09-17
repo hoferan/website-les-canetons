@@ -40,17 +40,43 @@ import { useSession } from "../session/SessionProvider";
  * than on now, so an event that began an hour ago stays in the planning of
  * somebody running late.
  *
- * ORDERED BY URGENCY, NOT BY DATE. Unanswered upcoming events are pinned to
- * the top under "À répondre"; the planning follows below. This is why the old
- * site needed a second page, /inscriptions_utilisateurs — under this design
- * that page has no reason to exist, because "my answers" IS the top of the one
- * screen.
+ * ORDERED BY URGENCY, NOT BY DATE, as of when the screen was built. Events
+ * that were unanswered then are pinned to the top under "À répondre"; the
+ * planning follows below. This is why the old site needed a second page,
+ * /inscriptions_utilisateurs — under this design that page has no reason to
+ * exist, because "my answers" IS the top of the one screen.
  *
  * THE TWO BLOCKS PARTITION THE LIST rather than the top one repeating rows
- * from the bottom. Answering therefore moves a card down, out of the block of
- * things still owed — which is the feedback that the tap landed, and what lets
- * "À répondre" mean something when it is empty. A card in both places would be
- * two live sets of answer buttons for one event.
+ * from the bottom: a card in both places would be two live sets of answer
+ * buttons for one event. That still holds, because the block a card is in is
+ * decided once, when the list is built.
+ *
+ * ANSWERING MOVES NOTHING (#95). The card stays where the thumb found it,
+ * marked "Répondu", and only settles into the block below on the next load, on
+ * the past toggle, or on a day chosen or cleared. Until this, answering the
+ * top card dropped it out of the block at once and the next event's buttons
+ * arrived within a few pixels of where the finger had just been — so making
+ * the answer instant made a mis-tap MORE likely rather than less. Three things
+ * follow, and the third is the one that decided it:
+ *
+ *   - THE MOVE WAS NEVER THE FEEDBACK. The fill, `aria-pressed`, the marker
+ *     and the toast are; the move was feedback about classification, and on a
+ *     phone its destination is several screens down. What the reader saw was
+ *     the card they tapped vanishing and a different event taking its place.
+ *   - ANIMATING IT WAS REJECTED, not deferred. It decorates the hazard rather
+ *     than removing it — the next card still arrives under the thumb, only
+ *     later and in motion — and styles.css flattens every duration under
+ *     `prefers-reduced-motion`, so the protection would be off for exactly the
+ *     people who asked the platform for predictability. A timer was rejected
+ *     too: it trades a movement somebody caused for one with no cause at all.
+ *   - A MOVE COSTS THE FOCUS. The blocks are two parents, so moving a card
+ *     between them unmounts the node the focus is on: every answer sent a
+ *     keyboard or screen-reader user back to the top of the page. Held in
+ *     place, the pressed button keeps focus and announces itself.
+ *
+ * "À répondre" therefore still means something when it is empty — it is a
+ * state you arrive at rather than one you watch happen — and what carries the
+ * to-do semantics while you are on the screen is the count under the heading.
  */
 export function Events() {
   const { can, user, config } = useSession();
@@ -115,10 +141,42 @@ export function Events() {
   // the whole planning under "À répondre" and then show her no way to answer
   // any of it.
   const answerable = (user?.isPlayer ?? false) && !showingPast;
-  const awaiting = answerable ? events.filter((event) => event.myAttendance === null) : [];
-  const planned = answerable ? events.filter((event) => event.myAttendance !== null) : events;
 
-  function card(event: EventResource) {
+  // WHAT WAS OWED WHEN THIS LIST WAS BUILT, which is what the top block
+  // partitions on rather than on `myAttendance` as it stands (#95). Answering
+  // therefore leaves the card where the thumb found it — see the docblock for
+  // why that beats moving it, and why neither a timer nor an animation does.
+  //
+  // The scope is the identity of the list itself, so re-scoping it is exactly
+  // what releases the hold: a new mount, the past toggle, a day chosen or
+  // cleared on the calendar. Data arriving is NOT a settle — a background
+  // refetch must not move a card the reader is looking at.
+  const scope = `${showingPast}|${day ?? ""}`;
+  const [owed, setOwed] = useState<{ scope: string; ids: Set<number> } | null>(null);
+
+  if (!planning.isPending && owed?.scope !== scope) {
+    // Set during render, which React answers by re-rendering before it commits
+    // anything — the documented way to derive state from something that
+    // changed. An effect would paint one frame of the wrong partition first.
+    setOwed({
+      scope,
+      ids: new Set(events.filter((event) => event.myAttendance === null).map((event) => event.id)),
+    });
+  }
+
+  const held = owed?.scope === scope ? owed.ids : new Set<number>();
+  const stillOwed = (event: EventResource) => event.myAttendance === null || held.has(event.id);
+
+  const awaiting = answerable ? events.filter(stillOwed) : [];
+  const planned = answerable ? events.filter((event) => !stillOwed(event)) : events;
+
+  // What the heading's count is about: the answers still missing, which is not
+  // the size of the block any more. An event created since the list was built
+  // is unanswered and therefore in here too, which is why this counts rather
+  // than reading the snapshot.
+  const missing = awaiting.filter((event) => event.myAttendance === null).length;
+
+  function card(event: EventResource, inOwed: boolean) {
     return (
       <EventCard
         key={event.id}
@@ -190,7 +248,7 @@ export function Events() {
         // buttons asking whether you are coming to a rehearsal that finished
         // last week is an invitation to nonsense, and the chase list is where a
         // late correction belongs.
-        answer={showingPast ? undefined : <AttendanceControls event={event} />}
+        answer={showingPast ? undefined : <AttendanceControls event={event} inOwed={inOwed} />}
       />
     );
   }
@@ -329,7 +387,24 @@ export function Events() {
           <h2 id="awaiting-heading" className="font-display text-xl">
             À répondre
           </h2>
-          <div className="mt-related grid gap-related">{awaiting.map(card)}</div>
+
+          {/* THE COUNT CARRIES THE TO-DO SEMANTICS the move used to carry, and
+              it is a sibling of the heading rather than part of it: the h2 is
+              this region's accessible name, and folding a number into it
+              renames the region every time somebody answers. One line at
+              375px in both wordings, so the last answer of a session does not
+              reflow the list it was meant to hold still. */}
+          <p data-testid="owed-count" aria-live="polite" className="mt-tight text-ink-muted">
+            {missing === 0
+              ? "Tout est répondu."
+              : missing === 1
+                ? "Il reste 1 événement sans réponse."
+                : `Il reste ${missing} événements sans réponse.`}
+          </p>
+
+          <div className="mt-related grid gap-related">
+            {awaiting.map((event) => card(event, true))}
+          </div>
         </section>
       ) : null}
 
@@ -345,7 +420,9 @@ export function Events() {
             {showingPast ? "Événements passés" : "Le reste du planning"}
           </h2>
         ) : null}
-        <div className="mt-related grid gap-related">{planned.map(card)}</div>
+        <div className="mt-related grid gap-related">
+          {planned.map((event) => card(event, false))}
+        </div>
       </section>
 
       {/*
