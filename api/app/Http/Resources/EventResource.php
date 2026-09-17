@@ -87,11 +87,15 @@ class EventResource extends JsonResource
             'answeredCount' => $this->countOrNull($request, 'answered_count'),
             /**
              * How many members are answerable at all — the denominator of the
-             * fraction. Null when the caller may not see answers.
+             * fraction. Null when the caller may not see answers, OR when the
+             * attribute was never set (EventController::answerable() is the
+             * sole writer, and only after checking the same permission).
              */
-            'answerableCount' => $request->attributes->get(self::ANSWERABLE_COUNT) === null
+            'answerableCount' => ! $this->maySeeAnswers($request)
                 ? null
-                : (int) $request->attributes->get(self::ANSWERABLE_COUNT),
+                : ($request->attributes->get(self::ANSWERABLE_COUNT) === null
+                    ? null
+                    : (int) $request->attributes->get(self::ANSWERABLE_COUNT)),
             /**
              * How many PEOPLE are booked — the sum of the quantities, because
              * "3 x adulte, 1 x enfant" is four people and four is what fills

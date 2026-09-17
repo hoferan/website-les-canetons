@@ -324,7 +324,9 @@ export interface EventResource {
   answeredCount: number | null;
   /**
    * How many members are answerable at all — the denominator of the
-   * fraction. Null when the caller may not see answers.
+   * fraction. Null when the caller may not see answers, OR when the
+   * attribute was never set (EventController::answerable() is the
+   * sole writer, and only after checking the same permission).
    * @nullable
    */
   answerableCount: number | null;

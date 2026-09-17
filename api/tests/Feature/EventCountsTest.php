@@ -126,8 +126,9 @@ class EventCountsTest extends TestCase
         $response = $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
             ->getJson('/api/v1/events')
             ->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $event->id);
 
-        $this->assertNull($response->json('data.1.guestCount'));
+        $this->assertNull($row['guestCount']);
     }
 
     public function test_guest_count_sums_quantities_rather_than_counting_bookings(): void
