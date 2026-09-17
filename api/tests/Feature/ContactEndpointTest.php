@@ -128,6 +128,29 @@ class ContactEndpointTest extends TestCase
         $this->assertStringContainsString('Un message.', $rendered);
     }
 
+    public function test_the_notification_sends_the_committee_to_the_inbox(): void
+    {
+        // THE MAIL ALERTS; THE APP ANSWERS. /contact-messages is where a
+        // message is replied to and marked handled, and a reply sent straight
+        // from the mail client leaves handled false: the worklist keeps
+        // showing an answered message as open, and two people can both write
+        // back to the same stranger. So the notification carries a link into
+        // the app rather than inviting a reply to itself.
+        config(['app.url' => 'https://example.test']);
+
+        $message = ContactMessage::create([
+            'last_name' => 'Lovelace',
+            'first_name' => 'Ada',
+            'email' => 'ada@example.com',
+            'subject' => 'Bonjour',
+            'message' => 'Un message.',
+        ]);
+
+        $rendered = (new ContactMessageReceived($message))->render();
+
+        $this->assertStringContainsString('https://example.test/contact-messages', $rendered);
+    }
+
     public function test_it_rejects_a_get(): void
     {
         $this->getJson('/api/v1/contact')->assertStatus(405);

@@ -19,10 +19,18 @@ use Illuminate\Mail\Mailables\Envelope;
  * is usually a noreply@ nobody opens, so on a server named the ordinary way
  * the notification would arrive unread and nothing would report it.
  *
- * REPLY-TO IS THE VISITOR, so answering is one tap in the mail client rather
- * than a copy-paste out of the inbox screen. The From stays the site's own
- * mailbox: putting a stranger's address there is what makes a message fail SPF
- * at the receiving end.
+ * THIS ALERTS; /contact-messages ANSWERS. That screen already offers the
+ * visitor's address as a mailto link, and it records who marked the message
+ * handled and when. A reply sent from the mail client instead leaves handled
+ * false, so the worklist goes on showing an answered message as open and a
+ * second committee member can write back to the same stranger. The body
+ * therefore carries a link into the app rather than an invitation to reply
+ * here.
+ *
+ * REPLY-TO IS STILL THE VISITOR, as a fallback for whoever hits reply anyway:
+ * it costs nothing and a reply to the site's own mailbox would reach no one.
+ * The From stays the site's own mailbox, because putting a stranger's address
+ * there is what makes a message fail SPF at the receiving end.
  *
  * NOT queued, and it does not implement ShouldQueue, for the reason
  * RegistrationConfirmation gives at length: this host has no queue worker and
