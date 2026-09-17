@@ -13,9 +13,11 @@ use Illuminate\Mail\Mailables\Envelope;
  *
  * The message is stored either way and readable in the inbox at /inbox; this
  * exists so nobody has to remember to look. Addressed to
- * config('mail.from.address') — the mailbox this host already sends as, so no
- * server needs a new key in its .env and no deploy is refused by the
- * config-shape pre-flight over it.
+ * config('mail.committee.address'), which is its own key rather than the
+ * mailbox the host sends as. Reusing the sending mailbox would have saved
+ * every server a hand edit, but that mailbox holds the SMTP credentials and
+ * is usually a noreply@ nobody opens, so on a server named the ordinary way
+ * the notification would arrive unread and nothing would report it.
  *
  * REPLY-TO IS THE VISITOR, so answering is one tap in the mail client rather
  * than a copy-paste out of the inbox screen. The From stays the site's own

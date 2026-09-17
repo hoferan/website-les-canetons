@@ -147,7 +147,12 @@ and a season. Its Apache authorization boundary is **confirmed working** —
 production answers `<title>Accueil</title>` and 404s `/api/v1/config` into its
 own HTML. Two consequences follow. Their `_api/.env` still lacks the five keys
 TEST gained (`BOOTSTRAP_ADMIN_*`, `FEATURE_CALENDAR`), so the config-shape
-pre-flight refuses their next deploy until each is hand-edited. And **do not run
+pre-flight refuses their next deploy until each is hand-edited, and
+`MAIL_COMMITTEE_ADDRESS` makes six. **TEST needs that sixth one too.** It is
+the first key added since TEST caught up, so the pre-flight refuses the next
+merge to `main` until somebody sets it there. It must name a mailbox the
+committee reads, never the `MAIL_FROM_ADDRESS` beside it; `api/.env.example`
+says why. And **do not run
 `npm run put-overlay:qa` or `:prod` on their own**: the template is the SPA
 front controller and falls back to `index.html`, so placing it on a server still
 running the old `index.php` app takes that server down. The overlay and the

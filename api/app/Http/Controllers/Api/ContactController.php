@@ -65,6 +65,11 @@ class ContactController extends Controller
      * no queue to retry from, and the visitor did nothing wrong — so an SMTP
      * blip must not answer them with an error for a message that was stored.
      *
+     * The recipient is MAIL_COMMITTEE_ADDRESS, which every server sets by
+     * hand. An unset or placeholder value throws here and is logged rather
+     * than falling back to the sending mailbox: a fallback would deliver the
+     * notification to a noreply@ and look like success.
+     *
      * error, not warning: .env.example sets LOG_LEVEL=error and warning sits
      * below it in Monolog, so a warning here would never be written on any
      * server. That exact bug hid broken registration mail once already; see
@@ -73,7 +78,7 @@ class ContactController extends Controller
     private static function notify(ContactMessage $message): void
     {
         try {
-            Mail::to(config('mail.from.address'))->send(new ContactMessageReceived($message));
+            Mail::to(config('mail.committee.address'))->send(new ContactMessageReceived($message));
         } catch (\Throwable $e) {
             Log::error('Contact message notification mail failed', [
                 'contact_message_id' => $message->id,

@@ -69,13 +69,24 @@ class ContactEndpointTest extends TestCase
     public function test_it_mails_the_committee(): void
     {
         Mail::fake();
-        config(['mail.from.address' => 'comite@example.com']);
+
+        // THE TWO ADDRESSES ARE DIFFERENT HERE ON PURPOSE. The mailbox the
+        // site sends AS holds the SMTP credentials and is routinely a
+        // noreply@ nobody opens; the mailbox the committee READS is a
+        // separate per-server decision. A notification addressed to the
+        // sender would arrive unread and undo the reason it is sent, so this
+        // fails if the two are ever collapsed back onto one key.
+        config([
+            'mail.committee.address' => 'comite@example.com',
+            'mail.from.address' => 'noreply@example.com',
+        ]);
 
         $this->postJson('/api/v1/contact', $this->publicWriteBody(self::VALID), $this->publicWriteHeaders())->assertOk();
 
         Mail::assertSent(
             ContactMessageReceived::class,
             fn (ContactMessageReceived $mail) => $mail->hasTo('comite@example.com')
+                && ! $mail->hasTo('noreply@example.com')
                 && $mail->hasReplyTo('ada@example.com')
         );
     }

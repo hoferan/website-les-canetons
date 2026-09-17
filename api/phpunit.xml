@@ -100,13 +100,18 @@
         <env name="BOOTSTRAP_ADMIN_USERNAME" value=""/>
         <env name="BOOTSTRAP_ADMIN_PASSWORD" value=""/>
         <env name="MAIL_MAILER" value="array"/>
-        <!-- The committee's address, which ContactController mails on every
-             public submission. Pinned because api/.env.example ships
-             MAIL_FROM_ADDRESS=CHANGE_ME and a generated web-session .env keeps
-             it: left to the environment, rendering a mailable throws "Email
-             CHANGE_ME does not comply with addr-spec of RFC 2822" on one
-             machine and passes on another. -->
-        <env name="MAIL_FROM_ADDRESS" value="comite@example.test"/>
+        <!-- The two mail addresses, pinned because api/.env.example ships both
+             as CHANGE_ME and a generated web-session .env keeps them: left to
+             the environment, rendering a mailable throws "Email CHANGE_ME does
+             not comply with addr-spec of RFC 2822" on one machine and passes on
+             another.
+
+             They differ here for the reason config/mail.php gives. The mailbox
+             the site sends AS is not the one the committee reads, and a suite
+             that set both to the same value could not tell them apart.
+        -->
+        <env name="MAIL_FROM_ADDRESS" value="noreply@example.test"/>
+        <env name="MAIL_COMMITTEE_ADDRESS" value="comite@example.test"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <!-- The DEPLOYED posture, pinned for the same reason as AUTO_MIGRATE
