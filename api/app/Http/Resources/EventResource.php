@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Event;
 use App\Support\Iso8601;
+use App\Support\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,6 +42,18 @@ class EventResource extends JsonResource
             'attire' => $this->attire,
             /** Whether the event may be shown to people outside the band. */
             'isPublic' => $this->is_public,
+            /**
+             * How many answerable members have replied, or null when the
+             * caller may not see answers.
+             */
+            'answeredCount' => $this->countOrNull($request, 'answered_count'),
+            /**
+             * How many members are answerable at all — the denominator of the
+             * fraction. Null when the caller may not see answers.
+             */
+            'answerableCount' => $this->maySeeAnswers($request)
+                ? $request->attributes->get('answerableCount')
+                : null,
             /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
             'registrationOpensAt' => $this->registration_opens_at === null
@@ -113,5 +126,64 @@ class EventResource extends JsonResource
     private function endsAt(): Iso8601
     {
         return Iso8601::utc($this->ends_at);
+    }
+
+    /**
+     * An aggregate, or null.
+     *
+     * NULL MEANS TWO THINGS AND THAT IS DELIBERATE: the caller may not see it,
+     * or it was never loaded. The second is what keeps these counts out of
+     * EntityTag. EntityTag::state() renders this Resource from a freshly-read
+     * model with no ->load() at all — unlike the member and registration arms
+     * beside it — so every aggregate is absent there and drops out of the
+     * hash.
+     *
+     * Without that, a member ANSWERING an event would move that event's tag,
+     * and a committee member's pending edit of the TITLE would answer 412 for
+     * a reason that has nothing to do with the title. That is exactly the
+     * failure myAttendance's docblock describes, arrived at from the other
+     * side. Pinned by ConditionalWriteTest::
+     * test_answering_an_event_does_not_move_its_tag.
+     *
+     * The overload is invisible to every consumer: the SPA renders the strip
+     * only when can() passes AND the value is non-null, and the tag wants null
+     * either way.
+     */
+    private function countOrNull(Request $request, string $attribute): ?int
+    {
+        if (! array_key_exists($attribute, $this->getAttributes())) {
+            return null;
+        }
+
+        return $this->maySeeAnswers($request)
+            ? (int) $this->getAttributes()[$attribute]
+            : null;
+    }
+
+    /**
+     * Whether the caller may see answer counts, memoized ON THE REQUEST
+     * under the key `maySeeAnswers` — the exact key
+     * EventController::maySeeAnswers() reads and writes.
+     *
+     * Member::hasPermission() runs EffectivePermissions::for(), a query every
+     * time it is called — and this Resource's toArray() runs once per row.
+     * Calling it directly from both count fields, unmemoized, is an N+1 that
+     * scales with the number of events on the list; sharing the key with the
+     * controller's own check (rather than a Resource-local one) is what
+     * keeps the total at one query rather than two, caught by
+     * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries,
+     * not by anything that checks a value. `show()` never populates the key
+     * first, so this resolves and caches it lazily on its own.
+     */
+    private function maySeeAnswers(Request $request): bool
+    {
+        if (! $request->attributes->has('maySeeAnswers')) {
+            $request->attributes->set(
+                'maySeeAnswers',
+                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
+            );
+        }
+
+        return (bool) $request->attributes->get('maySeeAnswers');
     }
 }

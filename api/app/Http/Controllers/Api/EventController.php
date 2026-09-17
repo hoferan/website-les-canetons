@@ -7,8 +7,10 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
@@ -83,8 +85,17 @@ class EventController extends Controller
             ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
             : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
 
+        // THE DENOMINATOR RIDES THE REQUEST, not the collection envelope.
+        // It is one number for the whole list, so running the COUNT per row
+        // would be a query per event; and ->additional() writes into the
+        // envelope, which PaginatesCollections owns and every EventResource
+        // in the collection is rendered beneath rather than inside.
+        $request->attributes->set('answerableCount', self::answerable($request));
+
         return EventResource::collection(
-            $query->with(self::myAttendance($request))->get()
+            $query->with(self::myAttendance($request))
+                ->withCount(self::counts())
+                ->get()
         );
     }
 
@@ -109,6 +120,82 @@ class EventController extends Controller
         return [
             'attendance' => fn ($query) => $query->where('member_id', $memberId),
         ];
+    }
+
+    /**
+     * Whether the caller may see how many people have answered.
+     *
+     * RESOLVED ONCE PER REQUEST, not once per row. Member::hasPermission()
+     * runs EffectivePermissions::for(), which is a query every time it is
+     * called, so asking inside the Resource would be an N+1 that nothing in
+     * the suite would catch — the rows would all be correct.
+     *
+     * Memoized ON THE REQUEST under the key `maySeeAnswers`, and
+     * EventResource::maySeeAnswers() reads and writes the exact same key: the
+     * Resource renders once per row and needs the same boolean to decide
+     * `answeredCount`, so without a shared cache the check runs twice —
+     * once here for the denominator, once per row in the Resource — which
+     * is exactly the fixed cost
+     * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
+     * pins.
+     *
+     * A request with no user answers false. That is not only the anonymous
+     * case: EntityTag::state() renders this Resource through a bare
+     * Request::create('/'), and the counts must not reach the tag.
+     */
+    private static function maySeeAnswers(Request $request): bool
+    {
+        if (! $request->attributes->has('maySeeAnswers')) {
+            $request->attributes->set(
+                'maySeeAnswers',
+                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
+            );
+        }
+
+        return (bool) $request->attributes->get('maySeeAnswers');
+    }
+
+    /**
+     * The aggregate loads that back the planning's metadata strip (#93).
+     *
+     * SUBSELECTS ON THE QUERY THAT ALREADY RUNS, so neither of these is a
+     * round trip and neither scales with the number of events. Nothing is
+     * stored: a cached total would have to be invalidated by every answer,
+     * every booking, and every member who joins or leaves a register.
+     *
+     * The answer count is constrained to members who are CURRENTLY in a
+     * register, so the fraction cannot read 19/18 when somebody who answered
+     * has since left theirs, and so this and the chase list it links to count
+     * the same population.
+     *
+     * PUBLIC because EventSeriesController returns EventResource too, and the
+     * shape has to be the same there. A second copy of this map is a second
+     * place to forget a field.
+     *
+     * @return array<string, \Closure>
+     */
+    public static function counts(): array
+    {
+        return [
+            'attendance as answered_count' => fn ($query) => $query->whereHas(
+                'member',
+                fn ($member) => $member->whereNotNull('section_id'),
+            ),
+        ];
+    }
+
+    /**
+     * How many members are answerable at all — the denominator.
+     *
+     * A property of the ROSTER, not of the event, so it is one query for the
+     * whole list rather than one per row. Only run for a caller who may see
+     * it, so a player never pays for it.
+     */
+    private static function answerable(Request $request): ?int
+    {
+        return self::maySeeAnswers($request)
+            ? Member::query()->whereNotNull('section_id')->count()
+            : null;
     }
 
     /**
