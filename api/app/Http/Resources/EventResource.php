@@ -175,19 +175,43 @@ class EventResource extends JsonResource
     /**
      * An aggregate, or null.
      *
-     * NULL MEANS TWO THINGS AND THAT IS DELIBERATE: the caller may not see it,
-     * or it was never loaded. The second is what keeps these counts out of
-     * EntityTag. EntityTag::state() renders this Resource from a freshly-read
-     * model with no ->load() at all — unlike the member and registration arms
-     * beside it — so every aggregate is absent there and drops out of the
-     * hash.
+     * NULL MEANS TWO THINGS AND THAT IS DELIBERATE: the caller may not see
+     * it, or it was never loaded. TWO INDEPENDENT GUARDS keep these counts
+     * out of EntityTag, and a review proved they are genuinely independent
+     * — neither is a restatement of the other:
      *
-     * Without that, a member ANSWERING an event would move that event's tag,
+     * - Guard A, right below: `array_key_exists()` answers null when the
+     *   aggregate was never loaded on the model. Isolated by
+     *   EventCountsTest::test_unloaded_aggregates_render_as_null_for_an_authorized_caller,
+     *   which renders an authorized caller (every gate passes, so Guard B
+     *   does not fire) against a model with the aggregates never loaded.
+     *   Goes red if Guard A is removed.
+     * - Guard B, in maySeeAnswers()/permissionsFor(): a request with no
+     *   user resolves to an empty permission set, so the gate answers false
+     *   regardless of what is loaded. Isolated by EventCountsTest::
+     *   test_loaded_aggregates_render_as_null_for_a_bare_request, which
+     *   loads the aggregates and renders a bare, unauthenticated request
+     *   anyway. Goes red if Guard B is removed.
+     *
+     * IN THE TAG PATH SPECIFICALLY, Guard B is the one doing the real work,
+     * not Guard A. EntityTag::state() renders this Resource from a
+     * freshly-read model with no ->load() at all — unlike the member and
+     * registration arms beside it — so Guard A also happens to hold there.
+     * But EntityTag::state() also renders through bare(), a request with no
+     * user, so Guard B holds independently of whether anything was loaded:
+     * a mutation that added a ->load() for the aggregates inside state()
+     * would defeat Guard A alone and still tag correctly, on Guard B. That
+     * mutation is exactly what test_loaded_aggregates_render_as_null_for_a_bare_request
+     * pins.
+     *
+     * Without both, a member ANSWERING an event would move that event's tag,
      * and a committee member's pending edit of the TITLE would answer 412 for
      * a reason that has nothing to do with the title. That is exactly the
      * failure myAttendance's docblock describes, arrived at from the other
      * side. Pinned by ConditionalWriteTest::
-     * test_answering_an_event_does_not_move_its_tag.
+     * test_answering_an_event_does_not_move_its_tag — which pins the
+     * user-facing outcome but, being a plain HTTP round trip, cannot tell
+     * the two guards apart; the two EventCountsTest cases above do that.
      *
      * The overload is invisible to every consumer: the SPA renders the strip
      * only when can() passes AND the value is non-null, and the tag wants null
@@ -205,8 +229,9 @@ class EventResource extends JsonResource
     }
 
     /**
-     * The booked head count, or null. Same null rule as countOrNull() — see
-     * its docblock for why "not loaded" must also answer null.
+     * The booked head count, or null. Same two guards as countOrNull() — see
+     * its docblock for why "not loaded" (Guard A) and "no caller" (Guard B)
+     * are independent, and which one actually does the work in the tag path.
      */
     private function guestCountOrNull(Request $request): ?int
     {

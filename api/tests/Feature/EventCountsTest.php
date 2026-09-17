@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\EventController;
+use App\Http\Resources\EventResource;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
@@ -10,6 +12,7 @@ use App\Models\RegistrationOption;
 use App\Models\Role;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Tests\TestCase;
 
 /**
@@ -184,5 +187,68 @@ class EventCountsTest extends TestCase
         // MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
         $this->assertSame(1, $response->json('answeredCount'));
         $this->assertSame(2, $response->json('answerableCount'));
+    }
+
+    /**
+     * GUARD A IN ISOLATION — the not-loaded guard (`array_key_exists()` in
+     * `EventResource::countOrNull()`/`guestCountOrNull()`).
+     *
+     * An AUTHORIZED caller (holds both attendance.view_all and
+     * registrations.view, so every gate passes and Guard B does not fire)
+     * renders an event whose aggregates were NEVER loaded — the shape a
+     * controller produces if it forgets `->withCount(EventController::
+     * counts())` / `->withSum('registrationChoices as guest_count', ...)`.
+     * This is the write-path case: a controller that forgets to load the
+     * aggregates must answer null rather than a wrong number or a crash.
+     *
+     * Goes red if the `array_key_exists()` early-return is removed, because
+     * reading the missing attribute then throws instead of answering null.
+     */
+    public function test_unloaded_aggregates_render_as_null_for_an_authorized_caller(): void
+    {
+        $viewer = Member::factory()
+            ->withRole(Role::factory()->granting(
+                Permission::AttendanceViewAll,
+                Permission::RegistrationsView,
+            )->create())
+            ->create();
+
+        $request = Request::create('/');
+        $request->setUserResolver(fn () => $viewer);
+
+        $resource = (new EventResource($this->event))->toArray($request);
+
+        $this->assertNull($resource['answeredCount']);
+        $this->assertNull($resource['answerableCount']);
+        $this->assertNull($resource['guestCount']);
+    }
+
+    /**
+     * GUARD B IN ISOLATION — the no-caller guard (`permissionsFor()`
+     * resolving an unauthenticated request's permission set to empty).
+     *
+     * A bare, unauthenticated `Request::create('/')` — exactly what
+     * `EntityTag::state()` renders `EventResource` through — with the
+     * aggregates already LOADED, as a controller normally loads them. Guard
+     * A alone would let these loaded values through; only Guard B (no user
+     * -> empty permission set -> maySeeAnswers()/maySeeGuests() false) keeps
+     * them out. This is exactly the regression a reviewer proved: loading
+     * the aggregates inside EntityTag::state() defeats Guard A, and nothing
+     * but Guard B stops the counts reaching the tag.
+     *
+     * Goes red if `permissionsFor()` ever resolves a bare request's
+     * permission set to anything but empty.
+     */
+    public function test_loaded_aggregates_render_as_null_for_a_bare_request(): void
+    {
+        $event = $this->event->fresh();
+        $event->loadCount(EventController::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+
+        $resource = (new EventResource($event))->toArray(Request::create('/'));
+
+        $this->assertNull($resource['answeredCount']);
+        $this->assertNull($resource['answerableCount']);
+        $this->assertNull($resource['guestCount']);
     }
 }
