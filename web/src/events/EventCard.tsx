@@ -18,19 +18,24 @@ import { formatEventWhen } from "./formatEventWhen";
  * have to be edited for every future control, and would make this component
  * untestable without a session.
  *
- * TWO SLOTS RATHER THAN ONE, because they are read at different moments.
+ * THREE SLOTS RATHER THAN ONE, because they are read at different moments.
  * `actions` is the committee's housekeeping and sits up beside the title where
  * it stays out of the way; `answer` is what everybody else came for, so it goes
- * at the bottom, full width, under the detail it is an answer to.
+ * at the bottom, full width, under the detail it is an answer to; `meta` is the
+ * committee's read-only summary — visibility and the answer/booking counts —
+ * decided by the screen exactly like the other two, and rendered under the
+ * date line.
  */
 export function EventCard({
   event,
   actions,
   answer,
+  meta,
 }: {
   event: EventResource;
   actions?: ReactNode;
   answer?: ReactNode;
+  meta?: ReactNode;
 }) {
   return (
     <article
@@ -46,6 +51,13 @@ export function EventCard({
           <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
             {formatEventWhen(event.startsAt, event.endsAt)}
           </p>
+
+          {/* INSIDE THE min-w-0 COLUMN, not beside it. The strip wraps on its
+              own at 390px rather than widening the card — #89's failure was a
+              box that could not shrink dragging the document 223px sideways,
+              and the action row directly above this one is still open as
+              #118. */}
+          {meta}
         </div>
 
         {/* Only rendered when the screen passed some, so a player's card has

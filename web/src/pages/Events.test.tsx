@@ -593,3 +593,58 @@ test("a guest-list reader gets that link and no other", async () => {
   expect(screen.queryByRole("link", { name: /^Modifier/ })).toBeNull();
   expect(screen.queryByRole("link", { name: /^Qui vient/ })).toBeNull();
 });
+
+test("a player is told nothing about answers or bookings", async () => {
+  // Mirrors EventCountsTest::test_a_player_is_told_nothing_about_answers at
+  // the UI layer. The API has already withheld the numbers; this asserts the
+  // screen does not invent them.
+  await renderPlanning("demo.player");
+  expect(screen.queryAllByTestId("event-meta")).toHaveLength(0);
+});
+
+test("an organiser sees the public chip and the answer fraction", async () => {
+  await renderPlanning("demo.direction");
+  const strips = screen.getAllByTestId("event-meta");
+  expect(strips.length).toBeGreaterThan(0);
+  expect(screen.getAllByText(/réponses$/).length).toBeGreaterThan(0);
+
+  // Pinned to specific cards rather than counted: the seed's public events
+  // are Cheyres AND the souper (both take bookings from the public), so a
+  // count of "Public" chips would both break the moment anyone seeds another
+  // one and pass while the chip sat on the wrong card entirely.
+  const cheyres = screen
+    .getAllByTestId("event-card")
+    .find((card) => within(card).queryByText("Vendanges Cheyres")) as HTMLElement;
+  const weekend = screen
+    .getAllByTestId("event-card")
+    .find((card) => within(card).queryByText("Weekend musical")) as HTMLElement;
+
+  expect(within(cheyres).getByText("Public")).toBeInTheDocument();
+  expect(within(weekend).queryByText("Public")).toBeNull();
+});
+
+test("the booking count appears only on an event that takes bookings", async () => {
+  await renderPlanning("demo.committee");
+
+  // Pinned to specific cards for the same reason as the public chip above:
+  // a count can pass while sat on the wrong card, so this checks the mapping
+  // rather than the total.
+  const souper = screen
+    .getAllByTestId("event-card")
+    .find((card) => within(card).queryByText("Souper de soutien")) as HTMLElement;
+  const rehearsal = screen
+    .getAllByTestId("event-card")
+    .find((card) => within(card).queryByText("Répétition")) as HTMLElement;
+
+  expect(within(souper).getByText(/personnes?$|^Aucune inscription$/)).toBeInTheDocument();
+  expect(within(rehearsal).queryByText(/personnes?$|^Aucune inscription$/)).toBeNull();
+});
+
+test("the past keeps the strip", async () => {
+  // The fraction stops being a chase cue and becomes a record of who
+  // answered, which is worth having on the screen that shows the past.
+  await renderPlanning("demo.direction");
+  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(1));
+  expect(screen.getAllByTestId("event-meta")).toHaveLength(1);
+});

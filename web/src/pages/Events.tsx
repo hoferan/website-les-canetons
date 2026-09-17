@@ -19,6 +19,7 @@ import { PageSection } from "../components/PageSection";
 import { AttendanceControls } from "../events/AttendanceControls";
 import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
+import { EventMeta } from "../events/EventMeta";
 import { bandZoneParts } from "../events/bandTime";
 import { useSession } from "../session/SessionProvider";
 
@@ -249,6 +250,19 @@ export function Events() {
         // last week is an invitation to nonsense, and the chase list is where a
         // late correction belongs.
         answer={showingPast ? undefined : <AttendanceControls event={event} inOwed={inOwed} />}
+        // WHAT THE SCREEN DECIDES, mirroring the API's gates for UX only —
+        // the numbers are already null for anybody who may not see them, so
+        // this suppresses an empty strip rather than protecting anything.
+        meta={
+          <EventMeta
+            isPublic={mayManage ? event.isPublic : undefined}
+            answered={maySeeAnswers ? (event.answeredCount ?? undefined) : undefined}
+            answerable={maySeeAnswers ? (event.answerableCount ?? undefined) : undefined}
+            guests={
+              maySeeGuests && event.takesRegistrations ? (event.guestCount ?? undefined) : undefined
+            }
+          />
+        }
       />
     );
   }
