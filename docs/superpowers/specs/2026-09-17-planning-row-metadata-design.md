@@ -186,16 +186,27 @@ nothing in the suite would catch.
 
 ### Query cost
 
-The two subselects ride the existing list query. The denominator is one extra
-`COUNT`. `GET /api/v1/events` goes from 2 queries to 3, constant in the number
-of events.
+The two subselects ride the existing list query and cost no round trip. Two
+things do cost one each, and both are constant in the number of events:
 
-That is the current ceiling of
-`test_listing_the_planning_costs_a_fixed_number_of_queries`, whose assertion
-becomes `<= 4` with its comment rewritten to name the third query. The test's
-stated purpose is that the endpoint "should not scale queries with events",
-and three constant queries honour it; the spare room the R1c comment describes
-as "deliberate and now spent" is being spent again, deliberately.
+- **resolving the caller's permissions.** `EffectivePermissions::for()` is one
+  query (a join over `member_roles` and `role_permissions`), and nothing
+  resolves permissions on this route today — reading the planning needs none.
+- **the denominator**, one `COUNT` on members with a register. It runs only
+  when the caller may see answers, so a player never pays it.
+
+From the 2 the R1c comment measures:
+
+| Caller | Today | After |
+| --- | --- | --- |
+| a player | 2 | 3 |
+| holds `attendance.view_all` | 2 | 4 |
+
+`test_listing_the_planning_costs_a_fixed_number_of_queries` acts as a player,
+so it stays green at `<= 3` and is **left untouched** — loosening an existing
+guard to cover a path it does not exercise would weaken it for the caller it
+was written about. The committee path gets its own test at `<= 4`, with 20
+events, so that the number that grew is the one under assertion.
 
 ## The SPA
 
@@ -269,7 +280,8 @@ The leak is the thing to pin, since it is the reason the gate is server-side.
   regression the null rule exists to prevent.
   `test_an_events_tag_does_not_depend_on_who_is_asking` must also still pass
   untouched.
-- **The query budget**, raised to 4, with the comment naming the third query.
+- **The committee path's query budget**, a new test at `<= 4` over 20 events.
+  The existing player-path test stays at `<= 3`, untouched.
 
 On the web side: the strip is absent for a player, mirroring the API test at
 the UI layer; the `Public` chip appears only with `events.manage`; `0/18`
