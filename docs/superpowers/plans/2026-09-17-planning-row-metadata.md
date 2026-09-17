@@ -202,7 +202,14 @@ In `api/app/Http/Controllers/Api/EventController.php`, add `use App\Support\Perm
      */
     private static function maySeeAnswers(Request $request): bool
     {
-        return $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false;
+        if (! $request->attributes->has(EventResource::MAY_SEE_ANSWERS)) {
+            $request->attributes->set(
+                EventResource::MAY_SEE_ANSWERS,
+                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
+            );
+        }
+
+        return (bool) $request->attributes->get(EventResource::MAY_SEE_ANSWERS);
     }
 
     /**
@@ -284,8 +291,8 @@ In `api/app/Http/Resources/EventResource.php`, add `use App\Support\Permission;`
              * How many members are answerable at all — the denominator of the
              * fraction. Null when the caller may not see answers.
              */
-            'answerableCount' => $request->user()?->hasPermission(Permission::AttendanceViewAll)
-                ? $request->attributes->get('answerableCount')
+            'answerableCount' => $this->maySeeAnswers($request)
+                ? $request->attributes->get(self::ANSWERABLE_COUNT)
                 : null,
 ```
 
@@ -319,7 +326,7 @@ and this private method at the bottom of the class:
             return null;
         }
 
-        return $request->user()?->hasPermission(Permission::AttendanceViewAll) === true
+        return $this->maySeeAnswers($request)
             ? (int) $this->getAttributes()[$attribute]
             : null;
     }
@@ -485,12 +492,44 @@ and add beside `maySeeAnswers()`:
      * A DIFFERENT GATE FROM maySeeAnswers, not a shared "committee" one: the
      * seeded `committee` role holds registrations.view and NOT
      * attendance.view_all, so somebody genuinely holds one without the other.
+     *
+     * Memoized on the request for the reason maySeeAnswers() gives at length:
+     * hasPermission() queries on every call and the Resource's toArray() runs
+     * once per row, so an unmemoized check is an N+1 that scales with the
+     * planning.
      */
     private static function maySeeGuests(Request $request): bool
     {
-        return $request->user()?->hasPermission(Permission::RegistrationsView) ?? false;
+        if (! $request->attributes->has(EventResource::MAY_SEE_GUESTS)) {
+            $request->attributes->set(
+                EventResource::MAY_SEE_GUESTS,
+                $request->user()?->hasPermission(Permission::RegistrationsView) ?? false,
+            );
+        }
+
+        return (bool) $request->attributes->get(EventResource::MAY_SEE_GUESTS);
     }
 ```
+
+**Also fix a Minor finding carried over from Task 1's review.** The controller
+and the Resource currently share the memo key as the bare string
+`'maySeeAnswers'`, written out in both files: a typo in either silently
+reintroduces the N+1, with no compile error and only a query-count test to
+catch it. Now that a second key is arriving, promote both to constants on
+`EventResource` and use them in both files:
+
+```php
+    /** Request-attribute keys the controller and this Resource share. See maySeeAnswers(). */
+    public const MAY_SEE_ANSWERS = 'maySeeAnswers';
+
+    public const MAY_SEE_GUESTS = 'maySeeGuests';
+
+    public const ANSWERABLE_COUNT = 'answerableCount';
+```
+
+Replace every bare-string use of those three keys in `EventController` and
+`EventResource` with the constants. The existing tests must stay green with no
+edits — the behaviour is identical.
 
 - [ ] **Step 5: Add the field to `EventResource`**
 
@@ -518,11 +557,31 @@ and generalise `countOrNull` into two callers by adding:
             return null;
         }
 
-        return $request->user()?->hasPermission(Permission::RegistrationsView) === true
+        return $this->maySeeGuests($request)
             ? (int) ($this->getAttributes()['guest_count'] ?? 0)
             : null;
     }
+
+    /** The bookings gate, memoized for the reason maySeeAnswers() gives. */
+    private function maySeeGuests(Request $request): bool
+    {
+        if (! $request->attributes->has(self::MAY_SEE_GUESTS)) {
+            $request->attributes->set(
+                self::MAY_SEE_GUESTS,
+                $request->user()?->hasPermission(Permission::RegistrationsView) ?? false,
+            );
+        }
+
+        return (bool) $request->attributes->get(self::MAY_SEE_GUESTS);
+    }
 ```
+
+**Do not call `hasPermission()` inline here.** Task 1 measured the unmemoized
+form at 46 queries for 20 events, because `toArray()` runs once per row and
+`EffectivePermissions::for()` queries on every call. The new test below has no
+query budget of its own, so the failure would surface as
+`test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries`
+going red — a test about a different permission.
 
 `withSum` over an empty set yields `null`, hence the `?? 0`: an event that takes bookings and has none reads `0`, not `null`, so the SPA can tell "none yet" from "not yours to see".
 
