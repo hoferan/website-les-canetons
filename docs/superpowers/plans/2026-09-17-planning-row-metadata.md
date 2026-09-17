@@ -202,14 +202,7 @@ In `api/app/Http/Controllers/Api/EventController.php`, add `use App\Support\Perm
      */
     private static function maySeeAnswers(Request $request): bool
     {
-        if (! $request->attributes->has(EventResource::MAY_SEE_ANSWERS)) {
-            $request->attributes->set(
-                EventResource::MAY_SEE_ANSWERS,
-                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
-            );
-        }
-
-        return (bool) $request->attributes->get(EventResource::MAY_SEE_ANSWERS);
+        return EventResource::permissionsFor($request)->contains(Permission::AttendanceViewAll);
     }
 
     /**
@@ -500,36 +493,49 @@ and add beside `maySeeAnswers()`:
      */
     private static function maySeeGuests(Request $request): bool
     {
-        if (! $request->attributes->has(EventResource::MAY_SEE_GUESTS)) {
-            $request->attributes->set(
-                EventResource::MAY_SEE_GUESTS,
-                $request->user()?->hasPermission(Permission::RegistrationsView) ?? false,
-            );
-        }
-
-        return (bool) $request->attributes->get(EventResource::MAY_SEE_GUESTS);
+        return EventResource::permissionsFor($request)->contains(Permission::RegistrationsView);
     }
 ```
 
-**Also fix a Minor finding carried over from Task 1's review.** The controller
-and the Resource currently share the memo key as the bare string
-`'maySeeAnswers'`, written out in both files: a typo in either silently
-reintroduces the N+1, with no compile error and only a query-count test to
-catch it. Now that a second key is arriving, promote both to constants on
-`EventResource` and use them in both files:
+**Memoize the permission SET, not a boolean per gate.** This is what shipped,
+after the per-gate form was measured and rejected — see below.
 
 ```php
-    /** Request-attribute keys the controller and this Resource share. See maySeeAnswers(). */
-    public const MAY_SEE_ANSWERS = 'maySeeAnswers';
-
-    public const MAY_SEE_GUESTS = 'maySeeGuests';
+    /** Request-attribute keys the controller and this Resource share. */
+    public const PERMISSIONS = 'eventPermissions';
 
     public const ANSWERABLE_COUNT = 'answerableCount';
+
+    /**
+     * The caller's permission set, resolved ONCE per request.
+     *
+     * EffectivePermissions::for() is a single query returning EVERY permission
+     * the member holds, but hasPermission() re-runs it on each call — so a
+     * boolean memoized PER GATE costs one query per gate. Memoizing the SET
+     * keeps it at one query however many gates are added later.
+     */
+    public static function permissionsFor(Request $request): Collection
+    {
+        if (! $request->attributes->has(self::PERMISSIONS)) {
+            $request->attributes->set(
+                self::PERMISSIONS,
+                $request->user()?->permissions() ?? collect(),
+            );
+        }
+
+        return $request->attributes->get(self::PERMISSIONS);
+    }
 ```
 
-Replace every bare-string use of those three keys in `EventController` and
-`EventResource` with the constants. The existing tests must stay green with no
-edits — the behaviour is identical.
+Every gate then reads `self::permissionsFor($request)->contains(Permission::X)`.
+
+**Why, and what it cost to learn.** Task 1 memoized one boolean per gate. Adding
+this task's second gate took the committee path to 5 queries against a budget of
+4, and broke `EventIndexTest`'s player budget 3 → 4 — in a file this task does
+not touch. Both budget assertions pass **unedited** under the set-memoized form,
+which is the evidence that it is right rather than merely quieter. Never raise a
+query budget to accommodate a new gate here; the budget is the thing that caught
+this twice.
 
 - [ ] **Step 5: Add the field to `EventResource`**
 
@@ -565,14 +571,7 @@ and generalise `countOrNull` into two callers by adding:
     /** The bookings gate, memoized for the reason maySeeAnswers() gives. */
     private function maySeeGuests(Request $request): bool
     {
-        if (! $request->attributes->has(self::MAY_SEE_GUESTS)) {
-            $request->attributes->set(
-                self::MAY_SEE_GUESTS,
-                $request->user()?->hasPermission(Permission::RegistrationsView) ?? false,
-            );
-        }
-
-        return (bool) $request->attributes->get(self::MAY_SEE_GUESTS);
+        return self::permissionsFor($request)->contains(Permission::RegistrationsView);
     }
 ```
 
