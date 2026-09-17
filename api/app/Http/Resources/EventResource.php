@@ -89,9 +89,9 @@ class EventResource extends JsonResource
              * How many members are answerable at all — the denominator of the
              * fraction. Null when the caller may not see answers.
              */
-            'answerableCount' => $this->maySeeAnswers($request)
-                ? $request->attributes->get(self::ANSWERABLE_COUNT)
-                : null,
+            'answerableCount' => $request->attributes->get(self::ANSWERABLE_COUNT) === null
+                ? null
+                : (int) $request->attributes->get(self::ANSWERABLE_COUNT),
             /**
              * How many PEOPLE are booked — the sum of the quantities, because
              * "3 x adulte, 1 x enfant" is four people and four is what fills

@@ -392,6 +392,9 @@ export const getEventIndexResponseMock = (
       null,
     ]),
     isPublic: faker.datatype.boolean(),
+    answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+    answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+    guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     registrationOpensAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -430,6 +433,9 @@ export const getEventStoreResponseMock = (
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
+  answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -466,6 +472,9 @@ export const getEventShowResponseMock = (
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
+  answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -502,6 +511,9 @@ export const getEventUpdateResponseMock = (
   location: faker.string.alpha({ length: { min: 10, max: 20 } }),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
+  answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
   notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   registrationOpensAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
@@ -551,6 +563,9 @@ export const getEventSeriesResponseMock = (
       null,
     ]),
     isPublic: faker.datatype.boolean(),
+    answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+    answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+    guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
     notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     registrationOpensAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",

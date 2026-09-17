@@ -317,6 +317,25 @@ export interface EventResource {
   /** Whether the event may be shown to people outside the band. */
   isPublic: boolean;
   /**
+   * How many answerable members have replied, or null when the
+   * caller may not see answers.
+   * @nullable
+   */
+  answeredCount: number | null;
+  /**
+   * How many members are answerable at all — the denominator of the
+   * fraction. Null when the caller may not see answers.
+   * @nullable
+   */
+  answerableCount: number | null;
+  /**
+   * How many PEOPLE are booked — the sum of the quantities, because
+   * "3 x adulte, 1 x enfant" is four people and four is what fills
+   * the hall. Null when the caller may not see bookings.
+   * @nullable
+   */
+  guestCount: number | null;
+  /**
    * Free text for members. Not shown to the public.
    * @nullable
    */

@@ -5011,6 +5011,27 @@
                         "type": "boolean",
                         "description": "Whether the event may be shown to people outside the band."
                     },
+                    "answeredCount": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many answerable members have replied, or null when the\ncaller may not see answers."
+                    },
+                    "answerableCount": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many members are answerable at all \u2014 the denominator of the\nfraction. Null when the caller may not see answers."
+                    },
+                    "guestCount": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many PEOPLE are booked \u2014 the sum of the quantities, because\n\"3 x adulte, 1 x enfant\" is four people and four is what fills\nthe hall. Null when the caller may not see bookings."
+                    },
                     "notes": {
                         "type": [
                             "string",
@@ -5062,6 +5083,9 @@
                     "location",
                     "attire",
                     "isPublic",
+                    "answeredCount",
+                    "answerableCount",
+                    "guestCount",
                     "notes",
                     "registrationOpensAt",
                     "registrationClosesAt",
