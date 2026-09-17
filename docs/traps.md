@@ -341,8 +341,9 @@ mark. Check the catalogue, not your keyboard.
   schema, does Sanctum cookie auth, generates the client, and already runs on
   this shared FTP host.
 - **Hard cutover over building alongside.** `app/` was deleted up front rather
-  than kept as a running parity reference. The consequence is that the parity
-  reference is `git show dcd7862^:app/pages/<page>.php` and the live site.
+  than kept as a running parity reference. The live site is now the only one
+  left — that pull request was squash-merged, and no branch holds the old pages'
+  commits any more.
 - **Icons are `lucide-react`** — the same set as the old site, as components.
   There is no central icon registry; the old `assets/js/icons.js` existed only
   because the vanilla library needed one.
