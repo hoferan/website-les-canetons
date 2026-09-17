@@ -164,4 +164,25 @@ class EventCountsTest extends TestCase
         $this->assertNull($response->json('data.0.answerableCount'));
         $this->assertSame(0, $response->json('data.0.guestCount'));
     }
+
+    public function test_reading_one_event_carries_the_same_counts_as_the_list(): void
+    {
+        // One Resource, one shape. A client reading a single event should not
+        // have to fetch a list to learn the denominator.
+        Attendance::factory()->create(['event_id' => $this->event->id]);
+        Member::factory()->inSection('Trompettes')->create();
+
+        $response = $this->actingAsMember($this->answerViewer())
+            ->getJson("/api/v1/events/{$this->event->id}")
+            ->assertOk();
+
+        // No `data.` prefix: JsonResource::withoutWrapping() (see
+        // AppServiceProvider::boot()) means a single-resource response is not
+        // enveloped, unlike the collection in the test above it. Every other
+        // single-event test in this suite reads the same way — see
+        // EventIndexTest::test_it_shows_one_event and
+        // MyAttendanceTest::test_it_never_shows_somebody_elses_answer.
+        $this->assertSame(1, $response->json('answeredCount'));
+        $this->assertSame(2, $response->json('answerableCount'));
+    }
 }

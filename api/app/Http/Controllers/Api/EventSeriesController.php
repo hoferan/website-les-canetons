@@ -11,6 +11,7 @@ use App\Support\Audit;
 use App\Support\BandTime;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -114,6 +115,18 @@ class EventSeriesController extends Controller
 
         // The same shape GET /api/v1/events returns, so the SPA refreshes its
         // list from this response rather than guessing what it just made.
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, EventController::answerable($request));
+
+        // BATCHED ON THE COLLECTION, not per event: Collection::loadCount()/
+        // loadSum() run one query for the whole batch via a WHERE IN, the same
+        // way index()'s ->withCount()/->withSum() run one query for the whole
+        // list. Calling these on each Model in turn would run one query per
+        // date and blow test_a_season_does_not_cost_a_query_per_row_beyond_its_writes'
+        // budget the moment a season has more than a couple of rows.
+        $events = Collection::make($events);
+        $events->loadCount(EventController::counts());
+        $events->loadSum('registrationChoices as guest_count', 'quantity');
+
         $planning = EventResource::collection($events);
 
         return response()->json($planning, 201);
