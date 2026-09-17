@@ -203,6 +203,13 @@ class EventCountsTest extends TestCase
      *
      * Goes red if the `array_key_exists()` early-return is removed, because
      * reading the missing attribute then throws instead of answering null.
+     *
+     * TWO OF THE THREE ASSERTIONS EXERCISE THE GUARD, not all three.
+     * `answerableCount` never passes through `countOrNull()` at all — it reads
+     * the `ANSWERABLE_COUNT` request attribute, which no unit-style render
+     * sets, so it is null here whatever Guard A does. It is asserted for shape
+     * rather than as evidence; `answeredCount` and `guestCount` are what this
+     * test actually pins.
      */
     public function test_unloaded_aggregates_render_as_null_for_an_authorized_caller(): void
     {
@@ -238,6 +245,10 @@ class EventCountsTest extends TestCase
      *
      * Goes red if `permissionsFor()` ever resolves a bare request's
      * permission set to anything but empty.
+     *
+     * As in the test above, `answerableCount` is null here for its own reason
+     * — its request attribute is never set — so the evidence is carried by
+     * `answeredCount` and `guestCount`, whose aggregates ARE loaded.
      */
     public function test_loaded_aggregates_render_as_null_for_a_bare_request(): void
     {
