@@ -380,14 +380,14 @@ EOF
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `api/tests/Feature/EventCountsTest.php`, and add `use App\Models\RegistrationOption;` to its imports:
+Append to `api/tests/Feature/EventCountsTest.php`, and add `use App\Models\Registration;` and `use App\Models\RegistrationOption;` to its imports:
 
 ```php
     public function test_a_player_is_told_nothing_about_bookings(): void
     {
         $event = Event::factory()->takingRegistrations()->create();
         $option = RegistrationOption::factory()->create(['event_id' => $event->id]);
-        \App\Models\Registration::factory()
+        Registration::factory()
             ->withChoice($option, 4)
             ->create(['event_id' => $event->id]);
 
@@ -404,7 +404,7 @@ Append to `api/tests/Feature/EventCountsTest.php`, and add `use App\Models\Regis
         // hall. One booking that reads "1" is the bug this pins.
         $event = Event::factory()->takingRegistrations()->create();
         $option = RegistrationOption::factory()->create(['event_id' => $event->id]);
-        \App\Models\Registration::factory()
+        Registration::factory()
             ->withChoice($option, 4)
             ->create(['event_id' => $event->id]);
 
@@ -602,16 +602,18 @@ And append to `api/tests/Feature/ConditionalWriteTest.php`:
         // the tag would make a member's ANSWER invalidate a committee
         // member's pending edit of the TITLE — a 412 for a reason that has
         // nothing to do with the title.
-        $event = \App\Models\Event::factory()->create();
-        $before = \App\Support\EntityTag::compute('event', $event);
+        $event = Event::factory()->create();
+        $before = EntityTag::compute('event', $event);
 
-        \App\Models\Attendance::factory()->create(['event_id' => $event->id]);
+        Attendance::factory()->create(['event_id' => $event->id]);
 
-        $this->assertSame($before, \App\Support\EntityTag::compute('event', $event->fresh()));
+        $this->assertSame($before, EntityTag::compute('event', $event->fresh()));
     }
 ```
 
-If `EntityTag` exposes no public `compute()`, read the tag over HTTP instead: `GET /api/v1/events/{id}` as an organiser, keep the `ETag` header, create the answer, read again, and assert the two headers are identical.
+`EntityTag::compute(string $facet, Model $model): ?string` is public (verified at `api/app/Support/EntityTag.php:116`), so call it directly — no HTTP round trip is needed. Add `use App\Models\Attendance;`, `use App\Models\Event;` and `use App\Support\EntityTag;` to the test file's imports if they are not already there.
+
+Note that `compute()` re-reads from the database itself, so passing `$event` and `$event->fresh()` is belt-and-braces rather than required — `test_the_tag_describes_what_is_stored_not_what_is_in_hand` is what pins that behaviour.
 
 - [ ] **Step 2: Run to verify they fail**
 
