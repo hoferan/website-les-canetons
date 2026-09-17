@@ -163,6 +163,65 @@ class RegistrationPublicTest extends TestCase
         );
     }
 
+    public function test_the_confirmation_puts_each_detail_on_its_own_line(): void
+    {
+        // RENDERED FOR REAL, because Mail::fake() never renders the view: every
+        // other mail test here passes over a template a mail client displays
+        // wrong, and this one would have too.
+        //
+        // Markdown reads a bare newline as a space. Written as consecutive
+        // lines, the bold labels come out as a single wrapped paragraph in the
+        // HTML part, which is the part a mail client shows. The plain-text part
+        // keeps the break, so reading the source or the text alternative hides
+        // the problem entirely.
+        $option = RegistrationOption::factory()->create(['event_id' => $this->event->id]);
+        $registration = Registration::factory()
+            ->withChoice($option)
+            ->create(['event_id' => $this->event->id, 'table_name' => 'Table des Canetons']);
+
+        $rendered = (new RegistrationConfirmation($registration->fresh(), $this->event))->render();
+
+        foreach (self::blockTexts($rendered) as $block) {
+            $found = array_filter(
+                ['Quand :', 'Où :', 'Total :', 'Table :'],
+                fn (string $label) => str_contains($block, $label),
+            );
+
+            $this->assertLessThan(2, count($found), 'Two labels share one rendered block: '.$block);
+        }
+
+        // The sign-off is two lines in the source and has to be two on screen.
+        $this->assertNotContains(
+            'Merci et à bientôt, Les Canetons de Fribourg',
+            self::blockTexts($rendered),
+        );
+    }
+
+    /**
+     * The rendered HTML as the blocks a reader sees, one per entry.
+     *
+     * A NEWLINE IN THE SOURCE IS NOT A BREAK ON SCREEN. HTML collapses it to a
+     * space, so it has to be flattened BEFORE the block tags become breaks.
+     * Splitting on it instead is how the first version of this helper reported
+     * the run-on below as two tidy blocks and passed over the one defect it
+     * was written to catch.
+     *
+     * @return list<string>
+     */
+    private static function blockTexts(string $html): array
+    {
+        $flattened = preg_replace('/\s+/', ' ', $html) ?? $html;
+        $broken = preg_replace('#</(p|h[1-6]|td|th|tr|div|li)>|<br\s*/?>#i', "\n", $flattened) ?? $flattened;
+
+        return array_values(array_filter(
+            array_map(
+                fn (string $block) => trim(html_entity_decode(strip_tags($block))),
+                explode("\n", $broken),
+            ),
+            fn (string $block) => $block !== '',
+        ));
+    }
+
     public function test_a_failing_mail_server_does_not_lose_the_booking(): void
     {
         // BEST-EFFORT ON PURPOSE (G5). The row is already committed and this
