@@ -7,6 +7,7 @@ use App\Support\Iso8601;
 use App\Support\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * One row on the planning: a rehearsal or a gig.
@@ -27,6 +28,43 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class EventResource extends JsonResource
 {
+    /** Request-attribute keys the controller and this Resource share. See permissionsFor(). */
+    public const PERMISSIONS = 'eventPermissions';
+
+    public const ANSWERABLE_COUNT = 'answerableCount';
+
+    /**
+     * The caller's permission set, resolved ONCE per request.
+     *
+     * EffectivePermissions::for() is a single query returning EVERY permission
+     * the member holds, but Member::hasPermission() re-runs it on every call
+     * — so memoizing a boolean PER GATE (the shape this used to take) still
+     * costs one query per gate, because each gate's first check throws that
+     * whole set away after reading one entry out of it. Memoizing the SET
+     * itself, once, keeps the total at one query however many gates
+     * (`maySeeAnswers`, `maySeeGuests`, and whatever comes after) end up
+     * reading it. Both `EventController::index()` (for the denominator) and
+     * this Resource (once per row) read the SAME key, which is what keeps
+     * a whole list at one query rather than one per caller.
+     *
+     * A request with no user resolves to an empty set: EntityTag::state()
+     * renders this Resource through a bare Request::create('/'), and every
+     * gate must answer false there rather than throw.
+     *
+     * @return Collection<int, Permission>
+     */
+    public static function permissionsFor(Request $request): Collection
+    {
+        if (! $request->attributes->has(self::PERMISSIONS)) {
+            $request->attributes->set(
+                self::PERMISSIONS,
+                $request->user()?->permissions() ?? collect(),
+            );
+        }
+
+        return $request->attributes->get(self::PERMISSIONS);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -52,8 +90,14 @@ class EventResource extends JsonResource
              * fraction. Null when the caller may not see answers.
              */
             'answerableCount' => $this->maySeeAnswers($request)
-                ? $request->attributes->get('answerableCount')
+                ? $request->attributes->get(self::ANSWERABLE_COUNT)
                 : null,
+            /**
+             * How many PEOPLE are booked — the sum of the quantities, because
+             * "3 x adulte, 1 x enfant" is four people and four is what fills
+             * the hall. Null when the caller may not see bookings.
+             */
+            'guestCount' => $this->guestCountOrNull($request),
             /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
             'registrationOpensAt' => $this->registration_opens_at === null
@@ -161,29 +205,35 @@ class EventResource extends JsonResource
     }
 
     /**
-     * Whether the caller may see answer counts, memoized ON THE REQUEST
-     * under the key `maySeeAnswers` — the exact key
-     * EventController::maySeeAnswers() reads and writes.
+     * The booked head count, or null. Same null rule as countOrNull() — see
+     * its docblock for why "not loaded" must also answer null.
+     */
+    private function guestCountOrNull(Request $request): ?int
+    {
+        if (! array_key_exists('guest_count', $this->getAttributes())) {
+            return null;
+        }
+
+        return $this->maySeeGuests($request)
+            ? (int) ($this->getAttributes()['guest_count'] ?? 0)
+            : null;
+    }
+
+    /**
+     * Whether the caller may see answer counts.
      *
-     * Member::hasPermission() runs EffectivePermissions::for(), a query every
-     * time it is called — and this Resource's toArray() runs once per row.
-     * Calling it directly from both count fields, unmemoized, is an N+1 that
-     * scales with the number of events on the list; sharing the key with the
-     * controller's own check (rather than a Resource-local one) is what
-     * keeps the total at one query rather than two, caught by
-     * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries,
-     * not by anything that checks a value. `show()` never populates the key
-     * first, so this resolves and caches it lazily on its own.
+     * Reads the permission set permissionsFor() resolved once for the whole
+     * request — see its docblock for why that, and not a boolean memoized
+     * per gate, is what keeps the query count fixed.
      */
     private function maySeeAnswers(Request $request): bool
     {
-        if (! $request->attributes->has('maySeeAnswers')) {
-            $request->attributes->set(
-                'maySeeAnswers',
-                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
-            );
-        }
+        return self::permissionsFor($request)->contains(Permission::AttendanceViewAll);
+    }
 
-        return (bool) $request->attributes->get('maySeeAnswers');
+    /** The bookings gate. Same permission set as maySeeAnswers(), a different member of it. */
+    private function maySeeGuests(Request $request): bool
+    {
+        return self::permissionsFor($request)->contains(Permission::RegistrationsView);
     }
 }

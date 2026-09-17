@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
+use App\Models\Registration;
+use App\Models\RegistrationOption;
 use App\Models\Role;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -108,5 +110,58 @@ class EventCountsTest extends TestCase
             $queries,
             'GET /api/v1/events should not scale queries with events',
         );
+    }
+
+    public function test_a_player_is_told_nothing_about_bookings(): void
+    {
+        $event = Event::factory()->takingRegistrations()->create();
+        $option = RegistrationOption::factory()->create(['event_id' => $event->id]);
+        Registration::factory()
+            ->withChoice($option, 4)
+            ->create(['event_id' => $event->id]);
+
+        $response = $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
+            ->getJson('/api/v1/events')
+            ->assertOk();
+
+        $this->assertNull($response->json('data.1.guestCount'));
+    }
+
+    public function test_guest_count_sums_quantities_rather_than_counting_bookings(): void
+    {
+        // "3 x adulte, 1 x enfant" is four people, and four is what fills the
+        // hall. One booking that reads "1" is the bug this pins.
+        $event = Event::factory()->takingRegistrations()->create();
+        $option = RegistrationOption::factory()->create(['event_id' => $event->id]);
+        Registration::factory()
+            ->withChoice($option, 4)
+            ->create(['event_id' => $event->id]);
+
+        $viewer = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::RegistrationsView)->create())
+            ->create();
+
+        $response = $this->actingAsMember($viewer)->getJson('/api/v1/events')->assertOk();
+        $row = collect($response->json('data'))->firstWhere('id', $event->id);
+
+        $this->assertSame(4, $row['guestCount']);
+    }
+
+    public function test_the_two_gates_are_independent(): void
+    {
+        // demo.committee holds registrations.view WITHOUT attendance.view_all.
+        // Anything that collapses these into one "committee" check breaks this
+        // member, the way demo.both breaks an either/or role matrix.
+        Attendance::factory()->create(['event_id' => $this->event->id]);
+
+        $viewer = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::RegistrationsView)->create())
+            ->create();
+
+        $response = $this->actingAsMember($viewer)->getJson('/api/v1/events')->assertOk();
+
+        $this->assertNull($response->json('data.0.answeredCount'));
+        $this->assertNull($response->json('data.0.answerableCount'));
+        $this->assertSame(0, $response->json('data.0.guestCount'));
     }
 }

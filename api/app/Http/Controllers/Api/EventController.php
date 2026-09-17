@@ -90,11 +90,12 @@ class EventController extends Controller
         // would be a query per event; and ->additional() writes into the
         // envelope, which PaginatesCollections owns and every EventResource
         // in the collection is rendered beneath rather than inside.
-        $request->attributes->set('answerableCount', self::answerable($request));
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return EventResource::collection(
             $query->with(self::myAttendance($request))
                 ->withCount(self::counts())
+                ->withSum('registrationChoices as guest_count', 'quantity')
                 ->get()
         );
     }
@@ -125,19 +126,16 @@ class EventController extends Controller
     /**
      * Whether the caller may see how many people have answered.
      *
-     * RESOLVED ONCE PER REQUEST, not once per row. Member::hasPermission()
-     * runs EffectivePermissions::for(), which is a query every time it is
-     * called, so asking inside the Resource would be an N+1 that nothing in
-     * the suite would catch — the rows would all be correct.
-     *
-     * Memoized ON THE REQUEST under the key `maySeeAnswers`, and
-     * EventResource::maySeeAnswers() reads and writes the exact same key: the
-     * Resource renders once per row and needs the same boolean to decide
-     * `answeredCount`, so without a shared cache the check runs twice —
-     * once here for the denominator, once per row in the Resource — which
-     * is exactly the fixed cost
+     * RESOLVED ONCE PER REQUEST, not once per row, and not by a boolean
+     * memoized per gate — that shape looked fixed-cost but was not: it
+     * throws away the rest of the permission set after reading one entry, so
+     * a second gate (maySeeGuests, below) paid for a second query for data
+     * this one had already fetched. EventResource::permissionsFor() memoizes
+     * the SET once instead, and this and maySeeGuests() both read it, which
+     * is what
      * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
-     * pins.
+     * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries
+     * actually pin.
      *
      * A request with no user answers false. That is not only the anonymous
      * case: EntityTag::state() renders this Resource through a bare
@@ -145,14 +143,20 @@ class EventController extends Controller
      */
     private static function maySeeAnswers(Request $request): bool
     {
-        if (! $request->attributes->has('maySeeAnswers')) {
-            $request->attributes->set(
-                'maySeeAnswers',
-                $request->user()?->hasPermission(Permission::AttendanceViewAll) ?? false,
-            );
-        }
+        return EventResource::permissionsFor($request)->contains(Permission::AttendanceViewAll);
+    }
 
-        return (bool) $request->attributes->get('maySeeAnswers');
+    /**
+     * Whether the caller may see how many people are booked.
+     *
+     * A DIFFERENT GATE FROM maySeeAnswers, not a shared "committee" one: the
+     * seeded `committee` role holds registrations.view and NOT
+     * attendance.view_all, so somebody genuinely holds one without the other.
+     * Reads the same memoized set maySeeAnswers() does — see its docblock.
+     */
+    private static function maySeeGuests(Request $request): bool
+    {
+        return EventResource::permissionsFor($request)->contains(Permission::RegistrationsView);
     }
 
     /**
