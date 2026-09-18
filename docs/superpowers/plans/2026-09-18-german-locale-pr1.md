@@ -887,7 +887,7 @@ Replace `i18nSource()` with:
 - [ ] **Step 4: Run the guard**
 
 Run: `npm run test:api -- --filter=ApiErrorVocabularyTest`
-Expected: PASS — 7 tests. The brace-walk must cope with `export const de: typeof fr = {`; the annotation sits outside the braces and `blankNonCode` leaves it alone, but if the section regex fails the test says so by name rather than passing vacuously.
+Expected: PASS — 6 tests, 117 assertions (108 before this change). The brace-walk must cope with `export const de: typeof fr = {`; the annotation sits outside the braces and `blankNonCode` leaves it alone, but if the section regex fails the test says so by name rather than passing vacuously.
 
 - [ ] **Step 5: Prove the guard actually bites**
 
