@@ -2,14 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import {
   getMemberIndexQueryKey,
@@ -48,11 +40,14 @@ import { MemberForm, type MemberDraft } from "../members/MemberForm";
  * them are answerable for one. People the band merely displays, such as
  * instructors or honorary members, are CONTENT and are not here at all.
  *
- * CARDS BELOW `md`, A TABLE FROM `md` UP (§4: no bare tables on phones). The
- * screen this replaces rendered a table that scrolled sideways at 390px, which
- * is the width most of this band's phones actually are. Both layouts render
- * from the same array in one pass and only their wrappers differ, so the two
- * can never disagree about who is on the roster.
+ * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). The screen
+ * this replaces rendered a table that scrolled sideways at 390px, which is the
+ * width most of this band's phones actually are; the rebuild answered that
+ * with a card below `md` and a table above it, hand-maintained side by side,
+ * which is the arrangement that left the guest list with no address column for
+ * the whole life of that screen. There is one description of a person here
+ * now, and the card labels each of its fields because the column heads that
+ * used to name them went with the table.
  *
  * ROLES ARE SHOWN BY THEIR FRENCH LABEL, joined from GET /api/roles. Never the
  * key, and never the permission strings: "why does she have this?" is answered
@@ -362,8 +357,22 @@ export function Members() {
         </p>
       ) : null}
 
-      {/* CARDS BELOW md. */}
-      <ul data-testid="roster-cards" className="mt-block flex flex-col gap-related md:hidden">
+      {/* THE CARD IS THE ONLY LAYOUT (#130). There was a table from md up as
+          well, hand-maintained beside this with nothing forcing the two to
+          agree — the bug class that left the guest list with no address column
+          for the whole life of that screen. The grid widens rather than the
+          layout changing, so a roster read on a phone and a roster read on a
+          laptop are the same thing.
+
+          EVERY FIELD IS LABELLED, which is what the column heads used to do.
+          Without them "perrine", "Trompettes" and "Membre" are three
+          unexplained lines under a name — and the label also puts the meaning
+          next to the value in the reading order, which is the part a screen
+          reader lost when the real <th> went. */}
+      <ul
+        data-testid="roster-cards"
+        className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
+      >
         {members.map((member) => (
           <li
             key={member.id}
@@ -373,9 +382,9 @@ export function Members() {
             <p className="font-semibold">
               {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
             </p>
-            <p className="text-sm text-ink-muted">{member.username}</p>
-            <p className="text-sm">{member.sectionName ?? "Aucun pupitre"}</p>
-            <p className="text-sm">{rolesOf(member, labelForRole)}</p>
+            <p className="text-sm text-ink-muted">Identifiant&nbsp;: {member.username}</p>
+            <p className="text-sm">Pupitre&nbsp;: {member.sectionName ?? "Aucun pupitre"}</p>
+            <p className="text-sm">Rôles&nbsp;: {rolesOf(member, labelForRole)}</p>
             <div className="mt-related">
               <MemberActions
                 member={member}
@@ -388,42 +397,6 @@ export function Members() {
           </li>
         ))}
       </ul>
-
-      {/* A TABLE FROM md UP. */}
-      <div data-testid="roster-table" className="mt-block hidden md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nom</TableHead>
-              <TableHead>Identifiant</TableHead>
-              <TableHead>Pupitre</TableHead>
-              <TableHead>Rôles</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map((member) => (
-              <TableRow key={member.id} data-member={member.id}>
-                <TableCell>
-                  {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
-                </TableCell>
-                <TableCell>{member.username}</TableCell>
-                <TableCell>{member.sectionName ?? "Aucun pupitre"}</TableCell>
-                <TableCell>{rolesOf(member, labelForRole)}</TableCell>
-                <TableCell>
-                  <MemberActions
-                    member={member}
-                    busy={opening === member.id}
-                    onEdit={openEdit}
-                    onDelete={openDelete}
-                    onResetPassword={setResetting}
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
 
       <ConfirmByTypingName
         open={deleting !== null}
@@ -501,11 +474,13 @@ function rolesOf(member: MemberResource, labelForRole: (id: number) => string): 
 }
 
 /**
- * The three per-person actions, written once and rendered in both layouts.
+ * The three per-person actions.
  *
- * Extracted because two copies of three buttons is where a fourth action ends
- * up in one layout and not the other — and the phone layout is the one that
- * gets forgotten.
+ * Extracted while the roster still had two layouts, because two copies of
+ * three buttons is where a fourth action ends up in one of them and not the
+ * other — and the phone layout was the one that got forgotten. #130 removed
+ * the second layout; this stays a component because three buttons and their
+ * accessible names are worth reading in one place.
  *
  * Every accessible name carries the person's name, so a screen-reader user
  * hears which row's button they are on rather than the twelfth "Supprimer" on

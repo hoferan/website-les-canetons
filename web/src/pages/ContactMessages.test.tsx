@@ -21,18 +21,18 @@ async function renderArchive(route = "/contact-messages") {
   return result;
 }
 
-function table() {
-  return within(screen.getByTestId("messages-table"));
-}
-
+/**
+ * The archive. ONE LAYOUT since #130 — cards at every width. There was a table
+ * above `md` as well until 2026-09-18, rendering the same five facts a second
+ * time, so every query here had to say which of the two it meant.
+ */
 function cards() {
   return within(screen.getByTestId("messages-cards"));
 }
 
 /**
- * The expanded message. Scoped, because the same subject or preview text
- * also appears in the row it was opened from — both the card and the table
- * render it, and jsdom applies no CSS to hide either.
+ * The expanded message. Scoped, because the same subject or preview text also
+ * appears in the row it was opened from.
  */
 function panel() {
   return within(screen.getByTestId("message-panel"));
@@ -44,7 +44,7 @@ test("lists the messages newest first", async () => {
   // The mock seeds id 3 (Dupasquier) newest, then 2 (Rossier), then 1
   // (Chappuis) — the server's own order, which rowsOf() must not disturb.
   expect(
-    table()
+    cards()
       .getAllByTestId("message-last-name")
       .map((cell) => cell.textContent),
   ).toEqual(["Dupasquier", "Rossier", "Chappuis"]);
@@ -96,7 +96,7 @@ test("hides the handle and delete controls from someone with only messages.view"
   await renderWithSession(<ContactMessages />, { route: "/contact-messages" });
   await screen.findAllByText("Dupasquier");
 
-  await userEvent.click(table().getAllByRole("button", { name: /Lire/ })[0]!);
+  await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
   await screen.findByTestId("message-panel");
 
   expect(panel().getByText("Prestation pour un mariage")).toBeInTheDocument();
@@ -109,7 +109,7 @@ test("marks a message handled and shows who did it", async () => {
   await renderArchive();
 
   // Open message 3 (Dupasquier), the top row, which starts out open.
-  await userEvent.click(table().getAllByRole("button", { name: /Lire/ })[0]!);
+  await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
   await screen.findByRole("button", { name: "Marquer comme traité" });
 
   await userEvent.click(screen.getByRole("button", { name: "Marquer comme traité" }));
@@ -117,20 +117,6 @@ test("marks a message handled and shows who did it", async () => {
   // The mock hands back the acting member's own display name.
   expect(await screen.findByText(/Traité par Dominique Direction, le/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Rouvrir" })).toBeInTheDocument();
-});
-
-test("the phone layout lists exactly the same people as the table", async () => {
-  await renderArchive();
-
-  expect(
-    cards()
-      .getAllByTestId("message-last-name")
-      .map((cell) => cell.textContent),
-  ).toEqual(
-    table()
-      .getAllByTestId("message-last-name")
-      .map((cell) => cell.textContent),
-  );
 });
 
 test("the heading count agrees with the filtered rows, not the whole archive", async () => {
@@ -144,7 +130,7 @@ test("the heading count agrees with the filtered rows, not the whole archive", a
   // rather than repeat the archive's total of three.
   await userEvent.click(screen.getByRole("button", { name: "Traités" }));
 
-  expect(table().getAllByTestId("message-last-name")).toHaveLength(1);
+  expect(cards().getAllByTestId("message-last-name")).toHaveLength(1);
   expect(screen.getByTestId("message-count")).toHaveTextContent("1 sur 3 messages");
 });
 
@@ -207,7 +193,7 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
   await renderArchive();
 
   // Open message 3 (Dupasquier) — the component's own read, tag A.
-  await userEvent.click(table().getAllByRole("button", { name: /Lire/ })[0]!);
+  await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
   await screen.findByRole("button", { name: "Marquer comme traité" });
 
   // Move the server's stored tag for message 3, through the mock store
