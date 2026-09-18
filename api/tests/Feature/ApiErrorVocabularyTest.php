@@ -9,18 +9,21 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
 /**
- * Vocabulary guard: every machine token the API can emit must have French copy
- * in web/src/i18n/fr.ts.
+ * Vocabulary guard: every machine token the API can emit must have copy in
+ * every locale the SPA ships — web/src/i18n/fr.ts and web/src/i18n/de.ts.
  *
- * WHY THIS EXISTS. translateApiError() in that file is the ONLY place French is
- * computed in the whole system. It looks up three vocabularies — `code` under
- * `errors.*`, `fields[].reason` under `validation.*` and `fields[].field` under
+ * WHY THIS EXISTS. translateApiError() is the ONLY place either language is
+ * computed in the whole system, reading whichever catalogue i18next has
+ * active. It looks up three vocabularies — `code` under `errors.*`,
+ * `fields[].reason` under `validation.*` and `fields[].field` under
  * `fields.*` — and a miss does not throw. A missing code or reason degrades to
- * the generic "Une erreur est survenue"; a missing field name leaks the raw
- * ENGLISH identifier onto a French user's screen; and a token whose French
- * interpolates would print a literal {{placeholder}}. All of that is silent.
- * That class of bug was introduced three times during this migration and caught
- * three times by hand — this makes it mechanical.
+ * the generic fallback sentence; a missing field name leaks the raw ENGLISH
+ * identifier onto the screen; and a token whose copy interpolates would print
+ * a literal {{placeholder}}. All of that is silent, and a locale simply absent
+ * from a token falls back to French via i18next's fallbackLng — silent in a
+ * different way, a French sentence on a German reader's screen. That class of
+ * bug was introduced three times during this migration and caught three times
+ * by hand — this makes it mechanical.
  *
  * DERIVATION, NOT DUPLICATION. Hardcoding the token lists here would just move
  * the rot: the list would go stale the first time a controller gained a new
@@ -40,12 +43,13 @@ use ReflectionClass;
 class ApiErrorVocabularyTest extends TestCase
 {
     /**
-     * Candidate locations of the vocabulary, because the two layouts differ.
+     * Candidate locations of each locale's vocabulary, because the two layouts
+     * differ.
      *
      * In the repository tree — a developer's checkout and CI — it sits at
-     * <root>/web/src/i18n/fr.ts, three levels up from this file. In the dev
-     * container the document root is the BUILT artifact, which contains only
-     * hashed bundles, so the source is not reachable from _api/ at all;
+     * <root>/web/src/i18n/<locale>.ts, three levels up from this file. In the
+     * dev container the document root is the BUILT artifact, which contains
+     * only hashed bundles, so the source is not reachable from _api/ at all;
      * docker-compose.yml mounts the tracked web/ read-only at /srv/web purely
      * so this guard can still read it. The suite runs with a -w of
      * /var/www/html/_api, so neither cwd nor one absolute path would do.
@@ -53,10 +57,20 @@ class ApiErrorVocabularyTest extends TestCase
      * (api/app/ needs no such list: this file sits inside api/, so ../../app is
      * the same relative path in both layouts.)
      */
-    private const I18N_PATHS = [
-        __DIR__.'/../../../web/src/i18n/fr.ts',
-        '/srv/web/src/i18n/fr.ts',
+    private const I18N_DIRS = [
+        __DIR__.'/../../../web/src/i18n',
+        '/srv/web/src/i18n',
     ];
+
+    /**
+     * Every locale the SPA ships, each of which must carry copy for every token.
+     *
+     * GERMAN IS NOT OPTIONAL HERE. de-CH is a shipped locale, and i18next's
+     * fallbackLng would quietly render a French error message to a German
+     * reader for any token nobody translated — silent, and exactly the class of
+     * bug this file exists to make mechanical.
+     */
+    private const LOCALES = ['fr', 'de'];
 
     /** The Laravel app tree scanned for hand-rolled token literals. */
     private const APP_DIR = __DIR__.'/../../app';
@@ -234,26 +248,30 @@ class ApiErrorVocabularyTest extends TestCase
 
     /**
      * @param  string  $label  human name of the token category, for the message
-     * @param  string  $section  the fr.ts section the tokens are looked up in
+     * @param  string  $section  the i18n section the tokens are looked up in
      * @param  list<string>  $tokens
      */
     private function assertVocabularyCovered(string $label, string $section, array $tokens): void
     {
-        $existing = $this->i18nKeys($section);
+        foreach (self::LOCALES as $locale) {
+            $existing = $this->i18nKeys($section, $locale);
 
-        $missing = array_values(array_diff($tokens, $existing));
+            $missing = array_values(array_diff($tokens, $existing));
 
-        self::assertSame([], $missing, sprintf(
-            "web/src/i18n/fr.ts is missing French copy for %d %s token(s) the API can emit:\n  - %s\n\n"
-            ."Each belongs under the `%s:` section of the exported `fr` object.\n"
-            .'Without it translateApiError() degrades silently — a missing code or reason '
-            ."becomes the generic \"Une erreur est survenue\", a missing field name puts the raw\n"
-            .'English identifier on a French screen.',
-            count($missing),
-            $label,
-            implode("\n  - ", array_map(fn ($t) => "{$section}.{$t}", $missing)),
-            $section
-        ));
+            self::assertSame([], $missing, sprintf(
+                "web/src/i18n/%s.ts is missing copy for %d %s token(s) the API can emit:\n  - %s\n\n"
+                ."Each belongs under the `%s:` section of the exported `%s` object.\n"
+                .'Without it translateApiError() degrades silently — a missing code or reason '
+                ."becomes the generic fallback sentence, a missing field name puts the raw\n"
+                .'English identifier on the screen.',
+                $locale,
+                count($missing),
+                $label,
+                implode("\n  - ", array_map(fn ($t) => "{$section}.{$t}", $missing)),
+                $section,
+                $locale
+            ));
+        }
     }
 
     // ---------------------------------------------------------- the derivations
@@ -561,26 +579,26 @@ class ApiErrorVocabularyTest extends TestCase
         return $tokens;
     }
 
-    // -------------------------------------------------------------- fr.ts read
+    // ----------------------------------------------------------- i18n catalogue read
 
     /**
-     * The keys defined under one flat section of fr.ts's
-     * resources.fr.translation object.
+     * The keys defined under one flat section of a locale's
+     * resources.<locale>.translation object.
      *
      * @return list<string>
      */
-    private function i18nKeys(string $section): array
+    private function i18nKeys(string $section, string $locale): array
     {
-        $source = $this->blankNonCode($this->i18nSource());
+        $source = $this->blankNonCode($this->i18nSource($locale));
 
-        // Keys are matched as BARE identifiers, which is how fr.ts writes them.
-        // Quoting one would hide it from this reader — but blanking is
+        // Keys are matched as BARE identifiers, which is how the catalogues write
+        // them. Quoting one would hide it from this reader — but blanking is
         // length-preserving and only ever removes keys, so the failure direction
-        // is a loud "missing French copy for X", never a silent pass.
+        // is a loud "missing copy for X", never a silent pass.
         $anchor = preg_quote($section, '/');
         if (! preg_match('/(?:^|[{,])\s*'.$anchor.'\s*:\s*\{/', $source, $m, PREG_OFFSET_CAPTURE)) {
             self::fail(
-                "fr.ts has no `{$section}:` section, so the API's tokens for it cannot be checked at all. "
+                "{$locale}.ts has no `{$section}:` section, so the API's tokens for it cannot be checked at all. "
                 .'If the section was renamed, update this test to match.'
             );
         }
@@ -602,31 +620,34 @@ class ApiErrorVocabularyTest extends TestCase
                 }
             }
         }
-        self::assertNotNull($end, "Unbalanced braces while reading fr.ts's `{$section}:` section.");
+        self::assertNotNull($end, "Unbalanced braces while reading {$locale}.ts's `{$section}:` section.");
 
         $block = substr($source, $open, $end - $open + 1);
         preg_match_all('/(?:^|[{,])\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/', $block, $keys);
 
-        self::assertNotEmpty($keys[1], "fr.ts's `{$section}:` section parsed as empty; this reader is broken.");
+        self::assertNotEmpty($keys[1], "{$locale}.ts's `{$section}:` section parsed as empty; this reader is broken.");
 
         return array_values(array_unique($keys[1]));
     }
 
-    private function i18nSource(): string
+    private function i18nSource(string $locale): string
     {
-        foreach (self::I18N_PATHS as $path) {
+        foreach (self::I18N_DIRS as $dir) {
+            $path = "{$dir}/{$locale}.ts";
+
             if (is_file($path)) {
                 return (string) file_get_contents($path);
             }
         }
 
         // Fail loudly rather than skip: a silently-skipped vocabulary guard
-        // reports green while checking nothing, which is worse than not having it
-        // — the untranslated-token bugs it exists to catch are themselves silent.
+        // reports green while checking nothing, which is worse than not having
+        // it — the untranslated-token bugs it exists to catch are themselves
+        // silent.
         self::fail(
-            "Cannot find web/src/i18n/fr.ts, so the API's error vocabulary is unchecked. "
-            ."Looked for:\n  - ".implode("\n  - ", self::I18N_PATHS)
-            ."\nIf the file moved, add its new location to ApiErrorVocabularyTest::I18N_PATHS."
+            "Cannot find web/src/i18n/{$locale}.ts, so the API's error vocabulary is unchecked for that locale. "
+            ."Looked in:\n  - ".implode("\n  - ", self::I18N_DIRS)
+            ."\nIf the files moved, update ApiErrorVocabularyTest::I18N_DIRS."
         );
     }
 
