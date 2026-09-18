@@ -419,7 +419,16 @@ function initialMembers(): MemberResource[] {
       firstName: "Camille",
       lastName: "Committee",
       username: "demo.committee",
-      mustChangePassword: false,
+      // TRUE, WHERE THE SEEDER SAYS FALSE — deliberately, and for the same
+      // reason member 1 carries a lastLoginAt the seeder leaves null: the
+      // roster renders a status derived from this field, and a mock that
+      // mirrored DevSeeder byte-for-byte would leave the branch unrenderable
+      // in both the mocked backend and Playwright.
+      //
+      // It reads as a member the committee has issued a password to who has
+      // not used it yet, which is a state a real roster is in most of the time
+      // just after somebody is added.
+      mustChangePassword: true,
       lastLoginAt: null,
       sectionId: 6,
       sectionName: "Trombones",
