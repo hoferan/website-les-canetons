@@ -129,10 +129,9 @@ class EventController extends Controller
      * RESOLVED ONCE PER REQUEST, not once per row, and not by a boolean
      * memoized per gate — that shape looked fixed-cost but was not: it
      * throws away the rest of the permission set after reading one entry, so
-     * a second gate (maySeeGuests, below) paid for a second query for data
-     * this one had already fetched. EventResource::permissionsFor() memoizes
-     * the SET once instead, and this and maySeeGuests() both read it, which
-     * is what
+     * the bookings gate paid for a second query for data this one had already
+     * fetched. EventResource::permissionsFor() memoizes the SET once instead,
+     * and every gate reads it — here and in the Resource — which is what
      * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
      * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries
      * actually pin.
@@ -147,17 +146,20 @@ class EventController extends Controller
     }
 
     /**
-     * Whether the caller may see how many people are booked.
+     * THE BOOKINGS GATE LIVES IN THE RESOURCE, not here, and there is no
+     * sibling to maySeeAnswers() above.
      *
-     * A DIFFERENT GATE FROM maySeeAnswers, not a shared "committee" one: the
+     * This controller has to ask about answers because it decides whether to
+     * run the denominator COUNT at all. It never has to ask about bookings:
+     * the guest sum is a subselect on the query it already runs, so it is
+     * loaded unconditionally and EventResource gates the OUTPUT. A copy here
+     * was written and never called — Larastan caught it as dead code.
+     *
+     * The two gates stay genuinely independent wherever they are checked: the
      * seeded `committee` role holds registrations.view and NOT
-     * attendance.view_all, so somebody genuinely holds one without the other.
-     * Reads the same memoized set maySeeAnswers() does — see its docblock.
+     * attendance.view_all, pinned by
+     * EventCountsTest::test_the_two_gates_are_independent.
      */
-    private static function maySeeGuests(Request $request): bool
-    {
-        return EventResource::permissionsFor($request)->contains(Permission::RegistrationsView);
-    }
 
     /**
      * The aggregate loads that back the planning's metadata strip (#93).

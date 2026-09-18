@@ -24,6 +24,18 @@ use Illuminate\Support\Collection;
  * the reference. So the notes here stay internal, and anything a caller
  * needs goes on the field.
  *
+ * AND ANYTHING A CALLER MUST NOT SEE BELONGS HERE RATHER THAN ON THE FIELD.
+ * DocsTest::test_the_document_names_nothing_internal scans the whole
+ * published document for a PHP method reference, and a note on the
+ * `answerableCount` field naming the controller method that writes its
+ * request attribute failed that test in CI on 2026-09-17 — having passed
+ * every local check, because the leak only exists once the document is
+ * generated. The note it carried, kept here where it is safe: the
+ * ANSWERABLE_COUNT attribute has exactly one writer, the controller's
+ * denominator helper, which sets it only after checking the same permission
+ * this Resource checks — so the field's own gate is the second guard rather
+ * than the only one.
+ *
  * @mixin Event
  */
 class EventResource extends JsonResource
@@ -87,9 +99,7 @@ class EventResource extends JsonResource
             'answeredCount' => $this->countOrNull($request, 'answered_count'),
             /**
              * How many members are answerable at all — the denominator of the
-             * fraction. Null when the caller may not see answers, OR when the
-             * attribute was never set (EventController::answerable() is the
-             * sole writer, and only after checking the same permission).
+             * fraction. Null when the caller may not see answers.
              */
             'answerableCount' => ! $this->maySeeAnswers($request)
                 ? null

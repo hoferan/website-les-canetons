@@ -5023,7 +5023,7 @@
                             "integer",
                             "null"
                         ],
-                        "description": "How many members are answerable at all \u2014 the denominator of the\nfraction. Null when the caller may not see answers, OR when the\nattribute was never set (EventController::answerable() is the\nsole writer, and only after checking the same permission)."
+                        "description": "How many members are answerable at all \u2014 the denominator of the\nfraction. Null when the caller may not see answers."
                     },
                     "guestCount": {
                         "type": [
