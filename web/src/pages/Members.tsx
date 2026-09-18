@@ -30,6 +30,7 @@ import { PageSection } from "../components/PageSection";
 import { roleLabel } from "../i18n";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
+import { LoginState } from "../members/LoginState";
 import { MemberForm, type MemberDraft } from "../members/MemberForm";
 
 /**
@@ -385,6 +386,13 @@ export function Members() {
             <p className="text-sm text-ink-muted">Identifiant&nbsp;: {member.username}</p>
             <p className="text-sm">Pupitre&nbsp;: {member.sectionName ?? "Aucun pupitre"}</p>
             <p className="text-sm">Rôles&nbsp;: {rolesOf(member, labelForRole)}</p>
+            {/* NO `Label : value` PREFIX, unlike every field above it, and
+                that is not an oversight. The card labels each field because
+                the real <th> went when the card became the only layout
+                (#130) — the label is what puts the meaning beside the value
+                in the reading order. A pill is not a field with a value, and
+                "Dernière connexion le …" already carries its own label. */}
+            <LoginState member={member} />
             <div className="mt-related">
               <MemberActions
                 member={member}

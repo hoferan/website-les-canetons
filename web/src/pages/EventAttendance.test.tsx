@@ -12,6 +12,13 @@ import { EventAttendance } from "./EventAttendance";
  * The chase list is reached through a route parameter, so it has to be
  * rendered behind one — `useParams` returns nothing at all for a component
  * mounted outside a matching Route, and the screen then reads event NaN.
+ *
+ * THIS BARE ROUTE TREE IS ALSO WHAT EXEMPTS `demo.both` FROM THE FORCED
+ * PASSWORD CHANGE. That fixture carries `mustChangePassword: true` (it is the
+ * roster's provisional-password case — see web/src/mocks/handlers.ts), and
+ * MustChangePassword is wired in routes.tsx, not here, so the gate has no
+ * ancestor to fire from. Route this screen through the real table and that
+ * actor starts redirecting to /account instead.
  */
 async function renderChaseList(as: "demo.direction" | "demo.both" = "demo.direction") {
   setMockUser(as);
