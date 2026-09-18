@@ -1,47 +1,76 @@
 import { expect, test } from "vitest";
 
-import { loginStatus } from "./loginStatus";
+import { loginState } from "./loginStatus";
 
-// One case per combination of the two fields. All four are reachable, which is
-// why the status names all four rather than letting one field win: a
-// provisional password never used may never have reached the person, while one
-// already used means they are in and have not finished. Different phone calls.
+// The roster's job here is to make the committee LOOK at the rows it has to do
+// something about (#94). So the two facts split by what they are for: a state
+// somebody must act on becomes a pill, and the last-login date stays plain
+// reference text. An account in normal use therefore has no pill at all —
+// that absence is the signal.
 
-test("a provisional password that has never been used says both things", () => {
-  expect(loginStatus({ mustChangePassword: true, lastLoginAt: null })).toBe(
-    "Aucune connexion, mot de passe provisoire",
+test("a provisional password that has never been used raises both pills", () => {
+  const state = loginState({ mustChangePassword: true, lastLoginAt: null });
+
+  expect(state.pills.map((pill) => pill.label)).toEqual(["Jamais utilisé", "Provisoire"]);
+  expect(state.lastLogin).toBeNull();
+});
+
+test("a provisional password that has been used keeps the date and one pill", () => {
+  const state = loginState({
+    mustChangePassword: true,
+    lastLoginAt: "2026-09-01T19:30:00+02:00",
+  });
+
+  expect(state.pills.map((pill) => pill.label)).toEqual(["Provisoire"]);
+  expect(state.lastLogin).toBe("Dernière connexion le 1 septembre 2026");
+});
+
+test("an account that has never been used raises one pill and no date", () => {
+  const state = loginState({ mustChangePassword: false, lastLoginAt: null });
+
+  expect(state.pills.map((pill) => pill.label)).toEqual(["Jamais utilisé"]);
+  expect(state.lastLogin).toBeNull();
+});
+
+// The case the pills exist to be silent about. A roster where every row has a
+// pill is a roster where a pill means nothing.
+test("an account in normal use raises no pill at all", () => {
+  const state = loginState({
+    mustChangePassword: false,
+    lastLoginAt: "2026-09-01T19:30:00+02:00",
+  });
+
+  expect(state.pills).toEqual([]);
+  expect(state.lastLogin).toBe("Dernière connexion le 1 septembre 2026");
+});
+
+// `Provisoire` alone is not a sentence, and a screen reader hears the label
+// with no card around it to supply the missing noun.
+test("the terse pill carries a fuller accessible name", () => {
+  const [pill] = loginState({ mustChangePassword: true, lastLoginAt: null }).pills.filter(
+    (candidate) => candidate.label === "Provisoire",
   );
+
+  expect(pill?.accessibleName).toBe("Mot de passe provisoire");
 });
 
-test("a provisional password that has been used keeps the date", () => {
-  expect(loginStatus({ mustChangePassword: true, lastLoginAt: "2026-09-01T19:30:00+02:00" })).toBe(
-    "Dernière connexion le 1 septembre 2026, mot de passe provisoire",
-  );
-});
-
-test("an account that has never been used says so", () => {
-  expect(loginStatus({ mustChangePassword: false, lastLoginAt: null })).toBe("Aucune connexion");
-});
-
-test("an account in use reads as its last login", () => {
-  expect(loginStatus({ mustChangePassword: false, lastLoginAt: "2026-09-01T19:30:00+02:00" })).toBe(
-    "Dernière connexion le 1 septembre 2026",
-  );
-});
-
-// A regression guard on the wording that was rejected: "Jamais connecté" would
-// need the participle to agree with the member, and this codebase has no
-// inclusive-writing convention to reach for. This only pins the `connecté`
-// stem, not every gendered participle in French — a different agreeing word
-// (e.g. "inscrit") would not be caught here.
-test("no rendered status carries a participle that agrees with the member", () => {
-  const every = [
-    loginStatus({ mustChangePassword: true, lastLoginAt: null }),
-    loginStatus({ mustChangePassword: true, lastLoginAt: "2026-09-01T19:30:00+02:00" }),
-    loginStatus({ mustChangePassword: false, lastLoginAt: null }),
-    loginStatus({ mustChangePassword: false, lastLoginAt: "2026-09-01T19:30:00+02:00" }),
+// A regression guard on the specific wording that was rejected: `Jamais
+// connecté` has to agree with the member, and this codebase has no
+// inclusive-writing convention to reach for. `utilisé` agrees with `le compte`
+// instead, so it is safe. This pins that one stem and nothing wider — an
+// agreeing word like `inscrit` would pass it.
+test("no pill uses the participle that would agree with the member", () => {
+  const combinations = [
+    { mustChangePassword: true, lastLoginAt: null },
+    { mustChangePassword: true, lastLoginAt: "2026-09-01T19:30:00+02:00" },
+    { mustChangePassword: false, lastLoginAt: null },
+    { mustChangePassword: false, lastLoginAt: "2026-09-01T19:30:00+02:00" },
   ];
-  for (const status of every) {
-    expect(status).not.toMatch(/connecté/i);
+
+  for (const fields of combinations) {
+    for (const pill of loginState(fields).pills) {
+      expect(pill.label).not.toMatch(/connecté/i);
+      expect(pill.accessibleName).not.toMatch(/connecté/i);
+    }
   }
 });

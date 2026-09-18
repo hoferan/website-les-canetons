@@ -34,12 +34,14 @@ but **whose credential is still the committee's, and who has never used one**.
 
 ## Scope
 
-One derived status line per member card, after `Rôles`.
+Pills for what needs acting on, plus a last-login line, per member card,
+after `Rôles`.
 
 - `web/src/members/loginStatus.ts` — new, the derivation
 - `web/src/members/loginStatus.test.ts` — new, a case per combination
-- `web/src/pages/Members.tsx` — one `<p>` in the card
-- `web/src/pages/Members.test.tsx` — the rendered assertion
+- `web/src/members/LoginState.tsx` — new, the pills and the line
+- `web/src/pages/Members.tsx` — one component in the card
+- `web/src/pages/Members.test.tsx` — the rendered assertions
 - `web/src/lib/date.ts` — one date formatter
 - `web/src/mocks/handlers.ts` — a `mustChangePassword: true` fixture member
 
@@ -48,71 +50,97 @@ No API change, no migration, no `npm run openapi && npm run generate:api`:
 `web/src/api/generated/model/memberResource.ts:311` already types
 `lastLoginAt`.
 
-## The state set
+## Revised 2026-09-18, after seeing it on screen
 
-Four combinations exist. The status names all four, rather than collapsing
-`mustChangePassword` over the date:
+**The first version of this design was built and rejected.** It rendered one
+muted sentence per card — `Aucune connexion, mot de passe provisoire` — at the
+weight of the other card fields, with no colour, on the reasoning recorded
+below under *No new colour*. On the real roster it reads as prose among prose:
+accurate, and overlooked. The committee's question is not "what is this
+person's account state" but "whose row do I have to do something about", and a
+sentence answers the first.
 
-| `mustChangePassword` | `lastLoginAt` | Rendered |
-| --- | --- | --- |
-| `true` | `null` | `Aucune connexion, mot de passe provisoire` |
-| `true` | date | `Dernière connexion le 1 septembre 2026, mot de passe provisoire` |
-| `false` | `null` | `Aucune connexion` |
-| `false` | date | `Dernière connexion le 1 septembre 2026` |
+So the two facts now split **by what each is for**:
 
-**Why four and not three.** The obvious collapse is to let the provisional
-password win outright, on the grounds that it is the actionable fact. It is
-actionable — but the two rows it merges call for *different* actions. A
-provisional password never used may never have reached the person at all, and
-wants a phone call asking whether they got it. A provisional password already
-used means they are in and have not finished, and wants a reminder to change
-it. Merging them is also the exact distinction the issue asked for — "issued
-but not yet used" versus "in use" — so a three-state version would close the
-issue without answering it.
+- A state somebody may have to act on is a **pill**: short, solid, scannable.
+- A date nobody has to act on is **reference text** under it.
 
-**Why one line and not two fields.** `Dernière connexion` and `Mot de passe
-provisoire` are independent facts and the card labels every field, so two lines
-would be defensible. They are one line because the second fact is a qualifier
-on the first in every case where both are true, and because a card that is
-already four lines plus an action row pays for a fifth on every member to say
-something about a minority of them.
+An account in normal use therefore raises **no pill at all**. That absence is
+the signal — a roster where every row carries a pill is a roster where a pill
+means nothing.
 
-## The copy
+### What each combination renders
 
-**No gendered participles.** `Jamais connecté` needs agreement with the member,
-and this codebase has no inclusive-writing convention to reach for — the one
-place the question comes up sidesteps it by agreeing with *personne* instead
-(`web/src/pages/Members.tsx:449`). `Aucune connexion` and `Dernière connexion`
-agree with nothing, so the question never arises.
+| `mustChangePassword` | `lastLoginAt` | Pills | Text |
+| --- | --- | --- | --- |
+| `true` | `null` | `Jamais utilisé` `Provisoire` | — |
+| `true` | date | `Provisoire` | `Dernière connexion le 1 septembre 2026` |
+| `false` | `null` | `Jamais utilisé` | — |
+| `false` | date | — | `Dernière connexion le 1 septembre 2026` |
 
-**The line is self-labelling, so it carries no prefix.** Every other field on
-the card is `Label : value`, because the real `<th>` went away when the card
-became the only layout (#130) and the label is what puts the meaning next to
-the value in the reading order. `Identifiant : demo.player` needs its prefix.
-`Dernière connexion le 1 septembre 2026` already contains its own, and
-`Connexion : Dernière connexion le …` is the prefix twice.
+Pill order is fixed: `Jamais utilisé` first, because it is the one that may
+mean the credential never reached the person at all; `Provisoire` beside it
+says the committee still holds it.
 
-## No new colour
+### The copy
 
-The line renders at the weight of the other card fields. There is no warning
-token in `@theme`, and `--color-danger` must not stand in for one: it was split
-out of the old `--color-canetons-red` precisely because that colour "did double
-duty as brand AND error" (`web/src/styles.css:43`), and a member who has not
-logged in is neither.
+`Jamais utilisé` and `Provisoire` — two words and one. **Still no participle
+agreeing with the member**: `Jamais connecté` would need to, and `utilisé`
+agrees with `le compte` instead. `Provisoire` alone is not a phrase, so it
+carries `aria-label="Mot de passe provisoire"`: a screen reader reaches the
+pill without the card around it to supply the noun.
 
-A muted line among muted lines is admittedly a quiet answer to "the committee
-has no way to see who is waiting". If it proves too quiet against a real
-roster, the fix is a token that means *attention* with something behind it,
-which is its own change and its own issue — not `text-danger` borrowed here
-because it was the nearest red.
+### Colour: no new token after all
+
+The pills are **solid pink**, matching the inbox count badge
+(`web/src/components/Layout.tsx:247`) rather than introducing anything. That
+badge is already this app's "something needs you" affordance, and a second one
+should speak the same language. `--color-pink` is documented in
+`web/src/styles.css:39` as *emphasis only — never a whole surface*, and a pill
+is emphasis.
+
+`--color-danger` is still **not** borrowed, for the reason the superseded
+section below gives: it is error-only by construction, and a member who has not
+logged in is not an error.
+
+### Superseded: why the first version carried no colour
+
+Kept because the reasoning about `--color-danger` still binds, and because the
+next person to find this line too quiet should know it was argued once.
+
+> The line renders at the weight of the other card fields. There is no warning
+> token in `@theme`, and `--color-danger` must not stand in for one: it was
+> split out of the old `--color-canetons-red` precisely because that colour
+> "did double duty as brand AND error" (`web/src/styles.css:43`), and a member
+> who has not logged in is neither.
+>
+> A muted line among muted lines is admittedly a quiet answer to "the committee
+> has no way to see who is waiting". If it proves too quiet against a real
+> roster, the fix is a token that means *attention* with something behind it.
+
+It was too quiet against a real roster. The fix turned out not to need a new
+token, because an attention affordance already existed.
+
+### Why four combinations still, and not three
+
+The tempting collapse is to let the provisional password win outright and drop
+the date with it. It merges two rows that want different things: a password
+never used may never have reached the person at all, and one already used means
+they are in and have not finished. Under the pill split this costs nothing —
+the two facts no longer compete for one sentence.
 
 ## Components
 
-**`loginStatus(member): string`** is a pure function over
+**`loginState(member)`** is a pure function over
 `Pick<MemberResource, "mustChangePassword" | "lastLoginAt">`, not over the
-whole resource, so its tests need no fixture member. It returns the finished
-sentence. All four combinations are reachable from its signature, which is what
-makes the table above testable as a table.
+whole resource, so its tests need no fixture member. It returns
+`{ pills, lastLogin }` — structure, not markup — so the table above is testable
+as a table, with no render and no MSW.
+
+**`LoginState`** renders that structure, and holds every styling decision. The
+split is what keeps "which pills does this member raise" testable apart from
+"what colour is a pill". It follows `EventMeta`'s precedent: given nothing to
+say, it says nothing.
 
 **The date formatter** goes in `web/src/lib/date.ts`. Note that
 `web/src/pages/Inbox.tsx:9` and `web/src/pages/ContactMessages.tsx:35` each
@@ -131,10 +159,12 @@ nothing.
 Test-driven, in this order:
 
 1. `loginStatus.test.ts` — one case per row of the table, written against the
-   table, failing before the function exists.
-2. `Members.test.tsx` — the roster renders the status, asserted against the
-   fixture members covering the never-logged-in, the has-logged-in and the
-   provisional-password cases.
+   table, failing before the function exists. Including the case that must
+   raise NO pill: that silence is load-bearing, so it is asserted rather than
+   assumed.
+2. `Members.test.tsx` — the roster renders the pills and the line, asserted
+   against the fixture members covering the never-used, the in-use and the
+   provisional-password cases, plus the terse pill's accessible name.
 
 **The fixture that is missing.** `web/src/mocks/handlers.ts:365` already
 carries a deliberate non-null `lastLoginAt` on member 1, with a comment saying

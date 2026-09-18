@@ -381,30 +381,49 @@ test("the delete dialog does not agree in the masculine over the person it names
  * #94. The roster said nothing about whether a person could actually log in,
  * so a member still holding a committee-issued password looked identical to
  * one using the site every week.
+ *
+ * The first version said it in a muted sentence and was read straight past,
+ * so what an administrator may have to ACT on is a pill and the rest is
+ * reference text. These tests pin that split, not just the words.
  */
-test("each card says whether the account has ever been used", async () => {
+test("an account in normal use raises no pill, only its last login", async () => {
   await renderRoster();
 
-  // demo.direction, the one fixture member with a last login.
-  expect(within(rowFor("Direction")).getByTestId("member-login-status")).toHaveTextContent(
-    "Dernière connexion le 1 septembre 2026",
-  );
+  const row = within(rowFor("Direction"));
 
-  // demo.player, who has a password of their own and has never used it. The
-  // anchored regex, not a substring match: "Aucune connexion" alone would
-  // also pass against "Aucune connexion, mot de passe provisoire", which is
-  // exactly the two-fact case this test must NOT match.
-  expect(within(rowFor("Player")).getByTestId("member-login-status")).toHaveTextContent(
-    /^Aucune connexion$/,
+  expect(row.getByTestId("member-login-status")).toHaveTextContent(
+    /^Dernière connexion le 1 septembre 2026$/,
   );
+  expect(row.queryByTestId("member-login-pill-never-used")).toBeNull();
+  expect(row.queryByTestId("member-login-pill-provisional")).toBeNull();
 });
 
-test("a member still on a committee-issued password says so", async () => {
+test("an account nobody has ever used is pilled, and reports no date", async () => {
+  await renderRoster();
+
+  // demo.player: a password of their own, never used.
+  const row = within(rowFor("Player"));
+
+  expect(row.getByTestId("member-login-pill-never-used")).toHaveTextContent("Jamais utilisé");
+  expect(row.queryByTestId("member-login-pill-provisional")).toBeNull();
+  expect(row.getByTestId("member-login-status")).not.toHaveTextContent("Dernière connexion");
+});
+
+test("a member still on a committee-issued password gets both pills", async () => {
   await renderRoster();
 
   // demo.both — the one fixture member still on a committee-issued password;
   // see initialMembers() in mocks/handlers.ts for why.
-  expect(within(rowFor("Both")).getByTestId("member-login-status")).toHaveTextContent(
-    "Aucune connexion, mot de passe provisoire",
-  );
+  const row = within(rowFor("Both"));
+
+  expect(row.getByTestId("member-login-pill-never-used")).toHaveTextContent("Jamais utilisé");
+  expect(row.getByTestId("member-login-pill-provisional")).toHaveTextContent("Provisoire");
+});
+
+// `Provisoire` on its own is not a phrase, and the pill is reached without the
+// card around it to supply the missing noun.
+test("the terse pill is announced with a name that stands on its own", async () => {
+  await renderRoster();
+
+  expect(within(rowFor("Both")).getByLabelText("Mot de passe provisoire")).toBeInTheDocument();
 });

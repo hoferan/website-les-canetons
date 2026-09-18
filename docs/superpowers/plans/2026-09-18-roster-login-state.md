@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded in part, 2026-09-18.** This plan was executed as written and
+> the result was rejected on review of the real screen: one muted sentence per
+> card reads as prose among prose and gets overlooked. What an administrator
+> may have to act on is now a pill, and the last-login date is reference text
+> beneath it. The tasks below are the historical record of how the branch was
+> built; **the design record is the spec**, which carries the revision and the
+> superseded reasoning. Read the spec, not this, for what the screen does.
+
 **Goal:** Show on each `/members` card whether that member has ever logged in, and whether they are still on a committee-issued password.
 
 **Architecture:** Two pure functions and one `<p>`. `formatLastLogin()` in the shared date module turns an ISO instant into a French date; `loginStatus()` in `web/src/members/` derives one sentence from the two fields `MemberResource` already carries. `Members.tsx` renders the sentence. No API, migration, or client regeneration is involved — both fields are already on the wire.
