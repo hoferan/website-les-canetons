@@ -1,15 +1,77 @@
 import i18next from "i18next";
 
 import type { ApiError, ApiErrorField } from "../api/http";
+import { de } from "./de";
 import { fr } from "./fr";
+import { DEFAULT_LOCALE, type Locale, localeFromPath } from "./locale";
 
 const FALLBACK = "Une erreur est survenue. Veuillez réessayer.";
 
+/**
+ * INITIALISED AT MODULE SCOPE, AND IT HAS TO BE.
+ *
+ * ES module imports are hoisted: main.tsx's own statements run AFTER every
+ * module it imports has been evaluated. An i18next.init() in main.tsx would
+ * therefore run after Layout.tsx's module body, and anything that module read
+ * at import time would have been resolved against an uninitialised i18next.
+ *
+ * The corollary is a rule every screen has to follow: TRANSLATE AT RENDER
+ * TIME, NEVER AT MODULE SCOPE. A module-level `const NAV = [{ label: t(...) }]`
+ * is frozen in whatever locale was active when the file was imported, so a
+ * later setLocale() does not move it — a bug that shows up only in tests.
+ *
+ * The locale comes from the URL because the URL is the only authority on it;
+ * see locale.ts. In jsdom, document.location is "http://localhost/", so tests
+ * start French — which is what keeps all 39 existing test files passing
+ * unchanged.
+ */
+const initial =
+  typeof window === "undefined" ? DEFAULT_LOCALE : localeFromPath(window.location.pathname).locale;
+
 i18next.init({
-  lng: "fr",
-  fallbackLng: "fr",
-  resources: { fr: { translation: fr } },
+  lng: initial,
+  // French is the fallback, so a key German has not reached yet renders French
+  // rather than printing its own lookup path. Key parity is enforced at build
+  // time by de.ts being typed `typeof fr`, so this is a safety net rather than
+  // the mechanism.
+  fallbackLng: DEFAULT_LOCALE,
+  resources: {
+    fr: { translation: fr },
+    "de-CH": { translation: de },
+  },
+  interpolation: {
+    // React escapes on render; i18next escaping again turns an apostrophe in
+    // "Nom d'utilisateur" into &#39; on screen.
+    escapeValue: false,
+  },
 });
+
+/** The locale the app is currently rendering in. */
+export function currentLocale(): Locale {
+  return (i18next.language as Locale) ?? DEFAULT_LOCALE;
+}
+
+/**
+ * Switch locale.
+ *
+ * FOR TESTS AND FOR THE BOOT PATH ONLY. In the browser a person changes
+ * language by navigating (see pathInLocale), because `basename` is fixed when
+ * the router mounts — so nothing in the running app calls this to re-render.
+ */
+export async function setLocale(locale: Locale): Promise<void> {
+  await i18next.changeLanguage(locale);
+}
+
+/**
+ * One translated string.
+ *
+ * A plain function rather than a hook: locale is constant for a page's
+ * lifetime, so there is nothing for a hook's re-render machinery to do, and
+ * this keeps react-i18next out of the dependency list.
+ */
+export function t(key: string, params?: Record<string, unknown>): string {
+  return i18next.t(key, params ?? {}) as string;
+}
 
 export type TranslatedError = {
   message: string;

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { translateApiError } from "./index";
+import { roleHint, roleLabel, translateApiError } from "./index";
 
 test("a known code becomes French", () => {
   const result = translateApiError({ code: "invalid_credentials", fields: [] });
@@ -68,4 +68,51 @@ test("resolves a nested field to its last segment rather than leaking the identi
   expect(translated.fields).toEqual([
     { field: "template.endTime", message: "Heure de fin doit être après le début" },
   ]);
+});
+
+import { afterEach } from "vitest";
+
+import { currentLocale, setLocale, t } from "./index";
+
+// Every test in this file below runs in French unless it says otherwise, and
+// the app's default is French, so the reset restores the shared default rather
+// than a value this file chose.
+afterEach(async () => {
+  await setLocale("fr");
+});
+
+test("the default locale is French", () => {
+  expect(currentLocale()).toBe("fr");
+});
+
+test("t resolves a key in the active locale", async () => {
+  expect(t("errors.access_denied")).toBe("Accès refusé");
+
+  await setLocale("de-CH");
+
+  expect(currentLocale()).toBe("de-CH");
+  expect(t("errors.access_denied")).toBe("Zugriff verweigert");
+});
+
+test("t interpolates params", async () => {
+  await setLocale("de-CH");
+  expect(t("validation.too_long", { max: 120 })).toBe("ist zu lang (maximal 120 Zeichen)");
+});
+
+test("translateApiError follows the active locale", async () => {
+  await setLocale("de-CH");
+
+  const result = translateApiError({
+    code: "validation_failed",
+    fields: [{ field: "startTime", reason: "required" }],
+  });
+
+  expect(result.message).toBe("Das Formular enthält Fehler.");
+  expect(result.fields).toEqual([{ field: "startTime", message: "Startzeit ist erforderlich" }]);
+});
+
+test("roleLabel and roleHint follow the active locale", async () => {
+  await setLocale("de-CH");
+  expect(roleLabel("committee")).toBe("Vorstand");
+  expect(roleHint("committee")).toBe("Sieht die Anmeldeliste ein.");
 });
