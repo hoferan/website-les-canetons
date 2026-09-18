@@ -390,16 +390,21 @@ test("each card says whether the account has ever been used", async () => {
     "Dernière connexion le 1 septembre 2026",
   );
 
-  // demo.player, who has a password of their own and has never used it.
+  // demo.player, who has a password of their own and has never used it. The
+  // anchored regex, not a substring match: "Aucune connexion" alone would
+  // also pass against "Aucune connexion, mot de passe provisoire", which is
+  // exactly the two-fact case this test must NOT match.
   expect(within(rowFor("Player")).getByTestId("member-login-status")).toHaveTextContent(
-    "Aucune connexion",
+    /^Aucune connexion$/,
   );
 });
 
 test("a member still on a committee-issued password says so", async () => {
   await renderRoster();
 
-  expect(within(rowFor("Committee")).getByTestId("member-login-status")).toHaveTextContent(
+  // demo.both — the one fixture member still on a committee-issued password;
+  // see initialMembers() in mocks/handlers.ts for why.
+  expect(within(rowFor("Both")).getByTestId("member-login-status")).toHaveTextContent(
     "Aucune connexion, mot de passe provisoire",
   );
 });

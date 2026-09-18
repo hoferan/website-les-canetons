@@ -95,13 +95,18 @@ const USERS = {
   },
   // BOTH — the case the old role matrix could not express: an organiser who
   // also plays. See DevSeeder's own comment for why this case matters.
+  //
+  // mustChangePassword: true here on purpose, matching the roster row for
+  // this same id in initialMembers() below — POST /me/password treats the
+  // session and the roster row as one fact, so the two must agree. Edit one,
+  // edit the other.
   "demo.both": {
     id: 3,
     username: "demo.both",
     firstName: "Bastien",
     lastName: "Both",
     isPlayer: true,
-    mustChangePassword: false,
+    mustChangePassword: true,
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -396,11 +401,23 @@ function initialMembers(): MemberResource[] {
     {
       // BOTH — plays and organises. The case the old either/or role matrix
       // could not express; if someone reintroduces one, this row is what breaks.
+      //
+      // TRUE, WHERE THE SEEDER SAYS FALSE — deliberately, and for the same
+      // reason member 1 carries a lastLoginAt the seeder leaves null: the
+      // roster renders a status derived from this field, and a mock that
+      // mirrored DevSeeder byte-for-byte would leave the branch unrenderable
+      // in both the mocked backend and Playwright.
+      //
+      // The session fixture for this same id (USERS["demo.both"]) carries the
+      // same value on purpose: the POST /me/password handler treats the
+      // roster row and the session as one fact about one account, and this is
+      // the one account whose session no test drives, so flipping it here
+      // costs no test churn.
       id: 3,
       firstName: "Bastien",
       lastName: "Both",
       username: "demo.both",
-      mustChangePassword: false,
+      mustChangePassword: true,
       lastLoginAt: null,
       sectionId: 5,
       sectionName: "Trompettes",
@@ -419,16 +436,7 @@ function initialMembers(): MemberResource[] {
       firstName: "Camille",
       lastName: "Committee",
       username: "demo.committee",
-      // TRUE, WHERE THE SEEDER SAYS FALSE — deliberately, and for the same
-      // reason member 1 carries a lastLoginAt the seeder leaves null: the
-      // roster renders a status derived from this field, and a mock that
-      // mirrored DevSeeder byte-for-byte would leave the branch unrenderable
-      // in both the mocked backend and Playwright.
-      //
-      // It reads as a member the committee has issued a password to who has
-      // not used it yet, which is a state a real roster is in most of the time
-      // just after somebody is added.
-      mustChangePassword: true,
+      mustChangePassword: false,
       lastLoginAt: null,
       sectionId: 6,
       sectionName: "Trombones",

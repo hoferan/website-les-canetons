@@ -29,9 +29,11 @@ test("an account in use reads as its last login", () => {
   );
 });
 
-// No participle agrees with the member anywhere in this vocabulary. "Jamais
-// connecté" would need to, and this codebase has no inclusive-writing
-// convention to reach for.
+// A regression guard on the wording that was rejected: "Jamais connecté" would
+// need the participle to agree with the member, and this codebase has no
+// inclusive-writing convention to reach for. This only pins the `connecté`
+// stem, not every gendered participle in French — a different agreeing word
+// (e.g. "inscrit") would not be caught here.
 test("no rendered status carries a participle that agrees with the member", () => {
   const every = [
     loginStatus({ mustChangePassword: true, lastLoginAt: null }),

@@ -47,6 +47,12 @@ export function formatTime(time: string): string {
  * evening login in Fribourg is the previous day in UTC. Formatted in the
  * viewer's zone it would also differ between two committee members reading the
  * same roster.
+ *
+ * fr-CH, matching the other instant formatters in the app (Inbox.tsx and
+ * ContactMessages.tsx) rather than the fr-FR used by LONG above; for these
+ * options the two locales render identically, so the choice has no visible
+ * effect here, but it keeps every instant in the app formatted with the same
+ * locale.
  */
 const LAST_LOGIN = new Intl.DateTimeFormat("fr-CH", {
   timeZone: "Europe/Zurich",
