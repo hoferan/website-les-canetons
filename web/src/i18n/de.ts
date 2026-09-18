@@ -150,6 +150,10 @@ export const de: typeof fr = {
     sortOrder: "Reihenfolge",
   },
 
+  dates: {
+    rangeSeparator: " bis ",
+  },
+
   contactMessages: {
     heading: "Nachrichten",
     messageWord: "Nachricht",

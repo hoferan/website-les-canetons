@@ -28,23 +28,10 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { fr } from "../i18n/fr";
+import { formatInstant } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 
 type Filter = "all" | "open" | "handled";
-
-const RECEIVED = new Intl.DateTimeFormat("fr-CH", {
-  timeZone: "Europe/Zurich",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** "le 15 septembre 2026, 12:05". */
-function formatReceived(iso: string): string {
-  return RECEIVED.format(new Date(iso));
-}
 
 /** The subject, or the opening of the body — mirroring what the inbox shows. */
 function preview(message: ContactMessageResource): string {
@@ -450,7 +437,7 @@ function MessageSummary({
       <p className="font-semibold">
         {message.firstName} <span data-testid="message-last-name">{message.lastName}</span>
       </p>
-      <p className="text-sm text-ink-muted">{formatReceived(message.receivedAt)}</p>
+      <p className="text-sm text-ink-muted">{formatInstant(message.receivedAt)}</p>
       <p className="mt-tight text-sm">{preview(message)}</p>
       <p className="text-sm">
         {message.handledAt === null
@@ -534,13 +521,13 @@ function MessagePanel({
 
       <p className="whitespace-pre-line">{message.message}</p>
 
-      <p className="text-sm text-ink-muted">{formatReceived(message.receivedAt)}</p>
+      <p className="text-sm text-ink-muted">{formatInstant(message.receivedAt)}</p>
 
       {message.handledAt !== null ? (
         <p className="text-sm text-ink-muted">
           {fr.contactMessages.handledBy
             .replace("{name}", message.handledBy ?? "")
-            .replace("{date}", formatReceived(message.handledAt))}
+            .replace("{date}", formatInstant(message.handledAt))}
         </p>
       ) : null}
 

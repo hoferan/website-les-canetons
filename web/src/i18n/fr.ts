@@ -188,6 +188,18 @@ export const fr = {
   },
 
   /**
+   * Words that live inside date helpers rather than on a screen.
+   *
+   * `rangeSeparator` joins the two days of a weekend event in
+   * formatEventDateRange. It was a hard-coded " au " inside web/src/lib/date.ts
+   * — a translatable string hiding in a formatter, which is exactly where one
+   * gets missed.
+   */
+  dates: {
+    rangeSeparator: " au ",
+  },
+
+  /**
    * The contact messages archive (/contact-messages).
    *
    * Chrome for the screen the committee reads the public's messages on — not

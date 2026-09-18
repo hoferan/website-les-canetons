@@ -5,20 +5,7 @@ import { useInboxIndex } from "../api/generated/endpoints";
 import type { InboxItemResource } from "../api/generated/model";
 import { PageSection } from "../components/PageSection";
 import { fr } from "../i18n/fr";
-
-const ARRIVED = new Intl.DateTimeFormat("fr-CH", {
-  timeZone: "Europe/Zurich",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-/** "le 15 septembre 2026, 12:05". */
-function formatArrived(iso: string): string {
-  return ARRIVED.format(new Date(iso));
-}
+import { formatInstant } from "../lib/date";
 
 // `fr.inbox.kinds` is typed to its own literal keys, not a general
 // dictionary — this is the one place a `kind` off the wire is used to index
@@ -83,7 +70,7 @@ export function Inbox() {
                   {item.title}
                 </p>
                 <p className="mt-tight text-sm">{item.summary}</p>
-                <p className="mt-tight text-sm text-ink-muted">{formatArrived(item.arrivedAt)}</p>
+                <p className="mt-tight text-sm text-ink-muted">{formatInstant(item.arrivedAt)}</p>
               </Link>
             </li>
           ))}
