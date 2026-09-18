@@ -235,7 +235,7 @@ export function intlTag(locale: Locale, kind: "long" | "instant"): string {
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npx vitest run web/src/i18n/locale.test.ts`
-Expected: PASS — 8 tests.
+Expected: PASS — 11 tests.
 
 - [ ] **Step 5: Commit**
 
