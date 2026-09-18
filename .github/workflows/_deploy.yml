@@ -34,6 +34,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
+          # No coverage anywhere in this repo; see ci.yml's lint-api job for
+          # why this is set even so.
+          coverage: none
 
       - name: Install Node dev tools
         run: npm ci
