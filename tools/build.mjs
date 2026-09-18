@@ -7,6 +7,8 @@ import { cpSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
+import { includeInLaravelBuild } from './artifact-excludes.mjs';
+
 const mount = process.cwd().split('\\').join('/');
 
 // Recursive delete that tolerates Windows' intermittent ENOTEMPTY/EPERM when
@@ -65,78 +67,20 @@ console.log('Built dist/build/ (SPA shell + assets) — ready to FTP upload.');
 // to change if the stack ever does.
 const laravelBuild = 'dist/build/_api';
 
-// Paths that must not travel in the artifact, RELATIVE TO api/. Root-relative
-// on purpose, not basename-anywhere: every entry here is a thing Laravel puts
-// at a project's root by convention, and a basename match would also strip a
-// same-named file nested somewhere that meant it (an app/**/README.md, a
-// tests/ fixture directory under resources/).
-//
-// This is applied as a cpSync filter rather than as rmrf() calls after a
-// wholesale copy — the shape the old vendor/node_modules/.env lines used, now
-// folded in here. Three reasons: the bytes are never written in the first
-// place (this tree is copied on Windows too, where the file's own rmrf()
-// comment documents how deleting a just-written tree hits EPERM/ENOTEMPTY and
-// has to back off and retry); the whole rule is one list in one place instead
-// of a growing tail of deletes; and skipping a directory skips its subtree, so
-// tests/ costs one decision rather than a walk.
-const LARAVEL_BUILD_EXCLUDES = new Set([
-  // Reinstalled below, production-only (--no-dev). node_modules has no
-  // server-side role at all.
-  'vendor',
-  'node_modules',
-  // Server-owned, exactly like the old app's config.php: real DB creds and
-  // APP_KEY, set once per server by hand. .env.example is deliberately NOT
-  // here — it is the provisioning template, and shipping it next to the real
-  // file is the point (see staging/README.md).
-  '.env',
-  // The test suite and its config: 27 test classes that no server ever runs.
-  // Harmless (the front-controller catch-all 404s them) but ~200 KB of dead
-  // weight on every deploy over a flaky FTP link.
-  'tests',
-  'phpunit.xml',
-  // Dev/test fixtures that create accounts with a known password (`demo`).
-  // Nothing on a server currently invokes seeders (RunPendingMigrations and
-  // POST /api/migrate both run `migrate` only), but they must never ship
-  // regardless — see DevSeeder's own production guard for the second half of
-  // this defense.
-  'database/seeders',
-  // A gitignored local artifact whose bytes change on every local test run.
-  // Worse than dead weight: it re-uploads on every deploy, and it makes a
-  // locally-built artifact differ byte-for-byte from a CI-built one.
-  '.phpunit.result.cache',
-  // Repo/editor metadata. Nested .gitignore files are deliberately NOT matched
-  // by this root-relative set — the ones under storage/ and bootstrap/cache/
-  // are what makes those runtime-writable directories exist on a server at all
-  // (the deploy CLI prunes directories left empty).
-  '.editorconfig',
-  '.gitignore',
-  '.gitattributes',
-  // Laravel's stock skeleton docs, about the framework rather than this app.
-  'README.md',
-  'CHANGELOG.md',
-]);
-
+// What may travel and what may not lives in tools/artifact-excludes.mjs, with
+// the reasoning for each entry. It is a separate module for one reason: this
+// file cannot be run without Vite and a Docker daemon, and that rule is the
+// part that has been wrong twice — once shipping a developer's Laravel log to
+// the server (#109). tools/artifact-excludes.test.mjs guards it, including a
+// general check that no untracked file under api/ can reach the artifact.
 const laravelSrcRoot = path.resolve('api');
-
-// Compiled Blade views: same defect as .phpunit.result.cache above, found
-// while fixing it. Gitignored, written by whatever ran locally, ~180 KB of
-// churn per deploy — and Laravel recompiles them on demand anyway. The
-// directory itself must survive (its .gitignore is what creates it).
-const isCompiledView = (rel) =>
-  rel.startsWith('storage/framework/views/') && rel !== 'storage/framework/views/.gitignore';
-
-const includeInLaravelBuild = (src) => {
-  const rel = path.relative(laravelSrcRoot, path.resolve(src)).split('\\').join('/');
-
-  // The source root itself, which cpSync also passes through the filter.
-  if (rel === '') return true;
-
-  return !LARAVEL_BUILD_EXCLUDES.has(rel) && !isCompiledView(rel);
-};
 
 console.log('\nBuilding api/ (Laravel) -> dist/build/_api/ ...');
 rmrf(laravelBuild);
-cpSync('api', laravelBuild, { recursive: true, filter: includeInLaravelBuild });
+cpSync('api', laravelBuild, {
+  recursive: true,
+  filter: (src) => includeInLaravelBuild(src, laravelSrcRoot),
+});
 
 execFileSync(
   'docker',
