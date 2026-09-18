@@ -376,3 +376,30 @@ test("the delete dialog does not agree in the masculine over the person it names
   expect(description).toContain("Cette personne sera retirée de la liste");
   expect(description).not.toContain("Perrine");
 });
+
+/**
+ * #94. The roster said nothing about whether a person could actually log in,
+ * so a member still holding a committee-issued password looked identical to
+ * one using the site every week.
+ */
+test("each card says whether the account has ever been used", async () => {
+  await renderRoster();
+
+  // demo.direction, the one fixture member with a last login.
+  expect(within(rowFor("Direction")).getByTestId("member-login-status")).toHaveTextContent(
+    "Dernière connexion le 1 septembre 2026",
+  );
+
+  // demo.player, who has a password of their own and has never used it.
+  expect(within(rowFor("Player")).getByTestId("member-login-status")).toHaveTextContent(
+    "Aucune connexion",
+  );
+});
+
+test("a member still on a committee-issued password says so", async () => {
+  await renderRoster();
+
+  expect(within(rowFor("Committee")).getByTestId("member-login-status")).toHaveTextContent(
+    "Aucune connexion, mot de passe provisoire",
+  );
+});
