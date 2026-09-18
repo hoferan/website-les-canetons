@@ -38,6 +38,37 @@
              what the ambient environment happens to provide. -->
         <env name="APP_NAME" value="Les Canetons API"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <!-- THE HASHING WORK FACTOR, and the only pin in this file that buys
+             speed rather than correctness.
+
+             BCRYPT_ROUNDS below tunes a hasher this application does not use.
+             config/hashing.php defaults the driver to argon2id and keeps
+             bcrypt only as the documented fallback for a host built without
+             argon2 support, so that pin never reached the code under test and
+             the suite hashed at the full production work factor: 64 MiB and
+             four passes, measured at 177 ms per hash on a web-session
+             container. Every test that builds a Member through the factory
+             paid it once per member. That was ~120 of the suite's 147 seconds
+             (measured 2026-09-18); DevSeederTest creates six members and spent
+             990 ms doing nothing else. At 8 MiB and one pass a hash costs
+             6 ms and the whole suite runs in 31 s, all 636 tests green.
+
+             Same shape as AUTO_MIGRATE and SESSION_SECURE_COOKIE below: the
+             value is pinned because the ambient environment supplies another
+             one. api/.env.example and docker/api/env.docker both ship
+             ARGON_MEMORY=65536 and ARGON_TIME=4, and those are the numbers
+             that protect real members — they are deliberately left alone.
+
+             WHAT THIS GIVES UP, said plainly because every other pin here
+             exists to stop the suite measuring something other than what
+             ships: the work factor is now the one hashing property the suite
+             does NOT measure at production strength. That is affordable only
+             because nothing asserts it — HashingTest pins the DRIVER and the
+             `$argon2id$` prefix, never the cost. A test that ever cares what
+             hashing COSTS must set its own parameters rather than lean on
+             these. -->
+        <env name="ARGON_MEMORY" value="8192"/>
+        <env name="ARGON_TIME" value="1"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <!-- database, not array: the login throttle (AuthController) runs on
