@@ -5,7 +5,7 @@ Decided 2026-09-18.
 
 ## The problem
 
-`/membres` renders each member as a card carrying name, `Identifiant`,
+`/members` renders each member as a card carrying name, `Identifiant`,
 `Pupitre` and `Rôles`. Nothing on it says whether the person can actually log
 in, or ever has.
 
@@ -146,6 +146,6 @@ state that the seeded roster can be in, pinned to a fixed value.
 
 ## Closing evidence
 
-Per `CLAUDE.md`, evidence rather than assertion: a screenshot of `/membres`
+Per `CLAUDE.md`, evidence rather than assertion: a screenshot of `/members`
 showing cards in more than one state, from the Playwright mock-mode run, plus
 the failing-then-passing `loginStatus` cases.
