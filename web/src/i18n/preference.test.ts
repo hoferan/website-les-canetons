@@ -29,7 +29,13 @@ test("storage being unavailable is not an error", () => {
     throw new Error("SecurityError: access denied");
   };
 
-  expect(storedLocale()).toBeNull();
-
-  Storage.prototype.getItem = getItem;
+  // try/finally, not a bare restore after the assertion: if this expectation
+  // ever fails, a trailing restore line never runs and every later test in the
+  // file inherits a throwing localStorage -- a failure that looks like
+  // something else entirely.
+  try {
+    expect(storedLocale()).toBeNull();
+  } finally {
+    Storage.prototype.getItem = getItem;
+  }
 });
