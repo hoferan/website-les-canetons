@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-18-german-locale-design.md`
 
+**Issue:** [#151](https://github.com/hoferan/website-les-canetons/issues/151). The PR closes it, and also closes [#147](https://github.com/hoferan/website-les-canetons/issues/147) (Task 5). Slices 2–9 are #152–#159.
+
 ## Global Constraints
 
 - **French output must stay byte-identical.** All 39 existing web test files and 3 e2e specs must pass unchanged. If a French string changes, the change is wrong.
@@ -1669,7 +1671,7 @@ git push -u origin claude/new-session-kufjx5
 
 ---
 
-## Notes for PRs 2–8
+## Notes for PRs 2–8 (#152–#158)
 
 The pattern this PR establishes, in one paragraph, so each slice does not re-derive it:
 

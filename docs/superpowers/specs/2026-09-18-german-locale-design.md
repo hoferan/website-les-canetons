@@ -393,17 +393,22 @@ actually verified by the person who asked for it, so it is not optional.
 Nine pull requests, one issue each, per `CLAUDE.md`'s one-issue-one-branch-one-PR
 rule.
 
-| PR    | Contents                                                                                                                                                                                               |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **1** | `locale.ts`, i18next `de-CH`, `basename`, `<html lang>`, `t()`, test helper, completeness test, **the full error vocabulary in German**, **#147**, and `Layout.tsx`'s nav chrome as the worked example |
-| 2     | Public pages — Home, Agenda, Band, Committee, History, Join, Contact, NotFound                                                                                                                         |
-| 3     | Auth and account — Login, Account, guards, session chrome                                                                                                                                              |
-| 4     | Events and planning — Events, EventForm, SeriesForm, EventCard, the date helpers' copy                                                                                                                 |
-| 5     | Attendance — EventAttendance, AttendanceControls, the two dialogs, chase list                                                                                                                          |
-| 6     | Members — Members, MemberForm, the password dialogs                                                                                                                                                    |
-| 7     | Registrations — EventBooking, EventRegistrations, EventRegistrationOptions                                                                                                                             |
-| 8     | Inbox and messages — largely catalogued already, a short one                                                                                                                                           |
-| **9** | The language switcher, `hreflang` alternates, the e2e spec                                                                                                                                             |
+| PR | Issue | Contents |
+| --- | --- | --- |
+| **1** | **#151** | `locale.ts`, i18next `de-CH`, `basename`, `<html lang>`, `t()`, test helper, completeness test, **the whole catalogue in German**, **#147**, and `Layout.tsx`'s nav chrome as the worked example |
+| 2 | #152 | Public pages — Home, Agenda, Band, Committee, Join, Contact, NotFound |
+| 3 | #153 | Auth and account — Login, Account, guards, session chrome |
+| 4 | #154 | Events and planning — Events, EventForm, SeriesForm, EventCard, the date helpers' copy |
+| 5 | #155 | Attendance — EventAttendance, AttendanceControls, the two dialogs, chase list |
+| 6 | #156 | Members — Members, MemberForm, the password dialogs |
+| 7 | #157 | Registrations — EventBooking, EventRegistrations, EventRegistrationOptions |
+| 8 | #158 | Inbox and messages — largely catalogued already, a short one |
+| **9** | **#159** | The language switcher, `hreflang` alternates, the e2e spec |
+
+**`History.tsx` was dropped from PR 2 when the issues were written.** #104 turns
+the history into editable content in the database, which per the editability
+ladder no translation layer can reach — so translating its four hard-coded
+paragraphs now is work #104 deletes. `/de/history` stays French until then.
 
 **`/de/*` works from PR 1 onward if the URL is typed**, which is exactly what the
 verification use-case needs, while nothing advertises it until PR 9. That is what
