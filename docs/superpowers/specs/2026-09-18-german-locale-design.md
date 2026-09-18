@@ -142,9 +142,57 @@ Two things are deliberately unaffected:
 - **The `.htaccess`.** The SPA fallback is a catch-all, so `/de/anything` already
   serves the shell. **No server change, no overlay change, no deploy concern.**
 
-Anything reaching for `window.location` directly bypasses `basename` and needs
-auditing in PR 1 — `web/src/lib/returnTo.ts` and `web/src/api/download.ts` are the
-known candidates.
+Anything reaching for `window.location` directly bypasses `basename`. That audit
+has been done, and its result is why this approach is affordable.
+
+**`useLocation()` returns a basename-stripped pathname, and `<Link>`/`navigate()`
+re-apply it.** Anything that reads a path from the router and hands it back to the
+router is a closed loop and correct under any basename. That covers the four
+places most likely to have broken silently, all of which need **no change**:
+
+| Safe                        | Why                                                                        |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `MustChangePassword.tsx:34` | `pathname !== "/account"` still matches at `/de/account`                   |
+| `ScrollToTop.tsx:72`        | Uses `pathname`/`hash` only as effect deps, never compared or concatenated |
+| `guards.tsx:28-31`          | `useAttemptedPath` goes router-stripped in, router-relative out            |
+| `Layout.tsx` active state   | Both sides basename-relative, so `aria-current` keeps matching             |
+
+`returnTo.ts` is safe for the same reason — its only live producer is
+`useAttemptedPath`, and the value travels in router _state_, never a URL. Its
+docblock mentions a legacy `?returnTo=` query, but **nothing reads that today**;
+if it is ever wired back up, a user-copied `?returnTo=/de/members` would be
+double-prefixed to `/de/de/members`. Noted, not fixed.
+
+`download.ts` is unaffected: `API_BASE = "/api/v1"` is a bare `fetch`, which the
+router never sees, and the download itself uses a `blob:` URL, which is
+origin-scoped rather than path-scoped.
+
+**The one definite break in `web/src/` is `LogoutButton.tsx:97`**, which calls
+`window.location.assign("/")` — a deliberate full page load, documented at length
+in that file. Under `/de` it drops a German member on the French home page. It
+must use the locale's own root.
+
+Three further decisions the audit forced, recorded so they are not rediscovered:
+
+- **The built artifact does not move.** `vite.config.ts` keeps `base: "/"`,
+  `/assets/*` keeps being served from the origin root, and the `.htaccess`
+  catch-all keeps serving the shell. Only the _route_ is prefixed. This is what
+  keeps the root-absolute `src="/assets/img/…"` in `Logo.tsx` and `Band.tsx`
+  correct, and their verbatim assertions in `Logo.test.tsx` untouched.
+- **Prefix the UI only, never the API.** `/api/v1` and `/sanctum/csrf-cookie`
+  stay at the origin root.
+- **Existing tests and e2e specs do not break**, because French stays
+  unprefixed and the basename is _derived from the path_ rather than hardcoded.
+  jsdom's document URL is `http://localhost/`, and the e2e specs `goto("/login")`
+  — both resolve to French, exactly as today. A hardcoded `basename="/de"` would
+  have broken `App.test.tsx` and all nine `page.goto()` call sites; deriving it
+  is what avoids that.
+
+Two items are real but belong to PR 9, when German becomes reachable:
+`web/public/assets/icons/manifest.json`'s `start_url: "/"` (an installed app
+would launch in French) and `web/index.html`'s hardcoded `og:url`.
+`ButtonLink.tsx`'s `external` branch emits a raw `<a href>`; no call site passes
+it an app-internal path today, and its docblock should say not to.
 
 ### Persistence: localStorage decides one thing only
 
@@ -213,6 +261,30 @@ as `export const fr = {`. Verify this rather than assuming it.
   That is what makes a partially-migrated app usable rather than broken, and it
   is why `/de/*` is not advertised until PR 9.
 
+### Initialisation order, and the trap it sets
+
+**i18next must be initialised at module scope in `web/src/i18n/index.ts`, not
+from `main.tsx`.** ES module imports are hoisted: `main.tsx`'s own statements run
+_after_ every module it imports has been evaluated, so an `i18next.init()` in
+`main.tsx`'s body would run after `Layout.tsx`'s body. `index.ts` already
+initialises at module scope today, and it must keep doing so — with the locale
+read from `window.location.pathname` there rather than passed in.
+
+**The trap that follows: no module-scope constant may hold translated text.**
+`Layout.tsx` today builds `NAV`, `DIRECTION_NAV` and `MEMBER_NAV` as module-level
+arrays of `{ to, label }`. A `label: t("nav.join")` there would be evaluated once,
+at import time, and frozen in whatever locale was active then — so a later
+`setLocale()` (which is how tests render German) would not move it, and the bug
+would appear only in tests and only for the nav.
+
+Those arrays therefore carry **`labelKey` instead of `label`**, resolved with
+`t(item.labelKey)` inside the render. The same rule applies to the module-scope
+`Intl.DateTimeFormat` instances in `web/src/lib/date.ts`: they become
+locale-keyed lookups resolved at call time, not constants built at import.
+
+The rule generalises, and every slice PR 2–8 inherits it: **translate at render
+time, never at module scope.**
+
 ## The PHP vocabulary test starts demanding German
 
 `ApiErrorVocabularyTest` is extended to read `de.ts` as well as `fr.ts`.
@@ -222,13 +294,23 @@ half-feature, and that test exists precisely to stop wrong-language text — and
 English tokens — reaching a screen. Extending it is cheap; the machinery is
 already there.
 
-**Consequence: PR 1 translates the entire error vocabulary** — all of `errors`,
-`validation` and `fields`. That is the most mechanical part of the whole job and
-it is self-contained, so it belongs in the foundation PR rather than being spread
-across the slices.
+**Consequence: PR 1 translates the whole of `fr.ts` as it stands today** — not
+only `errors`, `validation` and `fields`, but `roles`, `contactMessages` and
+`inbox` as well.
 
-It also means every _future_ error token is forced to arrive with German copy,
-which is the point.
+That is forced by `export const de: typeof fr`, which demands every key or the
+build fails. It was tempting to type `de` as a partial so the slices could fill
+it in gradually, and that was rejected: a partial type gives up the compile-time
+parity check, which is the cheapest guarantee in this whole design.
+
+So the catalogue is **complete from PR 1**, and each slice PR 2–8 then adds keys
+to `fr.ts` and `de.ts` **together**. It also means every _future_ error token is
+forced to arrive with German copy, which is the point.
+
+**This narrows what `fallbackLng: "fr"` is for.** It is not covering missing keys
+— parity makes those impossible. A half-migrated `/de/` page shows French because
+that screen's text is still a hard-coded JSX literal nobody has extracted yet, not
+because a key is absent. The fallback stays as a safety net, not as the mechanism.
 
 ## #147, folded in and slightly widened
 
@@ -245,12 +327,37 @@ locale-aware:
   those assertions are read first and French output is kept identical.
 - `formatLastLogin` **stays separate.** Different shape, no time-of-day, for the
   reason its docblock gives. #147 says so explicitly and it is easy to get wrong.
-- `LONG` moves from `fr-FR` to the active locale. For its option set `fr-FR` and
-  `fr-CH` render identically, so French output does not change — `date.ts`'s own
-  docblock already records that equivalence.
+- `LONG` becomes locale-aware, and **French keeps `fr-FR`.** An earlier draft of
+  this spec said `fr-FR` and `fr-CH` render identically for its option set and
+  that French could therefore move to `fr-CH`. **That is wrong**, and measuring
+  it is what caught it:
+
+  | Tag     | `weekday`+`day`+`month`+`year` |
+  | ------- | ------------------------------ |
+  | `fr-FR` | `samedi 5 décembre 2026`       |
+  | `fr-CH` | `samedi, 5 décembre 2026`      |
+  | `de-CH` | `Samstag, 5. Dezember 2026`    |
+
+  A comma apart, and enough to break any test asserting a rendered long date.
+  `date.ts`'s docblock does claim the equivalence, but only for the
+  **last-login** option set, which omits `weekday` — and there it holds
+  (`15 septembre 2026` under both). The claim does not survive adding a weekday.
+
+- **The governing rule, therefore: French output stays byte-identical to
+  today.** `LONG` keeps `fr-FR` for French, the instant formatters keep `fr-CH`
+  for French, and German uses `de-CH` for both. The existing locale
+  inconsistency is preserved rather than tidied — tidying it is a French copy
+  change wearing an i18n costume, and it would break tests in files this PR has
+  no other reason to touch.
+
 - **`formatEventDateRange` hard-codes the French word `" au "`.** This is not in
   #147 and is a translatable string hiding inside a date helper; it becomes a
   catalogue key.
+
+- **Both duplicate formatters' docblocks are stale** and must not be copied
+  forward. Each says the output is `"le 15 septembre 2026, 12:05"`; the real
+  output is `15 septembre 2026 à 12:05`. The shared function gets a docblock
+  stating what it actually renders, in both locales.
 
 `Europe/Zurich` stays pinned everywhere, for the reason `formatLastLogin`'s
 docblock gives: the API sends UTC, an evening login in Fribourg is the previous
