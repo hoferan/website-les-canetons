@@ -100,6 +100,22 @@ jobs:
         with:
           php-version: "8.4"
           tools: composer
+          # NOTHING IN THIS REPOSITORY COLLECTS PHP COVERAGE -- no --coverage
+          # flag in any job, no coverage report in api/phpunit.xml. But
+          # setup-php's builds ship with Xdebug ENABLED unless a job says
+          # otherwise, and Xdebug instruments every function call whether or
+          # not anything asks it for coverage.
+          #
+          # Measured 2026-09-18, same commit, same file set: `pint --test`
+          # covers 255 files in 41 s here and 290 ms on a web-session
+          # container -- about 160 ms a file against 1 ms. PHP-CS-Fixer, which
+          # Pint wraps, is as function-call-heavy as code gets, which is
+          # exactly what Xdebug taxes. Notably the PHPUnit job is NOT slow the
+          # same way (41 s against 30 s local), so the effect is expected
+          # almost entirely in this job; it is set on every setup-php step
+          # regardless, because a job that collects no coverage has nothing to
+          # lose and the next one added inherits the right default.
+          coverage: none
       # Pint and Larastan are pinned by api/composer.lock and live in
       # api/vendor/. Scripts ARE run here, unlike the Pint-only install this
       # used to be: Larastan boots Laravel to understand models and facades, so
@@ -198,6 +214,9 @@ jobs:
           # tree requires is.
           extensions: pdo_mysql
           tools: composer
+          # No coverage anywhere in this repo; see the lint-api job above for
+          # why this is set even so.
+          coverage: none
       # The api install is the slow part of this job and now happens in two
       # jobs (here and `php`). Cache Composer's download cache, keyed by the
       # lockfile; a miss just falls back to a full install. The root installs in
@@ -386,6 +405,9 @@ jobs:
           # setup-php's default set.
           extensions: pdo_sqlite, sqlite3
           tools: composer
+          # No coverage anywhere in this repo; see the lint-api job above for
+          # why this is set even so.
+          coverage: none
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
@@ -444,6 +466,9 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
+          # No coverage anywhere in this repo; see the lint-api job above for
+          # why this is set even so.
+          coverage: none
       - name: Install Node dev tools
         run: npm ci
       - name: Deploy to TEST over FTP
