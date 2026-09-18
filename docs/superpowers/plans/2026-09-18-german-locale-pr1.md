@@ -1301,7 +1301,9 @@ import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { storedLocale } from "./i18n/preference";
 ```
 
-Immediately after the MSW block and before `const root = ...`, insert:
+**The boot below must sit in an `else`.** `window.location.replace()` schedules a navigation; it does NOT stop the running script, and `window.location.pathname` still reads `/` afterwards. Falling through mounts the whole French app — SessionProvider's boot requests included — for the very visitor being sent to German, racing the navigation with a flash of the wrong language. A top-level `return` is unavailable in a module, so nest the boot instead. See `web/src/main.tsx` as it now stands for the shape.
+
+Immediately after the MSW block, insert:
 
 ```ts
 // THE ONE PLACE A STORED PREFERENCE IS READ, and only for the bare root.
