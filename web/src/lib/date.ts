@@ -34,3 +34,27 @@ export function formatEventDateRange(iso: string): string {
 export function formatTime(time: string): string {
   return time.slice(0, 5);
 }
+
+/**
+ * A last-login instant as a French date: "1 septembre 2026".
+ *
+ * NO TIME, unlike the near-identical formatters in Inbox.tsx and
+ * ContactMessages.tsx. A contact message is a worklist item whose minute
+ * matters; a last login is read as "recently or not", and the minute only
+ * makes the longest line on a roster card longer.
+ *
+ * THE TIMEZONE IS PINNED, and that is not cosmetic: the API sends UTC, and an
+ * evening login in Fribourg is the previous day in UTC. Formatted in the
+ * viewer's zone it would also differ between two committee members reading the
+ * same roster.
+ */
+const LAST_LOGIN = new Intl.DateTimeFormat("fr-CH", {
+  timeZone: "Europe/Zurich",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+export function formatLastLogin(iso: string): string {
+  return LAST_LOGIN.format(new Date(iso));
+}
