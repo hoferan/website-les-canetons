@@ -3,14 +3,6 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import { rowsOf, totalOf } from "../api/collection";
 import { downloadGuestList, type ExportFormat } from "../api/download";
@@ -69,10 +61,13 @@ const AMENDABLE: { name: keyof UpdateRegistrationRequest; label: string; type?: 
  * row here sums those, and nothing on this page multiplies a price by a
  * quantity.
  *
- * CARDS BELOW `md`, A TABLE FROM `md` UP (§4: no bare tables on phones). Both
- * layouts are in the DOM at once and Tailwind picks by viewport, so a test
- * that queries globally finds each guest twice — scope to `guest-cards` or
- * `guest-table`.
+ * ONE LAYOUT: CARDS, AT EVERY WIDTH, laid out in a grid that widens (#130).
+ * There was a table from `md` up as well until 2026-09-18, hand-maintained
+ * beside the cards with nothing forcing the two to agree — and they did not,
+ * for the whole life of the screen: the guest's postal address was on the card
+ * and in no column at all (#98). A test that queries globally used to find
+ * every guest twice; it no longer does, so scoping to `guest-cards` is now
+ * about saying which list you mean rather than about avoiding a duplicate.
  *
  * AMENDING STARTS BY READING THE ONE BOOKING, and the tag that read hands out
  * is what the PATCH quotes. The list hands out none — one tag cannot validate
@@ -334,10 +329,17 @@ export function EventRegistrations() {
 
       {bookings.length > 0 ? (
         <>
-          {/* Cards below md. A booking is eight facts read one at a time, and
-              a table of them at 390px scrolls sideways — which is exactly what
-              the screen this replaces did. */}
-          <ul data-testid="guest-cards" className="mt-block grid gap-tight md:hidden">
+          {/* THE CARD IS THE ONLY LAYOUT (#130). There used to be a table from
+              md up as well, hand-maintained beside this, and nothing forced the
+              two to agree: the address below lived on the card and in no column
+              at all, for the whole life of the screen. The grid is what makes
+              one layout serve both — one column at 390px, and from sm up as
+              many as fit, so a desktop reader gets a wall of bookings rather
+              than an 80-row ribbon. */}
+          <ul
+            data-testid="guest-cards"
+            className="mt-block grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
+          >
             {bookings.map((booking) => (
               <li
                 key={booking.id}
@@ -352,7 +354,11 @@ export function EventRegistrations() {
                     failure the 2026-08-31 audit caught in Join.tsx, by another
                     route. The committee's use here is posting an invitation,
                     not navigating. */}
-                <div className="flex flex-col items-start gap-tight">
+                {/* THREE SIBLINGS, NOT A `<br>` RUN, so each fact is its own
+                    element and a screen reader gets three stops rather than one
+                    long string. `items-start` stops the column flex stretching
+                    each link's tap target across the whole card. */}
+                <div data-testid="guest-contact" className="flex flex-col items-start gap-tight">
                   <ContactLink kind="email" value={booking.email} />
                   <ContactLink kind="phone" value={booking.phone} />
                   {booking.address ? (
@@ -378,69 +384,6 @@ export function EventRegistrations() {
               </li>
             ))}
           </ul>
-
-          <div className="mt-block hidden overflow-x-auto md:block">
-            <Table data-testid="guest-table">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Table</TableHead>
-                  <TableHead>Commande</TableHead>
-                  <TableHead>Personnes</TableHead>
-                  <TableHead>Total</TableHead>
-                  {mayManage ? <TableHead>Actions</TableHead> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {bookings.map((booking) => (
-                  // align-top: with a ~116px contact cell, the base align-middle
-                  // floats Table and Commande in the vertical middle and a
-                  // reader scanning a column down 70 rows loses the line.
-                  <TableRow key={booking.id} className="[&>td]:align-top">
-                    <TableCell>
-                      {booking.lastName} {booking.firstName}
-                    </TableCell>
-                    {/* THREE SIBLINGS, NOT A `<br>` RUN. The address needs an
-                        element of its own to carry `whitespace-normal` and a
-                        width cap -- TableCell is `whitespace-nowrap`, and a
-                        `max:255` address in a column of its own would not wrap
-                        but force the whole table wide, into a scroll container
-                        that is not keyboard-reachable yet (#15). `items-start`
-                        stops the column flex stretching each link's target
-                        across the whole cell. */}
-                    <TableCell className="text-ink-muted" data-testid="guest-contact">
-                      <div className="flex flex-col items-start gap-tight">
-                        <ContactLink kind="email" value={booking.email} />
-                        <ContactLink kind="phone" value={booking.phone} />
-                        {booking.address ? (
-                          <span className="block max-w-xs whitespace-normal">
-                            {booking.address}
-                          </span>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-ink-muted">{booking.tableName}</TableCell>
-                    <TableCell>{orderOf(booking)}</TableCell>
-                    <TableCell>{booking.guestCount}</TableCell>
-                    <TableCell>
-                      {booking.totalCents === null ? null : formatCents(booking.totalCents)}
-                    </TableCell>
-                    {mayManage ? (
-                      <TableCell>
-                        <RowActions
-                          booking={booking}
-                          busy={opening === booking.id}
-                          onAmend={() => void openAmend(booking)}
-                          onCancel={() => void openCancel(booking)}
-                        />
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </>
       ) : null}
 

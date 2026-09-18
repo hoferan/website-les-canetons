@@ -32,9 +32,11 @@ import { useSession } from "../session/SessionProvider";
  * answering "who is coming?" when the question the committee actually has on a
  * Thursday evening is "who must I still chase?" (design §5).
  *
- * BOTH LAYOUTS ARE IN THE DOM AT ONCE and Tailwind picks by viewport, so a
- * test that queries globally finds each name twice. Scope to `chase-cards` or
- * `chase-table`.
+ * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). A table
+ * from `md` up used to sit beside them, hand-maintained, and the answer it
+ * spread across three columns is one sentence here — `answerLine`, where the
+ * reason travels WITH the name, which is the whole difference between a chase
+ * list and a headcount.
  */
 export function EventAttendance() {
   const { id } = useParams();
@@ -234,17 +236,27 @@ export function EventAttendance() {
             Réponses
           </h2>
 
-          {/* Cards below md. An answer is three facts read one at a time, and
-              a table of them on a 390px screen scrolls sideways — which is
-              exactly what the old InscriptionsAdmin did. */}
-          <ul data-testid="chase-cards" className="mt-related grid gap-tight md:hidden">
+          {/* THE CARD IS THE ONLY LAYOUT (#130). A table from md up used to sit
+              beside this, and the two were hand-maintained copies of one row.
+              The "non" answers come first here: they are the ones with
+              something to read beside them, and a grid flows row-major, so
+              they still read first at every width. */}
+          <ul
+            data-testid="chase-cards"
+            className="mt-related grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
+          >
             {[...no, ...yes].map((entry) => (
               <li
                 key={entry.memberId}
                 className="rounded-lg border border-gray-200 bg-white p-3 text-sm"
               >
                 <p className="text-ink">{answerLine(entry)}</p>
-                {entry.sectionName ? <p className="text-ink-muted">{entry.sectionName}</p> : null}
+                {/* LABELLED, because the column head that used to say what this
+                    is went with the table. A bare "Trompettes" under a name is
+                    a word, not a fact. */}
+                {entry.sectionName ? (
+                  <p className="text-ink-muted">Pupitre&nbsp;: {entry.sectionName}</p>
+                ) : null}
                 {entry.attendance?.recordedByDirection ? (
                   <p className="text-ink-muted">Saisie par le comité.</p>
                 ) : null}
@@ -260,47 +272,6 @@ export function EventAttendance() {
               </li>
             ))}
           </ul>
-
-          <div className="mt-related hidden overflow-x-auto md:block">
-            <table data-testid="chase-table" className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-ink-muted">
-                  <th className="py-2 pr-4 font-normal">Nom</th>
-                  <th className="py-2 pr-4 font-normal">Pupitre</th>
-                  <th className="py-2 pr-4 font-normal">Réponse</th>
-                  <th className="py-2 pr-4 font-normal">Raison</th>
-                  <th className="py-2 font-normal">
-                    <span className="sr-only">Correction</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* The "non" rows first: they are the ones with something to
-                    read beside them. */}
-                {[...no, ...yes].map((entry) => (
-                  <tr key={entry.memberId} className="border-b border-gray-100">
-                    <td className="py-2 pr-4">{nameOf(entry)}</td>
-                    <td className="py-2 pr-4 text-ink-muted">{entry.sectionName}</td>
-                    <td className="py-2 pr-4">
-                      {entry.attendance ? answerLabel(entry.attendance.status) : null}
-                      {entry.attendance?.recordedByDirection ? (
-                        <span className="text-ink-muted"> (comité)</span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4 text-ink-muted">{entry.attendance?.note}</td>
-                    <td className="py-2">
-                      <CorrectionAction
-                        entry={entry}
-                        mayRecord={mayRecord}
-                        mine={entry.memberId === user?.id}
-                        onCorrect={setCorrecting}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </section>
       ) : null}
 
@@ -341,10 +312,12 @@ export function EventAttendance() {
 }
 
 /**
- * The one control that corrects an answer, rendered in both layouts.
+ * The one control that corrects an answer.
  *
  * WRITTEN ONCE because two copies is where the phone layout loses the next
- * thing added to the table — the same reason MemberActions exists. The
+ * thing added to the other one. It was extracted while this screen still had
+ * two layouts to keep them honest; #130 removed the second, and it stays a
+ * component because the correction is worth reading in one place. The
  * accessible name carries the person, so a screen-reader user hears whose
  * answer they are about to change rather than the eleventh "Corriger" on the
  * page.

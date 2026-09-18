@@ -18,23 +18,18 @@ async function renderRoster() {
 }
 
 /**
- * BOTH LAYOUTS ARE ALWAYS IN THE DOM. Cards below md and a table above is a
- * Tailwind `hidden`/`md:block` pair — the browser picks one by viewport, and
- * jsdom applies no CSS, so every person appears twice here. That is the layout
- * working, not a bug, so the queries scope to one of them; `bothLayoutsAgree`
- * below is what checks the other still lists the same people.
+ * The roster. ONE LAYOUT since #130 — cards at every width, in a grid that
+ * widens. There was a table above `md` as well until 2026-09-18, and since
+ * jsdom applies no CSS every person appeared twice in this file, so every
+ * query had to say which of the two it meant.
  */
-function table() {
-  return within(screen.getByTestId("roster-table"));
-}
-
 function cards() {
   return within(screen.getByTestId("roster-cards"));
 }
 
-/** One person's row, in the table layout. */
+/** One person's card. */
 function rowFor(lastName: string): HTMLElement {
-  const row = table().getByText(lastName).closest("[data-member]");
+  const row = cards().getByText(lastName).closest("[data-member]");
   if (!(row instanceof HTMLElement)) {
     throw new Error(`no row for ${lastName}`);
   }
@@ -50,7 +45,7 @@ function lastNamesIn(scope: ReturnType<typeof within>): string[] {
 test("lists everybody on the roster, ordered by name", async () => {
   await renderRoster();
 
-  expect(lastNamesIn(table())).toEqual([
+  expect(lastNamesIn(cards())).toEqual([
     "Both",
     "Committee",
     "Direction",
@@ -69,23 +64,15 @@ test("the heading counts the roster the server holds, not the rows on screen", a
   expect(screen.getByTestId("roster-count")).toHaveTextContent("5 membres");
 });
 
-test("the phone layout lists exactly the same people as the table", async () => {
-  await renderRoster();
-
-  // Both render from the same array in one pass and only their wrappers
-  // differ, so they can never disagree about who is on the roster. This is
-  // what says so: a future edit that adds a person to one and not the other
-  // fails here rather than on somebody's phone.
-  expect(lastNamesIn(cards())).toEqual(lastNamesIn(table()));
-});
-
 test("shows each person's register, and says plainly when they are in none", async () => {
   await renderRoster();
 
-  expect(within(rowFor("Player")).getByText("Cloches")).toBeInTheDocument();
+  // LABELLED, since the column head that said what this is went with the
+  // table (#130).
+  expect(rowFor("Player")).toHaveTextContent("Pupitre : Cloches");
   // Dominique organises and does not play, so there is no register. A blank
-  // cell reads as missing data; this is a fact about them.
-  expect(within(rowFor("Direction")).getByText("Aucun pupitre")).toBeInTheDocument();
+  // line reads as missing data; this is a fact about them.
+  expect(rowFor("Direction")).toHaveTextContent("Pupitre : Aucun pupitre");
 });
 
 test("shows roles by their French label, never the key or the permissions", async () => {
@@ -95,10 +82,12 @@ test("shows roles by their French label, never the key or the permissions", asyn
   // "why does she have this?" is answered with "because she is in Team
   // Direction" (design §3) — never the key "direction", and never the raw
   // permission strings.
-  expect(within(direction).getByText("Team Direction")).toBeInTheDocument();
+  // On the whole line, because the card labels its fields — "Rôles : Team
+  // Direction" — since #130 took the column heads away with the table.
+  expect(direction).toHaveTextContent("Rôles : Team Direction");
   expect(direction.textContent).not.toContain("members.manage");
 
-  expect(within(rowFor("Committee")).getByText("Comité")).toBeInTheDocument();
+  expect(rowFor("Committee")).toHaveTextContent("Rôles : Comité");
 });
 
 test("creates a person and shows them in the list", async () => {
@@ -110,7 +99,7 @@ test("creates a person and shows them in the list", async () => {
   await userEvent.type(screen.getByLabelText("Identifiant"), "lea.nouvelle");
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  expect(await table().findByText("Nouvelle")).toBeInTheDocument();
+  expect(await cards().findByText("Nouvelle")).toBeInTheDocument();
 });
 
 test("shows the new person's password once, as text that can be read aloud", async () => {
@@ -166,7 +155,7 @@ test("assigns a role to somebody who already exists", async () => {
   await userEvent.click(screen.getByLabelText("Comité"));
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  expect(await within(rowFor("Player")).findByText("Comité")).toBeInTheDocument();
+  await expect.poll(() => rowFor("Player").textContent).toContain("Comité");
 });
 
 test("changing a name and a role in one save does both", async () => {
@@ -187,10 +176,10 @@ test("changing a name and a role in one save does both", async () => {
   await userEvent.click(screen.getByLabelText("Comité"));
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  const row = await table().findByText("Joueuse");
+  const row = await cards().findByText("Joueuse");
   const changed = row.closest("[data-member]");
   expect(changed).not.toBeNull();
-  expect(within(changed as HTMLElement).getByText("Comité")).toBeInTheDocument();
+  expect(changed).toHaveTextContent("Rôles : Comité");
 });
 
 test("seats somebody on the committee by picking from the list, not by typing", async () => {
@@ -296,8 +285,8 @@ test("deletes the person once their name is typed", async () => {
   await userEvent.type(within(dialog).getByLabelText(/Perrine Player/), "Perrine Player");
   await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
-  expect(await table().findByText("Both")).toBeInTheDocument();
-  expect(table().queryByText("Player")).toBeNull();
+  expect(await cards().findByText("Both")).toBeInTheDocument();
+  expect(cards().queryByText("Player")).toBeNull();
 });
 
 test("keeps the person and explains, when the server refuses", async () => {

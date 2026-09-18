@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { mailtoHref, telHref } from "../lib/contactHref";
 
 /**
- * Link styling, one string for both layouts.
+ * Link styling, in one string.
  *
  * THE UNDERLINE IS NOT OPTIONAL. These links sit in `text-ink-muted`
  * (`#5a5768`) text, and `--color-violet` (`#4b2ed6`) against it is 1.13:1 —

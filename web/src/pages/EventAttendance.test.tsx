@@ -25,6 +25,26 @@ async function renderChaseList(as: "demo.direction" | "demo.both" = "demo.direct
   return result;
 }
 
+/**
+ * The one answer card for this person.
+ *
+ * There was a table beside these cards until #130, both layouts in the DOM at
+ * once, and every query in this file had to say which it meant. The card fuses
+ * name, answer and reason into one sentence on purpose — `answerLine` — so a
+ * card is found by the name it contains rather than by a cell of its own.
+ */
+function cardFor(name: string) {
+  const card = within(screen.getByTestId("chase-cards"))
+    .getAllByRole("listitem")
+    .find((candidate) => candidate.textContent?.includes(name));
+
+  if (!card) {
+    throw new Error(`no answer card for "${name}"`);
+  }
+
+  return card;
+}
+
 test("the counts lead with all three, including the one the screen exists for", async () => {
   // The seeded answers against event 1: two yes (one of them entered by the
   // committee), one no, and Bastien, who has said nothing.
@@ -45,34 +65,27 @@ test("the people who have not answered come before the people who have", async (
 });
 
 test("a withdrawal is shown with its reason beside the name", async () => {
+  // The spec's own example of what the direction should be able to read: a
+  // name, an answer, and the reason for it, in one sentence — not a count that
+  // dropped by one.
   await renderChaseList();
 
-  // "Camille Committee — non — « Malade »", not a count that dropped by one.
-  const table = screen.getByTestId("chase-table");
-  const row = within(table).getByText("Camille Committee").closest("tr") as HTMLElement;
-
-  expect(within(row).getByText("Non")).toBeInTheDocument();
-  expect(within(row).getByText("Malade")).toBeInTheDocument();
-});
-
-test("the phone layout writes an answer as one line", async () => {
-  // BOTH LAYOUTS ARE IN THE DOM AT ONCE — Tailwind picks by viewport and jsdom
-  // applies no CSS — so this has to be scoped to the cards or it also matches
-  // the table. The sentence is the spec's own example of what the direction
-  // should be able to read: a name, an answer, and the reason for it.
-  await renderChaseList();
-
-  const cards = screen.getByTestId("chase-cards");
-  expect(within(cards).getByText("Camille Committee — non — « Malade »")).toBeInTheDocument();
+  expect(cardFor("Camille Committee")).toHaveTextContent("Camille Committee — non — « Malade »");
 });
 
 test("an answer the committee entered says so", async () => {
   await renderChaseList();
 
-  const table = screen.getByTestId("chase-table");
-  const row = within(table).getByText("Nadia Sansconnexion").closest("tr") as HTMLElement;
+  expect(cardFor("Nadia Sansconnexion")).toHaveTextContent("Saisie par le comité.");
+});
 
-  expect(within(row).getByText("(comité)")).toBeInTheDocument();
+test("an answer card names the pupitre it belongs to", async () => {
+  // LABELLED, not bare. The column head that used to carry this went with the
+  // table (#130), so "Trompettes" alone under a name would be a word rather
+  // than a fact.
+  await renderChaseList();
+
+  expect(cardFor("Camille Committee")).toHaveTextContent("Pupitre : Trombones");
 });
 
 test("the committee can answer for somebody who has not", async () => {
@@ -86,10 +99,7 @@ test("the committee can answer for somebody who has not", async () => {
     .poll(() => screen.getByTestId("chase-counts").textContent)
     .toContain("0 sans réponse");
 
-  const row = within(screen.getByTestId("chase-table"))
-    .getByText("Bastien Both")
-    .closest("tr") as HTMLElement;
-  expect(within(row).getByText("(comité)")).toBeInTheDocument();
+  expect(cardFor("Bastien Both")).toHaveTextContent("Saisie par le comité.");
 });
 
 test("the on-behalf controls are absent from the caller's own row (C14)", async () => {
@@ -131,11 +141,10 @@ test("an answer already recorded can be changed", async () => {
   // phone call to say they can come after all.
   await renderChaseList();
 
-  const row = within(screen.getByTestId("chase-table"))
-    .getByText("Camille Committee")
-    .closest("tr") as HTMLElement;
   await userEvent.click(
-    within(row).getByRole("button", { name: "Corriger la réponse de Camille Committee" }),
+    within(cardFor("Camille Committee")).getByRole("button", {
+      name: "Corriger la réponse de Camille Committee",
+    }),
   );
 
   const dialog = await screen.findByRole("alertdialog");
@@ -148,21 +157,18 @@ test("an answer already recorded can be changed", async () => {
 
   // The reason went with the answer it was given for: "malade" against a
   // "oui" is worse than no reason at all.
-  const corrected = within(screen.getByTestId("chase-table"))
-    .getByText("Camille Committee")
-    .closest("tr") as HTMLElement;
-  expect(within(corrected).getByText("Oui")).toBeInTheDocument();
-  expect(within(corrected).queryByText("Malade")).toBeNull();
+  const corrected = cardFor("Camille Committee");
+  expect(corrected).toHaveTextContent("Camille Committee — oui");
+  expect(corrected).not.toHaveTextContent("Malade");
 });
 
 test("the reason can be corrected without touching the answer", async () => {
   await renderChaseList();
 
-  const row = within(screen.getByTestId("chase-table"))
-    .getByText("Camille Committee")
-    .closest("tr") as HTMLElement;
   await userEvent.click(
-    within(row).getByRole("button", { name: "Corriger la réponse de Camille Committee" }),
+    within(cardFor("Camille Committee")).getByRole("button", {
+      name: "Corriger la réponse de Camille Committee",
+    }),
   );
 
   const dialog = await screen.findByRole("alertdialog");
@@ -175,36 +181,20 @@ test("the reason can be corrected without touching the answer", async () => {
   await userEvent.type(reason, "Grippe");
   await userEvent.click(within(dialog).getByRole("button", { name: "Enregistrer" }));
 
-  await expect
-    .poll(
-      () =>
-        (
-          within(screen.getByTestId("chase-table"))
-            .getByText("Camille Committee")
-            .closest("tr") as HTMLElement
-        ).textContent,
-    )
-    .toContain("Grippe");
+  await expect.poll(() => cardFor("Camille Committee").textContent).toContain("Grippe");
 
-  const corrected = within(screen.getByTestId("chase-table"))
-    .getByText("Camille Committee")
-    .closest("tr") as HTMLElement;
-  expect(within(corrected).getByText("Non")).toBeInTheDocument();
+  expect(cardFor("Camille Committee")).toHaveTextContent("Camille Committee — non");
 });
 
-test("the correction is offered in both layouts", async () => {
-  // BOTH LAYOUTS ARE IN THE DOM AT ONCE, and a control added to one of them
-  // only is invisible to whichever half of the band is on the other. The
-  // phone layout is the one that gets forgotten.
+test("the correction is offered once, not once per layout", async () => {
+  // There were two of this button until #130 — one per layout — and a control
+  // added to only one of them was invisible to whichever half of the band was
+  // on the other. The count is what a second layout coming back changes first.
   await renderChaseList();
 
-  const name = "Corriger la réponse de Camille Committee";
   expect(
-    within(screen.getByTestId("chase-cards")).getByRole("button", { name }),
-  ).toBeInTheDocument();
-  expect(
-    within(screen.getByTestId("chase-table")).getByRole("button", { name }),
-  ).toBeInTheDocument();
+    screen.getAllByRole("button", { name: "Corriger la réponse de Camille Committee" }),
+  ).toHaveLength(1);
 });
 
 test("the correction is absent from the caller's own answered row (C14)", async () => {
@@ -217,12 +207,10 @@ test("the correction is absent from the caller's own answered row (C14)", async 
 
   await renderChaseList("demo.both");
 
-  const row = within(screen.getByTestId("chase-table"))
-    .getByText("Bastien Both")
-    .closest("tr") as HTMLElement;
+  const card = cardFor("Bastien Both");
 
   expect(
-    within(row).queryByRole("button", { name: "Corriger la réponse de Bastien Both" }),
+    within(card).queryByRole("button", { name: "Corriger la réponse de Bastien Both" }),
   ).toBeNull();
-  expect(within(row).getByText("Modifiable depuis le planning.")).toBeInTheDocument();
+  expect(within(card).getByText("Modifiable depuis le planning.")).toBeInTheDocument();
 });

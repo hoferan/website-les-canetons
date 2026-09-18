@@ -13,14 +13,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import {
   contactMessageDestroy,
@@ -92,8 +84,8 @@ function matchesFilter(filter: Filter, message: ContactMessageResource): boolean
  * The archive: every message the public has sent, open and handled alike.
  *
  * MODELLED ON web/src/pages/Members.tsx — same read-then-write ETag flow, same
- * cards-below-`md`/table-from-`md`-up split, same shape of "opening a row
- * reads the one thing and keeps the tag that read handed out".
+ * one-layout card grid since #130, same shape of "opening a row reads the one
+ * thing and keeps the tag that read handed out"
  *
  * EXPANDING A ROW ALWAYS RE-READS IT, even though the list already carries
  * every field (`ContactMessageIndex200DataItem` is the same resource as the
@@ -354,8 +346,14 @@ export function ContactMessages() {
 
       {!list.isPending && !list.isError && visible.length > 0 ? (
         <>
-          {/* CARDS BELOW md. */}
-          <ul data-testid="messages-cards" className="mt-block flex flex-col gap-related md:hidden">
+          {/* THE CARD IS THE ONLY LAYOUT (#130). A table from md up used to sit
+              beside this, rendering the same five facts a second time by hand.
+              `MessageSummary` is now the single description of a message in a
+              list, so a field added to it arrives at every width at once. */}
+          <ul
+            data-testid="messages-cards"
+            className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
+          >
             {visible.map((message) => (
               <li
                 key={message.id}
@@ -370,57 +368,6 @@ export function ContactMessages() {
               </li>
             ))}
           </ul>
-
-          {/* A TABLE FROM md UP. */}
-          <div data-testid="messages-table" className="mt-block hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Expéditeur</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Reçu le</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((message) => (
-                  <TableRow key={message.id} data-message={message.id}>
-                    <TableCell>
-                      {message.firstName}{" "}
-                      <span data-testid="message-last-name">{message.lastName}</span>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{preview(message)}</TableCell>
-                    <TableCell className="text-ink-muted">
-                      {formatReceived(message.receivedAt)}
-                    </TableCell>
-                    <TableCell>
-                      {message.handledAt === null
-                        ? fr.contactMessages.openStatus
-                        : fr.contactMessages.handledStatus}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-disabled={openingId === message.id}
-                        onClick={() => {
-                          if (openingId === message.id) return;
-                          void openMessage(message.id);
-                        }}
-                      >
-                        <span aria-hidden="true">{fr.contactMessages.read}</span>
-                        <span className="sr-only">
-                          {fr.contactMessages.read} {message.firstName} {message.lastName}
-                        </span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </>
       ) : null}
 
@@ -480,7 +427,13 @@ export function ContactMessages() {
   );
 }
 
-/** One row's worth of facts, rendered once and shared by the card and table layouts. */
+/**
+ * One message's worth of facts, as the archive list shows them.
+ *
+ * This was shared by a card and a table layout until #130 deleted the second.
+ * It is now the single description of a message in a list, which is the point:
+ * a field added here arrives at every width at once.
+ */
 function MessageSummary({
   message,
   busy,
