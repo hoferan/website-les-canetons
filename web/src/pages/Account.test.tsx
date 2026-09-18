@@ -96,3 +96,21 @@ test("says nothing about a forced change to a member who has none", async () => 
   // do with the notice.
   expect(screen.queryByText(/doit être remplacé/i)).toBeNull();
 });
+
+/**
+ * The notice the gate owes the reader. `MustChangePassword` bounces a member
+ * here with no explanation of its own, so without this paragraph the site
+ * simply refuses to go anywhere and says nothing about why. Untested until
+ * 2026-09-18, and written down now because it moved to the shared `Notice`
+ * component on that date.
+ */
+test("explains why a committee-issued password bounced the member here", async () => {
+  setMockUser("demo.both");
+  await renderWithSession(<Account />, { route: "/account" });
+
+  expect(
+    screen.getByText(
+      "Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.",
+    ),
+  ).toBeInTheDocument();
+});

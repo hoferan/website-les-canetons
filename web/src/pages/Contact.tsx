@@ -10,6 +10,8 @@ import type { ContactRequest } from "../api/generated/model";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { Notice } from "../components/Notice";
+import { useSession } from "../session/SessionProvider";
 
 /**
  * `website` is the honeypot and is ALWAYS the empty string. It is part of the
@@ -70,6 +72,7 @@ const FIELDS: {
  * its own answer cannot.
  */
 export function Contact() {
+  const { user } = useSession();
   const [values, setValues] = useState<ContactRequest>(EMPTY);
   const [sent, setSent] = useState(false);
   const idempotencyKey = useRef(newIdempotencyKey());
@@ -133,6 +136,26 @@ export function Contact() {
         Une question, une demande de prestation, ou l’envie de nous rejoindre&nbsp;? Écrivez au
         comité.
       </p>
+
+      {/* A MEMBER IS TOLD, NOT STOPPED. They would retype a name the session is
+          already holding and go through three protections meant for strangers
+          — honeypot, form token, idempotency key — to reach a committee most of
+          them can reach faster on WhatsApp. But the site publishes no direct
+          contact detail anywhere (comite@lescanetons.org was pulled from
+          /committee in the 2026-08-31 audit; /join's contacts are
+          placeholders, see Join.tsx:26), so a member who has not got the
+          number has only this form. Hiding it behind a reveal was built and
+          rejected on 2026-09-18 for exactly that reason: it charges a click of
+          everybody it does not help, and does not spare the one it does a
+          single keystroke, since /api/v1/me carries no e-mail address to
+          prefill with. Attributing a member's message to their account is a
+          real fix and belongs with the committee inbox (#88). */}
+      {user ? (
+        <Notice className="mt-related">
+          Le comité est joignable directement, par téléphone ou sur WhatsApp — souvent plus rapide
+          qu’un message envoyé d’ici. Ce formulaire reste bien sûr à votre disposition.
+        </Notice>
+      ) : null}
 
       <FormError error={error} />
 

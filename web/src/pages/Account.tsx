@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
+import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { useSession } from "../session/SessionProvider";
 
@@ -88,9 +89,9 @@ export function Account() {
       {user?.mustChangePassword ? (
         // Explained rather than merely enforced: a member bounced back here by
         // the gate with no reason given would think the site was broken.
-        <p className="mt-related rounded-md border border-line bg-panel p-3">
+        <Notice className="mt-related">
           Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.
-        </p>
+        </Notice>
       ) : null}
 
       <form onSubmit={submit} className="mt-block flex flex-col gap-related">
