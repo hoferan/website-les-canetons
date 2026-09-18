@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { problem } from "../mocks/handlers";
+import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Contact } from "./Contact";
@@ -130,4 +130,29 @@ test("marks every field required, subject included", async () => {
   for (const label of ["Nom:", "Prénom:", "E-mail:", "Sujet:", "Contenu du message:"]) {
     expect(screen.getByLabelText(label)).toBeRequired();
   }
+});
+
+/**
+ * THE MEMBERS' HALF, and note what it does NOT do. A member already in the
+ * band has a faster route to the committee than a form that makes them retype
+ * a name the session is holding and go through three anonymous-visitor
+ * protections. But the site carries no direct contact detail at all —
+ * comite@lescanetons.org was pulled from /committee in the 2026-08-31 audit
+ * and /join's contacts are placeholders — so a member who has not got the
+ * number has only this form. It is signposted, never taken away.
+ */
+test("tells a member the committee is reachable directly, and leaves the form alone", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(<Contact />, { route: "/contact" });
+
+  expect(screen.getByText(/joignable directement/)).toBeInTheDocument();
+  expect(screen.getByLabelText("Nom:")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Envoyer" })).toBeInTheDocument();
+});
+
+test("says nothing of the sort to an anonymous visitor", async () => {
+  await renderWithSession(<Contact />, { route: "/contact" });
+
+  expect(screen.queryByText(/joignable directement/)).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Nom:")).toBeInTheDocument();
 });
