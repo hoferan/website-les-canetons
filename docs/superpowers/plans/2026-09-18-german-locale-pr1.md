@@ -1346,38 +1346,75 @@ git commit -m "feat(web): mount the router under the locale prefix"
 ### Task 7: Fix the one navigation that escapes the router
 
 **Files:**
-- Modify: `web/src/session/LogoutButton.tsx` (the `leave()` function at the bottom)
+- Modify: `web/src/session/LogoutButton.tsx` (the `leave()` function at the bottom, and its docblock)
 - Modify: `web/src/components/ButtonLink.tsx` (docblock only)
-- Test: `web/src/session/LogoutButton.test.tsx` or the existing `Layout.test.tsx` assertion on `location.assign`
+- Create: `web/src/session/logoutDestination.test.ts`
 
 **Interfaces:**
 - Consumes: `pathInLocale`, `currentLocale` (Tasks 1 and 3).
-- Produces: nothing.
+- Produces: `logoutDestination(): string`, exported from `web/src/session/LogoutButton.tsx`.
+
+**READ THIS BEFORE WRITING THE TEST — `window.location` CANNOT BE SPIED ON HERE.**
+
+`web/src/components/Layout.test.tsx:128-135` already documents the constraint,
+having hit it:
+
+> The browser half — landing on `/` — is a full page load, which jsdom does not
+> perform and cannot be faked here: `window.location` is non-configurable, so
+> the spy that would watch it throws "Cannot redefine property: assign".
+
+So `vi.spyOn(window.location, "assign")` throws rather than asserting anything.
+The existing suite works around it by testing only the server half ("ends the
+session on the server") and leaving the landing to a real browser.
+
+**`LogoutButton.tsx`'s own docblock contradicts that and is wrong.** It claims
+"spying on it is how Layout.test.tsx asserts that logging out actually leaves".
+Layout.test.tsx says the opposite, at length. Correct the docblock in this task
+— it is three lines from the code being changed, and leaving a false claim
+beside a fix is how the next person wastes an afternoon.
+
+**The testable seam** is therefore the destination, not the navigation: extract
+`logoutDestination()` and unit-test it in both locales. The navigation itself
+stays proven in a real browser, as it is today.
 
 **Why only this one:** the basename audit found that `useLocation()` is already basename-stripped, so `MustChangePassword`, `ScrollToTop`, `guards.tsx` and `Layout`'s active-state matching need no change. `returnTo.ts` is a closed router loop and `download.ts` never touches the router. This is the single escape.
 
 - [ ] **Step 1: Write the failing test**
 
-Find the existing assertion that spies on `window.location.assign` (see `LogoutButton`'s docblock, which says `Layout.test.tsx` does this). Add beside it:
+Create `web/src/session/logoutDestination.test.ts`:
 
 ```ts
-test("logging out in German lands on the German root, not the French one", async () => {
-  const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {});
+import { afterEach, expect, test } from "vitest";
 
-  await setLocale("de-CH");
-  // …render the layout logged in and click Abmelden, mirroring the existing
-  // French logout test in this file…
+import { setLocale } from "../i18n";
+import { logoutDestination } from "./LogoutButton";
 
-  expect(assign).toHaveBeenCalledWith("/de");
-
+afterEach(async () => {
   await setLocale("fr");
+});
+
+/**
+ * THE DESTINATION IS THE SEAM, because the navigation is not testable here:
+ * window.location is non-configurable in this jsdom setup, so a spy on
+ * .assign throws "Cannot redefine property: assign" rather than recording
+ * anything. Layout.test.tsx:128-135 documents that, having hit it. The
+ * navigation itself is proven in a real browser.
+ */
+test("logging out in French lands on the site root", () => {
+  expect(logoutDestination()).toBe("/");
+});
+
+test("logging out in German lands on the German root, not the French one", async () => {
+  await setLocale("de-CH");
+
+  expect(logoutDestination()).toBe("/de");
 });
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `npx vitest run web/src/components/Layout.test.tsx`
-Expected: FAIL — `expected "spy" to be called with "/de", but got "/"`.
+Run: `npx vitest run web/src/session/logoutDestination.test.ts`
+Expected: FAIL — `logoutDestination` is not exported from `./LogoutButton`.
 
 - [ ] **Step 3: Make `leave()` locale-aware**
 
@@ -1388,33 +1425,43 @@ import { currentLocale } from "../i18n";
 import { pathInLocale } from "../i18n/locale";
 ```
 
-and replace `leave()`:
+and replace `leave()` with an exported destination plus the navigation:
 
 ```ts
 /**
- * Closes the phone menu, then hands the browser back to the public site.
+ * Where logging out lands: the CURRENT LOCALE'S root, not "/".
  *
- * A NAMED FUNCTION SO A TEST CAN WATCH IT. jsdom implements no navigation, so
- * `location.assign` there logs "Not implemented" and does nothing; spying on
- * it is how Layout.test.tsx asserts that logging out actually leaves, rather
- * than asserting a landing page jsdom can never reach. The real landing is
- * checked in a browser.
+ * EXPORTED SO IT CAN BE TESTED AT ALL. The navigation below cannot be: this is
+ * a real full page load, and window.location is non-configurable in this jsdom
+ * setup, so a spy on .assign throws "Cannot redefine property: assign" instead
+ * of recording the call. Layout.test.tsx:128-135 documents that, having hit it,
+ * and proves the server half only. Splitting the destination out gives the
+ * decision a unit test and leaves the landing to a real browser, which is
+ * where it was always checked.
  *
- * THE LOCALE'S OWN ROOT, NOT "/". This is a real browser navigation and so
- * escapes the router's basename entirely — the one place in web/src/ that
- * does. A literal "/" would drop a German member on the French home page,
- * silently changing their language as a side effect of logging out.
+ * (An earlier version of this file's docblock claimed Layout.test.tsx spied on
+ * assign. It never did, and never could.)
+ *
+ * THE LOCALE MATTERS because this escapes the router's basename entirely — the
+ * one place in web/src/ that does. A literal "/" would drop a German member on
+ * the French home page, silently changing their language as a side effect of
+ * logging out.
  */
+export function logoutDestination(): string {
+  return pathInLocale("/", currentLocale());
+}
+
+/** Closes the phone menu, then hands the browser back to the public site. */
 function leave(onDone: () => void): void {
   onDone();
-  window.location.assign(pathInLocale("/", currentLocale()));
+  window.location.assign(logoutDestination());
 }
 ```
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `npx vitest run web/src/components/Layout.test.tsx`
-Expected: PASS — both the French and the German logout assertions.
+Run: `npx vitest run web/src/session/logoutDestination.test.ts web/src/components/Layout.test.tsx`
+Expected: PASS — the two new destination tests, and `Layout.test.tsx` unchanged and still green.
 
 - [ ] **Step 5: Warn the next person in `ButtonLink`**
 
@@ -1430,7 +1477,7 @@ In `web/src/components/ButtonLink.tsx`, add to the component docblock:
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/src/session/LogoutButton.tsx web/src/components/Layout.test.tsx web/src/components/ButtonLink.tsx
+git add web/src/session/LogoutButton.tsx web/src/session/logoutDestination.test.ts web/src/components/ButtonLink.tsx
 git commit -m "fix(web): log out to the locale's own root rather than /"
 ```
 
