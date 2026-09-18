@@ -14,6 +14,19 @@ return [
      */
     'driver' => env('HASH_DRIVER', 'argon2id'),
 
+    /*
+     * INERT while the driver above is argon2id, which is every environment
+     * today. Nothing in this block is reached, so a BCRYPT_ROUNDS set for
+     * strength or for speed does exactly nothing — the knob that bites is in
+     * the argon block below.
+     *
+     * Not hypothetical. api/phpunit.xml pinned BCRYPT_ROUNDS=4 to keep the
+     * suite quick and it had no effect whatsoever: every Hash::make ran at the
+     * argon2id production factor, 177 ms a hash, which was roughly 120 of the
+     * suite's 147 seconds. Found 2026-09-18 by profiling, not by reading —
+     * the pin looks like it works, and the suite passes either way. That file
+     * now pins ARGON_MEMORY and ARGON_TIME instead and carries the numbers.
+     */
     'bcrypt' => [
         'rounds' => env('BCRYPT_ROUNDS', 12),
         'verify' => true,
