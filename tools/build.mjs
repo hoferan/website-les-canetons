@@ -3,11 +3,12 @@
 // The deployed document root is exactly: index.html, assets/, _api/.
 // Never hand-edit dist/build/; it's regenerated on every run.
 import { execFileSync } from 'node:child_process';
-import { cpSync, rmSync } from 'node:fs';
+import { cpSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import { includeInLaravelBuild } from './artifact-excludes.mjs';
+import { COMPOSER_ROOT_VERSION, findVcsStamps } from './artifact-vendor.mjs';
 
 const mount = process.cwd().split('\\').join('/');
 
@@ -93,6 +94,14 @@ execFileSync(
     `/app/${laravelBuild}`,
     '-e',
     'COMPOSER_CACHE_DIR=/app/.composer-cache',
+    // Keep the generated vendor/ machine-independent (#109). Composer
+    // describes the ROOT package from whatever VCS surrounds the directory it
+    // installs into — and that directory is inside this repository, so without
+    // this it writes the building checkout's HEAD and branch into
+    // vendor/composer/installed.php. Naming the version stops it asking git.
+    // tools/artifact-vendor.mjs has the measurement and why this value.
+    '-e',
+    `COMPOSER_ROOT_VERSION=${COMPOSER_ROOT_VERSION}`,
     'composer:2',
     'install',
     '--no-dev',
@@ -101,5 +110,21 @@ execFileSync(
   ],
   { stdio: 'inherit' }
 );
+
+// installed.php is generated in place by the run above rather than copied, so
+// tools/artifact-excludes.mjs cannot reach it and the unit tests can only
+// prove the detector works. This is the assertion against the real file, and
+// it runs wherever a build does — including CI's `build` job.
+const installedPhp = `${laravelBuild}/vendor/composer/installed.php`;
+const stamps = findVcsStamps(readFileSync(installedPhp, 'utf8'));
+
+if (stamps.length > 0) {
+  throw new Error(
+    `${installedPhp} carries the building machine's identity, so this artifact would ` +
+      'differ from one built anywhere else from the same tree and re-upload on every ' +
+      `deploy:\n  ${stamps.join('\n  ')}\n` +
+      'See tools/artifact-vendor.mjs.'
+  );
+}
 
 console.log('Built dist/build/_api/ — ready to FTP upload alongside dist/build/.');
