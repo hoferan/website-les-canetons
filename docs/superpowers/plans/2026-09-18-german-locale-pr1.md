@@ -912,7 +912,7 @@ git commit -m "test(api): require German copy for every emittable token"
 - Modify: `web/src/pages/Inbox.tsx:9-21` (remove `ARRIVED` / `formatArrived`)
 - Modify: `web/src/pages/ContactMessages.tsx:35-47` (remove `RECEIVED` / `formatReceived`)
 - Modify: `web/src/i18n/fr.ts` and `web/src/i18n/de.ts` (add a `dates` section)
-- Test: `web/src/lib/date.test.ts`
+- Modify (do NOT replace — it already holds 7 tests): `web/src/lib/date.test.ts`
 
 **Interfaces:**
 - Consumes: `currentLocale`, `t` (Task 3); `intlTag` (Task 1).
@@ -948,7 +948,7 @@ In `web/src/i18n/de.ts`, add the mirror in the same position:
 
 - [ ] **Step 2: Write the failing test**
 
-Create `web/src/lib/date.test.ts`:
+**`web/src/lib/date.test.ts` ALREADY EXISTS** with 7 French tests, two of them deliberate regression guards (local-date parsing; the Zurich pin). ADD the tests below to it — do not replace the file, and do not alter an existing expectation.
 
 ```ts
 import { afterEach, expect, test } from "vitest";
