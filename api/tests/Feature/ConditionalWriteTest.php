@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Attendance;
 use App\Models\ContactMessage;
 use App\Models\Event;
 use App\Models\Member;
@@ -485,6 +486,20 @@ class ConditionalWriteTest extends TestCase
         $this->assertGreaterThanOrEqual(12, $checked, 'Found almost no conditional routes; this test is reading the wrong thing.');
 
         $this->assertSame([], $wrong, "The document and the routes disagree:\n  - ".implode("\n  - ", $wrong));
+    }
+
+    public function test_answering_an_event_does_not_move_its_tag(): void
+    {
+        // EntityTag::state() renders EventResource itself, so a count left in
+        // the tag would make a member's ANSWER invalidate a committee
+        // member's pending edit of the TITLE — a 412 for a reason that has
+        // nothing to do with the title.
+        $event = Event::factory()->create();
+        $before = EntityTag::compute('event', $event);
+
+        Attendance::factory()->create(['event_id' => $event->id]);
+
+        $this->assertSame($before, EntityTag::compute('event', $event->fresh()));
     }
 
     /** The tag the API would hand out for this event right now. */

@@ -8,6 +8,7 @@ use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * A rehearsal or gig on the planning. The committee enters it, every member
@@ -119,6 +120,21 @@ class Event extends Model
     public function registrations(): HasMany
     {
         return $this->hasMany(Registration::class);
+    }
+
+    /**
+     * Every option booked at this event, across every booking.
+     *
+     * EXISTS SO withSum HAS A RELATION TO NAME. Laravel's aggregate helpers
+     * take one relation, not a dotted path, so "sum the quantities of the
+     * choices of this event's registrations" needs the hop declared. Nothing
+     * reads it as a relation.
+     *
+     * @return HasManyThrough<RegistrationChoice, Registration, $this>
+     */
+    public function registrationChoices(): HasManyThrough
+    {
+        return $this->hasManyThrough(RegistrationChoice::class, Registration::class);
     }
 
     /**

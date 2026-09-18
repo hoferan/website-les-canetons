@@ -7,8 +7,10 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
@@ -83,8 +85,18 @@ class EventController extends Controller
             ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
             : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
 
+        // THE DENOMINATOR RIDES THE REQUEST, not the collection envelope.
+        // It is one number for the whole list, so running the COUNT per row
+        // would be a query per event; and ->additional() writes into the
+        // envelope, which PaginatesCollections owns and every EventResource
+        // in the collection is rendered beneath rather than inside.
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
+
         return EventResource::collection(
-            $query->with(self::myAttendance($request))->get()
+            $query->with(self::myAttendance($request))
+                ->withCount(self::counts())
+                ->withSum('registrationChoices as guest_count', 'quantity')
+                ->get()
         );
     }
 
@@ -112,6 +124,91 @@ class EventController extends Controller
     }
 
     /**
+     * Whether the caller may see how many people have answered.
+     *
+     * RESOLVED ONCE PER REQUEST, not once per row, and not by a boolean
+     * memoized per gate — that shape looked fixed-cost but was not: it
+     * throws away the rest of the permission set after reading one entry, so
+     * the bookings gate paid for a second query for data this one had already
+     * fetched. EventResource::permissionsFor() memoizes the SET once instead,
+     * and every gate reads it — here and in the Resource — which is what
+     * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
+     * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries
+     * actually pin.
+     *
+     * A request with no user answers false. That is not only the anonymous
+     * case: EntityTag::state() renders this Resource through a bare
+     * Request::create('/'), and the counts must not reach the tag.
+     */
+    private static function maySeeAnswers(Request $request): bool
+    {
+        return EventResource::permissionsFor($request)->contains(Permission::AttendanceViewAll);
+    }
+
+    /**
+     * THE BOOKINGS GATE LIVES IN THE RESOURCE, not here, and there is no
+     * sibling to maySeeAnswers() above.
+     *
+     * This controller has to ask about answers because it decides whether to
+     * run the denominator COUNT at all. It never has to ask about bookings:
+     * the guest sum is a subselect on the query it already runs, so it is
+     * loaded unconditionally and EventResource gates the OUTPUT. A copy here
+     * was written and never called — Larastan caught it as dead code.
+     *
+     * The two gates stay genuinely independent wherever they are checked: the
+     * seeded `committee` role holds registrations.view and NOT
+     * attendance.view_all, pinned by
+     * EventCountsTest::test_the_two_gates_are_independent.
+     */
+
+    /**
+     * The aggregate loads that back the planning's metadata strip (#93).
+     *
+     * SUBSELECTS ON THE QUERY THAT ALREADY RUNS, so neither of these is a
+     * round trip and neither scales with the number of events. Nothing is
+     * stored: a cached total would have to be invalidated by every answer,
+     * every booking, and every member who joins or leaves a register.
+     *
+     * The answer count is constrained to members who are CURRENTLY in a
+     * register, so the fraction cannot read 19/18 when somebody who answered
+     * has since left theirs, and so this and the chase list it links to count
+     * the same population.
+     *
+     * PUBLIC because EventSeriesController returns EventResource too, and the
+     * shape has to be the same there. A second copy of this map is a second
+     * place to forget a field.
+     *
+     * @return array<string, \Closure>
+     */
+    public static function counts(): array
+    {
+        return [
+            'attendance as answered_count' => fn ($query) => $query->whereHas(
+                'member',
+                fn ($member) => $member->whereNotNull('section_id'),
+            ),
+        ];
+    }
+
+    /**
+     * How many members are answerable at all — the denominator.
+     *
+     * A property of the ROSTER, not of the event, so it is one query for the
+     * whole list rather than one per row. Only run for a caller who may see
+     * it, so a player never pays for it.
+     *
+     * PUBLIC for the same reason counts() is: EventSeriesController answers
+     * with EventResource too, and the denominator has to land on its request
+     * the same way it does everywhere else.
+     */
+    public static function answerable(Request $request): ?int
+    {
+        return self::maySeeAnswers($request)
+            ? Member::query()->whereNotNull('section_id')->count()
+            : null;
+    }
+
+    /**
      * Read one event.
      *
      * Any logged-in member; no permission is needed. Returns the event with
@@ -135,6 +232,9 @@ class EventController extends Controller
         // {error, code, fields[]} contract; EventIndexTest only asserts the
         // status for that reason).
         $event->load(self::myAttendance($request));
+        $event->loadCount(self::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return new EventResource($event);
     }
@@ -185,6 +285,10 @@ class EventController extends Controller
         // captured as the label — see App\Support\Audit for why the CALLER
         // reads it.
         Audit::record($request->user(), 'event.created', 'event', $event->id, $event->title);
+
+        $event->loadCount(self::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return response()->json(new EventResource($event), 201);
     }
@@ -253,6 +357,9 @@ class EventController extends Controller
         // on this event, and a response reporting myAttendance as null would
         // reset the buttons on their own screen. See EventResource.
         $event->load(self::myAttendance($request));
+        $event->loadCount(self::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return new EventResource($event);
     }

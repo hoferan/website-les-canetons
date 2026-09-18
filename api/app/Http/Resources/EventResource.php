@@ -4,8 +4,10 @@ namespace App\Http\Resources;
 
 use App\Models\Event;
 use App\Support\Iso8601;
+use App\Support\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * One row on the planning: a rehearsal or a gig.
@@ -22,10 +24,59 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * the reference. So the notes here stay internal, and anything a caller
  * needs goes on the field.
  *
+ * AND ANYTHING A CALLER MUST NOT SEE BELONGS HERE RATHER THAN ON THE FIELD.
+ * DocsTest::test_the_document_names_nothing_internal scans the whole
+ * published document for a PHP method reference, and a note on the
+ * `answerableCount` field naming the controller method that writes its
+ * request attribute failed that test in CI on 2026-09-17 — having passed
+ * every local check, because the leak only exists once the document is
+ * generated. The note it carried, kept here where it is safe: the
+ * ANSWERABLE_COUNT attribute has exactly one writer, the controller's
+ * denominator helper, which sets it only after checking the same permission
+ * this Resource checks — so the field's own gate is the second guard rather
+ * than the only one.
+ *
  * @mixin Event
  */
 class EventResource extends JsonResource
 {
+    /** Request-attribute keys the controller and this Resource share. See permissionsFor(). */
+    public const PERMISSIONS = 'eventPermissions';
+
+    public const ANSWERABLE_COUNT = 'answerableCount';
+
+    /**
+     * The caller's permission set, resolved ONCE per request.
+     *
+     * EffectivePermissions::for() is a single query returning EVERY permission
+     * the member holds, but Member::hasPermission() re-runs it on every call
+     * — so memoizing a boolean PER GATE (the shape this used to take) still
+     * costs one query per gate, because each gate's first check throws that
+     * whole set away after reading one entry out of it. Memoizing the SET
+     * itself, once, keeps the total at one query however many gates
+     * (`maySeeAnswers`, `maySeeGuests`, and whatever comes after) end up
+     * reading it. Both `EventController::index()` (for the denominator) and
+     * this Resource (once per row) read the SAME key, which is what keeps
+     * a whole list at one query rather than one per caller.
+     *
+     * A request with no user resolves to an empty set: EntityTag::state()
+     * renders this Resource through a bare Request::create('/'), and every
+     * gate must answer false there rather than throw.
+     *
+     * @return Collection<int, Permission>
+     */
+    public static function permissionsFor(Request $request): Collection
+    {
+        if (! $request->attributes->has(self::PERMISSIONS)) {
+            $request->attributes->set(
+                self::PERMISSIONS,
+                $request->user()?->permissions() ?? collect(),
+            );
+        }
+
+        return $request->attributes->get(self::PERMISSIONS);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -41,6 +92,26 @@ class EventResource extends JsonResource
             'attire' => $this->attire,
             /** Whether the event may be shown to people outside the band. */
             'isPublic' => $this->is_public,
+            /**
+             * How many answerable members have replied, or null when the
+             * caller may not see answers.
+             */
+            'answeredCount' => $this->countOrNull($request, 'answered_count'),
+            /**
+             * How many members are answerable at all — the denominator of the
+             * fraction. Null when the caller may not see answers.
+             */
+            'answerableCount' => ! $this->maySeeAnswers($request)
+                ? null
+                : ($request->attributes->get(self::ANSWERABLE_COUNT) === null
+                    ? null
+                    : (int) $request->attributes->get(self::ANSWERABLE_COUNT)),
+            /**
+             * How many PEOPLE are booked — the sum of the quantities, because
+             * "3 x adulte, 1 x enfant" is four people and four is what fills
+             * the hall. Null when the caller may not see bookings.
+             */
+            'guestCount' => $this->guestCountOrNull($request),
             /** Free text for members. Not shown to the public. */
             'notes' => $this->notes,
             'registrationOpensAt' => $this->registration_opens_at === null
@@ -113,5 +184,95 @@ class EventResource extends JsonResource
     private function endsAt(): Iso8601
     {
         return Iso8601::utc($this->ends_at);
+    }
+
+    /**
+     * An aggregate, or null.
+     *
+     * NULL MEANS TWO THINGS AND THAT IS DELIBERATE: the caller may not see
+     * it, or it was never loaded. TWO INDEPENDENT GUARDS keep these counts
+     * out of EntityTag, and a review proved they are genuinely independent
+     * — neither is a restatement of the other:
+     *
+     * - Guard A, right below: `array_key_exists()` answers null when the
+     *   aggregate was never loaded on the model. Isolated by
+     *   EventCountsTest::test_unloaded_aggregates_render_as_null_for_an_authorized_caller,
+     *   which renders an authorized caller (every gate passes, so Guard B
+     *   does not fire) against a model with the aggregates never loaded.
+     *   Goes red if Guard A is removed.
+     * - Guard B, in maySeeAnswers()/permissionsFor(): a request with no
+     *   user resolves to an empty permission set, so the gate answers false
+     *   regardless of what is loaded. Isolated by EventCountsTest::
+     *   test_loaded_aggregates_render_as_null_for_a_bare_request, which
+     *   loads the aggregates and renders a bare, unauthenticated request
+     *   anyway. Goes red if Guard B is removed.
+     *
+     * IN THE TAG PATH SPECIFICALLY, Guard B is the one doing the real work,
+     * not Guard A. EntityTag::state() renders this Resource from a
+     * freshly-read model with no ->load() at all — unlike the member and
+     * registration arms beside it — so Guard A also happens to hold there.
+     * But EntityTag::state() also renders through bare(), a request with no
+     * user, so Guard B holds independently of whether anything was loaded:
+     * a mutation that added a ->load() for the aggregates inside state()
+     * would defeat Guard A alone and still tag correctly, on Guard B. That
+     * mutation is exactly what test_loaded_aggregates_render_as_null_for_a_bare_request
+     * pins.
+     *
+     * Without both, a member ANSWERING an event would move that event's tag,
+     * and a committee member's pending edit of the TITLE would answer 412 for
+     * a reason that has nothing to do with the title. That is exactly the
+     * failure myAttendance's docblock describes, arrived at from the other
+     * side. Pinned by ConditionalWriteTest::
+     * test_answering_an_event_does_not_move_its_tag — which pins the
+     * user-facing outcome but, being a plain HTTP round trip, cannot tell
+     * the two guards apart; the two EventCountsTest cases above do that.
+     *
+     * The overload is invisible to every consumer: the SPA renders the strip
+     * only when can() passes AND the value is non-null, and the tag wants null
+     * either way.
+     */
+    private function countOrNull(Request $request, string $attribute): ?int
+    {
+        if (! array_key_exists($attribute, $this->getAttributes())) {
+            return null;
+        }
+
+        return $this->maySeeAnswers($request)
+            ? (int) $this->getAttributes()[$attribute]
+            : null;
+    }
+
+    /**
+     * The booked head count, or null. Same two guards as countOrNull() — see
+     * its docblock for why "not loaded" (Guard A) and "no caller" (Guard B)
+     * are independent, and which one actually does the work in the tag path.
+     */
+    private function guestCountOrNull(Request $request): ?int
+    {
+        if (! array_key_exists('guest_count', $this->getAttributes())) {
+            return null;
+        }
+
+        return $this->maySeeGuests($request)
+            ? (int) ($this->getAttributes()['guest_count'] ?? 0)
+            : null;
+    }
+
+    /**
+     * Whether the caller may see answer counts.
+     *
+     * Reads the permission set permissionsFor() resolved once for the whole
+     * request — see its docblock for why that, and not a boolean memoized
+     * per gate, is what keeps the query count fixed.
+     */
+    private function maySeeAnswers(Request $request): bool
+    {
+        return self::permissionsFor($request)->contains(Permission::AttendanceViewAll);
+    }
+
+    /** The bookings gate. Same permission set as maySeeAnswers(), a different member of it. */
+    private function maySeeGuests(Request $request): bool
+    {
+        return self::permissionsFor($request)->contains(Permission::RegistrationsView);
     }
 }

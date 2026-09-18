@@ -762,6 +762,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       id: 2,
@@ -777,6 +780,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       id: 3,
@@ -792,6 +798,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       // The two-day case, which is the whole reason `ends_at` is a datetime
@@ -809,6 +818,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       // The missing-attire case: the card has to render without one.
@@ -831,6 +843,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       // The only past one.
@@ -847,6 +862,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: null,
       takesRegistrations: false,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
     {
       // THE ONLY EVENT THAT TAKES BOOKINGS, and the one R3's four screens are
@@ -872,6 +890,9 @@ function initialEvents(): EventResource[] {
       registrationMaxGuests: 6,
       takesRegistrations: true,
       myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
     },
   ];
 }
@@ -964,6 +985,57 @@ function myAnswerFor(eventId: number): AttendanceResource | null {
 /** One event as the caller sees it: the stored row plus their own answer. */
 function withMyAttendance(event: EventResource): EventResource {
   return { ...event, myAttendance: myAnswerFor(event.id) };
+}
+
+/**
+ * How many answerable members have replied to an event.
+ *
+ * COUNTS THROUGH THE ROSTER rather than over the answers map, so an answer
+ * from somebody who is in no register is not counted — the same constraint
+ * EventController::counts() puts in the subselect. The `answers` map is keyed
+ * by answerKey(eventId, memberId).
+ */
+function answeredCountFor(eventId: number): number {
+  return members.filter((member) => member.isPlayer && answers.has(answerKey(eventId, member.id)))
+    .length;
+}
+
+/** The denominator: everybody in a register. A property of the roster, not of the event. */
+function answerableCount(): number {
+  return members.filter((member) => member.isPlayer).length;
+}
+
+/**
+ * How many PEOPLE are booked at an event.
+ *
+ * Reads each booking's own `guestCount`, which totalsOf() already computed
+ * from its choices. Summing the lines a second time here is exactly the
+ * disagreement that function's docblock exists to prevent.
+ */
+function guestsFor(eventId: number): number {
+  return registrations
+    .filter((booking) => booking.eventId === eventId)
+    .reduce((sum, booking) => sum + booking.guestCount, 0);
+}
+
+/**
+ * The committee's counts, gated exactly as the server gates them.
+ *
+ * MIRRORS App\Http\Resources\EventResource, including the two DIFFERENT
+ * permissions: the seeded committee role holds registrations.view without
+ * attendance.view_all. A mock that hands a player these numbers is a mock the
+ * SPA's own leak test passes against, which is worse than no mock.
+ */
+function withCommitteeCounts(event: EventResource): EventResource {
+  const maySeeAnswers = currentMockUser()?.permissions.includes("attendance.view_all") ?? false;
+  const maySeeGuests = currentMockUser()?.permissions.includes("registrations.view") ?? false;
+
+  return {
+    ...event,
+    answeredCount: maySeeAnswers ? answeredCountFor(event.id) : null,
+    answerableCount: maySeeAnswers ? answerableCount() : null,
+    guestCount: maySeeGuests ? guestsFor(event.id) : null,
+  };
 }
 
 /**
@@ -1883,7 +1955,7 @@ const overrides = [
           : Date.parse(a.startsAt) - Date.parse(b.startsAt),
       );
 
-    return collection(planning.map(withMyAttendance), request);
+    return collection(planning.map(withMyAttendance).map(withCommitteeCounts), request);
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches
@@ -1923,6 +1995,9 @@ const overrides = [
         registrationMaxGuests: null,
         takesRegistrations: false,
         myAttendance: null,
+        answeredCount: null,
+        answerableCount: null,
+        guestCount: null,
       };
     });
 
@@ -1932,7 +2007,7 @@ const overrides = [
     // The generator answers with the events it just wrote, which is a
     // collection whatever status carries it, and the real middleware keys on
     // any successful JSON list body rather than on 200.
-    return collection(created, request, 201);
+    return collection(created.map(withCommitteeCounts), request, 201);
   }),
 
   http.post("/api/v1/events", async ({ request }) => {
@@ -1949,7 +2024,7 @@ const overrides = [
 
     const event = withRegistrationFlag({ ...body, id: nextEventId++ });
     events = [...events, event];
-    return HttpResponse.json(event, { status: 201 });
+    return HttpResponse.json(withCommitteeCounts(event), { status: 201 });
   }),
 
   http.get("/api/v1/events/:id", ({ params }) => {
@@ -1961,7 +2036,7 @@ const overrides = [
     // deliberately ignores `myAttendance`, which is the caller's own answer, so
     // answering an event does not invalidate a pending edit of it.
     return event
-      ? HttpResponse.json(withMyAttendance(event), {
+      ? HttpResponse.json(withCommitteeCounts(withMyAttendance(event)), {
           headers: { ETag: mockEntityTag(withoutMyAttendance(event)) },
         })
       : notFound();
@@ -1999,7 +2074,7 @@ const overrides = [
     }
 
     events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
-    return HttpResponse.json(updated, {
+    return HttpResponse.json(withCommitteeCounts(updated), {
       headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
     });
   }),

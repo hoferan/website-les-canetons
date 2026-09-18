@@ -160,6 +160,18 @@ Two ways the exported document quietly stops matching the code:
   implementation note written above `'errors' => ...` in `ApiError::json()` was
   published into the OpenAPI document. Hoist the explanation above the whole
   statement, or out of the literal entirely.
+- **A raw `$request->attributes->get(...)` read types as the wrong primitive,
+  not merely as non-nullable.** `EventResource::answerableCount` read the
+  `ANSWERABLE_COUNT` request attribute straight into a null-check ternary, and
+  Scramble inferred the whole field as `string | null` — `ParameterBag::get()`
+  is untyped, so that is the type Scramble found at the expression, and it has
+  no idea the attribute is always an int when it is not null. The fix is an
+  explicit `(int)` cast on the non-null branch, which is what makes the field
+  `number | null` in the generated client rather than `string | null`. Check
+  the generated type after any change to a field shaped this way
+  (`grep` the field in `web/src/api/generated/model/*.ts`) — the failure is
+  silent, `openapi-drift` only proves the document matches what Scramble
+  inferred, and a wrong primitive still round-trips fine in the mocks.
 
 ## Scramble: CRLF in a PHP file collapses summary and description
 
