@@ -3,6 +3,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
+import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
+import { storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
 import "./styles.css";
 
@@ -18,6 +20,24 @@ if (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") {
   // design and must pass through untouched.
   await worker.start({ onUnhandledRequest: "bypass" });
 }
+
+// THE ONE PLACE A STORED PREFERENCE IS READ, and only for the bare root.
+// Everywhere else the URL is the authority. Replace rather than assign, so the
+// French root does not sit in the back-stack as a place to return to.
+//
+// This cannot loop: /de resolves to German and its pathname is no longer "/".
+if (window.location.pathname === "/" && storedLocale() === "de-CH") {
+  window.location.replace(
+    `${pathInLocale("/", "de-CH")}${window.location.search}${window.location.hash}`,
+  );
+}
+
+const { locale, basename } = localeFromPath(window.location.pathname);
+
+// The shell ships <html lang="fr">, which is right for the majority and for a
+// crawler that runs no JavaScript. This corrects it for the German mount, and
+// is what a screen reader picks its voice from.
+document.documentElement.lang = htmlLang(locale);
 
 const root = document.getElementById("root");
 if (!root) {
@@ -39,7 +59,7 @@ createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <App />
+        <App basename={basename} />
       </SessionProvider>
     </QueryClientProvider>
   </StrictMode>,
