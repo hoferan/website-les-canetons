@@ -4,6 +4,7 @@ import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
 import { AgendaEntry } from "../events/PublicAgenda";
+import { t } from "../i18n";
 
 /**
  * Every upcoming public appearance — where a visitor can come and watch.
@@ -34,10 +35,8 @@ export function Agenda() {
 
   return (
     <PageSection width="text">
-      <h1 className="font-display text-4xl">Où nous voir</h1>
-      <p className="mt-related text-ink-muted">
-        Les prochaines sorties des Canetons. Venez nous écouter&nbsp;!
-      </p>
+      <h1 className="font-display text-4xl">{t("agenda.heading")}</h1>
+      <p className="mt-related text-ink-muted">{t("agenda.intro")}</p>
 
       {upcoming.length > 0 ? (
         <ul className="mt-block grid gap-3">
@@ -47,8 +46,7 @@ export function Agenda() {
         </ul>
       ) : (
         <p className="mt-block rounded-lg border border-dashed border-line bg-panel px-3 py-4 text-ink-muted">
-          Les prochaines dates ne sont pas encore publiées. Revenez bientôt, ou écrivez au comité
-          pour nous réserver.
+          {t("agenda.emptyNotice")}
         </p>
       )}
     </PageSection>

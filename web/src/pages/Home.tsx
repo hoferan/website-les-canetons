@@ -1,9 +1,10 @@
-import { DestinationCards, type Destination } from "@/components/DestinationCards";
+import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
 import { PhotoPending } from "@/components/PhotoPending";
 
 import { PublicAgenda } from "../events/PublicAgenda";
+import { type TranslationKey, t } from "../i18n";
 
 /**
  * The four pages a stranger most likely wants, in that order.
@@ -18,26 +19,30 @@ import { PublicAgenda } from "../events/PublicAgenda";
  * None of them asserts a fact about the band — those come from /history, or
  * from the band.
  */
-const DESTINATIONS: Destination[] = [
+const DESTINATIONS: {
+  to: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
+}[] = [
   {
     to: "/join",
-    title: "Nous rejoindre",
-    description: "Les instruments recherchés, les horaires et les critères d’âge.",
+    titleKey: "home.destinations.join.title",
+    descriptionKey: "home.destinations.join.description",
   },
   {
     to: "/band",
-    title: "Les canetons",
-    description: "Les musiciens du groupe, registre par registre.",
+    titleKey: "home.destinations.band.title",
+    descriptionKey: "home.destinations.band.description",
   },
   {
     to: "/history",
-    title: "Notre histoire",
-    description: "Comment la guggen est née en 2002, et qui l’a dirigée depuis.",
+    titleKey: "home.destinations.history.title",
+    descriptionKey: "home.destinations.history.description",
   },
   {
     to: "/committee",
-    title: "Le comité",
-    description: "Nous écrire, réserver les Canetons, et qui fait quoi.",
+    titleKey: "home.destinations.committee.title",
+    descriptionKey: "home.destinations.committee.description",
   },
 ];
 
@@ -98,23 +103,25 @@ export function Home() {
           in total. A real if modest saving, not the difference between a
           two-line and a four-line heading. A sentence-case heading is not
           available while this face is in use; that is the look, not a bug. */}
-      <h1 className="mt-block font-display text-3xl sm:text-4xl">
-        La guggen d’enfants de Fribourg, depuis 2002.
-      </h1>
+      <h1 className="mt-block font-display text-3xl sm:text-4xl">{t("home.hero")}</h1>
 
       {/* ONE sentence, not a paragraph, and it carries the only practically
           useful facts: Saturday mornings, and no experience needed. That is
           what somebody deciding whether to turn up needs. */}
-      <p className="mt-related text-lg text-ink-muted">
-        De 7 à 18 ans — et pas besoin de connaître la musique&nbsp;: les moniteurs apprennent les
-        morceaux registre par registre, aux répétitions du samedi matin.
-      </p>
+      <p className="mt-related text-lg text-ink-muted">{t("home.heroSub")}</p>
 
-      <PhotoPending what="des Canetons en concert" />
+      <PhotoPending sentence={t("placeholders.photoConcert")} token="concert" />
 
       <PublicAgenda />
 
-      <DestinationCards label="Découvrir les Canetons" destinations={DESTINATIONS} />
+      <DestinationCards
+        label={t("home.discover")}
+        destinations={DESTINATIONS.map((destination) => ({
+          to: destination.to,
+          title: t(destination.titleKey),
+          description: t(destination.descriptionKey),
+        }))}
+      />
     </PageSection>
   );
 }

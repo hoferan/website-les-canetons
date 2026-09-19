@@ -156,3 +156,40 @@ test("says nothing of the sort to an anonymous visitor", async () => {
   expect(screen.queryByText(/joignable directement/)).not.toBeInTheDocument();
   expect(screen.getByLabelText("Nom:")).toBeInTheDocument();
 });
+
+test("renders the form in German and sends the message", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<Contact />, { route: "/contact", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Kontakt" })).toBeInTheDocument();
+
+  await user.type(screen.getByLabelText("Name:"), "Rossier");
+  await user.type(screen.getByLabelText("Vorname:"), "Claire");
+  await user.type(screen.getByLabelText("E-Mail:"), "claire@example.ch");
+  await user.type(screen.getByLabelText("Betreff:"), "Mon fils aimerait essayer");
+  await user.type(screen.getByLabelText("Inhalt der Nachricht:"), "Bonjour, est-ce possible ?");
+  await user.click(screen.getByRole("button", { name: "Senden" }));
+
+  expect(await screen.findByRole("heading", { name: "Nachricht gesendet" })).toBeInTheDocument();
+});
+
+test("shows the refusal in German when the guard rejects the submission", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.post("/api/v1/contact", () =>
+      problem(422, "spam_suspected", "Submission looks automated"),
+    ),
+  );
+
+  await renderWithSession(<Contact />, { route: "/contact", locale: "de-CH" });
+  await user.type(screen.getByLabelText("Name:"), "Rossier");
+  await user.type(screen.getByLabelText("Vorname:"), "Claire");
+  await user.type(screen.getByLabelText("E-Mail:"), "claire@example.ch");
+  await user.type(screen.getByLabelText("Betreff:"), "Mon fils aimerait essayer");
+  await user.type(screen.getByLabelText("Inhalt der Nachricht:"), "Bonjour, est-ce possible ?");
+  await user.click(screen.getByRole("button", { name: "Senden" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Senden abgelehnt. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  );
+});

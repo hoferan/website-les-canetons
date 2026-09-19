@@ -11,6 +11,7 @@ import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { Notice } from "../components/Notice";
+import { type TranslationKey, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -35,16 +36,16 @@ const EMPTY: ContactRequest = {
  */
 const FIELDS: {
   name: Exclude<keyof ContactRequest, "website">;
-  label: string;
+  labelKey: TranslationKey;
   type?: string;
   as?: "input" | "textarea";
   autoComplete?: string;
 }[] = [
-  { name: "lastName", label: "Nom:", autoComplete: "family-name" },
-  { name: "firstName", label: "Prénom:", autoComplete: "given-name" },
-  { name: "email", label: "E-mail:", type: "email", autoComplete: "email" },
-  { name: "subject", label: "Sujet:" },
-  { name: "message", label: "Contenu du message:", as: "textarea" },
+  { name: "lastName", labelKey: "contact.fields.lastName", autoComplete: "family-name" },
+  { name: "firstName", labelKey: "contact.fields.firstName", autoComplete: "given-name" },
+  { name: "email", labelKey: "contact.fields.email", type: "email", autoComplete: "email" },
+  { name: "subject", labelKey: "contact.fields.subject" },
+  { name: "message", labelKey: "contact.fields.message", as: "textarea" },
 ];
 
 /**
@@ -85,9 +86,7 @@ export function Contact() {
     },
   });
 
-  const { error, setFromThrown, clear, messageFor } = useApiFormError(
-    "L’envoi du formulaire a échoué. Veuillez réessayer.",
-  );
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("contact.sendFailed"));
 
   const send = useMutation({
     mutationFn: (token: string) =>
@@ -120,22 +119,16 @@ export function Contact() {
   if (sent) {
     return (
       <PageSection width="text">
-        <h1 className="font-display text-3xl">Message envoyé</h1>
-        <p className="mt-related text-ink-muted">
-          Merci&nbsp;! Le comité a reçu votre message et vous répondra à l’adresse que vous avez
-          indiquée.
-        </p>
+        <h1 className="font-display text-3xl">{t("contact.sentHeading")}</h1>
+        <p className="mt-related text-ink-muted">{t("contact.sentBody")}</p>
       </PageSection>
     );
   }
 
   return (
     <PageSection width="text">
-      <h1 className="font-display text-3xl">Contact</h1>
-      <p className="mt-related text-ink-muted">
-        Une question, une demande de prestation, ou l’envie de nous rejoindre&nbsp;? Écrivez au
-        comité.
-      </p>
+      <h1 className="font-display text-3xl">{t("contact.heading")}</h1>
+      <p className="mt-related text-ink-muted">{t("contact.intro")}</p>
 
       {/* A MEMBER IS TOLD, NOT STOPPED. They would retype a name the session is
           already holding and go through three protections meant for strangers
@@ -150,12 +143,7 @@ export function Contact() {
           single keystroke, since /api/v1/me carries no e-mail address to
           prefill with. Attributing a member's message to their account is a
           real fix and belongs with the committee inbox (#88). */}
-      {user ? (
-        <Notice className="mt-related">
-          Le comité est joignable directement, par téléphone ou sur WhatsApp — souvent plus rapide
-          qu’un message envoyé d’ici. Ce formulaire reste bien sûr à votre disposition.
-        </Notice>
-      ) : null}
+      {user ? <Notice className="mt-related">{t("contact.memberNotice")}</Notice> : null}
 
       <FormError error={error} />
 
@@ -167,7 +155,7 @@ export function Contact() {
             <FormField
               key={field.name}
               id={`contact-${field.name}`}
-              label={field.label}
+              label={t(field.labelKey)}
               type={field.type}
               as={field.as}
               /* Every field is required, `subject` included — which the legacy
@@ -205,7 +193,7 @@ export function Contact() {
           {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
               early return is the real guard. */}
           <Button type="submit" aria-disabled={send.isPending}>
-            Envoyer
+            {t("contact.submit")}
           </Button>
         </form>
       </Card>

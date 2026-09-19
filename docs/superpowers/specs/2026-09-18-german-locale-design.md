@@ -27,12 +27,12 @@ whole canton.
 
 ## The four decisions
 
-| Question                    | Decision                                                    |
-| --------------------------- | ----------------------------------------------------------- |
-| Dev aid or shipped feature? | **Shipped.** German is real content, reviewed, permanent    |
-| How is a locale addressed?  | **Path prefix `/de/*`.** French stays unprefixed            |
-| Which German?               | **Swiss Standard German, `de-CH`, formal _Sie_ throughout** |
-| How is it delivered?        | **Machinery first, then one PR per area**                   |
+| Question                    | Decision                                                                                |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| Dev aid or shipped feature? | **Shipped.** German is real content, reviewed, permanent                                |
+| How is a locale addressed?  | **Path prefix `/de/*`.** French stays unprefixed                                        |
+| Which German?               | **Swiss Standard German, `de-CH`, formal _Sie_** (one deliberate exception — see below) |
+| How is it delivered?        | **Machinery first, then one PR per area**                                               |
 
 Each is expanded below where it has consequences.
 
@@ -53,15 +53,41 @@ settle them; it degrades screen-reader and browser language handling; and it
 cannot be handed to a translator later.
 
 _Sie_ throughout, mirroring the existing French, which is consistently _vous_ —
-39 occurrences against 5, and those five are substring false positives. The
-French uses _vous_ even in the members' area, addressing fellow band members
-(`Vous ne pouvez pas supprimer votre propre compte`, `Vous venez`). Mirroring it
-keeps every German string a 1:1 translation of its French counterpart, so the
-two catalogues stay mechanically comparable and a reviewer never has to ask
-whether a difference between them was intentional.
+39 occurrences against 5. The French uses _vous_ even in the members' area,
+addressing fellow band members (`Vous ne pouvez pas supprimer votre propre
+compte`, `Vous venez`). Mirroring it keeps every German string a 1:1 translation
+of its French counterpart, so the two catalogues stay mechanically comparable
+and a reviewer never has to ask whether a difference between them was
+intentional.
 
 Informal _du_ is arguably more natural for a Swiss Verein and was rejected for
 that comparability, not because it reads worse.
+
+### One deliberate exception, and it is the French's
+
+**Corrected 2026-09-19, while translating the public pages for
+[#152](https://github.com/hoferan/website-les-canetons/issues/152).** An earlier
+draft of this section said all five _tu_ hits were substring false positives.
+Four are, inside _données_, _toutes_ and _êtes_. **The fifth is real:** `/join`'s
+heading is `Tu veux commencer la guggen ?`.
+
+That is deliberate, and it predates this work — `web/src/pages/Home.tsx:65`
+carries the rule:
+
+> NO TUTOIEMENT. /join says "Tu veux commencer la guggen ?" because it addresses
+> children directly. A front door is read by parents and children both, so the
+> copy stays impersonal rather than inventing a register shift on the site's
+> most-read page.
+
+The band takes players from 7 to 18, and addressing a ten-year-old as _vous_
+would be strange. **German therefore mirrors it with `du`, and that is correct** —
+the rule is to mirror the French, not to impose _Sie_ on it. It is the only
+informal address in either catalogue, it is commented as such in both, and it
+must not be "fixed".
+
+The lesson generalises past this one string: where German and French differ, the
+question is always whether the FRENCH is deliberate, not whether the German
+looks inconsistent.
 
 **The URL segment is `/de`, the i18next language and `<html lang>` are `de-CH`.**
 There is one German variant, the short segment is friendlier, and the mapping
@@ -230,9 +256,7 @@ as its own docblock warns.
 ```ts
 import { fr } from "./fr";
 
-export const de: typeof fr = {
-  /* … */
-};
+export const de: typeof fr = {/* … */};
 ```
 
 `typeof fr` makes **TypeScript fail the build on a missing or extra key**, for
@@ -393,17 +417,17 @@ actually verified by the person who asked for it, so it is not optional.
 Nine pull requests, one issue each, per `CLAUDE.md`'s one-issue-one-branch-one-PR
 rule.
 
-| PR | Issue | Contents |
-| --- | --- | --- |
+| PR    | Issue    | Contents                                                                                                                                                                                         |
+| ----- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **1** | **#151** | `locale.ts`, i18next `de-CH`, `basename`, `<html lang>`, `t()`, test helper, completeness test, **the whole catalogue in German**, **#147**, and `Layout.tsx`'s nav chrome as the worked example |
-| 2 | #152 | Public pages — Home, Agenda, Band, Committee, Join, Contact, NotFound |
-| 3 | #153 | Auth and account — Login, Account, guards, session chrome |
-| 4 | #154 | Events and planning — Events, EventForm, SeriesForm, EventCard, the date helpers' copy |
-| 5 | #155 | Attendance — EventAttendance, AttendanceControls, the two dialogs, chase list |
-| 6 | #156 | Members — Members, MemberForm, the password dialogs |
-| 7 | #157 | Registrations — EventBooking, EventRegistrations, EventRegistrationOptions |
-| 8 | #158 | Inbox and messages — largely catalogued already, a short one |
-| **9** | **#159** | The language switcher, `hreflang` alternates, the e2e spec |
+| 2     | #152     | Public pages — Home, Agenda, Band, Committee, Join, Contact, NotFound                                                                                                                            |
+| 3     | #153     | Auth and account — Login, Account, guards, session chrome                                                                                                                                        |
+| 4     | #154     | Events and planning — Events, EventForm, SeriesForm, EventCard, the date helpers' copy                                                                                                           |
+| 5     | #155     | Attendance — EventAttendance, AttendanceControls, the two dialogs, chase list                                                                                                                    |
+| 6     | #156     | Members — Members, MemberForm, the password dialogs                                                                                                                                              |
+| 7     | #157     | Registrations — EventBooking, EventRegistrations, EventRegistrationOptions                                                                                                                       |
+| 8     | #158     | Inbox and messages — largely catalogued already, a short one                                                                                                                                     |
+| **9** | **#159** | The language switcher, `hreflang` alternates, the e2e spec                                                                                                                                       |
 
 **`History.tsx` was dropped from PR 2 when the issues were written.** #104 turns
 the history into editable content in the database, which per the editability

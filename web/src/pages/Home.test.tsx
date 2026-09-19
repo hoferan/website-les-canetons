@@ -86,3 +86,31 @@ test("renders no agenda section when the read is refused", async () => {
   expect(screen.getByRole("heading", { name: /depuis 2002/ })).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Où nous voir" })).not.toBeInTheDocument();
 });
+
+test("says what the band is before anything else, in German", async () => {
+  await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
+
+  expect(
+    screen.getByRole("heading", { name: /Kinder-Guggenmusik aus Freiburg, seit 2002/ }),
+  ).toBeInTheDocument();
+});
+
+test("points every destination card at a public page, in German", async () => {
+  await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
+
+  const destinations = screen.getByRole("list", { name: "Die Canetons entdecken" });
+  const links = within(destinations).getAllByRole("link");
+
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/join",
+    "/band",
+    "/history",
+    "/committee",
+  ]);
+});
+
+test("shows the concert photo placeholder in German", async () => {
+  await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
+
+  expect(screen.getByText(/Neues Foto der Canetons im Konzert folgt/)).toBeInTheDocument();
+});

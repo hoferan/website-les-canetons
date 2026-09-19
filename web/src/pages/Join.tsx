@@ -4,14 +4,33 @@ import { PageSection } from "@/components/PageSection";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
 
-/** The information blocks, in the legacy page's order. */
-const FACTS: { heading: string; lines: string[] }[] = [
+import { type TranslationKey, t } from "../i18n";
+
+/**
+ * The information blocks, in the legacy page's order.
+ *
+ * `headingKey`/`lineKeys` rather than `heading`/`lines`, so the labels resolve
+ * at render time — see Layout.tsx's NAV for why a module-level array cannot
+ * carry the translated string itself.
+ */
+const FACTS: { headingKey: TranslationKey; lineKeys: TranslationKey[] }[] = [
   {
-    heading: "Instruments recherchés",
-    lines: ["Trompette", "Trombone", "Sousaphone", "Euphonium"],
+    headingKey: "join.facts.instruments.heading",
+    lineKeys: [
+      "join.facts.instruments.trumpet",
+      "join.facts.instruments.trombone",
+      "join.facts.instruments.sousaphone",
+      "join.facts.instruments.euphonium",
+    ],
   },
-  { heading: "Horaires", lines: ["Les samedis matin", "De 10h à 12h"] },
-  { heading: "Critères d’âge", lines: ["Dès 7 ans dans l’année civile jusqu’à l’âge de 18 ans"] },
+  {
+    headingKey: "join.facts.schedule.heading",
+    lineKeys: ["join.facts.schedule.day", "join.facts.schedule.time"],
+  },
+  {
+    headingKey: "join.facts.age.heading",
+    lineKeys: ["join.facts.age.range"],
+  },
 ];
 
 /**
@@ -57,26 +76,23 @@ const WERKHOF_MAP =
 export function Join() {
   return (
     <PageSection>
-      <h1 className="font-display text-4xl">Tu veux commencer la guggen&nbsp;?</h1>
-      <p className="mt-related max-w-prose">
-        Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire
-        &laquo;&nbsp;concurrence&nbsp;&raquo; à nos percussions&nbsp;!
-      </p>
+      <h1 className="font-display text-4xl">{t("join.heading")}</h1>
+      <p className="mt-related max-w-prose">{t("join.intro")}</p>
 
       <div className="mt-block grid gap-4 sm:grid-cols-2">
         {FACTS.map((fact) => (
-          <Card key={fact.heading} className="gap-0 p-5">
-            <h2 className="font-display text-xl">{fact.heading}</h2>
-            {fact.lines.map((line) => (
-              <p key={line} className="mt-tight">
-                {line}
+          <Card key={fact.headingKey} className="gap-0 p-5">
+            <h2 className="font-display text-xl">{t(fact.headingKey)}</h2>
+            {fact.lineKeys.map((lineKey) => (
+              <p key={lineKey} className="mt-tight">
+                {t(lineKey)}
               </p>
             ))}
           </Card>
         ))}
 
         <Card className="gap-0 p-5">
-          <h2 className="font-display text-xl">Lieu</h2>
+          <h2 className="font-display text-xl">{t("join.location")}</h2>
           <p className="mt-tight">
             <a
               href={WERKHOF_MAP}
@@ -87,20 +103,20 @@ export function Join() {
               Werkhof
             </a>
           </p>
-          <p>Basse-Ville de Fribourg</p>
+          <p>{t("join.locationArea")}</p>
         </Card>
 
         <Card className="gap-0 p-5">
-          <h2 className="font-display text-xl">Contacts</h2>
+          <h2 className="font-display text-xl">{t("join.contacts")}</h2>
           {Array.from({ length: JOINING_CONTACTS }, (_, index) => (
             <p key={index} className="mt-tight">
-              <Tbd what="nom et numéro" />
+              <Tbd what={t("placeholders.joinContact")} token="join-contact" />
             </p>
           ))}
           <p className="mt-related text-sm text-ink-muted">
-            En attendant, écrivez-nous depuis la{" "}
+            {t("join.contactMeanwhile")}{" "}
             <Link to="/contact" className="text-violet hover:underline">
-              page de contact
+              {t("join.contactPageLink")}
             </Link>
             .
           </p>

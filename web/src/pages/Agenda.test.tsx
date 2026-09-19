@@ -128,3 +128,25 @@ test("offers none on an event whose window is shut", async () => {
   await screen.findByText("Sortie 1");
   expect(screen.queryByRole("link", { name: /S’inscrire/ })).not.toBeInTheDocument();
 });
+
+test("renders the whole page in German", async () => {
+  await renderWithSession(<Agenda />, { route: "/agenda", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
+  expect(await screen.findByText("Vendanges Cheyres")).toBeInTheDocument();
+});
+
+test("says the dates are not published yet, in German", async () => {
+  server.use(http.get("/api/v1/agenda", () => agendaOf(0)));
+
+  await renderWithSession(<Agenda />, { route: "/agenda", locale: "de-CH" });
+
+  expect(await screen.findByText(/noch nicht veröffentlicht/)).toBeInTheDocument();
+});
+
+test("offers a booking link in German", async () => {
+  await renderWithSession(<Agenda />, { route: "/agenda", locale: "de-CH" });
+
+  const link = await screen.findByRole("link", { name: "Jetzt anmelden — Souper de soutien" });
+  expect(link).toHaveAttribute("href", "/events/7/book");
+});

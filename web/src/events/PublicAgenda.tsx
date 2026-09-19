@@ -3,6 +3,7 @@ import { ButtonLink } from "@/components/ButtonLink";
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
+import { t } from "../i18n";
 import { formatEventWhen } from "./formatEventWhen";
 
 /** How many appearances the front page shows before it sends people to /agenda. */
@@ -40,9 +41,9 @@ export function AgendaEntry({ event }: { event: PublicEventResource }) {
           to={`/events/${event.id}/book`}
           variant="outline"
           className="mt-related"
-          ariaLabel={`S’inscrire — ${event.title}`}
+          ariaLabel={t("agenda.registerFor", { title: event.title })}
         >
-          S’inscrire
+          {t("agenda.register")}
         </ButtonLink>
       ) : null}
     </li>
@@ -83,7 +84,7 @@ export function PublicAgenda() {
   return (
     <section className="mt-block" aria-labelledby="agenda-heading">
       <h2 id="agenda-heading" className="font-display text-2xl">
-        Où nous voir
+        {t("agenda.heading")}
       </h2>
 
       <ul className="mt-related grid gap-3">
@@ -97,7 +98,7 @@ export function PublicAgenda() {
           just finished reading. */}
       {all.length > SHOWN ? (
         <ButtonLink to="/agenda" variant="outline" className="mt-related">
-          Toutes les dates
+          {t("agenda.seeAll")}
         </ButtonLink>
       ) : null}
     </section>
