@@ -41,8 +41,7 @@ export function Tbd({ what, token }: { what?: string; token?: string }) {
       // blank for everyone, not that their software failed to read a name.
       data-tbd={token ?? ""}
     >
-      {t("placeholders.tbd")}
-      {what ? ` : ${what}` : ""}
+      {what ? t("placeholders.tbdWhat", { what }) : t("placeholders.tbd")}
     </span>
   );
 }

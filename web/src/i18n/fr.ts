@@ -442,6 +442,13 @@ export const fr = {
    */
   placeholders: {
     tbd: "••• à compléter",
+    // The "with a subject" form is a WHOLE string, not the bare one plus
+    // punctuation glued on in the component. French puts a space before a
+    // colon and German does not, so a hardcoded " : " renders as
+    // "noch zu ergänzen : Name" on a German page -- French typography on
+    // German text. Same lesson as formatEventWhen: punctuation is part of
+    // the sentence, so it belongs in the catalogue.
+    tbdWhat: "••• à compléter : {{what}}",
     photoBand: "Nouvelle photo des Canetons au complet à venir !",
     photoConcert: "Nouvelle photo des Canetons en concert à venir !",
     photoRegister: "Nouvelle photo du registre {{name}} à venir !",

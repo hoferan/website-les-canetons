@@ -330,6 +330,7 @@ export const de: typeof fr = {
 
   placeholders: {
     tbd: "••• noch zu ergänzen",
+    tbdWhat: "••• noch zu ergänzen: {{what}}",
     photoBand: "Neues Foto der ganzen Canetons folgt!",
     photoConcert: "Neues Foto der Canetons im Konzert folgt!",
     photoRegister: "Neues Foto des Registers {{name}} folgt!",
