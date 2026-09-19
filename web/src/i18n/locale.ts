@@ -85,10 +85,14 @@ export function htmlLang(locale: Locale): string {
  * (date.ts's own docblock does claim fr-FR and fr-CH are equivalent — but only
  * for the last-login option set, which omits the weekday. There it holds.)
  */
-export function intlTag(locale: Locale, kind: "long" | "instant"): string {
+export function intlTag(locale: Locale, kind: "long" | "instant" | "short"): string {
   if (locale === "de-CH") {
     return "de-CH";
   }
 
+  // "short" joins "instant" on fr-CH rather than needing a branch of its own.
+  // It is NEW output (#162), so it is not bound by the fr-FR compatibility
+  // the long form carries -- and fr-CH is the right Swiss French form for a
+  // numeric date: 05.12.2026, which is also what de-CH renders.
   return kind === "long" ? "fr-FR" : "fr-CH";
 }
