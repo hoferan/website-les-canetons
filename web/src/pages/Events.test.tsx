@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
@@ -10,9 +11,10 @@ import { Events } from "./Events";
 
 async function renderPlanning(
   as: "demo.player" | "demo.direction" | "demo.committee" = "demo.player",
+  locale: Locale = "fr",
 ) {
   setMockUser(as);
-  const result = await renderWithSession(<Events />, { route: "/events" });
+  const result = await renderWithSession(<Events />, { route: "/events", locale });
   await screen.findAllByTestId("event-card");
   return result;
 }
@@ -647,4 +649,46 @@ test("the past keeps the strip", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
   await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(1));
   expect(screen.getAllByTestId("event-meta")).toHaveLength(1);
+});
+
+test("the withdrawal dialog is German, and its Annuler is Abbrechen", async () => {
+  // THE PAGE AROUND THE CONTROL IS STILL FRENCH. Events.tsx is #154's slice,
+  // so the two blocks are still queried by their French names; what this slice
+  // translated is AttendanceControls and the dialog it opens, and that is what
+  // is asserted.
+  await renderPlanning("demo.player", "de-CH");
+
+  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  await userEvent.click(within(rest).getByRole("button", { name: /^Ich komme nicht zu/ }));
+
+  const dialog = await screen.findByRole("alertdialog");
+
+  // TIGHT GUILLEMETS AND NO SPACE BEFORE THE "?", both of which French takes
+  // and German does not. They were hardcoded in the JSX around the title, so
+  // the whole sentence is one catalogue string now.
+  expect(dialog).toHaveTextContent("Sie kommen nicht mehr zu «Répétition»?");
+
+  const confirm = within(dialog).getByRole("button", { name: "Ich komme nicht" });
+  expect(confirm).toHaveAttribute("aria-disabled", "true");
+
+  // ABBRECHEN HERE, RÜCKGÄNGIG IN THE TOAST. One French word, "Annuler", for
+  // two different German ones — so common.cancel and attendance.undo are two
+  // keys and must stay two. AttendanceUndo.test.tsx pins the other half.
+  expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+  expect(within(dialog).queryByRole("button", { name: "Rückgängig" })).toBeNull();
+
+  await userEvent.type(within(dialog).getByLabelText("Begründung"), "Krank");
+  expect(confirm).toHaveAttribute("aria-disabled", "false");
+
+  await userEvent.click(confirm);
+
+  const card = within(screen.getByRole("region", { name: "Le reste du planning" })).getAllByTestId(
+    "event-card",
+  )[0] as HTMLElement;
+
+  // The reason comes back in German quotes, and the member's own words are
+  // untouched between them.
+  await expect
+    .poll(() => within(card).queryByTestId("attendance-note")?.textContent)
+    .toBe("«Krank»");
 });

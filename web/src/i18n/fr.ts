@@ -208,6 +208,28 @@ export const fr = {
   },
 
   /**
+   * Chrome that belongs to no one screen.
+   *
+   * "Chargement…" is written out on seven screens and "← Retour au planning"
+   * on three. They are here so that the slices still to come (#154, #157)
+   * reuse one string rather than adding a seventh copy of it, and so that a
+   * fix to one of them is a fix to all.
+   *
+   * `cancel` IS THE DIALOG'S CANCEL AND NOTHING ELSE. French says "Annuler"
+   * for closing a dialog and for undoing something already done; German does
+   * not — "Abbrechen" against "Rückgängig". The undo that lives in a toast is
+   * `attendance.undo`, deliberately not this key, and merging the two is a
+   * mistake that is invisible in French.
+   */
+  common: {
+    loading: "Chargement…",
+    backToPlanning: "← Retour au planning",
+    cancel: "Annuler",
+    save: "Enregistrer",
+    busy: "En cours…",
+  },
+
+  /**
    * The chrome: the nav, its accessible names, and the footer.
    *
    * The nav arrays in Layout.tsx carry a `labelKey` into this section rather
@@ -301,6 +323,118 @@ export const fr = {
     // that has been cleared.
     empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
     loadError: "La boîte de réception n’a pas pu être chargée.",
+  },
+
+  /**
+   * Answering for an event, and chasing the people who have not.
+   *
+   * ONE SECTION FOR TWO SCREENS, because they are two halves of one fact: a
+   * member answers from the planning (AttendanceControls) and the committee
+   * reads and corrects those answers on the chase list (EventAttendance).
+   * `answer.yes` is the same word on both, and a second section is where the
+   * two would drift apart.
+   *
+   * THREE THINGS HERE USED TO LIVE IN THE COMPONENTS, and all three are the
+   * lesson placeholders.tbdWhat already carries: grammar and punctuation
+   * composed in JSX cannot be translated.
+   *
+   * 1. `answerInline` exists because the chase list used to lowercase the
+   *    button label — `answerLabel(status).toLowerCase()` — to drop it into a
+   *    sentence. That is right in French, where "oui" is lowercase
+   *    mid-sentence, and wrong in German, where the answer reads as a value
+   *    and stays "Ja". Casing is a property of a language, so a locale has to
+   *    be able to decide it; a .toLowerCase() in a component decides it for
+   *    every locale at once.
+   *
+   * 2. The guillemets around a reason are PART of the string rather than
+   *    wrapped around it. French sets them with a space inside, « comme ça » ;
+   *    Swiss Standard German sets them tight, «so». The French form was
+   *    hardcoded, so a German reader got French spacing.
+   *
+   * 3. Every space before a colon or a question mark is a NO-BREAK SPACE
+   *    (\u00a0), written as an escape because it is invisible in a diff. It is
+   *    French typography and German takes none, which is why "Pupitre : {{x}}"
+   *    is one string here and not a label plus ": " in the component.
+   */
+  attendance: {
+    /**
+     * The two answers, twice: as a button, and inside a sentence.
+     *
+     * See note 1 above. French differs between the two forms and German does
+     * not, which is precisely why neither language may derive one from the
+     * other.
+     */
+    answer: {
+      yes: "Oui",
+      no: "Non",
+      yesInline: "oui",
+      noInline: "non",
+    },
+
+    // The chase list, /events/:id/attendance.
+    heading: "Qui vient\u00a0?",
+    loadFailed: "La liste n’a pas pu être chargée.",
+    counts: "{{yes}} oui · {{no}} non · {{silent}} sans réponse",
+    silentHeading: "Sans réponse",
+    copyForWhatsApp: "Copier pour WhatsApp",
+    copied: "Liste copiée. Collez-la dans WhatsApp.",
+    copyRefused: "La copie a été refusée par le navigateur.",
+    answersHeading: "Réponses",
+    sectionLabel: "Pupitre\u00a0: {{name}}",
+    recordedByCommittee: "Saisie par le comité.",
+    nobodyAnswerable:
+      "Personne n’est encore inscrit dans un pupitre, donc personne n’a de réponse à donner.",
+    // C14 on screen: what the caller is told in place of buttons aimed at
+    // their own row, which the on-behalf endpoint would refuse.
+    answerFromPlanning: "Répondez depuis le planning.",
+    editFromPlanning: "Modifiable depuis le planning.",
+    comingAria: "{{name}} vient",
+    notComingAria: "{{name}} ne vient pas",
+    correct: "Corriger",
+    correctFor: "Corriger la réponse de {{name}}",
+    correctDescription:
+      "Ce que {{name}} vous a dit. La raison est facultative, et la réponse restera marquée comme saisie par le comité.",
+    recordFailed: "La réponse n’a pas pu être enregistrée.",
+    // WHOLE SENTENCES, one per answer, rather than one with the answer
+    // interpolated: see note 1. The French space before the colon is note 3.
+    recordedYes: "{{name}}\u00a0: oui.",
+    recordedNo: "{{name}}\u00a0: non.",
+
+    /**
+     * One person's answer as one line — the chase list's whole argument.
+     *
+     * The reason travels WITH the name, which is the difference between a
+     * chase list and a headcount. {{note}} is what a member typed: content,
+     * rendered verbatim in both locales, and only the quotes around it move.
+     */
+    line: "{{name}} — {{answer}}",
+    lineWithNote: "{{name}} — {{answer}} — «\u00a0{{note}}\u00a0»",
+    lineSilent: "{{name}} — sans réponse",
+
+    // AttendanceControls, on the planning: answering for oneself.
+    yesComing: "Oui, je viens",
+    // {{title}} is the event's own title — content, not translated. Named on
+    // purpose: "Je viens" alone is the same accessible name on every card, so
+    // a mis-tap sounds exactly like the intended one.
+    comingToAria: "Je viens à {{title}}",
+    notComingToAria: "Je ne viens pas à {{title}}",
+    answered: "Répondu",
+    quotedNote: "«\u00a0{{note}}\u00a0»",
+    byCommittee: "Réponse saisie par le comité.",
+    ownRecordFailed: "Votre réponse n’a pas pu être enregistrée.",
+    toastYes: "Vous venez — {{title}}.",
+    toastNo: "Vous ne venez pas — {{title}}.",
+    // NOT common.cancel: this one takes back an answer already recorded. Both
+    // are "Annuler" in French and they are two different German words.
+    undo: "Annuler",
+    undoFailed: "L’annulation a échoué. Réessayez.",
+
+    // WithdrawDialog — the one answer that is not a single tap (C11).
+    reason: "Raison",
+    withdrawTitle: "Vous ne venez plus à «\u00a0{{title}}\u00a0»\u00a0?",
+    withdrawDescription:
+      "Vous aviez annoncé votre présence. Dites au comité pourquoi vous ne venez plus, pour qu’il puisse s’organiser.",
+    withdrawConfirm: "Je ne viens pas",
   },
 
   /**

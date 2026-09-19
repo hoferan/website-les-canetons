@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
 import { Toaster } from "../components/ui/sonner";
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { Events } from "../pages/Events";
 import { renderWithSession } from "../test/renderWithSession";
@@ -18,14 +19,14 @@ import { renderWithSession } from "../test/renderWithSession";
  * one, and each assertion is still scoped to the toast carrying its own text
  * rather than to the page.
  */
-async function renderPlanning() {
+async function renderPlanning(locale: Locale = "fr") {
   setMockUser("demo.player");
   const result = await renderWithSession(
     <>
       <Events />
       <Toaster />
     </>,
-    { route: "/events" },
+    { route: "/events", locale },
   );
   await screen.findAllByTestId("event-card");
   return result;
@@ -88,4 +89,27 @@ test("a change offers no undo, because undo would erase the answer it changed", 
   // The toast still arrives. It just carries no way out.
   const toast = await toastSaying("Vous ne venez pas — Répétition.");
   expect(within(toast).queryByRole("button", { name: "Annuler" })).toBeNull();
+});
+
+test("the German toast offers Rückgängig, which is not the dialog's Abbrechen", async () => {
+  // The page around the control is still French (#154), so the block is still
+  // queried by its French name. The control, the toast and the undo are this
+  // slice's.
+  await renderPlanning("de-CH");
+
+  await userEvent.click(owedButton("Ich komme zu Vendanges Cheyres"));
+
+  const toast = await toastSaying("Sie kommen — Vendanges Cheyres.");
+
+  // THE HALF THE DIALOG TEST CANNOT SEE. French calls both of these "Annuler":
+  // this one takes an answer back, and the dialog's closes without doing
+  // anything. Merging them into one catalogue key renders correctly in French
+  // and wrongly in German, which is why there are two — and why each is
+  // asserted where it lives, with the other one asserted absent.
+  expect(within(toast).queryByRole("button", { name: "Abbrechen" })).toBeNull();
+  await userEvent.click(within(toast).getByRole("button", { name: "Rückgängig" }));
+
+  await expect
+    .poll(() => owedButton("Ich komme zu Vendanges Cheyres").getAttribute("aria-pressed"))
+    .toBe("false");
 });

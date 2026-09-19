@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { FormError, FormField } from "../components/FormField";
-import type { TranslatedError } from "../i18n";
+import { t, type TranslatedError } from "../i18n";
 
 /**
  * Taking back a commitment: the one answer that is not one tap (C11).
@@ -76,16 +76,19 @@ export function WithdrawDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Vous ne venez plus à «&nbsp;{eventTitle}&nbsp;» ?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Vous aviez annoncé votre présence. Dites au comité pourquoi vous ne venez plus, pour
-            qu’il puisse s’organiser.
-          </AlertDialogDescription>
+          {/* THE GUILLEMETS AND THE SPACE BEFORE THE "?" ARE IN THE STRING.
+              French sets both with a no-break space inside and German takes
+              neither, so composing them here would put French typography on a
+              German page. `eventTitle` is content and renders verbatim. */}
+          <AlertDialogTitle>
+            {t("attendance.withdrawTitle", { title: eventTitle })}
+          </AlertDialogTitle>
+          <AlertDialogDescription>{t("attendance.withdrawDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
 
         <FormField
           id="withdraw-note"
-          label="Raison"
+          label={t("attendance.reason")}
           value={note}
           onChange={setNote}
           as="textarea"
@@ -96,7 +99,7 @@ export function WithdrawDialog({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={close}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
             variant="destructive"
@@ -108,7 +111,7 @@ export function WithdrawDialog({
               onConfirm(note.trim());
             }}
           >
-            {busy ? "En cours…" : "Je ne viens pas"}
+            {busy ? t("common.busy") : t("attendance.withdrawConfirm")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

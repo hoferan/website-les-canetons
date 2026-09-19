@@ -155,6 +155,17 @@ export const de: typeof fr = {
     rangeSeparator: " bis ",
   },
 
+  common: {
+    loading: "Wird geladen…",
+    backToPlanning: "← Zurück zur Planung",
+    // ABBRECHEN, NICHT RÜCKGÄNGIG: Das Französische sagt für beides
+    // «Annuler». Dieser Schlüssel schliesst einen Dialog, ohne etwas zu tun;
+    // das Zurücknehmen einer bereits erfassten Antwort ist attendance.undo.
+    cancel: "Abbrechen",
+    save: "Speichern",
+    busy: "Läuft…",
+  },
+
   nav: {
     primary: "Hauptnavigation",
     menu: "Menü",
@@ -209,6 +220,69 @@ export const de: typeof fr = {
     },
     empty: "Nichts wartet auf eine Antwort. Der Posteingang ist auf dem neuesten Stand.",
     loadError: "Der Posteingang konnte nicht geladen werden.",
+  },
+
+  attendance: {
+    // JA UND NEIN BLEIBEN GROSSGESCHRIEBEN, auch mitten im Satz: Die Antwort
+    // steht hier als Wert neben einem Namen, nicht als Satzpartikel. Das
+    // Französische wechselt zwischen «Oui» und «oui», das Deutsche nicht —
+    // genau darum darf keine Sprache die eine Form aus der anderen ableiten.
+    answer: {
+      yes: "Ja",
+      no: "Nein",
+      yesInline: "Ja",
+      noInline: "Nein",
+    },
+
+    heading: "Wer kommt?",
+    loadFailed: "Die Liste konnte nicht geladen werden.",
+    counts: "{{yes}} Ja · {{no}} Nein · {{silent}} ohne Rückmeldung",
+    silentHeading: "Ohne Rückmeldung",
+    copyForWhatsApp: "Für WhatsApp kopieren",
+    copied: "Liste kopiert. Fügen Sie sie in WhatsApp ein.",
+    copyRefused: "Der Browser hat das Kopieren abgelehnt.",
+    answersHeading: "Rückmeldungen",
+    sectionLabel: "Register: {{name}}",
+    recordedByCommittee: "Vom Vorstand erfasst.",
+    nobodyAnswerable:
+      "Es gehört noch niemand einem Register an, also wird von niemandem eine Rückmeldung erwartet.",
+    answerFromPlanning: "Antworten Sie über die Planung.",
+    editFromPlanning: "Änderbar über die Planung.",
+    comingAria: "{{name}} kommt",
+    notComingAria: "{{name}} kommt nicht",
+    correct: "Korrigieren",
+    correctFor: "Rückmeldung von {{name}} korrigieren",
+    correctDescription:
+      "Was {{name}} Ihnen gesagt hat. Die Begründung ist freiwillig, und die Rückmeldung bleibt als vom Vorstand erfasst markiert.",
+    recordFailed: "Die Rückmeldung konnte nicht gespeichert werden.",
+    // OHNE LEERZEICHEN VOR DEM DOPPELPUNKT, anders als im Französischen.
+    recordedYes: "{{name}}: Ja.",
+    recordedNo: "{{name}}: Nein.",
+
+    line: "{{name}} — {{answer}}",
+    // ENGE GUILLEMETS: «so», nicht « so ». {{note}} ist, was ein Mitglied
+    // geschrieben hat, und wird in beiden Sprachen wörtlich wiedergegeben.
+    lineWithNote: "{{name}} — {{answer}} — «{{note}}»",
+    lineSilent: "{{name}} — ohne Rückmeldung",
+
+    yesComing: "Ja, ich komme",
+    comingToAria: "Ich komme zu {{title}}",
+    notComingToAria: "Ich komme nicht zu {{title}}",
+    answered: "Beantwortet",
+    quotedNote: "«{{note}}»",
+    byCommittee: "Rückmeldung vom Vorstand erfasst.",
+    ownRecordFailed: "Ihre Rückmeldung konnte nicht gespeichert werden.",
+    toastYes: "Sie kommen — {{title}}.",
+    toastNo: "Sie kommen nicht — {{title}}.",
+    // RÜCKGÄNGIG, NICHT ABBRECHEN: siehe common.cancel.
+    undo: "Rückgängig",
+    undoFailed: "Das Zurücknehmen ist fehlgeschlagen. Versuchen Sie es erneut.",
+
+    reason: "Begründung",
+    withdrawTitle: "Sie kommen nicht mehr zu «{{title}}»?",
+    withdrawDescription:
+      "Sie hatten Ihre Teilnahme zugesagt. Sagen Sie dem Vorstand, warum Sie nicht mehr kommen, damit er planen kann.",
+    withdrawConfirm: "Ich komme nicht",
   },
 
   home: {
