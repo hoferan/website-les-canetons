@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * Jump links to each register on the band page.
  *
@@ -18,7 +20,7 @@ export function RegisterIndex({ entries }: { entries: { id: string; label: strin
     // aria-label because this is the page's SECOND nav; the site's own is
     // "Navigation principale" and two unnamed navs are indistinguishable to a
     // screen reader moving by landmark.
-    <nav aria-label="Registres" className="mt-block">
+    <nav aria-label={t("band.registersNav")} className="mt-block">
       <ul className="flex flex-wrap gap-2">
         {entries.map((entry) => (
           <li key={entry.id}>

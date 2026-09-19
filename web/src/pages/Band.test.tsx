@@ -99,3 +99,23 @@ test("publishes first names and no account details", async () => {
   // renders one half of a name on purpose.
   expect(screen.queryByText(/Sansconnexion/)).not.toBeInTheDocument();
 });
+
+test("renders the heading, the register index and a placeholder gap in German", async () => {
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Unsere Canetons" })).toBeInTheDocument();
+  expect(await screen.findByRole("navigation", { name: "Register" })).toBeInTheDocument();
+
+  // Lyre is the empty one in the seeded roster (see the French test above).
+  const lyre = await screen.findByRole("article", { name: "Lyre" });
+  expect(within(lyre).getByText(/noch zu ergänzen/)).toBeInTheDocument();
+});
+
+test("shows the German photo placeholder for the band and for one register", async () => {
+  await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
+
+  expect(screen.getByText(/Neues Foto der ganzen Canetons folgt/)).toBeInTheDocument();
+  // The register's own name is content, and renders verbatim inside the
+  // German sentence.
+  expect(await screen.findByText(/Neues Foto des Registers Cloches folgt/)).toBeInTheDocument();
+});

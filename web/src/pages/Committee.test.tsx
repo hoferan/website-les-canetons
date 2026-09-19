@@ -95,3 +95,21 @@ test("sends people to the contact form rather than publishing an address", async
   );
   expect(screen.queryByText(/@lescanetons\.org/)).not.toBeInTheDocument();
 });
+
+test("renders the page and the booking placeholder in German", async () => {
+  await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Der Vorstand" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Dem Vorstand schreiben" })).toHaveAttribute(
+    "href",
+    "/contact",
+  );
+  expect(screen.getByText(/Nummer für Auftritte/)).toBeInTheDocument();
+});
+
+test("writes the gap out in German when nobody has been given a seat", async () => {
+  setMemberSeat(4, null);
+  await renderWithSession(<Committee />, { route: "/committee", locale: "de-CH" });
+
+  expect(await screen.findByText(/die Ämter und Namen des Vorstands/)).toBeInTheDocument();
+});

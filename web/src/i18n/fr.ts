@@ -302,4 +302,152 @@ export const fr = {
     empty: "Rien n’attend de réponse. La boîte de réception est à jour.",
     loadError: "La boîte de réception n’a pas pu être chargée.",
   },
+
+  /**
+   * The front door (/).
+   *
+   * `destinations` backs Home.tsx's DESTINATIONS array, which carries a
+   * titleKey/descriptionKey pair per card rather than a label — see the
+   * labelKey pattern on Layout.tsx's NAV.
+   */
+  home: {
+    hero: "La guggen d’enfants de Fribourg, depuis 2002.",
+    heroSub:
+      "De 7 à 18 ans — et pas besoin de connaître la musique : les moniteurs apprennent les morceaux registre par registre, aux répétitions du samedi matin.",
+    discover: "Découvrir les Canetons",
+    destinations: {
+      join: {
+        title: "Nous rejoindre",
+        description: "Les instruments recherchés, les horaires et les critères d’âge.",
+      },
+      band: {
+        title: "Les canetons",
+        description: "Les musiciens du groupe, registre par registre.",
+      },
+      history: {
+        title: "Notre histoire",
+        description: "Comment la guggen est née en 2002, et qui l’a dirigée depuis.",
+      },
+      committee: {
+        title: "Le comité",
+        description: "Nous écrire, réserver les Canetons, et qui fait quoi.",
+      },
+    },
+  },
+
+  /**
+   * The public schedule — /agenda's own heading and empty state, and
+   * AgendaEntry/PublicAgenda's shared copy (the front page's block and the
+   * full page render the same entries).
+   */
+  agenda: {
+    heading: "Où nous voir",
+    intro: "Les prochaines sorties des Canetons. Venez nous écouter !",
+    emptyNotice:
+      "Les prochaines dates ne sont pas encore publiées. Revenez bientôt, ou écrivez au comité pour nous réserver.",
+    seeAll: "Toutes les dates",
+    register: "S’inscrire",
+    // {{title}} is the event's own title — content, not translated. Only the
+    // verb moves between locales; see PublicAgenda.tsx.
+    registerFor: "S’inscrire — {{title}}",
+  },
+
+  /** /band, register by register. */
+  band: {
+    heading: "Nos Canetons",
+    instructors: "Moniteurs :",
+    registersNav: "Registres",
+    patronsHeading: "Le parrain et la marraine",
+    patronsAlt: "Le parrain et la marraine des Canetons",
+  },
+
+  /** /committee — who to write to, and who holds which seat. */
+  committee: {
+    heading: "Le comité",
+    contactHeading: "Contact des Canetons",
+    writeToCommittee: "Écrire au comité",
+    booking: "Pour réserver les Canetons :",
+  },
+
+  /** /join — how to join, for a parent or a curious child. */
+  join: {
+    heading: "Tu veux commencer la guggen ?",
+    intro:
+      "Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire « concurrence » à nos percussions !",
+    facts: {
+      instruments: {
+        heading: "Instruments recherchés",
+        trumpet: "Trompette",
+        trombone: "Trombone",
+        sousaphone: "Sousaphone",
+        euphonium: "Euphonium",
+      },
+      schedule: {
+        heading: "Horaires",
+        day: "Les samedis matin",
+        time: "De 10h à 12h",
+      },
+      age: {
+        heading: "Critères d’âge",
+        range: "Dès 7 ans dans l’année civile jusqu’à l’âge de 18 ans",
+      },
+    },
+    location: "Lieu",
+    locationArea: "Basse-Ville de Fribourg",
+    contacts: "Contacts",
+    contactMeanwhile: "En attendant, écrivez-nous depuis la",
+    contactPageLink: "page de contact",
+  },
+
+  /** /contact — the only screen a stranger can make the server do work with. */
+  contact: {
+    heading: "Contact",
+    intro:
+      "Une question, une demande de prestation, ou l’envie de nous rejoindre ? Écrivez au comité.",
+    memberNotice:
+      "Le comité est joignable directement, par téléphone ou sur WhatsApp — souvent plus rapide qu’un message envoyé d’ici. Ce formulaire reste bien sûr à votre disposition.",
+    sendFailed: "L’envoi du formulaire a échoué. Veuillez réessayer.",
+    submit: "Envoyer",
+    sentHeading: "Message envoyé",
+    sentBody:
+      "Merci ! Le comité a reçu votre message et vous répondra à l’adresse que vous avez indiquée.",
+    fields: {
+      lastName: "Nom:",
+      firstName: "Prénom:",
+      email: "E-mail:",
+      subject: "Sujet:",
+      message: "Contenu du message:",
+    },
+  },
+
+  /** The soft 404 (see NotFound.tsx for why it is one). */
+  notFound: {
+    heading: "Page introuvable",
+    body: "Oups ! La page que vous recherchez n’existe pas ou a été déplacée.",
+    backHome: "Retour à l’accueil",
+  },
+
+  /**
+   * The two shared placeholder components, PhotoPending and Tbd.
+   *
+   * PhotoPending takes a WHOLE SENTENCE, not a fragment: "Nouvelle photo {what}
+   * à venir" glued a French preposition to a database value, which cannot be
+   * translated once German needs a genitive instead of a preposition. Each
+   * screen picks the sentence that fits what it is missing; `photoRegister`
+   * carries the one dynamic value, a register's own name, which is content and
+   * renders verbatim in both locales.
+   *
+   * Tbd's `what` is the same fix applied to the same trap: a caller passes a
+   * translated string, never a fragment glued together outside the catalogue.
+   */
+  placeholders: {
+    tbd: "••• à compléter",
+    photoBand: "Nouvelle photo des Canetons au complet à venir !",
+    photoConcert: "Nouvelle photo des Canetons en concert à venir !",
+    photoRegister: "Nouvelle photo du registre {{name}} à venir !",
+    registerFirstNames: "prénoms du registre",
+    bookingNumber: "numéro pour les prestations",
+    committeeSeats: "les fonctions et les noms du comité",
+    joinContact: "nom et numéro",
+  },
 };

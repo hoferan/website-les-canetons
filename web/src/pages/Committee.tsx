@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { rowsOf } from "../api/collection";
 import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
+import { t } from "../i18n";
 
 /**
  * The committee — who to write to, and who holds which seat.
@@ -36,17 +37,18 @@ export function Committee() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-4xl">Le comité</h1>
+      <h1 className="font-display text-4xl">{t("committee.heading")}</h1>
 
       <Card className="mt-block gap-0 p-5">
-        <h2 className="font-display text-xl">Contact des Canetons</h2>
+        <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
         <p className="mt-tight">
           <Link to="/contact" className="text-violet hover:underline">
-            Écrire au comité
+            {t("committee.writeToCommittee")}
           </Link>
         </p>
         <p className="mt-tight">
-          Pour réserver les Canetons&nbsp;: <Tbd what="numéro pour les prestations" />
+          {t("committee.booking")}{" "}
+          <Tbd what={t("placeholders.bookingNumber")} token="booking-number" />
         </p>
       </Card>
 
@@ -75,7 +77,7 @@ export function Committee() {
         // consent to appear yet, and this page says so in the same voice as
         // every other gap on the public site.
         <p className="mt-block">
-          <Tbd what="les fonctions et les noms du comité" />
+          <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
         </p>
       )}
     </PageSection>

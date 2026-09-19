@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * A visible placeholder for content the band has not yet confirmed.
  *
@@ -16,8 +18,19 @@
  * placeholders there are seen only by the band. PROD is public and has never
  * been deployed with the rebuild. Deploying it while any of these remain would
  * publish "à compléter" where the committee should be.
+ *
+ * `what` IS AN ALREADY-TRANSLATED STRING, never a fragment glued together
+ * outside the catalogue — the same fix `PhotoPending` gets for the same
+ * reason. A caller resolves its own `placeholders.*` key with `t()` and hands
+ * the rendered sentence in; this component only supplies the bullet and the
+ * leading "à compléter"/"noch zu ergänzen" wording, which is its own
+ * `placeholders.tbd` key.
+ *
+ * `token` is a STABLE, ENGLISH identifier for what is missing, carried on
+ * `data-tbd` so it does not change per locale. It used to be the French `what`
+ * fragment itself.
  */
-export function Tbd({ what }: { what?: string }) {
+export function Tbd({ what, token }: { what?: string; token?: string }) {
   return (
     <span
       // Italic and muted so it reads as unfinished rather than broken, with a
@@ -26,9 +39,10 @@ export function Tbd({ what }: { what?: string }) {
       className="text-ink-muted italic underline decoration-dotted"
       // Announced as written: a screen-reader user needs to know the field is
       // blank for everyone, not that their software failed to read a name.
-      data-tbd={what ?? ""}
+      data-tbd={token ?? ""}
     >
-      ••• à compléter{what ? ` : ${what}` : ""}
+      {t("placeholders.tbd")}
+      {what ? ` : ${what}` : ""}
     </span>
   );
 }

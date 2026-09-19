@@ -210,4 +210,120 @@ export const de: typeof fr = {
     empty: "Nichts wartet auf eine Antwort. Der Posteingang ist auf dem neuesten Stand.",
     loadError: "Der Posteingang konnte nicht geladen werden.",
   },
+
+  home: {
+    hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
+    heroSub:
+      "Von 7 bis 18 Jahren — und ganz ohne Musikkenntnisse: Die Leiter bringen die Stücke Register für Register bei, an den Proben am Samstagvormittag.",
+    discover: "Die Canetons entdecken",
+    destinations: {
+      join: {
+        title: "Mitmachen",
+        description: "Die gesuchten Instrumente, die Zeiten und die Alterskriterien.",
+      },
+      band: {
+        title: "Die Canetons",
+        description: "Die Musizierenden der Band, Register für Register.",
+      },
+      history: {
+        title: "Unsere Geschichte",
+        description: "Wie die Gugge 2002 entstanden ist, und wer sie seither geleitet hat.",
+      },
+      committee: {
+        title: "Der Vorstand",
+        description: "Uns schreiben, die Canetons buchen, und wer was macht.",
+      },
+    },
+  },
+
+  agenda: {
+    heading: "Wo Sie uns sehen",
+    intro: "Die nächsten Auftritte der Canetons. Kommen Sie uns zuhören!",
+    emptyNotice:
+      "Die nächsten Termine sind noch nicht veröffentlicht. Schauen Sie bald wieder vorbei, oder schreiben Sie dem Vorstand, um uns zu buchen.",
+    seeAll: "Alle Termine",
+    register: "Anmelden",
+    registerFor: "Anmelden — {{title}}",
+  },
+
+  band: {
+    heading: "Unsere Canetons",
+    instructors: "Leiter:",
+    registersNav: "Register",
+    patronsHeading: "Der Götti und die Gotte",
+    patronsAlt: "Der Götti und die Gotte der Canetons",
+  },
+
+  committee: {
+    heading: "Der Vorstand",
+    contactHeading: "Kontakt der Canetons",
+    writeToCommittee: "Dem Vorstand schreiben",
+    booking: "Um die Canetons zu buchen:",
+  },
+
+  join: {
+    heading: "Willst du mit der Gugge anfangen?",
+    intro:
+      "Wir suchen laufend ein paar Bläser, die sich die Lunge aus dem Leib blasen und unseren Perkussionen «Konkurrenz» machen!",
+    facts: {
+      instruments: {
+        heading: "Gesuchte Instrumente",
+        trumpet: "Trompete",
+        trombone: "Posaune",
+        sousaphone: "Sousaphon",
+        euphonium: "Euphonium",
+      },
+      schedule: {
+        heading: "Zeiten",
+        day: "Samstagvormittags",
+        time: "Von 10 bis 12 Uhr",
+      },
+      age: {
+        heading: "Alterskriterien",
+        range: "Ab 7 Jahren im Kalenderjahr bis zum Alter von 18 Jahren",
+      },
+    },
+    location: "Ort",
+    locationArea: "Altstadt Freiburg",
+    contacts: "Kontakte",
+    contactMeanwhile: "In der Zwischenzeit schreiben Sie uns über die",
+    contactPageLink: "Kontaktseite",
+  },
+
+  contact: {
+    heading: "Kontakt",
+    intro:
+      "Eine Frage, eine Anfrage für einen Auftritt, oder Lust, uns beizutreten? Schreiben Sie dem Vorstand.",
+    memberNotice:
+      "Der Vorstand ist direkt erreichbar, per Telefon oder WhatsApp — oft schneller als eine von hier gesendete Nachricht. Dieses Formular steht Ihnen natürlich weiterhin zur Verfügung.",
+    sendFailed: "Das Senden des Formulars ist fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    submit: "Senden",
+    sentHeading: "Nachricht gesendet",
+    sentBody:
+      "Danke! Der Vorstand hat Ihre Nachricht erhalten und wird Ihnen an die angegebene Adresse antworten.",
+    fields: {
+      lastName: "Name:",
+      firstName: "Vorname:",
+      email: "E-Mail:",
+      subject: "Betreff:",
+      message: "Inhalt der Nachricht:",
+    },
+  },
+
+  notFound: {
+    heading: "Seite nicht gefunden",
+    body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    backHome: "Zurück zur Startseite",
+  },
+
+  placeholders: {
+    tbd: "••• noch zu ergänzen",
+    photoBand: "Neues Foto der ganzen Canetons folgt!",
+    photoConcert: "Neues Foto der Canetons im Konzert folgt!",
+    photoRegister: "Neues Foto des Registers {{name}} folgt!",
+    registerFirstNames: "Vornamen des Registers",
+    bookingNumber: "Nummer für Auftritte",
+    committeeSeats: "die Ämter und Namen des Vorstands",
+    joinContact: "Name und Nummer",
+  },
 };

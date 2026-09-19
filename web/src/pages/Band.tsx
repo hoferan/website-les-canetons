@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
+import { t } from "../i18n";
 
 /**
  * The anchor a jump link points at.
@@ -47,19 +48,22 @@ function Register({ register }: { register: PublicSectionResource }) {
           wrong French today and would be wrong differently for whatever the
           committee adds next. Naming the register after a fixed noun is
           grammatical for every possible name. */}
-      <PhotoPending what={`du registre ${register.name}`} />
+      <PhotoPending
+        sentence={t("placeholders.photoRegister", { name: register.name })}
+        token="register"
+      />
 
       <p className="mt-tight text-ink-muted">
         {register.members.length > 0 ? (
           register.members.map((member) => member.firstName).join(", ")
         ) : (
-          <Tbd what="prénoms du registre" />
+          <Tbd what={t("placeholders.registerFirstNames")} token="register-first-names" />
         )}
       </p>
 
       {register.instructors.length > 0 ? (
         <p className="mt-tight text-sm text-ink-muted">
-          Moniteurs&nbsp;:{" "}
+          {t("band.instructors")}{" "}
           {register.instructors.map((instructor) => instructor.firstName).join(", ")}
         </p>
       ) : null}
@@ -94,8 +98,8 @@ export function Band() {
 
   return (
     <PageSection width="text">
-      <h1 className="font-display text-4xl">Nos Canetons</h1>
-      <PhotoPending what="des Canetons au complet" />
+      <h1 className="font-display text-4xl">{t("band.heading")}</h1>
+      <PhotoPending sentence={t("placeholders.photoBand")} token="band" />
 
       <RegisterIndex
         entries={registers.map((register) => ({
@@ -132,10 +136,10 @@ export function Band() {
       <hr className="mt-section border-line" />
 
       <Card className="mt-block gap-0 p-5">
-        <h2 className="font-display text-2xl">Le parrain et la marraine</h2>
+        <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
         <img
           src="/assets/img/parrainmarraine.jpg"
-          alt="Le parrain et la marraine des Canetons"
+          alt={t("band.patronsAlt")}
           loading="lazy"
           className="mt-related rounded-lg"
         />
