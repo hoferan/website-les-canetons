@@ -242,8 +242,14 @@ export const de: typeof fr = {
     emptyNotice:
       "Die nächsten Termine sind noch nicht veröffentlicht. Schauen Sie bald wieder vorbei, oder schreiben Sie dem Vorstand, um uns zu buchen.",
     seeAll: "Alle Termine",
-    register: "Anmelden",
-    registerFor: "Anmelden — {{title}}",
+    // "Jetzt anmelden", not the bare "Anmelden": German uses that one word
+    // for BOTH logging in and signing up for something, and nav.login is
+    // already "Anmelden" -- on /agenda the two would sit on the same screen
+    // meaning different things. French has no such collision ("Se connecter"
+    // against "S'inscrire"), so this is a place the mirror deliberately is
+    // not word-for-word.
+    register: "Jetzt anmelden",
+    registerFor: "Jetzt anmelden — {{title}}",
   },
 
   band: {
@@ -262,6 +268,12 @@ export const de: typeof fr = {
   },
 
   join: {
+    // "du", NOT "Sie", and that is deliberate on BOTH sides. The French
+    // reads "Tu veux commencer la guggen ?" because this page addresses
+    // children directly -- the band takes players from 7 to 18. The rule is
+    // written up at web/src/pages/Home.tsx:65, which explains why the front
+    // page stays impersonal rather than following suit. It is the only
+    // informal address in either catalogue; do not "fix" it.
     heading: "Willst du mit der Gugge anfangen?",
     intro:
       "Wir suchen laufend ein paar Bläser, die sich die Lunge aus dem Leib blasen und unseren Perkussionen «Konkurrenz» machen!",
@@ -284,7 +296,7 @@ export const de: typeof fr = {
       },
     },
     location: "Ort",
-    locationArea: "Altstadt Freiburg",
+    locationArea: "Freiburger Unterstadt",
     contacts: "Kontakte",
     contactMeanwhile: "In der Zwischenzeit schreiben Sie uns über die",
     contactPageLink: "Kontaktseite",

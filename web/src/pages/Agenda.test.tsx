@@ -147,6 +147,6 @@ test("says the dates are not published yet, in German", async () => {
 test("offers a booking link in German", async () => {
   await renderWithSession(<Agenda />, { route: "/agenda", locale: "de-CH" });
 
-  const link = await screen.findByRole("link", { name: "Anmelden — Souper de soutien" });
+  const link = await screen.findByRole("link", { name: "Jetzt anmelden — Souper de soutien" });
   expect(link).toHaveAttribute("href", "/events/7/book");
 });
