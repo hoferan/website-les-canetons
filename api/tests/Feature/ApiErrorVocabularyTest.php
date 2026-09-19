@@ -116,7 +116,7 @@ class ApiErrorVocabularyTest extends TestCase
      * never extended when AttendanceRefused and ReauthenticationFailed arrived,
      * so `answer_already_settled`, `cannot_record_for_self`, `not_answerable`
      * and `reauth_failed` were invisible to the scan — and
-     * test_every_emittable_code_has_french_copy was quietly not checking any of
+     * test_every_emittable_code_has_copy_in_every_locale was quietly not checking any of
      * them. They happened to have French. A list that must be remembered is a
      * list that will not be; a pattern that matches the CONSTRUCT covers every
      * future one for free.
@@ -170,17 +170,17 @@ class ApiErrorVocabularyTest extends TestCase
 
     // ---------------------------------------------------------------- the tests
 
-    public function test_every_emittable_reason_has_french_copy(): void
+    public function test_every_emittable_reason_has_copy_in_every_locale(): void
     {
         $this->assertVocabularyCovered('reasons', 'validation', $this->emittableReasons());
     }
 
-    public function test_every_emittable_code_has_french_copy(): void
+    public function test_every_emittable_code_has_copy_in_every_locale(): void
     {
         $this->assertVocabularyCovered('codes', 'errors', $this->emittableCodes());
     }
 
-    public function test_every_emittable_field_has_french_copy(): void
+    public function test_every_emittable_field_has_copy_in_every_locale(): void
     {
         $this->assertVocabularyCovered('fields', 'fields', $this->emittableFields());
     }

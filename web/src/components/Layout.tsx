@@ -5,7 +5,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 
 import { useInboxSummary } from "../api/generated/endpoints";
-import { t } from "../i18n";
+import { type TranslationKey, t } from "../i18n";
 import { LogoutButton } from "../session/LogoutButton";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
@@ -23,7 +23,7 @@ import { Toaster } from "./ui/sonner";
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
  */
-const NAV: Array<{ to: string; labelKey: string }> = [
+const NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/join", labelKey: "nav.join" },
   { to: "/agenda", labelKey: "nav.agenda" },
   { to: "/band", labelKey: "nav.band" },
@@ -43,7 +43,7 @@ const NAV: Array<{ to: string; labelKey: string }> = [
  * Gated on a PERMISSION, never a role name — the same rule the middleware and
  * the route guards follow.
  */
-const DIRECTION_NAV: Array<{ to: string; labelKey: string; permission: string }> = [
+const DIRECTION_NAV: Array<{ to: string; labelKey: TranslationKey; permission: string }> = [
   { to: "/members", labelKey: "nav.members", permission: "members.manage" },
   { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view" },
 ];
@@ -61,7 +61,7 @@ const DIRECTION_NAV: Array<{ to: string; labelKey: string; permission: string }>
  * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
  * item is added.
  */
-const MEMBER_NAV: Array<{ to: string; labelKey: string }> = [
+const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/events", labelKey: "nav.events" },
 ];
 
@@ -105,7 +105,7 @@ function NavItem({
   badge,
 }: {
   to: string;
-  labelKey: string;
+  labelKey: TranslationKey;
   active: string;
   close: () => void;
   /** Trailing content, e.g. the inbox's unread count — absent for every

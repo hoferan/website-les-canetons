@@ -1,6 +1,6 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
 
-import { roleHint, roleLabel, translateApiError } from "./index";
+import { currentLocale, roleHint, roleLabel, setLocale, t, translateApiError } from "./index";
 
 test("a known code becomes French", () => {
   const result = translateApiError({ code: "invalid_credentials", fields: [] });
@@ -70,10 +70,6 @@ test("resolves a nested field to its last segment rather than leaking the identi
   ]);
 });
 
-import { afterEach } from "vitest";
-
-import { currentLocale, setLocale, t } from "./index";
-
 // Every test in this file below runs in French unless it says otherwise, and
 // the app's default is French, so the reset restores the shared default rather
 // than a value this file chose.
@@ -115,4 +111,26 @@ test("roleLabel and roleHint follow the active locale", async () => {
   await setLocale("de-CH");
   expect(roleLabel("committee")).toBe("Vorstand");
   expect(roleHint("committee")).toBe("Sieht die Anmeldeliste ein.");
+});
+
+test("the generic fallback is translated, so a German reader never meets French", async () => {
+  await setLocale("de-CH");
+
+  // THE REGRESSION THIS PINS. `unknown_error` is minted CLIENT-SIDE by
+  // web/src/api/http.ts for any non-JSON error response — a 502 from the
+  // shared host, or TEST/QA's HTML Basic-Auth 401 — so no server-side guard
+  // can require copy for it, and ApiErrorVocabularyTest cannot see it at all.
+  // The fallback sentence used to be a module-scope French string literal,
+  // which meant this rendered French on a German page.
+  expect(translateApiError({ code: "unknown_error", fields: [] }).message).toBe(
+    "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+  );
+
+  // Same for an unknown field reason, which takes the other fallback path.
+  expect(
+    translateApiError({
+      code: "validation_failed",
+      fields: [{ field: "title", reason: "no_such_reason" }],
+    }).fields[0]?.message,
+  ).toBe("Titel Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
 });

@@ -23,7 +23,7 @@ export const de: typeof fr = {
     direction: {
       // Not translated: the band's own name for the group, as in the French.
       label: "Team Direction",
-      hint: "Organisiert die Anlässe, verwaltet die Mitglieder und sieht die Rückmeldungen.",
+      hint: "Organisiert die Anlässe, verwaltet die Mitglieder und sieht die Rückmeldungen ein.",
     },
     committee: {
       label: "Vorstand",
@@ -32,6 +32,7 @@ export const de: typeof fr = {
   },
 
   errors: {
+    generic: "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
     validation_failed: "Das Formular enthält Fehler.",
     method_not_allowed: "Methode nicht erlaubt",
     not_authenticated: "Nicht angemeldet",
@@ -59,7 +60,7 @@ export const de: typeof fr = {
     idempotency_key_invalid:
       "Dieses Formular konnte nicht gesendet werden. Laden Sie die Seite neu.",
     idempotency_key_reuse:
-      "Senden läuft bereits. Warten Sie einen Moment, bevor Sie es erneut versuchen.",
+      "Das Senden läuft bereits. Warten Sie einen Moment, bevor Sie es erneut versuchen.",
 
     if_match_required: "Diese Änderung konnte nicht überprüft werden. Laden Sie die Seite neu.",
     if_match_failed:
@@ -159,7 +160,7 @@ export const de: typeof fr = {
     menu: "Menü",
     menuLabel: "Navigationsmenü",
     join: "Mitmachen",
-    agenda: "Wo wir spielen",
+    agenda: "Wo Sie uns sehen",
     band: "Die Canetons",
     committee: "Vorstand",
     history: "Geschichte",
@@ -192,7 +193,7 @@ export const de: typeof fr = {
     deleteConfirmTitle: "Diese Nachricht löschen?",
     deleteConfirmDescription:
       "Die Nachricht von {name} wird endgültig gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
-    handledBy: "Erledigt von {name}, am {date}",
+    handledBy: "Erledigt von {name} am {date}",
     // DER NORMALFALL, KEIN FEHLER: ein leerer Posteingang ist eine gute
     // Nachricht.
     empty: "Noch keine Nachrichten. Das Kontaktformular ist bereit.",
@@ -206,7 +207,7 @@ export const de: typeof fr = {
     kinds: {
       contactMessage: "Nachricht von der Website",
     },
-    empty: "Nichts wartet auf eine Antwort. Der Posteingang ist aktuell.",
+    empty: "Nichts wartet auf eine Antwort. Der Posteingang ist auf dem neuesten Stand.",
     loadError: "Der Posteingang konnte nicht geladen werden.",
   },
 };

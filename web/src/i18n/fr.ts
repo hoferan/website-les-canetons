@@ -34,6 +34,14 @@ export const fr = {
   },
 
   errors: {
+    // The sentence translateApiError falls back to when a code or reason has
+    // no copy. It is NOT an API token, so no server-side guard can see it:
+    // web/src/api/http.ts mints `unknown_error` client-side for any non-JSON
+    // error response (a 502, or TEST/QA's HTML Basic-Auth 401). The fallback
+    // itself therefore has to be translatable, or a German reader gets this
+    // sentence in French -- the exact failure the vocabulary guard exists to
+    // prevent, arriving by the one route that guard cannot watch.
+    generic: "Une erreur est survenue. Veuillez réessayer.",
     validation_failed: "Le formulaire contient des erreurs.",
     method_not_allowed: "Méthode non autorisée",
     not_authenticated: "Non authentifié",

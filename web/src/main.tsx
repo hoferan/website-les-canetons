@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
-import { storedLocale } from "./i18n/preference";
+import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
 import "./styles.css";
 
@@ -26,7 +26,7 @@ if (import.meta.env.DEV && import.meta.env.VITE_MOCK_API === "1") {
 // French root does not sit in the back-stack as a place to return to.
 //
 // This cannot loop: /de resolves to German and its pathname is no longer "/".
-const redirecting = window.location.pathname === "/" && storedLocale() === "de-CH";
+const redirecting = shouldRedirectToGerman(window.location.pathname, storedLocale());
 
 if (redirecting) {
   window.location.replace(

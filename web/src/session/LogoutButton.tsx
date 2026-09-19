@@ -91,7 +91,7 @@ export function LogoutButton({ onDone }: { onDone: () => void }) {
  * EXPORTED SO IT CAN BE TESTED AT ALL. The navigation below cannot be: this is
  * a real full page load, and window.location is non-configurable in this jsdom
  * setup, so a spy on .assign throws "Cannot redefine property: assign" instead
- * of recording the call. Layout.test.tsx:128-135 documents that, having hit it,
+ * of recording the call. the docblock above `ends the session on the server` in web/src/components/Layout.test.tsx documents that, having hit it,
  * and proves the server half only. Splitting the destination out gives the
  * decision a unit test and leaves the landing to a real browser, which is
  * where it was always checked.

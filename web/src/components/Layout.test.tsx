@@ -170,7 +170,7 @@ test("the nav renders in German under the German locale", async () => {
 
   expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Wo wir spielen" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
 });

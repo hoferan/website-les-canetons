@@ -28,6 +28,13 @@ export function storedLocale(): Locale | null {
   }
 }
 
+/**
+ * Record an explicit switcher choice.
+ *
+ * PR 9's switcher must call this BEFORE it navigates. Switching to French from
+ * /de lands on "/", and shouldRedirectToGerman() below would bounce straight
+ * back to /de if the stored value were still "de-CH".
+ */
 export function rememberLocale(locale: Locale): void {
   try {
     window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
@@ -35,4 +42,21 @@ export function rememberLocale(locale: Locale): void {
     // Nothing to do and nothing worth telling anybody: the locale still
     // changes, it just is not remembered for next time.
   }
+}
+
+/**
+ * Whether a visit should be bounced to the German mount.
+ *
+ * A PURE FUNCTION SO IT CAN BE TESTED AT ALL. main.tsx's boot cannot be: it
+ * navigates, and jsdom implements no navigation. Extracting the decision is
+ * the same move logoutDestination() makes in LogoutButton.tsx, for the same
+ * reason.
+ *
+ * ONLY THE BARE ROOT. Everywhere else the URL is the authority, and a stored
+ * preference that could override it would mean a /de/agenda link rendering
+ * French for whoever it was sent to — which is the whole reason this project
+ * chose prefixed URLs over a client-side preference.
+ */
+export function shouldRedirectToGerman(pathname: string, stored: Locale | null): boolean {
+  return pathname === "/" && stored === "de-CH";
 }

@@ -1,6 +1,11 @@
 import { afterEach, expect, test } from "vitest";
 
-import { LOCALE_STORAGE_KEY, rememberLocale, storedLocale } from "./preference";
+import {
+  LOCALE_STORAGE_KEY,
+  rememberLocale,
+  shouldRedirectToGerman,
+  storedLocale,
+} from "./preference";
 
 afterEach(() => {
   window.localStorage.clear();
@@ -38,4 +43,17 @@ test("storage being unavailable is not an error", () => {
   } finally {
     Storage.prototype.getItem = getItem;
   }
+});
+
+test("only the bare root redirects, and only for a stored German preference", () => {
+  expect(shouldRedirectToGerman("/", "de-CH")).toBe(true);
+  expect(shouldRedirectToGerman("/", "fr")).toBe(false);
+  expect(shouldRedirectToGerman("/", null)).toBe(false);
+
+  // THE URL IS THE AUTHORITY EVERYWHERE BUT THE BARE ROOT. If any of these
+  // returned true, a shared link would render in the recipient's stored
+  // language rather than the one it names.
+  expect(shouldRedirectToGerman("/agenda", "de-CH")).toBe(false);
+  expect(shouldRedirectToGerman("/de", "de-CH")).toBe(false);
+  expect(shouldRedirectToGerman("/de/agenda", "de-CH")).toBe(false);
 });
