@@ -16,10 +16,10 @@ import type { ChaseListEntryResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { answerLabel, answerLine, nameOf } from "../events/chaseList";
+import { answerLine, nameOf } from "../events/chaseList";
 import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
-import { translateApiError } from "../i18n";
+import { t, translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -46,7 +46,7 @@ export function EventAttendance() {
 
   const [recording, setRecording] = useState<number | null>(null);
   const [correcting, setCorrecting] = useState<ChaseListEntryResource | null>(null);
-  const refusal = useApiFormError("La réponse n’a pas pu être enregistrée.");
+  const refusal = useApiFormError(t("attendance.recordFailed"));
 
   const event = useEventShow(eventId);
   const list = useAttendanceIndex(eventId);
@@ -89,7 +89,15 @@ export function EventAttendance() {
       await record.mutateAsync({ member: entry.memberId, status, note });
       await queryClient.invalidateQueries({ queryKey: getAttendanceIndexQueryKey(eventId) });
       refusal.clear();
-      toast.success(`${nameOf(entry)} : ${answerLabel(status).toLowerCase()}.`);
+      // TWO SENTENCES, ONE PER ANSWER, rather than one with the answer
+      // lowercased into it: see the note on attendance.answer in fr.ts. The
+      // French space before the colon is part of the string for the same
+      // reason — German takes none.
+      toast.success(
+        t(status === "yes" ? "attendance.recordedYes" : "attendance.recordedNo", {
+          name: nameOf(entry),
+        }),
+      );
       return true;
     } catch (thrown) {
       refusal.setFromThrown(thrown);
@@ -100,7 +108,7 @@ export function EventAttendance() {
         toast.error(
           thrown instanceof ApiError
             ? translateApiError(thrown).message
-            : "La réponse n’a pas pu être enregistrée.",
+            : t("attendance.recordFailed"),
         );
       }
       return false;
@@ -113,12 +121,12 @@ export function EventAttendance() {
     const text = silent.map(nameOf).join("\n");
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Liste copiée. Collez-la dans WhatsApp.");
+      toast.success(t("attendance.copied"));
     } catch {
       // Refused rather than broken: the clipboard needs a secure context and
       // the browser's permission, and neither is this app's to grant. Saying
       // so beats a button that looks like it worked.
-      toast.error("La copie a été refusée par le navigateur.");
+      toast.error(t("attendance.copyRefused"));
     }
   }
 
@@ -127,10 +135,10 @@ export function EventAttendance() {
   return (
     <PageSection>
       <Link to="/events" className="text-sm text-ink-muted underline">
-        ← Retour au planning
+        {t("common.backToPlanning")}
       </Link>
 
-      <h1 className="mt-tight font-display text-3xl">Qui vient&nbsp;?</h1>
+      <h1 className="mt-tight font-display text-3xl">{t("attendance.heading")}</h1>
 
       {title ? (
         <p data-testid="chase-event" className="mt-tight text-ink-muted">
@@ -138,11 +146,11 @@ export function EventAttendance() {
         </p>
       ) : null}
 
-      {list.isPending ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
+      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
 
       {list.isError ? (
         <p role="alert" className="mt-block text-red-700">
-          La liste n’a pas pu être chargée.
+          {t("attendance.loadFailed")}
         </p>
       ) : null}
 
@@ -151,7 +159,11 @@ export function EventAttendance() {
           committee acts on is the third one. */}
       {!list.isPending && !list.isError ? (
         <p data-testid="chase-counts" className="mt-block text-lg">
-          {yes.length} oui · {no.length} non · {silent.length} sans réponse
+          {t("attendance.counts", {
+            yes: yes.length,
+            no: no.length,
+            silent: silent.length,
+          })}
         </p>
       ) : null}
 
@@ -159,10 +171,10 @@ export function EventAttendance() {
         <section className="mt-block" aria-labelledby="silent-heading">
           <div className="flex flex-wrap items-center justify-between gap-related">
             <h2 id="silent-heading" className="font-display text-xl">
-              Sans réponse
+              {t("attendance.silentHeading")}
             </h2>
             <Button type="button" variant="outline" onClick={() => void copySilent()}>
-              Copier pour WhatsApp
+              {t("attendance.copyForWhatsApp")}
             </Button>
           </div>
 
@@ -185,7 +197,9 @@ export function EventAttendance() {
                     answer belongs on the planning, which is also where the
                     reason rule he would otherwise walk around lives. */}
                 {mayRecord && entry.memberId === user?.id ? (
-                  <span className="text-sm text-ink-muted">Répondez depuis le planning.</span>
+                  <span className="text-sm text-ink-muted">
+                    {t("attendance.answerFromPlanning")}
+                  </span>
                 ) : null}
 
                 {mayRecord && entry.memberId !== user?.id ? (
@@ -194,7 +208,7 @@ export function EventAttendance() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      aria-label={`${nameOf(entry)} vient`}
+                      aria-label={t("attendance.comingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
                       onClick={() => {
                         if (recording === entry.memberId) {
@@ -203,13 +217,13 @@ export function EventAttendance() {
                         void recordFor(entry, "yes");
                       }}
                     >
-                      Oui
+                      {t("attendance.answer.yes")}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      aria-label={`${nameOf(entry)} ne vient pas`}
+                      aria-label={t("attendance.notComingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
                       onClick={() => {
                         if (recording === entry.memberId) {
@@ -218,7 +232,7 @@ export function EventAttendance() {
                         void recordFor(entry, "no");
                       }}
                     >
-                      Non
+                      {t("attendance.answer.no")}
                     </Button>
                   </span>
                 ) : null}
@@ -233,7 +247,7 @@ export function EventAttendance() {
       {yes.length + no.length > 0 ? (
         <section className="mt-block" aria-labelledby="answers-heading">
           <h2 id="answers-heading" className="font-display text-xl">
-            Réponses
+            {t("attendance.answersHeading")}
           </h2>
 
           {/* THE CARD IS THE ONLY LAYOUT (#130). A table from md up used to sit
@@ -255,10 +269,12 @@ export function EventAttendance() {
                     is went with the table. A bare "Trompettes" under a name is
                     a word, not a fact. */}
                 {entry.sectionName ? (
-                  <p className="text-ink-muted">Pupitre&nbsp;: {entry.sectionName}</p>
+                  <p className="text-ink-muted">
+                    {t("attendance.sectionLabel", { name: entry.sectionName })}
+                  </p>
                 ) : null}
                 {entry.attendance?.recordedByDirection ? (
-                  <p className="text-ink-muted">Saisie par le comité.</p>
+                  <p className="text-ink-muted">{t("attendance.recordedByCommittee")}</p>
                 ) : null}
 
                 <div className="mt-tight">
@@ -276,9 +292,7 @@ export function EventAttendance() {
       ) : null}
 
       {!list.isPending && !list.isError && entries.length === 0 ? (
-        <p className="mt-block text-ink-muted">
-          Personne n’est encore inscrit dans un pupitre, donc personne n’a de réponse à donner.
-        </p>
+        <p className="mt-block text-ink-muted">{t("attendance.nobodyAnswerable")}</p>
       ) : null}
 
       {/* MOUNTED PER ROW, and keyed by the member, so the form starts from the
@@ -343,13 +357,13 @@ function CorrectionAction({
   }
 
   if (mine) {
-    return <span className="text-sm text-ink-muted">Modifiable depuis le planning.</span>;
+    return <span className="text-sm text-ink-muted">{t("attendance.editFromPlanning")}</span>;
   }
 
   return (
     <Button type="button" variant="outline" size="sm" onClick={() => onCorrect(entry)}>
-      <span aria-hidden="true">Corriger</span>
-      <span className="sr-only">Corriger la réponse de {nameOf(entry)}</span>
+      <span aria-hidden="true">{t("attendance.correct")}</span>
+      <span className="sr-only">{t("attendance.correctFor", { name: nameOf(entry) })}</span>
     </Button>
   );
 }

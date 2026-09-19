@@ -12,7 +12,7 @@ import {
 import type { AttendanceResource, EventResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
 import { useApiFormError } from "../api/useApiFormError";
-import { translateApiError } from "../i18n";
+import { t, translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { WithdrawDialog } from "./WithdrawDialog";
 
@@ -110,7 +110,7 @@ export function AttendanceControls({
   const queryClient = useQueryClient();
 
   const [withdrawing, setWithdrawing] = useState(false);
-  const refusal = useApiFormError("Votre réponse n’a pas pu être enregistrée.");
+  const refusal = useApiFormError(t("attendance.ownRecordFailed"));
 
   const answer = event.myAttendance;
 
@@ -146,9 +146,7 @@ export function AttendanceControls({
       // `answer_already_settled`, which says to change the answer instead.
       patchMyAttendance(queryClient, event.id, recorded);
       toast.error(
-        thrown instanceof ApiError
-          ? translateApiError(thrown).message
-          : "L’annulation a échoué. Réessayez.",
+        thrown instanceof ApiError ? translateApiError(thrown).message : t("attendance.undoFailed"),
       );
     }
   }
@@ -187,12 +185,18 @@ export function AttendanceControls({
       // whichever card was tapped, so a mis-tap produced the toast the
       // intended tap would have produced, and nothing said otherwise.
       toast.success(
-        status === "yes" ? `Vous venez — ${event.title}.` : `Vous ne venez pas — ${event.title}.`,
+        t(status === "yes" ? "attendance.toastYes" : "attendance.toastNo", {
+          title: event.title,
+        }),
         {
           action:
             previous === null
               ? {
-                  label: "Annuler",
+                  // attendance.undo, NEVER common.cancel. Both are "Annuler"
+                  // in French; this one takes an answer back (German:
+                  // "Rückgängig") and the dialogs' one closes without doing
+                  // anything ("Abbrechen").
+                  label: t("attendance.undo"),
                   onClick: () => void undo(recorded),
                 }
               : undefined,
@@ -208,7 +212,7 @@ export function AttendanceControls({
         toast.error(
           thrown instanceof ApiError
             ? translateApiError(thrown).message
-            : "Votre réponse n’a pas pu être enregistrée.",
+            : t("attendance.ownRecordFailed"),
         );
       }
     }
@@ -234,7 +238,7 @@ export function AttendanceControls({
           type="button"
           variant={answer?.status === "yes" ? "default" : "outline"}
           aria-pressed={answer?.status === "yes"}
-          aria-label={`Je viens à ${event.title}`}
+          aria-label={t("attendance.comingToAria", { title: event.title })}
           aria-disabled={busy}
           onClick={() => {
             if (busy) {
@@ -243,14 +247,14 @@ export function AttendanceControls({
             void send("yes");
           }}
         >
-          Oui, je viens
+          {t("attendance.yesComing")}
         </Button>
 
         <Button
           type="button"
           variant={answer?.status === "no" ? "destructive" : "outline"}
           aria-pressed={answer?.status === "no"}
-          aria-label={`Je ne viens pas à ${event.title}`}
+          aria-label={t("attendance.notComingToAria", { title: event.title })}
           aria-disabled={busy}
           onClick={() => {
             if (busy) {
@@ -259,13 +263,13 @@ export function AttendanceControls({
             answerNo();
           }}
         >
-          Non
+          {t("attendance.answer.no")}
         </Button>
       </div>
 
       {inOwed && answer ? (
         <p data-testid="answered-in-place" className="mt-tight text-sm text-ink-muted">
-          <span aria-hidden="true">✓</span> Répondu
+          <span aria-hidden="true">✓</span> {t("attendance.answered")}
         </p>
       ) : null}
 
@@ -274,13 +278,13 @@ export function AttendanceControls({
           able to see what the committee is reading. */}
       {answer?.note ? (
         <p data-testid="attendance-note" className="mt-tight text-sm text-ink-muted">
-          «&nbsp;{answer.note}&nbsp;»
+          {t("attendance.quotedNote", { note: answer.note })}
         </p>
       ) : null}
 
       {answer?.recordedByDirection ? (
         <p data-testid="attendance-by-direction" className="mt-tight text-sm text-ink-muted">
-          Réponse saisie par le comité.
+          {t("attendance.byCommittee")}
         </p>
       ) : null}
 

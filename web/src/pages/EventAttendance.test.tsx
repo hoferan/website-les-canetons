@@ -4,6 +4,7 @@ import { Route, Routes } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
 import { memberAttendanceUpdate } from "../api/generated/endpoints";
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventAttendance } from "./EventAttendance";
@@ -20,13 +21,16 @@ import { EventAttendance } from "./EventAttendance";
  * ancestor to fire from. Route this screen through the real table and that
  * actor starts redirecting to /account instead.
  */
-async function renderChaseList(as: "demo.direction" | "demo.both" = "demo.direction") {
+async function renderChaseList(
+  as: "demo.direction" | "demo.both" = "demo.direction",
+  locale: Locale = "fr",
+) {
   setMockUser(as);
   const result = await renderWithSession(
     <Routes>
       <Route path="/events/:id/attendance" element={<EventAttendance />} />
     </Routes>,
-    { route: "/events/1/attendance" },
+    { route: "/events/1/attendance", locale },
   );
   await screen.findByTestId("chase-counts");
   return result;
@@ -220,4 +224,75 @@ test("the correction is absent from the caller's own answered row (C14)", async 
     within(card).queryByRole("button", { name: "Corriger la réponse de Bastien Both" }),
   ).toBeNull();
   expect(within(card).getByText("Modifiable depuis le planning.")).toBeInTheDocument();
+});
+
+test("the whole chase list reads in German, punctuation included", async () => {
+  // THE ASSERTIONS THAT MATTER HERE ARE THE PUNCTUATION ONES. Every word on
+  // this screen was already in a catalogue after a mechanical extraction; what
+  // a mechanical extraction leaves behind is the French typography the
+  // components composed around it, and that is what breaks on a German page.
+  await renderChaseList("demo.direction", "de-CH");
+
+  expect(screen.getByRole("heading", { name: "Wer kommt?" })).toBeInTheDocument();
+  expect(screen.getByTestId("chase-counts")).toHaveTextContent(
+    "2 Ja · 1 Nein · 1 ohne Rückmeldung",
+  );
+  expect(screen.getByRole("region", { name: "Ohne Rückmeldung" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Rückmeldungen" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Für WhatsApp kopieren" })).toBeInTheDocument();
+
+  const card = cardFor("Camille Committee");
+
+  // TIGHT GUILLEMETS, «so». French sets them « comme ça », and that spacing
+  // was hardcoded in chaseList.ts, so a German reader read a French sentence's
+  // punctuation around their own words. The answer is "Nein", capitalised: it
+  // was `answerLabel(status).toLowerCase()`, which is French grammar applied
+  // to every locale at once.
+  expect(card).toHaveTextContent("Camille Committee — Nein — «Malade»");
+
+  // NO SPACE BEFORE THE COLON, where French takes a no-break one. Same class
+  // of bug as the Tbd separator (#152), found the same way: by reading the
+  // rendered page rather than the diff.
+  expect(card).toHaveTextContent("Register: Trombones");
+
+  expect(cardFor("Nadia Sansconnexion")).toHaveTextContent("Vom Vorstand erfasst.");
+});
+
+test("correcting an answer is German down to the dialog's buttons", async () => {
+  await renderChaseList("demo.direction", "de-CH");
+
+  await userEvent.click(
+    within(cardFor("Camille Committee")).getByRole("button", {
+      name: "Rückmeldung von Camille Committee korrigieren",
+    }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  // The dialog's title IS the button's accessible name, so the dialog confirms
+  // what was clicked instead of paraphrasing it.
+  expect(
+    within(dialog).getByText("Rückmeldung von Camille Committee korrigieren"),
+  ).toBeInTheDocument();
+  expect(within(dialog).getByLabelText("Begründung")).toHaveValue("Malade");
+
+  // ABBRECHEN, NOT RÜCKGÄNGIG. Both are "Annuler" in French, and this is the
+  // one that closes a dialog without doing anything. The toast's undo is the
+  // other word; AttendanceUndo.test.tsx pins that one.
+  expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
+
+  await userEvent.click(within(dialog).getByRole("button", { name: "Ja" }));
+  await userEvent.click(within(dialog).getByRole("button", { name: "Speichern" }));
+
+  await expect
+    .poll(() => screen.getByTestId("chase-counts").textContent)
+    .toContain("3 Ja · 0 Nein");
+});
+
+test("the on-behalf refusal notice is German too (C14)", async () => {
+  await renderChaseList("demo.both", "de-CH");
+
+  const silent = screen.getByRole("region", { name: "Ohne Rückmeldung" });
+
+  expect(within(silent).queryByRole("button", { name: "Bastien Both kommt" })).toBeNull();
+  expect(within(silent).getByText("Antworten Sie über die Planung.")).toBeInTheDocument();
 });

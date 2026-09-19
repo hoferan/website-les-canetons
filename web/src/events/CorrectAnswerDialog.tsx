@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { FormError, FormField } from "../components/FormField";
-import type { TranslatedError } from "../i18n";
+import { t, type TranslatedError } from "../i18n";
 
 /**
  * Correcting an answer the committee already wrote down.
@@ -85,10 +85,11 @@ export function CorrectAnswerDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Corriger la réponse de {name}</AlertDialogTitle>
+          {/* THE SAME STRING AS THE BUTTON THAT OPENED THIS, so the dialog
+              confirms what was clicked rather than paraphrasing it. */}
+          <AlertDialogTitle>{t("attendance.correctFor", { name })}</AlertDialogTitle>
           <AlertDialogDescription>
-            Ce que {name} vous a dit. La raison est facultative, et la réponse restera marquée comme
-            saisie par le comité.
+            {t("attendance.correctDescription", { name })}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -101,7 +102,7 @@ export function CorrectAnswerDialog({
             aria-pressed={status === "yes"}
             onClick={() => choose("yes")}
           >
-            Oui
+            {t("attendance.answer.yes")}
           </Button>
           <Button
             type="button"
@@ -109,13 +110,13 @@ export function CorrectAnswerDialog({
             aria-pressed={status === "no"}
             onClick={() => choose("no")}
           >
-            Non
+            {t("attendance.answer.no")}
           </Button>
         </div>
 
         <FormField
           id="correct-note"
-          label="Raison"
+          label={t("attendance.reason")}
           value={note}
           onChange={setNote}
           as="textarea"
@@ -125,7 +126,7 @@ export function CorrectAnswerDialog({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
             aria-disabled={busy}
@@ -136,7 +137,7 @@ export function CorrectAnswerDialog({
               onConfirm(status, note.trim());
             }}
           >
-            {busy ? "En cours…" : "Enregistrer"}
+            {busy ? t("common.busy") : t("common.save")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
