@@ -1,5 +1,5 @@
 import { useAuthLogout } from "../api/generated/endpoints";
-import { currentLocale } from "../i18n";
+import { currentLocale, t } from "../i18n";
 import { pathInLocale } from "../i18n/locale";
 
 /**
@@ -80,7 +80,7 @@ export function LogoutButton({ onDone }: { onDone: () => void }) {
       aria-disabled={logout.isPending}
       className="focus-ring flex min-h-12 w-full items-center px-4 text-left text-white/80 hover:text-white md:min-h-0 md:w-auto md:px-0 md:py-1 md:text-ink-muted md:hover:text-ink"
     >
-      Déconnexion
+      {t("nav.logout")}
     </button>
   );
 }

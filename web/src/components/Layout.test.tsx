@@ -7,6 +7,7 @@ import { currentMockUser, setMockUser } from "../mocks/handlers";
 import { AppRoutes } from "../routes";
 import { renderWithSession } from "../test/renderWithSession";
 import { EnvRibbon } from "./EnvRibbon";
+import { Layout } from "./Layout";
 
 test.each([
   ["dev", true],
@@ -162,4 +163,21 @@ test("stays reachable for a member held on /account by the password gate", async
 
   await screen.findByRole("heading", { name: "Mon compte" });
   expect(screen.getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
+});
+
+test("the nav renders in German under the German locale", async () => {
+  await renderWithSession(<Layout />, { locale: "de-CH" });
+
+  expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Wo wir spielen" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
+  expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
+});
+
+test("the nav is still French by default", async () => {
+  await renderWithSession(<Layout />);
+
+  expect(screen.getByRole("navigation", { name: "Navigation principale" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 });

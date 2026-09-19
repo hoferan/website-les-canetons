@@ -200,6 +200,41 @@ export const fr = {
   },
 
   /**
+   * The chrome: the nav, its accessible names, and the footer.
+   *
+   * The nav arrays in Layout.tsx carry a `labelKey` into this section rather
+   * than a label. A module-level `label: t(...)` would be frozen in whatever
+   * locale was active when that module was imported — see the initialisation
+   * note in ./index.ts.
+   */
+  nav: {
+    primary: "Navigation principale",
+    menu: "Menu",
+    menuLabel: "Menu de navigation",
+    join: "Nous rejoindre",
+    agenda: "Où nous voir",
+    band: "Les canetons",
+    committee: "Comité",
+    history: "Histoire",
+    contact: "Contact",
+    events: "Événements",
+    members: "Membres",
+    inbox: "Boîte de réception",
+    gallery: "Galerie",
+    login: "Connexion",
+    logout: "Déconnexion",
+    // The inbox badge's accessible name. {{n}} is i18next interpolation,
+    // unlike contactMessages' {name}, which the component replaces by hand.
+    //
+    // `n` RATHER THAN `count`, and that is not a style choice: i18next treats a
+    // `count` option as a PLURAL SELECTOR and looks for `pending_one` /
+    // `pending_other` before falling back. Naming the variable anything else
+    // keeps it a plain interpolation.
+    pending: "{{n}} en attente",
+    rights: "Tous droits réservés.",
+  },
+
+  /**
    * The contact messages archive (/contact-messages).
    *
    * Chrome for the screen the committee reads the public's messages on — not

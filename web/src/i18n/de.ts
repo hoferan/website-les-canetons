@@ -154,6 +154,26 @@ export const de: typeof fr = {
     rangeSeparator: " bis ",
   },
 
+  nav: {
+    primary: "Hauptnavigation",
+    menu: "Menü",
+    menuLabel: "Navigationsmenü",
+    join: "Mitmachen",
+    agenda: "Wo wir spielen",
+    band: "Die Canetons",
+    committee: "Vorstand",
+    history: "Geschichte",
+    contact: "Kontakt",
+    events: "Anlässe",
+    members: "Mitglieder",
+    inbox: "Posteingang",
+    gallery: "Galerie",
+    login: "Anmelden",
+    logout: "Abmelden",
+    pending: "{{n}} ausstehend",
+    rights: "Alle Rechte vorbehalten.",
+  },
+
   contactMessages: {
     heading: "Nachrichten",
     messageWord: "Nachricht",
