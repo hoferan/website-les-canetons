@@ -34,6 +34,14 @@ export const fr = {
   },
 
   errors: {
+    // The sentence translateApiError falls back to when a code or reason has
+    // no copy. It is NOT an API token, so no server-side guard can see it:
+    // web/src/api/http.ts mints `unknown_error` client-side for any non-JSON
+    // error response (a 502, or TEST/QA's HTML Basic-Auth 401). The fallback
+    // itself therefore has to be translatable, or a German reader gets this
+    // sentence in French -- the exact failure the vocabulary guard exists to
+    // prevent, arriving by the one route that guard cannot watch.
+    generic: "Une erreur est survenue. Veuillez réessayer.",
     validation_failed: "Le formulaire contient des erreurs.",
     method_not_allowed: "Méthode non autorisée",
     not_authenticated: "Non authentifié",
@@ -185,6 +193,53 @@ export const fr = {
     description: "Description",
     priceCents: "Prix",
     sortOrder: "Ordre",
+  },
+
+  /**
+   * Words that live inside date helpers rather than on a screen.
+   *
+   * `rangeSeparator` joins the two days of a weekend event in
+   * formatEventDateRange. It was a hard-coded " au " inside web/src/lib/date.ts
+   * — a translatable string hiding in a formatter, which is exactly where one
+   * gets missed.
+   */
+  dates: {
+    rangeSeparator: " au ",
+  },
+
+  /**
+   * The chrome: the nav, its accessible names, and the footer.
+   *
+   * The nav arrays in Layout.tsx carry a `labelKey` into this section rather
+   * than a label. A module-level `label: t(...)` would be frozen in whatever
+   * locale was active when that module was imported — see the initialisation
+   * note in ./index.ts.
+   */
+  nav: {
+    primary: "Navigation principale",
+    menu: "Menu",
+    menuLabel: "Menu de navigation",
+    join: "Nous rejoindre",
+    agenda: "Où nous voir",
+    band: "Les canetons",
+    committee: "Comité",
+    history: "Histoire",
+    contact: "Contact",
+    events: "Événements",
+    members: "Membres",
+    inbox: "Boîte de réception",
+    gallery: "Galerie",
+    login: "Connexion",
+    logout: "Déconnexion",
+    // The inbox badge's accessible name. {{n}} is i18next interpolation,
+    // unlike contactMessages' {name}, which the component replaces by hand.
+    //
+    // `n` RATHER THAN `count`, and that is not a style choice: i18next treats a
+    // `count` option as a PLURAL SELECTOR and looks for `pending_one` /
+    // `pending_other` before falling back. Naming the variable anything else
+    // keeps it a plain interpolation.
+    pending: "{{n}} en attente",
+    rights: "Tous droits réservés.",
   },
 
   /**

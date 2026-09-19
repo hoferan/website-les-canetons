@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
+import { setLocale } from "./i18n";
 import { resetMockState } from "./mocks/handlers";
 import { server } from "./mocks/node";
 
@@ -38,7 +39,7 @@ if (typeof window !== "undefined") {
 // timeout much later instead of a clear failure here.
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
-afterEach(() => {
+afterEach(async () => {
   // Testing Library only registers its own auto-cleanup when the test
   // framework's globals are exposed. This project imports test/expect
   // explicitly (no `globals: true`), so without this every render stays in
@@ -51,6 +52,16 @@ afterEach(() => {
   // Forget the second and a test that logs in leaks into the next one.
   server.resetHandlers();
   resetMockState();
+
+  // A test that rendered in German otherwise leaks that locale into the next
+  // one, which then fails only when the whole file runs and passes in
+  // isolation — the same shape of false flakiness vi.restoreAllMocks() below
+  // exists to prevent.
+  //
+  // AWAITED, not fired and forgotten: changeLanguage returns a promise, and an
+  // unawaited one can settle after the next test's first render, which is the
+  // very race this reset exists to close.
+  await setLocale("fr");
 
   // Spies on globals otherwise survive the test that installed them, and so do
   // their call counts. A later test asserting toHaveBeenCalledTimes(1) then

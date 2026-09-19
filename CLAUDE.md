@@ -338,7 +338,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
     public/assets/icons/  favicons + PWA manifest -> /assets/icons/*
     src/
       main.tsx            boot: config + session gate, then the router
-      routes.tsx          the route table — French URLs, unchanged
+      routes.tsx          the route table — English URLs; /de/* is the German mount
       api/                GENERATED client + hooks, and the http.ts mutator
       mocks/              MSW handlers for the mocked backend
       components/         layout, nav, footer, env ribbon, guards
@@ -713,7 +713,10 @@ repair it.
   `api/routes/api.php`.
 - Regenerate the client (`npm run openapi && npm run generate:api`) whenever an
   API response shape changes, and commit the result.
-- Give every new API error token French copy in `web/src/i18n/fr.ts`.
+- Give every new API error token copy in **both** catalogues —
+  `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`. `de.ts` is typed
+  `typeof fr`, so a missing key fails `npm run typecheck`, and
+  `ApiErrorVocabularyTest` fails `npm run test:api` until both carry it.
 - Put `#[Emits('...')]` on any action that refuses with a code no middleware
   implies — a conflict a controller raises, a refusal from `App\Support\*`. The
   status comes from `App\Support\ErrorVocabulary`, so the action names WHAT it

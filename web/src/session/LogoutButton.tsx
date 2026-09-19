@@ -1,4 +1,6 @@
 import { useAuthLogout } from "../api/generated/endpoints";
+import { currentLocale, t } from "../i18n";
+import { pathInLocale } from "../i18n/locale";
 
 /**
  * The way out.
@@ -78,21 +80,36 @@ export function LogoutButton({ onDone }: { onDone: () => void }) {
       aria-disabled={logout.isPending}
       className="focus-ring flex min-h-12 w-full items-center px-4 text-left text-white/80 hover:text-white md:min-h-0 md:w-auto md:px-0 md:py-1 md:text-ink-muted md:hover:text-ink"
     >
-      Déconnexion
+      {t("nav.logout")}
     </button>
   );
 }
 
 /**
- * Closes the phone menu, then hands the browser back to the public site.
+ * Where logging out lands: the CURRENT LOCALE'S root, not "/".
  *
- * A NAMED FUNCTION SO A TEST CAN WATCH IT. jsdom implements no navigation, so
- * `location.assign` there logs "Not implemented" and does nothing; spying on
- * it is how Layout.test.tsx asserts that logging out actually leaves, rather
- * than asserting a landing page jsdom can never reach. The real landing is
- * checked in a browser.
+ * EXPORTED SO IT CAN BE TESTED AT ALL. The navigation below cannot be: this is
+ * a real full page load, and window.location is non-configurable in this jsdom
+ * setup, so a spy on .assign throws "Cannot redefine property: assign" instead
+ * of recording the call. the docblock above `ends the session on the server` in web/src/components/Layout.test.tsx documents that, having hit it,
+ * and proves the server half only. Splitting the destination out gives the
+ * decision a unit test and leaves the landing to a real browser, which is
+ * where it was always checked.
+ *
+ * (An earlier version of this file's docblock claimed Layout.test.tsx spied on
+ * assign. It never did, and never could.)
+ *
+ * THE LOCALE MATTERS because this escapes the router's basename entirely — the
+ * one place in web/src/ that does. A literal "/" would drop a German member on
+ * the French home page, silently changing their language as a side effect of
+ * logging out.
  */
+export function logoutDestination(): string {
+  return pathInLocale("/", currentLocale());
+}
+
+/** Closes the phone menu, then hands the browser back to the public site. */
 function leave(onDone: () => void): void {
   onDone();
-  window.location.assign("/");
+  window.location.assign(logoutDestination());
 }

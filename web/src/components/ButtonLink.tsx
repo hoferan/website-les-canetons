@@ -19,6 +19,11 @@ import { Button } from "@/components/ui/button";
  * `external` exists so an outbound link cannot be added without rel="noreferrer":
  * target="_blank" without it hands the destination a window.opener it can
  * navigate.
+ *
+ * THE `external` BRANCH EMITS A RAW <a href>, which the router never sees — so
+ * it does NOT get the locale basename. No call site passes it an app-internal
+ * path today, and none should: an internal destination belongs in the <Link>
+ * branch, or it silently leaves the visitor's locale behind.
  */
 export function ButtonLink({
   to,

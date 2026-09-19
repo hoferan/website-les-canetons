@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 
 import { useInboxSummary } from "../api/generated/endpoints";
+import { type TranslationKey, t } from "../i18n";
 import { LogoutButton } from "../session/LogoutButton";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
@@ -22,13 +23,13 @@ import { Toaster } from "./ui/sonner";
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
  */
-const NAV: Array<{ to: string; label: string }> = [
-  { to: "/join", label: "Nous rejoindre" },
-  { to: "/agenda", label: "Où nous voir" },
-  { to: "/band", label: "Les canetons" },
-  { to: "/committee", label: "Comité" },
-  { to: "/history", label: "Histoire" },
-  { to: "/contact", label: "Contact" },
+const NAV: Array<{ to: string; labelKey: TranslationKey }> = [
+  { to: "/join", labelKey: "nav.join" },
+  { to: "/agenda", labelKey: "nav.agenda" },
+  { to: "/band", labelKey: "nav.band" },
+  { to: "/committee", labelKey: "nav.committee" },
+  { to: "/history", labelKey: "nav.history" },
+  { to: "/contact", labelKey: "nav.contact" },
 ];
 
 /**
@@ -42,9 +43,9 @@ const NAV: Array<{ to: string; label: string }> = [
  * Gated on a PERMISSION, never a role name — the same rule the middleware and
  * the route guards follow.
  */
-const DIRECTION_NAV: Array<{ to: string; label: string; permission: string }> = [
-  { to: "/members", label: "Membres", permission: "members.manage" },
-  { to: "/inbox", label: "Boîte de réception", permission: "messages.view" },
+const DIRECTION_NAV: Array<{ to: string; labelKey: TranslationKey; permission: string }> = [
+  { to: "/members", labelKey: "nav.members", permission: "members.manage" },
+  { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view" },
 ];
 
 /**
@@ -60,7 +61,9 @@ const DIRECTION_NAV: Array<{ to: string; label: string; permission: string }> = 
  * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
  * item is added.
  */
-const MEMBER_NAV: Array<{ to: string; label: string }> = [{ to: "/events", label: "Événements" }];
+const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
+  { to: "/events", labelKey: "nav.events" },
+];
 
 /**
  * One nav row. On a phone this is a 48px full-width row on the dark stage
@@ -96,13 +99,13 @@ const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
  */
 function NavItem({
   to,
-  label,
+  labelKey,
   active,
   close,
   badge,
 }: {
   to: string;
-  label: string;
+  labelKey: TranslationKey;
   active: string;
   close: () => void;
   /** Trailing content, e.g. the inbox's unread count — absent for every
@@ -117,7 +120,7 @@ function NavItem({
         aria-current={active === to ? "page" : undefined}
         className={`${NAV_ROW} ${active === to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
       >
-        {label}
+        {t(labelKey)}
         {badge}
       </Link>
     </li>
@@ -185,20 +188,17 @@ export function Layout() {
             elements on / and a query has nothing to scope to. Two navs without
             names are also indistinguishable to a screen-reader user moving by
             landmark. */}
-        <nav
-          aria-label="Navigation principale"
-          className="border-t border-white/10 bg-panel text-ink"
-        >
+        <nav aria-label={t("nav.primary")} className="border-t border-white/10 bg-panel text-ink">
           <button
             type="button"
-            aria-label="Menu de navigation"
+            aria-label={t("nav.menuLabel")}
             aria-expanded={open}
             aria-controls="nav-menu"
             onClick={() => setOpen((wasOpen) => !wasOpen)}
             className="focus-ring flex min-h-touch items-center gap-2 px-4 font-semibold text-ink md:hidden"
           >
             <Menu className="h-6 w-6" />
-            Menu
+            {t("nav.menu")}
           </button>
 
           <ul
@@ -209,7 +209,7 @@ export function Layout() {
               <NavItem
                 key={item.to}
                 to={item.to}
-                label={item.label}
+                labelKey={item.labelKey}
                 active={active}
                 close={close}
               />
@@ -221,7 +221,7 @@ export function Layout() {
                   <NavItem
                     key={item.to}
                     to={item.to}
-                    label={item.label}
+                    labelKey={item.labelKey}
                     active={active}
                     close={close}
                   />
@@ -232,7 +232,7 @@ export function Layout() {
               <NavItem
                 key={item.to}
                 to={item.to}
-                label={item.label}
+                labelKey={item.labelKey}
                 active={active}
                 close={close}
                 // Special-cased on `to` rather than a field on every
@@ -243,7 +243,7 @@ export function Layout() {
                   item.to === "/inbox" && inboxTotal > 0 ? (
                     <span
                       data-testid="inbox-badge"
-                      aria-label={`${inboxTotal} en attente`}
+                      aria-label={t("nav.pending", { n: inboxTotal })}
                       className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
                     >
                       {inboxTotal}
@@ -261,7 +261,7 @@ export function Layout() {
                 rel="noreferrer"
                 className={`${NAV_ROW} ${NAV_ROW_IDLE}`}
               >
-                Galerie <ExternalLink className="inline h-4 w-4 align-middle" />
+                {t("nav.gallery")} <ExternalLink className="inline h-4 w-4 align-middle" />
               </a>
             </li>
 
@@ -289,7 +289,7 @@ export function Layout() {
                 onClick={() => setOpen(false)}
                 className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
               >
-                {user ? user.username : "Connexion"}
+                {user ? user.username : t("nav.login")}
               </NavLink>
             </li>
 
@@ -316,7 +316,7 @@ export function Layout() {
           repeat in the chrome of every page. That placement is /accueil. */}
       <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
         <p className="mx-auto max-w-shell px-4">
-          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. Tous droits réservés.
+          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. {t("nav.rights")}
         </p>
       </footer>
 

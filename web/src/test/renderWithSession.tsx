@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 
+import { setLocale } from "../i18n";
+import { type Locale } from "../i18n/locale";
 import { SessionProvider } from "../session/SessionProvider";
 
 /**
@@ -19,8 +21,14 @@ import { SessionProvider } from "../session/SessionProvider";
  */
 export async function renderWithSession(
   ui: ReactNode,
-  { route = "/", state }: { route?: string; state?: unknown } = {},
+  { route = "/", state, locale = "fr" }: { route?: string; state?: unknown; locale?: Locale } = {},
 ) {
+  // DEFAULTS TO FRENCH so that every existing test renders exactly what it
+  // rendered before this parameter existed. Awaited rather than fired: i18next
+  // resolves synchronously with preloaded resources, but changeLanguage is
+  // promise-returning and an unawaited one would race the first render.
+  await setLocale(locale);
+
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
