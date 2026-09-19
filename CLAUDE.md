@@ -338,7 +338,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
     public/assets/icons/  favicons + PWA manifest -> /assets/icons/*
     src/
       main.tsx            boot: config + session gate, then the router
-      routes.tsx          the route table — French URLs, unchanged
+      routes.tsx          the route table — English URLs; /de/* is the German mount
       api/                GENERATED client + hooks, and the http.ts mutator
       mocks/              MSW handlers for the mocked backend
       components/         layout, nav, footer, env ribbon, guards
