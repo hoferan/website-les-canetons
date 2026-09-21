@@ -8,6 +8,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+import { t } from "../i18n";
+
 /**
  * Shows a newly-issued password exactly once (§4.4).
  *
@@ -47,11 +49,8 @@ export function GeneratedPasswordDialog({
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Mot de passe de {memberName}</AlertDialogTitle>
-          <AlertDialogDescription>
-            Notez-le ou lisez-le à la personne maintenant&nbsp;: il ne sera plus jamais affiché.
-            Elle devra le remplacer à sa première connexion.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{t("members.generatedTitle", { name: memberName })}</AlertDialogTitle>
+          <AlertDialogDescription>{t("members.generatedDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
 
         <p
@@ -64,7 +63,7 @@ export function GeneratedPasswordDialog({
         <AlertDialogFooter>
           {/* The Radix action, which closes the dialog — correct here: there is
               nothing that can fail, and nothing to read afterwards. */}
-          <AlertDialogAction onClick={onClose}>J’ai noté le mot de passe</AlertDialogAction>
+          <AlertDialogAction onClick={onClose}>{t("members.generatedAck")}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

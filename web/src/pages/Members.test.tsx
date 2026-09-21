@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
 import { Members } from "./Members";
@@ -10,9 +11,9 @@ import { Members } from "./Members";
  * Every assertion here depends on the roster having arrived, so the helper
  * waits for it rather than each test remembering to.
  */
-async function renderRoster() {
+async function renderRoster(locale: Locale = "fr") {
   setMockUser("demo.direction");
-  const result = await renderWithSession(<Members />, { route: "/members" });
+  const result = await renderWithSession(<Members />, { route: "/members", locale });
   await screen.findAllByText("Sansconnexion");
   return result;
 }
@@ -426,4 +427,109 @@ test("the terse pill is announced with a name that stands on its own", async () 
   await renderRoster();
 
   expect(within(rowFor("Both")).getByLabelText("Mot de passe provisoire")).toBeInTheDocument();
+});
+
+/* ---------------------------------------------------------------------------
+ * The roster in German (#156)
+ * -------------------------------------------------------------------------- */
+
+test("the card's labels are German, and their colons lose the French space", async () => {
+  await renderRoster("de-CH");
+
+  expect(screen.getByRole("heading", { level: 1, name: "Mitglieder" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Person hinzufügen" })).toBeInTheDocument();
+
+  // FOUND BY READING THE RENDERED PAGE, not the diff: this said "5 membres"
+  // beside a German heading for the whole first pass. It was
+  // `rosterCount > 1 ? "s" : ""` — the French rule, which is right in French
+  // ("0 membre") and wrong in German ("0 Mitglieder"). No accented character
+  // in it, so no grep over the file would have found it either.
+  expect(screen.getByTestId("roster-count")).toHaveTextContent("5 Mitglieder");
+
+  const card = rowFor("Player");
+  // "Benutzername:", not "Benutzername :". These were `Identifiant&nbsp;:`
+  // composed in JSX, which is French typography reaching a German card — the
+  // same bug as #152's Tbd separator, found in a fourth place.
+  expect(card).toHaveTextContent("Benutzername: demo.player");
+  expect(card).toHaveTextContent("Register: Cloches");
+  // Perrine holds no role, which is also the seeded case for "Keine Rolle".
+  expect(card).toHaveTextContent("Rollen: Keine Rolle");
+});
+
+test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {
+  // The property Members.tsx's MemberActions docblock demands: a screen-reader
+  // user must hear which row they are on, not the twelfth bare "Löschen" on
+  // the page. Translating the three buttons is exactly where that gets lost,
+  // because the shortest German word is the tempting one.
+  //
+  // MUTATION TEST: swap any of these for a bare t("common.delete") and the
+  // matching query below finds three buttons instead of one.
+  await renderRoster("de-CH");
+
+  const card = within(rowFor("Player"));
+
+  expect(card.getByRole("button", { name: "Perrine Player bearbeiten" })).toBeInTheDocument();
+  expect(
+    card.getByRole("button", { name: "Passwort von Perrine Player zurücksetzen" }),
+  ).toBeInTheDocument();
+  expect(card.getByRole("button", { name: "Perrine Player löschen" })).toBeInTheDocument();
+});
+
+test("the delete dialog reuses the button's own key for its title", async () => {
+  await renderRoster("de-CH");
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Perrine Player löschen" }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  // ONE KEY, TWO PLACES — the button's accessible name and the dialog's title
+  // are members.deleteTitle, so they cannot come to disagree.
+  expect(dialog).toHaveAccessibleName("Perrine Player löschen");
+
+  // The typed confirmation, from common.typeToConfirm (#167) — its first
+  // German outing, since the planning's delete asks for no phrase.
+  expect(
+    within(dialog).getByLabelText("Tippen Sie «Perrine Player», um zu bestätigen"),
+  ).toBeInTheDocument();
+
+  // "Diese Person", not the name: the title already says who, and saying it
+  // twice in one dialog reads worse in both languages. In French the same
+  // sentence additionally avoids a participle agreeing over the person (#91)
+  // — see the two tests above, which are unchanged.
+  const description = descriptionOf(dialog);
+  expect(description).toContain("Diese Person wird aus der Liste entfernt");
+  expect(description).not.toContain("Perrine");
+});
+
+test("the reset dialog and the one-time password reveal are German", async () => {
+  await renderRoster("de-CH");
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", {
+      name: "Passwort von Perrine Player zurücksetzen",
+    }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveAccessibleName("Passwort von Perrine Player zurücksetzen");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Zurücksetzen" }));
+
+  const reveal = await screen.findByRole("alertdialog");
+  expect(reveal).toHaveAccessibleName("Passwort von Perrine Player");
+  expect(
+    within(reveal).getByRole("button", { name: "Ich habe das Passwort notiert" }),
+  ).toBeInTheDocument();
+});
+
+test("the login pills render on the card in German", async () => {
+  await renderRoster("de-CH");
+
+  // Nadia's fixture has never logged in, which is the state the pills exist
+  // to make the committee look at (#94).
+  const card = rowFor("Sansconnexion");
+  expect(within(card).getByTestId("member-login-pill-never-used")).toHaveTextContent("Nie benutzt");
+  expect(within(card).getByTestId("member-login-pill-never-used")).toHaveAccessibleName(
+    "Konto nie benutzt",
+  );
 });

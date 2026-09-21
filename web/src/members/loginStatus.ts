@@ -1,4 +1,5 @@
 import type { MemberResource } from "../api/generated/model";
+import { t } from "../i18n";
 import { formatLastLogin } from "../lib/date";
 
 /**
@@ -59,16 +60,16 @@ export function loginState(member: LoginStatusFields): LoginState {
   if (member.lastLoginAt === null) {
     pills.push({
       key: "never-used",
-      label: "Jamais utilisé",
-      accessibleName: "Compte jamais utilisé",
+      label: t("members.neverUsed"),
+      accessibleName: t("members.neverUsedName"),
     });
   }
 
   if (member.mustChangePassword) {
     pills.push({
       key: "provisional",
-      label: "Provisoire",
-      accessibleName: "Mot de passe provisoire",
+      label: t("members.provisional"),
+      accessibleName: t("members.provisionalName"),
     });
   }
 
@@ -77,6 +78,8 @@ export function loginState(member: LoginStatusFields): LoginState {
     lastLogin:
       member.lastLoginAt === null
         ? null
-        : `Dernière connexion le ${formatLastLogin(member.lastLoginAt)}`,
+        : // formatLastLogin is already locale-aware (#151); the preposition
+          // around it is not, so the whole sentence comes from the catalogue.
+          t("members.lastLogin", { date: formatLastLogin(member.lastLoginAt) }),
   };
 }

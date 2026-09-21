@@ -1,6 +1,11 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
 
+import { setLocale } from "../i18n";
 import { loginState } from "./loginStatus";
+
+afterEach(async () => {
+  await setLocale("fr");
+});
 
 // The roster's job here is to make the committee LOOK at the rows it has to do
 // something about (#94). So the two facts split by what they are for: a state
@@ -73,4 +78,36 @@ test("no pill uses the participle that would agree with the member", () => {
       expect(pill.accessibleName).not.toMatch(/connecté/i);
     }
   }
+});
+
+test("the pills and the date are German, and the date keeps its own preposition", async () => {
+  // `formatLastLogin` was made locale-aware in #151; the words AROUND it were
+  // not. "Dernière connexion le X" against "Letzte Anmeldung am X" — the
+  // preposition differs and it is not part of the date, so the whole sentence
+  // comes from the catalogue rather than being glued together here.
+  //
+  // The French label also avoids a participle that would have to agree with
+  // the member ("jamais utilisé" agrees with `le compte`). German has no such
+  // constraint — see the note in fr.ts, which exists so nobody "simplifies"
+  // the French to match the German.
+  await setLocale("de-CH");
+
+  const state = loginState({ mustChangePassword: true, lastLoginAt: "2026-09-01T19:30:00+02:00" });
+
+  expect(state.pills.map((pill) => pill.label)).toEqual(["Provisorisch"]);
+  expect(state.pills.map((pill) => pill.accessibleName)).toEqual(["Provisorisches Passwort"]);
+  expect(state.lastLogin).toBe("Letzte Anmeldung am 1. September 2026");
+});
+
+test("a never-used account raises both pills in German", async () => {
+  await setLocale("de-CH");
+
+  const state = loginState({ mustChangePassword: true, lastLoginAt: null });
+
+  expect(state.pills.map((pill) => pill.label)).toEqual(["Nie benutzt", "Provisorisch"]);
+  expect(state.pills.map((pill) => pill.accessibleName)).toEqual([
+    "Konto nie benutzt",
+    "Provisorisches Passwort",
+  ]);
+  expect(state.lastLogin).toBeNull();
 });

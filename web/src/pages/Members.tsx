@@ -27,6 +27,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { t } from "../i18n";
 import { roleLabel } from "../i18n";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
@@ -66,8 +67,8 @@ export function Members() {
   const roles = useRoleIndex();
 
   const queryClient = useQueryClient();
-  const form = useApiFormError("L’enregistrement a échoué.");
-  const destructive = useApiFormError("L’action a échoué.");
+  const form = useApiFormError(t("members.saveFailed"));
+  const destructive = useApiFormError(t("members.actionFailed"));
 
   const create = useMemberStore();
   const issuePassword = useMemberPasswordReset();
@@ -161,12 +162,12 @@ export function Members() {
       if (response.status !== 200) {
         // Unreachable: the mutator throws on every non-2xx. The declared union
         // says otherwise and tsc is right that it does.
-        setReadError("Cette personne n’a pas pu être chargée.");
+        setReadError(t("members.loadFailed"));
         return null;
       }
       return { member: response.data, etag: entityTagOf(response) };
     } catch {
-      setReadError("Cette personne n’a pas pu être chargée. Rechargez la page.");
+      setReadError(t("members.loadFailedReload"));
       return null;
     } finally {
       setOpening(null);
@@ -213,7 +214,7 @@ export function Members() {
         if (editing.etag === null) {
           // No tag means the write would be refused with 428, which reads as a
           // broken screen. Saying so and stopping is the honest answer.
-          setReadError("Cette personne n’a pas pu être chargée. Rechargez la page.");
+          setReadError(t("members.loadFailedReload"));
           return;
         }
 
@@ -232,7 +233,7 @@ export function Members() {
           // for exactly this.
           const chained = entityTagOf(saved);
           if (chained === null) {
-            setReadError("L’enregistrement est incomplet : rechargez la page.");
+            setReadError(t("members.incompleteSave"));
             return;
           }
           await replaceRoles.mutateAsync({
@@ -312,14 +313,14 @@ export function Members() {
   return (
     <PageSection>
       <div className="flex flex-wrap items-baseline gap-tight">
-        <h1 className="font-display text-4xl">Membres</h1>
+        <h1 className="font-display text-4xl">{t("members.heading")}</h1>
         {/* Straight off `meta.total`, which counts the roster on the SERVER
             rather than counting the rows that happened to arrive. Today they
             are the same number; the point is that they stay the same number
             the day this list is ever cut short. */}
         {rosterCount === null ? null : (
           <span className="text-ink-muted" data-testid="roster-count">
-            {rosterCount} membre{rosterCount > 1 ? "s" : ""}
+            {t("members.count", { count: rosterCount })}
           </span>
         )}
       </div>
@@ -341,7 +342,7 @@ export function Members() {
         />
       ) : (
         <Button className="mt-block" onClick={openCreate}>
-          Ajouter une personne
+          {t("members.add")}
         </Button>
       )}
 
@@ -351,10 +352,10 @@ export function Members() {
         </p>
       ) : null}
 
-      {roster.isPending ? <p className="mt-block">Chargement…</p> : null}
+      {roster.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
       {roster.isError ? (
         <p role="alert" className="mt-block text-danger">
-          La liste des membres n’a pas pu être chargée.
+          {t("members.rosterLoadFailed")}
         </p>
       ) : null}
 
@@ -383,9 +384,20 @@ export function Members() {
             <p className="font-semibold">
               {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
             </p>
-            <p className="text-sm text-ink-muted">Identifiant&nbsp;: {member.username}</p>
-            <p className="text-sm">Pupitre&nbsp;: {member.sectionName ?? "Aucun pupitre"}</p>
-            <p className="text-sm">Rôles&nbsp;: {rolesOf(member, labelForRole)}</p>
+            {/* THE LABEL AND ITS COLON ARE ONE STRING. French spaces a colon
+                and German does not, so "Pupitre" plus ": " composed here is
+                French typography on a German card (#152, #155, #167). */}
+            <p className="text-sm text-ink-muted">
+              {t("members.usernameLabel", { value: member.username })}
+            </p>
+            <p className="text-sm">
+              {t("members.sectionLabel", {
+                value: member.sectionName ?? t("members.noSection"),
+              })}
+            </p>
+            <p className="text-sm">
+              {t("members.rolesLabel", { value: rolesOf(member, labelForRole) })}
+            </p>
             {/* NO `Label : value` PREFIX, unlike every field above it, and
                 that is not an oversight. The card labels each field because
                 the real <th> went when the card became the only layout
@@ -408,7 +420,9 @@ export function Members() {
 
       <ConfirmByTypingName
         open={deleting !== null}
-        title={`Supprimer ${deleting?.member.firstName} ${deleting?.member.lastName}`}
+        title={t("members.deleteTitle", {
+          name: `${deleting?.member.firstName} ${deleting?.member.lastName}`,
+        })}
         // NAMES THE DAMAGE (§4), and now that attendance exists it names that
         // too: deleting a member cascades their answers, and the committee
         // should know the planning loses them before they press this.
@@ -431,8 +445,8 @@ export function Members() {
         // participle agreeing over whoever it named (#91). Agreeing with
         // "personne" is right for everybody, and costs the roster no gender
         // field the band has no reason to hold.
-        description="Cette personne sera retirée de la liste et perdra immédiatement son accès au site. Ses réponses de présence seront effacées du planning. Cette action est définitive."
-        confirmLabel="Supprimer"
+        description={t("members.deleteDescription")}
+        confirmLabel={t("common.delete")}
         confirmPhrase={
           deleting ? `${deleting.member.firstName} ${deleting.member.lastName}` : undefined
         }
@@ -447,15 +461,17 @@ export function Members() {
 
       <ConfirmByTypingName
         open={resetting !== null}
-        title={`Réinitialiser le mot de passe de ${resetting?.firstName} ${resetting?.lastName}`}
+        title={t("members.resetTitle", {
+          name: `${resetting?.firstName} ${resetting?.lastName}`,
+        })}
         // No typed phrase: this is disruptive rather than irreversible — it can
         // simply be done again — so it names the damage and asks for a press.
         //
         // The title names who; this sentence says "cette personne" rather than
         // interpolating the first name, for the agreement reason given on the
         // delete dialog above (#91).
-        description="Un nouveau mot de passe sera généré et affiché une seule fois. Cette personne sera déconnectée partout et devra le changer à la prochaine connexion."
-        confirmLabel="Réinitialiser"
+        description={t("members.resetDescription")}
+        confirmLabel={t("members.reset")}
         busy={issuePassword.isPending}
         error={destructive.error}
         onConfirm={confirmIssuePassword}
@@ -477,7 +493,7 @@ export function Members() {
 /** The roles a person holds, in French, or the fact that they hold none. */
 function rolesOf(member: MemberResource, labelForRole: (id: number) => string): string {
   return member.roleIds.length === 0
-    ? "Aucun rôle"
+    ? t("members.noRoles")
     : member.roleIds.map(labelForRole).filter(Boolean).join(", ");
 }
 
@@ -513,16 +529,18 @@ function MemberActions({
   return (
     <div className="flex flex-wrap gap-tight">
       <Button variant="outline" size="sm" disabled={busy} onClick={() => void onEdit(member)}>
-        <span aria-hidden="true">Modifier</span>
-        <span className="sr-only">Modifier {name}</span>
+        <span aria-hidden="true">{t("common.edit")}</span>
+        <span className="sr-only">{t("members.editPerson", { name })}</span>
       </Button>
       <Button variant="outline" size="sm" onClick={() => onResetPassword(member)}>
-        <span aria-hidden="true">Mot de passe</span>
-        <span className="sr-only">Réinitialiser le mot de passe de {name}</span>
+        <span aria-hidden="true">{t("members.password")}</span>
+        {/* THE SAME KEY AS THE DIALOG THIS OPENS, so the button's accessible
+            name and the dialog's title cannot come to disagree. */}
+        <span className="sr-only">{t("members.resetTitle", { name })}</span>
       </Button>
       <Button variant="destructive" size="sm" disabled={busy} onClick={() => void onDelete(member)}>
-        <span aria-hidden="true">Supprimer</span>
-        <span className="sr-only">Supprimer {name}</span>
+        <span aria-hidden="true">{t("common.delete")}</span>
+        <span className="sr-only">{t("members.deleteTitle", { name })}</span>
       </Button>
     </div>
   );
