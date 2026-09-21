@@ -88,7 +88,7 @@ alike.
 
 Root, Trigger, Portal, Content, Item, Separator. Nothing else. No submenus, no
 checkbox or radio items, no groups, no labels: each is a surface that has to
-keep working across four screens and two catalogues, and none of them is
+keep working across three screens and two catalogues, and none of them is
 needed. A later screen that wants one adds it then.
 
 ## 2. `RowActions`, so the behaviour is written once
@@ -111,8 +111,8 @@ above the item. It does **not** render a filled block — see §5 for why the
 roster's `variant="destructive"` goes. The flag exists so that one decision
 lives in one place rather than at three call sites.
 
-Four screens compose with it, so the keyboard handling, the focus rules and the
-44px floor exist in one file rather than four. `MemberActions` was extracted for
+Three screens compose with it, so the keyboard handling, the focus rules and
+the 44px floor exist in one file rather than three. `MemberActions` was extracted for
 this reason already and becomes a caller.
 
 `EventCard` does not change. It still takes `actions` as a `ReactNode` and
@@ -335,7 +335,7 @@ inside `card`, and its role is `menuitem` rather than `button` or `link`.
 
 ### The keyboard contract
 
-§3 calls this the real work and then names no key, which is a gap. Radix
+Nothing in this spec has named a key so far, which is a gap. Radix
 supplies all of it; the tests pin it, because "Radix does it" stops being
 true the moment somebody adds a handler:
 
