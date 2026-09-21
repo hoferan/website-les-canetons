@@ -551,6 +551,7 @@ export const fr = {
     whoComingAria: "Qui vient à {{title}}",
     editAria: "Modifier {{title}}",
     deleteAria: "Supprimer {{title}}",
+    moreActionsAria: "Autres actions pour {{title}}",
 
     deleteTitle: "Supprimer «\u00a0{{title}}\u00a0»\u00a0?",
     deleteDescription:

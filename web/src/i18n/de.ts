@@ -336,6 +336,7 @@ export const de: typeof fr = {
     whoComingAria: "Wer kommt zu {{title}}",
     editAria: "{{title}} bearbeiten",
     deleteAria: "{{title}} löschen",
+    moreActionsAria: "Weitere Aktionen zu {{title}}",
 
     deleteTitle: "«{{title}}» löschen?",
     deleteDescription:
