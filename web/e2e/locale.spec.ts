@@ -111,3 +111,53 @@ test("the session survives the switch", async ({ page }) => {
   await expect(page).toHaveURL(/\/de\/events$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Planung");
 });
+
+/**
+ * The shell's own metadata, corrected at boot (#172).
+ *
+ * IN A BROWSER RATHER THAN jsdom because the thing being tested is the static
+ * document — what Apache served before any of our code ran — being patched on
+ * top of. The component suite mounts the tags itself, so it can prove the
+ * function and not the wiring.
+ *
+ * THE TITLE IS NOT ASSERTED AS *DIFFERENT*, deliberately. It is identical in
+ * both catalogues: "Les Canetons de Fribourg" is the band's name and
+ * "Guggenmusik" is already German, so there is nothing in it left to render.
+ * See the note at `meta` in web/src/i18n/fr.ts.
+ */
+test("a German page carries German metadata and the German manifest", async ({ page }) => {
+  await page.goto("/de/agenda");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Wo Sie uns sehen");
+
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    /Kinder-Guggenmusik aus Freiburg/,
+  );
+
+  // What an installed app launches from. Without this it always opened at "/",
+  // putting a German member back into French every single time.
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/assets/icons/manifest.de.json",
+  );
+  // The attribute that must survive the swap: without it the manifest fetch
+  // fails behind TEST/QA Basic Auth. Previously fixed bug.
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "crossorigin",
+    "use-credentials",
+  );
+});
+
+test("a French page is left exactly as the shell shipped it", async ({ page }) => {
+  await page.goto("/agenda");
+
+  await expect(page).toHaveTitle("Guggenmusik Les Canetons de Fribourg");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+    "content",
+    /La guggenmusik des enfants de Fribourg/,
+  );
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/assets/icons/manifest.json",
+  );
+});

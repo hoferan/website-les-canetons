@@ -28,7 +28,22 @@
          crawler gets 401 there and never renders a preview at all.
 
          The card is generated from the same lockup as the header, at the
-         1200x630 every major crawler crops to. -->
+         1200x630 every major crawler crops to.
+
+         THESE TAGS STAY FRENCH ON A GERMAN PAGE, DELIBERATELY. Their readers —
+         WhatsApp, Facebook, Signal — execute no JavaScript, so the runtime
+         correction in src/i18n/documentMeta.ts cannot reach them; rewriting
+         them there would read as fixed without being fixed. Serving them right
+         needs a second shell and an .htaccess rule on three servers, which
+         #172 weighed and declined for a band this size. og:locale:alternate
+         below is the honest static signal in exchange: German exists, and this
+         document is not it.
+
+         THE SAME GOES FOR <html lang="fr"> ABOVE AND THE <noscript> BELOW.
+         main.tsx corrects the lang attribute for anything that runs
+         JavaScript, and nothing can correct either for anything that does
+         not. <title> and the description are a different case and ARE
+         corrected; see documentMeta.ts for which is which and why. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Les Canetons de Fribourg" />
     <meta property="og:title" content="Guggenmusik Les Canetons de Fribourg" />
@@ -42,6 +57,7 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Les Canetons de Fribourg — Guggenmusik" />
     <meta property="og:locale" content="fr_CH" />
+    <meta property="og:locale:alternate" content="de_CH" />
     <meta name="twitter:card" content="summary_large_image" />
     <!-- Also used by search results, so it is not only for the crawlers above. -->
     <meta
