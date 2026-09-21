@@ -54,3 +54,58 @@ test("German uses ss, never the German-German eszett", () => {
 
   expect(offenders).toEqual([]);
 });
+
+/**
+ * NOTHING OUTSIDE i18n/ MAY IMPORT A CATALOGUE DIRECTLY.
+ *
+ * This is the third distinct way French reached a German page, and the only
+ * one a reader could not see: `Inbox.tsx` and `ContactMessages.tsx` rendered
+ * `fr.contactMessages.delete` and friends — thirty direct reads between them —
+ * so those two screens showed French at `/de/*` however they were reached,
+ * even though #151 had already written every German string they needed. The
+ * German was live and unreachable.
+ *
+ * The other two ways are caught elsewhere: a module-scope `t()` is caught by
+ * the German rendering assertions each slice adds, and French punctuation
+ * composed in JSX is caught by reading the page. This one had no such
+ * backstop, because the values ARE the correct French — it fails only in the
+ * other language, and only at a URL nobody was asserting.
+ *
+ * So: import `t` from ../i18n. The catalogues are data for i18next, not
+ * modules for screens.
+ */
+test("no screen imports a catalogue directly — t() is the only door", async () => {
+  const { readdir, readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+
+  // process.cwd() rather than import.meta.url: vitest does not hand this
+  // file a real file:// URL, and the resolved path came out as "/web/src".
+  const root = join(process.cwd(), "web", "src");
+
+  async function sources(dir: string): Promise<string[]> {
+    const entries = await readdir(dir, { withFileTypes: true });
+    const found = await Promise.all(
+      entries.map(async (entry) => {
+        const path = join(dir, entry.name);
+        // i18n/ is where the catalogues legitimately live, and generated/ is
+        // orval's output, which never renders text.
+        if (entry.isDirectory()) {
+          return entry.name === "i18n" || entry.name === "generated" ? [] : sources(path);
+        }
+        return /\.tsx?$/.test(entry.name) ? [path] : [];
+      }),
+    );
+    return found.flat();
+  }
+
+  const offenders: string[] = [];
+
+  for (const path of await sources(root)) {
+    const text = await readFile(path, "utf8");
+    if (/from\s+["'][^"']*i18n\/(fr|de)["']/.test(text)) {
+      offenders.push(path.slice(root.length + 1));
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});

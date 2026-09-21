@@ -2,6 +2,7 @@ import { HttpResponse, http } from "msw";
 import { screen, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { AppRoutes } from "../routes";
@@ -14,9 +15,9 @@ import { Inbox } from "./Inbox";
  * `GET /inbox` excludes on the server side. `demo.committee` holds
  * `messages.view` and nothing more, mirroring the archive's own tests.
  */
-async function renderInbox() {
+async function renderInbox(locale: Locale = "fr") {
   setMockUser("demo.committee");
-  const result = await renderWithSession(<Inbox />, { route: "/inbox" });
+  const result = await renderWithSession(<Inbox />, { route: "/inbox", locale });
   await screen.findAllByTestId("inbox-item");
   return result;
 }
@@ -92,4 +93,39 @@ test("shows the badge's count when something is waiting", async () => {
 
   const badge = await screen.findByTestId("inbox-badge");
   expect(badge).toHaveTextContent("2");
+});
+
+test("THE GERMAN WAS ALREADY WRITTEN AND WAS NEVER REACHED", async () => {
+  // #151 translated every key this screen uses. It rendered French anyway,
+  // because the component read `fr.inbox.*` directly — the catalogue object,
+  // not i18next — so the locale could not reach it.
+  //
+  // The kind label is the sharp end: it was a module-scope
+  // `Record<string, string>` snapshot of the FRENCH kinds, frozen at import,
+  // so every row read "Message du site" on a German page.
+  //
+  // MUTATION TEST: hoist kindLabel's lookup back to module scope and this
+  // fails, because the French tests above import the same module first.
+  await renderInbox("de-CH");
+
+  expect(screen.getByRole("heading", { level: 1, name: "Posteingang" })).toBeInTheDocument();
+  expect(items().getAllByText("Nachricht von der Website").length).toBeGreaterThan(0);
+  expect(items().queryByText("Message du site")).toBeNull();
+});
+
+test("the empty inbox says so in German", async () => {
+  server.use(
+    http.get("/api/v1/inbox", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+
+  setMockUser("demo.committee");
+  await renderWithSession(<Inbox />, { route: "/inbox", locale: "de-CH" });
+
+  expect(
+    await screen.findByText(
+      "Nichts wartet auf eine Antwort. Der Posteingang ist auf dem neuesten Stand.",
+    ),
+  ).toBeInTheDocument();
 });

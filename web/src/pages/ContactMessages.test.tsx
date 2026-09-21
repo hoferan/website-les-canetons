@@ -3,6 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
@@ -14,9 +15,9 @@ import { ContactMessages } from "./ContactMessages";
  * both `messages.view` and `messages.manage` — the two-permission tests below
  * switch to `demo.committee`, which holds view alone.
  */
-async function renderArchive(route = "/contact-messages") {
+async function renderArchive(route = "/contact-messages", locale: Locale = "fr") {
   setMockUser("demo.direction");
-  const result = await renderWithSession(<ContactMessages />, { route });
+  const result = await renderWithSession(<ContactMessages />, { route, locale });
   await screen.findAllByText("Dupasquier");
   return result;
 }
@@ -239,4 +240,32 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
   } finally {
     server.events.removeListener("request:start", captureHeader);
   }
+});
+
+test("the archive is German, and its count pluralises by the German rule", async () => {
+  // Twenty-five direct `fr.contactMessages.*` reads lived here. The German
+  // for every one of them had been written in #151 and was unreachable.
+  await renderArchive("/contact-messages", "de-CH");
+
+  expect(screen.getByRole("heading", { level: 1, name: "Nachrichten" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Alle" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Offen" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Erledigt" })).toBeInTheDocument();
+});
+
+test("the filtered count keeps its hand-replaced braces, in German", async () => {
+  // contactMessages uses SINGLE braces replaced by hand, unlike the rest of
+  // the catalogue's i18next `{{ }}`. Both catalogues mirror that, and mixing
+  // the two styles inside one key renders the braces on screen — which is what
+  // this asserts has not happened.
+  //
+  // The word itself is now a plural family: it was `total > 1 ? … : …`, the
+  // French rule, which is right in French ("0 message") and wrong in German.
+  await renderArchive("/contact-messages", "de-CH");
+
+  await userEvent.click(screen.getByRole("button", { name: "Offen" }));
+
+  const count = await screen.findByTestId("message-count");
+  expect(count.textContent).toMatch(/^\d+ von \d+ Nachrichten?$/);
+  expect(count.textContent).not.toContain("{");
 });
