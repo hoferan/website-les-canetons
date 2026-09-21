@@ -343,7 +343,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
       mocks/              MSW handlers for the mocked backend
       components/         layout, nav, footer, env ribbon, guards
       pages/              one component per route
-      i18n/               i18next setup + the API error vocabulary
+      i18n/               both catalogues, the locale rules and the switcher
       styles.css          Tailwind entry and @theme tokens
     e2e/                  Playwright specs
   ```
@@ -439,14 +439,17 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `title`, `status`, `code`, `instance`, `errors`, `requestId`, `detail` — and
   `ApiErrorContractTest` pins that set, so adding or dropping one is a test
   failure. This is not cosmetic: `web/src/i18n/`'s `translateApiError()` is the
-  **only** place in the whole system where French is computed, and it maps the
-  machine tokens `code` and `errors[].reason` onto French. Laravel's native
-  shape carries English prose that layer cannot translate — so any new error
-  must emit a token that exists as a key in
-  `web/src/i18n/fr.ts`. `api/tests/Feature/ApiErrorVocabularyTest.php` enforces
-  this, reading that file directly (which is why the dev container mounts `web/`
-  read-only at `/srv/web` — the container's document root holds only built
-  bundles).
+  **only** place in the whole system where user-facing language is computed,
+  and it maps the machine tokens `code` and `errors[].reason` onto whichever
+  catalogue i18next has loaded. Laravel's native shape carries English prose
+  that layer cannot translate — so any new error must emit a token that exists
+  in **both** `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`.
+  `api/tests/Feature/ApiErrorVocabularyTest.php` enforces this, reading both
+  files directly (which is why the dev container mounts `web/` read-only at
+  `/srv/web` — the container's document root holds only built bundles).
+  German is not optional there: a token missing from `de.ts` falls back to the
+  French string through i18next's `fallbackLng`, so a German page renders
+  French and nothing complains.
 - **Environments:** the `env` value from `GET /api/v1/config` drives the non-prod
   corner ribbon. TEST and QA are private behind HTTP Basic Auth; see
   `staging/README.md`.
@@ -674,9 +677,12 @@ translated. Full version in the rebuild design §3.1.
 **Who names a thing decides whether it can be translated.** A developer-defined
 name is a fixed key, so a second language costs one catalogue file; a user-typed
 name is content, rendered verbatim, and no translation layer reaches it. German
-is plausible (Fribourg is bilingual) but not planned, so registers and roles
-keep an immutable `key` for identity and will gain **per-locale labels stored as
-data** when their editor is built — editable and translatable at once.
+shipped 2026-09-19 to 2026-09-21, so the second catalogue exists and the rule
+above is load-bearing: registers and roles keep an immutable `key` for identity
+and will gain **per-locale labels stored as data** when their editor is built —
+editable and translatable at once. A register or role name therefore reads the
+same on a German page as on a French one, because nothing stores a second
+spelling.
 
 Until then, `roles` carries no display name and the SPA translates by `key`.
 Adding `system.manage` to the enum before its middleware exists is forbidden by
@@ -698,11 +704,14 @@ repair it.
   identifiers. Nothing there is user-facing: translation happens exclusively at
   the display layer, in `web/src/i18n/`. `POST /api/migrate` is the one
   exception — token-gated deploy tooling, never seen by an end user.
-- **French is used for ONE thing only: user-visible UI text** — labels, page
-  copy, buttons, on-screen event titles. Rendered text, not API bodies.
+- **French and German are used for ONE thing only: user-visible UI text** —
+  labels, page copy, buttons, on-screen event titles. Rendered text, not API
+  bodies. The SPA ships `fr-CH` at `/` and `de-CH` under `/de/*`, and every
+  string exists in both catalogues: `de.ts` is declared `typeof fr`, so a key
+  in one and not the other fails `npm run typecheck` before any test runs.
 - The existing code follows this: `contact_messages` uses `first_name`/
   `last_name` and `responses.answer` uses `participate`/`notparticipate`, while
-  the UI reads French. Match that pattern.
+  the UI reads French and German. Match that pattern.
 
 ## Dos
 
