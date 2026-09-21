@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { RowActions, type RowAction } from "./RowActions";
@@ -20,11 +20,6 @@ const action = (key: string, over: Partial<RowAction> = {}): RowAction => ({
   onSelect: () => {},
   ...over,
 });
-
-function LocationDisplay() {
-  const location = useLocation();
-  return <div data-testid="location">{location.pathname}</div>;
-}
 
 describe("RowActions", () => {
   it("keeps the designated action inline and puts the rest behind the trigger", async () => {
@@ -67,36 +62,29 @@ describe("RowActions", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("gives a link-shaped action a real link inline, and navigates from the menu", async () => {
+  it("gives a link-shaped action a real link, inline and in the menu", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={["/start"]}>
-        <RowActions
-          actions={[
-            action("first", { onSelect: undefined, to: "/somewhere" }),
-            action("b", { onSelect: undefined, to: "/elsewhere" }),
-            action("c"),
-          ]}
-          inlineKey="first"
-          triggerLabel="Autres actions pour X"
-        />
-        <LocationDisplay />
-      </MemoryRouter>,
-    );
+    show([
+      action("first", { onSelect: undefined, to: "/somewhere" }),
+      action("b", { onSelect: undefined, to: "/elsewhere" }),
+      action("c"),
+    ]);
 
     // The inline action is a real link: this one-level `asChild` (Button ->
     // Link) works fine and is exercised throughout the app already.
     expect(screen.getByRole("link", { name: "first X" })).toHaveAttribute("href", "/somewhere");
 
-    // The in-menu action is NOT rendered through nested `asChild` — see the
-    // comment on ItemFor for why that composition drops props silently — so
-    // it is a plain menuitem that navigates imperatively. Assert the
-    // navigation actually happens, not just that an href string exists.
+    // The in-menu action is ALSO a real anchor: DropdownMenuItem's `asChild`
+    // goes straight to react-router's `Link`, one Slot layer, no
+    // intermediate component to drop props. Assert the actual element, not
+    // just that a menuitem with the right name exists — Testing Library
+    // resolves the role from the merged `role="menuitem"` attribute
+    // regardless of tag name, so the underlying element could in principle
+    // be anything; pin it down to an anchor with the right href.
     await user.click(screen.getByRole("button", { name: "Autres actions pour X" }));
     const item = await screen.findByRole("menuitem", { name: "b X" });
-    await user.click(item);
-
-    expect(screen.getByTestId("location")).toHaveTextContent("/elsewhere");
+    expect(item.tagName).toBe("A");
+    expect(item).toHaveAttribute("href", "/elsewhere");
   });
 
   it("does not fire a disabled item", async () => {

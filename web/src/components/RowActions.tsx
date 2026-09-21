@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Ellipsis } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { ButtonLink } from "./ButtonLink";
 
@@ -132,17 +132,19 @@ function InlineAction({ action }: { action: RowAction }) {
 }
 
 function ItemFor({ action, first }: { action: RowAction; first: boolean }) {
-  // NOT `asChild` FOR A LINK ITEM, even though InlineAction's single-level
-  // ButtonLink works that way. Here the chain is DropdownMenuItem (Slot) ->
-  // ButtonLink -> Button (Slot) -> Link, and ButtonLink does not spread
-  // arbitrary props through — it destructures a closed prop list. The outer
-  // Slot's merged props (role="menuitem", tabIndex, Radix's pointer/keyboard
-  // handlers) land on ButtonLink's own props object and are dropped there:
-  // the rendered anchor keeps its href but loses role="menuitem" and every
-  // Radix behaviour. Verified by watching the test fail this way, not
-  // assumed. A plain item that navigates imperatively sidesteps the whole
-  // nested-Slot question.
-  const navigate = useNavigate();
+  // `asChild` STRAIGHT TO react-router's `Link`, NOT via `ButtonLink`. A menu
+  // item needs no button styling — DropdownMenuItem already carries it, plus
+  // the 44px floor — so the extra layer buys nothing and costs everything:
+  // ButtonLink destructures a closed prop list and does not spread the rest,
+  // so DropdownMenuItem's Slot-merged props (role="menuitem", tabIndex,
+  // Radix's pointer/keyboard wiring) land on ButtonLink's own props and are
+  // dropped there before they ever reach an element. Verified by watching the
+  // test fail exactly that way. `Link` itself spreads its rest props onto the
+  // `<a>`, so ONE Slot layer (DropdownMenuItem -> Link) is enough for all of
+  // it to land, `aria-label` included. This keeps the four link-shaped
+  // actions on /events as real anchors in the menu, not a `useNavigate` call —
+  // middle-click and open-in-new-tab on the guest list and the attendance
+  // sheet are things committee members actually do.
   const { to } = action;
 
   // textValue set explicitly rather than left to Radix's fallback (the
@@ -161,8 +163,8 @@ function ItemFor({ action, first }: { action: RowAction; first: boolean }) {
 
   const item =
     to !== undefined ? (
-      <DropdownMenuItem {...common} onSelect={() => navigate(to)}>
-        {action.label}
+      <DropdownMenuItem {...common} asChild>
+        <Link to={to}>{action.label}</Link>
       </DropdownMenuItem>
     ) : (
       <DropdownMenuItem {...common} onSelect={() => action.onSelect?.()}>
