@@ -6,6 +6,8 @@ import { Logo } from "./Logo";
 
 import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
+import { Hreflang } from "../i18n/Hreflang";
+import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { LogoutButton } from "../session/LogoutButton";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
@@ -302,9 +304,23 @@ export function Layout() {
                 <LogoutButton onDone={close} />
               </li>
             ) : null}
+
+            {/* LAST, so on desktop it sits rightmost — where a language
+                switcher is looked for — and on a phone it is the final row
+                rather than pushing twelve destinations further down.
+
+                It is a plain link because changing locale is a full page load
+                (`basename` is fixed at mount), which also makes it one of the
+                hreflang alternates a crawler can actually follow. */}
+            <li className={NAV_ITEM}>
+              <LanguageSwitch onDone={close} />
+            </li>
           </ul>
         </nav>
       </header>
+
+      {/* Renders nothing; keeps the head's alternates in step with the page. */}
+      <Hreflang />
 
       <main>
         <Outlet />

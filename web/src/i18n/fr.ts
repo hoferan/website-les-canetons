@@ -277,6 +277,12 @@ export const fr = {
     // `pending_other` before falling back. Naming the variable anything else
     // keeps it a plain interpolation.
     pending: "{{n}} en attente",
+    // THE SWITCHER'S ACCESSIBLE NAMES, and both catalogues carry the SAME
+    // value for each. The control always names its target in the TARGET's
+    // language, so that somebody who cannot read the current page recognises
+    // the way out — which means neither string changes with the page.
+    switchToGerman: "Auf Deutsch wechseln",
+    switchToFrench: "Passer en français",
     rights: "Tous droits réservés.",
   },
 
