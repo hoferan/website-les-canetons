@@ -125,12 +125,23 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
   await logIn(page, "demo.direction");
   await page.setViewportSize({ width: 390, height: 844 });
 
-  for (const path of ["/events", "/members", "/account"]) {
+  // "/events/7/registrations", NOT A CLICK-THROUGH: 7 is the souper's fixed
+  // id in the mocked backend (handlers.ts's initialRegistrations/the one
+  // event with takesRegistrations), and it is the only event with bookings
+  // to measure. Whole-branch review I1: the design doc measured the roster
+  // and the planning at 390px and never this screen, and BookingActions'
+  // two controls went from `size="sm"` to the default when this screen moved
+  // to the shared RowActions component — `RowAction` carries no size field —
+  // which is exactly the axis #118 exists to fix.
+  for (const path of ["/events", "/members", "/account", "/events/7/registrations"]) {
     await page.goto(path);
     // Anchored on the card rather than on load, so the measurement cannot run
     // against a page that has not painted its rows yet.
     if (path === "/events") {
       await expect(page.getByTestId("event-card").first()).toBeVisible();
+    }
+    if (path === "/events/7/registrations") {
+      await expect(page.getByTestId("guest-cards")).toBeVisible();
     }
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -157,6 +168,24 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
       const box = await row.boundingBox();
       expect(box?.height, "the souper's action row is more than one line").toBeLessThanOrEqual(48);
     }
+
+    // I1. BookingActions has exactly two actions (Corriger, Annuler
+    // l'inscription), so RowActions' own rule — a menu needs two items left
+    // over once one goes inline — never has two to work with: both render
+    // inline and no "..." trigger is drawn. `div.flex.flex-wrap.gap-tight` is
+    // therefore RowActions' own wrapper directly, unambiguous here because
+    // this screen has no EventCard-style outer duplicate of that class.
+    if (path === "/events/7/registrations") {
+      const row = page
+        .getByTestId("guest-cards")
+        .locator("li")
+        .first()
+        .locator("css=div.flex.flex-wrap.gap-tight");
+      const box = await row.boundingBox();
+      expect(box?.height, "the guest list's booking row is more than one line").toBeLessThanOrEqual(
+        48,
+      );
+    }
   }
 });
 
@@ -165,6 +194,16 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
  * `tap` on a menu item must not also register on whatever the menu closing
  * reveals underneath it — the classic "tap-through" bug a mouse click cannot
  * catch because a mouse has no separate touchstart/touchend to race.
+ *
+ * I1/I2 WHOLE-BRANCH REVIEW: the URL assertion this test used to end on
+ * proves only that the tap navigated — it catches a tap-through onto
+ * something that navigates, and nothing else. `/events` also carries
+ * `AttendanceControls`, and Radix selects on `pointerup` with no overlay to
+ * catch a stray one under `modal={false}`, so the sharper risk is a tap that
+ * lands on "Oui, je viens" / "Non" underneath the closing menu and silently
+ * records a presence answer nobody gave. That is what this test now proves
+ * did not happen, by reading the event's own attendance state back after
+ * the tap rather than trusting the URL alone.
  */
 test("selecting a menu item on a touch phone does not also hit what is under it", async ({
   browser,
@@ -186,17 +225,78 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
     isMobile: true,
   });
   const page = await ctx.newPage();
-  await logIn(page, "demo.direction");
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/events");
 
+  // demo.both, NOT demo.direction. `AttendanceControls` returns `null` for
+  // anybody with `isPlayer: false` — see its own docblock — and
+  // demo.direction is exactly that member: "organises, does not play"
+  // (CLAUDE.md). Under that account the region under the menu never carries
+  // an attendance control at all, so no assertion about one can mean
+  // anything. demo.both is the one seeded account that both manages events
+  // (so its cards carry the overflow menu) and answers for itself (so its
+  // own card also carries the "Oui, je viens" / "Non" pair the stray tap
+  // could hit).
+  await logIn(page, "demo.both");
+
+  // demo.both carries `mustChangePassword: true` in the mocked backend — the
+  // same fixture the forced-password test above exercises — so the gate
+  // sits between login and /events for this account and nothing shorter
+  // reaches both permissions this test needs. Cleared rather than avoided:
+  // no seeded account is both a manager and a player without it.
+  await page.getByLabel("Mot de passe actuel").fill("demo");
+  await page.getByLabel("Nouveau mot de passe", { exact: true }).fill("demo1234");
+  await page.getByLabel("Confirmer le nouveau mot de passe").fill("demo1234");
+  await page.getByRole("button", { name: "Changer le mot de passe" }).click();
+  await expect(page.getByText("Votre mot de passe a été changé.")).toBeVisible();
+
+  // AN IN-APP LINK, NOT `page.goto`. The mocked backend keeps every bit of
+  // its state — including the password change just made and the unanswered
+  // attendance this test is about to rely on — in the page's own module
+  // instance, and a full navigation reloads that module from scratch,
+  // silently resetting both. See the instructor test above for the same
+  // trap on the roster side.
   await page
-    .getByRole("button", { name: /^Autres actions pour/ })
-    .first()
-    .tap();
+    .getByRole("navigation", { name: "Navigation principale" })
+    .getByRole("link", { name: "Événements" })
+    .locator("visible=true")
+    .click();
+  await expect(page.getByTestId("event-card").first()).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const card = page.getByTestId("event-card").first();
+  const title = (await card.getByTestId("event-title").textContent()) ?? "";
+  // `attendance.notComingToAria`, the accessible name RowActions never
+  // touches: it carries the event's own title, so this also pins the query
+  // to THIS card rather than to "Non" on whichever renders first.
+  const notComing = card.getByRole("button", { name: `Je ne viens pas à ${title}` });
+
+  // UNANSWERED BEFORE THE TAP, so the check after the tap has something to
+  // falsify. demo.both's planning starts with every event owed a response
+  // (the "À répondre" block lists all six), so the first card qualifies
+  // without picking one by hand.
+  await expect(notComing).toHaveAttribute("aria-pressed", "false");
+
+  await card.getByRole("button", { name: /^Autres actions pour/ }).tap();
   await page.getByRole("menuitem", { name: /^Modifier/ }).tap();
 
-  // The edit route, and nothing underneath the menu was activated on the way.
+  // The edit route, still checked: a tap that missed the menu item entirely
+  // and hit something un-navigable would otherwise read as a pass below.
   await expect(page).toHaveURL(/\/events\/\d+\/edit$/);
+
+  // BROWSER BACK, NOT `page.goto`, for the reason given above — this is a
+  // same-origin SPA history entry, so react-router handles the `popstate`
+  // without a reload and the mocked backend's state survives the round trip.
+  await page.goBack();
+  await expect(page.getByTestId("event-card").first()).toBeVisible();
+
+  // THE POINT OF THIS TEST. Still unanswered: the tap that opened the menu
+  // and selected "Modifier" recorded nothing on the card underneath it.
+  // `answered-in-place` is the second half of that: it renders only inside
+  // "À répondre" (`inOwed && answer`, AttendanceControls.tsx) — where this
+  // card sits — so its continued absence is a second, independent witness
+  // to nothing having been recorded.
+  await expect(notComing).toHaveAttribute("aria-pressed", "false");
+  await expect(card.getByTestId("answered-in-place")).toHaveCount(0);
+
   await ctx.close();
 });
