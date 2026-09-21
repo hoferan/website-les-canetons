@@ -356,6 +356,83 @@ export const de: typeof fr = {
     },
   },
 
+  eventForm: {
+    newHeading: "Neuer Anlass",
+    editHeading: "Anlass bearbeiten",
+    saveFailed: "Das Speichern ist fehlgeschlagen.",
+    loadFailed: "Dieser Anlass konnte nicht geladen werden.",
+    loadFailedReload: "Dieser Anlass konnte nicht geladen werden. Laden Sie die Seite neu.",
+
+    addTitle: "Anlass hinzufügen",
+    editTitle: "{{title}} bearbeiten",
+    saving: "Wird gespeichert…",
+
+    title: "Titel",
+    startDate: "Startdatum",
+    startTime: "Startzeit",
+    endDate: "Enddatum",
+    endTime: "Endzeit",
+    location: "Ort",
+    attire: "Kleidung",
+    // ENGE GUILLEMETS, und {{unset}} ist genau der Text, den die Karte zeigt.
+    attireHint:
+      "Leer lassen, wenn die Kleidung noch nicht festgelegt ist: Die Karte zeigt dann «{{unset}}».",
+    isPublic: "Auf der öffentlichen Website sichtbar",
+    notes: "Bemerkungen",
+
+    registrationsLegend: "Anmeldungen des Publikums",
+    registrationsHint:
+      "Tragen Sie ein Schlussdatum ein, um diesen Anlass für Anmeldungen zu öffnen. Lassen Sie es leer, wenn sich niemand anmeldet: Das trifft auf fast die ganze Planung zu.",
+    closesDate: "Anmeldeschluss",
+    closesTime: "Uhrzeit des Anmeldeschlusses",
+    opensDate: "Anmeldebeginn",
+    opensTime: "Uhrzeit des Anmeldebeginns",
+    opensHint:
+      "Ohne Anmeldebeginn ist das Formular ab sofort online. Tragen Sie ihn ein, um einen Anlass vorzubereiten, dessen Anmeldungen noch nicht erscheinen sollen.",
+    maxGuests: "Personen pro Anmeldung",
+    maxGuestsHint:
+      "Das Maximum, das eine einzelne Anmeldung abdecken kann, zwischen 1 und 100. Leer lassen, um nicht zu begrenzen. Der Saal selbst ist nie begrenzt: Der Vorstand beobachtet die Liste und zieht den Anmeldeschluss bei Bedarf vor.",
+  },
+
+  seriesForm: {
+    newHeading: "Neue Serie",
+    createFailed: "Das Erstellen der Serie ist fehlgeschlagen.",
+
+    heading: "Eine Serie von Anlässen",
+    intro:
+      "Alle Termine erhalten denselben Titel, denselben Ort und dieselben Zeiten. Jeder wird ein eigenständiger Anlass: Einen später zu ändern berührt die anderen nicht.",
+
+    weekday: "Wochentag",
+    // Im Deutschen ohnehin grossgeschrieben — anders als bei Intls «lundi»,
+    // weshalb das Französische diese Liste nicht aus Intl beziehen kann.
+    weekdays: {
+      monday: "Montag",
+      tuesday: "Dienstag",
+      wednesday: "Mittwoch",
+      thursday: "Donnerstag",
+      friday: "Freitag",
+      saturday: "Samstag",
+      sunday: "Sonntag",
+    },
+
+    from: "Von",
+    to: "Bis",
+
+    noDates:
+      "Wählen Sie einen Tag und einen Zeitraum, um die Termine zu sehen, die erstellt werden.",
+    datesLegend: "Zu erstellende Termine",
+    tooMany:
+      "{{n}} Termine ausgewählt: höchstens {{cap}} pro Serie. Nehmen Sie welche weg oder verkürzen Sie den Zeitraum.",
+
+    creating: "Wird erstellt…",
+    create_one: "{{count}} Anlass erstellen",
+    create_other: "{{count}} Anlässe erstellen",
+    createdCount_one: "{{count}} Anlass erstellt.",
+    createdCount_other: "{{count}} Anlässe erstellt.",
+    seePlanning: "Zur Planung",
+    another: "Weitere Serie erstellen",
+  },
+
   home: {
     hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
     heroSub:

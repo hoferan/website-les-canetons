@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
 import { FormError, FormField } from "../components/FormField";
-import type { TranslatedError } from "../i18n";
+import { t, type TranslatedError } from "../i18n";
 import { bandZoneParts, composeInBandZone } from "./bandTime";
 
 export type EventDraft = {
@@ -197,12 +197,14 @@ export function EventForm({
       }}
     >
       <h2 className="font-display text-2xl">
-        {event === null ? "Ajouter un événement" : `Modifier ${event.title}`}
+        {event === null
+          ? t("eventForm.addTitle")
+          : t("eventForm.editTitle", { title: event.title })}
       </h2>
 
       <FormField
         id="title"
-        label="Titre"
+        label={t("eventForm.title")}
         value={draft.title}
         onChange={(value) => set("title", value)}
         problem={problemFor("title")}
@@ -212,7 +214,7 @@ export function EventForm({
       <div className="grid gap-related sm:grid-cols-2">
         <FormField
           id="startDate"
-          label="Date de début"
+          label={t("eventForm.startDate")}
           type="date"
           value={draft.startDate}
           onChange={setStartDate}
@@ -221,7 +223,7 @@ export function EventForm({
         />
         <FormField
           id="startTime"
-          label="Heure de début"
+          label={t("eventForm.startTime")}
           type="time"
           value={draft.startTime}
           onChange={(value) => set("startTime", value)}
@@ -232,7 +234,7 @@ export function EventForm({
       <div className="grid gap-related sm:grid-cols-2">
         <FormField
           id="endDate"
-          label="Date de fin"
+          label={t("eventForm.endDate")}
           type="date"
           value={draft.endDate}
           onChange={(value) => {
@@ -243,7 +245,7 @@ export function EventForm({
         />
         <FormField
           id="endTime"
-          label="Heure de fin"
+          label={t("eventForm.endTime")}
           type="time"
           value={draft.endTime}
           onChange={(value) => set("endTime", value)}
@@ -256,7 +258,7 @@ export function EventForm({
 
       <FormField
         id="location"
-        label="Lieu"
+        label={t("eventForm.location")}
         value={draft.location}
         onChange={(value) => set("location", value)}
         problem={problemFor("location")}
@@ -265,14 +267,16 @@ export function EventForm({
 
       <FormField
         id="attire"
-        label="Tenue"
+        label={t("eventForm.attire")}
         value={draft.attire}
         onChange={(value) => set("attire", value)}
         problem={problemFor("attire")}
       />
+      {/* THE QUOTED WORDS ARE THE CARD'S OWN KEY, not a second copy of them.
+          Spelled out here too, the hint and the card could come to disagree
+          about what an empty field looks like. */}
       <p className="text-sm text-ink-muted">
-        Laissez vide si la tenue n’est pas encore décidée&nbsp;: la carte affichera «&nbsp;Non
-        précisée&nbsp;».
+        {t("eventForm.attireHint", { unset: t("events.card.attireUnset") })}
       </p>
 
       <label className="flex min-h-touch items-center gap-2">
@@ -282,12 +286,12 @@ export function EventForm({
           checked={draft.isPublic}
           onChange={(changed) => set("isPublic", changed.target.checked)}
         />
-        Visible sur le site public
+        {t("eventForm.isPublic")}
       </label>
 
       <FormField
         id="notes"
-        label="Remarques"
+        label={t("eventForm.notes")}
         as="textarea"
         value={draft.notes}
         onChange={(value) => set("notes", value)}
@@ -299,17 +303,14 @@ export function EventForm({
           dates — D9, and the same call the API makes. The copy below is what
           carries that, because a date field is not self-evidently a switch. */}
       <fieldset className="flex flex-col gap-related rounded-md border border-line p-4">
-        <legend className="px-1 font-display text-lg">Inscriptions du public</legend>
+        <legend className="px-1 font-display text-lg">{t("eventForm.registrationsLegend")}</legend>
 
-        <p className="text-sm text-ink-muted">
-          Renseignez une date de clôture pour ouvrir cet événement aux inscriptions. Laissez-la vide
-          si personne ne s’inscrit&nbsp;: c’est le cas de presque tout le planning.
-        </p>
+        <p className="text-sm text-ink-muted">{t("eventForm.registrationsHint")}</p>
 
         <div className="grid gap-related sm:grid-cols-2">
           <FormField
             id="registrationClosesDate"
-            label="Clôture des inscriptions"
+            label={t("eventForm.closesDate")}
             type="date"
             value={draft.registrationClosesDate}
             onChange={(value) => set("registrationClosesDate", value)}
@@ -317,7 +318,7 @@ export function EventForm({
           />
           <FormField
             id="registrationClosesTime"
-            label="Heure de clôture"
+            label={t("eventForm.closesTime")}
             type="time"
             value={draft.registrationClosesTime}
             onChange={(value) => set("registrationClosesTime", value)}
@@ -327,7 +328,7 @@ export function EventForm({
         <div className="grid gap-related sm:grid-cols-2">
           <FormField
             id="registrationOpensDate"
-            label="Ouverture des inscriptions"
+            label={t("eventForm.opensDate")}
             type="date"
             value={draft.registrationOpensDate}
             onChange={(value) => set("registrationOpensDate", value)}
@@ -335,41 +336,34 @@ export function EventForm({
           />
           <FormField
             id="registrationOpensTime"
-            label="Heure d’ouverture"
+            label={t("eventForm.opensTime")}
             type="time"
             value={draft.registrationOpensTime}
             onChange={(value) => set("registrationOpensTime", value)}
           />
         </div>
 
-        <p className="text-sm text-ink-muted">
-          Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour
-          préparer un événement dont les inscriptions ne doivent pas encore apparaître.
-        </p>
+        <p className="text-sm text-ink-muted">{t("eventForm.opensHint")}</p>
 
         <FormField
           id="registrationMaxGuests"
-          label="Personnes par inscription"
+          label={t("eventForm.maxGuests")}
           type="number"
           value={draft.registrationMaxGuests}
           onChange={(value) => set("registrationMaxGuests", value)}
           problem={problemFor("registrationMaxGuests")}
         />
-        <p className="text-sm text-ink-muted">
-          Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas
-          limiter. La salle, elle, n’est jamais limitée&nbsp;: le comité surveille la liste et
-          avance la clôture si nécessaire.
-        </p>
+        <p className="text-sm text-ink-muted">{t("eventForm.maxGuestsHint")}</p>
       </fieldset>
 
       <FormError error={error} />
 
       <div className="flex flex-wrap gap-related">
         <Button type="submit" aria-disabled={busy}>
-          {busy ? "Enregistrement…" : "Enregistrer"}
+          {busy ? t("eventForm.saving") : t("common.save")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

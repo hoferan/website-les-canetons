@@ -9,6 +9,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
 import { SeriesForm } from "../events/SeriesForm";
+import { t } from "../i18n";
 
 /**
  * A whole season in one request.
@@ -29,7 +30,7 @@ import { SeriesForm } from "../events/SeriesForm";
 export function EventSeriesNew() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const form = useApiFormError("La création de la série a échoué.");
+  const form = useApiFormError(t("seriesForm.createFailed"));
   const create = useEventSeries();
 
   const [created, setCreated] = useState<number | null>(null);
@@ -53,7 +54,7 @@ export function EventSeriesNew() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-3xl">Nouvelle série</h1>
+      <h1 className="font-display text-3xl">{t("seriesForm.newHeading")}</h1>
 
       {created === null ? (
         <SeriesForm
@@ -66,10 +67,10 @@ export function EventSeriesNew() {
       ) : (
         <div className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4">
           <p role="status" className="text-ink">
-            {created} {created === 1 ? "événement créé" : "événements créés"}.
+            {t("seriesForm.createdCount", { count: created })}
           </p>
           <div className="flex flex-wrap gap-related">
-            <ButtonLink to="/events">Voir le planning</ButtonLink>
+            <ButtonLink to="/events">{t("seriesForm.seePlanning")}</ButtonLink>
             {/* The season has two rehearsal variants, so a second series is
                 the normal next step rather than an edge case. */}
             <button
@@ -77,7 +78,7 @@ export function EventSeriesNew() {
               className="focus-ring min-h-touch text-ink underline"
               onClick={() => setCreated(null)}
             >
-              Créer une autre série
+              {t("seriesForm.another")}
             </button>
           </div>
         </div>

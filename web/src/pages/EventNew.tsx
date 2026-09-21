@@ -5,6 +5,7 @@ import { getEventIndexQueryKey, useEventStore } from "../api/generated/endpoints
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
+import { t } from "../i18n";
 
 /**
  * Adding one event to the planning.
@@ -23,7 +24,7 @@ import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
 export function EventNew() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const form = useApiFormError("L’enregistrement a échoué.");
+  const form = useApiFormError(t("eventForm.saveFailed"));
   const create = useEventStore();
 
   async function submit(draft: EventDraft) {
@@ -44,7 +45,7 @@ export function EventNew() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-3xl">Nouvel événement</h1>
+      <h1 className="font-display text-3xl">{t("eventForm.newHeading")}</h1>
 
       <EventForm
         event={null}
