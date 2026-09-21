@@ -47,12 +47,10 @@ const WEEKDAYS = [
 const previewCache = new Map<string, Intl.DateTimeFormat>();
 
 function previewDate(): Intl.DateTimeFormat {
-  // "short" PICKS THE TAG, NOT THE FORMAT. intlTag's `kind` chooses between
-  // French's two tags, and "long" would hand back `fr-FR` — which drops the
-  // comma after the weekday and would change French output to fix a German
-  // bug. This formatter has always been `fr-CH`, so it asks for the tag that
-  // still is.
-  const tag = intlTag(currentLocale(), "short");
+  // This formatter has always been `fr-CH`, and since #161 that is the only
+  // French tag intlTag hands out — see its docblock for the fr-FR long-date
+  // form it used to have to choose against.
+  const tag = intlTag(currentLocale());
 
   let found = previewCache.get(tag);
   if (!found) {

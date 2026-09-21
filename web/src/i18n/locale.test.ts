@@ -59,16 +59,13 @@ describe("htmlLang and intlTag", () => {
     expect(htmlLang("de-CH")).toBe("de-CH");
   });
 
-  // PINS THE GLOBAL CONSTRAINT. fr-FR renders "samedi 5 décembre 2026" and
-  // fr-CH renders "samedi, 5 décembre 2026" — a comma apart. Every existing
-  // assertion on a long date was written against the fr-FR form.
-  test("the long-date tag for French is fr-FR, preserving today's output", () => {
-    expect(intlTag("fr", "long")).toBe("fr-FR");
-    expect(intlTag("de-CH", "long")).toBe("de-CH");
-  });
-
-  test("the instant tag for French is fr-CH, preserving today's output", () => {
-    expect(intlTag("fr", "instant")).toBe("fr-CH");
-    expect(intlTag("de-CH", "instant")).toBe("de-CH");
+  // ONE TAG PER LOCALE SINCE #161. French used to have two — fr-FR for long
+  // dates, fr-CH for everything else — because they are a comma apart in the
+  // long form ("samedi 5 décembre 2026" against "samedi, 5 décembre 2026").
+  // The only caller of the long form rendered on no screen, so the choice went
+  // with it. intlTag's docblock says what to do if a long date comes back.
+  test("French is fr-CH and German is de-CH, with nothing left to choose", () => {
+    expect(intlTag("fr")).toBe("fr-CH");
+    expect(intlTag("de-CH")).toBe("de-CH");
   });
 });

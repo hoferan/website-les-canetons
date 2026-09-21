@@ -151,10 +151,6 @@ export const de: typeof fr = {
     sortOrder: "Reihenfolge",
   },
 
-  dates: {
-    rangeSeparator: " bis ",
-  },
-
   common: {
     loading: "Wird geladen…",
     backToPlanning: "← Zurück zur Planung",

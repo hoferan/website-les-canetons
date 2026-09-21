@@ -104,11 +104,12 @@ test("changing the range unticks nothing and re-ticks everything", async () => {
  * -------------------------------------------------------------------------- */
 
 test("the preview date is fr-CH in French — pinned, because the formatter moved", async () => {
-  // NO FRENCH ASSERTION PINNED THIS UNTIL NOW, and PREVIEW_DATE stopped being
-  // a module-scope constant in this slice. `intlTag(locale, "long")` would
-  // have handed back `fr-FR`, which drops the comma after the weekday; the
-  // formatter asks for "short" precisely to keep the `fr-CH` it always had.
-  // Without this line that regression would have been invisible.
+  // NO FRENCH ASSERTION PINNED THIS UNTIL #166, and PREVIEW_DATE stopped being
+  // a module-scope constant in that slice. The risk then was intlTag's `long`
+  // kind, which handed back `fr-FR` and drops the comma after the weekday.
+  // That kind is gone (#161) and intlTag now returns `fr-CH` for French with
+  // nothing to choose — so this assertion is no longer guarding a choice, it
+  // is guarding the comma itself, which is what a reader sees.
   await renderGenerator();
   await fillSeptember();
 

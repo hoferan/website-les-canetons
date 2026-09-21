@@ -40,7 +40,7 @@ const SHAPES: Record<"weekday" | "month" | "day", Intl.DateTimeFormatOptions> = 
 };
 
 function formatter(shape: "weekday" | "month" | "day"): Intl.DateTimeFormat {
-  const tag = intlTag(currentLocale(), "short");
+  const tag = intlTag(currentLocale());
   const key = `${tag}|${shape}`;
 
   let found = cache.get(key);
