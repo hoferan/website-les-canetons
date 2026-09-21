@@ -8,6 +8,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
+import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -33,9 +34,7 @@ export function Account() {
 
   const queryClient = useQueryClient();
   const change = useAccountPassword();
-  const { error, setFromThrown, clear, messageFor } = useApiFormError(
-    "Le changement de mot de passe a échoué.",
-  );
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("account.changeFailed"));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -84,20 +83,18 @@ export function Account() {
 
   return (
     <PageSection width="form">
-      <h1 className="font-display text-4xl">Mon compte</h1>
+      <h1 className="font-display text-4xl">{t("account.heading")}</h1>
 
       {user?.mustChangePassword ? (
-        // Explained rather than merely enforced: a member bounced back here by
-        // the gate with no reason given would think the site was broken.
-        <Notice className="mt-related">
-          Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.
-        </Notice>
+        // Why it says anything at all, rather than merely bouncing them: see
+        // account.provisionalNotice in i18n/fr.ts.
+        <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
       ) : null}
 
       <form onSubmit={submit} className="mt-block flex flex-col gap-related">
         <FormField
           id="currentPassword"
-          label="Mot de passe actuel"
+          label={t("account.currentPassword")}
           type="password"
           value={currentPassword}
           onChange={setCurrentPassword}
@@ -108,7 +105,7 @@ export function Account() {
 
         <FormField
           id="newPassword"
-          label="Nouveau mot de passe"
+          label={t("account.newPassword")}
           type="password"
           value={newPassword}
           onChange={setNewPassword}
@@ -119,11 +116,11 @@ export function Account() {
 
         <FormField
           id="confirmation"
-          label="Confirmer le nouveau mot de passe"
+          label={t("account.confirmPassword")}
           type="password"
           value={confirmation}
           onChange={setConfirmation}
-          problem={mismatch ? "Les deux mots de passe ne correspondent pas." : undefined}
+          problem={mismatch ? t("account.mismatch") : undefined}
           required
           autoComplete="new-password"
         />
@@ -137,11 +134,11 @@ export function Account() {
           missed by others.
         */}
         <div role="status">
-          {done ? <p className="text-ink-muted">Votre mot de passe a été changé.</p> : null}
+          {done ? <p className="text-ink-muted">{t("account.changed")}</p> : null}
         </div>
 
         <Button type="submit" aria-disabled={change.isPending}>
-          {change.isPending ? "Changement…" : "Changer le mot de passe"}
+          {change.isPending ? t("account.changing") : t("account.change")}
         </Button>
       </form>
     </PageSection>

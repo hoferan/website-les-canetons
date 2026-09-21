@@ -240,6 +240,15 @@ export const fr = {
     // seam that lets it.
     guests_one: "{{count}} personne",
     guests_other: "{{count}} personnes",
+    // THE WAY OUT OF A DEAD END, shared by the two screens that are one shape:
+    // NotFound and guards.tsx's AccessDenied. It was notFound.backHome until
+    // #153, when AccessDenied turned out to have the same link hardcoded —
+    // same words, same destination, same job.
+    backHome: "Retour à l’accueil",
+    // The app failing to start, from SessionProvider's boot gate. i18next is
+    // initialised at module scope, so this resolves even though nothing else
+    // has rendered yet — see the note at the top of ./index.ts.
+    bootFailed: "Le site n’a pas pu démarrer. Veuillez réessayer dans quelques instants.",
     // ConfirmByTypingName's field, which only the roster arms today. Whole
     // sentence, guillemets included, for the reason the whole file repeats.
     typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
@@ -927,6 +936,67 @@ export const fr = {
   },
 
   /**
+   * Signing in (/login).
+   *
+   * THE HEADING IS `nav.login`, NOT A KEY OF ITS OWN. The nav item and the
+   * page it opens are the same word, and this file already pairs them that
+   * way for the chase list, the guest list and the options screen — one key,
+   * so a rename cannot leave the link and its destination disagreeing.
+   *
+   * The field labels ARE their own keys, not `fields.username`/`password`.
+   * That section is the error vocabulary translateApiError reads; these name
+   * controls. The rule and the evidence for it are at `eventForm` (#166).
+   */
+  auth: {
+    username: "Identifiant",
+    password: "Mot de passe",
+    signIn: "Se connecter",
+    signingIn: "Connexion…",
+    loginFailed: "La connexion a échoué.",
+  },
+
+  /**
+   * The account screen (/account), which today is a password form.
+   *
+   * #100 and #125 are about to make it an actual account page and move the
+   * password change to its own route. These keys move with it — the cheaper
+   * direction, and the reason this slice did not wait: a restructure that
+   * moves KEYS beats one that moves literals and then has to translate them.
+   */
+  account: {
+    heading: "Mon compte",
+    // EXPLAINED, NOT MERELY ENFORCED: a member bounced back here by the gate
+    // with no reason given would think the site was broken.
+    provisionalNotice:
+      "Votre mot de passe a été fourni par le comité et doit être remplacé avant de continuer.",
+    currentPassword: "Mot de passe actuel",
+    newPassword: "Nouveau mot de passe",
+    confirmPassword: "Confirmer le nouveau mot de passe",
+    // Checked in the browser before anything is sent, so it is this screen's
+    // own sentence rather than one of the API's error tokens.
+    mismatch: "Les deux mots de passe ne correspondent pas.",
+    changed: "Votre mot de passe a été changé.",
+    change: "Changer le mot de passe",
+    changing: "Changement…",
+    changeFailed: "Le changement de mot de passe a échoué.",
+  },
+
+  /**
+   * The refusal a route guard renders (components/guards.tsx).
+   *
+   * ITS OWN KEYS, NOT `errors.access_denied`. That token is what the API
+   * sends and translateApiError renders inside a form; this is a whole screen
+   * with a heading and a way out. They read the same in French today and have
+   * no reason to stay married — the same call `memberForm.publicVisible`
+   * makes.
+   */
+  guards: {
+    deniedHeading: "Accès refusé",
+    deniedBody:
+      "Cette page est réservée à d’autres membres. Si vous pensez qu’il s’agit d’une erreur, contactez le comité.",
+  },
+
+  /**
    * The front door (/).
    *
    * `destinations` backs Home.tsx's DESTINATIONS array, which carries a
@@ -1051,7 +1121,6 @@ export const fr = {
   notFound: {
     heading: "Page introuvable",
     body: "Oups ! La page que vous recherchez n’existe pas ou a été déplacée.",
-    backHome: "Retour à l’accueil",
   },
 
   /**

@@ -8,6 +8,7 @@ import { getAuthMeQueryKey, useAuthLogin } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { t } from "../i18n";
 import { safeReturnTo } from "../lib/returnTo";
 
 /**
@@ -40,7 +41,7 @@ export function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const login = useAuthLogin();
-  const { error, setFromThrown, clear, messageFor } = useApiFormError("La connexion a échoué.");
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("auth.loginFailed"));
 
   const attempted = safeReturnTo((location.state as { from?: unknown } | null)?.from);
 
@@ -78,12 +79,12 @@ export function Login() {
 
   return (
     <PageSection width="form">
-      <h1 className="font-display text-4xl">Connexion</h1>
+      <h1 className="font-display text-4xl">{t("nav.login")}</h1>
 
       <form onSubmit={submit} className="mt-block flex flex-col gap-related">
         <FormField
           id="username"
-          label="Identifiant"
+          label={t("auth.username")}
           value={username}
           onChange={setUsername}
           problem={messageFor("username")}
@@ -93,7 +94,7 @@ export function Login() {
 
         <FormField
           id="password"
-          label="Mot de passe"
+          label={t("auth.password")}
           type="password"
           value={password}
           onChange={setPassword}
@@ -105,7 +106,7 @@ export function Login() {
         <FormError error={error} />
 
         <Button type="submit" aria-disabled={login.isPending}>
-          {login.isPending ? "Connexion…" : "Se connecter"}
+          {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
         </Button>
       </form>
     </PageSection>

@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
+import { setLocale } from "../i18n";
 import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { SessionProvider, useSession } from "./SessionProvider";
 
@@ -87,4 +90,47 @@ test("a permission the member does not hold is refused", async () => {
   await renderWithSession(<CanProbe />);
   expect(await screen.findByTestId("manage")).toHaveTextContent("false");
   expect(screen.getByTestId("registrations")).toHaveTextContent("false");
+});
+
+/**
+ * The boot gate's refusal, in both locales.
+ *
+ * NOT renderWithSession: this is the one path where the gate never opens, so
+ * the helper's wait for its `booted` marker would hang rather than fail — the
+ * marker is a CHILD of the provider, and on this branch the provider renders
+ * the refusal instead of its children.
+ *
+ * `setLocale` therefore has to be called by hand here. setupTests.ts resets it
+ * to French after every test, so this leaks nothing into the next one.
+ *
+ * Untested until #153, which is how the sentence stayed a French literal: the
+ * page a German reader meets when the site cannot start at all.
+ */
+async function renderBootFailure() {
+  server.use(http.get("/api/v1/config", () => new HttpResponse(null, { status: 503 })));
+
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>
+        <Probe />
+      </SessionProvider>
+    </QueryClientProvider>,
+  );
+}
+
+test("a config that will not load says so in French", async () => {
+  await renderBootFailure();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Le site n’a pas pu démarrer.");
+  expect(screen.queryByTestId("env")).toBeNull();
+});
+
+test("a config that will not load says so in German", async () => {
+  await setLocale("de-CH");
+  await renderBootFailure();
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Die Website konnte nicht gestartet werden.",
+  );
 });

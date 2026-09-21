@@ -21,7 +21,7 @@ export function NotFound() {
           floor. It measured 24px. Inline links inside prose are a different
           case and stay as they are. */}
       <ButtonLink to="/" variant="outline" className="mt-block">
-        {t("notFound.backHome")}
+        {t("common.backHome")}
       </ButtonLink>
     </PageSection>
   );

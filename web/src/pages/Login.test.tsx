@@ -190,3 +190,61 @@ test("an absolute URL in the router state is not honoured", async () => {
   expect(await screen.findByTestId("location")).toHaveTextContent("/");
   expect(screen.getByTestId("location")).not.toHaveTextContent("evil");
 });
+
+/**
+ * The German side of the same screen.
+ *
+ * The three strings asserted here are the three the member has to READ to get
+ * in: what each box wants, and which control submits. A label frozen in French
+ * on a German page is not cosmetic — a password manager keys off the accessible
+ * name too, and getByLabelText is the query that notices.
+ */
+test("labels both fields and the submit in German", async () => {
+  await renderWithSession(<Login />, { route: "/login", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Anmelden" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Benutzername")).toHaveAttribute("autocomplete", "username");
+  expect(screen.getByLabelText("Passwort")).toHaveAttribute("autocomplete", "current-password");
+  expect(screen.getByRole("button", { name: "Anmelden" })).toBeInTheDocument();
+});
+
+test("reports a wrong password in German, against the form", async () => {
+  await renderWithSession(<Login />, { route: "/login", locale: "de-CH" });
+
+  await userEvent.type(screen.getByLabelText("Benutzername"), "demo.direction");
+  await userEvent.type(screen.getByLabelText("Passwort"), "wrong");
+  await userEvent.click(screen.getByRole("button", { name: "Anmelden" }));
+
+  // Same findByText reasoning as the French case above. This one also covers
+  // the FALLBACK message: useApiFormError is handed its default at render
+  // time, so a `t()` hoisted to module scope would freeze the French here and
+  // nothing else in the suite would see it.
+  expect(await screen.findByText("Benutzername oder Passwort ist falsch")).toBeInTheDocument();
+});
+
+test("shows the submit as busy in German too", async () => {
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.post("/api/v1/login", async () => {
+      await held;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  await renderWithSession(<Login />, { route: "/login", locale: "de-CH" });
+  await userEvent.type(screen.getByLabelText("Benutzername"), "demo.direction");
+  await userEvent.type(screen.getByLabelText("Passwort"), "demo");
+  await userEvent.click(screen.getByRole("button", { name: "Anmelden" }));
+
+  // The pending label is a SECOND string, not the idle one with an ellipsis —
+  // "Anmelden"/"Wird angemeldet…" the way French has "Se connecter"/"Connexion…".
+  expect(await screen.findByRole("button", { name: "Wird angemeldet…" })).toHaveAttribute(
+    "aria-disabled",
+    "true",
+  );
+
+  release();
+});
