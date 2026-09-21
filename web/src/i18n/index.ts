@@ -79,8 +79,31 @@ export async function setLocale(locale: Locale): Promise<void> {
 type Leaves<T> = T extends string
   ? never
   : {
-      [K in keyof T & string]: T[K] extends string ? K : `${K}.${Leaves<T[K]>}`;
+      [K in keyof T & string]: T[K] extends string ? Unplural<K> : `${K}.${Leaves<T[K]>}`;
     }[keyof T & string];
+
+/**
+ * A plural family's two entries, as the ONE key a caller may pass.
+ *
+ * i18next spells a plural as two sibling keys, `thing_one` and `thing_other`,
+ * and resolves between them from the `count` option using the ACTIVE
+ * LANGUAGE's CLDR rule. Both collapse to `thing` here, so `t("x.thing")` is
+ * what typechecks and neither suffixed form does — which is the point: a
+ * caller who reaches for `_one` directly has decided the plural rule in
+ * JavaScript, and the rules differ. French counts 0 as singular ("0 réponse")
+ * and German does not ("0 Rückmeldungen"), so the `n === 1 ? a : b` this
+ * replaced was wrong in one language whichever way it was written.
+ *
+ * Only `_one`/`_other` are mapped, because those are the only two categories
+ * French and Swiss German have. A language with `_few` or `_many` — Polish,
+ * Russian — needs this widened, and will fail loudly at the call site rather
+ * than silently render the wrong form.
+ */
+type Unplural<K extends string> = K extends `${infer Base}_one`
+  ? Base
+  : K extends `${infer Base}_other`
+    ? Base
+    : K;
 
 export type TranslationKey = Leaves<typeof fr>;
 

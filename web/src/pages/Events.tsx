@@ -21,6 +21,7 @@ import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
 import { EventMeta } from "../events/EventMeta";
 import { bandZoneParts } from "../events/bandTime";
+import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -90,7 +91,7 @@ export function Events() {
   const [showingCalendar, setShowingCalendar] = useState(false);
   const [day, setDay] = useState<string | null>(null);
 
-  const destructive = useApiFormError("La suppression a échoué.");
+  const destructive = useApiFormError(t("events.deleteFailed"));
 
   // The event being deleted, together with the tag of the read the dialog was
   // opened from. DELETE is a conditional write, and the planning hands out no
@@ -192,9 +193,11 @@ export function Events() {
                 <ButtonLink
                   to={`/events/${event.id}/attendance`}
                   variant="outline"
-                  ariaLabel={`Qui vient à ${event.title}`}
+                  ariaLabel={t("events.whoComingAria", { title: event.title })}
                 >
-                  Qui vient&nbsp;?
+                  {/* THE SAME KEY AS THE SCREEN IT OPENS, so the link and
+                      its destination cannot come to disagree. */}
+                  {t("attendance.heading")}
                 </ButtonLink>
               ) : null}
               {/* ONLY ON AN EVENT THAT TAKES BOOKINGS. Every other card would
@@ -205,9 +208,9 @@ export function Events() {
                 <ButtonLink
                   to={`/events/${event.id}/registrations`}
                   variant="outline"
-                  ariaLabel={`Inscriptions à ${event.title}`}
+                  ariaLabel={t("events.registrationsAria", { title: event.title })}
                 >
-                  Inscriptions
+                  {t("events.registrations")}
                 </ButtonLink>
               ) : null}
               {mayManage ? (
@@ -215,21 +218,21 @@ export function Events() {
                   <ButtonLink
                     to={`/events/${event.id}/registration-options`}
                     variant="outline"
-                    ariaLabel={`Ce qui peut être réservé à ${event.title}`}
+                    ariaLabel={t("events.optionsAria", { title: event.title })}
                   >
-                    Ce qu’on réserve
+                    {t("events.options")}
                   </ButtonLink>
                   <ButtonLink
                     to={`/events/${event.id}/edit`}
                     variant="outline"
-                    ariaLabel={`Modifier ${event.title}`}
+                    ariaLabel={t("events.editAria", { title: event.title })}
                   >
-                    Modifier
+                    {t("common.edit")}
                   </ButtonLink>
                   <Button
                     type="button"
                     variant="outline"
-                    aria-label={`Supprimer ${event.title}`}
+                    aria-label={t("events.deleteAria", { title: event.title })}
                     aria-disabled={opening === event.id}
                     onClick={() => {
                       if (opening === event.id) {
@@ -238,7 +241,7 @@ export function Events() {
                       void openDelete(event);
                     }}
                   >
-                    Supprimer
+                    {t("common.delete")}
                   </Button>
                 </>
               ) : null}
@@ -310,13 +313,13 @@ export function Events() {
   return (
     <PageSection>
       <div className="flex flex-wrap items-center justify-between gap-related">
-        <h1 className="font-display text-3xl">Planning</h1>
+        <h1 className="font-display text-3xl">{t("events.heading")}</h1>
 
         {mayManage ? (
           <div className="flex flex-wrap gap-tight">
-            <ButtonLink to="/events/new">Ajouter un événement</ButtonLink>
+            <ButtonLink to="/events/new">{t("events.add")}</ButtonLink>
             <ButtonLink to="/events/new/series" variant="outline">
-              Ajouter une série
+              {t("events.addSeries")}
             </ButtonLink>
           </div>
         ) : null}
@@ -328,7 +331,7 @@ export function Events() {
           variant="outline"
           onClick={() => setShowingPast((showing) => !showing)}
         >
-          {showingPast ? "Voir le planning" : "Voir les événements passés"}
+          {showingPast ? t("events.showPlanning") : t("events.showPast")}
         </Button>
 
         {/* md AND UP ONLY, and absent from a phone altogether rather than
@@ -346,7 +349,7 @@ export function Events() {
               setDay(null);
             }}
           >
-            {showingCalendar ? "Liste" : "Calendrier"}
+            {showingCalendar ? t("events.list") : t("events.calendar")}
           </Button>
         ) : null}
       </div>
@@ -363,19 +366,19 @@ export function Events() {
       {day !== null ? (
         <p className="mt-related flex flex-wrap items-center gap-tight text-sm">
           <span data-testid="day-filter" className="text-ink-muted">
-            Filtré sur un jour.
+            {t("events.dayFiltered")}
           </span>
           <Button type="button" variant="outline" size="sm" onClick={() => setDay(null)}>
-            Voir tout le planning
+            {t("events.showAll")}
           </Button>
         </p>
       ) : null}
 
-      {planning.isPending ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
+      {planning.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
 
       {planning.isError ? (
         <p role="alert" className="mt-block text-red-700">
-          Le planning n’a pas pu être chargé.
+          {t("events.loadFailed")}
         </p>
       ) : null}
 
@@ -385,12 +388,15 @@ export function Events() {
       {!planning.isPending && !planning.isError && events.length === 0 ? (
         <div className="mt-block">
           <p className="text-ink-muted">
-            {showingPast ? "Aucun événement passé." : "Aucun événement au planning."}
+            {showingPast ? t("events.emptyPast") : t("events.empty")}
           </p>
           {mayManage && !showingPast ? (
             <p className="mt-tight text-sm text-ink-muted">
-              Ajoutez un événement, ou générez toute une saison d’un coup avec «&nbsp;Ajouter une
-              série&nbsp;».
+              {/* THE HINT QUOTES THE BUTTON BESIDE IT, so the label is read
+                  from the same key that renders it rather than written out a
+                  second time -- and the guillemets travel in the string,
+                  because French spaces them and German does not. */}
+              {t("events.emptyHint", { action: t("events.addSeries") })}
             </p>
           ) : null}
         </div>
@@ -399,7 +405,7 @@ export function Events() {
       {awaiting.length > 0 ? (
         <section className="mt-block" aria-labelledby="awaiting-heading">
           <h2 id="awaiting-heading" className="font-display text-xl">
-            À répondre
+            {t("events.owedHeading")}
           </h2>
 
           {/* THE COUNT CARRIES THE TO-DO SEMANTICS the move used to carry, and
@@ -409,11 +415,13 @@ export function Events() {
               375px in both wordings, so the last answer of a session does not
               reflow the list it was meant to hold still. */}
           <p data-testid="owed-count" aria-live="polite" className="mt-tight text-ink-muted">
-            {missing === 0
-              ? "Tout est répondu."
-              : missing === 1
-                ? "Il reste 1 événement sans réponse."
-                : `Il reste ${missing} événements sans réponse.`}
+            {/* ZERO IS ITS OWN SENTENCE, not a plural form: "Tout est
+                répondu" is not the plural of anything, and neither French nor
+                German has a `_zero` category. Above zero the catalogue
+                decides, because German moves the VERB as well as the noun --
+                "Es fehlt" against "Es fehlen" -- which the `missing === 1`
+                ternary that used to be here could never have carried. */}
+            {missing === 0 ? t("events.allAnswered") : t("events.owedCount", { count: missing })}
           </p>
 
           <div className="mt-related grid gap-related">
@@ -431,7 +439,7 @@ export function Events() {
       >
         {awaiting.length > 0 ? (
           <h2 id="planning-heading" className="font-display text-xl">
-            {showingPast ? "Événements passés" : "Le reste du planning"}
+            {showingPast ? t("events.pastHeading") : t("events.restHeading")}
           </h2>
         ) : null}
         <div className="mt-related grid gap-related">
@@ -449,9 +457,9 @@ export function Events() {
       */}
       <ConfirmByTypingName
         open={deleting !== null}
-        title={`Supprimer « ${deleting?.event.title ?? ""} » ?`}
-        description="L’événement sera retiré du planning. Les réponses de présence et les inscriptions liées seront supprimées avec lui. Cette action est définitive."
-        confirmLabel="Supprimer"
+        title={t("events.deleteTitle", { title: deleting?.event.title ?? "" })}
+        description={t("events.deleteDescription")}
+        confirmLabel={t("common.delete")}
         busy={destroy.isPending}
         error={destructive.error}
         onConfirm={() => void confirmDelete()}

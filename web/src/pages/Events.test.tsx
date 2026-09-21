@@ -652,13 +652,13 @@ test("the past keeps the strip", async () => {
 });
 
 test("the withdrawal dialog is German, and its Annuler is Abbrechen", async () => {
-  // THE PAGE AROUND THE CONTROL IS STILL FRENCH. Events.tsx is #154's slice,
-  // so the two blocks are still queried by their French names; what this slice
-  // translated is AttendanceControls and the dialog it opens, and that is what
-  // is asserted.
+  // THE BLOCK NAMES ARE GERMAN AS OF #154. This test was written in #155,
+  // when AttendanceControls was translated and the page around it was not, and
+  // it queried "Le reste du planning" with a comment saying so. That the query
+  // had to change here is the two slices meeting, not a regression.
   await renderPlanning("demo.player", "de-CH");
 
-  const rest = screen.getByRole("region", { name: "Le reste du planning" });
+  const rest = screen.getByRole("region", { name: "Die übrige Planung" });
   await userEvent.click(within(rest).getByRole("button", { name: /^Ich komme nicht zu/ }));
 
   const dialog = await screen.findByRole("alertdialog");
@@ -682,7 +682,7 @@ test("the withdrawal dialog is German, and its Annuler is Abbrechen", async () =
 
   await userEvent.click(confirm);
 
-  const card = within(screen.getByRole("region", { name: "Le reste du planning" })).getAllByTestId(
+  const card = within(screen.getByRole("region", { name: "Die übrige Planung" })).getAllByTestId(
     "event-card",
   )[0] as HTMLElement;
 
@@ -691,4 +691,118 @@ test("the withdrawal dialog is German, and its Annuler is Abbrechen", async () =
   await expect
     .poll(() => within(card).queryByTestId("attendance-note")?.textContent)
     .toBe("«Krank»");
+});
+
+/* ---------------------------------------------------------------------------
+ * The planning in German (#154)
+ * -------------------------------------------------------------------------- */
+
+test("the planning reads in German, card labels included", async () => {
+  await renderPlanning("demo.player", "de-CH");
+
+  expect(screen.getByRole("heading", { level: 1, name: "Planung" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Zu beantworten" })).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Die übrige Planung" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Vergangene Anlässe anzeigen" })).toBeInTheDocument();
+
+  // NO SPACE BEFORE THE COLON, where French takes a no-break one. These were
+  // `<dt>Lieu&nbsp;:</dt>` in the component -- French typography that reached
+  // a German page unchanged, which is the Tbd bug of #152 in a third place.
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  expect(card).toHaveTextContent("Ort:");
+  expect(card).toHaveTextContent("Kleidung:");
+});
+
+test("THE OWED COUNT MOVES ITS VERB, which is why the plural is not in the component", async () => {
+  // German conjugates: "Es fehlt noch 1 Rückmeldung" against "Es fehlen noch
+  // 2 Rückmeldungen". French says "Il reste" for both, so the
+  // `missing === 1 ? … : …` that used to be here only ever had to swap an "s"
+  // and could not have carried this.
+  //
+  // MUTATION TEST: merge events.owedCount_one into _other and the singular
+  // assertion below reads "Es fehlen noch 1 Rückmeldung." -- wrong German that
+  // no French test could see.
+  await renderPlanning("demo.player", "de-CH");
+
+  expect(screen.getByTestId("owed-count")).toHaveTextContent("Es fehlen noch 5 Rückmeldungen.");
+
+  // Down to one, by answering four of the five.
+  const buttons = within(screen.getByRole("region", { name: "Zu beantworten" }))
+    .getAllByRole("button", { name: /^Ich komme zu/ })
+    .slice(0, 4);
+  for (const button of buttons) {
+    await userEvent.click(button);
+  }
+
+  await expect
+    .poll(() => screen.getByTestId("owed-count").textContent)
+    .toBe("Es fehlt noch 1 Rückmeldung.");
+});
+
+test("the empty planning's hint quotes the button beside it, in German", async () => {
+  server.use(
+    http.get("/api/v1/events", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events", locale: "de-CH" });
+
+  expect(await screen.findByText("Keine Anlässe in der Planung.")).toBeInTheDocument();
+
+  // THE LABEL IS READ FROM THE KEY THAT RENDERS THE BUTTON, so the two cannot
+  // drift, and the guillemets are tight -- French sets them « comme ça » and
+  // the sentence had that spacing hardcoded in the JSX.
+  const action = screen.getByRole("link", { name: "Serie hinzufügen" });
+  expect(screen.getByText(/gleich eine ganze Saison/)).toHaveTextContent(
+    `mit «${action.textContent}» gleich eine ganze Saison`,
+  );
+});
+
+test("the calendar's month and weekday names follow the locale", async () => {
+  // THREE MODULE-SCOPE `fr-CH` FORMATTERS lived in EventCalendar.tsx, and
+  // WEEKDAYS was a module-scope ARRAY of seven already-formatted strings —
+  // computed at import, before any locale exists. Nothing but moving the work
+  // to render time could have fixed that one.
+  //
+  // MUTATION TEST: hoist either back to module scope and this fails, because
+  // the French tests above import the same module first.
+  await renderPlanning("demo.direction", "de-CH");
+
+  await userEvent.click(screen.getByRole("button", { name: "Kalender" }));
+  const calendar = await screen.findByTestId("event-calendar");
+
+  expect(screen.getByTestId("calendar-month").textContent).toMatch(
+    /^(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4}$/,
+  );
+
+  // The weekday strip, Monday first: German short names, and no French one
+  // left anywhere in the grid.
+  expect(within(calendar).getByText("Mo")).toBeInTheDocument();
+  expect(within(calendar).queryByText("lun.")).toBeNull();
+
+  expect(within(calendar).getByRole("button", { name: "Vorheriger Monat" })).toBeInTheDocument();
+
+  // A day's accessible name carries the long date and a counted noun, both
+  // German.
+  const [firstDay] = within(calendar)
+    .getAllByRole("button")
+    .filter((button) => (button.getAttribute("aria-label") ?? "").includes("Anlass"));
+  expect(firstDay?.getAttribute("aria-label")).toMatch(/^\d+\. \w+ \d{4}, 1 Anlass$/);
+});
+
+test("deleting names the event in German, with tight quotes", async () => {
+  await renderPlanning("demo.direction", "de-CH");
+
+  const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
+  const title = within(card).getByTestId("event-title").textContent ?? "";
+
+  await userEvent.click(within(card).getByRole("button", { name: `${title} löschen` }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveTextContent(`«${title}» löschen?`);
+  expect(within(dialog).getByRole("button", { name: "Löschen" })).toBeInTheDocument();
+  // ConfirmByTypingName's own two words, which belong to no one screen.
+  expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
 });

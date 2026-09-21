@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * The metadata strip under an event's title (#93).
  *
@@ -29,22 +31,35 @@ export function EventMeta({
     <div data-testid="event-meta" className="mt-tight flex flex-wrap gap-tight text-sm">
       {isPublic === true ? (
         <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-ink-muted">
-          Public
+          {t("events.meta.public")}
         </span>
       ) : null}
 
       {showsAnswers ? (
         <span
           className="text-ink-muted"
-          aria-label={`${answered} ${answered === 0 || answered === 1 ? "réponse" : "réponses"} sur ${answerable}`}
+          /*
+           * THE PLURAL IS THE CATALOGUE'S, NOT THIS COMPONENT'S. This read
+           * `answered === 0 || answered === 1 ? "réponse" : "réponses"`, which
+           * is the FRENCH plural rule written out in JavaScript: French counts
+           * zero as singular and German does not. The same ternary therefore
+           * renders "0 Rückmeldung" on a German page, and changing it to
+           * `=== 1` would render "0 réponses" on a French one. i18next picks
+           * _one/_other from `count` using the active language's own rule, so
+           * each locale is right without the other being wrong.
+           */
+          aria-label={t("events.meta.answersAria", { count: answered, total: answerable })}
         >
-          {answered}/{answerable} réponses
+          {t("events.meta.answers", { answered, answerable })}
         </span>
       ) : null}
 
       {guests !== undefined ? (
         <span className="text-ink-muted">
-          {guests === 0 ? "Aucune inscription" : `${guests} personne${guests > 1 ? "s" : ""}`}
+          {/* Zero says something ELSE here, so it is its own key rather than a
+              plural form -- neither language has a `_zero` category, and
+              "Aucune inscription" is not the singular of anything. */}
+          {guests === 0 ? t("events.meta.noGuests") : t("events.meta.guests", { count: guests })}
         </span>
       ) : null}
     </div>

@@ -227,6 +227,15 @@ export const fr = {
     cancel: "Annuler",
     save: "Enregistrer",
     busy: "En cours…",
+    // The two per-row actions that recur on every list screen — the planning
+    // here, the roster and the message archive in #156 and #158. The
+    // accessible name that carries WHICH row is per screen and belongs with
+    // it; only the visible word is shared.
+    edit: "Modifier",
+    delete: "Supprimer",
+    // ConfirmByTypingName's field, which only the roster arms today. Whole
+    // sentence, guillemets included, for the reason the whole file repeats.
+    typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
   },
 
   /**
@@ -435,6 +444,107 @@ export const fr = {
     withdrawDescription:
       "Vous aviez annoncé votre présence. Dites au comité pourquoi vous ne venez plus, pour qu’il puisse s’organiser.",
     withdrawConfirm: "Je ne viens pas",
+  },
+
+  /**
+   * The planning (/events) — the members' area's front door.
+   *
+   * THREE PLURALS HERE ARE THE POINT OF THE SLICE, not decoration. Each was a
+   * `n === 1 ? a : b` in a component, which is a plural RULE written in
+   * JavaScript, and the two languages do not share one:
+   *
+   *   - `meta.answersAria` was `answered === 0 || answered === 1`, which is
+   *     the FRENCH rule exactly. French counts zero as singular, "0 réponse";
+   *     German does not, "0 Rückmeldungen". That ternary renders correct
+   *     French and wrong German, and the obvious "fix" of `=== 1` renders
+   *     correct German and wrong French.
+   *   - `owedCount` changes the VERB in German — "Es fehlt" against "Es
+   *     fehlen" — which no suffix-splicing in a component could reach.
+   *   - `calendarGrid.dayAria` and `meta.guests` are the ordinary case, and
+   *     they are here rather than in JSX so all four read the same way.
+   *
+   * i18next resolves `_one`/`_other` from `count` using the ACTIVE language's
+   * CLDR rule, so each locale gets its own. See `Unplural` in ./index.ts for
+   * why `t()` takes the bare key and refuses the suffixed ones.
+   *
+   * ZERO IS NOT A PLURAL FORM in either language, so where zero says something
+   * ELSE — `allAnswered`, `meta.noGuests` — it is a separate key and the
+   * component branches on it. That is not the same as branching on one.
+   */
+  events: {
+    heading: "Planning",
+    add: "Ajouter un événement",
+    addSeries: "Ajouter une série",
+    showPast: "Voir les événements passés",
+    showPlanning: "Voir le planning",
+    calendar: "Calendrier",
+    list: "Liste",
+    dayFiltered: "Filtré sur un jour.",
+    showAll: "Voir tout le planning",
+    loadFailed: "Le planning n’a pas pu être chargé.",
+    empty: "Aucun événement au planning.",
+    emptyPast: "Aucun événement passé.",
+    // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.
+    // The hint quotes the button beside it, so spelling the label out twice
+    // is how the two come to disagree — and the guillemets are French
+    // typography, which German does not take.
+    emptyHint:
+      "Ajoutez un événement, ou générez toute une saison d’un coup avec «\u00a0{{action}}\u00a0».",
+    owedHeading: "À répondre",
+    allAnswered: "Tout est répondu.",
+    owedCount_one: "Il reste {{count}} événement sans réponse.",
+    owedCount_other: "Il reste {{count}} événements sans réponse.",
+    pastHeading: "Événements passés",
+    restHeading: "Le reste du planning",
+
+    // The per-row actions. Each visible word is paired with an accessible
+    // name carrying the event, so a screen-reader user hears which row they
+    // are on rather than the eleventh "Modifier" of the page.
+    registrations: "Inscriptions",
+    registrationsAria: "Inscriptions à {{title}}",
+    options: "Ce qu’on réserve",
+    optionsAria: "Ce qui peut être réservé à {{title}}",
+    whoComingAria: "Qui vient à {{title}}",
+    editAria: "Modifier {{title}}",
+    deleteAria: "Supprimer {{title}}",
+
+    deleteTitle: "Supprimer «\u00a0{{title}}\u00a0»\u00a0?",
+    deleteDescription:
+      "L’événement sera retiré du planning. Les réponses de présence et les inscriptions liées seront supprimées avec lui. Cette action est définitive.",
+    deleteFailed: "La suppression a échoué.",
+
+    /** EventCard's detail list. `attireUnset` is also quoted by #166's form. */
+    card: {
+      location: "Lieu\u00a0:",
+      attire: "Tenue\u00a0:",
+      attireUnset: "Non précisée",
+    },
+
+    /** EventMeta's chips — what the committee sees and a player does not. */
+    meta: {
+      public: "Public",
+      // Always the plural word: it is a RATIO, "3/12 réponses", not a count
+      // of one thing. The accessible name below is the counted sentence.
+      answers: "{{answered}}/{{answerable}} réponses",
+      answersAria_one: "{{count}} réponse sur {{total}}",
+      answersAria_other: "{{count}} réponses sur {{total}}",
+      noGuests: "Aucune inscription",
+      guests_one: "{{count}} personne",
+      guests_other: "{{count}} personnes",
+    },
+
+    /**
+     * The month grid (C8: an overview at a desk, never the phone's list).
+     *
+     * `dayAria` takes the date ALREADY FORMATTED, because the formatter is
+     * locale-aware and lives in the component — see EventCalendar.tsx.
+     */
+    calendarGrid: {
+      previousMonth: "Mois précédent",
+      nextMonth: "Mois suivant",
+      dayAria_one: "{{date}}, {{count}} événement",
+      dayAria_other: "{{date}}, {{count}} événements",
+    },
   },
 
   /**

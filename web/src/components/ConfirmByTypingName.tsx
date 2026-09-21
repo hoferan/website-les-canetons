@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { FormError, FormField } from "./FormField";
-import type { TranslatedError } from "../i18n";
+import { t, type TranslatedError } from "../i18n";
 
 /**
  * The dialog every destructive privileged action goes through.
@@ -102,7 +102,7 @@ export function ConfirmByTypingName({
         {confirmPhrase === undefined ? null : (
           <FormField
             id="confirm-phrase"
-            label={`Tapez « ${confirmPhrase} » pour confirmer`}
+            label={t("common.typeToConfirm", { phrase: confirmPhrase })}
             value={typed}
             onChange={setTyped}
             autoComplete="off"
@@ -112,7 +112,7 @@ export function ConfirmByTypingName({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={close}>Annuler</AlertDialogCancel>
+          <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
           {/*
             A plain Button, NOT AlertDialogAction: the Radix action closes the
             dialog on click, and this action can fail — a 409 invariant, or a
@@ -130,7 +130,7 @@ export function ConfirmByTypingName({
               onConfirm();
             }}
           >
-            {busy ? "En cours…" : confirmLabel}
+            {busy ? t("common.busy") : confirmLabel}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

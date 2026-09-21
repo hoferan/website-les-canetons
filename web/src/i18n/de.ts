@@ -164,6 +164,9 @@ export const de: typeof fr = {
     cancel: "Abbrechen",
     save: "Speichern",
     busy: "Läuft…",
+    edit: "Bearbeiten",
+    delete: "Löschen",
+    typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
   },
 
   nav: {
@@ -283,6 +286,74 @@ export const de: typeof fr = {
     withdrawDescription:
       "Sie hatten Ihre Teilnahme zugesagt. Sagen Sie dem Vorstand, warum Sie nicht mehr kommen, damit er planen kann.",
     withdrawConfirm: "Ich komme nicht",
+  },
+
+  events: {
+    // ANLASS, NICHT VERANSTALTUNG: das schweizerische Wort für einen Auftritt
+    // oder eine Probe, und das, was eine Guggenmusik selber sagt.
+    heading: "Planung",
+    add: "Anlass hinzufügen",
+    addSeries: "Serie hinzufügen",
+    showPast: "Vergangene Anlässe anzeigen",
+    showPlanning: "Planung anzeigen",
+    calendar: "Kalender",
+    list: "Liste",
+    dayFiltered: "Nach einem Tag gefiltert.",
+    showAll: "Ganze Planung anzeigen",
+    loadFailed: "Die Planung konnte nicht geladen werden.",
+    empty: "Keine Anlässe in der Planung.",
+    emptyPast: "Keine vergangenen Anlässe.",
+    // ENGE GUILLEMETS, und {{action}} ist der Wert eines anderen Schlüssels:
+    // Der Hinweis zitiert die Schaltfläche daneben.
+    emptyHint:
+      "Fügen Sie einen Anlass hinzu, oder erzeugen Sie mit «{{action}}» gleich eine ganze Saison.",
+    owedHeading: "Zu beantworten",
+    allAnswered: "Alles beantwortet.",
+    // DAS VERB WECHSELT MIT, «fehlt» gegen «fehlen». Genau das kann kein
+    // angehängtes «s» in einer Komponente leisten.
+    owedCount_one: "Es fehlt noch {{count}} Rückmeldung.",
+    owedCount_other: "Es fehlen noch {{count}} Rückmeldungen.",
+    pastHeading: "Vergangene Anlässe",
+    restHeading: "Die übrige Planung",
+
+    registrations: "Anmeldungen",
+    registrationsAria: "Anmeldungen zu {{title}}",
+    options: "Was buchbar ist",
+    optionsAria: "Was zu {{title}} gebucht werden kann",
+    whoComingAria: "Wer kommt zu {{title}}",
+    editAria: "{{title}} bearbeiten",
+    deleteAria: "{{title}} löschen",
+
+    deleteTitle: "«{{title}}» löschen?",
+    deleteDescription:
+      "Der Anlass wird aus der Planung entfernt. Die Rückmeldungen zur Teilnahme und die zugehörigen Anmeldungen werden mit ihm gelöscht. Diese Aktion ist endgültig.",
+    deleteFailed: "Das Löschen ist fehlgeschlagen.",
+
+    card: {
+      location: "Ort:",
+      attire: "Kleidung:",
+      attireUnset: "Nicht festgelegt",
+    },
+
+    meta: {
+      public: "Öffentlich",
+      answers: "{{answered}}/{{answerable}} Rückmeldungen",
+      // NULL IST HIER PLURAL, anders als im Französischen: «0 Rückmeldungen»,
+      // nicht «0 Rückmeldung». Die CLDR-Regel der aktiven Sprache entscheidet
+      // das, nicht die Komponente.
+      answersAria_one: "{{count}} Rückmeldung von {{total}}",
+      answersAria_other: "{{count}} Rückmeldungen von {{total}}",
+      noGuests: "Keine Anmeldungen",
+      guests_one: "{{count}} Person",
+      guests_other: "{{count}} Personen",
+    },
+
+    calendarGrid: {
+      previousMonth: "Vorheriger Monat",
+      nextMonth: "Nächster Monat",
+      dayAria_one: "{{date}}, {{count}} Anlass",
+      dayAria_other: "{{date}}, {{count}} Anlässe",
+    },
   },
 
   home: {

@@ -3,27 +3,62 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import type { EventResource } from "../api/generated/model";
+import { currentLocale, t } from "../i18n";
+import { intlTag } from "../i18n/locale";
 import { bandZoneParts } from "./bandTime";
 
+/**
+ * THE THREE DISPLAY FORMATTERS, BUILT PER CALL AND CACHED BY SHAPE.
+ *
+ * All three were module-scope `new Intl.DateTimeFormat("fr-CH", …)` constants
+ * — the anti-pattern #151 removed from web/src/lib/date.ts and did not reach
+ * here. A module-scope formatter is bound to whatever locale was active when
+ * the file was first imported, and no later locale change moves it, so the
+ * German calendar rendered French month names.
+ *
+ * `WEEKDAYS` was the worst of the three and is the reason this is a function
+ * rather than three swapped tags: it was a module-scope ARRAY of seven
+ * already-formatted strings. Nothing about it could be fixed by making the
+ * formatter locale-aware, because by the time any locale was chosen the
+ * strings existed.
+ *
+ * KEYED BY SHAPE, NOT BY TAG. Two shapes can resolve to the same Intl tag —
+ * both French kinds are `fr-CH` here — so a cache keyed on the tag alone
+ * would hand the month formatter back when the day formatter was asked for.
+ * Same bug the shape key in formatEventWhen.ts exists to prevent.
+ *
+ * ARITHMETIC STAYS IN UTC, and `bandTime`'s `en-US` parts extractor stays
+ * fixed: it is a machine formatter, not a display one, and following the
+ * active locale would break it silently.
+ */
+const cache = new Map<string, Intl.DateTimeFormat>();
+
+const SHAPES: Record<"weekday" | "month" | "day", Intl.DateTimeFormatOptions> = {
+  weekday: { weekday: "short", timeZone: "UTC" },
+  month: { month: "long", year: "numeric", timeZone: "UTC" },
+  day: { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" },
+};
+
+function formatter(shape: "weekday" | "month" | "day"): Intl.DateTimeFormat {
+  const tag = intlTag(currentLocale(), "short");
+  const key = `${tag}|${shape}`;
+
+  let found = cache.get(key);
+  if (!found) {
+    found = new Intl.DateTimeFormat(tag, SHAPES[shape]);
+    cache.set(key, found);
+  }
+
+  return found;
+}
+
 /** Monday first, the way a Swiss calendar is read. 1 January 2024 was a Monday. */
-const WEEKDAYS = Array.from({ length: 7 }, (_, index) =>
-  new Intl.DateTimeFormat("fr-CH", { weekday: "short", timeZone: "UTC" }).format(
-    new Date(Date.UTC(2024, 0, 1 + index)),
-  ),
-);
-
-const MONTH_LABEL = new Intl.DateTimeFormat("fr-CH", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-const DAY_LABEL = new Intl.DateTimeFormat("fr-CH", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
+function weekdayNames(): string[] {
+  const short = formatter("weekday");
+  return Array.from({ length: 7 }, (_, index) =>
+    short.format(new Date(Date.UTC(2024, 0, 1 + index))),
+  );
+}
 
 /** "2026-09" for the month an ISO instant falls in, in Fribourg. */
 function monthOf(iso: string): string {
@@ -95,21 +130,21 @@ export function EventCalendar({
           type="button"
           variant="outline"
           size="sm"
-          aria-label="Mois précédent"
+          aria-label={t("events.calendarGrid.previousMonth")}
           onClick={() => setMonth(shiftMonth(month, -1))}
         >
           ←
         </Button>
 
         <h3 data-testid="calendar-month" className="font-display text-lg">
-          {MONTH_LABEL.format(firstOfMonth)}
+          {formatter("month").format(firstOfMonth)}
         </h3>
 
         <Button
           type="button"
           variant="outline"
           size="sm"
-          aria-label="Mois suivant"
+          aria-label={t("events.calendarGrid.nextMonth")}
           onClick={() => setMonth(shiftMonth(month, 1))}
         >
           →
@@ -117,7 +152,7 @@ export function EventCalendar({
       </div>
 
       <div className="mt-related grid grid-cols-7 gap-1 text-center text-xs text-ink-muted">
-        {WEEKDAYS.map((name) => (
+        {weekdayNames().map((name) => (
           <div key={name}>{name}</div>
         ))}
       </div>
@@ -149,7 +184,10 @@ export function EventCalendar({
               key={day}
               type="button"
               aria-pressed={chosen}
-              aria-label={`${DAY_LABEL.format(new Date(`${day}T00:00:00Z`))}, ${count} événement${count > 1 ? "s" : ""}`}
+              aria-label={t("events.calendarGrid.dayAria", {
+                date: formatter("day").format(new Date(`${day}T00:00:00Z`)),
+                count,
+              })}
               onClick={() => onSelect(chosen ? null : day)}
               className={
                 chosen
