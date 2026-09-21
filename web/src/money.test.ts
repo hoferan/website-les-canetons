@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { setLocale } from "./i18n";
 
 import { formatCents, francsInput, parseFrancs } from "./money";
 
@@ -14,6 +16,10 @@ import { formatCents, francsInput, parseFrancs } from "./money";
  */
 const NBSP = "\u00a0";
 
+afterEach(async () => {
+  await setLocale("fr");
+});
+
 describe("formatCents", () => {
   it("renders centimes as Swiss francs with both decimals", () => {
     expect(formatCents(4500)).toBe(`CHF${NBSP}45.00`);
@@ -25,12 +31,37 @@ describe("formatCents", () => {
   });
 
   /**
-   * The half that IS the locale's to decide. fr-CH groups with an apostrophe,
-   * which is why the grouping still goes through Intl even though the
-   * currency does not.
+   * The half that IS the locale's to decide — and it decides differently per
+   * language, which this comment used to deny. It said "fr-CH groups with an
+   * apostrophe"; measured, fr-CH groups with a NARROW NO-BREAK SPACE and only
+   * de-CH uses the apostrophe. The loose `\D` below is why the error survived:
+   * it matches either.
    */
   it("groups thousands the Swiss way", () => {
     expect(formatCents(123450)).toMatch(/^CHF\u00a01\D234\.50$/);
+  });
+
+  it("GROUPS BY THE READER'S OWN CONVENTION, not always French's", async () => {
+    // The decimal point is shared — Switzerland writes money with a point in
+    // all three of its languages, which money.ts says and is right about. The
+    // GROUP separator is not shared, and it is reachable: a souper's booking
+    // total across thirty guests clears CHF 1000 on the guest list.
+    //
+    // Asserted as the invariant rather than as exact codepoints, because the
+    // separator is CLDR's to change between ICU builds — the same fragility
+    // the `\D` above was hedging against.
+    const french = formatCents(123450);
+
+    await setLocale("de-CH");
+    const german = formatCents(123450);
+
+    expect(german).toContain("'");
+    expect(french).not.toContain("'");
+    expect(french).not.toBe(german);
+
+    // Both keep the point, and both keep the hand-placed currency in front.
+    expect(french).toMatch(/^CHF\u00a0.*\.50$/);
+    expect(german).toBe("CHF\u00a01'234.50");
   });
 });
 

@@ -1,3 +1,6 @@
+import { currentLocale } from "./i18n";
+import { intlTag } from "./i18n/locale";
+
 /**
  * Francs on screen, centimes on the wire.
  *
@@ -19,21 +22,37 @@
  * BY HAND, which is why this goes through `formatToParts` instead of reading a
  * formatted string.
  *
- * Both halves of that were measured. `fr-CH` formatting a plain number gives
- * "1'234,50", with a COMMA, while the same locale formatting CHF gives
- * "1'234.50", because Switzerland writes money with a point in all three of
- * its languages. The currency style is therefore the only one that produces
- * the separator a price list needs. What it also produces is "1'234.50 CHF",
- * the code trailing, where every Swiss invoice and menu writes it first, and
- * that placement is CLDR's to change between ICU builds, so two browsers could
+ * Both halves of that were measured. Formatting a plain number gives a COMMA
+ * in French ("1 234,50"), while the same locale formatting CHF gives a point,
+ * because Switzerland writes money with a point in all three of its
+ * languages. The currency style is therefore the only one that produces the
+ * separator a price list needs. What it also produces is "1'234.50 CHF", the
+ * code trailing, where every Swiss invoice and menu writes it first, and that
+ * placement is CLDR's to change between ICU builds, so two browsers could
  * render one guest list two different ways. Dropping the currency part keeps
  * the first and settles the second.
+ *
+ * THE DECIMAL POINT IS SHARED; THE GROUP SEPARATOR IS NOT, which this file
+ * used to claim otherwise by hardcoding `fr-CH` while its own example read
+ * "CHF 1'234.50" — the GERMAN form. Measured:
+ *
+ *     fr-CH   CHF 1<U+202F>234.50   narrow no-break space
+ *     de-CH   CHF 1'234.50          apostrophe
+ *
+ * Both are correct in their own language, and the difference is reachable:
+ * a souper's booking total across thirty guests clears CHF 1000 on the
+ * committee's guest list. So the tag follows the reader. `money.test.ts`
+ * matched the separator with `\D` long before this was noticed, which is a
+ * fair sign somebody already suspected it.
+ *
+ * Built per call, never a module-scope const, for the reason lib/date.ts
+ * gives at length.
  *
  * Two decimals always, including on a round figure. A column mixing "CHF 45"
  * and "CHF 45.50" is harder to add up by eye than one that does not.
  */
 export function formatCents(cents: number): string {
-  const parts = new Intl.NumberFormat("fr-CH", {
+  const parts = new Intl.NumberFormat(intlTag(currentLocale(), "short"), {
     style: "currency",
     currency: "CHF",
   }).formatToParts(cents / 100);

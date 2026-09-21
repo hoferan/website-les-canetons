@@ -233,6 +233,13 @@ export const fr = {
     // it; only the visible word is shared.
     edit: "Modifier",
     delete: "Supprimer",
+    // "N personne(s)", counted, on the public booking form and on the
+    // committee's guest list. events.meta.guests says the same words as a
+    // CHIP on an event card and keeps its own key: if a chip ever wants to
+    // read "6 Gäste" while a sentence still says "6 Personen", this is the
+    // seam that lets it.
+    guests_one: "{{count}} personne",
+    guests_other: "{{count}} personnes",
     // ConfirmByTypingName's field, which only the roster arms today. Whole
     // sentence, guillemets included, for the reason the whole file repeats.
     typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
@@ -776,6 +783,140 @@ export const fr = {
   },
 
   /**
+   * The PUBLIC booking form (/events/:id/book).
+   *
+   * THE ONE SCREEN IN THIS SLICE A STRANGER REACHES, and the reason the whole
+   * effort exists: a German speaker in Fribourg booking a seat at the souper,
+   * on a phone, at the hall. It carries the same weight as the slice-2 public
+   * pages.
+   *
+   * `fields` REPLACES A MODULE-SCOPE ARRAY OF FRENCH LABELS in
+   * EventBooking.tsx — `label`, not `labelKey`, frozen at import. Third time:
+   * Layout's NAV (#151), SeriesForm's WEEKDAYS (#166), this.
+   */
+  booking: {
+    fields: {
+      lastName: "Nom",
+      firstName: "Prénom",
+      email: "E-mail",
+      phone: "Téléphone",
+      address: "Adresse",
+      tableName: "Table",
+    },
+
+    submitFailed: "L’inscription n’a pas pu être enregistrée. Veuillez réessayer.",
+    // DELIBERATELY VAGUE, as the French is: a closed event and a mistyped id
+    // answer the same way, so a stranger cannot enumerate what exists.
+    notOpen:
+      "Il n’y a pas d’inscription ouverte pour cette adresse. Vérifiez le lien qui vous a été communiqué.",
+    loadFailed: "Le formulaire n’a pas pu être chargé. Rechargez la page.",
+
+    bookedHeading: "Inscription enregistrée",
+    bookedBody:
+      "Merci\u00a0! Un courriel de confirmation part à {{email}}. Le comité vous contactera au {{phone}} si nécessaire.",
+
+    opensOn: "Les inscriptions ouvrent le {{date}}.",
+    closed: "Les inscriptions sont closes.",
+    closesOn: "Inscriptions jusqu’au {{date}}.",
+    maxGuests_one: "Une inscription couvre au maximum {{count}} personne.",
+    maxGuests_other: "Une inscription couvre au maximum {{count}} personnes.",
+
+    contactLegend: "Vos coordonnées",
+    choiceLegend: "Votre choix",
+    optionalHint:
+      "L’adresse et la table sont facultatives. La table, c’est avec qui vous aimeriez être placé.",
+    nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
+
+    chooseSomeone: "Choisissez au moins une personne.",
+    // The running total, when any chosen option carries a price. {{guests}} is
+    // common.guests already counted; {{total}} is formatCents.
+    guestsWithTotal: "{{guests}} — {{total}}",
+    submit: "M’inscrire",
+    sending: "Envoi…",
+  },
+
+  /** The committee's guest list (/events/:id/registrations). */
+  registrations: {
+    amendFailed: "La correction n’a pas pu être enregistrée.",
+    cancelFailed: "L’annulation a échoué.",
+    loadFailed: "Cette inscription n’a pas pu être chargée.",
+    loadFailedReload: "Cette inscription n’a pas pu être chargée. Rechargez la page.",
+    listLoadFailed: "La liste n’a pas pu être chargée.",
+    downloadFailed: "Le fichier n’a pas pu être téléchargé.",
+
+    tableLabel: "Table\u00a0: {{value}}",
+    bookings_one: "{{count}} inscription",
+    bookings_other: "{{count}} inscriptions",
+    // The counts line joins its parts with a middot; the parts are counted
+    // separately because they pluralise separately.
+    countsSeparator: " · ",
+    exportsHint:
+      "Les quatre fichiers contiennent exactement les mêmes lignes. Excel est celui que le comité ouvre\u00a0; CSV fonctionne partout.",
+    empty: "Personne ne s’est encore inscrit. Le formulaire public est à l’adresse",
+
+    /**
+     * THE TWO "ANNULER"S, and they are not one key.
+     *
+     * `cancel` is the per-row button that CANCELS A BOOKING; common.cancel
+     * closes a form without doing anything. Identical in French, which is why
+     * #115 wants the French half renamed — and why German cannot wait for
+     * that: "stornieren" against "abbrechen". Keeping them apart here leaves
+     * #115 free to rename the French whenever it lands, without deciding
+     * anything twice. Third instance of this shape, after
+     * attendance.undo/common.cancel.
+     */
+    cancel: "Annuler",
+    // TWO KEYS, NOT ONE: the dialog ASKS ("… de X Y ?", with the space
+    // French puts before a question mark) and the button LABELS ("… de X Y").
+    // They read as the same sentence and are not the same string — which the
+    // first attempt at this slice got wrong by sharing a key.
+    cancelAria: "Annuler l’inscription de {{name}}",
+    cancelTitle: "Annuler l’inscription de {{name}}\u00a0?",
+    cancelDescription:
+      "L’inscription et tout ce qu’elle a commandé seront supprimés. La personne n’est pas prévenue. Cette action est définitive.",
+    cancelConfirm: "Annuler l’inscription",
+
+    amend: "Corriger",
+    // Used as the row button's accessible name AND as the amend form's
+    // heading, so the two cannot disagree — the members.deleteTitle trick.
+    amendTitle: "Corriger l’inscription de {{name}}",
+    orderNotHere:
+      "La commande ne se modifie pas ici. Pour la changer, annulez l’inscription et refaites-la.",
+    saving: "Enregistrement…",
+  },
+
+  /** What a guest may book, and at what price (/events/:id/registration-options). */
+  registrationOptions: {
+    saveFailed: "L’enregistrement a échoué.",
+    loadFailedReload: "La liste n’a pas pu être chargée. Rechargez la page.",
+    intro:
+      "Ce que le public peut réserver, et à quel prix. Laissez le prix vide pour une option qui n’en a pas\u00a0; écrivez 0 pour une option gratuite. Ce n’est pas la même chose.",
+    empty:
+      "Rien n’est proposé pour l’instant. Le formulaire public affichera l’événement sans rien à choisir.",
+
+    label: "Intitulé",
+    description: "Description",
+    // The visible button words. Their accessible names are moveUp/moveDown/
+    // remove above, which carry the option — the two are not the same string.
+    up: "Monter",
+    down: "Descendre",
+    removeShort: "Retirer",
+    optionNumber: "Option {{n}}",
+    addOption: "Ajouter une option",
+    price: "Prix en francs",
+
+    // {{option}} is what the committee typed, or `thisOption` for a row that
+    // has no title yet — content either way, rendered verbatim.
+    moveUp: "Monter {{option}}",
+    moveDown: "Descendre {{option}}",
+    remove: "Retirer {{option}}",
+    thisOption: "cette option",
+
+    saved: "Enregistré.",
+    saving: "Enregistrement…",
+  },
+
+  /**
    * The front door (/).
    *
    * `destinations` backs Home.tsx's DESTINATIONS array, which carries a
@@ -831,6 +972,10 @@ export const fr = {
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
     patronsAlt: "Le parrain et la marraine des Canetons",
+    // THE NAMES ARE CONTENT; THE "et" BETWEEN THEM IS NOT. Left hardcoded
+    // in Band.tsx by #152, so /de/band read "Richard Hertig et Annick
+    // Bürgisser" — no accent in "et", so no grep over that file found it.
+    patrons: "Richard Hertig et Annick Bürgisser",
   },
 
   /** /committee — who to write to, and who holds which seat. */

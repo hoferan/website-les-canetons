@@ -22,22 +22,46 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { FormError, FormField } from "../components/FormField";
 import { formatEventWhen } from "../events/formatEventWhen";
+import { t, type TranslationKey } from "../i18n";
+import { formatDay } from "../lib/date";
 import { formatCents } from "../money";
 
 /** The contact fields, in the order a Swiss committee needs them (G4). */
 const FIELDS: {
   name: "lastName" | "firstName" | "email" | "phone" | "address" | "tableName";
-  label: string;
+  labelKey: TranslationKey;
   type?: string;
   autoComplete?: string;
   required?: boolean;
 }[] = [
-  { name: "lastName", label: "Nom", autoComplete: "family-name", required: true },
-  { name: "firstName", label: "Prénom", autoComplete: "given-name", required: true },
-  { name: "email", label: "E-mail", type: "email", autoComplete: "email", required: true },
-  { name: "phone", label: "Téléphone", type: "tel", autoComplete: "tel", required: true },
-  { name: "address", label: "Adresse", autoComplete: "street-address" },
-  { name: "tableName", label: "Table" },
+  {
+    name: "lastName",
+    labelKey: "booking.fields.lastName",
+    autoComplete: "family-name",
+    required: true,
+  },
+  {
+    name: "firstName",
+    labelKey: "booking.fields.firstName",
+    autoComplete: "given-name",
+    required: true,
+  },
+  {
+    name: "email",
+    labelKey: "booking.fields.email",
+    type: "email",
+    autoComplete: "email",
+    required: true,
+  },
+  {
+    name: "phone",
+    labelKey: "booking.fields.phone",
+    type: "tel",
+    autoComplete: "tel",
+    required: true,
+  },
+  { name: "address", labelKey: "booking.fields.address", autoComplete: "street-address" },
+  { name: "tableName", labelKey: "booking.fields.tableName" },
 ];
 
 type Contact = Record<(typeof FIELDS)[number]["name"], string>;
@@ -103,9 +127,7 @@ export function EventBooking() {
     },
   });
 
-  const { error, setFromThrown, clear, messageFor } = useApiFormError(
-    "L’inscription n’a pas pu être enregistrée. Veuillez réessayer.",
-  );
+  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("booking.submitFailed"));
 
   const offer: RegistrationFormResource | null = form.data?.status === 200 ? form.data.data : null;
 
@@ -168,7 +190,7 @@ export function EventBooking() {
   if (form.isPending) {
     return (
       <PageSection width="text">
-        <p className="text-ink-muted">Chargement…</p>
+        <p className="text-ink-muted">{t("common.loading")}</p>
       </PageSection>
     );
   }
@@ -176,11 +198,11 @@ export function EventBooking() {
   if (!offer) {
     return (
       <PageSection width="text">
-        <h1 className="font-display text-3xl">Inscriptions</h1>
+        <h1 className="font-display text-3xl">{t("events.registrations")}</h1>
         <p className="mt-related text-ink-muted">
           {form.error instanceof ApiError && form.error.status === 404
-            ? "Il n’y a pas d’inscription ouverte pour cette adresse. Vérifiez le lien qui vous a été communiqué."
-            : "Le formulaire n’a pas pu être chargé. Rechargez la page."}
+            ? t("booking.notOpen")
+            : t("booking.loadFailed")}
         </p>
       </PageSection>
     );
@@ -189,10 +211,9 @@ export function EventBooking() {
   if (booked) {
     return (
       <PageSection width="text">
-        <h1 className="font-display text-3xl">Inscription enregistrée</h1>
+        <h1 className="font-display text-3xl">{t("booking.bookedHeading")}</h1>
         <p className="mt-related text-ink-muted">
-          Merci&nbsp;! Un courriel de confirmation part à {booked.email}. Le comité vous contactera
-          au {booked.phone} si nécessaire.
+          {t("booking.bookedBody", { email: booked.email, phone: booked.phone })}
         </p>
 
         <Card className="mt-related gap-tight p-5">
@@ -229,18 +250,18 @@ export function EventBooking() {
       {!offer.open ? (
         <p className="mt-related rounded-md border border-line bg-panel p-4" role="status">
           {offer.opensAt !== null && Date.parse(offer.opensAt) > Date.now()
-            ? `Les inscriptions ouvrent le ${dayIn(offer.opensAt)}.`
-            : "Les inscriptions sont closes."}
+            ? t("booking.opensOn", { date: formatDay(offer.opensAt) })
+            : t("booking.closed")}
         </p>
       ) : null}
 
       {offer.open ? (
         <>
           <p className="mt-related text-ink-muted">
-            {offer.closesAt === null ? null : `Inscriptions jusqu’au ${dayIn(offer.closesAt)}. `}
-            {offer.maxGuests === null
+            {offer.closesAt === null
               ? null
-              : `Une inscription couvre au maximum ${offer.maxGuests} personnes.`}
+              : `${t("booking.closesOn", { date: formatDay(offer.closesAt) })} `}
+            {offer.maxGuests === null ? null : t("booking.maxGuests", { count: offer.maxGuests })}
           </p>
 
           <FormError error={error} />
@@ -248,12 +269,12 @@ export function EventBooking() {
           <Card asChild className="mt-related gap-0 p-5">
             <form onSubmit={submit} className="space-y-related">
               <fieldset className="flex flex-col gap-related">
-                <legend className="font-display text-xl">Vos coordonnées</legend>
+                <legend className="font-display text-xl">{t("booking.contactLegend")}</legend>
                 {FIELDS.map((field) => (
                   <FormField
                     key={field.name}
                     id={`booking-${field.name}`}
-                    label={field.label}
+                    label={t(field.labelKey)}
                     type={field.type}
                     required={field.required}
                     autoComplete={field.autoComplete}
@@ -264,19 +285,14 @@ export function EventBooking() {
                     }
                   />
                 ))}
-                <p className="text-sm text-ink-muted">
-                  L’adresse et la table sont facultatives. La table, c’est avec qui vous aimeriez
-                  être placé.
-                </p>
+                <p className="text-sm text-ink-muted">{t("booking.optionalHint")}</p>
               </fieldset>
 
               <fieldset className="flex flex-col gap-related">
-                <legend className="font-display text-xl">Votre choix</legend>
+                <legend className="font-display text-xl">{t("booking.choiceLegend")}</legend>
 
                 {offer.options.length === 0 ? (
-                  <p className="text-ink-muted">
-                    Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.
-                  </p>
+                  <p className="text-ink-muted">{t("booking.nothingOffered")}</p>
                 ) : null}
 
                 {offer.options.map((option) => (
@@ -304,11 +320,17 @@ export function EventBooking() {
                     meals and three should be able to read what each costs
                     before submitting, not after. */}
                 <p className="text-ink" data-testid="booking-total">
+                  {/* THE COUNT IS THE CATALOGUE'S. `guests > 1` is the FRENCH
+                      plural rule, which puts "0 personne" on a French page
+                      correctly and "0 Person" on a German one wrongly. */}
                   {guests === 0
-                    ? "Choisissez au moins une personne."
-                    : `${guests} personne${guests > 1 ? "s" : ""}${
-                        priced.length === 0 ? "" : ` — ${formatCents(total)}`
-                      }`}
+                    ? t("booking.chooseSomeone")
+                    : priced.length === 0
+                      ? t("common.guests", { count: guests })
+                      : t("booking.guestsWithTotal", {
+                          guests: t("common.guests", { count: guests }),
+                          total: formatCents(total),
+                        })}
                 </p>
               </fieldset>
 
@@ -327,7 +349,7 @@ export function EventBooking() {
               />
 
               <Button type="submit" aria-disabled={send.isPending}>
-                {send.isPending ? "Envoi…" : "M’inscrire"}
+                {send.isPending ? t("booking.sending") : t("booking.submit")}
               </Button>
             </form>
           </Card>
@@ -397,14 +419,4 @@ function QuantityField({
       />
     </div>
   );
-}
-
-/** An instant as the day a reader would say out loud. */
-function dayIn(iso: string): string {
-  return new Intl.DateTimeFormat("fr-CH", {
-    timeZone: "Europe/Zurich",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(iso));
 }
