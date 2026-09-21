@@ -16,6 +16,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
+import { RowActions, type RowAction } from "../components/RowActions";
 import { AttendanceControls } from "../events/AttendanceControls";
 import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
@@ -179,6 +180,64 @@ export function Events() {
   const missing = awaiting.filter((event) => event.myAttendance === null).length;
 
   function card(event: EventResource, inOwed: boolean) {
+    // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.
+    // The screen still decides which actions exist — three permissions gate
+    // them independently — and RowActions decides only which one stays inline
+    // and which go behind the "..." (#118). Neither the card nor RowActions
+    // calls can().
+    const actions: RowAction[] = [];
+
+    if (maySeeAnswers) {
+      actions.push({
+        key: "attendance",
+        // THE SAME KEY AS THE SCREEN IT OPENS, so the link and its
+        // destination cannot come to disagree.
+        label: t("attendance.heading"),
+        ariaLabel: t("events.whoComingAria", { title: event.title }),
+        to: `/events/${event.id}/attendance`,
+      });
+    }
+
+    // ONLY ON AN EVENT THAT TAKES BOOKINGS. Every other card would otherwise
+    // carry a link to an empty list that can never fill up, and the planning
+    // is mostly rehearsals. `takesRegistrations` is the server's own
+    // derivation from the closing date.
+    if (maySeeGuests && event.takesRegistrations) {
+      actions.push({
+        key: "registrations",
+        label: t("events.registrations"),
+        ariaLabel: t("events.registrationsAria", { title: event.title }),
+        to: `/events/${event.id}/registrations`,
+      });
+    }
+
+    if (mayManage) {
+      actions.push(
+        {
+          key: "options",
+          label: t("events.options"),
+          ariaLabel: t("events.optionsAria", { title: event.title }),
+          to: `/events/${event.id}/registration-options`,
+        },
+        {
+          key: "edit",
+          label: t("common.edit"),
+          ariaLabel: t("events.editAria", { title: event.title }),
+          to: `/events/${event.id}/edit`,
+        },
+        {
+          key: "delete",
+          label: t("common.delete"),
+          ariaLabel: t("events.deleteAria", { title: event.title }),
+          // Inert while the read the dialog opens from is in flight, so a
+          // second press cannot start a second one.
+          disabled: opening === event.id,
+          destructive: true,
+          onSelect: () => void openDelete(event),
+        },
+      );
+    }
+
     return (
       <EventCard
         key={event.id}
@@ -187,65 +246,15 @@ export function Events() {
         // player is passed no actions at all, so their card has no empty
         // control row rather than a row of refusals.
         actions={
-          mayManage || maySeeAnswers || (maySeeGuests && event.takesRegistrations) ? (
-            <>
-              {maySeeAnswers ? (
-                <ButtonLink
-                  to={`/events/${event.id}/attendance`}
-                  variant="outline"
-                  ariaLabel={t("events.whoComingAria", { title: event.title })}
-                >
-                  {/* THE SAME KEY AS THE SCREEN IT OPENS, so the link and
-                      its destination cannot come to disagree. */}
-                  {t("attendance.heading")}
-                </ButtonLink>
-              ) : null}
-              {/* ONLY ON AN EVENT THAT TAKES BOOKINGS. Every other card would
-                  otherwise carry a link to an empty list that can never fill
-                  up, and the planning is mostly rehearsals. `takesRegistrations`
-                  is the server's own derivation from the closing date. */}
-              {maySeeGuests && event.takesRegistrations ? (
-                <ButtonLink
-                  to={`/events/${event.id}/registrations`}
-                  variant="outline"
-                  ariaLabel={t("events.registrationsAria", { title: event.title })}
-                >
-                  {t("events.registrations")}
-                </ButtonLink>
-              ) : null}
-              {mayManage ? (
-                <>
-                  <ButtonLink
-                    to={`/events/${event.id}/registration-options`}
-                    variant="outline"
-                    ariaLabel={t("events.optionsAria", { title: event.title })}
-                  >
-                    {t("events.options")}
-                  </ButtonLink>
-                  <ButtonLink
-                    to={`/events/${event.id}/edit`}
-                    variant="outline"
-                    ariaLabel={t("events.editAria", { title: event.title })}
-                  >
-                    {t("common.edit")}
-                  </ButtonLink>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    aria-label={t("events.deleteAria", { title: event.title })}
-                    aria-disabled={opening === event.id}
-                    onClick={() => {
-                      if (opening === event.id) {
-                        return;
-                      }
-                      void openDelete(event);
-                    }}
-                  >
-                    {t("common.delete")}
-                  </Button>
-                </>
-              ) : null}
-            </>
+          actions.length > 0 ? (
+            <RowActions
+              actions={actions}
+              // The weekly one. When the reader does not hold
+              // attendance.view_all it is simply absent, and RowActions
+              // promotes whatever is first — see its docblock.
+              inlineKey="attendance"
+              triggerLabel={t("events.moreActionsAria", { title: event.title })}
+            />
           ) : null
         }
         // NOT ON THE PAST. The API would accept the write, but a pair of
