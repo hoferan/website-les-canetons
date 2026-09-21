@@ -22,8 +22,10 @@ as `demo.direction`, who holds `events.manage`, `attendance.view_all` and
 holds.
 
 **The roster no longer piles.** The issue describes `Modifier` and
-`Mot de passe` on one line with a red `Supprimer` alone on the next; #146 made
-the cards wider and all three now fit on one 44px line. The ragged pile is a
+`Mot de passe` on one line with a red `Supprimer` alone on the next. Measured,
+all three now sit on one 44px line: 80 + 112 + 93 = 285px, plus two 8px gaps,
+is 301px against 326px of usable card (a 358px card less its 16px padding each
+side). 25px to spare, so this is not marginal. The ragged pile is a
 planning problem only.
 
 The other two complaints survive untouched. `Supprimer` is still
@@ -95,8 +97,19 @@ One component above the primitive, taking
 
 - an optional `inline` action, rendered as a `Button` or `ButtonLink` beside
   the trigger,
-- a list of `{ key, label, onSelect | to, destructive? }`,
+- a list of `{ key, label, onSelect | to, disabled?, destructive? }`,
 - an `aria-label` for the trigger that carries the row's own name.
+
+`disabled?` is not optional-in-practice: `MemberActions` already disables edit
+and delete while a mutation is in flight (`web/src/pages/Members.tsx:531,541`,
+two of its three buttons), and dropping it from the shape would quietly remove
+the roster's double-submit guard. Radix's `MenuItem` takes `disabled`
+directly.
+
+`destructive?` renders a distinguishing text colour and a `MenuSeparator`
+above the item. It does **not** render a filled block — see §5 for why the
+roster's `variant="destructive"` goes. The flag exists so that one decision
+lives in one place rather than at three call sites.
 
 Four screens compose with it, so the keyboard handling, the focus rules and the
 44px floor exist in one file rather than four. `MemberActions` was extracted for
@@ -186,14 +199,28 @@ gap, and is the reason there is one.
 Every item's accessible name keeps carrying the event's or the person's name.
 A screen-reader user must not hear the twelfth bare `Supprimer` on the page,
 which is what the docblock at `web/src/pages/Members.tsx:490-501` is about, and
-the strings already exist: `events.deleteAria`, `events.editAria`,
-`events.whoComingAria`, `events.registrationsAria`, `events.optionsAria`,
-`members.resetTitle`, `registrations.cancelAria`, `registrations.amendTitle`.
-The menu inherits them rather than inventing a second set to drift from.
+the strings already exist, in both catalogues: `events.deleteAria`,
+`events.editAria`, `events.whoComingAria`, `events.registrationsAria`,
+`events.optionsAria`, `members.editPerson`, `members.resetTitle`,
+`members.deleteTitle`, `registrations.cancelAria`,
+`registrations.amendTitle`. The menu inherits them rather than inventing a
+second set to drift from.
+
+**One labelling mechanism, not three.** Those ten strings reach the screen
+three different ways today: an `sr-only` span beside an `aria-hidden` one on
+the roster (`Members.tsx:531-543`), an `ariaLabel` prop on `ButtonLink`, and a
+plain `aria-label` on `Button`. `RowActions` picks **`aria-label` on the item,
+with the short visible label as its text** — and must also pass an explicit
+`textValue`. Radix derives typeahead from `textContent` when `textValue` is
+absent, so the roster's doubled markup would make an item type-ahead as
+`"ModifierModifier Perrine Player"`. `textValue` is the visible label.
 
 The trigger needs one new key, in French **and** German —
 `catalogues.test.ts` fails on a key present in one catalogue and absent from
-the other. Its name carries the row: "Autres actions pour {title}".
+the other. Note the interpolation is i18next's double brace:
+
+    events.moreActionsAria   fr  "Autres actions pour {{title}}"
+                             de  "Weitere Aktionen für {{title}}"
 
 The trigger's glyph is `lucide-react`'s `Ellipsis`, with `aria-hidden="true"`
 on the `<svg>` and the French in `aria-label`, which is what #131 settled. The
@@ -206,11 +233,36 @@ without anyone thinking about it.
 | --------------------------------- | -------------- | ---------------------------------------------------------- | -------------- |
 | `/events`                         | `Qui vient ?`  | `Inscriptions`, `Ce qu'on réserve`, `Modifier`, `Supprimer` | 148px -> 44px  |
 | `/members`                        | `Modifier`     | `Mot de passe`, `Supprimer`                                 | 44px -> 44px   |
-| `/events/{id}/registrations`      | `Modifier`     | `Annuler`                                                   | one item       |
+| `/events/{id}/registrations`      | `Corriger`     | nothing yet — see below                                   | two inline     |
 
 `Qui vient ?` stays inline because it is the weekly action and the one reason
-most people open the planning. `Modifier` is the inline one on the other two
-for the same reason: it is what a correction starts with.
+most people open the planning. `Corriger` is the inline one on the
+registrations screen and `Modifier` on the roster, for the same reason: a
+correction starts there. (`Corriger`, not `Modifier` — that screen's key is
+`registrations.amend`, whose French is "Corriger".)
+
+### When the inline action is not there
+
+The table above reads as though every row has all its actions. It does not.
+`Events.tsx:188-236` gates its three groups on three independent permissions,
+and `Qui vient ?` exists only for `attendance.view_all`. `demo.committee`
+holds `registrations.view` and `messages.view` and neither of the others, so
+on the souper they would get a bare `...` with exactly one thing inside it —
+plainly worse than the button it replaced.
+
+So `RowActions` takes a rule rather than a fixed inline slot:
+
+1. If the designated inline action is present, it goes inline.
+2. If it is absent, the first remaining action is promoted into its place.
+3. If **one** action remains in total, it renders inline and there is no menu
+   at all.
+
+Rule 3 also disposes of `/events/{id}/registrations`, which has two actions:
+`Corriger` inline and one item behind the trigger. A one-item menu is worse
+than two buttons that already fit, so that screen gets the menu only when a
+third action arrives. Until then `RowActions` renders it as two inline
+controls, which is what it does today — the screen still moves to the shared
+component, so the pattern arrives without the regression.
 
 `Supprimer` loses `variant="destructive"` on the roster. It becomes an ordinary
 menu item at the same weight as its neighbours, which settles the
@@ -222,9 +274,6 @@ the button does not also have to shout.
 `/members` gains no vertical space from this. It is here for one pattern across
 the committee's screens, which is what André asked for, and to settle the
 `Supprimer` treatment.
-
-`/events/{id}/registrations` gets a one-item menu. Thin, and accepted for the
-same reason.
 
 ### `/events/{id}/registration-options` is deliberately left alone
 
@@ -244,6 +293,71 @@ André the same day: the screen keeps what it has.
 found by the name carrying the row's own name; selecting the destructive item
 opens the dialog. `userEvent`, not `fireEvent` — Radix renders through a portal
 and needs real pointer and key sequences.
+
+jsdom is ready for this and needs no new setup. `setupTests.ts:32-34` already
+no-ops `setPointerCapture` / `releasePointerCapture` / `hasPointerCapture`,
+which is the usual blocker. `ResizeObserver` is reached only through Popper's
+`useSize(arrow)`, and §1 rules out an `Arrow`, so it is never constructed.
+With `modal={false}` there is no `RemoveScroll` either.
+
+### THE EXISTING TESTS ARE THE DANGEROUS HALF
+
+A Radix item is not in the DOM until the menu opens, and is portalled to
+`document.body` when it is. **Five negative permission assertions therefore
+stop asserting anything the moment their control moves behind the trigger**,
+and they stop silently:
+
+| assertion | means today | means after |
+| --- | --- | --- |
+| `Events.test.tsx:169` `queryByRole("button", {name: /^Supprimer/})` is null | a player sees no delete | passes for everyone |
+| `Events.test.tsx:566` `/^Inscriptions à Répétition/` is null | no guest list on a rehearsal | passes for everyone |
+| `Events.test.tsx:594` `/^Ce qui peut être réservé/` is null | no options link | passes for everyone |
+| `Events.test.tsx:595` `/^Modifier/` is null | no edit link | passes for everyone |
+| `EventRegistrations.test.tsx:114` `/^Annuler l’inscription/` absent | cannot cancel a booking | passes for everyone |
+
+(`Events.test.tsx:596`, `/^Qui vient/`, survives: that one stays inline.)
+
+This is exactly how this project has shipped a broken page over a green suite
+before — four E2b tests asserted nothing until somebody reintroduced the bug
+and watched. So the rule is not "update the tests until they pass":
+
+**Every one of those five is rewritten to open the menu and assert absence
+from the OPEN menu, and every rewritten one is watched failing with its
+permission check removed.** An assertion that cannot distinguish a player
+from the committee is worse than no assertion, because it reads as coverage.
+
+The positive assertions break loudly rather than silently, which is fine, but
+budget for them: `within(card).getByRole("button", ...)` at
+`Events.test.tsx:139,157,180,209` and `:801`, and
+`within(rowFor(...)).getByRole("button", ...)` at
+`Members.test.tsx:249,266,283,297,319,359,373`. A portalled item is not
+inside `card`, and its role is `menuitem` rather than `button` or `link`.
+
+### The keyboard contract
+
+§3 calls this the real work and then names no key, which is a gap. Radix
+supplies all of it; the tests pin it, because "Radix does it" stops being
+true the moment somebody adds a handler:
+
+| key | expected |
+| --- | --- |
+| `Enter` / `Space` on the trigger | opens, focus on the first item |
+| `ArrowDown` / `ArrowUp` | move, wrapping |
+| `Home` / `End` | first / last item |
+| typing | typeahead against `textValue`, which is why §4 sets it |
+| `Escape` | closes, focus returns to the trigger |
+| `Tab` | closes and leaves |
+
+**Touch.** Radix selects on `pointerup`, and with `modal={false}` there is no
+overlay to catch a stray one. The Playwright case runs the menu with a touch
+pointer at 390px and asserts that selecting an item does not also activate
+whatever sits beneath it.
+
+**German, rendered.** `catalogues.test.ts` only proves the keys match, and its
+own docblock says so: the failure it does not catch is French pasted into
+`de.ts`. So one assertion opens the menu at `/de/events` and finds the trigger
+and one item by their German accessible names, beside the French ones — the
+practice `Events.test.tsx:799-801` already follows.
 
 **The load-bearing rule, mutation-tested.** Flipping `modal` back to `true`
 is *not* the mutation. §3 shows there is no observable difference on the
@@ -270,8 +384,8 @@ pair, and the menu renders at every width.
 A green suite is routinely green over a visibly broken page here, so the PR
 carries:
 
-- a 390px screenshot of `/planning` on the five-action souper card and of
-  `/membres`,
+- a 390px screenshot of `/events` on the five-action souper card and of
+  `/members` (the routes are English — `web/src/routes.tsx:102,142`),
 - the action row measured before and after: 148px -> 44px on the souper, 96px
   -> 44px on a rehearsal, and the card 388px -> 284px,
 - `document.scrollWidth === document.clientWidth` at 390px, still holding,
@@ -279,11 +393,14 @@ carries:
 
 ## 8. Out of scope
 
-- **Icons on the per-row actions.** #132 keeps them, and shrinks: #118 has now
-  answered its open question, and the answer is that icons are not the
-  mechanism. What is left there is the icon rule itself and the primary page
-  actions.
-- **The page-level buttons above the first card.** `Ajouter un événement`,
-  `Ajouter une série` and `Voir les événements passés` cost about 170px over
-  two lines at 390px, which is why barely one card clears the fold. Noticed
-  while measuring; a separate problem and a separate issue.
+- **Icons on the per-row actions of the three screens this touches.** #118
+  answers its open question for those: icons are not the mechanism.
+  **#132 keeps `EventRegistrationOptions`**, whose rows §5 deliberately
+  leaves alone, and which is now #132's strongest case: `Monter` and
+  `Descendre` are up and down arrows, needing none of the glyph vocabulary
+  that argued against icons elsewhere. #132 also keeps the icon rule itself
+  and the primary page actions.
+- **The page-level buttons above the first card**, now **#182**. Measured at
+  390x844: `Ajouter un événement` 175px, `Ajouter une série` 144px and
+  `Voir les événements passés` 213px wrap to two lines and 104px, the first
+  card starts at y=337, and exactly one card is fully above the fold.
