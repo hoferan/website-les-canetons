@@ -22,6 +22,7 @@ import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { ContactLink } from "../components/ContactLink";
 import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
+import { RowActions, type RowAction } from "../components/RowActions";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { translateApiError } from "../i18n";
 import { t, type TranslationKey } from "../i18n";
@@ -391,7 +392,7 @@ export function EventRegistrations() {
                   {booking.totalCents === null ? null : <> — {formatCents(booking.totalCents)}</>}
                 </p>
                 {mayManage ? (
-                  <RowActions
+                  <BookingActions
                     booking={booking}
                     busy={opening === booking.id}
                     onAmend={() => void openAmend(booking)}
@@ -432,7 +433,16 @@ function orderOf(booking: RegistrationResource): string {
   return booking.choices.map((choice) => `${choice.quantity} × ${choice.label}`).join(", ");
 }
 
-function RowActions({
+/**
+ * This screen has exactly two actions, so `RowActions`' own rule — a menu
+ * needs at least two items left over once one is pulled inline — never has
+ * two to work with: both render inline and no "..." trigger is drawn. The
+ * visible result is unchanged from before this screen used the shared
+ * component; the point is that it no longer carries its own copy of the
+ * pattern, so a third action gets the menu for free instead of growing a
+ * third ragged row.
+ */
+function BookingActions({
   booking,
   busy,
   onAmend,
@@ -445,38 +455,38 @@ function RowActions({
 }) {
   const who = `${booking.firstName} ${booking.lastName}`;
 
+  const actions: RowAction[] = [
+    {
+      key: "amend",
+      label: t("registrations.amend"),
+      ariaLabel: t("registrations.amendTitle", { name: who }),
+      disabled: busy,
+      onSelect: onAmend,
+    },
+    {
+      key: "cancel",
+      // registrations.cancel, NOT common.cancel: this one cancels a BOOKING
+      // ("stornieren"), the other closes a form without doing anything
+      // ("abbrechen"). One French word, two German ones.
+      label: t("registrations.cancel"),
+      ariaLabel: t("registrations.cancelAria", { name: who }),
+      disabled: busy,
+      destructive: true,
+      onSelect: onCancel,
+    },
+  ];
+
+  // `mt-tight` moved here: RowActions renders its own flex/gap wrapper, so
+  // the top margin that used to live on that same element now lives on the
+  // element that contains it instead of being dropped.
   return (
-    <span className="mt-tight flex flex-wrap gap-tight">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label={t("registrations.amendTitle", { name: who })}
-        aria-disabled={busy}
-        onClick={() => {
-          if (busy) return;
-          onAmend();
-        }}
-      >
-        {t("registrations.amend")}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        aria-label={t("registrations.cancelAria", { name: who })}
-        aria-disabled={busy}
-        onClick={() => {
-          if (busy) return;
-          onCancel();
-        }}
-      >
-        {/* registrations.cancel, NOT common.cancel: this one cancels a
-            BOOKING ("stornieren"), the other closes a form without doing
-            anything ("abbrechen"). One French word, two German ones. */}
-        {t("registrations.cancel")}
-      </Button>
-    </span>
+    <div className="mt-tight">
+      <RowActions
+        actions={actions}
+        inlineKey="amend"
+        triggerLabel={t("events.moreActionsAria", { title: who })}
+      />
+    </div>
   );
 }
 

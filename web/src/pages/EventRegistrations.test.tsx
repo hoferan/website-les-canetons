@@ -111,6 +111,9 @@ test("a viewer gets the list and no way to change it", async () => {
 
   expect(within(cards()).getByText(/Aebischer/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /^Corriger/ })).not.toBeInTheDocument();
+  // STILL A PAGE-WIDE QUERY, and only because this screen has two actions and
+  // RowActions therefore draws no menu. A third action turns this into a
+  // closed menu and this assertion into a tautology — see #118's spec, §6.
   expect(screen.queryByRole("button", { name: /^Annuler l’inscription/ })).not.toBeInTheDocument();
 });
 
