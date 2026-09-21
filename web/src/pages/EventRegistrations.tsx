@@ -24,6 +24,7 @@ import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { translateApiError } from "../i18n";
+import { t, type TranslationKey } from "../i18n";
 import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
 
@@ -35,13 +36,27 @@ const FORMATS: { format: ExportFormat; label: string }[] = [
   { format: "json", label: "JSON" },
 ];
 
-const AMENDABLE: { name: keyof UpdateRegistrationRequest; label: string; type?: string }[] = [
-  { name: "lastName", label: "Nom" },
-  { name: "firstName", label: "Prénom" },
-  { name: "email", label: "E-mail", type: "email" },
-  { name: "phone", label: "Téléphone", type: "tel" },
-  { name: "address", label: "Adresse" },
-  { name: "tableName", label: "Table" },
+/**
+ * `labelKey`, NEVER `label` — a module-level `label: t(...)` freezes in
+ * whatever locale was active at import.
+ *
+ * THE KEYS ARE booking.fields.*, NOT A SECOND SET. This form amends the very
+ * booking the public form created: same record, same fields, same words. That
+ * is the one case where sharing a label across screens is right, and it is
+ * not the case #166 ruled on — there the question was a control's label
+ * against an API field's NOUN, which are different things.
+ */
+const AMENDABLE: {
+  name: keyof UpdateRegistrationRequest;
+  labelKey: TranslationKey;
+  type?: string;
+}[] = [
+  { name: "lastName", labelKey: "booking.fields.lastName" },
+  { name: "firstName", labelKey: "booking.fields.firstName" },
+  { name: "email", labelKey: "booking.fields.email", type: "email" },
+  { name: "phone", labelKey: "booking.fields.phone", type: "tel" },
+  { name: "address", labelKey: "booking.fields.address" },
+  { name: "tableName", labelKey: "booking.fields.tableName" },
 ];
 
 /**
@@ -84,8 +99,8 @@ export function EventRegistrations() {
   const event = useEventShow(eventId);
   const list = useRegistrationIndex(eventId);
 
-  const form = useApiFormError("La correction n’a pas pu être enregistrée.");
-  const destructive = useApiFormError("L’annulation a échoué.");
+  const form = useApiFormError(t("registrations.amendFailed"));
+  const destructive = useApiFormError(t("registrations.cancelFailed"));
 
   const [amending, setAmending] = useState<{
     booking: RegistrationResource;
@@ -149,12 +164,12 @@ export function EventRegistrations() {
       if (response.status !== 200) {
         // Unreachable: the mutator throws on every non-2xx. The declared union
         // says otherwise and tsc is right that it does.
-        setReadError("Cette inscription n’a pas pu être chargée.");
+        setReadError(t("registrations.loadFailed"));
         return null;
       }
       return { booking: response.data, etag: entityTagOf(response) };
     } catch {
-      setReadError("Cette inscription n’a pas pu être chargée. Rechargez la page.");
+      setReadError(t("registrations.loadFailedReload"));
       return null;
     } finally {
       setOpening(null);
@@ -184,7 +199,7 @@ export function EventRegistrations() {
     if (amending.etag === null) {
       // No tag means the write would be refused 428, which reads as a broken
       // screen. Saying so and stopping is the honest answer.
-      setReadError("Cette inscription n’a pas pu être chargée. Rechargez la page.");
+      setReadError(t("registrations.loadFailedReload"));
       return;
     }
 
@@ -230,7 +245,7 @@ export function EventRegistrations() {
       setDownloadError(
         thrown instanceof ApiError
           ? translateApiError(thrown).message
-          : "Le fichier n’a pas pu être téléchargé.",
+          : t("registrations.downloadFailed"),
       );
     } finally {
       setDownloading(null);
@@ -240,10 +255,11 @@ export function EventRegistrations() {
   return (
     <PageSection>
       <Link to="/events" className="text-sm text-ink-muted underline">
-        ← Retour au planning
+        {t("common.backToPlanning")}
       </Link>
 
-      <h1 className="mt-tight font-display text-3xl">Inscriptions</h1>
+      {/* THE SAME KEY AS THE LINK THAT OPENS THIS, on the planning. */}
+      <h1 className="mt-tight font-display text-3xl">{t("events.registrations")}</h1>
 
       {title ? (
         <p data-testid="guest-event" className="mt-tight text-ink-muted">
@@ -251,19 +267,22 @@ export function EventRegistrations() {
         </p>
       ) : null}
 
-      {list.isPending ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
+      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
 
       {list.isError ? (
         <p role="alert" className="mt-block text-red-700">
-          La liste n’a pas pu être chargée.
+          {t("registrations.listLoadFailed")}
         </p>
       ) : null}
 
       {!list.isPending && !list.isError ? (
         <p data-testid="guest-counts" className="mt-block text-lg">
-          {bookingCount ?? bookings.length} inscription
-          {(bookingCount ?? bookings.length) > 1 ? "s" : ""} · {guests} personne
-          {guests > 1 ? "s" : ""}
+          {/* TWO COUNTS, EACH PLURALISED BY ITS OWN LOCALE. Both were
+              `> 1 ? "s" : ""` — the French rule, right in French and wrong
+              in German, where zero is plural. */}
+          {t("registrations.bookings", { count: bookingCount ?? bookings.length })}
+          {t("registrations.countsSeparator")}
+          {t("common.guests", { count: guests })}
           {/* Nothing when no booking carries a price: a total of CHF 0.00 over
               a list of unpriced options is a claim the data does not make. */}
           {priced.length === 0 ? null : <> · {formatCents(total)}</>}
@@ -289,10 +308,7 @@ export function EventRegistrations() {
           </Button>
         ))}
       </div>
-      <p className="mt-tight text-sm text-ink-muted">
-        Les quatre fichiers contiennent exactement les mêmes lignes. Excel est celui que le comité
-        ouvre&nbsp;; CSV fonctionne partout.
-      </p>
+      <p className="mt-tight text-sm text-ink-muted">{t("registrations.exportsHint")}</p>
 
       {downloadError ? (
         <p role="alert" className="mt-tight text-danger">
@@ -322,8 +338,7 @@ export function EventRegistrations() {
 
       {!list.isPending && !list.isError && bookings.length === 0 ? (
         <p className="mt-block text-ink-muted">
-          Personne ne s’est encore inscrit. Le formulaire public est à l’adresse{" "}
-          <code>/events/{eventId}/book</code>.
+          {t("registrations.empty")} <code>/events/{eventId}/book</code>.
         </p>
       ) : null}
 
@@ -366,11 +381,13 @@ export function EventRegistrations() {
                   ) : null}
                 </div>
                 {booking.tableName ? (
-                  <p className="text-ink-muted">Table&nbsp;: {booking.tableName}</p>
+                  <p className="text-ink-muted">
+                    {t("registrations.tableLabel", { value: booking.tableName })}
+                  </p>
                 ) : null}
                 <p className="mt-tight">{orderOf(booking)}</p>
                 <p className="text-ink-muted">
-                  {booking.guestCount} personne{booking.guestCount > 1 ? "s" : ""}
+                  {t("common.guests", { count: booking.guestCount })}
                   {booking.totalCents === null ? null : <> — {formatCents(booking.totalCents)}</>}
                 </p>
                 {mayManage ? (
@@ -392,11 +409,11 @@ export function EventRegistrations() {
           nothing about it, and cannot re-book once the window has shut. */}
       <ConfirmByTypingName
         open={cancelling !== null}
-        title={`Annuler l’inscription de ${cancelling?.booking.firstName ?? ""} ${
-          cancelling?.booking.lastName ?? ""
-        } ?`}
-        description="L’inscription et tout ce qu’elle a commandé seront supprimés. La personne n’est pas prévenue. Cette action est définitive."
-        confirmLabel="Annuler l’inscription"
+        title={t("registrations.cancelTitle", {
+          name: `${cancelling?.booking.firstName ?? ""} ${cancelling?.booking.lastName ?? ""}`,
+        })}
+        description={t("registrations.cancelDescription")}
+        confirmLabel={t("registrations.cancelConfirm")}
         confirmPhrase={cancelling?.booking.lastName}
         busy={cancel.isPending}
         error={destructive.error}
@@ -434,27 +451,30 @@ function RowActions({
         type="button"
         variant="outline"
         size="sm"
-        aria-label={`Corriger l’inscription de ${who}`}
+        aria-label={t("registrations.amendTitle", { name: who })}
         aria-disabled={busy}
         onClick={() => {
           if (busy) return;
           onAmend();
         }}
       >
-        Corriger
+        {t("registrations.amend")}
       </Button>
       <Button
         type="button"
         variant="outline"
         size="sm"
-        aria-label={`Annuler l’inscription de ${who}`}
+        aria-label={t("registrations.cancelAria", { name: who })}
         aria-disabled={busy}
         onClick={() => {
           if (busy) return;
           onCancel();
         }}
       >
-        Annuler
+        {/* registrations.cancel, NOT common.cancel: this one cancels a
+            BOOKING ("stornieren"), the other closes a form without doing
+            anything ("abbrechen"). One French word, two German ones. */}
+        {t("registrations.cancel")}
       </Button>
     </span>
   );
@@ -516,14 +536,14 @@ function AmendForm({
       }}
     >
       <h2 className="font-display text-2xl">
-        Corriger l’inscription de {booking.firstName} {booking.lastName}
+        {t("registrations.amendTitle", { name: `${booking.firstName} ${booking.lastName}` })}
       </h2>
 
       {AMENDABLE.map((field) => (
         <FormField
           key={field.name}
           id={`amend-${field.name}`}
-          label={field.label}
+          label={t(field.labelKey)}
           type={field.type}
           value={draft[field.name as keyof typeof draft]}
           onChange={(value) => setDraft((current) => ({ ...current, [field.name]: value }))}
@@ -531,18 +551,16 @@ function AmendForm({
         />
       ))}
 
-      <p className="text-sm text-ink-muted">
-        La commande ne se modifie pas ici. Pour la changer, annulez l’inscription et refaites-la.
-      </p>
+      <p className="text-sm text-ink-muted">{t("registrations.orderNotHere")}</p>
 
       <FormError error={error} />
 
       <div className="flex flex-wrap gap-related">
         <Button type="submit" aria-disabled={busy}>
-          {busy ? "Enregistrement…" : "Enregistrer"}
+          {busy ? t("registrations.saving") : t("common.save")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
+          {t("common.cancel")}
         </Button>
       </div>
     </form>

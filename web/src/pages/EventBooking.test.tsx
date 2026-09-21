@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
 import { expect, test } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventBooking } from "./EventBooking";
@@ -19,12 +20,12 @@ const REHEARSAL = 1;
  * behind one: `useParams` returns nothing for a component mounted outside a
  * matching Route and the screen then reads event NaN.
  */
-async function renderBooking(eventId: number = SOUPER) {
+async function renderBooking(eventId: number = SOUPER, locale: Locale = "fr") {
   const result = await renderWithSession(
     <Routes>
       <Route path="/events/:id/book" element={<EventBooking />} />
     </Routes>,
-    { route: `/events/${eventId}/book` },
+    { route: `/events/${eventId}/book`, locale },
   );
   await screen.findByRole("heading", { level: 1 });
   return result;
@@ -271,4 +272,52 @@ test("a window that has shut says so rather than naming a date", async () => {
 
   expect(screen.getByText("Les inscriptions sont closes.")).toBeInTheDocument();
   expect(screen.queryByLabelText("Prénom")).not.toBeInTheDocument();
+});
+
+/* ---------------------------------------------------------------------------
+ * The public form in German (#157)
+ * -------------------------------------------------------------------------- */
+
+test("THE PUBLIC BOOKING FORM IS GERMAN, which is what this whole effort is for", async () => {
+  // A German speaker in Fribourg booking a seat at the souper, on a phone, at
+  // the hall. It is the one screen in this slice a stranger reaches.
+  await renderBooking(SOUPER, "de-CH");
+
+  // The field labels were a module-scope array of French `label`s, frozen at
+  // import — `labelKey`, not `label`, the third file with this (after
+  // Layout's NAV and SeriesForm's WEEKDAYS).
+  expect(screen.getByLabelText("Name")).toBeInTheDocument();
+  expect(screen.getByLabelText("Vorname")).toBeInTheDocument();
+  expect(screen.getByLabelText("E-Mail")).toBeInTheDocument();
+  expect(screen.getByLabelText("Telefon")).toBeInTheDocument();
+  expect(screen.getByLabelText("Tisch")).toBeInTheDocument();
+
+  expect(screen.getByRole("group", { name: "Ihre Kontaktangaben" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Anmelden" })).toBeInTheDocument();
+
+  // MUTATION TEST: put `label` back on the array and these read French,
+  // because the module body runs before any locale is chosen.
+  expect(screen.queryByLabelText("Prénom")).toBeNull();
+
+  // The legend was a bare JSX text node with no accent in it — "Votre choix"
+  // survived the first pass for exactly the reason "5 membres" did in #156.
+  expect(screen.getByRole("group", { name: "Ihre Auswahl" })).toBeInTheDocument();
+});
+
+test("the running total counts in German and prices in Swiss German", async () => {
+  await renderBooking(SOUPER, "de-CH");
+
+  // Nothing chosen: its own sentence, not a count of zero.
+  expect(screen.getByTestId("booking-total")).toHaveTextContent(
+    "Wählen Sie mindestens eine Person.",
+  );
+
+  const boxes = screen.getAllByRole("spinbutton");
+  await userEvent.clear(boxes[0] as HTMLElement);
+  await userEvent.type(boxes[0] as HTMLElement, "1");
+
+  // "1 Person", singular. `guests > 1` in the component gave the right French
+  // ("0 personne") and the wrong German, which is the fifth instance of that
+  // exact rule in this effort.
+  await expect.poll(() => screen.getByTestId("booking-total").textContent).toContain("1 Person");
 });

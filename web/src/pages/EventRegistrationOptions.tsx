@@ -19,6 +19,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
+import { t } from "../i18n";
 import { francsInput, parseFrancs } from "../money";
 
 /** One row of the editor: an existing option, or one being invented. */
@@ -90,7 +91,7 @@ export function EventRegistrationOptions() {
   // line, and a toast is gone by the time somebody looks up from the form.
   const [saved, setSaved] = useState(false);
 
-  const form = useApiFormError("L’enregistrement a échoué.");
+  const form = useApiFormError(t("registrationOptions.saveFailed"));
 
   const replace = useMutation({
     mutationFn: ({
@@ -116,7 +117,7 @@ export function EventRegistrationOptions() {
         setEtag(entityTagOf(response));
       } catch {
         if (!cancelled) {
-          setReadError("La liste n’a pas pu être chargée. Rechargez la page.");
+          setReadError(t("registrationOptions.loadFailedReload"));
         }
       } finally {
         if (!cancelled) {
@@ -158,7 +159,7 @@ export function EventRegistrationOptions() {
 
   async function save() {
     if (etag === null) {
-      setReadError("La liste n’a pas pu être chargée. Rechargez la page.");
+      setReadError(t("registrationOptions.loadFailedReload"));
       return;
     }
 
@@ -215,10 +216,11 @@ export function EventRegistrationOptions() {
   return (
     <PageSection>
       <Link to="/events" className="text-sm text-ink-muted underline">
-        ← Retour au planning
+        {t("common.backToPlanning")}
       </Link>
 
-      <h1 className="mt-tight font-display text-3xl">Ce qu’on réserve</h1>
+      {/* THE SAME KEY AS THE LINK THAT OPENS THIS, on the planning. */}
+      <h1 className="mt-tight font-display text-3xl">{t("events.options")}</h1>
 
       {title ? (
         <p data-testid="options-event" className="mt-tight text-ink-muted">
@@ -226,12 +228,9 @@ export function EventRegistrationOptions() {
         </p>
       ) : null}
 
-      <p className="mt-related text-ink-muted">
-        Ce que le public peut réserver, et à quel prix. Laissez le prix vide pour une option qui
-        n’en a pas&nbsp;; écrivez 0 pour une option gratuite. Ce n’est pas la même chose.
-      </p>
+      <p className="mt-related text-ink-muted">{t("registrationOptions.intro")}</p>
 
-      {loading ? <p className="mt-block text-ink-muted">Chargement…</p> : null}
+      {loading ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
 
       {readError ? (
         <p role="alert" className="mt-block text-danger">
@@ -242,10 +241,7 @@ export function EventRegistrationOptions() {
       {!loading && !readError ? (
         <>
           {drafts.length === 0 ? (
-            <p className="mt-block text-ink-muted">
-              Rien n’est proposé pour l’instant. Le formulaire public affichera l’événement sans
-              rien à choisir.
-            </p>
+            <p className="mt-block text-ink-muted">{t("registrationOptions.empty")}</p>
           ) : null}
 
           <ul className="mt-block grid gap-related">
@@ -260,11 +256,13 @@ export function EventRegistrationOptions() {
                     counting, and by keyboard it is three identical labels in a
                     row. The number is the position, which is also what
                     `sortOrder` is sent as. */}
-                <h2 className="font-display text-lg">Option {index + 1}</h2>
+                <h2 className="font-display text-lg">
+                  {t("registrationOptions.optionNumber", { n: index + 1 })}
+                </h2>
 
                 <FormField
                   id={`label-${row.key}`}
-                  label="Intitulé"
+                  label={t("registrationOptions.label")}
                   value={row.label}
                   onChange={(value) => update(row.key, { label: value })}
                   // THE FULL PATH, INDEX AND ALL. `translateApiError` keeps
@@ -279,14 +277,14 @@ export function EventRegistrationOptions() {
                 />
                 <FormField
                   id={`description-${row.key}`}
-                  label="Description"
+                  label={t("registrationOptions.description")}
                   value={row.description}
                   onChange={(value) => update(row.key, { description: value })}
                   problem={form.messageFor(`options.${index}.description`)}
                 />
                 <FormField
                   id={`price-${row.key}`}
-                  label="Prix en francs"
+                  label={t("registrationOptions.price")}
                   value={row.price}
                   onChange={(value) => update(row.key, { price: value })}
                   // The local parse failure first: when it fires, nothing was
@@ -299,19 +297,23 @@ export function EventRegistrationOptions() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    aria-label={`Monter ${row.label || "cette option"}`}
+                    aria-label={t("registrationOptions.moveUp", {
+                      option: row.label || t("registrationOptions.thisOption"),
+                    })}
                     onClick={() => move(index, -1)}
                   >
-                    Monter
+                    {t("registrationOptions.up")}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    aria-label={`Descendre ${row.label || "cette option"}`}
+                    aria-label={t("registrationOptions.moveDown", {
+                      option: row.label || t("registrationOptions.thisOption"),
+                    })}
                     onClick={() => move(index, 1)}
                   >
-                    Descendre
+                    {t("registrationOptions.down")}
                   </Button>
                   {/* REMOVING IS LOCAL UNTIL THE SAVE, because the write is
                       replace-all: a row taken out here is simply absent from
@@ -322,12 +324,14 @@ export function EventRegistrationOptions() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    aria-label={`Retirer ${row.label || "cette option"}`}
+                    aria-label={t("registrationOptions.remove", {
+                      option: row.label || t("registrationOptions.thisOption"),
+                    })}
                     onClick={() =>
                       setDrafts((current) => current.filter((other) => other.key !== row.key))
                     }
                   >
-                    Retirer
+                    {t("registrationOptions.removeShort")}
                   </Button>
                 </div>
               </li>
@@ -342,11 +346,11 @@ export function EventRegistrationOptions() {
               variant="outline"
               onClick={() => setDrafts((current) => [...current, blankDraft()])}
             >
-              Ajouter une option
+              {t("registrationOptions.addOption")}
             </Button>
             {saved ? (
               <p role="status" className="self-center text-ink-muted">
-                Enregistré.
+                {t("registrationOptions.saved")}
               </p>
             ) : null}
             <Button
@@ -359,7 +363,7 @@ export function EventRegistrationOptions() {
                 void save();
               }}
             >
-              {replace.isPending ? "Enregistrement…" : "Enregistrer"}
+              {replace.isPending ? t("registrationOptions.saving") : t("common.save")}
             </Button>
           </div>
         </>

@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
@@ -27,13 +28,14 @@ beforeEach(() => {
 async function renderGuestList(
   as: "demo.direction" | "demo.committee" = "demo.direction",
   eventId = SOUPER,
+  locale: Locale = "fr",
 ) {
   setMockUser(as);
   const result = await renderWithSession(
     <Routes>
       <Route path="/events/:id/registrations" element={<EventRegistrations />} />
     </Routes>,
-    { route: `/events/${eventId}/registrations` },
+    { route: `/events/${eventId}/registrations`, locale },
   );
   await screen.findByTestId("guest-counts");
   return result;
@@ -385,4 +387,77 @@ test("a phone nobody can dial stays plain text", async () => {
 
   expect(within(card).getByText("à demander")).toBeInTheDocument();
   expect(within(card).queryByRole("link", { name: "à demander" })).toBeNull();
+});
+
+/* ---------------------------------------------------------------------------
+ * The guest list in German (#157)
+ * -------------------------------------------------------------------------- */
+
+test("both counts pluralise in German, and the total groups the German way", async () => {
+  await renderGuestList("demo.direction", SOUPER, "de-CH");
+
+  // THE HEADING AND THE PER-CARD COUNT WERE BOTH MISSED on the first pass and
+  // found by reading the rendered page: "INSCRIPTIONS" over a German list, and
+  // "5 personnes" under each booking. Neither carries an accent, so neither
+  // grep over the file saw them — the same shape as #156's "5 membres".
+  expect(screen.getByRole("heading", { level: 1, name: "Anmeldungen" })).toBeInTheDocument();
+
+  const counts = screen.getByTestId("guest-counts");
+  expect(counts).toHaveTextContent("2 Anmeldungen");
+  expect(counts).toHaveTextContent("6 Personen");
+
+  const first = within(screen.getByTestId("guest-cards")).getAllByRole(
+    "listitem",
+  )[0] as HTMLElement;
+  expect(first).toHaveTextContent("5 Personen");
+  expect(first).toHaveTextContent("Tisch:");
+
+  // THE GROUP SEPARATOR IS THE READER'S. money.ts was pinned to fr-CH, so a
+  // German page grouped with a narrow space; the apostrophe is Swiss German's.
+  // 150.00 has no group separator, so the assertion that matters is in
+  // money.test.ts — this one only proves the screen goes through the
+  // locale-aware formatter at all.
+  expect(counts).toHaveTextContent("CHF");
+});
+
+test("THE TWO ANNULERS BECOME TWO DIFFERENT GERMAN WORDS", async () => {
+  // The row button cancels a BOOKING; the amend form's button closes the form
+  // without doing anything. French calls both "Annuler" — which is why #115
+  // wants the French half renamed, and why German cannot wait for it.
+  //
+  // MUTATION TEST: point registrations.cancel at common.cancel and the first
+  // query below finds nothing, because the row button would read "Abbrechen".
+  await renderGuestList("demo.direction", SOUPER, "de-CH");
+
+  const row = within(screen.getByTestId("guest-cards")).getAllByRole("listitem")[0] as HTMLElement;
+  const cancel = within(row).getByRole("button", { name: /stornieren$/ });
+  expect(cancel).toHaveTextContent("Stornieren");
+
+  // The amend form's way out is the other word entirely.
+  await userEvent.click(within(row).getByRole("button", { name: /korrigieren$/ }));
+  const form = await screen.findByRole("button", { name: "Abbrechen" });
+  expect(form).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Stornieren" })).not.toBe(form);
+});
+
+test("cancelling names the guest, and the dialog asks where the button labels", async () => {
+  await renderGuestList("demo.direction", SOUPER, "de-CH");
+
+  const row = within(screen.getByTestId("guest-cards")).getAllByRole("listitem")[0] as HTMLElement;
+  const button = within(row).getByRole("button", { name: /stornieren$/ });
+  const name = (button.getAttribute("aria-label") ?? "")
+    .replace(/^Anmeldung von /, "")
+    .replace(/ stornieren$/, "");
+
+  await userEvent.click(button);
+
+  // TWO KEYS, NOT ONE. The button LABELS and the dialog ASKS — the French
+  // dialog ends "… ?" with the space French puts before a question mark, and
+  // the button does not. Sharing a key would have put a question mark on a
+  // button.
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveAccessibleName(`Anmeldung von ${name} stornieren?`);
+  expect(button.getAttribute("aria-label")).toBe(`Anmeldung von ${name} stornieren`);
+
+  expect(within(dialog).getByRole("button", { name: "Anmeldung stornieren" })).toBeInTheDocument();
 });

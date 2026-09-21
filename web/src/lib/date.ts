@@ -112,6 +112,24 @@ export function formatTime(time: string): string {
  * same roster.
  */
 export function formatLastLogin(iso: string): string {
+  return formatDay(iso);
+}
+
+/**
+ * An instant as the DAY it falls on in Fribourg: "1 septembre 2026",
+ * "1. September 2026".
+ *
+ * THE SAME SHAPE AS formatLastLogin, under a name that does not claim a
+ * login. EventBooking.tsx held a private `dayIn` with byte-identical options
+ * and a hardcoded `fr-CH`, which is the third time this file has had a copy
+ * living somewhere else: Inbox and ContactMessages each held one of
+ * formatInstant until #147. Same failure, same fix.
+ *
+ * The timezone is pinned for the reason formatLastLogin gives: a registration
+ * closing at 23:00 in Fribourg is the next day in UTC, and two committee
+ * members in different places must read one deadline the same way.
+ */
+export function formatDay(iso: string): string {
   return formatter("lastLogin").format(new Date(iso));
 }
 

@@ -166,6 +166,8 @@ export const de: typeof fr = {
     busy: "Läuft…",
     edit: "Bearbeiten",
     delete: "Löschen",
+    guests_one: "{{count}} Person",
+    guests_other: "{{count}} Personen",
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
   },
 
@@ -497,6 +499,104 @@ export const de: typeof fr = {
     saving: "Wird gespeichert…",
   },
 
+  booking: {
+    fields: {
+      lastName: "Name",
+      firstName: "Vorname",
+      email: "E-Mail",
+      phone: "Telefon",
+      address: "Adresse",
+      tableName: "Tisch",
+    },
+
+    submitFailed: "Die Anmeldung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    notOpen:
+      "Für diese Adresse ist keine Anmeldung offen. Überprüfen Sie den Link, den Sie erhalten haben.",
+    loadFailed: "Das Formular konnte nicht geladen werden. Laden Sie die Seite neu.",
+
+    bookedHeading: "Anmeldung gespeichert",
+    bookedBody:
+      "Danke! Eine Bestätigung geht an {{email}}. Der Vorstand meldet sich bei Bedarf unter {{phone}}.",
+
+    opensOn: "Die Anmeldung öffnet am {{date}}.",
+    closed: "Die Anmeldung ist geschlossen.",
+    closesOn: "Anmeldung bis am {{date}}.",
+    maxGuests_one: "Eine Anmeldung deckt höchstens {{count}} Person ab.",
+    maxGuests_other: "Eine Anmeldung deckt höchstens {{count}} Personen ab.",
+
+    contactLegend: "Ihre Kontaktangaben",
+    choiceLegend: "Ihre Auswahl",
+    optionalHint:
+      "Adresse und Tisch sind freiwillig. Der Tisch ist, neben wem Sie gerne sitzen möchten.",
+    nothingOffered:
+      "Für diesen Abend wird noch nichts angeboten. Schauen Sie in ein paar Tagen wieder vorbei.",
+
+    chooseSomeone: "Wählen Sie mindestens eine Person.",
+    guestsWithTotal: "{{guests}} — {{total}}",
+    submit: "Anmelden",
+    sending: "Wird gesendet…",
+  },
+
+  registrations: {
+    amendFailed: "Die Korrektur konnte nicht gespeichert werden.",
+    cancelFailed: "Das Stornieren ist fehlgeschlagen.",
+    loadFailed: "Diese Anmeldung konnte nicht geladen werden.",
+    loadFailedReload: "Diese Anmeldung konnte nicht geladen werden. Laden Sie die Seite neu.",
+    listLoadFailed: "Die Liste konnte nicht geladen werden.",
+    downloadFailed: "Die Datei konnte nicht heruntergeladen werden.",
+
+    tableLabel: "Tisch: {{value}}",
+    bookings_one: "{{count}} Anmeldung",
+    bookings_other: "{{count}} Anmeldungen",
+    countsSeparator: " · ",
+    exportsHint:
+      "Alle vier Dateien enthalten genau dieselben Zeilen. Excel ist die, die der Vorstand öffnet; CSV funktioniert überall.",
+    empty: "Es hat sich noch niemand angemeldet. Das öffentliche Formular ist unter",
+
+    // STORNIEREN, NICHT ABBRECHEN: Diese Schaltfläche storniert eine
+    // Anmeldung; common.cancel schliesst ein Formular, ohne etwas zu tun. Im
+    // Französischen heissen beide «Annuler».
+    cancel: "Stornieren",
+    cancelAria: "Anmeldung von {{name}} stornieren",
+    // Ohne Leerzeichen vor dem Fragezeichen.
+    cancelTitle: "Anmeldung von {{name}} stornieren?",
+    cancelDescription:
+      "Die Anmeldung und alles, was sie bestellt hat, werden gelöscht. Die Person wird nicht benachrichtigt. Diese Aktion ist endgültig.",
+    cancelConfirm: "Anmeldung stornieren",
+
+    amend: "Korrigieren",
+    amendTitle: "Anmeldung von {{name}} korrigieren",
+    orderNotHere:
+      "Die Bestellung wird nicht hier geändert. Stornieren Sie dafür die Anmeldung und erfassen Sie sie neu.",
+    saving: "Wird gespeichert…",
+  },
+
+  registrationOptions: {
+    saveFailed: "Das Speichern ist fehlgeschlagen.",
+    loadFailedReload: "Die Liste konnte nicht geladen werden. Laden Sie die Seite neu.",
+    intro:
+      "Was das Publikum buchen kann, und zu welchem Preis. Lassen Sie den Preis leer für eine Option, die keinen hat; schreiben Sie 0 für eine kostenlose Option. Das ist nicht dasselbe.",
+    empty:
+      "Zurzeit wird nichts angeboten. Das öffentliche Formular zeigt den Anlass ohne Auswahl an.",
+
+    label: "Bezeichnung",
+    description: "Beschreibung",
+    up: "Nach oben",
+    down: "Nach unten",
+    removeShort: "Entfernen",
+    optionNumber: "Option {{n}}",
+    addOption: "Option hinzufügen",
+    price: "Preis in Franken",
+
+    moveUp: "{{option}} nach oben",
+    moveDown: "{{option}} nach unten",
+    remove: "{{option}} entfernen",
+    thisOption: "diese Option",
+
+    saved: "Gespeichert.",
+    saving: "Wird gespeichert…",
+  },
+
   home: {
     hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
     heroSub:
@@ -544,6 +644,7 @@ export const de: typeof fr = {
     registersNav: "Register",
     patronsHeading: "Der Götti und die Gotte",
     patronsAlt: "Der Götti und die Gotte der Canetons",
+    patrons: "Richard Hertig und Annick Bürgisser",
   },
 
   committee: {

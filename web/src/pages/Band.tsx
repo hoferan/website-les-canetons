@@ -143,7 +143,7 @@ export function Band() {
           loading="lazy"
           className="mt-related rounded-lg"
         />
-        <p className="mt-tight text-ink-muted">Richard Hertig et Annick Bürgisser</p>
+        <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
       </Card>
     </PageSection>
   );
