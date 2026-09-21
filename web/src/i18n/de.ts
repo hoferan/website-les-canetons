@@ -174,6 +174,15 @@ export const de: typeof fr = {
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
   },
 
+  meta: {
+    // Identical to the French on purpose; see the note in fr.ts.
+    title: "Guggenmusik Les Canetons de Fribourg",
+    // "Freiburg", not "Fribourg": the city's German name, as everywhere else in
+    // this file. The band's own name keeps its French spelling above.
+    description:
+      "Die Kinder-Guggenmusik aus Freiburg, gegründet 2002. Von 7 bis 18 Jahren, ohne Notenkenntnisse — Proben in der Regel am Samstagvormittag.",
+  },
+
   nav: {
     primary: "Hauptnavigation",
     menu: "Menü",

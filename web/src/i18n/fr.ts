@@ -255,6 +255,36 @@ export const fr = {
   },
 
   /**
+   * THE DOCUMENT ITSELF: what the browser tab says, and what a search result
+   * shows. Applied by ./documentMeta.ts at boot, not rendered by any component.
+   *
+   * THESE TWO STRINGS ALSO EXIST IN web/index.html, and have to. The shell is
+   * one static document serving every path, so it ships a title and a
+   * description before any JavaScript runs; this section is what corrects them
+   * for the German mount. ./documentMeta.test.ts reads the shell and fails if
+   * the French values here and the ones it ships ever drift — without that, a
+   * French visitor gets a flash of one title being replaced by a different one
+   * and nothing else in the suite notices, because both values are separately
+   * valid.
+   *
+   * WHAT IS *NOT* CORRECTED AT RUNTIME, and why, is written up in the comment
+   * block in web/index.html. The short version: og:* is read by crawlers that
+   * execute no JavaScript, so rewriting it here would read as fixed without
+   * being fixed.
+   */
+  meta: {
+    // DELIBERATELY IDENTICAL IN BOTH CATALOGUES, and this comment is the reason
+    // it must not be "translated" later. "Les Canetons de Fribourg" is the
+    // band's name — the rest of this file keeps it untouched in German too
+    // (band: "Die Canetons", never "Die Entlein") — and "Guggenmusik" is
+    // already a German word. There is nothing French left in it to render.
+    title: "Guggenmusik Les Canetons de Fribourg",
+    // This one does translate, and it is the string a search result shows.
+    description:
+      "La guggenmusik des enfants de Fribourg, fondée en 2002. De 7 à 18 ans, sans savoir lire la musique — répétitions en général le samedi matin.",
+  },
+
+  /**
    * The chrome: the nav, its accessible names, and the footer.
    *
    * The nav arrays in Layout.tsx carry a `labelKey` into this section rather

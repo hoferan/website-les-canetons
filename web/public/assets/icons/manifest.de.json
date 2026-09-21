@@ -1,8 +1,8 @@
 {
   "name": "Guggenmusik Les Canetons de Fribourg",
   "short_name": "Les Canetons",
-  "lang": "fr-CH",
-  "start_url": "/",
+  "lang": "de-CH",
+  "start_url": "/de",
   "display": "standalone",
   "theme_color": "#e0201a",
   "background_color": "#ffffff",

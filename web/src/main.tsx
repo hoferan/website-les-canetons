@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import App from "./App";
+import { applyDocumentMeta } from "./i18n/documentMeta";
 import { htmlLang, localeFromPath, pathInLocale } from "./i18n/locale";
 import { shouldRedirectToGerman, storedLocale } from "./i18n/preference";
 import { SessionProvider } from "./session/SessionProvider";
@@ -45,6 +46,11 @@ if (redirecting) {
   // crawler that runs no JavaScript. This corrects it for the German mount, and
   // is what a screen reader picks its voice from.
   document.documentElement.lang = htmlLang(locale);
+
+  // The rest of the shell's <head>, corrected the same way and for the same
+  // reason: one static document serves every path. What it deliberately does
+  // NOT touch, and why, is in i18n/documentMeta.ts.
+  applyDocumentMeta(locale);
 
   const root = document.getElementById("root");
   if (!root) {
