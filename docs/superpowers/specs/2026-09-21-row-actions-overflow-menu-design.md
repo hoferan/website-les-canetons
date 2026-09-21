@@ -254,13 +254,13 @@ So `RowActions` takes a rule rather than a fixed inline slot:
 
 1. If the designated inline action is present, it goes inline.
 2. If it is absent, the first remaining action is promoted into its place.
-3. If **one** action remains in total, it renders inline and there is no menu
-   at all.
+3. If the menu would hold **fewer than two** items, every action renders
+   inline and no trigger is drawn.
 
-Rule 3 also disposes of `/events/{id}/registrations`, which has two actions:
-`Corriger` inline and one item behind the trigger. A one-item menu is worse
-than two buttons that already fit, so that screen gets the menu only when a
-third action arrives. Until then `RowActions` renders it as two inline
+Rule 3 is counted on what would be left, not on the total, because a one-item
+menu is a tap to reveal a button. It disposes of `/events/{id}/registrations`,
+which has two actions: both inline, and the menu arrives only when a third
+action does. Until then `RowActions` renders it as two inline
 controls, which is what it does today — the screen still moves to the shared
 component, so the pattern arrives without the regression.
 
