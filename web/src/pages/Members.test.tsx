@@ -1,9 +1,11 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http } from "msw";
 import { expect, test } from "vitest";
 
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Members } from "./Members";
 
@@ -41,6 +43,23 @@ function lastNamesIn(scope: ReturnType<typeof within>): string[] {
   return scope
     .getAllByTestId("member-last-name")
     .map((cell: HTMLElement) => cell.textContent?.trim() ?? "");
+}
+
+/**
+ * Opens one person's overflow menu and returns it, so `Mot de passe` and
+ * `Supprimer` — which moved behind it — can be queried inside.
+ *
+ * Takes the trigger's WHOLE accessible name rather than building it from
+ * French, the same reason Events.test.tsx's own `openMenuFor` does: a German
+ * test below opens the same menu by its German name, and a helper that
+ * concatenated "Autres actions pour" itself could never serve it.
+ */
+async function openMenuFor(
+  user: ReturnType<typeof userEvent.setup>,
+  triggerName: string,
+): Promise<HTMLElement> {
+  await user.click(screen.getByRole("button", { name: triggerName }));
+  return screen.findByRole("menu");
 }
 
 test("lists everybody on the roster, ordered by name", async () => {
@@ -244,10 +263,10 @@ test("refuses to save over a change somebody else made while the form was open",
 
 test("names the person and the consequence before deleting them", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", { name: "Supprimer Perrine Player" }),
-  );
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
 
   // "Êtes-vous sûr ?" is a question nobody reads. The name is what makes the
   // dialog worth stopping for.
@@ -261,16 +280,16 @@ test("names the person and the consequence before deleting them", async () => {
 
 test("requires the person's name to be typed before deleting", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", { name: "Supprimer Perrine Player" }),
-  );
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
   const dialog = await screen.findByRole("alertdialog");
 
   // Decision B7: the server no longer re-authenticates a delete, so this typed
   // confirmation is the ONLY guard against a mis-aimed tap. Pressing the button
   // with the box empty must do nothing at all.
-  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   expect(rowFor("Player")).toBeInTheDocument();
@@ -278,27 +297,56 @@ test("requires the person's name to be typed before deleting", async () => {
 
 test("deletes the person once their name is typed", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", { name: "Supprimer Perrine Player" }),
-  );
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
   const dialog = await screen.findByRole("alertdialog");
-  await userEvent.type(within(dialog).getByLabelText(/Perrine Player/), "Perrine Player");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await user.type(within(dialog).getByLabelText(/Perrine Player/), "Perrine Player");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   expect(await cards().findByText("Both")).toBeInTheDocument();
   expect(cards().queryByText("Player")).toBeNull();
 });
 
+/**
+ * Members.tsx passes `confirmPhrase` to `ConfirmByTypingName`, unlike the
+ * planning's own delete dialog — so this is the one place in the branch that
+ * exercises the menu -> dialog focus handoff against a field somebody actually
+ * has to type into (spec §3). The planning's equivalent test says explicitly
+ * why it could carry no field: "typing a title back is friction with nothing
+ * behind it."
+ */
+test("the delete dialog opens from the menu with a field that accepts the typed name", async () => {
+  await renderRoster();
+  const user = userEvent.setup();
+
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  // THE MENU IS GONE, not merely closed in spirit: a dialog placed inside the
+  // menu's own subtree would unmount with it, which is what the equivalent
+  // planning test guards against by a different route.
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+
+  const confirm = within(dialog).getByRole("button", { name: "Supprimer" });
+  expect(confirm).toHaveAttribute("aria-disabled", "true");
+
+  await user.type(within(dialog).getByLabelText(/Perrine Player/), "Perrine Player");
+
+  expect(confirm).toHaveAttribute("aria-disabled", "false");
+});
+
 test("keeps the person and explains, when the server refuses", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Direction")).getByRole("button", { name: "Supprimer Dominique Direction" }),
-  );
+  const menu = await openMenuFor(user, "Autres actions pour Dominique Direction");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Dominique Direction" }));
   const dialog = await screen.findByRole("alertdialog");
-  await userEvent.type(within(dialog).getByLabelText(/Dominique Direction/), "Dominique Direction");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await user.type(within(dialog).getByLabelText(/Dominique Direction/), "Dominique Direction");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   // The API's cannot_delete_self, translated. The UI does NOT pre-empt this:
   // the server owns the invariant and the screen reports what it says, because
@@ -312,16 +360,46 @@ test("keeps the person and explains, when the server refuses", async () => {
   expect(rowFor("Direction")).toBeInTheDocument();
 });
 
+/**
+ * Review Focus 4. A row goes busy while the read behind `Modifier` and
+ * `Supprimer` is in flight (`opening === member.id` in Members.tsx), and both
+ * carry `disabled: busy` on their `RowAction`. This proves the guard survives
+ * being reached by keyboard, not only by a disabled click handler's early
+ * return.
+ *
+ * MUTATION TEST: drop `disabled: busy` from the "delete" action in
+ * MemberActions and this fails — Radix stops excluding the item from roving
+ * focus, so the second ArrowDown lands on it.
+ */
+test("does not delete while a mutation is in flight, by keyboard either", async () => {
+  await renderRoster();
+  const user = userEvent.setup();
+
+  // Held open, and never released: nothing here needs the read to finish,
+  // only for `opening` to stay set to Perrine's id for the rest of the test.
+  server.use(http.get("/api/v1/members/2", () => new Promise(() => {})));
+
+  await user.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.keyboard("{ArrowDown}{ArrowDown}");
+
+  expect(within(menu).getByRole("menuitem", { name: /^Supprimer Perrine/ })).not.toHaveFocus();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+});
+
 test("issues a replacement password and shows it once", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", {
-      name: "Réinitialiser le mot de passe de Perrine Player",
-    }),
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(
+    within(menu).getByRole("menuitem", { name: "Réinitialiser le mot de passe de Perrine Player" }),
   );
   const dialog = await screen.findByRole("alertdialog");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Réinitialiser" }));
+  await user.click(within(dialog).getByRole("button", { name: "Réinitialiser" }));
 
   expect(await screen.findByTestId("generated-password")).toHaveTextContent("kanu-7rex-mp34");
 });
@@ -354,11 +432,11 @@ function descriptionOf(dialog: HTMLElement): string {
  */
 test("the reset dialog does not agree in the masculine over the person it names", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", {
-      name: "Réinitialiser le mot de passe de Perrine Player",
-    }),
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(
+    within(menu).getByRole("menuitem", { name: "Réinitialiser le mot de passe de Perrine Player" }),
   );
   const description = descriptionOf(await screen.findByRole("alertdialog"));
 
@@ -368,10 +446,10 @@ test("the reset dialog does not agree in the masculine over the person it names"
 
 test("the delete dialog does not agree in the masculine over the person it names", async () => {
   await renderRoster();
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", { name: "Supprimer Perrine Player" }),
-  );
+  const menu = await openMenuFor(user, "Autres actions pour Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
   const description = descriptionOf(await screen.findByRole("alertdialog"));
 
   expect(description).toContain("Cette personne sera retirée de la liste");
@@ -459,28 +537,37 @@ test("the card's labels are German, and their colons lose the French space", asy
 test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {
   // The property Members.tsx's MemberActions docblock demands: a screen-reader
   // user must hear which row they are on, not the twelfth bare "Löschen" on
-  // the page. Translating the three buttons is exactly where that gets lost,
+  // the page. Translating the three actions is exactly where that gets lost,
   // because the shortest German word is the tempting one.
   //
+  // `Bearbeiten` stays a page-level query, being the designated inline
+  // action; the other two moved behind the overflow menu (#118) and are read
+  // from inside it once open.
+  //
   // MUTATION TEST: swap any of these for a bare t("common.delete") and the
-  // matching query below finds three buttons instead of one.
+  // matching query finds two items instead of one, once the menu is open.
   await renderRoster("de-CH");
+  const user = userEvent.setup();
 
-  const card = within(rowFor("Player"));
-
-  expect(card.getByRole("button", { name: "Perrine Player bearbeiten" })).toBeInTheDocument();
   expect(
-    card.getByRole("button", { name: "Passwort von Perrine Player zurücksetzen" }),
+    within(rowFor("Player")).getByRole("button", { name: "Perrine Player bearbeiten" }),
   ).toBeInTheDocument();
-  expect(card.getByRole("button", { name: "Perrine Player löschen" })).toBeInTheDocument();
+
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
+  expect(
+    within(menu).getByRole("menuitem", { name: "Passwort von Perrine Player zurücksetzen" }),
+  ).toBeInTheDocument();
+  expect(
+    within(menu).getByRole("menuitem", { name: "Perrine Player löschen" }),
+  ).toBeInTheDocument();
 });
 
 test("the delete dialog reuses the button's own key for its title", async () => {
   await renderRoster("de-CH");
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", { name: "Perrine Player löschen" }),
-  );
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
+  await user.click(within(menu).getByRole("menuitem", { name: "Perrine Player löschen" }));
 
   const dialog = await screen.findByRole("alertdialog");
   // ONE KEY, TWO PLACES — the button's accessible name and the dialog's title
@@ -504,16 +591,16 @@ test("the delete dialog reuses the button's own key for its title", async () => 
 
 test("the reset dialog and the one-time password reveal are German", async () => {
   await renderRoster("de-CH");
+  const user = userEvent.setup();
 
-  await userEvent.click(
-    within(rowFor("Player")).getByRole("button", {
-      name: "Passwort von Perrine Player zurücksetzen",
-    }),
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
+  await user.click(
+    within(menu).getByRole("menuitem", { name: "Passwort von Perrine Player zurücksetzen" }),
   );
 
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveAccessibleName("Passwort von Perrine Player zurücksetzen");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Zurücksetzen" }));
+  await user.click(within(dialog).getByRole("button", { name: "Zurücksetzen" }));
 
   const reveal = await screen.findByRole("alertdialog");
   expect(reveal).toHaveAccessibleName("Passwort von Perrine Player");

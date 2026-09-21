@@ -9,6 +9,81 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Events } from "./Events";
 
+/**
+ * Every overflow trigger currently on the page, whichever card it belongs to
+ * and whichever locale renders it.
+ *
+ * MATCHED BY `aria-haspopup="menu"`, NOT BY NAME. A name-based regex anchored
+ * on "Autres actions pour" can only ever match French, so a German test
+ * calling the same clause would find the assertion trivially true — it would
+ * assert nothing, and read as coverage while proving nothing. That is exactly
+ * the failure #118's review caught for the item itself; the trigger's own
+ * absence check had it too, one layer up.
+ */
+function overflowTriggers(): HTMLElement[] {
+  return screen
+    .queryAllByRole("button")
+    .filter((button) => button.getAttribute("aria-haspopup") === "menu");
+}
+
+/**
+ * Open one card's overflow menu and return a scope to query inside.
+ *
+ * WHY THIS EXISTS RATHER THAN A BARE getByRole. A Radix item is portalled to
+ * document.body, so `within(card)` cannot see it once the menu is open, and a
+ * page-wide query cannot tell two cards apart. So the TRIGGER is found inside
+ * its own card — three seeded rehearsals share the title "Répétition", which
+ * makes even the trigger's title-carrying name non-unique on the page — and
+ * the menu is found at the top level, where there is only ever one open.
+ *
+ * The name is passed in whole rather than built from the French, because the
+ * German test opens the same menu by its German name.
+ */
+async function openMenuFor(
+  user: ReturnType<typeof userEvent.setup>,
+  card: HTMLElement,
+  triggerName: string,
+): Promise<HTMLElement> {
+  await user.click(within(card).getByRole("button", { name: triggerName }));
+  return screen.findByRole("menu");
+}
+
+/** The first card for an event with this title; the rehearsals share one. */
+function cardFor(title: string): HTMLElement {
+  const card = screen
+    .getAllByTestId("event-card")
+    .find((candidate) => within(candidate).getByTestId("event-title").textContent === title);
+  if (!card) {
+    throw new Error(`no card for "${title}"`);
+  }
+  return card;
+}
+
+/**
+ * Assert an action is nowhere on this screen — not inline, and not behind a
+ * shut menu either.
+ *
+ * WHY ABSENCE NEEDS TWO HALVES NOW. An action that has moved into a dropdown
+ * is not in the DOM until somebody opens it, so a page-wide query for it is
+ * null whatever the screen decided about permissions. Four assertions in this
+ * file would have gone on passing for every reader, silently, which is the
+ * failure #118's review caught. The second half — that no trigger exists to
+ * be hiding it — is what restores the meaning, and it is available only to a
+ * reader whose whole action list is inline: RowActions draws no trigger for
+ * fewer than two menu items. Where a trigger legitimately exists, open it and
+ * query within the menu instead.
+ */
+function expectNoSuchAction(name: RegExp): void {
+  // queryAllByRole rather than queryByRole: the planning holds several cards,
+  // so the gate this guards against losing brings back one control PER CARD.
+  // The singular query then throws "found multiple elements", which is a
+  // failure of the right test for the wrong reason and reads as a broken
+  // query rather than as a lost permission.
+  expect(screen.queryAllByRole("link", { name })).toHaveLength(0);
+  expect(screen.queryAllByRole("button", { name })).toHaveLength(0);
+  expect(overflowTriggers()).toHaveLength(0);
+}
+
 async function renderPlanning(
   as: "demo.player" | "demo.direction" | "demo.committee" = "demo.player",
   locale: Locale = "fr",
@@ -130,13 +205,15 @@ test("a failed planning is announced, not silently empty", async () => {
 });
 
 test("naming the event before deleting it", async () => {
+  const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
 
   const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
   const title = within(card).getByTestId("event-title").textContent ?? "";
-  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const menu = await openMenuFor(user, card, `Autres actions pour ${title}`);
+  await user.click(within(menu).getByRole("menuitem", { name: `Supprimer ${title}` }));
 
   // "Êtes-vous sûr ?" is a question nobody reads. The name is what makes the
   // dialog worth stopping for.
@@ -148,13 +225,15 @@ test("the dialog names what goes with the event, not only the event", async () =
   // The API deletes every attendance answer and every public registration
   // attached to it, and says so in its own docblock. A confirmation that
   // mentioned neither would be naming half the damage.
+  const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
 
   const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
   const title = within(card).getByTestId("event-title").textContent ?? "";
-  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const menu = await openMenuFor(user, card, `Autres actions pour ${title}`);
+  await user.click(within(menu).getByRole("menuitem", { name: `Supprimer ${title}` }));
 
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveTextContent(/réponses/);
@@ -166,10 +245,15 @@ test("a player is offered no delete at all", async () => {
   await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
 
-  expect(screen.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
+  // NO MENU AT ALL for a player: the screen passes no actions, so there is no
+  // trigger to open. The trigger's absence is what makes this fail if the
+  // permission gate goes — a queryByRole for the item itself would pass on a
+  // closed menu and tell us nothing.
+  expectNoSuchAction(/^Supprimer/);
 });
 
 test("deleting removes it from the planning", async () => {
+  const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events" });
   await screen.findAllByTestId("event-card");
@@ -177,9 +261,10 @@ test("deleting removes it from the planning", async () => {
 
   const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
   const title = within(card).getByTestId("event-title").textContent ?? "";
-  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const menu = await openMenuFor(user, card, `Autres actions pour ${title}`);
+  await user.click(within(menu).getByRole("menuitem", { name: `Supprimer ${title}` }));
   const dialog = await screen.findByRole("alertdialog");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   // The plan waited on a findByText matching any non-empty node, which matches
   // every node on the page and throws for multiple matches. Polling the count
@@ -193,6 +278,7 @@ test("a delete carries the tag of the read it was confirmed from", async () => {
   // validate five rows — so opening the dialog is also the read. Without that
   // read the mocked backend refuses exactly as the real one does, and this
   // test is what says so.
+  const user = userEvent.setup();
   let sentIfMatch: string | null = null;
   server.events.on("request:start", ({ request }) => {
     if (request.method === "DELETE") {
@@ -206,11 +292,48 @@ test("a delete carries the tag of the read it was confirmed from", async () => {
 
   const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
   const title = within(card).getByTestId("event-title").textContent ?? "";
-  await userEvent.click(within(card).getByRole("button", { name: `Supprimer ${title}` }));
+  const menu = await openMenuFor(user, card, `Autres actions pour ${title}`);
+  await user.click(within(menu).getByRole("menuitem", { name: `Supprimer ${title}` }));
   const dialog = await screen.findByRole("alertdialog");
-  await userEvent.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
   await expect.poll(() => sentIfMatch).not.toBeNull();
+});
+
+test("the delete dialog opens from the menu and is usable once the menu has gone", async () => {
+  // THE DIALOG BELONGS TO THE SCREEN, NOT TO THE MENU ITEM'S SUBTREE, and
+  // this is what says so. A menu closes as it hands over the selection,
+  // unmounting everything it rendered — so a ConfirmByTypingName placed
+  // inside DropdownMenuContent never appears at all. That is the failure a
+  // reader would meet, and unlike the menu's `modal` prop it is falsifiable.
+  //
+  // MUTATION TEST: render the dialog as a child of DropdownMenuContent and
+  // findByRole("alertdialog") below times out.
+  //
+  // The event dialog carries NO FIELD to type into — ConfirmByTypingName's
+  // `confirmPhrase` is deliberately unset here, because typing a title back
+  // is friction with nothing behind it — so what stands in for "and it can be
+  // typed into" is the confirmation going through with the menu gone: focus
+  // and pointer both reach the dialog after the handoff.
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findAllByTestId("event-card");
+  const before = screen.getAllByTestId("event-card").length;
+
+  const menu = await openMenuFor(
+    user,
+    cardFor("Souper de soutien"),
+    "Autres actions pour Souper de soutien",
+  );
+  await user.click(within(menu).getByRole("menuitem", { name: /^Supprimer/ }));
+
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog).toHaveAccessibleName(expect.stringContaining("Souper de soutien"));
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(before - 1);
 });
 
 /* -------------------------------------------------------------------------- *
@@ -552,18 +675,71 @@ test("a narrowed planning says so at every width, and can be widened again", asy
  * -------------------------------------------------------------------------- */
 
 /**
+ * THE POINT OF #118, asserted positively. Every other test that touches
+ * "Qui vient" proves an absence — for demo.committee, above, and for a
+ * player, below — and the one place that should prove its presence never
+ * did. `inlineKey="attendance"` is the whole promise of this branch: the
+ * weekly action stays a plain link on the page, never a tap into a menu.
+ *
+ * MUTATION TEST: drop `inlineKey="attendance"` from Events.tsx's
+ * `RowActions` call (or reorder `actions` so attendance is no longer first)
+ * and this fails — the link moves inside the "..." and `getByRole("link")`
+ * finds nothing until the menu is opened.
+ */
+test("Qui vient stays a plain link, never behind the menu", async () => {
+  await renderPlanning("demo.direction");
+
+  const souper = cardFor("Souper de soutien");
+
+  // A LINK, OUTSIDE ANY MENU: no menu was opened above this assertion, so a
+  // Radix `menuitem` — portalled and absent until its trigger is clicked —
+  // could not satisfy it even by accident.
+  expect(
+    within(souper).getByRole("link", { name: "Qui vient à Souper de soutien" }),
+  ).toHaveAttribute("href", "/events/7/attendance");
+});
+
+/**
  * MUTATION TEST: drop `event.takesRegistrations` from the condition and this
  * fails. The planning is mostly rehearsals, and every one of their cards would
  * otherwise carry a link to a guest list that can never fill up.
  */
 test("offers the guest list only on an event that takes bookings", async () => {
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
 
-  expect(screen.getByRole("link", { name: "Inscriptions à Souper de soutien" })).toHaveAttribute(
-    "href",
-    "/events/7/registrations",
+  const souper = await openMenuFor(
+    user,
+    cardFor("Souper de soutien"),
+    "Autres actions pour Souper de soutien",
   );
-  expect(screen.queryByRole("link", { name: /^Inscriptions à Répétition/ })).toBeNull();
+  expect(
+    within(souper).getByRole("menuitem", { name: "Inscriptions à Souper de soutien" }),
+  ).toHaveAttribute("href", "/events/7/registrations");
+
+  // Shut before opening the next one. Two menus open at once would make
+  // findByRole("menu") ambiguous, and the reader can only have one anyway.
+  //
+  // WAITED FOR, NOT ASSUMED. Radix's `Presence` unmounts synchronously in
+  // jsdom today, which is what let this go on working without the poll —
+  // but `openMenuFor` below is a bare `findByRole`, which is happy to
+  // resolve against a menu still mid-teardown. Matches the wait this file
+  // already does at line ~333, for the identical race.
+  await user.keyboard("{Escape}");
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+
+  // ASSERTED FROM INSIDE THE OPEN MENU, unlike the version this replaces. An
+  // organiser does have a trigger on a rehearsal — three other actions live
+  // behind it — so a page-wide query here would be null whether the gate held
+  // or not.
+  const rehearsal = await openMenuFor(
+    user,
+    cardFor("Répétition"),
+    "Autres actions pour Répétition",
+  );
+  expect(
+    within(rehearsal).queryByRole("menuitem", { name: /^Inscriptions à Répétition/ }),
+  ).toBeNull();
 });
 
 /**
@@ -571,14 +747,31 @@ test("offers the guest list only on an event that takes bookings", async () => {
  * that takes no bookings yet is exactly when the committee fills it in.
  */
 test("offers the options editor on every event, bookable or not", async () => {
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
 
+  const souper = await openMenuFor(
+    user,
+    cardFor("Souper de soutien"),
+    "Autres actions pour Souper de soutien",
+  );
   expect(
-    screen.getByRole("link", { name: "Ce qui peut être réservé à Souper de soutien" }),
+    within(souper).getByRole("menuitem", { name: "Ce qui peut être réservé à Souper de soutien" }),
   ).toHaveAttribute("href", "/events/7/registration-options");
+
+  // WAITED FOR, NOT ASSUMED — see the identical comment above this test's
+  // sibling, "offers the guest list only on an event that takes bookings".
+  await user.keyboard("{Escape}");
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
+
+  const rehearsal = await openMenuFor(
+    user,
+    cardFor("Répétition"),
+    "Autres actions pour Répétition",
+  );
   expect(
-    screen.getAllByRole("link", { name: /^Ce qui peut être réservé à Répétition/ }).length,
-  ).toBeGreaterThan(0);
+    within(rehearsal).getByRole("menuitem", { name: /^Ce qui peut être réservé à Répétition/ }),
+  ).toBeInTheDocument();
 });
 
 /**
@@ -588,12 +781,23 @@ test("offers the options editor on every event, bookable or not", async () => {
 test("a guest-list reader gets that link and no other", async () => {
   await renderPlanning("demo.committee");
 
+  // ONE ACTION, THEREFORE NO MENU. RowActions draws no trigger for fewer than
+  // two items behind it — a "..." over a single entry is a tap to reveal a
+  // button — so this reader's whole action list is inline and the guest list
+  // is still a plain link.
   expect(
     screen.getByRole("link", { name: "Inscriptions à Souper de soutien" }),
   ).toBeInTheDocument();
-  expect(screen.queryByRole("link", { name: /^Ce qui peut être réservé/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /^Modifier/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /^Qui vient/ })).toBeNull();
+
+  // THE TRIGGER'S ABSENCE IS THE ASSERTION, which is why these two go through
+  // the helper. The bare queryByRole they used to be would now be null for
+  // everybody, an organiser included, because a shut menu holds nothing.
+  expectNoSuchAction(/^Ce qui peut être réservé/);
+  expectNoSuchAction(/^Modifier/);
+
+  // STILL A PAGE-WIDE QUERY, unlike the two above: this action is the inline
+  // one, so it is in the DOM whenever it exists at all.
+  expect(screen.queryAllByRole("link", { name: /^Qui vient/ })).toHaveLength(0);
 });
 
 test("a player is told nothing about answers or bookings", async () => {
@@ -793,12 +997,21 @@ test("the calendar's month and weekday names follow the locale", async () => {
 });
 
 test("deleting names the event in German, with tight quotes", async () => {
+  const user = userEvent.setup();
   await renderPlanning("demo.direction", "de-CH");
 
   const card = screen.getAllByTestId("event-card")[0] as HTMLElement;
   const title = within(card).getByTestId("event-title").textContent ?? "";
 
-  await userEvent.click(within(card).getByRole("button", { name: `${title} löschen` }));
+  // THE MENU IS RENDERED, NOT ONLY KEYED. catalogues.test.ts proves the two
+  // files hold the same keys and says in its own docblock that it cannot see
+  // French pasted into de.ts — so the trigger and one item are read here by
+  // their German accessible names, which is also why openMenuFor takes the
+  // whole name rather than building the French one.
+  const menu = await openMenuFor(user, card, `Weitere Aktionen für ${title}`);
+  expect(within(menu).getByRole("menuitem", { name: `${title} bearbeiten` })).toBeInTheDocument();
+
+  await user.click(within(menu).getByRole("menuitem", { name: `${title} löschen` }));
 
   const dialog = await screen.findByRole("alertdialog");
   expect(dialog).toHaveTextContent(`«${title}» löschen?`);

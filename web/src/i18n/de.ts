@@ -168,6 +168,12 @@ export const de: typeof fr = {
     bootFailed:
       "Die Website konnte nicht gestartet werden. Bitte versuchen Sie es in wenigen Augenblicken erneut.",
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
+    // RowActions' own trigger label. für, not zu -- see fr.ts for why the
+    // key moved here (M4/M5, #118 whole-branch review). The old
+    // events.moreActionsAria shipped zu on the reasoning that it matched
+    // registrationsAria ("Anmeldungen zu {{title}}"), which holds for an
+    // event and stops holding once the same string names a person.
+    moreActionsAria: "Weitere Aktionen für {{name}}",
   },
 
   meta: {
