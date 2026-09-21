@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setLocale } from "./i18n";
 
@@ -17,6 +17,7 @@ import { formatCents, francsInput, parseFrancs } from "./money";
 const NBSP = "\u00a0";
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   await setLocale("fr");
 });
 
@@ -31,37 +32,73 @@ describe("formatCents", () => {
   });
 
   /**
-   * The half that IS the locale's to decide — and it decides differently per
-   * language, which this comment used to deny. It said "fr-CH groups with an
-   * apostrophe"; measured, fr-CH groups with a NARROW NO-BREAK SPACE and only
-   * de-CH uses the apostrophe. The loose `\D` below is why the error survived:
-   * it matches either.
+   * The separator is deliberately `\D` rather than a codepoint, because which
+   * character CLDR puts there is CLDR's to change, and it has changed once
+   * already in this file's short life. What the app guarantees is that there
+   * IS one, and that the decimal beside it stays a point.
    */
   it("groups thousands the Swiss way", () => {
     expect(formatCents(123450)).toMatch(/^CHF\u00a01\D234\.50$/);
   });
 
-  it("GROUPS BY THE READER'S OWN CONVENTION, not always French's", async () => {
-    // The decimal point is shared — Switzerland writes money with a point in
-    // all three of its languages, which money.ts says and is right about. The
-    // GROUP separator is not shared, and it is reachable: a souper's booking
-    // total across thirty guests clears CHF 1000 on the guest list.
-    //
-    // Asserted as the invariant rather than as exact codepoints, because the
-    // separator is CLDR's to change between ICU builds — the same fragility
-    // the `\D` above was hedging against.
-    const french = formatCents(123450);
+  /**
+   * THE READER'S LOCALE IS WHAT `Intl` IS ASKED. That is the contract, and it
+   * is the one thing here that no CLDR release can quietly erase.
+   *
+   * IT USED TO BE ASSERTED THROUGH THE SEPARATOR, which is exactly why it
+   * broke (#180). The test read "de-CH groups with a straight apostrophe and
+   * fr-CH does not", and that pair of claims is true on precisely one of the
+   * three builds now known to run it:
+   *
+   *     Node 22.21.1  CLDR 47   fr-CH U+202F   de-CH U+2019   line 1 false
+   *     Node 22.23.2  CLDR ?    (what CI runs, where it passed)
+   *     Node 24.21.0  CLDR 48   fr-CH U+0027   de-CH U+0027   line 2 false
+   *
+   * Measured on the first and third; the middle is inferred from a green CI
+   * run, since the old assertions could only pass where de-CH used U+0027 and
+   * fr-CH did not. Nothing pins the Node version for a developer, so which of
+   * the three you get is an accident of your machine.
+   *
+   * As of CLDR 48 the two locales render money identically, so nothing
+   * downstream of `Intl` can tell them apart at all.
+   *
+   * So this watches the TAG rather than the output. It fails on every ICU
+   * build if `formatCents` stops consulting the reader, INCLUDING the builds
+   * where the two locales happen to render the same. That is the case the old
+   * assertion could not survive, and the reason this one is a spy.
+   */
+  it("asks Intl for the reader's own locale", async () => {
+    const asked: string[] = [];
+    const Real = Intl.NumberFormat;
+
+    vi.spyOn(Intl, "NumberFormat").mockImplementation(function (
+      tag?: Intl.LocalesArgument,
+      options?: Intl.NumberFormatOptions,
+    ) {
+      asked.push(String(tag));
+      return new Real(tag, options);
+    } as unknown as typeof Intl.NumberFormat);
+
+    formatCents(123450);
+    await setLocale("de-CH");
+    formatCents(123450);
+
+    expect(asked).toEqual(["fr-CH", "de-CH"]);
+  });
+
+  /**
+   * WHAT money.ts PLACES BY HAND, as against what it takes from CLDR, and so
+   * what must hold in both languages whatever ICU is installed: the code in
+   * front, the no-break space after it, a point for the decimal and two
+   * digits behind it.
+   */
+  it("puts CHF in front with a no-break space, in both languages", async () => {
+    const swiss = /^CHF\u00a0\d\D?\d{3}\.50$/;
+
+    expect(formatCents(123450)).toMatch(swiss);
 
     await setLocale("de-CH");
-    const german = formatCents(123450);
-
-    expect(german).toContain("'");
-    expect(french).not.toContain("'");
-    expect(french).not.toBe(german);
-
-    // Both keep the point, and both keep the hand-placed currency in front.
-    expect(french).toMatch(/^CHF\u00a0.*\.50$/);
-    expect(german).toBe("CHF\u00a01'234.50");
+    expect(formatCents(123450)).toMatch(swiss);
   });
 });
 

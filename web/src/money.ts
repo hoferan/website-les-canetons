@@ -32,18 +32,19 @@ import { intlTag } from "./i18n/locale";
  * render one guest list two different ways. Dropping the currency part keeps
  * the first and settles the second.
  *
- * THE DECIMAL POINT IS SHARED; THE GROUP SEPARATOR IS NOT, which this file
- * used to claim otherwise by hardcoding `fr-CH` while its own example read
- * "CHF 1'234.50" — the GERMAN form. Measured:
+ * THE DECIMAL POINT IS SHARED; THE GROUP SEPARATOR BELONGS TO CLDR, AND IT
+ * MOVES. This file once denied that by hardcoding `fr-CH` while its own
+ * example showed the German form. Measured on two builds:
  *
- *     fr-CH   CHF 1<U+202F>234.50   narrow no-break space
- *     de-CH   CHF 1'234.50          apostrophe
+ *     CLDR 47 (Node 22.21.1)   fr-CH  U+202F   de-CH  U+2019
+ *     CLDR 48 (Node 24.21.0)   fr-CH  U+0027   de-CH  U+0027
  *
- * Both are correct in their own language, and the difference is reachable:
- * a souper's booking total across thirty guests clears CHF 1000 on the
- * committee's guest list. So the tag follows the reader. `money.test.ts`
- * matched the separator with `\D` long before this was noticed, which is a
- * fair sign somebody already suspected it.
+ * Three different characters across one release, and as of CLDR 48 the two
+ * locales are identical. The tag still follows the reader: which locale this
+ * asks is the app's decision, while which glyph comes back is CLDR's, so
+ * pinning today's answer would make the next release a silent regression.
+ * `money.test.ts` therefore watches the TAG and never the separator — an
+ * assertion about the separator is what broke on the CLDR 48 bump (#180).
  *
  * Built per call, never a module-scope const, for the reason lib/date.ts
  * gives at length.
