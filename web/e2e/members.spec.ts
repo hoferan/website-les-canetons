@@ -136,5 +136,67 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow, `${path} scrolls sideways at 390px`).toBeLessThanOrEqual(0);
+
+    // THE POINT OF #118, measured rather than eyeballed. The souper is the
+    // widest row there is: five actions for demo.direction. Before this
+    // change it wrapped to three lines and 148px.
+    //
+    // CORRECTED FROM THE BRIEF'S LOCATOR: `RowActions` renders its own
+    // `flex flex-wrap gap-tight` wrapper around the inline control(s) and the
+    // "..." trigger, and `EventCard` wraps THAT again in a `div` carrying the
+    // identical class, so a plain `div.flex.flex-wrap.gap-tight` selector
+    // matches both, nested. `:has(> button[...])` only matches a `div` whose
+    // DIRECT child is the trigger button — that is `RowActions`'s own div,
+    // never `EventCard`'s outer one, whose direct child is a div, not a
+    // button — so the `>` combinator already disambiguates them. Confirmed
+    // against the rendered page before trusting it here: `count` is 1, not 2.
+    if (path === "/events") {
+      const row = page
+        .locator('[data-testid="event-card"]', { hasText: "Souper" })
+        .locator("css=div:has(> button[aria-label^='Autres actions'])");
+      const box = await row.boundingBox();
+      expect(box?.height, "the souper's action row is more than one line").toBeLessThanOrEqual(48);
+    }
   }
+});
+
+/**
+ * TOUCH, WHICH `computer.click` NEVER EXERCISES. Spec §6, Review Focus 5: a
+ * `tap` on a menu item must not also register on whatever the menu closing
+ * reveals underneath it — the classic "tap-through" bug a mouse click cannot
+ * catch because a mouse has no separate touchstart/touchend to race.
+ */
+test("selecting a menu item on a touch phone does not also hit what is under it", async ({
+  browser,
+}) => {
+  // hasTouch/isMobile set at context creation (Playwright cannot change
+  // either after the fact), but the VIEWPORT starts wide and is narrowed only
+  // after logIn's own assertion runs — the same "logged in first, then
+  // narrowed" fix the overflow test above already documents. Creating the
+  // context at 390x844 straight away, as the brief originally had it, fails
+  // for the identical reason: below `md` the nav collapses behind the
+  // hamburger (Layout.tsx's `hidden md:flex`), so logIn's
+  // `getByRole("link", { name: username })` check never finds a visible link
+  // and every run of this test times out on login, before it ever reaches the
+  // tap it exists to test. Confirmed by running it exactly as the brief wrote
+  // it first.
+  const ctx = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await ctx.newPage();
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/events");
+
+  await page
+    .getByRole("button", { name: /^Autres actions pour/ })
+    .first()
+    .tap();
+  await page.getByRole("menuitem", { name: /^Modifier/ }).tap();
+
+  // The edit route, and nothing underneath the menu was activated on the way.
+  await expect(page).toHaveURL(/\/events\/\d+\/edit$/);
+  await ctx.close();
 });
