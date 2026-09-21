@@ -73,7 +73,9 @@ change". The first half is right and the dependency half is not:
 `radix-ui` ^1.6.7 is already a direct dependency, `ui/alert-dialog.tsx` already
 vendors from it, and `@radix-ui/react-dropdown-menu` is already installed as
 one of its transitives. **No new package.** What remains is the keyboard and
-focus behaviour, which is the real work and is §3 below.
+focus behaviour — which §3 measures, and which turns out to cost less than
+this section first claimed too. Radix supplies the keyboard behaviour, and the
+focus handoff the issue worried about does not misbehave.
 
 ## 1. The primitive
 
@@ -105,28 +107,79 @@ knows nothing about permissions — the screen decides which actions exist and
 passes `<RowActions>`, exactly as its docblock requires. A card that assembled
 its own menu would have to be edited for every future control.
 
-## 3. The focus trap, which is the actual work
+## 3. The focus handoff, and what `modal={false}` actually buys
 
-Radix's `DropdownMenu` defaults to `modal={true}`. That puts
-`pointer-events: none` on `<body>` for as long as the menu is open, and returns
-focus to the trigger when it closes. Selecting an item that opens
-`ConfirmByTypingName` — an `AlertDialog` — then has two overlays handing focus
-to each other within one tick.
+A menu item that opens `ConfirmByTypingName` means a Radix `DropdownMenu`
+closing while an `AlertDialog` opens.
 
-The failure mode is a dialog that cannot be typed into, and the dialog in
-question is the one that requires typing a person's full name to confirm a
-delete. It would look like a working menu and a working dialog.
+**This section used to say that at the menu's default `modal={true}` the
+result is "a dialog that cannot be typed into", and that `modal={false}`
+prevents it. Both halves were wrong**, and they were written from knowledge
+rather than measured. Measured, against the real dialog:
 
-Two rules avoid it:
+| opened from                    | `body.style.pointerEvents` | field typable |
+| ------------------------------ | -------------------------- | ------------- |
+| menu `modal={true}`            | `none`                     | yes           |
+| menu `modal={false}`           | `none`                     | yes           |
+| **a plain button, no menu**    | `none`                     | —             |
 
-1. **`modal={false}` on the menu.** It stops the body lock and the focus
-   return, and it is what Radix recommends when a menu composes with a dialog.
-2. **The dialog keeps opening from the screen's state**, as it does today, and
-   never from inside the menu item's own subtree. `onSelect` sets state; the
-   menu unmounts and the dialog mounts in order.
+**The body lock is the dialog's, not the menu's.** It is there with no menu in
+the tree at all, because `AlertDialog` is modal and that is what modal means.
+`DismissableLayer` keeps its disabled layers in a `Set` and restores the
+original value only when that set empties, so the menu's teardown cannot
+unlock the body early and the dialog's teardown restores it.
 
-Neither rule is self-evident from reading the result, so both get a comment at
-the line and a test that fails when they are removed (§6).
+**The focus return is not the `modal` prop either.** `DropdownMenuContent`'s
+`onCloseAutoFocus` refocuses the trigger unless `hasInteractedOutsideRef` is
+set, and `modal` reaches that ref only through `onInteractOutside`. Selecting
+an item is not an outside interaction, so the trigger is refocused identically
+in both modes. `modal={false}` does not change the path this design walks.
+
+**Nor is it a race.** `FocusScope` defers its unmount autofocus behind a
+`setTimeout(..., 0)`, so the trigger refocus lands a macrotask after the
+dialog has mounted and focused its own Cancel button. The dialog wins it: its
+`FocusScope` was pushed onto `focusScopesStack` after the menu's, which pauses
+the menu's and leaves the dialog's trapping, so a `focusin` on the trigger is
+pulled straight back inside.
+
+The worst real symptom at `modal={true}` is therefore a focus flicker to the
+`...` trigger and back, which nobody sees on the phone this issue is about.
+
+### What still argues for `modal={false}`
+
+Three smaller things, each true of the installed code:
+
+- `MenuRootContentModal` calls `hideOthers(content)`, which marks the rest of
+  the page `aria-hidden` for as long as the menu is open.
+- It mounts `RemoveScroll`, which stacks with the dialog's own through the
+  menu's exit animation.
+- It adds a second focus trap and a second entry to the body-lock refcount,
+  and both have to unwind in the right order for the dialog to behave.
+
+None of that is a bug today. All of it is machinery this design does not need,
+because a menu of four items over a card has no reason to imprison the page,
+and `modal={false}` removes it by construction instead of resting on two
+libraries' teardown order staying correct.
+
+**The claim that Radix recommends `modal={false}` here is withdrawn.** It is
+community guidance rather than anything in Radix's documentation, and the
+argument above does not need it.
+
+### The rule that is load-bearing
+
+The dialog opens from the screen's own state and never from inside the menu
+item's subtree. `Events.tsx` and `Members.tsx` already work this way, so it
+costs nothing — and unlike the `modal` prop, breaking it breaks something a
+user would meet: a dialog rendered inside `DropdownMenu.Content` is unmounted
+by the menu's own close, so it never appears at all. That is what §6
+mutation-tests.
+
+### What is still unmeasured
+
+The table above is jsdom plus a reading of the installed Radix source. jsdom
+does no hit-testing and its focus model is not a browser's, so neither line of
+evidence is Chrome on a phone. The Playwright case in §6 is what closes that
+gap, and is the reason there is one.
 
 ## 4. Accessible names and the two catalogues
 
@@ -192,11 +245,17 @@ found by the name carrying the row's own name; selecting the destructive item
 opens the dialog. `userEvent`, not `fireEvent` — Radix renders through a portal
 and needs real pointer and key sequences.
 
-**The focus rules, mutation-tested.** A test that passes whether or not
-`modal={false}` is there asserts nothing. The guard is: with the menu's
-`modal` prop flipped back to `true`, a test fails. That has to be demonstrated
-by doing it, not asserted in the PR body — four E2b tests once asserted nothing
-here and only reintroducing the bug caught them.
+**The load-bearing rule, mutation-tested.** Flipping `modal` back to `true`
+is *not* the mutation. §3 shows there is no observable difference on the
+item-select path, and the assertion somebody would reach for first —
+`expect(document.body.style.pointerEvents).not.toBe("none")` — is false with
+`modal={false}` too, because the dialog sets it.
+
+The falsifiable rule is the other one. Move `ConfirmByTypingName` inside
+`DropdownMenu.Content` and the dialog never appears, because the menu's own
+close unmounts it. That is the mutation, and it has to be demonstrated by
+doing it rather than asserted in the PR body — four E2b tests once asserted
+nothing here, and only reintroducing the bug caught them.
 
 **Playwright at 390px.** The souper's action row is one line, and
 `document.scrollWidth === document.clientWidth` still holds across `/events`,
