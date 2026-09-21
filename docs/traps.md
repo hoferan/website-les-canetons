@@ -321,6 +321,45 @@ Use `$table->dateTime(...)` for both. It takes no implicit default, and the
 code writing the row is already supplying the value. `2026_09_12_000001` is the
 worked example.
 
+## A negative assertion goes vacuous when its control moves behind a menu
+
+`RowActions` (`web/src/components/RowActions.tsx`) puts a row's less frequent
+actions behind a `…` trigger, and a Radix menu item is not in the DOM until
+that menu opens. So
+
+    expect(screen.queryByRole("button", { name: /^Supprimer/ })).toBeNull();
+
+stops proving that somebody without `events.manage` cannot delete, and starts
+passing for everyone, silently. The line still reads as coverage.
+
+This was measured. Converting `/events` onto `RowActions` in #118
+with the tests left untouched, the two tests holding three of the four such
+assertions **stayed green**. That halfway commit was run on purpose, because
+the alternative was to argue about it. An earlier slice had already shipped
+four assertions that sat vacuous for months until somebody reintroduced the
+bug and watched.
+
+You need this before you open the test file. Afterwards the failure is
+invisible, because the suite is green either way.
+
+**What to write instead.** `expectNoSuchAction` in
+`web/src/pages/Events.test.tsx` is the worked example. It asserts absence
+three ways — no inline link, no inline button, and no overflow trigger
+anywhere on the page — and the third clause is the one carrying the meaning,
+because with fewer than two leftover actions `RowActions` draws no trigger at
+all and renders everything inline.
+
+Match that trigger with `aria-haspopup="menu"`, never with its French
+accessible name. A name-anchored regex cannot match the German label, so on
+`/de/*` the clause that carries the meaning passes vacuously — the same defect
+one layer up, inside the helper written to close it.
+
+**Then watch it fail.** Remove the permission gate the assertion guards, run
+the file, confirm that assertion goes red, and restore the gate. An assertion
+nobody has watched fail is not a guard. Where no mutation isolates a line —
+two actions behind a single gate, as on the guest list — write that down
+instead of leaving the question open.
+
 ## `bcrypt()` in a test against an argon2id app
 
 `Member::factory()->create(['password' => bcrypt('x')])` makes `Hash::check`
