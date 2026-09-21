@@ -193,8 +193,8 @@ export const de: typeof fr = {
 
   contactMessages: {
     heading: "Nachrichten",
-    messageWord: "Nachricht",
-    messagesWord: "Nachrichten",
+    word_one: "Nachricht",
+    word_other: "Nachrichten",
     countFiltered: "{visible} von {total} {word}",
     filterAll: "Alle",
     filterOpen: "Offen",

@@ -4,18 +4,33 @@ import { rowsOf } from "../api/collection";
 import { useInboxIndex } from "../api/generated/endpoints";
 import type { InboxItemResource } from "../api/generated/model";
 import { PageSection } from "../components/PageSection";
-import { fr } from "../i18n/fr";
+import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 
-// `fr.inbox.kinds` is typed to its own literal keys, not a general
-// dictionary — this is the one place a `kind` off the wire is used to index
-// it, so the cast lives here rather than loosening the source of truth in
-// fr.ts.
-const KIND_LABELS: Record<string, string> = fr.inbox.kinds;
+/**
+ * The `kind` tokens this screen knows how to name.
+ *
+ * NOT A MODULE-SCOPE SNAPSHOT OF THE FRENCH CATALOGUE ANY MORE. This was
+ * `Record<string, string>` assigned from the French object, evaluated at
+ * import and frozen there, so `/de/inbox` labelled every row "Message du
+ * site" however the page was reached. It is also why this file imported the
+ * French catalogue at all — see the guard in
+ * web/src/i18n/catalogues.test.ts, which now forbids that anywhere outside
+ * i18n/.
+ *
+ * Listed rather than derived so the template literal below stays a valid
+ * `TranslationKey`: an unconstrained key built from a wire token would not
+ * typecheck, and widening the key type to make it typecheck would give up the
+ * typo-catching that signature exists for. #123 adds a source; it adds a
+ * member here and a key in both catalogues.
+ */
+const KINDS = ["contactMessage"] as const;
 
 /** `kind` is a machine token (`contactMessage`) — never render it verbatim. */
 function kindLabel(kind: string): string {
-  return KIND_LABELS[kind] ?? kind;
+  return (KINDS as readonly string[]).includes(kind)
+    ? t(`inbox.kinds.${kind as (typeof KINDS)[number]}`)
+    : kind;
 }
 
 /**
@@ -44,17 +59,17 @@ export function Inbox() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-4xl">{fr.inbox.heading}</h1>
+      <h1 className="font-display text-4xl">{t("inbox.heading")}</h1>
 
-      {list.isPending ? <p className="mt-block">Chargement…</p> : null}
+      {list.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
       {list.isError ? (
         <p role="alert" className="mt-block text-danger">
-          {fr.inbox.loadError}
+          {t("inbox.loadError")}
         </p>
       ) : null}
 
       {!list.isPending && !list.isError && items.length === 0 ? (
-        <p className="mt-block text-ink-muted">{fr.inbox.empty}</p>
+        <p className="mt-block text-ink-muted">{t("inbox.empty")}</p>
       ) : null}
 
       {!list.isPending && !list.isError && items.length > 0 ? (

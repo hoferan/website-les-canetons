@@ -27,7 +27,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { fr } from "../i18n/fr";
+import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
 
@@ -47,11 +47,20 @@ function preview(message: ContactMessageResource): string {
  * back up.
  */
 function countLabel(filter: Filter, visible: number, total: number): string {
-  const word = total > 1 ? fr.contactMessages.messagesWord : fr.contactMessages.messageWord;
+  // THE CATALOGUE PICKS THE FORM. This was `total > 1 ? … : …`, which is the
+  // French plural rule written in JavaScript: French counts zero as singular
+  // ("0 message") and German does not ("0 Nachrichten").
+  const word = t("contactMessages.word", { count: total });
+
   if (filter === "all") {
     return `${total} ${word}`;
   }
-  return fr.contactMessages.countFiltered
+
+  // SINGLE BRACES, REPLACED BY HAND, and deliberately not i18next's `{{ }}`:
+  // this section was written that way and both catalogues mirror it. The two
+  // styles are not interchangeable and mixing them inside one key silently
+  // renders the braces.
+  return t("contactMessages.countFiltered")
     .replace("{visible}", String(visible))
     .replace("{total}", String(total))
     .replace("{word}", word);
@@ -155,12 +164,12 @@ export function ContactMessages() {
       if (response.status !== 200) {
         // Unreachable: the mutator throws on every non-2xx. The declared
         // union says otherwise and tsc is right that it does.
-        setReadError(fr.contactMessages.readError);
+        setReadError(t("contactMessages.readError"));
         return;
       }
       setOpened({ message: response.data, etag: entityTagOf(response) });
     } catch {
-      setReadError(fr.contactMessages.readError);
+      setReadError(t("contactMessages.readError"));
     } finally {
       setOpeningId(null);
     }
@@ -203,7 +212,7 @@ export function ContactMessages() {
     if (opened.etag === null) {
       // No tag means the write would be refused 428, which reads as a broken
       // screen. Saying so and stopping is the honest answer.
-      setReadError(fr.contactMessages.readError);
+      setReadError(t("contactMessages.readError"));
       return;
     }
     action.clear();
@@ -216,7 +225,7 @@ export function ContactMessages() {
       if (saved.status !== 200) {
         // Unreachable: the mutator throws on every non-2xx. The declared
         // union says otherwise and tsc is right that it does.
-        setReadError(fr.contactMessages.readError);
+        setReadError(t("contactMessages.readError"));
         return;
       }
       setOpened({ message: saved.data, etag: entityTagOf(saved) });
@@ -257,7 +266,7 @@ export function ContactMessages() {
   return (
     <PageSection>
       <div className="flex flex-wrap items-baseline gap-tight">
-        <h1 className="font-display text-4xl">{fr.contactMessages.heading}</h1>
+        <h1 className="font-display text-4xl">{t("contactMessages.heading")}</h1>
         {total === null ? null : (
           <span className="text-ink-muted" data-testid="message-count">
             {countLabel(filter, visible.length, total)}
@@ -268,7 +277,7 @@ export function ContactMessages() {
       <div
         className="mt-related flex flex-wrap gap-tight"
         role="group"
-        aria-label={fr.contactMessages.heading}
+        aria-label={t("contactMessages.heading")}
       >
         <Button
           type="button"
@@ -277,7 +286,7 @@ export function ContactMessages() {
           aria-pressed={filter === "all"}
           onClick={() => setFilter("all")}
         >
-          {fr.contactMessages.filterAll}
+          {t("contactMessages.filterAll")}
         </Button>
         <Button
           type="button"
@@ -286,7 +295,7 @@ export function ContactMessages() {
           aria-pressed={filter === "open"}
           onClick={() => setFilter("open")}
         >
-          {fr.contactMessages.filterOpen}
+          {t("contactMessages.filterOpen")}
         </Button>
         <Button
           type="button"
@@ -295,7 +304,7 @@ export function ContactMessages() {
           aria-pressed={filter === "handled"}
           onClick={() => setFilter("handled")}
         >
-          {fr.contactMessages.filterHandled}
+          {t("contactMessages.filterHandled")}
         </Button>
       </div>
 
@@ -318,16 +327,16 @@ export function ContactMessages() {
         />
       ) : null}
 
-      {list.isPending ? <p className="mt-block">Chargement…</p> : null}
+      {list.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
       {list.isError ? (
         <p role="alert" className="mt-block text-danger">
-          {fr.contactMessages.loadError}
+          {t("contactMessages.loadError")}
         </p>
       ) : null}
 
       {!list.isPending && !list.isError && visible.length === 0 ? (
         <p className="mt-block text-ink-muted">
-          {total === 0 ? fr.contactMessages.empty : fr.contactMessages.emptyFiltered}
+          {total === 0 ? t("contactMessages.empty") : t("contactMessages.emptyFiltered")}
         </p>
       ) : null}
 
@@ -369,9 +378,9 @@ export function ContactMessages() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{fr.contactMessages.deleteConfirmTitle}</AlertDialogTitle>
+            <AlertDialogTitle>{t("contactMessages.deleteConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {fr.contactMessages.deleteConfirmDescription.replace(
+              {t("contactMessages.deleteConfirmDescription").replace(
                 "{name}",
                 deleting ? `${deleting.message.firstName} ${deleting.message.lastName}` : "",
               )}
@@ -391,7 +400,7 @@ export function ContactMessages() {
                 setDeleting(null);
               }}
             >
-              Annuler
+              {t("common.cancel")}
             </AlertDialogCancel>
             {/* A plain Button, not AlertDialogAction: that closes the dialog
                 on click, and this action can fail — a 412 — so the message
@@ -405,7 +414,7 @@ export function ContactMessages() {
                 void confirmDelete();
               }}
             >
-              {destroy.isPending ? "En cours…" : fr.contactMessages.delete}
+              {destroy.isPending ? t("common.busy") : t("contactMessages.delete")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -441,8 +450,8 @@ function MessageSummary({
       <p className="mt-tight text-sm">{preview(message)}</p>
       <p className="text-sm">
         {message.handledAt === null
-          ? fr.contactMessages.openStatus
-          : fr.contactMessages.handledStatus}
+          ? t("contactMessages.openStatus")
+          : t("contactMessages.handledStatus")}
       </p>
       <div className="mt-related">
         <Button
@@ -455,9 +464,9 @@ function MessageSummary({
             onRead();
           }}
         >
-          <span aria-hidden="true">{fr.contactMessages.read}</span>
+          <span aria-hidden="true">{t("contactMessages.read")}</span>
           <span className="sr-only">
-            {fr.contactMessages.read} {name}
+            {t("contactMessages.read")} {name}
           </span>
         </Button>
       </div>
@@ -511,7 +520,7 @@ function MessagePanel({
           variant="ghost"
           size="icon-sm"
           onClick={onClose}
-          aria-label={fr.contactMessages.close}
+          aria-label={t("contactMessages.close")}
         >
           <X aria-hidden="true" />
         </Button>
@@ -525,7 +534,7 @@ function MessagePanel({
 
       {message.handledAt !== null ? (
         <p className="text-sm text-ink-muted">
-          {fr.contactMessages.handledBy
+          {t("contactMessages.handledBy")
             .replace("{name}", message.handledBy ?? "")
             .replace("{date}", formatInstant(message.handledAt))}
         </p>
@@ -541,7 +550,7 @@ function MessagePanel({
         <div className="flex flex-wrap gap-tight">
           {message.handledAt === null ? (
             <Button type="button" size="sm" aria-disabled={busy} onClick={onHandle}>
-              {fr.contactMessages.handle}
+              {t("contactMessages.handle")}
             </Button>
           ) : (
             <Button
@@ -551,7 +560,7 @@ function MessagePanel({
               aria-disabled={busy}
               onClick={onReopen}
             >
-              {fr.contactMessages.reopen}
+              {t("contactMessages.reopen")}
             </Button>
           )}
           <Button
@@ -561,7 +570,7 @@ function MessagePanel({
             aria-disabled={busy}
             onClick={onDelete}
           >
-            {fr.contactMessages.delete}
+            {t("contactMessages.delete")}
           </Button>
         </div>
       ) : null}

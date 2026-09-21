@@ -291,8 +291,12 @@ export const fr = {
    */
   contactMessages: {
     heading: "Messages",
-    messageWord: "message",
-    messagesWord: "messages",
+    // A PLURAL FAMILY, not two keys chosen by a ternary. This was
+    // `total > 1 ? messagesWord : messageWord` in ContactMessages.tsx — the
+    // French rule, which gives the right "0 message" here and the wrong
+    // "0 Nachricht" in German. Eighth of these; see events.owedCount.
+    word_one: "message",
+    word_other: "messages",
     // {visible} and {total}, filled in by the component. Used once a filter
     // button other than "Tous" is active, so the heading's count never claims
     // more than the rows shown beneath it.
