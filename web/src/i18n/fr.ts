@@ -669,6 +669,113 @@ export const fr = {
   },
 
   /**
+   * The roster (/members) and the three dialogs it opens.
+   *
+   * EVERY ACCESSIBLE NAME CARRIES THE PERSON. `deleteTitle` and `resetTitle`
+   * are each used TWICE — once as a button's screen-reader text and once as
+   * the title of the dialog it opens — so the two cannot come to disagree,
+   * and a screen-reader user hears which row they are on rather than the
+   * twelfth bare "Supprimer" on the page. Members.tsx's MemberActions
+   * docblock is where that requirement is argued.
+   *
+   * "CETTE PERSONNE", NOT THE NAME, in both descriptions. The French reason is
+   * grammatical and recorded at the delete dialog in Members.tsx (#91): an
+   * interpolated name drags a participle that must agree with it, and the
+   * roster holds no gender field to agree from. German inflects no participle
+   * here, so it could have interpolated the name — it does not, because the
+   * title already names the person and saying it twice in one dialog is worse
+   * in both languages. Same sentence, same shape, two different reasons.
+   */
+  members: {
+    heading: "Membres",
+    // The count beside the heading, off the server's `meta.total`. It was
+    // `rosterCount > 1 ? "s" : ""` in the component — the FRENCH plural rule
+    // again, which gives the correct "0 membre" here and the wrong
+    // "0 Mitglied" in German. Fourth one of these; see events.owedCount.
+    count_one: "{{count}} membre",
+    count_other: "{{count}} membres",
+    add: "Ajouter une personne",
+
+    saveFailed: "L’enregistrement a échoué.",
+    actionFailed: "L’action a échoué.",
+    loadFailed: "Cette personne n’a pas pu être chargée.",
+    loadFailedReload: "Cette personne n’a pas pu être chargée. Rechargez la page.",
+    incompleteSave: "L’enregistrement est incomplet\u00a0: rechargez la page.",
+    rosterLoadFailed: "La liste des membres n’a pas pu être chargée.",
+
+    // The card's labelled fields. The label is what the column head used to
+    // do before #130 made the card the only layout, so it is part of the
+    // sentence rather than chrome — and its colon is spaced in French only.
+    usernameLabel: "Identifiant\u00a0: {{value}}",
+    sectionLabel: "Pupitre\u00a0: {{value}}",
+    rolesLabel: "Rôles\u00a0: {{value}}",
+    noSection: "Aucun pupitre",
+    noRoles: "Aucun rôle",
+
+    // Used as the button's sr-only text AND as the dialog's title.
+    editPerson: "Modifier {{name}}",
+    password: "Mot de passe",
+    deleteTitle: "Supprimer {{name}}",
+    deleteDescription:
+      "Cette personne sera retirée de la liste et perdra immédiatement son accès au site. Ses réponses de présence seront effacées du planning. Cette action est définitive.",
+    reset: "Réinitialiser",
+    resetTitle: "Réinitialiser le mot de passe de {{name}}",
+    resetDescription:
+      "Un nouveau mot de passe sera généré et affiché une seule fois. Cette personne sera déconnectée partout et devra le changer à la prochaine connexion.",
+
+    /** The one-time password reveal (§4.4). */
+    generatedTitle: "Mot de passe de {{name}}",
+    generatedDescription:
+      "Notez-le ou lisez-le à la personne maintenant\u00a0: il ne sera plus jamais affiché. Elle devra le remplacer à sa première connexion.",
+    generatedAck: "J’ai noté le mot de passe",
+
+    /**
+     * The account-state pills (#94), and the date beneath them.
+     *
+     * `neverUsedName` and `provisionalName` are the accessible names: a screen
+     * reader reaches "Provisoire" with no card around it to supply the noun.
+     *
+     * THE FRENCH LABEL AVOIDS A PARTICIPLE THAT WOULD HAVE TO AGREE — "jamais
+     * utilisé" agrees with `le compte`, where "jamais connecté" would have to
+     * agree with the member. German has no such constraint, which is worth
+     * knowing before somebody "simplifies" the French to match it.
+     */
+    neverUsed: "Jamais utilisé",
+    neverUsedName: "Compte jamais utilisé",
+    provisional: "Provisoire",
+    provisionalName: "Mot de passe provisoire",
+    // {{date}} comes from formatLastLogin, which is already locale-aware
+    // (#151). The preposition around it is not, which is why the whole
+    // sentence is here and not glued together in loginStatus.ts.
+    lastLogin: "Dernière connexion le {{date}}",
+  },
+
+  /** The roster's add/edit form. */
+  memberForm: {
+    firstName: "Prénom",
+    lastName: "Nom",
+    username: "Identifiant",
+    passwordHintNew:
+      "Un mot de passe sera généré et affiché une seule fois après l’enregistrement.",
+    passwordHintEdit:
+      "Le mot de passe se réinitialise depuis la liste, jamais depuis ce formulaire.",
+    section: "Pupitre",
+    committeeFunction: "Fonction au comité",
+    noFunction: "Aucune fonction",
+    instructorOf: "Moniteur du pupitre",
+    notInstructor: "Pas moniteur",
+    // ITS OWN KEY, not eventForm.isPublic, though the French is word for word
+    // the same. There it is an EVENT appearing on the public agenda; here it
+    // is a PERSON appearing on /band. Two facts that share a sentence in
+    // French today and have no reason to stay married.
+    publicVisible: "Visible sur le site public",
+    rolesLegend: "Rôles",
+    rolesAfterSave:
+      "Les rôles s’attribuent après avoir enregistré la personne\u00a0: donner des droits est une action à part, qui coupe les sessions en cours et laisse une trace.",
+    saving: "Enregistrement…",
+  },
+
+  /**
    * The front door (/).
    *
    * `destinations` backs Home.tsx's DESTINATIONS array, which carries a

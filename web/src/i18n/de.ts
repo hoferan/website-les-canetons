@@ -433,6 +433,70 @@ export const de: typeof fr = {
     another: "Weitere Serie erstellen",
   },
 
+  members: {
+    heading: "Mitglieder",
+    // NULL IST HIER PLURAL: «0 Mitglieder», nicht «0 Mitglied».
+    count_one: "{{count}} Mitglied",
+    count_other: "{{count}} Mitglieder",
+    add: "Person hinzufügen",
+
+    saveFailed: "Das Speichern ist fehlgeschlagen.",
+    actionFailed: "Die Aktion ist fehlgeschlagen.",
+    loadFailed: "Diese Person konnte nicht geladen werden.",
+    loadFailedReload: "Diese Person konnte nicht geladen werden. Laden Sie die Seite neu.",
+    incompleteSave: "Das Speichern ist unvollständig: Laden Sie die Seite neu.",
+    rosterLoadFailed: "Die Mitgliederliste konnte nicht geladen werden.",
+
+    usernameLabel: "Benutzername: {{value}}",
+    sectionLabel: "Register: {{value}}",
+    rolesLabel: "Rollen: {{value}}",
+    noSection: "Kein Register",
+    noRoles: "Keine Rolle",
+
+    editPerson: "{{name}} bearbeiten",
+    password: "Passwort",
+    deleteTitle: "{{name}} löschen",
+    // «DIESE PERSON» STATT DES NAMENS, wie im Französischen — dort aus
+    // Gründen der Grammatik, hier, weil der Titel die Person bereits nennt.
+    deleteDescription:
+      "Diese Person wird aus der Liste entfernt und verliert sofort den Zugang zur Website. Ihre Rückmeldungen zur Teilnahme werden aus der Planung gelöscht. Diese Aktion ist endgültig.",
+    reset: "Zurücksetzen",
+    resetTitle: "Passwort von {{name}} zurücksetzen",
+    resetDescription:
+      "Ein neues Passwort wird erzeugt und ein einziges Mal angezeigt. Diese Person wird überall abgemeldet und muss es bei der nächsten Anmeldung ändern.",
+
+    generatedTitle: "Passwort von {{name}}",
+    generatedDescription:
+      "Notieren Sie es oder lesen Sie es der Person jetzt vor: Es wird nie wieder angezeigt. Sie muss es bei der ersten Anmeldung ersetzen.",
+    generatedAck: "Ich habe das Passwort notiert",
+
+    // Im Deutschen beugt sich hier kein Partizip, anders als im
+    // Französischen: «Nie benutzt» passt unabhängig davon, wer gemeint ist.
+    neverUsed: "Nie benutzt",
+    neverUsedName: "Konto nie benutzt",
+    provisional: "Provisorisch",
+    provisionalName: "Provisorisches Passwort",
+    lastLogin: "Letzte Anmeldung am {{date}}",
+  },
+
+  memberForm: {
+    firstName: "Vorname",
+    lastName: "Name",
+    username: "Benutzername",
+    passwordHintNew: "Nach dem Speichern wird ein Passwort erzeugt und ein einziges Mal angezeigt.",
+    passwordHintEdit: "Das Passwort wird über die Liste zurückgesetzt, nie über dieses Formular.",
+    section: "Register",
+    committeeFunction: "Funktion im Vorstand",
+    noFunction: "Keine Funktion",
+    instructorOf: "Leiter des Registers",
+    notInstructor: "Kein Leiter",
+    publicVisible: "Auf der öffentlichen Website sichtbar",
+    rolesLegend: "Rollen",
+    rolesAfterSave:
+      "Rollen werden vergeben, nachdem die Person gespeichert wurde: Rechte zu erteilen ist eine eigene Aktion, die laufende Sitzungen beendet und eine Spur hinterlässt.",
+    saving: "Wird gespeichert…",
+  },
+
   home: {
     hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
     heroSub:

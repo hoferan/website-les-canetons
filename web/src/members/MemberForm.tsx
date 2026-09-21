@@ -10,7 +10,7 @@ import type {
 } from "../api/generated/model";
 import { FormError, FormField } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
-import { roleHint, roleLabel } from "../i18n";
+import { roleHint, roleLabel, t } from "../i18n";
 
 export type MemberDraft = {
   firstName: string;
@@ -111,12 +111,14 @@ export function MemberForm({
       }}
     >
       <h2 className="font-display text-2xl">
-        {creating ? "Ajouter une personne" : `Modifier ${member.firstName} ${member.lastName}`}
+        {creating
+          ? t("members.add")
+          : t("members.editPerson", { name: `${member.firstName} ${member.lastName}` })}
       </h2>
 
       <FormField
         id="firstName"
-        label="Prénom"
+        label={t("memberForm.firstName")}
         value={draft.firstName}
         onChange={(value) => set("firstName", value)}
         problem={problemFor("firstName")}
@@ -125,7 +127,7 @@ export function MemberForm({
 
       <FormField
         id="lastName"
-        label="Nom"
+        label={t("memberForm.lastName")}
         value={draft.lastName}
         onChange={(value) => set("lastName", value)}
         problem={problemFor("lastName")}
@@ -134,7 +136,7 @@ export function MemberForm({
 
       <FormField
         id="username"
-        label="Identifiant"
+        label={t("memberForm.username")}
         value={draft.username}
         onChange={(value) => set("username", value)}
         problem={problemFor("username")}
@@ -142,13 +144,11 @@ export function MemberForm({
         autoComplete="off"
       />
       <p className="text-sm text-ink-muted">
-        {creating
-          ? "Un mot de passe sera généré et affiché une seule fois après l’enregistrement."
-          : "Le mot de passe se réinitialise depuis la liste, jamais depuis ce formulaire."}
+        {creating ? t("memberForm.passwordHintNew") : t("memberForm.passwordHintEdit")}
       </p>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="sectionId">Pupitre</label>
+        <label htmlFor="sectionId">{t("memberForm.section")}</label>
         <select
           id="sectionId"
           className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
@@ -159,7 +159,7 @@ export function MemberForm({
         >
           {/* Empty is a real answer: somebody who organises and does not play
               belongs to no register and never appears in an attendance list. */}
-          <option value="">Aucun pupitre</option>
+          <option value="">{t("members.noSection")}</option>
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
               {section.name}
@@ -176,7 +176,7 @@ export function MemberForm({
           registers, which is why this renders exactly like the two selects
           around it. */}
       <div className="flex flex-col gap-1">
-        <label htmlFor="committeeFunctionId">Fonction au comité</label>
+        <label htmlFor="committeeFunctionId">{t("memberForm.committeeFunction")}</label>
         <select
           id="committeeFunctionId"
           className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
@@ -191,7 +191,7 @@ export function MemberForm({
           {/* Empty is the ordinary answer: most of the band sit on no
               committee, and holding no seat is what keeps them off the public
               committee page. */}
-          <option value="">Aucune fonction</option>
+          <option value="">{t("memberForm.noFunction")}</option>
           {committeeFunctions.map((seat) => (
             <option key={seat.id} value={seat.id}>
               {seat.name}
@@ -212,7 +212,7 @@ export function MemberForm({
           already was, which for every member was null. Found by André during
           R2's manual pass, on the first release where anything READ it. */}
       <div className="flex flex-col gap-1">
-        <label htmlFor="instructorOfSectionId">Moniteur du pupitre</label>
+        <label htmlFor="instructorOfSectionId">{t("memberForm.instructorOf")}</label>
         <select
           id="instructorOfSectionId"
           className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
@@ -225,7 +225,7 @@ export function MemberForm({
           }
         >
           {/* Empty is the ordinary answer: most of the band teach nothing. */}
-          <option value="">Pas moniteur</option>
+          <option value="">{t("memberForm.notInstructor")}</option>
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
               {section.name}
@@ -241,11 +241,11 @@ export function MemberForm({
           checked={draft.publicVisible}
           onChange={(event) => set("publicVisible", event.target.checked)}
         />
-        Visible sur le site public
+        {t("memberForm.publicVisible")}
       </label>
 
       <fieldset className="flex flex-col gap-1">
-        <legend>Rôles</legend>
+        <legend>{t("memberForm.rolesLegend")}</legend>
         {roles.map((role) => (
           /*
             The hint is DESCRIBED BY, not part of the label. Wrapping both in
@@ -279,10 +279,7 @@ export function MemberForm({
           </div>
         ))}
         {creating ? (
-          <p className="text-sm text-ink-muted">
-            Les rôles s’attribuent après avoir enregistré la personne&nbsp;: donner des droits est
-            une action à part, qui coupe les sessions en cours et laisse une trace.
-          </p>
+          <p className="text-sm text-ink-muted">{t("memberForm.rolesAfterSave")}</p>
         ) : null}
       </fieldset>
 
@@ -290,10 +287,10 @@ export function MemberForm({
 
       <div className="flex flex-wrap gap-related">
         <Button type="submit" aria-disabled={busy}>
-          {busy ? "Enregistrement…" : "Enregistrer"}
+          {busy ? t("memberForm.saving") : t("common.save")}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
+          {t("common.cancel")}
         </Button>
       </div>
     </form>
