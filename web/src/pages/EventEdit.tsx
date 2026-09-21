@@ -8,6 +8,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
+import { t } from "../i18n";
 
 /**
  * Correcting one event.
@@ -31,7 +32,7 @@ export function EventEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const form = useApiFormError("L’enregistrement a échoué.");
+  const form = useApiFormError(t("eventForm.saveFailed"));
 
   const eventId = Number(id);
 
@@ -61,13 +62,13 @@ export function EventEdit() {
         if (response.status !== 200) {
           // Unreachable: the mutator throws on every non-2xx. The declared
           // union says otherwise and tsc is right that it does.
-          setReadError("Cet événement n’a pas pu être chargé.");
+          setReadError(t("eventForm.loadFailed"));
           return;
         }
         setOpened({ event: response.data, etag: entityTagOf(response) });
       } catch {
         if (!abandoned) {
-          setReadError("Cet événement n’a pas pu être chargé. Rechargez la page.");
+          setReadError(t("eventForm.loadFailedReload"));
         }
       }
     }
@@ -85,7 +86,7 @@ export function EventEdit() {
     if (opened?.etag == null) {
       // Without a tag the write is refused with 428, which reads on screen as
       // a broken save. Saying so and stopping is the honest answer.
-      setReadError("Cet événement n’a pas pu être chargé. Rechargez la page.");
+      setReadError(t("eventForm.loadFailedReload"));
       return;
     }
 
@@ -103,7 +104,7 @@ export function EventEdit() {
 
   return (
     <PageSection>
-      <h1 className="font-display text-3xl">Modifier l’événement</h1>
+      <h1 className="font-display text-3xl">{t("eventForm.editHeading")}</h1>
 
       {readError ? (
         <p role="alert" className="mt-block text-danger">
@@ -112,7 +113,7 @@ export function EventEdit() {
       ) : null}
 
       {opened === null && readError === null ? (
-        <p className="mt-block text-ink-muted">Chargement…</p>
+        <p className="mt-block text-ink-muted">{t("common.loading")}</p>
       ) : null}
 
       {opened ? (

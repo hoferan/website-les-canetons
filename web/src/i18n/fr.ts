@@ -548,6 +548,127 @@ export const fr = {
   },
 
   /**
+   * The event forms, and the three pages that mount them (#166).
+   *
+   * THESE ARE CONTROL LABELS AND THEY ARE NOT `fields.*`. That section exists
+   * for translateApiError: it turns the API's `errors[].field` token into a
+   * noun so a refusal reads "Début doit être après la fin". The labels here
+   * name CONTROLS, and the code already proves the two must be free to
+   * differ:
+   *
+   *   - `startDate` is labelled "Date de début" and carries the problem for
+   *     `startsAt`, whose field noun is "Début". One instant is edited by two
+   *     boxes, so no label can be the field's own name without lying about
+   *     which box it is.
+   *   - `endTime` is labelled "Heure de fin" and carries `endsAt`'s refusal,
+   *     deliberately — see the comment at that field in EventForm.tsx. Under
+   *     a shared key that message would become "Heure de fin doit être après
+   *     le début", which names the box rather than the thing.
+   *   - `seriesForm.from`/`to` ("Du"/"Au") are not fields at all: they drive
+   *     the generator and are never sent.
+   *
+   * So the rule, which #156, #157 and #153 all meet again: A CONTROL'S LABEL
+   * LIVES WITH ITS SCREEN, a field's noun lives in `fields`. Where the two
+   * happen to be the same word today — "Titre", "Lieu" — that is a
+   * coincidence of French, not a shared meaning, and coupling them buys
+   * nothing a rename would not take back.
+   */
+  eventForm: {
+    newHeading: "Nouvel événement",
+    editHeading: "Modifier l’événement",
+    saveFailed: "L’enregistrement a échoué.",
+    loadFailed: "Cet événement n’a pas pu être chargé.",
+    loadFailedReload: "Cet événement n’a pas pu être chargé. Rechargez la page.",
+
+    addTitle: "Ajouter un événement",
+    editTitle: "Modifier {{title}}",
+    // NOT common.busy. French says "Enregistrement…" here and "En cours…" in
+    // a dialog, and keeping one key would change the other screen's wording.
+    saving: "Enregistrement…",
+
+    title: "Titre",
+    startDate: "Date de début",
+    startTime: "Heure de début",
+    endDate: "Date de fin",
+    endTime: "Heure de fin",
+    location: "Lieu",
+    attire: "Tenue",
+    // {{unset}} IS events.card.attireUnset, the very string the card renders.
+    // Spelled out here as well, the hint and the card could come to disagree
+    // about what an empty field looks like — and the guillemets are French
+    // typography, which German does not take.
+    attireHint:
+      "Laissez vide si la tenue n’est pas encore décidée\u00a0: la carte affichera «\u00a0{{unset}}\u00a0».",
+    isPublic: "Visible sur le site public",
+    notes: "Remarques",
+
+    registrationsLegend: "Inscriptions du public",
+    registrationsHint:
+      "Renseignez une date de clôture pour ouvrir cet événement aux inscriptions. Laissez-la vide si personne ne s’inscrit\u00a0: c’est le cas de presque tout le planning.",
+    closesDate: "Clôture des inscriptions",
+    closesTime: "Heure de clôture",
+    opensDate: "Ouverture des inscriptions",
+    opensTime: "Heure d’ouverture",
+    opensHint:
+      "Sans date d’ouverture, le formulaire est en ligne dès maintenant. Renseignez-la pour préparer un événement dont les inscriptions ne doivent pas encore apparaître.",
+    maxGuests: "Personnes par inscription",
+    maxGuestsHint:
+      "Le maximum qu’une seule inscription peut couvrir, entre 1 et 100. Laissez vide pour ne pas limiter. La salle, elle, n’est jamais limitée\u00a0: le comité surveille la liste et avance la clôture si nécessaire.",
+  },
+
+  /**
+   * The season generator (/events/new/series).
+   *
+   * `weekdays` REPLACES A MODULE-SCOPE ARRAY OF FRENCH LABELS in
+   * SeriesForm.tsx — the `labelKey`-not-`label` rule, which Layout.tsx's NAV
+   * already follows and this file did not. They are spelled out rather than
+   * asked of Intl because `Intl.DateTimeFormat("fr-CH", { weekday: "long" })`
+   * answers "lundi", lowercase, and the select has always read "Lundi";
+   * deriving them would change French output to fix a German bug.
+   */
+  seriesForm: {
+    newHeading: "Nouvelle série",
+    createFailed: "La création de la série a échoué.",
+
+    heading: "Une série d’événements",
+    intro:
+      "Toutes les dates reçoivent le même titre, le même lieu et les mêmes horaires. Chacune devient un événement indépendant\u00a0: en modifier une plus tard ne touche pas les autres.",
+
+    weekday: "Jour de la semaine",
+    weekdays: {
+      monday: "Lundi",
+      tuesday: "Mardi",
+      wednesday: "Mercredi",
+      thursday: "Jeudi",
+      friday: "Vendredi",
+      saturday: "Samedi",
+      sunday: "Dimanche",
+    },
+
+    from: "Du",
+    to: "Au",
+
+    noDates: "Choisissez un jour et une période pour voir les dates qui seront créées.",
+    datesLegend: "Dates à créer",
+    // {{n}}, NOT {{count}}: a `count` option makes i18next look for a plural
+    // form, and this sentence has none to find — it is shown only above the
+    // cap, so it is always plural. Same reason nav.pending uses {{n}}.
+    tooMany:
+      "{{n}} dates sélectionnées\u00a0: {{cap}} au maximum par série. Décochez-en ou raccourcissez la période.",
+
+    creating: "Création…",
+    create_one: "Créer {{count}} événement",
+    create_other: "Créer {{count}} événements",
+    createdCount_one: "{{count}} événement créé.",
+    createdCount_other: "{{count}} événements créés.",
+    // ITS OWN KEY, not events.showPlanning. That one toggles a list between
+    // upcoming and past; this one navigates to the planning after a series
+    // was created. Same three words in French, two different jobs.
+    seePlanning: "Voir le planning",
+    another: "Créer une autre série",
+  },
+
+  /**
    * The front door (/).
    *
    * `destinations` backs Home.tsx's DESTINATIONS array, which carries a

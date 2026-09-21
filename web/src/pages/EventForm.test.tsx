@@ -3,14 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
 import { eventIndex } from "../api/generated/endpoints";
+import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventNew } from "./EventNew";
 
-async function renderForm() {
+async function renderForm(locale: Locale = "fr") {
   setMockUser("demo.direction");
-  const result = await renderWithSession(<EventNew />, { route: "/events/new" });
-  await screen.findByLabelText("Titre");
+  const result = await renderWithSession(<EventNew />, { route: "/events/new", locale });
+  await screen.findByLabelText(locale === "fr" ? "Titre" : "Titel");
   return result;
 }
 
@@ -167,4 +168,70 @@ test("an empty guest cap is no cap, not a cap of zero", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   expect((await createdEvent("Loto de novembre")).registrationMaxGuests).toBeNull();
+});
+
+/* ---------------------------------------------------------------------------
+ * The form in German (#166)
+ * -------------------------------------------------------------------------- */
+
+test("every control is German", async () => {
+  await renderForm("de-CH");
+
+  expect(screen.getByLabelText("Titel")).toBeInTheDocument();
+  expect(screen.getByLabelText("Startdatum")).toBeInTheDocument();
+  expect(screen.getByLabelText("Startzeit")).toBeInTheDocument();
+  expect(screen.getByLabelText("Enddatum")).toBeInTheDocument();
+  expect(screen.getByLabelText("Endzeit")).toBeInTheDocument();
+  expect(screen.getByLabelText("Ort")).toBeInTheDocument();
+  expect(screen.getByLabelText("Kleidung")).toBeInTheDocument();
+  expect(screen.getByLabelText("Bemerkungen")).toBeInTheDocument();
+  expect(screen.getByLabelText("Anmeldeschluss")).toBeInTheDocument();
+  expect(screen.getByLabelText("Personen pro Anmeldung")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Speichern" })).toBeInTheDocument();
+});
+
+test("A CONTROL'S LABEL IS NOT THE FIELD'S NOUN, which is why they are separate keys", async () => {
+  // THE TEST #166 EXISTS TO SETTLE. The box is labelled "Endzeit", and the
+  // refusal under it names the API field `endsAt`, whose noun is "Ende":
+  //
+  //     Endzeit  [ 10:00 ]
+  //     Ende muss nach dem Beginn liegen
+  //
+  // One instant is edited by two boxes, so the control cannot be called by
+  // the field's name without lying about which box it is; and the message
+  // must name the thing, not the box, or it reads "Endzeit muss nach dem
+  // Beginn liegen" — which is about a time-of-day input rather than about the
+  // end of the event.
+  //
+  // The French half of this is four tests above and is UNCHANGED: it asserts
+  // /Fin .*après/ against a box labelled "Heure de fin". Both languages, same
+  // split.
+  //
+  // MUTATION TEST: point EventForm's labels at fields.* and this still passes
+  // — but "Endzeit" disappears from the screen and the test above fails,
+  // because the box would then be called "Ende".
+  await renderForm("de-CH");
+
+  await userEvent.type(screen.getByLabelText("Titel"), "Probe");
+  await userEvent.type(screen.getByLabelText("Ort"), "Werkhof");
+  await userEvent.type(screen.getByLabelText("Startdatum"), "2026-09-05");
+  await userEvent.type(screen.getByLabelText("Startzeit"), "12:00");
+  await userEvent.clear(screen.getByLabelText("Endzeit"));
+  await userEvent.type(screen.getByLabelText("Endzeit"), "10:00");
+  await userEvent.click(screen.getByRole("button", { name: "Speichern" }));
+
+  expect(await screen.findByText("Ende muss nach dem Beginn liegen")).toBeInTheDocument();
+  expect(screen.getByLabelText("Endzeit")).toBeInTheDocument();
+});
+
+test("the attire hint quotes the card's own words, in both languages", async () => {
+  // THE HINT AND THE CARD MUST NOT DISAGREE about what an empty field looks
+  // like, so the quoted words are events.card.attireUnset rather than a second
+  // copy typed into this sentence. The guillemets travel with it: French
+  // spaces them, German sets them tight.
+  await renderForm();
+  expect(screen.getByText(/la carte affichera « Non précisée »/)).toBeInTheDocument();
+
+  await renderForm("de-CH");
+  expect(screen.getByText(/Die Karte zeigt dann «Nicht festgelegt»/)).toBeInTheDocument();
 });

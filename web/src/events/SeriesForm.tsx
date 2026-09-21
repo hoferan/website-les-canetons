@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";
 import { FormError, FormField } from "../components/FormField";
-import type { TranslatedError } from "../i18n";
+import { currentLocale, t, type TranslatedError } from "../i18n";
+import { intlTag } from "../i18n/locale";
 import { weekdayDatesBetween } from "./eventDates";
 
 /**
@@ -15,16 +16,24 @@ import { weekdayDatesBetween } from "./eventDates";
  */
 const CAP = 60;
 
-/** `Date.getDay()` values, as the select offers them. */
+/**
+ * `Date.getDay()` values, as the select offers them.
+ *
+ * `labelKey`, NEVER `label` — the rule Layout.tsx's NAV already follows and
+ * this file did not. A module-level `label: t(...)` is evaluated when the
+ * module is first imported and frozen in whatever locale was active then, so
+ * these seven read French forever on a German page. The key is resolved at
+ * render instead.
+ */
 const WEEKDAYS = [
-  { value: 1, label: "Lundi" },
-  { value: 2, label: "Mardi" },
-  { value: 3, label: "Mercredi" },
-  { value: 4, label: "Jeudi" },
-  { value: 5, label: "Vendredi" },
-  { value: 6, label: "Samedi" },
-  { value: 0, label: "Dimanche" },
-];
+  { value: 1, labelKey: "seriesForm.weekdays.monday" },
+  { value: 2, labelKey: "seriesForm.weekdays.tuesday" },
+  { value: 3, labelKey: "seriesForm.weekdays.wednesday" },
+  { value: 4, labelKey: "seriesForm.weekdays.thursday" },
+  { value: 5, labelKey: "seriesForm.weekdays.friday" },
+  { value: 6, labelKey: "seriesForm.weekdays.saturday" },
+  { value: 0, labelKey: "seriesForm.weekdays.sunday" },
+] as const;
 
 /**
  * One generated date, as a member reads it.
@@ -35,13 +44,30 @@ const WEEKDAYS = [
  * and formatting in the same zone returns the day it names. Formatting it in
  * Fribourg would shift the earlier half of the year back to the previous day.
  */
-const PREVIEW_DATE = new Intl.DateTimeFormat("fr-CH", {
-  timeZone: "UTC",
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+const previewCache = new Map<string, Intl.DateTimeFormat>();
+
+function previewDate(): Intl.DateTimeFormat {
+  // "short" PICKS THE TAG, NOT THE FORMAT. intlTag's `kind` chooses between
+  // French's two tags, and "long" would hand back `fr-FR` — which drops the
+  // comma after the weekday and would change French output to fix a German
+  // bug. This formatter has always been `fr-CH`, so it asks for the tag that
+  // still is.
+  const tag = intlTag(currentLocale(), "short");
+
+  let found = previewCache.get(tag);
+  if (!found) {
+    found = new Intl.DateTimeFormat(tag, {
+      timeZone: "UTC",
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    previewCache.set(tag, found);
+  }
+
+  return found;
+}
 
 type SeriesDraft = {
   title: string;
@@ -154,15 +180,12 @@ export function SeriesForm({
         });
       }}
     >
-      <h2 className="font-display text-2xl">Une série d’événements</h2>
-      <p className="text-sm text-ink-muted">
-        Toutes les dates reçoivent le même titre, le même lieu et les mêmes horaires. Chacune
-        devient un événement indépendant&nbsp;: en modifier une plus tard ne touche pas les autres.
-      </p>
+      <h2 className="font-display text-2xl">{t("seriesForm.heading")}</h2>
+      <p className="text-sm text-ink-muted">{t("seriesForm.intro")}</p>
 
       <FormField
         id="title"
-        label="Titre"
+        label={t("eventForm.title")}
         value={draft.title}
         onChange={(value) => set("title", value)}
         problem={problemFor("template.title")}
@@ -171,7 +194,7 @@ export function SeriesForm({
 
       <FormField
         id="location"
-        label="Lieu"
+        label={t("eventForm.location")}
         value={draft.location}
         onChange={(value) => set("location", value)}
         problem={problemFor("template.location")}
@@ -181,7 +204,7 @@ export function SeriesForm({
       <div className="grid gap-related sm:grid-cols-2">
         <FormField
           id="startTime"
-          label="Heure de début"
+          label={t("eventForm.startTime")}
           type="time"
           value={draft.startTime}
           onChange={(value) => set("startTime", value)}
@@ -190,7 +213,7 @@ export function SeriesForm({
         />
         <FormField
           id="endTime"
-          label="Heure de fin"
+          label={t("eventForm.endTime")}
           type="time"
           value={draft.endTime}
           onChange={(value) => set("endTime", value)}
@@ -200,7 +223,7 @@ export function SeriesForm({
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="weekday">Jour de la semaine</label>
+        <label htmlFor="weekday">{t("seriesForm.weekday")}</label>
         <select
           id="weekday"
           className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
@@ -209,7 +232,7 @@ export function SeriesForm({
         >
           {WEEKDAYS.map((day) => (
             <option key={day.value} value={day.value}>
-              {day.label}
+              {t(day.labelKey)}
             </option>
           ))}
         </select>
@@ -218,7 +241,7 @@ export function SeriesForm({
       <div className="grid gap-related sm:grid-cols-2">
         <FormField
           id="from"
-          label="Du"
+          label={t("seriesForm.from")}
           type="date"
           value={draft.from}
           onChange={(value) => setGenerator("from", value)}
@@ -226,7 +249,7 @@ export function SeriesForm({
         />
         <FormField
           id="to"
-          label="Au"
+          label={t("seriesForm.to")}
           type="date"
           value={draft.to}
           onChange={(value) => setGenerator("to", value)}
@@ -236,7 +259,7 @@ export function SeriesForm({
 
       <FormField
         id="attire"
-        label="Tenue"
+        label={t("eventForm.attire")}
         value={draft.attire}
         onChange={(value) => set("attire", value)}
         problem={problemFor("template.attire")}
@@ -249,12 +272,12 @@ export function SeriesForm({
           checked={draft.isPublic}
           onChange={(changed) => set("isPublic", changed.target.checked)}
         />
-        Visible sur le site public
+        {t("eventForm.isPublic")}
       </label>
 
       <FormField
         id="notes"
-        label="Remarques"
+        label={t("eventForm.notes")}
         as="textarea"
         value={draft.notes}
         onChange={(value) => set("notes", value)}
@@ -262,12 +285,10 @@ export function SeriesForm({
       />
 
       {dates.length === 0 ? (
-        <p className="text-sm text-ink-muted">
-          Choisissez un jour et une période pour voir les dates qui seront créées.
-        </p>
+        <p className="text-sm text-ink-muted">{t("seriesForm.noDates")}</p>
       ) : (
         <fieldset data-testid="series-preview" className="flex flex-col gap-1">
-          <legend>Dates à créer</legend>
+          <legend>{t("seriesForm.datesLegend")}</legend>
           {dates.map((date) => (
             <label key={date} className="flex min-h-touch items-center gap-2">
               <input
@@ -282,7 +303,7 @@ export function SeriesForm({
                   )
                 }
               />
-              {PREVIEW_DATE.format(new Date(`${date}T00:00:00Z`))}
+              {previewDate().format(new Date(`${date}T00:00:00Z`))}
             </label>
           ))}
         </fieldset>
@@ -290,8 +311,9 @@ export function SeriesForm({
 
       {tooMany ? (
         <p role="alert" className="text-danger">
-          {chosen.length} dates sélectionnées&nbsp;: {CAP} au maximum par série. Décochez-en ou
-          raccourcissez la période.
+          {/* {{n}}, not {{count}}: this line only appears ABOVE the cap, so
+              it has no singular form for a `count` option to select. */}
+          {t("seriesForm.tooMany", { n: chosen.length, cap: CAP })}
         </p>
       ) : null}
 
@@ -302,13 +324,11 @@ export function SeriesForm({
             offering to create zero events is a question with no answer. */}
         {chosen.length > 0 ? (
           <Button type="submit" aria-disabled={busy || tooMany}>
-            {busy
-              ? "Création…"
-              : `Créer ${chosen.length} ${chosen.length === 1 ? "événement" : "événements"}`}
+            {busy ? t("seriesForm.creating") : t("seriesForm.create", { count: chosen.length })}
           </Button>
         ) : null}
         <Button type="button" variant="outline" onClick={onCancel}>
-          Annuler
+          {t("common.cancel")}
         </Button>
       </div>
     </form>
