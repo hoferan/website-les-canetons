@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { EventResource } from "../api/generated/model";
+import { t } from "../i18n";
 import { formatEventWhen } from "./formatEventWhen";
 
 /**
@@ -77,7 +78,11 @@ export function EventCard({
 
       <dl className="mt-related grid gap-tight text-sm">
         <div className="flex gap-tight">
-          <dt className="text-ink-muted">Lieu&nbsp;:</dt>
+          {/* THE COLON AND ITS NO-BREAK SPACE ARE IN THE STRING. French
+              sets a space before a colon and German sets none, so a label
+              plus ": " composed here is French typography on a German
+              page -- the Tbd bug of #152, exactly. */}
+          <dt className="text-ink-muted">{t("events.card.location")}</dt>
           <dd data-testid="event-location" className="text-ink">
             {event.location}
           </dd>
@@ -86,9 +91,9 @@ export function EventCard({
         {/* Attire is nullable — "Vendanges Cheyres" in the real planning has
             none. Saying so beats an empty row that reads as a missing value. */}
         <div className="flex gap-tight">
-          <dt className="text-ink-muted">Tenue&nbsp;:</dt>
+          <dt className="text-ink-muted">{t("events.card.attire")}</dt>
           <dd data-testid="event-attire" className="text-ink">
-            {event.attire ?? "Non précisée"}
+            {event.attire ?? t("events.card.attireUnset")}
           </dd>
         </div>
       </dl>

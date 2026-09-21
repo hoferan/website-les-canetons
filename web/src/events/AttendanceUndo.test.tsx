@@ -32,9 +32,14 @@ async function renderPlanning(locale: Locale = "fr") {
   return result;
 }
 
-/** The answer button for an event, inside the block that holds it (#95). */
-function owedButton(name: string): HTMLElement {
-  return within(screen.getByRole("region", { name: "À répondre" })).getByRole("button", { name });
+/**
+ * The answer button for an event, inside the block that holds it (#95).
+ *
+ * The block's own name is a parameter because it is translated (#154) and
+ * these tests run in both locales.
+ */
+function owedButton(name: string, block = "À répondre"): HTMLElement {
+  return within(screen.getByRole("region", { name: block })).getByRole("button", { name });
 }
 
 /** The toast carrying this sentence, so a leftover one is never the match. */
@@ -92,12 +97,12 @@ test("a change offers no undo, because undo would erase the answer it changed", 
 });
 
 test("the German toast offers Rückgängig, which is not the dialog's Abbrechen", async () => {
-  // The page around the control is still French (#154), so the block is still
-  // queried by its French name. The control, the toast and the undo are this
-  // slice's.
+  // #155 wrote this against a French page, because only the control was
+  // translated then; #154 translated the block headings, so `owedButton` now
+  // needs the German one. The toast and the undo are unchanged.
   await renderPlanning("de-CH");
 
-  await userEvent.click(owedButton("Ich komme zu Vendanges Cheyres"));
+  await userEvent.click(owedButton("Ich komme zu Vendanges Cheyres", "Zu beantworten"));
 
   const toast = await toastSaying("Sie kommen — Vendanges Cheyres.");
 
@@ -110,6 +115,8 @@ test("the German toast offers Rückgängig, which is not the dialog's Abbrechen"
   await userEvent.click(within(toast).getByRole("button", { name: "Rückgängig" }));
 
   await expect
-    .poll(() => owedButton("Ich komme zu Vendanges Cheyres").getAttribute("aria-pressed"))
+    .poll(() =>
+      owedButton("Ich komme zu Vendanges Cheyres", "Zu beantworten").getAttribute("aria-pressed"),
+    )
     .toBe("false");
 });

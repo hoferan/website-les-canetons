@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { afterEach, expect, test } from "vitest";
 
+import { setLocale } from "../i18n";
 import { EventMeta } from "./EventMeta";
+
+afterEach(async () => {
+  await setLocale("fr");
+});
 
 test("renders nothing when it is given nothing", () => {
   const { container } = render(<EventMeta />);
@@ -44,4 +49,53 @@ test("pluralises the head count and names the empty case", () => {
   // "0 personne" is not French.
   rerender(<EventMeta guests={0} />);
   expect(screen.getByText("Aucune inscription")).toBeInTheDocument();
+});
+
+test("ZERO IS SINGULAR IN FRENCH AND PLURAL IN GERMAN, which no ternary can do", async () => {
+  // THE TEST THIS WHOLE SLICE IS FOR. The aria-label was built in the
+  // component as `answered === 0 || answered === 1 ? "réponse" : "réponses"`,
+  // which is the French CLDR rule written out in JavaScript. The French
+  // assertion for it is four tests above this one and is UNCHANGED — it still
+  // reads "0 réponse sur 18".
+  //
+  // German counts zero as plural. So that ternary rendered "0 Rückmeldung",
+  // and the obvious repair — `=== 1` — would have rendered "0 réponses".
+  // There is no single expression in the component that is right in both
+  // languages, which is why the rule now lives in the catalogue and i18next
+  // picks the form from the ACTIVE language.
+  //
+  // MUTATION TEST: collapse events.meta.answersAria_one and _other into one
+  // key and this fails on one of the two locales, whichever form is kept.
+  await setLocale("de-CH");
+
+  const { rerender } = render(<EventMeta answered={0} answerable={18} />);
+  expect(screen.getByLabelText("0 Rückmeldungen von 18")).toBeInTheDocument();
+
+  rerender(<EventMeta answered={1} answerable={18} />);
+  expect(screen.getByLabelText("1 Rückmeldung von 18")).toBeInTheDocument();
+
+  rerender(<EventMeta answered={12} answerable={18} />);
+  expect(screen.getByLabelText("12 Rückmeldungen von 18")).toBeInTheDocument();
+  expect(screen.getByText("12/18 Rückmeldungen")).toBeInTheDocument();
+});
+
+test("the head count and the empty case are German too", async () => {
+  await setLocale("de-CH");
+
+  const { rerender } = render(<EventMeta guests={6} />);
+  expect(screen.getByText("6 Personen")).toBeInTheDocument();
+
+  rerender(<EventMeta guests={1} />);
+  expect(screen.getByText("1 Person")).toBeInTheDocument();
+
+  // Its own key, not a plural form: neither language has a `_zero` category,
+  // and "Keine Anmeldungen" is not the singular of anything.
+  rerender(<EventMeta guests={0} />);
+  expect(screen.getByText("Keine Anmeldungen")).toBeInTheDocument();
+});
+
+test("the public chip is German", async () => {
+  await setLocale("de-CH");
+  render(<EventMeta isPublic />);
+  expect(screen.getByText("Öffentlich")).toBeInTheDocument();
 });
