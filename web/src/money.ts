@@ -52,7 +52,7 @@ import { intlTag } from "./i18n/locale";
  * and "CHF 45.50" is harder to add up by eye than one that does not.
  */
 export function formatCents(cents: number): string {
-  const parts = new Intl.NumberFormat(intlTag(currentLocale(), "short"), {
+  const parts = new Intl.NumberFormat(intlTag(currentLocale()), {
     style: "currency",
     currency: "CHF",
   }).formatToParts(cents / 100);

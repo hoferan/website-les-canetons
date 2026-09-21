@@ -68,31 +68,33 @@ export function htmlLang(locale: Locale): string {
 }
 
 /**
- * The Intl tag for a date format, which is NOT always htmlLang().
+ * The Intl tag for a date, a time or a number.
  *
- * FRENCH KEEPS THE TAGS IT HAS TODAY, and that is load-bearing rather than
- * lazy. `date.ts` formats long dates with fr-FR and instants with fr-CH, and
- * for the long form those two are NOT equivalent:
+ * ONE TAG PER LOCALE, and it took #161 to get here. French used to have two:
+ * `fr-FR` for long dates and `fr-CH` for everything else, because those two
+ * are NOT equivalent in the long form —
  *
  *   fr-FR  samedi 5 décembre 2026
  *   fr-CH  samedi, 5 décembre 2026
  *
- * Every existing assertion on a rendered long date was written against the
- * fr-FR form, so "tidying" French onto one tag is a French copy change wearing
- * an i18n costume, and it would break tests in files this work has no other
- * reason to touch. German has no such history and uses de-CH throughout.
+ * — and every assertion on a rendered long date had been written against the
+ * fr-FR form. So a `kind` parameter picked between them.
  *
- * (date.ts's own docblock does claim fr-FR and fr-CH are equivalent — but only
- * for the last-login option set, which omits the weekday. There it holds.)
+ * The only caller of the long form was lib/date.ts's formatEventDate and
+ * formatEventDateRange, which nothing rendered: the planning has gone through
+ * events/formatEventWhen.ts since #154. Deleting them left `kind` with nothing
+ * to choose, so it went too.
+ *
+ * WHAT TO DO IF A LONG DATE COMES BACK. The comma above is real and it is a
+ * French copy change, not a formatting detail — do not "tidy" French onto one
+ * tag to fix a German bug. Bring the parameter back rather than switching this
+ * return value, and note that a long-date formatter also needs a `timeZone`:
+ * the absence of one is what made lib/date.ts carry a parseLocalDate helper,
+ * and after #161 nothing in the app omits it.
+ *
+ * French gets fr-CH rather than fr: the band is in Fribourg, and Swiss French
+ * renders a numeric date as 05.12.2026, which is also what de-CH renders.
  */
-export function intlTag(locale: Locale, kind: "long" | "instant" | "short"): string {
-  if (locale === "de-CH") {
-    return "de-CH";
-  }
-
-  // "short" joins "instant" on fr-CH rather than needing a branch of its own.
-  // It is NEW output (#162), so it is not bound by the fr-FR compatibility
-  // the long form carries -- and fr-CH is the right Swiss French form for a
-  // numeric date: 05.12.2026, which is also what de-CH renders.
-  return kind === "long" ? "fr-FR" : "fr-CH";
+export function intlTag(locale: Locale): string {
+  return locale === "de-CH" ? "de-CH" : "fr-CH";
 }

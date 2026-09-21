@@ -67,7 +67,7 @@ const cache = new Map<string, Intl.DateTimeFormat>();
 
 function formatter(shape: "date" | "time" | "range"): Intl.DateTimeFormat {
   const locale: Locale = currentLocale();
-  const tag = intlTag(locale, "short");
+  const tag = intlTag(locale);
   const key = `${tag}|${shape}`;
 
   let found = cache.get(key);

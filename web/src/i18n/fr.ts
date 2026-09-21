@@ -196,18 +196,6 @@ export const fr = {
   },
 
   /**
-   * Words that live inside date helpers rather than on a screen.
-   *
-   * `rangeSeparator` joins the two days of a weekend event in
-   * formatEventDateRange. It was a hard-coded " au " inside web/src/lib/date.ts
-   * — a translatable string hiding in a formatter, which is exactly where one
-   * gets missed.
-   */
-  dates: {
-    rangeSeparator: " au ",
-  },
-
-  /**
    * Chrome that belongs to no one screen.
    *
    * "Chargement…" is written out on seven screens and "← Retour au planning"
