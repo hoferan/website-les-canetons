@@ -188,6 +188,9 @@ export const de: typeof fr = {
     login: "Anmelden",
     logout: "Abmelden",
     pending: "{{n}} ausstehend",
+    // Identisch zum Französischen: siehe die Notiz in fr.ts.
+    switchToGerman: "Auf Deutsch wechseln",
+    switchToFrench: "Passer en français",
     rights: "Alle Rechte vorbehalten.",
   },
 
