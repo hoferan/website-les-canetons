@@ -3,6 +3,7 @@ import { createContext, use, type ReactNode } from "react";
 import { useAuthMe, useConfigShow } from "../api/generated/endpoints";
 import type { AuthMe200, ConfigShow200 } from "../api/generated/model";
 import { ApiError } from "../api/http";
+import { t } from "../i18n";
 
 type Session = {
   config: ConfigShow200;
@@ -66,9 +67,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // isError already covers it at runtime; tsc is right that the type does not
   // say so, and the site refusing to start is the correct answer either way.
   if (config.isError || config.data.status !== 200) {
-    return (
-      <p role="alert">Le site n’a pas pu démarrer. Veuillez réessayer dans quelques instants.</p>
-    );
+    return <p role="alert">{t("common.bootFailed")}</p>;
   }
 
   // A 401 is the anonymous case. Anything else from /me is worth knowing

@@ -108,3 +108,31 @@ test("RequireSession redirects an anonymous visitor, and remembers where they we
 
   expect(await screen.findByTestId("from")).toHaveTextContent("/planning");
 });
+
+/**
+ * The refusal in German.
+ *
+ * This is a whole SCREEN, not the `access_denied` error token translateApiError
+ * renders inside a form — heading, explanation and a way out, each its own key
+ * under `guards`. All three are asserted because a member who cannot read the
+ * refusal cannot tell it apart from the site being broken.
+ */
+test("refuses in German, with the same heading, alert and way out", async () => {
+  setMockUser("demo.player");
+  await renderWithSession(
+    <Routes>
+      <Route path="/login" element={<h1>Anmelden</h1>} />
+      <Route element={<RequirePermission permission="members.manage" />}>
+        <Route path="/members" element={<h1>Mitglieder</h1>} />
+      </Route>
+    </Routes>,
+    { route: "/members", locale: "de-CH" },
+  );
+
+  expect(await screen.findByRole("heading", { name: "Zugriff verweigert" })).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Diese Seite ist anderen Mitgliedern vorbehalten.",
+  );
+  // common.backHome, shared with NotFound — the site's other dead end.
+  expect(screen.getByRole("link", { name: "Zurück zur Startseite" })).toHaveAttribute("href", "/");
+});

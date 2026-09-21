@@ -168,6 +168,9 @@ export const de: typeof fr = {
     delete: "Löschen",
     guests_one: "{{count}} Person",
     guests_other: "{{count}} Personen",
+    backHome: "Zurück zur Startseite",
+    bootFailed:
+      "Die Website konnte nicht gestartet werden. Bitte versuchen Sie es in wenigen Augenblicken erneut.",
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
   },
 
@@ -600,6 +603,34 @@ export const de: typeof fr = {
     saving: "Wird gespeichert…",
   },
 
+  auth: {
+    username: "Benutzername",
+    password: "Passwort",
+    signIn: "Anmelden",
+    signingIn: "Wird angemeldet…",
+    loginFailed: "Die Anmeldung ist fehlgeschlagen.",
+  },
+
+  account: {
+    heading: "Mein Konto",
+    provisionalNotice:
+      "Ihr Passwort wurde vom Vorstand ausgegeben und muss ersetzt werden, bevor Sie fortfahren.",
+    currentPassword: "Aktuelles Passwort",
+    newPassword: "Neues Passwort",
+    confirmPassword: "Neues Passwort bestätigen",
+    mismatch: "Die beiden Passwörter stimmen nicht überein.",
+    changed: "Ihr Passwort wurde geändert.",
+    change: "Passwort ändern",
+    changing: "Wird geändert…",
+    changeFailed: "Das Ändern des Passworts ist fehlgeschlagen.",
+  },
+
+  guards: {
+    deniedHeading: "Zugriff verweigert",
+    deniedBody:
+      "Diese Seite ist anderen Mitgliedern vorbehalten. Wenn Sie glauben, dass es sich um einen Fehler handelt, wenden Sie sich an den Vorstand.",
+  },
+
   home: {
     hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
     heroSub:
@@ -715,7 +746,6 @@ export const de: typeof fr = {
   notFound: {
     heading: "Seite nicht gefunden",
     body: "Hoppla! Die gesuchte Seite existiert nicht oder wurde verschoben.",
-    backHome: "Zurück zur Startseite",
   },
 
   placeholders: {

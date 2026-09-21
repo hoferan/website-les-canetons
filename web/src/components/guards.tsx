@@ -2,6 +2,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { ButtonLink } from "./ButtonLink";
 import { PageSection } from "./PageSection";
+import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
@@ -92,13 +93,12 @@ export function RequirePermission({ permission }: { permission: string }) {
 function AccessDenied() {
   return (
     <PageSection width="text" className="py-16 text-center">
-      <h1 className="font-display text-3xl">Accès refusé</h1>
+      <h1 className="font-display text-3xl">{t("guards.deniedHeading")}</h1>
       <p role="alert" className="mt-related text-gray-600">
-        Cette page est réservée à d’autres membres. Si vous pensez qu’il s’agit d’une erreur,
-        contactez le comité.
+        {t("guards.deniedBody")}
       </p>
       <ButtonLink to="/" variant="outline" className="mt-block">
-        Retour à l’accueil
+        {t("common.backHome")}
       </ButtonLink>
     </PageSection>
   );

@@ -114,3 +114,88 @@ test("explains why a committee-issued password bounced the member here", async (
     ),
   ).toBeInTheDocument();
 });
+
+/**
+ * The German side of the password form.
+ *
+ * Every string on this screen is asserted, because this is the one page a
+ * member with a committee-issued password CANNOT LEAVE until they have read it
+ * and acted on it. A single French sentence left here is a dead end for the
+ * reader this locale exists for.
+ */
+test("labels all three fields and the submit in German", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+
+  expect(screen.getByRole("heading", { name: "Mein Konto" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Aktuelles Passwort")).toHaveAttribute(
+    "autocomplete",
+    "current-password",
+  );
+  expect(screen.getByLabelText("Neues Passwort")).toHaveAttribute("autocomplete", "new-password");
+  expect(screen.getByLabelText("Neues Passwort bestätigen")).toHaveAttribute(
+    "autocomplete",
+    "new-password",
+  );
+  expect(screen.getByRole("button", { name: "Passwort ändern" })).toBeInTheDocument();
+});
+
+async function changeInGerman(current: string, next: string, confirmation = next) {
+  await userEvent.type(screen.getByLabelText("Aktuelles Passwort"), current);
+  await userEvent.type(screen.getByLabelText("Neues Passwort"), next);
+  await userEvent.type(screen.getByLabelText("Neues Passwort bestätigen"), confirmation);
+  await userEvent.click(screen.getByRole("button", { name: "Passwort ändern" }));
+}
+
+test("confirms the change in German", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+  await changeInGerman("demo", "ein-neues-passwort");
+
+  expect(await screen.findByText("Ihr Passwort wurde geändert.")).toBeInTheDocument();
+});
+
+test("catches a mistyped confirmation in German, still without asking the API", async () => {
+  let attempts = 0;
+  server.use(
+    http.post("/api/v1/me/password", () => {
+      attempts++;
+      return HttpResponse.json({ ok: true });
+    }),
+  );
+
+  setMockUser("demo.direction");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+  await changeInGerman("demo", "ein-neues-passwort", "ein-neues-passwor");
+
+  // The API has no confirmation field, so this sentence is the screen's own
+  // rather than a translated error token — which is exactly the kind of string
+  // that gets left behind in French when a page is translated.
+  expect(
+    await screen.findByText("Die beiden Passwörter stimmen nicht überein."),
+  ).toBeInTheDocument();
+  expect(attempts).toBe(0);
+});
+
+test("reports a wrong current password in German", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+  await changeInGerman("nicht-das-richtige", "ein-neues-passwort");
+
+  expect(
+    await screen.findByText(
+      "Falsches Passwort. Diese Aktion muss mit Ihrem Passwort bestätigt werden.",
+    ),
+  ).toBeInTheDocument();
+});
+
+test("explains a committee-issued password in German", async () => {
+  setMockUser("demo.both");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+
+  expect(
+    screen.getByText(
+      "Ihr Passwort wurde vom Vorstand ausgegeben und muss ersetzt werden, bevor Sie fortfahren.",
+    ),
+  ).toBeInTheDocument();
+});
