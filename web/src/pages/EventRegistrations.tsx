@@ -441,6 +441,11 @@ function orderOf(booking: RegistrationResource): string {
  * component; the point is that it no longer carries its own copy of the
  * pattern, so a third action gets the menu for free instead of growing a
  * third ragged row.
+ *
+ * `destructive: true` ON THE CANCEL ACTION IS DORMANT, NOT DEAD: only the
+ * menu path reads it (the separator rule in `ItemFor`), and this screen never
+ * draws a menu — so it does nothing today. It starts mattering the day a
+ * third action arrives here and the cancel item lands behind the "...".
  */
 function BookingActions({
   booking,
@@ -481,11 +486,7 @@ function BookingActions({
   // element that contains it instead of being dropped.
   return (
     <div className="mt-tight">
-      <RowActions
-        actions={actions}
-        inlineKey="amend"
-        triggerLabel={t("events.moreActionsAria", { title: who })}
-      />
+      <RowActions actions={actions} inlineKey="amend" rowName={who} />
     </div>
   );
 }

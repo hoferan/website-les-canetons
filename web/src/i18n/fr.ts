@@ -240,6 +240,13 @@ export const fr = {
     // ConfirmByTypingName's field, which only the roster arms today. Whole
     // sentence, guillemets included, for the reason the whole file repeats.
     typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
+    // RowActions' own trigger label, shared by the three screens that
+    // compose with it. Moved out of events.* (was events.moreActionsAria)
+    // because the roster and the guest list hand it a PERSON's name, not an
+    // event's -- a key that read "more actions for {{title}}" while living
+    // in the events namespace was never right for those two call sites.
+    // See #118's whole-branch review, M4/M5.
+    moreActionsAria: "Autres actions pour {{name}}",
   },
 
   /**
@@ -551,7 +558,6 @@ export const fr = {
     whoComingAria: "Qui vient à {{title}}",
     editAria: "Modifier {{title}}",
     deleteAria: "Supprimer {{title}}",
-    moreActionsAria: "Autres actions pour {{title}}",
 
     deleteTitle: "Supprimer «\u00a0{{title}}\u00a0»\u00a0?",
     deleteDescription:

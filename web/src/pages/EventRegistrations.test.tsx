@@ -110,11 +110,19 @@ test("a viewer gets the list and no way to change it", async () => {
   await renderGuestList("demo.committee");
 
   expect(within(cards()).getByText(/Aebischer/)).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /^Corriger/ })).not.toBeInTheDocument();
+  // queryAllByRole().toHaveLength(0), NOT queryByRole().not.toBeInTheDocument():
+  // the guest list holds several bookings, so the gate this guards against
+  // losing brings back one control PER BOOKING once it does. The singular
+  // query then THROWS "found multiple elements" the moment that happens —
+  // the mutation fails for the right reason with the wrong message, which
+  // reads as a broken query rather than as a lost permission. Same fix as
+  // `expectNoSuchAction` in Events.test.tsx:70-73, and for the same reason.
+  //
   // STILL A PAGE-WIDE QUERY, and only because this screen has two actions and
   // RowActions therefore draws no menu. A third action turns this into a
   // closed menu and this assertion into a tautology — see #118's spec, §6.
-  expect(screen.queryByRole("button", { name: /^Annuler l’inscription/ })).not.toBeInTheDocument();
+  expect(screen.queryAllByRole("button", { name: /^Corriger/ })).toHaveLength(0);
+  expect(screen.queryAllByRole("button", { name: /^Annuler l’inscription/ })).toHaveLength(0);
 });
 
 test("somebody who may manage gets both controls on every row", async () => {

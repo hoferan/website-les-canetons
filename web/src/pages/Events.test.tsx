@@ -675,6 +675,31 @@ test("a narrowed planning says so at every width, and can be widened again", asy
  * -------------------------------------------------------------------------- */
 
 /**
+ * THE POINT OF #118, asserted positively. Every other test that touches
+ * "Qui vient" proves an absence — for demo.committee, above, and for a
+ * player, below — and the one place that should prove its presence never
+ * did. `inlineKey="attendance"` is the whole promise of this branch: the
+ * weekly action stays a plain link on the page, never a tap into a menu.
+ *
+ * MUTATION TEST: drop `inlineKey="attendance"` from Events.tsx's
+ * `RowActions` call (or reorder `actions` so attendance is no longer first)
+ * and this fails — the link moves inside the "..." and `getByRole("link")`
+ * finds nothing until the menu is opened.
+ */
+test("Qui vient stays a plain link, never behind the menu", async () => {
+  await renderPlanning("demo.direction");
+
+  const souper = cardFor("Souper de soutien");
+
+  // A LINK, OUTSIDE ANY MENU: no menu was opened above this assertion, so a
+  // Radix `menuitem` — portalled and absent until its trigger is clicked —
+  // could not satisfy it even by accident.
+  expect(
+    within(souper).getByRole("link", { name: "Qui vient à Souper de soutien" }),
+  ).toHaveAttribute("href", "/events/7/attendance");
+});
+
+/**
  * MUTATION TEST: drop `event.takesRegistrations` from the condition and this
  * fails. The planning is mostly rehearsals, and every one of their cards would
  * otherwise carry a link to a guest list that can never fill up.
@@ -694,7 +719,14 @@ test("offers the guest list only on an event that takes bookings", async () => {
 
   // Shut before opening the next one. Two menus open at once would make
   // findByRole("menu") ambiguous, and the reader can only have one anyway.
+  //
+  // WAITED FOR, NOT ASSUMED. Radix's `Presence` unmounts synchronously in
+  // jsdom today, which is what let this go on working without the poll —
+  // but `openMenuFor` below is a bare `findByRole`, which is happy to
+  // resolve against a menu still mid-teardown. Matches the wait this file
+  // already does at line ~333, for the identical race.
   await user.keyboard("{Escape}");
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
 
   // ASSERTED FROM INSIDE THE OPEN MENU, unlike the version this replaces. An
   // organiser does have a trigger on a rehearsal — three other actions live
@@ -727,7 +759,10 @@ test("offers the options editor on every event, bookable or not", async () => {
     within(souper).getByRole("menuitem", { name: "Ce qui peut être réservé à Souper de soutien" }),
   ).toHaveAttribute("href", "/events/7/registration-options");
 
+  // WAITED FOR, NOT ASSUMED — see the identical comment above this test's
+  // sibling, "offers the guest list only on an event that takes bookings".
   await user.keyboard("{Escape}");
+  await expect.poll(() => screen.queryByRole("menu")).toBeNull();
 
   const rehearsal = await openMenuFor(
     user,
@@ -973,7 +1008,7 @@ test("deleting names the event in German, with tight quotes", async () => {
   // French pasted into de.ts — so the trigger and one item are read here by
   // their German accessible names, which is also why openMenuFor takes the
   // whole name rather than building the French one.
-  const menu = await openMenuFor(user, card, `Weitere Aktionen zu ${title}`);
+  const menu = await openMenuFor(user, card, `Weitere Aktionen für ${title}`);
   expect(within(menu).getByRole("menuitem", { name: `${title} bearbeiten` })).toBeInTheDocument();
 
   await user.click(within(menu).getByRole("menuitem", { name: `${title} löschen` }));

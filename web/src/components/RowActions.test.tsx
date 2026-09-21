@@ -8,18 +8,28 @@ import { RowActions, type RowAction } from "./RowActions";
 function show(actions: RowAction[], inlineKey = "first") {
   return render(
     <MemoryRouter>
-      <RowActions actions={actions} inlineKey={inlineKey} triggerLabel="Autres actions pour X" />
+      <RowActions actions={actions} inlineKey={inlineKey} rowName="X" />
     </MemoryRouter>,
   );
 }
 
-const action = (key: string, over: Partial<RowAction> = {}): RowAction => ({
-  key,
-  label: key,
-  ariaLabel: `${key} X`,
-  onSelect: () => {},
-  ...over,
-});
+// A UNION OF ITS OWN, MIRRORING RowAction — `Partial<RowAction>` cannot
+// stand in here: `Partial` of a discriminated union collapses to the
+// members' COMMON keys (both branches declare `to` and `onSelect`, just
+// with opposite optionality), so the result is a plain object that would let
+// this helper build the exact unrepresentable shape M6/M7 closed off
+// (`to` and `onSelect` together). This keeps the fixture honest about the
+// same two shapes the component itself accepts.
+type ActionOverride =
+  | { onSelect?: () => void; disabled?: boolean; destructive?: boolean; to?: never }
+  | { to: string; destructive?: boolean; onSelect?: never; disabled?: never };
+
+const action = (key: string, over: ActionOverride = {}): RowAction => {
+  const base = { key, label: key, ariaLabel: `${key} X`, destructive: over.destructive };
+  return over.to !== undefined
+    ? { ...base, to: over.to }
+    : { ...base, onSelect: over.onSelect ?? (() => {}), disabled: over.disabled };
+};
 
 describe("RowActions", () => {
   it("keeps the designated action inline and puts the rest behind the trigger", async () => {
@@ -64,11 +74,7 @@ describe("RowActions", () => {
 
   it("gives a link-shaped action a real link, inline and in the menu", async () => {
     const user = userEvent.setup();
-    show([
-      action("first", { onSelect: undefined, to: "/somewhere" }),
-      action("b", { onSelect: undefined, to: "/elsewhere" }),
-      action("c"),
-    ]);
+    show([action("first", { to: "/somewhere" }), action("b", { to: "/elsewhere" }), action("c")]);
 
     // The inline action is a real link: this one-level `asChild` (Button ->
     // Link) works fine and is exercised throughout the app already.

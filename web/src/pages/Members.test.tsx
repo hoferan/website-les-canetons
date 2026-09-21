@@ -553,7 +553,7 @@ test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {
     within(rowFor("Player")).getByRole("button", { name: "Perrine Player bearbeiten" }),
   ).toBeInTheDocument();
 
-  const menu = await openMenuFor(user, "Weitere Aktionen zu Perrine Player");
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
   expect(
     within(menu).getByRole("menuitem", { name: "Passwort von Perrine Player zurücksetzen" }),
   ).toBeInTheDocument();
@@ -566,7 +566,7 @@ test("the delete dialog reuses the button's own key for its title", async () => 
   await renderRoster("de-CH");
   const user = userEvent.setup();
 
-  const menu = await openMenuFor(user, "Weitere Aktionen zu Perrine Player");
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
   await user.click(within(menu).getByRole("menuitem", { name: "Perrine Player löschen" }));
 
   const dialog = await screen.findByRole("alertdialog");
@@ -593,7 +593,7 @@ test("the reset dialog and the one-time password reveal are German", async () =>
   await renderRoster("de-CH");
   const user = userEvent.setup();
 
-  const menu = await openMenuFor(user, "Weitere Aktionen zu Perrine Player");
+  const menu = await openMenuFor(user, "Weitere Aktionen für Perrine Player");
   await user.click(
     within(menu).getByRole("menuitem", { name: "Passwort von Perrine Player zurücksetzen" }),
   );

@@ -253,7 +253,7 @@ export function Events() {
               // attendance.view_all it is simply absent, and RowActions
               // promotes whatever is first — see its docblock.
               inlineKey="attendance"
-              triggerLabel={t("events.moreActionsAria", { title: event.title })}
+              rowName={event.title}
             />
           ) : null
         }

@@ -106,10 +106,13 @@ two of its three buttons), and dropping it from the shape would quietly remove
 the roster's double-submit guard. Radix's `MenuItem` takes `disabled`
 directly.
 
-`destructive?` renders a distinguishing text colour and a `MenuSeparator`
-above the item. It does **not** render a filled block — see §5 for why the
-roster's `variant="destructive"` goes. The flag exists so that one decision
-lives in one place rather than at three call sites.
+`destructive?` renders a `MenuSeparator` above the item and a `data-destructive`
+attribute on it — no distinguishing text colour. André decided on 2026-09-21
+that `Supprimer` reads "ink-coloured like the rest, at the same weight as its
+neighbours": `ConfirmByTypingName` is the actual guard, so the button does not
+also have to shout. It does **not** render a filled block either — see §5 for
+why the roster's `variant="destructive"` goes. The flag exists so that one
+decision lives in one place rather than at three call sites.
 
 Three screens compose with it, so the keyboard handling, the focus rules and
 the 44px floor exist in one file rather than three. `MemberActions` was extracted for

@@ -9,6 +9,7 @@ import {
 import { Ellipsis } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { t } from "../i18n";
 import { ButtonLink } from "./ButtonLink";
 
 /**
@@ -32,27 +33,42 @@ import { ButtonLink } from "./ButtonLink";
  * registrations.view and nothing else — reaches the souper with one action
  * and would otherwise get a bare "..." over it.
  */
-export type RowAction = {
+type RowActionCommon = {
   key: string;
   /** Visible text. Also the item's typeahead value. */
   label: string;
   /** The full accessible name, carrying the row's own name. */
   ariaLabel: string;
-  /** Exactly one of these two. */
-  onSelect?: () => void;
-  to?: string;
-  disabled?: boolean;
   destructive?: boolean;
 };
+
+/**
+ * A DISCRIMINATED UNION, not "exactly one of these two" left to a comment.
+ * The `onSelect` branch may carry `disabled`; the `to` branch forbids both
+ * `onSelect` and `disabled` via `?: never`, so a live-disabled-link cannot be
+ * constructed at all. It matters because `InlineAction` has no way to honour
+ * `disabled` on a link-shaped action — `ButtonLink` has no `aria-disabled`
+ * pass-through — so `{ to, disabled: true }` used to render fully live
+ * inline while the identical action behind the menu was correctly inert.
+ * Nothing constructed that shape, but nothing stopped it either. #118
+ * whole-branch review, M6/M7.
+ */
+export type RowAction =
+  | (RowActionCommon & { onSelect: () => void; to?: never; disabled?: boolean })
+  | (RowActionCommon & { to: string; onSelect?: never; disabled?: never });
 
 export function RowActions({
   actions,
   inlineKey,
-  triggerLabel,
+  rowName,
 }: {
   actions: RowAction[];
   inlineKey: string;
-  triggerLabel: string;
+  /** The row's own name (a person's or an event's), never a full label:
+   * the trigger's accessible name is assembled here, from
+   * `common.moreActionsAria`, so every call site says WHO this row's
+   * actions belong to and nothing about HOW that reaches the screen. */
+  rowName: string;
 }) {
   if (actions.length === 0) {
     return null;
@@ -77,8 +93,9 @@ export function RowActions({
   // Fewer than two items is not a menu. Everything goes inline and no trigger
   // is drawn; the row still fits, because two text buttons were what these
   // screens had before.
-  const inMenu = rest.length >= 2 ? rest : [];
-  const alsoInline = rest.length >= 2 ? [] : rest;
+  const hasMenu = rest.length >= 2;
+  const inMenu = hasMenu ? rest : [];
+  const alsoInline = hasMenu ? [] : rest;
 
   return (
     <div className="flex flex-wrap gap-tight">
@@ -89,7 +106,12 @@ export function RowActions({
       {inMenu.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="icon" aria-label={triggerLabel}>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t("common.moreActionsAria", { name: rowName })}
+            >
               <Ellipsis aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>

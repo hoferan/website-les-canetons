@@ -560,11 +560,5 @@ function MemberActions({
     },
   ];
 
-  return (
-    <RowActions
-      actions={actions}
-      inlineKey="edit"
-      triggerLabel={t("events.moreActionsAria", { title: name })}
-    />
-  );
+  return <RowActions actions={actions} inlineKey="edit" rowName={name} />;
 }
