@@ -74,7 +74,7 @@ function DropdownMenuItem({
       className={cn(
         // min-h-touch, not a height: the 44px floor is the same one
         // ui/button.tsx puts on every control, and a menu item is a control.
-        "relative flex min-h-touch cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[destructive]:text-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "relative flex min-h-touch cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
       )}
       {...props}

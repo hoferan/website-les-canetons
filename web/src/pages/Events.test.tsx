@@ -9,8 +9,22 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Events } from "./Events";
 
-/** The overflow trigger's accessible name, whichever event it belongs to. */
-const MORE_ACTIONS = /^Autres actions pour/;
+/**
+ * Every overflow trigger currently on the page, whichever card it belongs to
+ * and whichever locale renders it.
+ *
+ * MATCHED BY `aria-haspopup="menu"`, NOT BY NAME. A name-based regex anchored
+ * on "Autres actions pour" can only ever match French, so a German test
+ * calling the same clause would find the assertion trivially true — it would
+ * assert nothing, and read as coverage while proving nothing. That is exactly
+ * the failure #118's review caught for the item itself; the trigger's own
+ * absence check had it too, one layer up.
+ */
+function overflowTriggers(): HTMLElement[] {
+  return screen
+    .queryAllByRole("button")
+    .filter((button) => button.getAttribute("aria-haspopup") === "menu");
+}
 
 /**
  * Open one card's overflow menu and return a scope to query inside.
@@ -67,7 +81,7 @@ function expectNoSuchAction(name: RegExp): void {
   // query rather than as a lost permission.
   expect(screen.queryAllByRole("link", { name })).toHaveLength(0);
   expect(screen.queryAllByRole("button", { name })).toHaveLength(0);
-  expect(screen.queryAllByRole("button", { name: MORE_ACTIONS })).toHaveLength(0);
+  expect(overflowTriggers()).toHaveLength(0);
 }
 
 async function renderPlanning(

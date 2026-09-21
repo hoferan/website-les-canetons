@@ -27,6 +27,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { RowActions, type RowAction } from "../components/RowActions";
 import { t } from "../i18n";
 import { roleLabel } from "../i18n";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
@@ -498,18 +499,20 @@ function rolesOf(member: MemberResource, labelForRole: (id: number) => string): 
 }
 
 /**
- * The three per-person actions.
+ * The three per-person actions, laid out by `RowActions`: `Modifier` inline,
+ * `Mot de passe` and `Supprimer` behind the "..." (#118).
  *
  * Extracted while the roster still had two layouts, because two copies of
- * three buttons is where a fourth action ends up in one of them and not the
- * other — and the phone layout was the one that got forgotten. #130 removed
- * the second layout; this stays a component because three buttons and their
+ * three actions is where a fourth ends up in one of them and not the other —
+ * and the phone layout was the one that got forgotten. #130 removed the
+ * second layout; this stays a component because three actions and their
  * accessible names are worth reading in one place.
  *
  * Every accessible name carries the person's name, so a screen-reader user
- * hears which row's button they are on rather than the twelfth "Supprimer" on
- * the page. Every button is a `Button`, so every one clears 44px without
- * anybody remembering to add it.
+ * hears which row's action they are on rather than the twelfth "Supprimer" on
+ * the page. The 44px floor is `RowActions`'s concern now, not this
+ * component's — a plain `Button` inline, `DropdownMenuItem`'s own min-height
+ * in the menu.
  */
 function MemberActions({
   member,
@@ -526,22 +529,42 @@ function MemberActions({
 }) {
   const name = `${member.firstName} ${member.lastName}`;
 
+  const actions: RowAction[] = [
+    {
+      key: "edit",
+      label: t("common.edit"),
+      ariaLabel: t("members.editPerson", { name }),
+      disabled: busy,
+      onSelect: () => void onEdit(member),
+    },
+    {
+      key: "password",
+      label: t("members.password"),
+      // THE SAME KEY AS THE DIALOG THIS OPENS, so the item's accessible name
+      // and the dialog's title cannot come to disagree.
+      ariaLabel: t("members.resetTitle", { name }),
+      onSelect: () => onResetPassword(member),
+    },
+    {
+      key: "delete",
+      label: t("common.delete"),
+      ariaLabel: t("members.deleteTitle", { name }),
+      disabled: busy,
+      // NOT variant="destructive" any more. A filled red block was the most
+      // prominent thing on the card, above the person's own name, for an
+      // action taken a handful of times a season — and the planning rendered
+      // the same action as an outline button, so one action had two answers
+      // (#118). ConfirmByTypingName is the actual guard.
+      destructive: true,
+      onSelect: () => void onDelete(member),
+    },
+  ];
+
   return (
-    <div className="flex flex-wrap gap-tight">
-      <Button variant="outline" size="sm" disabled={busy} onClick={() => void onEdit(member)}>
-        <span aria-hidden="true">{t("common.edit")}</span>
-        <span className="sr-only">{t("members.editPerson", { name })}</span>
-      </Button>
-      <Button variant="outline" size="sm" onClick={() => onResetPassword(member)}>
-        <span aria-hidden="true">{t("members.password")}</span>
-        {/* THE SAME KEY AS THE DIALOG THIS OPENS, so the button's accessible
-            name and the dialog's title cannot come to disagree. */}
-        <span className="sr-only">{t("members.resetTitle", { name })}</span>
-      </Button>
-      <Button variant="destructive" size="sm" disabled={busy} onClick={() => void onDelete(member)}>
-        <span aria-hidden="true">{t("common.delete")}</span>
-        <span className="sr-only">{t("members.deleteTitle", { name })}</span>
-      </Button>
-    </div>
+    <RowActions
+      actions={actions}
+      inlineKey="edit"
+      triggerLabel={t("events.moreActionsAria", { title: name })}
+    />
   );
 }
