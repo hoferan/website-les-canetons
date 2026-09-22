@@ -174,18 +174,44 @@ test("lists the planning for an ordinary player", async () => {
 test("a player is offered no way to create an event", async () => {
   // ABSENT, not refused: a control that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.
+  //
+  // THE TRIGGER'S ABSENCE IS THE ASSERTION. Both create links moved into a
+  // dropdown in #182, and a Radix menu item is not in the DOM until the menu
+  // opens — so the queryByRole for "Ajouter un événement" this test used to
+  // make is now null for an organiser too, and passed for everybody. That is
+  // the failure docs/traps.md has an entry for, and this screen is its first
+  // customer.
+  //
+  // MATCHED BY aria-haspopup, NEVER by a French accessible name: on /de/* the
+  // French name matches nothing and the clause carrying the meaning would pass
+  // vacuously.
   await renderPlanning("demo.player");
-  expect(screen.queryByRole("link", { name: /Ajouter un événement/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /Ajouter une série/ })).toBeNull();
+
+  expect(overflowTriggers()).toHaveLength(0);
+  expect(screen.queryAllByRole("link", { name: /Ajouter/ })).toHaveLength(0);
+  expect(screen.queryAllByRole("button", { name: /Ajouter/ })).toHaveLength(0);
 });
 
-test("an organiser is offered both ways to create", async () => {
+test("an organiser gets both ways to create, behind one trigger", async () => {
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
-  expect(screen.getByRole("link", { name: "Ajouter un événement" })).toHaveAttribute(
+
+  // ONE CONTROL ON THE HEADING'S LINE, and the two destinations inside it.
+  const trigger = screen.getByRole("button", { name: "Ajouter au planning" });
+  expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+
+  await user.click(trigger);
+
+  const menu = await screen.findByRole("menu");
+  // REAL ANCHORS, not a useNavigate call: middle-click and open-in-new-tab on
+  // the event form are things a committee member does. asChild straight to
+  // Link, one Slot layer — see RowActions' ItemFor docblock for why two drops
+  // the props.
+  expect(within(menu).getByRole("menuitem", { name: "Ajouter un événement" })).toHaveAttribute(
     "href",
     "/events/new",
   );
-  expect(screen.getByRole("link", { name: "Ajouter une série" })).toHaveAttribute(
+  expect(within(menu).getByRole("menuitem", { name: "Ajouter une série" })).toHaveAttribute(
     "href",
     "/events/new/series",
   );
@@ -1029,15 +1055,18 @@ test("the empty planning's hint quotes the button beside it, in German", async (
     ),
   );
 
+  const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events", locale: "de-CH" });
 
   expect(await screen.findByText("Keine Anlässe in der Planung.")).toBeInTheDocument();
 
-  // THE LABEL IS READ FROM THE KEY THAT RENDERS THE BUTTON, so the two cannot
+  // THE LABEL IS READ FROM THE MENU ITEM THAT RENDERS IT, so the two cannot
   // drift, and the guillemets are tight -- French sets them « comme ça » and
-  // the sentence had that spacing hardcoded in the JSX.
-  const action = screen.getByRole("link", { name: "Serie hinzufügen" });
+  // the sentence had that spacing hardcoded in the JSX. The item now sits
+  // behind #182's trigger, so it has to be opened before it can be read.
+  await user.click(screen.getByRole("button", { name: "Zum Programm hinzufügen" }));
+  const action = await screen.findByRole("menuitem", { name: "Serie hinzufügen" });
   expect(screen.getByText(/gleich eine ganze Saison/)).toHaveTextContent(
     `mit «${action.textContent}» gleich eine ganze Saison`,
   );

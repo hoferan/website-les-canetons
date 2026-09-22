@@ -2,7 +2,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
+import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -14,7 +22,6 @@ import {
 import type { EventResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
-import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
@@ -331,12 +338,47 @@ export function Events() {
         <h1 className="font-display text-3xl">{t("events.heading")}</h1>
 
         {mayManage ? (
-          <div className="flex flex-wrap gap-tight">
-            <ButtonLink to="/events/new">{t("events.add")}</ButtonLink>
-            <ButtonLink to="/events/new/series" variant="outline">
-              {t("events.addSeries")}
-            </ButtonLink>
-          </div>
+          /* ONE TRIGGER, NOT TWO BUTTONS, and the reason is one adjacency. At
+             103px this fits beside the 170px heading, so it costs no row of its
+             own; the full label at 175px plus the series at 144px fit on a line
+             together but never beside the heading, which is the 44px this
+             removes. Creating is a desk job — a season is planned at home, not
+             at the Werkhof on a Saturday morning — so one extra tap is the
+             cheaper half of the trade. #182.
+
+             NOT `RowActions`. That component is row-shaped: it takes a row's
+             name, promotes an `inlineKey` and counts what is left to decide
+             whether to draw a trigger at all. A page-level menu with nothing
+             inline beside it is a different thing, and widening RowActions to
+             cover both would give one component two jobs.
+
+             THE ITEMS KEEP THEIR FULL LABELS. "Un événement" would be shorter
+             and is what a menu under "Ajouter" reads like, but a menu item has
+             to stand alone for somebody moving through the menu with a screen
+             reader. This is also what keeps events.emptyHint honest: it quotes
+             t("events.addSeries"), the same key rendered here. */
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" aria-label={t("events.addTriggerAria")}>
+                {t("events.addTrigger")}
+                <ChevronDown aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* asChild STRAIGHT TO Link, never through ButtonLink: a menu
+                  item already carries its own styling and the 44px floor, and
+                  ButtonLink destructures a closed prop list without spreading
+                  the rest, so Radix's Slot-merged role, tabIndex and keyboard
+                  wiring would be dropped before reaching an element. The
+                  mechanism is written up at RowActions' ItemFor. */}
+              <DropdownMenuItem asChild>
+                <Link to="/events/new">{t("events.add")}</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/events/new/series">{t("events.addSeries")}</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
       </div>
 

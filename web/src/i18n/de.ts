@@ -313,6 +313,9 @@ export const de: typeof fr = {
     heading: "Planung",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
+    // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
+    addTrigger: "Hinzufügen",
+    addTriggerAria: "Zum Programm hinzufügen",
     // ANLASS, wie überall in diesem Katalog: "Vergangene Anlässe", nicht
     // "Vergangenes". Ersetzt showPast/showPlanning — siehe fr.ts. #182.
     viewPlanning: "Planung",

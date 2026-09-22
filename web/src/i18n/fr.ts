@@ -526,6 +526,12 @@ export const fr = {
     heading: "Planning",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
+    // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,
+    // because at 103px it fits beside the 170px heading and the full label at
+    // 175px does not — and that adjacency is the whole of #182's saving.
+    // Its accessible name STARTS with this visible word (WCAG 2.5.3).
+    addTrigger: "Ajouter",
+    addTriggerAria: "Ajouter au planning",
     // THE TWO HALVES OF THE LIST AS NAMES, not as instructions. These replaced
     // showPast/showPlanning ("Voir les événements passés", "Voir le planning")
     // when the button became a two-option switch: a segment is labelled with
