@@ -194,9 +194,10 @@ test("a player is offered no way to create an event", async () => {
   // vacuously.
   await renderPlanning("demo.player");
 
-  expect(overflowTriggers()).toHaveLength(0);
-  expect(screen.queryAllByRole("link", { name: /Ajouter/ })).toHaveLength(0);
-  expect(screen.queryAllByRole("button", { name: /Ajouter/ })).toHaveLength(0);
+  // THROUGH THE HELPER, which is this assertion three ways and already carries
+  // the reasoning for each. Spelling them out here again was a second copy of
+  // its body, and a second place to fix if the shape of "absent" ever changes.
+  expectNoSuchAction(/Ajouter/);
 });
 
 test("an organiser gets both ways to create, behind one trigger", async () => {

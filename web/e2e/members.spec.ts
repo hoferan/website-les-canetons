@@ -364,9 +364,21 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   await expect(notComing).toHaveAttribute("aria-pressed", "false");
   await expect(card.getByTestId("answered-in-place")).toHaveCount(0);
 
-  // THE PAGE-LEVEL MENU, the second trigger this test exists for: it sits
-  // directly above the first card's own controls, so a tap that closes it
-  // must not also land on what is underneath.
+  // THE PAGE-LEVEL MENU, the second trigger this test exists for. Unlike the
+  // row menu above, this one is checked by its NAVIGATION ALONE, and the
+  // difference is measured rather than assumed: with the menu open at 390x844
+  // it occupies y=197-295, and every button, link and radio on the page lies
+  // outside that rectangle — `document.elementsFromPoint` under the item
+  // returns menu -> div -> section -> main -> body, with nothing interactive
+  // in between. There is no control for a stray tap to reach, so the
+  // goBack()-and-check-the-card pair above would pass here whether or not
+  // tap-through were possible, which is the failure it exists to catch,
+  // inverted.
+  //
+  // RE-MEASURE IF THE MENU GROWS. Its bottom edge is 4px past the first card's
+  // top (291), so today the overlap covers the card's padding and nothing
+  // else. A third item, or a card whose controls move up, puts live buttons
+  // under it and this becomes the row menu's case.
   await page.getByRole("button", { name: "Ajouter au planning" }).tap();
   await page.getByRole("menuitem", { name: "Ajouter une série" }).tap();
   await expect(page).toHaveURL(/\/events\/new\/series$/);
