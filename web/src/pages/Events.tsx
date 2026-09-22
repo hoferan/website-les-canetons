@@ -180,6 +180,12 @@ export function Events() {
   // than reading the snapshot.
   const missing = awaiting.filter((event) => event.myAttendance === null).length;
 
+  // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182). Suppressed in
+  // the upcoming view when there is nothing above it to be distinguished
+  // from; always shown in the past view, where "Événements passés" is the
+  // only thing on the page saying which half is on screen.
+  const showHeading = showingPast || awaiting.length > 0;
+
   function card(event: EventResource, inOwed: boolean) {
     // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.
     // The screen still decides which actions exist — three permissions gate
@@ -453,14 +459,13 @@ export function Events() {
         </section>
       ) : null}
 
-      {/* The heading appears only when there is a block above it to be
-          distinguished from. On a phone, a lone "Planning" under a page titled
-          "Planning" is a line of chrome costing a line of screen. */}
-      <section
-        className="mt-block"
-        aria-labelledby={awaiting.length > 0 ? "planning-heading" : undefined}
-      >
-        {awaiting.length > 0 ? (
+      {/* SUPPRESSED IN THE UPCOMING VIEW ONLY, when there is no block above it
+          to be distinguished from: a lone "Planning" under a page titled
+          "Planning" is a line of chrome costing a line of screen. ALWAYS
+          PRESENT IN THE PAST VIEW, where "Événements passés" is the only
+          thing on the page saying which half is on screen (#182). */}
+      <section className="mt-block" aria-labelledby={showHeading ? "planning-heading" : undefined}>
+        {showHeading ? (
           <h2 id="planning-heading" className="font-display text-xl">
             {showingPast ? t("events.pastHeading") : t("events.restHeading")}
           </h2>

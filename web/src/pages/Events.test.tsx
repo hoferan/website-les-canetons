@@ -140,18 +140,13 @@ test("the view switch is a named radiogroup showing which half is on screen", as
   expect(screen.getByRole("radiogroup", { name: "Vue du planning" })).toBeInTheDocument();
   expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
   expect(screen.getByRole("radio", { name: "Passés" })).not.toBeChecked();
+  expect(screen.getByRole("heading", { name: "À répondre" })).toBeInTheDocument();
 
   await switchView(user, "Passés");
 
   expect(await screen.findByRole("radio", { name: "Passés" })).toBeChecked();
-  // NOT a check on events.pastHeading ("Événements passés"): that h2 is
-  // gated on `awaiting.length > 0` (Events.tsx:461-465), and `awaiting` is
-  // unconditionally empty in the past view for every role — nobody is owed
-  // an answer about last Saturday — so the distinguishing heading never
-  // renders there, on this branch or main. The disappearance of the owed
-  // section is the reachable proof that the content actually followed the
-  // switch.
   expect(screen.queryByRole("heading", { name: "À répondre" })).toBeNull();
+  expect(screen.getByRole("heading", { level: 2, name: "Événements passés" })).toBeInTheDocument();
 });
 
 /**
