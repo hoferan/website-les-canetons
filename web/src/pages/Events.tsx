@@ -180,11 +180,10 @@ export function Events() {
   // than reading the snapshot.
   const missing = awaiting.filter((event) => event.myAttendance === null).length;
 
-  // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182). Suppressed in
-  // the upcoming view when there is nothing above it to be distinguished
-  // from; always shown in the past view, where "Événements passés" is the
-  // only thing on the page saying which half is on screen.
-  const showHeading = showingPast || awaiting.length > 0;
+  // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182) — see the JSX
+  // site below for the full reasoning. Never over an empty list either: a
+  // heading names what is under it.
+  const showHeading = planned.length > 0 && (showingPast || awaiting.length > 0);
 
   function card(event: EventResource, inOwed: boolean) {
     // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.
@@ -463,7 +462,10 @@ export function Events() {
           to be distinguished from: a lone "Planning" under a page titled
           "Planning" is a line of chrome costing a line of screen. ALWAYS
           PRESENT IN THE PAST VIEW, where "Événements passés" is the only
-          thing on the page saying which half is on screen (#182). */}
+          thing on the page saying which half is on screen (#182). NEVER OVER
+          AN EMPTY LIST EITHER, in either view: a heading names the list
+          beneath it, and the empty-message block above renders instead —
+          the two are alternatives, not siblings. */}
       <section className="mt-block" aria-labelledby={showHeading ? "planning-heading" : undefined}>
         {showHeading ? (
           <h2 id="planning-heading" className="font-display text-xl">

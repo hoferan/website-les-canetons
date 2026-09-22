@@ -245,6 +245,32 @@ test("an empty planning says so rather than rendering nothing", async () => {
   expect(screen.getByText(/générez toute une saison/)).toBeInTheDocument();
 });
 
+/**
+ * Case 1 of #182's heading defect. `showingPast` alone used to satisfy the
+ * heading guard, so a past with nothing in it showed "Aucun événement
+ * passé." immediately above a labelled, empty "Événements passés" section —
+ * the empty-message block and the section are siblings, not alternatives.
+ * Reachable on a fresh site before any event is in the past; the seeded mock
+ * always carries exactly one, so the override below removes it.
+ */
+test("the past view with no past events shows the empty message and no heading", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.get("/api/v1/events", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findByText(/Aucun événement au planning/);
+
+  await switchView(user, "Passés");
+
+  expect(await screen.findByText(/Aucun événement passé/)).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Événements passés" })).toBeNull();
+});
+
 test("a failed planning is announced, not silently empty", async () => {
   server.use(http.get("/api/v1/events", () => HttpResponse.error()));
 
