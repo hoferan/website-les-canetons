@@ -147,8 +147,11 @@ name, not an instruction. So the switch takes `events.viewPlanning` and
 their only call site in the whole app, checked by grep, so leaving them would
 leave dead strings in both catalogues.
 
-Four keys are added in total — `addTrigger`, `viewPlanning`, `viewPast` and the
-`viewSwitchAria` the `radiogroup` below requires — and two are removed.
+Five keys are added in total — `addTrigger` and `addTriggerAria`, the two the
+switch's labels need (`viewPlanning`, `viewPast`), and the `viewSwitchAria` the
+`radiogroup` below requires — and two are removed. The `Aria` pair are keys
+rather than literals because every string the app renders lives in a catalogue,
+an accessible name included.
 
 One comment has to move with them. `fr.ts`'s `seePlanning` carries a docblock
 saying "ITS OWN KEY, not `events.showPlanning`. That one toggles a list between
