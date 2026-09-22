@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -335,13 +336,26 @@ export function Events() {
       </div>
 
       <div className="mt-related flex flex-wrap items-center gap-tight">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setShowingPast((showing) => !showing)}
+        {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was
+            a 213px imperative sentence in the same `variant="outline"` as the
+            calendar toggle beside it, so it read as a third thing to DO; and it
+            carried no state at all, unlike that neighbour, so nothing announced
+            which view was on screen. #182.
+
+            NO GUARD ON THE INCOMING VALUE, and that is a property of the
+            primitive rather than an omission here: a radio group cannot be
+            cleared by its user, so `next` is always one of the two values
+            below. ui/radio-group.tsx's docblock records what ToggleGroup would
+            have cost instead. */}
+        <RadioGroup
+          value={showingPast ? "past" : "planning"}
+          orientation="horizontal"
+          aria-label={t("events.viewSwitchAria")}
+          onValueChange={(next: string) => setShowingPast(next === "past")}
         >
-          {showingPast ? t("events.showPlanning") : t("events.showPast")}
-        </Button>
+          <ToggleOption value="planning">{t("events.viewPlanning")}</ToggleOption>
+          <ToggleOption value="past">{t("events.viewPast")}</ToggleOption>
+        </RadioGroup>
 
         {/* md AND UP ONLY, and absent from a phone altogether rather than
             shrunk onto one. A month grid is for somebody planning a season at

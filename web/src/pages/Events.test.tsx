@@ -117,6 +117,60 @@ function positionOf(title: string): number {
   return owedCards().findIndex((card) => within(card).queryByText(title) !== null);
 }
 
+/**
+ * Switch the list between its two halves.
+ *
+ * A RADIO, NOT A BUTTON. The control is `ui/radio-group.tsx`, which Radix
+ * renders as a radiogroup — so a query for a button
+ * named "Passés" finds nothing, and the old `getByRole("button", { name: "Voir
+ * les événements passés" })` finds nothing either, because that string no
+ * longer exists in any catalogue. #182.
+ */
+async function switchView(
+  user: ReturnType<typeof userEvent.setup>,
+  to: "Planning" | "Passés",
+): Promise<void> {
+  await user.click(screen.getByRole("radio", { name: to }));
+}
+
+test("the view switch is a named radiogroup showing which half is on screen", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.player");
+
+  expect(screen.getByRole("radiogroup", { name: "Vue du planning" })).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
+  expect(screen.getByRole("radio", { name: "Passés" })).not.toBeChecked();
+
+  await switchView(user, "Passés");
+
+  expect(await screen.findByRole("radio", { name: "Passés" })).toBeChecked();
+  // NOT a check on events.pastHeading ("Événements passés"): that h2 is
+  // gated on `awaiting.length > 0` (Events.tsx:461-465), and `awaiting` is
+  // unconditionally empty in the past view for every role — nobody is owed
+  // an answer about last Saturday — so the distinguishing heading never
+  // renders there, on this branch or main. The disappearance of the owed
+  // section is the reachable proof that the content actually followed the
+  // switch.
+  expect(screen.queryByRole("heading", { name: "À répondre" })).toBeNull();
+});
+
+/**
+ * THE VIEW SURVIVES A SECOND PRESS. Not a guard in this file — a radio group
+ * has no cleared state to fall into — but the planning is where it would have
+ * been visible, so this is the screen-level proof that the primitive's property
+ * actually reaches the reader. ui/radio-group.test.tsx pins the primitive half.
+ */
+test("pressing the half already on screen leaves the view where it is", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.player");
+
+  await switchView(user, "Planning");
+
+  expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
+  expect(screen.getAllByTestId("event-card")).toHaveLength(6);
+  expect(screen.getByRole("heading", { name: "À répondre" })).toBeInTheDocument();
+});
+
 test("lists the planning for an ordinary player", async () => {
   await renderPlanning();
   expect(screen.getAllByTestId("event-card").length).toBeGreaterThan(0);
@@ -143,6 +197,7 @@ test("an organiser is offered both ways to create", async () => {
 });
 
 test("the past REPLACES the planning rather than extending it", async () => {
+  const user = userEvent.setup();
   await renderPlanning();
 
   // The seeded mock has six upcoming and exactly one past, so the two halves
@@ -150,9 +205,9 @@ test("the past REPLACES the planning rather than extending it", async () => {
   // appended would show seven.
   expect(screen.getAllByTestId("event-card")).toHaveLength(6);
 
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await switchView(user, "Passés");
 
-  expect(await screen.findByRole("button", { name: "Voir le planning" })).toBeInTheDocument();
+  expect(await screen.findByRole("radio", { name: "Passés" })).toBeChecked();
   await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(1);
 });
 
@@ -431,6 +486,7 @@ test("answering everything says so without emptying the block", async () => {
 });
 
 test("switching to the past and back settles the answered card into the rest", async () => {
+  const user = userEvent.setup();
   await renderPlanning();
 
   await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
@@ -438,8 +494,8 @@ test("switching to the past and back settles the answered card into the rest", a
     .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
     .toBe("true");
 
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
-  await userEvent.click(await screen.findByRole("button", { name: "Voir le planning" }));
+  await switchView(user, "Passés");
+  await switchView(user, "Planning");
 
   // The hold is released by rebuilding the list, never by a timer and never by
   // data arriving on its own.
@@ -849,8 +905,9 @@ test("the booking count appears only on an event that takes bookings", async () 
 test("the past keeps the strip", async () => {
   // The fraction stops being a chase cue and becomes a record of who
   // answered, which is worth having on the screen that shows the past.
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await switchView(user, "Passés");
   await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(1));
   expect(screen.getAllByTestId("event-meta")).toHaveLength(1);
 });
@@ -907,7 +964,8 @@ test("the planning reads in German, card labels included", async () => {
   expect(screen.getByRole("heading", { level: 1, name: "Planung" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Zu beantworten" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Die übrige Planung" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Vergangene Anlässe anzeigen" })).toBeInTheDocument();
+  expect(screen.getByRole("radiogroup", { name: "Ansicht der Planung" })).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Vergangene Anlässe" })).toBeInTheDocument();
 
   // NO SPACE BEFORE THE COLON, where French takes a no-break one. These were
   // `<dt>Lieu&nbsp;:</dt>` in the component -- French typography that reached

@@ -313,8 +313,11 @@ export const de: typeof fr = {
     heading: "Planung",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
-    showPast: "Vergangene Anlässe anzeigen",
-    showPlanning: "Planung anzeigen",
+    // ANLASS, wie überall in diesem Katalog: "Vergangene Anlässe", nicht
+    // "Vergangenes". Ersetzt showPast/showPlanning — siehe fr.ts. #182.
+    viewPlanning: "Planung",
+    viewPast: "Vergangene Anlässe",
+    viewSwitchAria: "Ansicht der Planung",
     calendar: "Kalender",
     list: "Liste",
     dayFiltered: "Nach einem Tag gefiltert.",
