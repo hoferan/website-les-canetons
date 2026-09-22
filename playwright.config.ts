@@ -20,7 +20,25 @@ const PORT = 5174;
 
 export default defineConfig({
   testDir: "web/e2e",
-  use: { baseURL: `http://localhost:${PORT}` },
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+
+    // PW_CHROMIUM_PATH IS FOR A CLAUDE CODE WEB SESSION, and is unset
+    // everywhere else — CI included, which is why this is a spread rather than
+    // a value. Such a session ships a Chromium under /opt/pw-browsers at
+    // whatever revision the image was built with, and downloading another one
+    // is blocked; when that revision is not the one this @playwright/test
+    // expects, every run dies on "Executable doesn't exist at
+    // .../chromium_headless_shell-<n>/..." and reads as a broken install
+    // rather than as a version mismatch. Pointing at the binary that IS there
+    // skips the bundled-browser lookup entirely.
+    //
+    // It takes a PATH, not a flag, so nothing here has to know the revision.
+    // docs/web-session.md carries the command.
+    ...(process.env.PW_CHROMIUM_PATH
+      ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+      : {}),
+  },
   webServer: {
     command: `npx vite --config vite.config.ts --mode mock --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,

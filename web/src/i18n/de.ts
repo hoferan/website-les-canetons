@@ -313,8 +313,20 @@ export const de: typeof fr = {
     heading: "Planung",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
-    showPast: "Vergangene Anlässe anzeigen",
-    showPlanning: "Planung anzeigen",
+    // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
+    addTrigger: "Hinzufügen",
+    // HINZUFÜGEN ZUERST, nicht am Ende: Der sichtbare Text muss am ANFANG des
+    // zugänglichen Namens stehen, sonst trifft die Spracheingabe auf
+    // «Hinzufügen» nicht zu (WCAG 2.5.3) — dieselbe Regel, die ButtonLink für
+    // die Zeilenaktionen festhält. Deutsche Wortstellung stellt das trennbare
+    // Verb sonst nach hinten. Und PLANUNG, nicht «Programm»: das ist das Wort,
+    // das dieser Katalog überall sonst verwendet.
+    addTriggerAria: "Hinzufügen zur Planung",
+    // ANLASS, wie überall in diesem Katalog: "Vergangene Anlässe", nicht
+    // "Vergangenes". Ersetzt showPast/showPlanning — siehe fr.ts. #182.
+    viewPlanning: "Planung",
+    viewPast: "Vergangene Anlässe",
+    viewSwitchAria: "Ansicht der Planung",
     calendar: "Kalender",
     list: "Liste",
     dayFiltered: "Nach einem Tag gefiltert.",

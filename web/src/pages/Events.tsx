@@ -2,6 +2,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
+import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -13,7 +22,6 @@ import {
 import type { EventResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
-import { ButtonLink } from "../components/ButtonLink";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
@@ -179,6 +187,11 @@ export function Events() {
   // than reading the snapshot.
   const missing = awaiting.filter((event) => event.myAttendance === null).length;
 
+  // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182) — see the JSX
+  // site below for the full reasoning. Never over an empty list either: a
+  // heading names what is under it.
+  const showHeading = planned.length > 0 && (showingPast || awaiting.length > 0);
+
   function card(event: EventResource, inOwed: boolean) {
     // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.
     // The screen still decides which actions exist — three permissions gate
@@ -325,23 +338,71 @@ export function Events() {
         <h1 className="font-display text-3xl">{t("events.heading")}</h1>
 
         {mayManage ? (
-          <div className="flex flex-wrap gap-tight">
-            <ButtonLink to="/events/new">{t("events.add")}</ButtonLink>
-            <ButtonLink to="/events/new/series" variant="outline">
-              {t("events.addSeries")}
-            </ButtonLink>
-          </div>
+          /* ONE TRIGGER, NOT TWO BUTTONS, and the reason is one adjacency. At
+             103px this fits beside the 170px heading, so it costs no row of its
+             own; the full label at 175px plus the series at 144px fit on a line
+             together but never beside the heading, which is the 44px this
+             removes. Creating is a desk job — a season is planned at home, not
+             at the Werkhof on a Saturday morning — so one extra tap is the
+             cheaper half of the trade. #182.
+
+             NOT `RowActions`. That component is row-shaped: it takes a row's
+             name, promotes an `inlineKey` and counts what is left to decide
+             whether to draw a trigger at all. A page-level menu with nothing
+             inline beside it is a different thing, and widening RowActions to
+             cover both would give one component two jobs.
+
+             THE ITEMS KEEP THEIR FULL LABELS. "Un événement" would be shorter
+             and is what a menu under "Ajouter" reads like, but a menu item has
+             to stand alone for somebody moving through the menu with a screen
+             reader. This is also what keeps events.emptyHint honest: it quotes
+             t("events.addSeries"), the same key rendered here. */
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" aria-label={t("events.addTriggerAria")}>
+                {t("events.addTrigger")}
+                <ChevronDown aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {/* asChild STRAIGHT TO Link, never through ButtonLink: a menu
+                  item already carries its own styling and the 44px floor, and
+                  ButtonLink destructures a closed prop list without spreading
+                  the rest, so Radix's Slot-merged role, tabIndex and keyboard
+                  wiring would be dropped before reaching an element. The
+                  mechanism is written up at RowActions' ItemFor. */}
+              <DropdownMenuItem asChild>
+                <Link to="/events/new">{t("events.add")}</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/events/new/series">{t("events.addSeries")}</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
       </div>
 
       <div className="mt-related flex flex-wrap items-center gap-tight">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setShowingPast((showing) => !showing)}
+        {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was
+            a 213px imperative sentence in the same `variant="outline"` as the
+            calendar toggle beside it, so it read as a third thing to DO; and it
+            carried no state at all, unlike that neighbour, so nothing announced
+            which view was on screen. #182.
+
+            NO GUARD ON THE INCOMING VALUE, and that is a property of the
+            primitive rather than an omission here: a radio group cannot be
+            cleared by its user, so `next` is always one of the two values
+            below. ui/radio-group.tsx's docblock records what ToggleGroup would
+            have cost instead. */}
+        <RadioGroup
+          value={showingPast ? "past" : "planning"}
+          orientation="horizontal"
+          aria-label={t("events.viewSwitchAria")}
+          onValueChange={(next: string) => setShowingPast(next === "past")}
         >
-          {showingPast ? t("events.showPlanning") : t("events.showPast")}
-        </Button>
+          <ToggleOption value="planning">{t("events.viewPlanning")}</ToggleOption>
+          <ToggleOption value="past">{t("events.viewPast")}</ToggleOption>
+        </RadioGroup>
 
         {/* md AND UP ONLY, and absent from a phone altogether rather than
             shrunk onto one. A month grid is for somebody planning a season at
@@ -439,14 +500,21 @@ export function Events() {
         </section>
       ) : null}
 
-      {/* The heading appears only when there is a block above it to be
-          distinguished from. On a phone, a lone "Planning" under a page titled
-          "Planning" is a line of chrome costing a line of screen. */}
-      <section
-        className="mt-block"
-        aria-labelledby={awaiting.length > 0 ? "planning-heading" : undefined}
-      >
-        {awaiting.length > 0 ? (
+      {/* SUPPRESSED IN THE UPCOMING VIEW ONLY, when there is no block above it
+          to be distinguished from: a lone "Planning" under a page titled
+          "Planning" is a line of chrome costing a line of screen. ALWAYS
+          PRESENT IN THE PAST VIEW, where "Événements passés" is the only
+          thing on the page saying which half is on screen (#182). AND NEVER
+          OVER AN EMPTY LIST, in either view, which is the clause that cost two
+          rounds to get right: this section and the empty-message block above
+          ARE siblings rather than alternatives, so nothing but `planned.length`
+          stops a heading rendering with no list under it — "Aucun événement
+          passé." followed by a labelled, empty "Événements passés". Note the
+          two conditions read different arrays on purpose: the message asks
+          about `events`, this asks about `planned`, so a player owed an answer
+          on everything gets neither (the block above holds it all). */}
+      <section className="mt-block" aria-labelledby={showHeading ? "planning-heading" : undefined}>
+        {showHeading ? (
           <h2 id="planning-heading" className="font-display text-xl">
             {showingPast ? t("events.pastHeading") : t("events.restHeading")}
           </h2>

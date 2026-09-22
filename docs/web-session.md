@@ -266,8 +266,45 @@ Idempotent. It ends with `==> Dev stack ready.` and nothing else needs doing.
 | --- | --- |
 | `npm run check` | Full suite, `lint:api` and `lint:types` included |
 | `npm run test:api` | The Laravel suite — see below |
-| `npm run test:e2e` | Playwright against the mocked backend |
+| `npm run test:e2e` | Playwright against the mocked backend — **needs `PW_CHROMIUM_PATH`, see below** |
 | `npm run openapi && npm run generate:api` | Needs Scramble, so needs `api/vendor` |
+
+### Playwright needs to be told where Chromium is
+
+`npm run test:e2e` fails out of the box here, and the failure names a path that
+was never going to exist:
+
+    browserType.launch: Executable doesn't exist at
+    /opt/pw-browsers/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell
+    ...
+    Please run the following command to download new browsers:
+        npx playwright install
+
+**Do not run `npx playwright install`.** The download is blocked, and the
+message is misleading: a browser IS installed. The image ships one under
+`/opt/pw-browsers` at whatever revision it was built with, and
+`@playwright/test` looks for the revision IT pins. When the two differ, the
+lookup fails and reads as a broken install rather than as a version mismatch.
+
+Point it at the binary that is actually there:
+
+```bash
+PW_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run test:e2e
+```
+
+`playwright.config.ts` spreads that into `launchOptions.executablePath` when the
+variable is set and does nothing when it is not, so CI — where the pinned
+revision is present — is untouched. An `executablePath` skips the
+bundled-browser lookup entirely, which is why the revision mismatch stops
+mattering.
+
+**Check the revision before copying that command**: `ls /opt/pw-browsers`. The
+directory above is what was there on 2026-09-22, and an image rebuild will
+change the number. Use the full `chromium-<n>/chrome-linux/chrome`, not the
+`chromium_headless_shell-<n>` tree — its layout differs from what recent
+Playwright expects, and the full binary is the one verified working.
+
+Verified 2026-09-22: `web/e2e/members.spec.ts`, 5 tests, all passing.
 
 `npm run test:api` (`tools/phpunit.mjs`) runs the suite inside the compose
 `web` service when the stack is up, and natively otherwise. The native branch

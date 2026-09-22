@@ -19,6 +19,13 @@ import { Events } from "./Events";
  * assert nothing, and read as coverage while proving nothing. That is exactly
  * the failure #118's review caught for the item itself; the trigger's own
  * absence check had it too, one layer up.
+ *
+ * IT COUNTS THE PAGE-LEVEL "Ajouter" TRIGGER TOO, since #182 — that one is a
+ * menu button like any other. So this is only meaningful for a reader WITHOUT
+ * `events.manage`, which is every current caller (demo.player, demo.committee).
+ * Call it under demo.direction or demo.both and it returns 1 before you have
+ * asserted anything, and the failure looks like the row action you were
+ * actually testing. Scope the query to a card in that case.
  */
 function overflowTriggers(): HTMLElement[] {
   return screen
@@ -117,6 +124,55 @@ function positionOf(title: string): number {
   return owedCards().findIndex((card) => within(card).queryByText(title) !== null);
 }
 
+/**
+ * Switch the list between its two halves.
+ *
+ * A RADIO, NOT A BUTTON. The control is `ui/radio-group.tsx`, which Radix
+ * renders as a radiogroup — so a query for a button
+ * named "Passés" finds nothing, and the old `getByRole("button", { name: "Voir
+ * les événements passés" })` finds nothing either, because that string no
+ * longer exists in any catalogue. #182.
+ */
+async function switchView(
+  user: ReturnType<typeof userEvent.setup>,
+  to: "Planning" | "Passés",
+): Promise<void> {
+  await user.click(screen.getByRole("radio", { name: to }));
+}
+
+test("the view switch is a named radiogroup showing which half is on screen", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.player");
+
+  expect(screen.getByRole("radiogroup", { name: "Vue du planning" })).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
+  expect(screen.getByRole("radio", { name: "Passés" })).not.toBeChecked();
+  expect(screen.getByRole("heading", { name: "À répondre" })).toBeInTheDocument();
+
+  await switchView(user, "Passés");
+
+  expect(await screen.findByRole("radio", { name: "Passés" })).toBeChecked();
+  expect(screen.queryByRole("heading", { name: "À répondre" })).toBeNull();
+  expect(screen.getByRole("heading", { level: 2, name: "Événements passés" })).toBeInTheDocument();
+});
+
+/**
+ * THE VIEW SURVIVES A SECOND PRESS. Not a guard in this file — a radio group
+ * has no cleared state to fall into — but the planning is where it would have
+ * been visible, so this is the screen-level proof that the primitive's property
+ * actually reaches the reader. ui/radio-group.test.tsx pins the primitive half.
+ */
+test("pressing the half already on screen leaves the view where it is", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.player");
+
+  await switchView(user, "Planning");
+
+  expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
+  expect(screen.getAllByTestId("event-card")).toHaveLength(6);
+  expect(screen.getByRole("heading", { name: "À répondre" })).toBeInTheDocument();
+});
+
 test("lists the planning for an ordinary player", async () => {
   await renderPlanning();
   expect(screen.getAllByTestId("event-card").length).toBeGreaterThan(0);
@@ -125,24 +181,52 @@ test("lists the planning for an ordinary player", async () => {
 test("a player is offered no way to create an event", async () => {
   // ABSENT, not refused: a control that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.
+  //
+  // THE TRIGGER'S ABSENCE IS THE ASSERTION. Both create links moved into a
+  // dropdown in #182, and a Radix menu item is not in the DOM until the menu
+  // opens — so the queryByRole for "Ajouter un événement" this test used to
+  // make is now null for an organiser too, and passed for everybody. That is
+  // the failure docs/traps.md has an entry for, and this screen is its first
+  // customer.
+  //
+  // MATCHED BY aria-haspopup, NEVER by a French accessible name: on /de/* the
+  // French name matches nothing and the clause carrying the meaning would pass
+  // vacuously.
   await renderPlanning("demo.player");
-  expect(screen.queryByRole("link", { name: /Ajouter un événement/ })).toBeNull();
-  expect(screen.queryByRole("link", { name: /Ajouter une série/ })).toBeNull();
+
+  // THROUGH THE HELPER, which is this assertion three ways and already carries
+  // the reasoning for each. Spelling them out here again was a second copy of
+  // its body, and a second place to fix if the shape of "absent" ever changes.
+  expectNoSuchAction(/Ajouter/);
 });
 
-test("an organiser is offered both ways to create", async () => {
+test("an organiser gets both ways to create, behind one trigger", async () => {
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
-  expect(screen.getByRole("link", { name: "Ajouter un événement" })).toHaveAttribute(
+
+  // ONE CONTROL ON THE HEADING'S LINE, and the two destinations inside it.
+  const trigger = screen.getByRole("button", { name: "Ajouter au planning" });
+  expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+
+  await user.click(trigger);
+
+  const menu = await screen.findByRole("menu");
+  // REAL ANCHORS, not a useNavigate call: middle-click and open-in-new-tab on
+  // the event form are things a committee member does. asChild straight to
+  // Link, one Slot layer — see RowActions' ItemFor docblock for why two drops
+  // the props.
+  expect(within(menu).getByRole("menuitem", { name: "Ajouter un événement" })).toHaveAttribute(
     "href",
     "/events/new",
   );
-  expect(screen.getByRole("link", { name: "Ajouter une série" })).toHaveAttribute(
+  expect(within(menu).getByRole("menuitem", { name: "Ajouter une série" })).toHaveAttribute(
     "href",
     "/events/new/series",
   );
 });
 
 test("the past REPLACES the planning rather than extending it", async () => {
+  const user = userEvent.setup();
   await renderPlanning();
 
   // The seeded mock has six upcoming and exactly one past, so the two halves
@@ -150,9 +234,9 @@ test("the past REPLACES the planning rather than extending it", async () => {
   // appended would show seven.
   expect(screen.getAllByTestId("event-card")).toHaveLength(6);
 
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await switchView(user, "Passés");
 
-  expect(await screen.findByRole("button", { name: "Voir le planning" })).toBeInTheDocument();
+  expect(await screen.findByRole("radio", { name: "Passés" })).toBeChecked();
   await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(1);
 });
 
@@ -193,6 +277,32 @@ test("an empty planning says so rather than rendering nothing", async () => {
   expect(await screen.findByText(/Aucun événement au planning/)).toBeInTheDocument();
   // And an organiser is pointed at what to do about it.
   expect(screen.getByText(/générez toute une saison/)).toBeInTheDocument();
+});
+
+/**
+ * Case 1 of #182's heading defect. `showingPast` alone used to satisfy the
+ * heading guard, so a past with nothing in it showed "Aucun événement
+ * passé." immediately above a labelled, empty "Événements passés" section —
+ * the empty-message block and the section are siblings, not alternatives.
+ * Reachable on a fresh site before any event is in the past; the seeded mock
+ * always carries exactly one, so the override below removes it.
+ */
+test("the past view with no past events shows the empty message and no heading", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.get("/api/v1/events", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+
+  setMockUser("demo.player");
+  await renderWithSession(<Events />, { route: "/events" });
+  await screen.findByText(/Aucun événement au planning/);
+
+  await switchView(user, "Passés");
+
+  expect(await screen.findByText(/Aucun événement passé/)).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Événements passés" })).toBeNull();
 });
 
 test("a failed planning is announced, not silently empty", async () => {
@@ -431,6 +541,7 @@ test("answering everything says so without emptying the block", async () => {
 });
 
 test("switching to the past and back settles the answered card into the rest", async () => {
+  const user = userEvent.setup();
   await renderPlanning();
 
   await userEvent.click(owedButton("Je viens à Vendanges Cheyres"));
@@ -438,8 +549,8 @@ test("switching to the past and back settles the answered card into the rest", a
     .poll(() => owedButton("Je viens à Vendanges Cheyres").getAttribute("aria-pressed"))
     .toBe("true");
 
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
-  await userEvent.click(await screen.findByRole("button", { name: "Voir le planning" }));
+  await switchView(user, "Passés");
+  await switchView(user, "Planning");
 
   // The hold is released by rebuilding the list, never by a timer and never by
   // data arriving on its own.
@@ -849,8 +960,9 @@ test("the booking count appears only on an event that takes bookings", async () 
 test("the past keeps the strip", async () => {
   // The fraction stops being a chase cue and becomes a record of who
   // answered, which is worth having on the screen that shows the past.
+  const user = userEvent.setup();
   await renderPlanning("demo.direction");
-  await userEvent.click(screen.getByRole("button", { name: "Voir les événements passés" }));
+  await switchView(user, "Passés");
   await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(1));
   expect(screen.getAllByTestId("event-meta")).toHaveLength(1);
 });
@@ -907,7 +1019,8 @@ test("the planning reads in German, card labels included", async () => {
   expect(screen.getByRole("heading", { level: 1, name: "Planung" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Zu beantworten" })).toBeInTheDocument();
   expect(screen.getByRole("region", { name: "Die übrige Planung" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Vergangene Anlässe anzeigen" })).toBeInTheDocument();
+  expect(screen.getByRole("radiogroup", { name: "Ansicht der Planung" })).toBeInTheDocument();
+  expect(screen.getByRole("radio", { name: "Vergangene Anlässe" })).toBeInTheDocument();
 
   // NO SPACE BEFORE THE COLON, where French takes a no-break one. These were
   // `<dt>Lieu&nbsp;:</dt>` in the component -- French typography that reached
@@ -950,15 +1063,18 @@ test("the empty planning's hint quotes the button beside it, in German", async (
     ),
   );
 
+  const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<Events />, { route: "/events", locale: "de-CH" });
 
   expect(await screen.findByText("Keine Anlässe in der Planung.")).toBeInTheDocument();
 
-  // THE LABEL IS READ FROM THE KEY THAT RENDERS THE BUTTON, so the two cannot
+  // THE LABEL IS READ FROM THE MENU ITEM THAT RENDERS IT, so the two cannot
   // drift, and the guillemets are tight -- French sets them « comme ça » and
-  // the sentence had that spacing hardcoded in the JSX.
-  const action = screen.getByRole("link", { name: "Serie hinzufügen" });
+  // the sentence had that spacing hardcoded in the JSX. The item now sits
+  // behind #182's trigger, so it has to be opened before it can be read.
+  await user.click(screen.getByRole("button", { name: "Hinzufügen zur Planung" }));
+  const action = await screen.findByRole("menuitem", { name: "Serie hinzufügen" });
   expect(screen.getByText(/gleich eine ganze Saison/)).toHaveTextContent(
     `mit «${action.textContent}» gleich eine ganze Saison`,
   );

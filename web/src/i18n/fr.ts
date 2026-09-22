@@ -526,8 +526,23 @@ export const fr = {
     heading: "Planning",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
-    showPast: "Voir les événements passés",
-    showPlanning: "Voir le planning",
+    // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,
+    // because at 103px it fits beside the 170px heading and the full label at
+    // 175px does not — and that adjacency is the whole of #182's saving.
+    // Its accessible name STARTS with this visible word (WCAG 2.5.3).
+    addTrigger: "Ajouter",
+    addTriggerAria: "Ajouter au planning",
+    // THE TWO HALVES OF THE LIST AS NAMES, not as instructions. These replaced
+    // showPast/showPlanning ("Voir les événements passés", "Voir le planning")
+    // when the button became a two-option switch: a segment is labelled with
+    // what it shows, and an imperative sentence 213px wide was what made the
+    // control read as a third thing to do. #182.
+    viewPlanning: "Planning",
+    viewPast: "Passés",
+    // THE RADIOGROUP'S OWN NAME, and it is required rather than polish: Radix's
+    // type="single" renders role="radiogroup", which without a name announces
+    // two radios belonging to nothing.
+    viewSwitchAria: "Vue du planning",
     calendar: "Calendrier",
     list: "Liste",
     dayFiltered: "Filtré sur un jour.",
@@ -712,9 +727,10 @@ export const fr = {
     create_other: "Créer {{count}} événements",
     createdCount_one: "{{count}} événement créé.",
     createdCount_other: "{{count}} événements créés.",
-    // ITS OWN KEY, not events.showPlanning. That one toggles a list between
-    // upcoming and past; this one navigates to the planning after a series
-    // was created. Same three words in French, two different jobs.
+    // ITS OWN KEY, not events.viewPlanning. That one NAMES the upcoming half
+    // of the list, as one segment of the view switch; this one is a link that
+    // navigates to the planning after a series was created. Two different
+    // jobs, and the switch's label is now one word where this is three.
     seePlanning: "Voir le planning",
     another: "Créer une autre série",
   },
