@@ -133,9 +133,11 @@ knowing this, for two reasons that are not about space:
 - **It stops a view switch looking like an action.** It sat in a row beside
   the calendar toggle, in the same `variant="outline"`, reading as a third
   thing to do rather than as which half of the list is on screen.
-- **It fixes a real accessibility gap.** Today's toggle carries no
-  `aria-pressed` at all, while the calendar toggle two lines below it in the
-  same file does. Nothing announces which view is current.
+- **It fixes a real accessibility gap.** Today's toggle announces nothing about
+  which view is current: it is a plain `Button` with no `aria-pressed`, while
+  the calendar toggle two lines below it in the same file has one. A reader who
+  cannot see which of two labels is filled has no way to know whether they are
+  looking at the planning or the past.
 
 **Its labels are new keys, and two old ones die.** `events.showPast` and
 `events.showPlanning` are imperative sentences for a button that performs a
@@ -144,6 +146,9 @@ name, not an instruction. So the switch takes `events.viewPlanning` and
 `events.viewPast`, and the two old keys are **deleted**: `Events.tsx:343` is
 their only call site in the whole app, checked by grep, so leaving them would
 leave dead strings in both catalogues.
+
+Four keys are added in total — `addTrigger`, `viewPlanning`, `viewPast` and the
+`viewSwitchAria` the `radiogroup` below requires — and two are removed.
 
 One comment has to move with them. `fr.ts`'s `seePlanning` carries a docblock
 saying "ITS OWN KEY, not `events.showPlanning`. That one toggles a list between
@@ -186,11 +191,28 @@ inferred from the lockfile.
 
 Root and Item. Nothing else.
 
-**`type="single"` over tabs or a radio group.** Tabs imply a `tabpanel`
-relationship that does not exist here — it is one list showing one of two
-contents, not two panels — and a radio group announces "1 of 2" for something
-that is not a form field. `ToggleGroup` gives roving focus, arrow keys and the
-pressed state, and the group takes an accessible name of its own.
+**`type="single"`, which IS a radio group — checked in the installed package,
+not taken from the docs.** Radix renders `role="radiogroup"` on the root and
+`role="radio"` plus `aria-checked` on each item, and explicitly sets
+`aria-pressed` to `undefined`
+(`@radix-ui/react-toggle-group/dist/index.js:62,189`). So this control
+announces "Planning, radio button, 1 of 2, checked", not a pressed state, and
+`ToggleGroup` supplies the roving focus and the arrow keys on top.
+
+That is the right announcement for what this is — choose one of exactly two
+views — and it is why **tabs were rejected**: tabs imply a `tabpanel`
+relationship that does not exist, since this is one list showing one of two
+contents rather than two panels.
+
+**A `radiogroup` must carry an accessible name**, so the group takes
+`events.viewSwitchAria`: `Vue du planning` / `Ansicht der Planung`. Without it
+a screen reader announces two radios belonging to nothing.
+
+An earlier draft of this spec claimed the switch would fix a missing
+`aria-pressed` and rejected "a radio group" in the same breath. Both were
+wrong, and in opposite directions; they are recorded here because the mistake
+is easy to repeat from Radix's own naming — a component called *ToggleGroup*
+whose single-select mode emits no toggle semantics at all.
 
 **Deselection has to be guarded in the handler, because Radix has no prop for
 it.** A `type="single"` group lets the active item be pressed again to clear
@@ -233,8 +255,9 @@ the installed version rather than the docs: the guard is in `Events.tsx`, and
   the only control a player has, so they would have to scroll past an event to
   learn that past events exist.
 - **A compact toggle button instead of a segmented control.** Cheaper, no
-  primitive, and it fixes the missing `aria-pressed` — but it leaves a view
-  switch shaped like an action, which is the complaint.
+  primitive, and an `aria-pressed` on it would announce the current view as
+  well as the radiogroup does — but it leaves a view switch shaped like an
+  action, which is the complaint.
 - **Inline in `Events.tsx`, or a `ViewSwitch` in `components/`.** The first
   loses roving focus and arrow keys and gets rewritten by the next screen; the
   second is a layer above a primitive that has one caller. `ui/` is where the
@@ -303,8 +326,12 @@ the one new key fails `npm run typecheck` until both catalogues carry it.
    it; the page-level menu sits directly above the first card's own controls,
    so a tap on `Ajouter une série` closing the menu must not also land on what
    is underneath.
-4. **`aria-pressed` on the switch, and what a screen reader says when the view
-   changes.** The list below is replaced, not filtered.
+4. **What a screen reader actually says when the view changes**, given the
+   switch is a `radiogroup`: the list below is replaced, not filtered, and
+   nothing announces the replacement. Check whether the radio's own state
+   change is enough, or whether the count under the heading should be a live
+   region — and if it should, say so and leave it to its own issue rather than
+   growing this one.
 
 ## 7. Close it with
 
