@@ -25,5 +25,27 @@ export default defineConfig({
     include: ["web/src/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     setupFiles: ["web/src/setupTests.ts"],
+
+    // A DELIBERATELY WRONG TIMEZONE, and the wrongness is the point (#177).
+    //
+    // Every date formatter in the app pins its own `timeZone` -- an invariant
+    // #161 established and web/src/lib/date.ts states in a docblock. Nothing
+    // enforced it, because nothing pinned a zone for the test run: the suite
+    // inherited whatever the machine had, which is UTC on CI and Europe/Zurich
+    // on a Fribourg laptop. Both are zones where reading the ambient zone and
+    // pinning Europe/Zurich agree, so a formatter that lost its pin would
+    // render correctly here and wrongly in the Americas, and no test would say
+    // so. #161's own guard died of exactly this -- it passed for its whole life
+    // whether or not the code under it was right.
+    //
+    // America/New_York is five hours west and observes DST, so a formatter
+    // that reads the ambient zone renders the wrong DAY for a late-evening UTC
+    // instant, not merely the wrong hour. Europe/Zurich would have been the
+    // worst choice available: it agrees with the one audience that cannot see
+    // the bug.
+    //
+    // Set here rather than in the npm script because `TZ=... vitest` is not a
+    // thing on Windows, and this repo is developed from PowerShell.
+    env: { TZ: "America/New_York" },
   },
 });
