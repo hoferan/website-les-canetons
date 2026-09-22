@@ -17,7 +17,7 @@
 - **Never the `disabled` attribute on a button.** `aria-disabled` plus an early return in the handler. See `ui/button.tsx`'s docblock.
 - **Every new user-facing string exists in BOTH catalogues**, `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`. `de.ts` is declared `typeof fr`, so a key in one and not the other fails `npm run typecheck` before any test runs.
 - **Everything is written in English** except user-visible UI text: code, comments, identifiers, test names. The catalogues hold the French and German.
-- **An accessible name that extends visible text must START with that text** (WCAG 2.5.3), so a voice-control user saying the visible word still matches.
+- **An accessible name that extends visible text must START with that text** (WCAG 2.5.3), so a voice-control user saying the visible word still matches. **This plan got that wrong in German on its first pass** — it specified `Zum Programm hinzufügen`, which ends with the visible word instead of leading with it, and used a noun (`Programm`) appearing nowhere else in `de.ts`. German word order pushes a separable verb to the end, so the rule needs checking in both languages rather than assumed from the French.
 - **`web/src/api/generated/` is never hand-edited.** Nothing in this plan touches it.
 - **Run `npm run check` before pushing.** It does not build and does not run the Laravel suite; neither is needed here, since no PHP changes.
 - **`npm install` in a web session strips 24 `libc` hints from `package-lock.json`.** That is an environment artifact, not a change. Run `git status` before every commit and `git checkout -- package-lock.json` if it appears.
@@ -559,8 +559,14 @@ This is the task that buys the 50px. It is independent of Tasks 1 and 2.
 
 ```ts
     // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
+    //
+    // HINZUFÜGEN ZUERST: Der sichtbare Text muss am ANFANG des zugänglichen
+    // Namens stehen (WCAG 2.5.3), sonst trifft die Spracheingabe auf
+    // «Hinzufügen» nicht zu. Deutsche Wortstellung stellt das trennbare Verb
+    // sonst nach hinten. Und PLANUNG, nicht «Programm»: das Wort, das dieser
+    // Katalog überall sonst verwendet.
     addTrigger: "Hinzufügen",
-    addTriggerAria: "Zum Programm hinzufügen",
+    addTriggerAria: "Hinzufügen zur Planung",
 ```
 
 - [ ] **Step 2: Fix the vacuous assertion FIRST, and watch it go vacuous**

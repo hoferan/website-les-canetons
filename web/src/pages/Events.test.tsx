@@ -19,6 +19,13 @@ import { Events } from "./Events";
  * assert nothing, and read as coverage while proving nothing. That is exactly
  * the failure #118's review caught for the item itself; the trigger's own
  * absence check had it too, one layer up.
+ *
+ * IT COUNTS THE PAGE-LEVEL "Ajouter" TRIGGER TOO, since #182 — that one is a
+ * menu button like any other. So this is only meaningful for a reader WITHOUT
+ * `events.manage`, which is every current caller (demo.player, demo.committee).
+ * Call it under demo.direction or demo.both and it returns 1 before you have
+ * asserted anything, and the failure looks like the row action you were
+ * actually testing. Scope the query to a card in that case.
  */
 function overflowTriggers(): HTMLElement[] {
   return screen
@@ -1065,7 +1072,7 @@ test("the empty planning's hint quotes the button beside it, in German", async (
   // drift, and the guillemets are tight -- French sets them « comme ça » and
   // the sentence had that spacing hardcoded in the JSX. The item now sits
   // behind #182's trigger, so it has to be opened before it can be read.
-  await user.click(screen.getByRole("button", { name: "Zum Programm hinzufügen" }));
+  await user.click(screen.getByRole("button", { name: "Hinzufügen zur Planung" }));
   const action = await screen.findByRole("menuitem", { name: "Serie hinzufügen" });
   expect(screen.getByText(/gleich eine ganze Saison/)).toHaveTextContent(
     `mit «${action.textContent}» gleich eine ganze Saison`,
