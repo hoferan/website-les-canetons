@@ -23,6 +23,22 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
 
+    // A DELIBERATELY WRONG TIMEZONE, matching vitest.config.ts (#177), and a
+    // SEPARATE SETTING FROM IT — `TZ` in the environment moves Node, not the
+    // browser Playwright drives, so the whole e2e half would keep running in
+    // whatever zone the machine has if this line were not here.
+    //
+    // Same reasoning as there: every formatter in the app pins its own
+    // `timeZone`, nothing enforced that, and UTC (CI) and Europe/Zurich (a
+    // Fribourg laptop) are both zones where a formatter that lost its pin
+    // still renders correctly. New York is five hours west, so it renders the
+    // wrong DAY instead — which a spec can see.
+    //
+    // No spec asserts a formatted date today, so this guards nothing yet. It
+    // is here so that the first one to do so is written somewhere the bug is
+    // visible, rather than somewhere it is not.
+    timezoneId: "America/New_York",
+
     // PW_CHROMIUM_PATH IS FOR A CLAUDE CODE WEB SESSION, and is unset
     // everywhere else — CI included, which is why this is a spread rather than
     // a value. Such a session ships a Chromium under /opt/pw-browsers at
