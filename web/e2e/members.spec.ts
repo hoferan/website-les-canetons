@@ -167,6 +167,72 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
         .locator("css=div:has(> button[aria-label^='Autres actions'])");
       const box = await row.boundingBox();
       expect(box?.height, "the souper's action row is more than one line").toBeLessThanOrEqual(48);
+
+      // THE POINT OF #182, and the only thing standing between it and a silent
+      // regression. The saving is one adjacency — a 103px trigger beside a
+      // 170px heading — and if it ever stops holding, the row simply wraps
+      // back and no test, type error or lint says a word.
+      //
+      // MEASURED AS THE HEADING'S OWN ROW, not as the trigger: a wrapped
+      // trigger is still 44px tall, and it is the ROW that grows to 104px.
+      const headingRow = page.locator("h1").locator("..");
+      const headingBox = await headingRow.boundingBox();
+      expect(
+        headingBox?.height,
+        "the heading and the Ajouter trigger no longer share one line",
+      ).toBeLessThanOrEqual(48);
+
+      // AND THE RESULT OF IT, which is the number #182 is closed on. 287 when
+      // this was written; the bound leaves room for a font or a heading change
+      // without pinning a pixel.
+      const firstCardTop = await page
+        .getByTestId("event-card")
+        .first()
+        .evaluate((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
+      expect(firstCardTop, "the control block above the first card has grown").toBeLessThan(300);
+
+      // THE 44px FLOOR, MEASURED, which is the only place it can be. The jsdom
+      // suite can see that `min-h-touch` is in a className and nothing more —
+      // not a misspelt token, not a missing --spacing-touch, not a later class
+      // winning the cascade. Both halves of the new switch are controls a thumb
+      // has to hit on the phone this whole issue is about.
+      for (const name of ["Planning", "Passés"]) {
+        const segmentBox = await page.getByRole("radio", { name }).boundingBox();
+        expect(
+          segmentBox?.height,
+          `the "${name}" segment is under the 44px floor`,
+        ).toBeGreaterThanOrEqual(44);
+      }
+
+      // THE ARROW KEY SELECTS, which is the entire reason RadioGroup was chosen
+      // over ToggleGroup — that one emits role="radio" and then never selects on
+      // an arrow at all. It cannot be asserted in jsdom, because Radix selects
+      // by calling click() from the item's onFocus while an arrow is held and
+      // that needs real focus events. So the reason for the primitive is
+      // guarded here or nowhere.
+      //
+      // { delay: 50 }, FOUND HERE, NOT IN THE BRIEF: Radix's own arrow-key
+      // handling defers the focus move to `setTimeout(focusFirst)`
+      // (@radix-ui/react-roving-focus), so the click-on-focus in
+      // @radix-ui/react-radio-group only fires while its `isArrowKeyPressedRef`
+      // is still true — a flag a document `keydown`/`keyup` pair sets and
+      // clears. A zero-delay `press()` dispatches keydown and keyup back to
+      // back, and the keyup's synchronous reset can beat the deferred
+      // `setTimeout`, so the same command that read as PASS in the brief's own
+      // Step 2 run failed here on the first try: focus moved to "Passés" but
+      // `aria-checked` never flipped. A real key press is never that fast;
+      // `delay: 50` is what a human's keydown-to-keyup actually looks like, and
+      // it made the result reproducible across repeated runs.
+      await page.getByRole("radio", { name: "Planning" }).focus();
+      await page.keyboard.press("ArrowRight", { delay: 50 });
+      await expect(page.getByRole("radio", { name: "Passés" })).toBeChecked();
+      // And the list below genuinely changed, not just the control.
+      await expect(
+        page.getByRole("heading", { level: 2, name: "Événements passés" }),
+      ).toBeVisible();
+
+      // Back, so the rest of the loop measures the upcoming view it expects.
+      await page.getByRole("radio", { name: "Planning" }).click();
     }
 
     // I1. BookingActions has exactly two actions (Corriger, Annuler
@@ -297,6 +363,13 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // to nothing having been recorded.
   await expect(notComing).toHaveAttribute("aria-pressed", "false");
   await expect(card.getByTestId("answered-in-place")).toHaveCount(0);
+
+  // THE PAGE-LEVEL MENU, the second trigger this test exists for: it sits
+  // directly above the first card's own controls, so a tap that closes it
+  // must not also land on what is underneath.
+  await page.getByRole("button", { name: "Ajouter au planning" }).tap();
+  await page.getByRole("menuitem", { name: "Ajouter une série" }).tap();
+  await expect(page).toHaveURL(/\/events\/new\/series$/);
 
   await ctx.close();
 });
