@@ -179,8 +179,8 @@ Guggenmusik says, over *Veranstaltung* — and because a bare adjective is not a
 label. **This is the one wording call in the spec; say so in review if you
 want another.**
 
-**A vendored `web/src/components/ui/toggle-group.tsx`**, from `radix-ui`'s
-`ToggleGroup` exactly as `dropdown-menu.tsx` vendors `DropdownMenu`: the same
+**A vendored `web/src/components/ui/radio-group.tsx`**, from `radix-ui`'s
+`RadioGroup` exactly as `dropdown-menu.tsx` vendors `DropdownMenu`: the same
 `data-slot` attributes, the same `cn()` composition, and **every `dark:`
 utility stripped**, for the reason `ui/button.tsx` sets out at length — this
 app declares no `dark` custom variant, so Tailwind 4 compiles one to a
@@ -188,50 +188,72 @@ app declares no `dark` custom variant, so Tailwind 4 compiles one to a
 at a rehearsal at night is most of them.
 
 **No new package.** `radix-ui` ^1.6.7 is already a direct dependency and
-already re-exports `ToggleGroup` (`Root`, `Item`); `@radix-ui/react-toggle-group`
+already re-exports `RadioGroup` (`Root`, `Item`); `@radix-ui/react-radio-group`
 is already installed as one of its transitives. Verified at runtime, not
 inferred from the lockfile.
 
-Root and Item. Nothing else.
+Root and Item. Nothing else — no `Indicator`, because a segmented control
+shows its state by filling the chosen segment rather than by drawing a dot.
 
-**`type="single"`, which IS a radio group — checked in the installed package,
-not taken from the docs.** Radix renders `role="radiogroup"` on the root and
-`role="radio"` plus `aria-checked` on each item, and explicitly sets
-`aria-pressed` to `undefined`
-(`@radix-ui/react-toggle-group/dist/index.js:62,189`). So this control
-announces "Planning, radio button, 1 of 2, checked", not a pressed state, and
-`ToggleGroup` supplies the roving focus and the arrow keys on top.
+### Not `ToggleGroup`, which was this spec's first answer and was wrong
 
-That is the right announcement for what this is — choose one of exactly two
-views — and it is why **tabs were rejected**: tabs imply a `tabpanel`
-relationship that does not exist, since this is one list showing one of two
-contents rather than two panels.
+Recorded because the mistake is easy to repeat and cost a task dispatch.
+`ToggleGroup type="single"` looks like the obvious fit and even emits the right
+roles, but **it never selects on an arrow key**: its source contains no
+`ARROW_KEYS`, no focus-to-activate — arrows move the roving tabindex and
+nothing else, so `aria-checked` stays `false` on the item the focus just
+reached. It announces itself as a radio and then does not behave as one, which
+is a worse position than the plain button it replaced.
+
+`RadioGroup` implements the pattern its roles promise: a document-level keydown
+marks that an arrow is down, and the item's `onFocus` then calls `click()` on
+itself (`@radix-ui/react-radio-group/dist/index.js:399-420`). Two further
+differences settled it:
+
+| | `ToggleGroup` | `RadioGroup` |
+| --- | --- | --- |
+| `data-state` | `on` / `off` | `checked` / `unchecked` |
+| arrow key selects | **no** | yes |
+| pressing the checked item again | fires `onValueChange("")` | stays checked |
+| hidden form input outside a `<form>` | — | none (measured: 0) |
+
+**The third row deletes work rather than adding it.** An earlier draft of this
+spec had a paragraph on guarding Radix's empty value, because a cleared
+`ToggleGroup` would have meant a planning that is neither upcoming nor past. A
+radio group cannot be cleared by its user, so there is no guard to write, in
+the primitive or at the call site, and no test for one.
+
+**Neither library demonstrates the arrow key under jsdom**, and that is a
+property of the test environment rather than of `RadioGroup`: the mechanism
+needs real focus events. Measured on both. So the arrow-selection assertion
+lives in the Playwright suite, alongside the 44px floor, for the same reason.
+
+**It is a radio group, and that is the announcement we want.** The root carries
+`role="radiogroup"` and each item `role="radio"` with `aria-checked`, so the
+control announces "Planning, radio button, 1 of 2, checked". That is the right
+thing to say about choosing one of exactly two views, and it is why **tabs were
+rejected**: tabs imply a `tabpanel` relationship that does not exist, since this
+is one list showing one of two contents rather than two panels.
 
 **A `radiogroup` must carry an accessible name**, so the group takes
-`events.viewSwitchAria`: `Vue du planning` / `Ansicht der Planung`. Without it
-a screen reader announces two radios belonging to nothing.
+`events.viewSwitchAria`: `Vue du planning` / `Ansicht der Planung`. Without it a
+screen reader announces two radios belonging to nothing. The root also takes
+`orientation="horizontal"`, which Radix turns into `aria-orientation` and uses
+to decide that Left/Right are this group's arrow keys.
 
 An earlier draft of this spec claimed the switch would fix a missing
-`aria-pressed` and rejected "a radio group" in the same breath. Both were
-wrong, and in opposite directions; they are recorded here because the mistake
-is easy to repeat from Radix's own naming — a component called *ToggleGroup*
-whose single-select mode emits no toggle semantics at all.
-
-**Deselection has to be guarded in the handler, because Radix has no prop for
-it.** A `type="single"` group lets the active item be pressed again to clear
-the value, and `onValueChange` then fires with `""` — which here would mean a
-planning that is neither upcoming nor past. There is no `disableDeselection`
-option to set, so the handler ignores an empty value and the state only ever
-moves between the two views. This is the kind of claim worth checking against
-the installed version rather than the docs: the guard is in `Events.tsx`, and
-`toggle-group.test.tsx` pins it.
+`aria-pressed`. It does not: there is no pressed state here at all, and the
+current view is announced through `aria-checked` instead. The same draft
+rejected "a radio group" in the very paragraph that chose one — recorded above,
+because Radix's naming invites exactly that confusion.
 
 ## 3. What this design does not change
 
 - **The calendar toggle.** Still `hidden md:inline-flex` and still gated on
   `config.features.calendar`, which is off on every server, so it is absent at
   390px and contributes nothing to this measurement. Whether it becomes a
-  second caller of `toggle-group.tsx` is a later question and not this issue's.
+  second caller of `radio-group.tsx` is a later question and not this issue's —
+  and probably a no: it is one independent on/off, not a choice among options.
 - **The day filter.** Its row is rendered only when a day is chosen, and `past`
   replaces the list rather than narrowing it, so the two do not belong in one
   control. Rejected on 2026-09-22.
@@ -296,10 +318,19 @@ hrefs, becomes: open the menu, assert both items and their destinations.
 `:153`, `:441` and `:853` click `Voir les événements passés`; each becomes a
 click on the switch's `Passés` option.
 
-**`web/src/components/ui/toggle-group.test.tsx`**, new, mirroring
-`dropdown-menu.test.tsx`: arrow-key roving focus, the selected state on the
-active item, that pressing the active item does not clear the value, and the
-44px floor.
+**`web/src/components/ui/radio-group.test.tsx`**, new, mirroring
+`dropdown-menu.test.tsx`: the roles and the accessible name, the checked state
+moving with the value, and that pressing the checked item again leaves it
+checked.
+
+**Two of that file's obvious assertions do NOT belong in it**, and both were
+tried before this was written. The 44px floor cannot be tested in jsdom, which
+computes no layout — all a unit test can see is the token `min-h-touch` inside a
+`className` string, which passes just as happily on a misspelling or on a class
+that loses the cascade. And **the arrow key cannot be tested there either**:
+Radix's focus-to-select needs real focus events, so `{ArrowRight}` leaves
+`aria-checked` false under jsdom for `RadioGroup` and `ToggleGroup` alike.
+Measured on both. Those two go to Playwright, below.
 
 **E2E, where the closing condition actually lives.** The `/events` branch of
 `web/e2e/members.spec.ts`'s overflow test, beside #118's souper guard: as
@@ -309,6 +340,12 @@ souper's action row) and the first card's top is under 300. With
 `scrollWidth - clientWidth <= 0`, which that test already holds. Measured in a
 real browser rather than trusted from jsdom, which is the lesson of #118's own
 e2e commit.
+
+It also carries the two assertions the unit suite cannot: **both segments clear
+44px**, measured as a `boundingBox`, and **the arrow key selects** — focus the
+checked segment, press `ArrowRight`, and the other one becomes checked and the
+list below changes. That second one is the whole reason `RadioGroup` was chosen
+over `ToggleGroup`, so leaving it unasserted would leave the reason unguarded.
 
 **German needs no assertion of its own.** `de.ts` is declared `typeof fr`, so
 the one new key fails `npm run typecheck` until both catalogues carry it.

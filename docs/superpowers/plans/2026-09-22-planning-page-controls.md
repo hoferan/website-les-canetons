@@ -4,7 +4,7 @@
 
 **Goal:** Take the planning's page-level control block at 390px from two rows and 104px to one row and 44px, by collapsing the two `Ajouter` controls behind one labelled trigger and turning the past toggle into a two-option view switch.
 
-**Architecture:** Two independent changes to one screen, `web/src/pages/Events.tsx`. The add control is a `DropdownMenu` composed directly in that file over the existing `ui/dropdown-menu.tsx` primitive — not through `RowActions`, which is row-shaped. The view switch is a new vendored primitive, `ui/toggle-group.tsx`, wrapping `radix-ui`'s `ToggleGroup`. No API change, no generated-client change, no migration.
+**Architecture:** Two independent changes to one screen, `web/src/pages/Events.tsx`. The add control is a `DropdownMenu` composed directly in that file over the existing `ui/dropdown-menu.tsx` primitive — not through `RowActions`, which is row-shaped. The view switch is a new vendored primitive, `ui/radio-group.tsx`, wrapping `radix-ui`'s `RadioGroup` — not its `ToggleGroup`, which emits radio roles without radio keyboard behaviour (spec §2). No API change, no generated-client change, no migration.
 
 **Tech Stack:** React 19 + TypeScript, Vite 8, Tailwind 4 (CSS-first, tokens in `web/src/styles.css`), `radix-ui` ^1.6.7, `lucide-react`, Vitest + Testing Library, Playwright against the MSW-mocked backend.
 
@@ -39,8 +39,8 @@ From the spec, at 390x844 on the mocked stack as `demo.direction`:
 
 | File | Responsibility | Task |
 | --- | --- | --- |
-| `web/src/components/ui/toggle-group.tsx` | **Create.** Vendored `ToggleGroup` Root + Item. Styling and the 44px floor. Knows nothing about the planning. | 1 |
-| `web/src/components/ui/toggle-group.test.tsx` | **Create.** The primitive's keyboard, state and floor. | 1 |
+| `web/src/components/ui/radio-group.tsx` | **Create.** Vendored `RadioGroup` Root + Item. Styling and the 44px floor. Knows nothing about the planning. | 1 |
+| `web/src/components/ui/radio-group.test.tsx` | **Create.** The primitive's roles and state. Not the floor, not the arrow key — see Task 1. | 1 |
 | `web/src/i18n/fr.ts` | **Modify.** `:527-531` add 4 keys, delete 2. `:715-718` re-point one comment. | 2, 3 |
 | `web/src/i18n/de.ts` | **Modify.** `:314-318` the same 4 and the same 2. | 2, 3 |
 | `web/src/pages/Events.tsx` | **Modify.** `:337-344` the switch (Task 2); `:324-335` the add control (Task 3). | 2, 3 |
@@ -51,23 +51,31 @@ Task order is forced only at 1 → 2. Task 3 is independent of Tasks 1 and 2; Ta
 
 ---
 
-### Task 1: The `toggle-group` primitive
+### Task 1: The `radio-group` primitive
 
 A vendored surface with no knowledge of the planning, so it is testable and reviewable on its own.
 
 **Files:**
-- Create: `web/src/components/ui/toggle-group.tsx`
-- Create (test): `web/src/components/ui/toggle-group.test.tsx`
+- Create: `web/src/components/ui/radio-group.tsx`
+- Create (test): `web/src/components/ui/radio-group.test.tsx`
 
 **Interfaces:**
-- Consumes: `cn` from `@/lib/utils`; `ToggleGroup as ToggleGroupPrimitive` from `radix-ui`.
-- Produces: `ToggleGroup` and `ToggleGroupItem`, both `React.ComponentProps<typeof ToggleGroupPrimitive.Root | .Item>` pass-throughs. Task 2 consumes exactly these two names. `ToggleGroup` requires Radix's `type` prop (it throws without one); Task 2 passes `type="single"`.
+- Consumes: `cn` from `@/lib/utils`; `RadioGroup as RadioGroupPrimitive` from `radix-ui`.
+- Produces: `RadioGroup` and `ToggleOption`, both `React.ComponentProps<typeof RadioGroupPrimitive.Root | .Item>` pass-throughs. Task 2 consumes exactly these two names. The root takes Radix's `value`, `onValueChange`, `orientation` and `aria-label`; each item takes `value`.
 
 **Read first:** `web/src/components/ui/dropdown-menu.tsx` — this file is its sibling and must read alike: same `data-slot` naming, same `cn()` composition, same docblock habit of saying *why*.
 
+**Why `RadioGroup` and not `ToggleGroup`:** the spec's §2 has the full account. The short version, which you should not have to rediscover: `ToggleGroup type="single"` emits `role="radiogroup"` but contains no arrow-key handling at all, so it announces itself as a radio and does not behave as one. `RadioGroup` implements the pattern, and it also cannot be cleared by the user — so there is no empty-value guard anywhere in this plan.
+
+**Two things you must NOT test here**, both tried and both rejected (spec §5):
+- **The 44px floor.** jsdom computes no layout. The only assertion available is that the string `min-h-touch` appears in a `className`, which passes on a misspelling or on a class that loses the cascade. Task 4 measures it in a browser.
+- **Arrow-key selection.** Radix's focus-to-select needs real focus events; under jsdom `{ArrowRight}` leaves `aria-checked` false. Task 4 asserts it in a browser.
+
+Leave a comment in the test file naming both and pointing at Task 4's file, so the next reader does not re-add them.
+
 - [ ] **Step 1: Write the failing test**
 
-Create `web/src/components/ui/toggle-group.test.tsx`:
+Create `web/src/components/ui/radio-group.test.tsx`:
 
 ```tsx
 import { render, screen } from "@testing-library/react";
@@ -75,148 +83,137 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
+import { RadioGroup, ToggleOption } from "./radio-group";
 
 /**
  * A controlled harness, because that is how /events uses it: the value is the
- * screen's state, and the empty-value guard this primitive deliberately does
- * NOT apply lives at the call site.
+ * screen's own state.
  */
-function Harness({ onEmpty = () => {} }: { onEmpty?: () => void }) {
+function Harness() {
   const [view, setView] = useState("planning");
   return (
-    <ToggleGroup
-      type="single"
+    <RadioGroup
       value={view}
+      orientation="horizontal"
       aria-label="Vue du planning"
-      onValueChange={(next: string) => {
-        if (next === "") {
-          onEmpty();
-          return;
-        }
-        setView(next);
-      }}
+      onValueChange={setView}
     >
-      <ToggleGroupItem value="planning">Planning</ToggleGroupItem>
-      <ToggleGroupItem value="past">Passés</ToggleGroupItem>
-    </ToggleGroup>
+      <ToggleOption value="planning">Planning</ToggleOption>
+      <ToggleOption value="past">Passés</ToggleOption>
+    </RadioGroup>
   );
 }
 
-describe("ToggleGroup", () => {
-  /**
-   * RADIOGROUP, NOT A PRESSED TOGGLE, and this test is here to pin that down
-   * rather than because anybody would guess it. Radix's type="single" renders
-   * role="radiogroup" and role="radio" with aria-checked, and sets
-   * aria-pressed to undefined — see the spec's §2. The component's name
-   * suggests the opposite.
-   */
-  it("is a radiogroup whose items carry the checked state", () => {
+describe("RadioGroup", () => {
+  it("is a named radiogroup whose items carry the checked state", () => {
     render(<Harness />);
 
-    expect(screen.getByRole("radiogroup", { name: "Vue du planning" })).toBeInTheDocument();
+    const group = screen.getByRole("radiogroup", { name: "Vue du planning" });
+    expect(group).toHaveAttribute("aria-orientation", "horizontal");
     expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Passés" })).not.toBeChecked();
-    expect(screen.getByRole("radio", { name: "Planning" })).not.toHaveAttribute("aria-pressed");
   });
 
-  it("moves the selection with the arrow keys", async () => {
+  it("moves the checked state when another option is chosen", async () => {
     const user = userEvent.setup();
     render(<Harness />);
 
-    await user.click(screen.getByRole("radio", { name: "Planning" }));
-    await user.keyboard("{ArrowRight}");
+    await user.click(screen.getByRole("radio", { name: "Passés" }));
 
     expect(screen.getByRole("radio", { name: "Passés" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Planning" })).not.toBeChecked();
   });
 
   /**
-   * THE DESELECTION THIS PRIMITIVE DOES NOT GUARD. Radix lets the checked item
-   * be pressed again and fires onValueChange(""). The primitive passes that
-   * through on purpose — whether "neither" is meaningful is the screen's
-   * question — so this test proves the call site is the only place that can
-   * refuse it. Task 2 is where /events refuses.
+   * THE REASON NO CALL SITE NEEDS AN EMPTY-VALUE GUARD. A ToggleGroup would
+   * have fired onValueChange("") here, which for /events would have meant a
+   * planning that is neither upcoming nor past. A radio group cannot be
+   * cleared by its user, and this is what says so.
    */
-  it("passes an empty value through when the checked item is pressed again", async () => {
+  it("keeps the checked option checked when it is pressed again", async () => {
     const user = userEvent.setup();
-    let emptied = 0;
-    render(<Harness onEmpty={() => (emptied += 1)} />);
+    render(<Harness />);
 
     await user.click(screen.getByRole("radio", { name: "Planning" }));
 
-    expect(emptied).toBe(1);
     expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
   });
-
 });
 
-// THE 44px FLOOR IS NOT ASSERTED HERE, deliberately. jsdom computes no layout,
-// so the only thing this file could check is that the string "min-h-touch"
-// appears in a className — which passes just as happily if the token is
-// misspelled, if styles.css stops defining --spacing-touch, or if a later class
-// in the cascade overrides the height. That is a test of the source text, not of
-// the control a thumb has to hit. The floor is measured for real, once, in a
-// browser: web/e2e/members.spec.ts, added in Task 4.
+// TWO ASSERTIONS DELIBERATELY ABSENT, both tried first:
+//
+// THE 44px FLOOR. jsdom computes no layout, so all this file could check is
+// that the token "min-h-touch" appears in a className — which passes just as
+// happily if the token is misspelled, if styles.css stops defining
+// --spacing-touch, or if a later class in the cascade overrides the height.
+//
+// ARROW-KEY SELECTION. Radix selects on arrow by calling click() from the
+// item's onFocus while an arrow is held, and that needs real focus events:
+// under jsdom {ArrowRight} leaves aria-checked false. It is the behaviour this
+// primitive was chosen FOR, so it is asserted rather than dropped —
+// just not here.
+//
+// Both live in web/e2e/members.spec.ts, measured in a real browser.
 ```
 
 - [ ] **Step 2: Run it to make sure it fails**
 
 ```bash
-npx vitest run web/src/components/ui/toggle-group.test.tsx
+npx vitest run web/src/components/ui/radio-group.test.tsx
 ```
 
-Expected: FAIL — `Failed to resolve import "./toggle-group"`. Not a single assertion should run yet.
+Expected: FAIL — `Failed to resolve import "./radio-group"`. Not a single assertion should run yet.
 
 - [ ] **Step 3: Write the primitive**
 
-Create `web/src/components/ui/toggle-group.tsx`:
+Create `web/src/components/ui/radio-group.tsx`:
 
 ```tsx
 import * as React from "react";
-import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui";
+import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 
 import { cn } from "@/lib/utils";
 
 /**
+ * A SEGMENTED CONTROL: pick one of a few views, all of them visible at once.
+ *
  * VENDORED from radix-ui, the same way ui/dropdown-menu.tsx and
  * ui/alert-dialog.tsx are: the same `data-slot` attributes and the same `cn()`
  * composition, so the three files read alike.
  *
- * TWO PARTS AND NO MORE. Root and Item. No multi-select, no vertical
- * orientation, no icon-only variant: each is a surface that would have to keep
- * working across two catalogues, and none of them is needed today. A later
- * screen that wants one adds it then.
+ * TWO PARTS AND NO MORE. Root and Item — no `Indicator`, because a segment
+ * shows its state by filling rather than by drawing a dot beside a label.
  *
  * NO `dark:` UTILITY, for the reason ui/button.tsx sets out at length: this app
  * declares no `dark` custom variant, so Tailwind 4 compiles one to a
  * prefers-color-scheme media query that fires on any phone whose OS is set to
  * dark, which at a rehearsal at night is most of them.
  *
- * `type="single"` IS A RADIO GROUP, whatever the component is called. Radix
- * renders role="radiogroup" here and role="radio" with aria-checked on each
- * item, and sets aria-pressed to undefined. So a caller must give the ROOT an
- * accessible name — two radios belonging to nothing is what a screen reader
- * otherwise announces — and must not expect a pressed state. The name misleads
- * and the spec's §2 records that it misled the design once already.
+ * WHY RadioGroup AND NOT ToggleGroup, which is the component whose name fits.
+ * `ToggleGroup type="single"` renders role="radiogroup" and role="radio" — and
+ * then never selects on an arrow key: its source has no arrow handling at all,
+ * so the focus moves and `aria-checked` stays false behind it. It claims to be
+ * a radio and does not behave as one. RadioGroup implements the pattern its
+ * roles promise, by clicking the item its own onFocus lands on while an arrow
+ * is held. The spec's §2 records the measurement.
  *
- * DESELECTION IS NOT GUARDED HERE, deliberately. Radix lets the checked item be
- * pressed again to clear the value, firing `onValueChange("")`, and there is no
- * prop to switch that off. Whether "neither" means anything is the screen's
- * question, not this file's: /events has exactly two views and refuses the
- * empty one, while some future screen might want a cleared state. The guard
- * belongs at the call site, and toggle-group.test.tsx pins that this passes
- * through.
+ * AND IT CANNOT BE CLEARED. A ToggleGroup hands the caller `onValueChange("")`
+ * when the pressed item is pressed again, which on the planning would mean a
+ * list that is neither upcoming nor past; every call site would need a guard.
+ * A radio group has no such state, so no guard exists anywhere — see the test.
+ *
+ * THE ROOT NEEDS AN ACCESSIBLE NAME from its caller. A radiogroup without one
+ * announces two radios belonging to nothing.
  */
-function ToggleGroup({
+function RadioGroup({
   className,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Root>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
   return (
-    <ToggleGroupPrimitive.Root
-      data-slot="toggle-group"
+    <RadioGroupPrimitive.Root
+      data-slot="radio-group"
       className={cn(
-        // `w-fit`, so the group is as wide as its options rather than as wide
+        // `w-fit`, so the control is as wide as its options rather than as wide
         // as the row it sits in.
         "inline-flex w-fit items-center gap-[2px] rounded-md border bg-background p-[2px]",
         className,
@@ -226,17 +223,24 @@ function ToggleGroup({
   );
 }
 
-function ToggleGroupItem({
+/**
+ * One segment. Named for what it is on screen rather than after the primitive:
+ * `RadioGroupItem` would invite a caller to reach for a dot and a label.
+ */
+function ToggleOption({
   className,
   ...props
-}: React.ComponentProps<typeof ToggleGroupPrimitive.Item>) {
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
   return (
-    <ToggleGroupPrimitive.Item
-      data-slot="toggle-group-item"
+    <RadioGroupPrimitive.Item
+      data-slot="toggle-option"
       className={cn(
         // min-h-touch, not a height: the same 44px floor ui/button.tsx puts on
         // every control and ui/dropdown-menu.tsx puts on every menu item.
-        "inline-flex min-h-touch shrink-0 cursor-default items-center justify-center rounded-sm px-4 text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground",
+        //
+        // `checked`, NOT `on`: RadioGroup's data-state is checked/unchecked
+        // where ToggleGroup's would have been on/off.
+        "inline-flex min-h-touch shrink-0 cursor-default items-center justify-center rounded-sm px-4 text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground",
         className,
       )}
       {...props}
@@ -244,33 +248,39 @@ function ToggleGroupItem({
   );
 }
 
-export { ToggleGroup, ToggleGroupItem };
+export { RadioGroup, ToggleOption };
 ```
 
 - [ ] **Step 4: Run the tests and make sure they pass**
 
 ```bash
-npx vitest run web/src/components/ui/toggle-group.test.tsx
+npx vitest run web/src/components/ui/radio-group.test.tsx
+npm run typecheck
 ```
 
-Expected: PASS, 3 tests.
+Expected: PASS, 3 tests; typecheck clean.
 
-If `toBeChecked()` throws on a `role="radio"` that is not an `<input>`, jest-dom supports `aria-checked` on `role="radio"` — check the element really carries `role="radio"` by logging `screen.getByRole("radio", { name: "Planning" }).outerHTML`. Do not change the assertion to `toHaveAttribute("aria-checked", "true")` without first confirming the role is right; the role is the thing under test.
+If `toBeChecked()` throws on a `role="radio"` that is not an `<input>`: jest-dom supports it via `aria-checked`, so this should not happen. If it does, keep the `getByRole("radio", ...)` query — the role is the thing under test — print `screen.getByRole("radio", { name: "Planning" }).outerHTML`, and report the exact error rather than weakening the assertion.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git status --short   # package-lock.json must NOT be listed; if it is, git checkout -- package-lock.json
-git add web/src/components/ui/toggle-group.tsx web/src/components/ui/toggle-group.test.tsx
-git commit -m "feat(web): a vendored toggle-group primitive
+git add web/src/components/ui/radio-group.tsx web/src/components/ui/radio-group.test.tsx
+git commit -m "feat(web): a vendored radio-group primitive for segmented controls
 
-Root and Item from radix-ui's ToggleGroup, styled like its two sibling
-vendored surfaces. No new package: radix-ui ^1.6.7 already re-exports it.
+Root and Item from radix-ui's RadioGroup, styled like its two sibling vendored
+surfaces. No new package: radix-ui ^1.6.7 already re-exports it.
 
-Its test pins the two things the component's name gets wrong — type=\"single\"
-is a radiogroup with aria-checked and no aria-pressed, and pressing the checked
-item fires onValueChange(\"\") with no prop to stop it, so the guard belongs at
-the call site.
+NOT ToggleGroup, whose name fits and whose behaviour does not: type=\"single\"
+emits role=\"radiogroup\" and then never selects on an arrow key, so it claims
+to be a radio without behaving as one. RadioGroup implements the pattern, and
+cannot be cleared by its user — which is why no call site in this branch needs
+an empty-value guard.
+
+The test says why the 44px floor and the arrow key are asserted in Playwright
+instead: jsdom computes no layout and Radix's focus-to-select needs real focus
+events.
 
 #182"
 ```
@@ -286,7 +296,7 @@ the call site.
 - Modify (test): `web/src/pages/Events.test.tsx:153`, `:441`, `:853`
 
 **Interfaces:**
-- Consumes: `ToggleGroup`, `ToggleGroupItem` from Task 1.
+- Consumes: `RadioGroup`, `ToggleOption` from Task 1.
 - Produces: the catalogue keys `events.viewPlanning`, `events.viewPast`, `events.viewSwitchAria` in both files. Task 3 adds `events.addTrigger` beside them and must not collide.
 
 **Read first:** the spec's §2 in full, and `web/src/pages/Events.tsx:337-364` — the calendar toggle shares that row and does not change.
@@ -368,8 +378,8 @@ In `web/src/pages/Events.test.tsx`, add this helper next to the other helpers (a
 /**
  * Switch the list between its two halves.
  *
- * A RADIO, NOT A BUTTON. The control is `ui/toggle-group.tsx` with
- * type="single", which Radix renders as a radiogroup — so a query for a button
+ * A RADIO, NOT A BUTTON. The control is `ui/radio-group.tsx`, which Radix
+ * renders as a radiogroup — so a query for a button
  * named "Passés" finds nothing, and the old `getByRole("button", { name: "Voir
  * les événements passés" })` finds nothing either, because that string no
  * longer exists in any catalogue. #182.
@@ -400,12 +410,12 @@ test("the view switch is a named radiogroup showing which half is on screen", as
 });
 
 /**
- * THE GUARD THE PRIMITIVE DELIBERATELY DOES NOT CARRY. Radix lets the checked
- * radio be pressed again and fires onValueChange("") — a planning that is
- * neither upcoming nor past. There is no prop to switch it off, so Events.tsx
- * refuses the empty value and this is what proves it.
+ * THE VIEW SURVIVES A SECOND PRESS. Not a guard in this file — a radio group
+ * has no cleared state to fall into — but the planning is where it would have
+ * been visible, so this is the screen-level proof that the primitive's property
+ * actually reaches the reader. ui/radio-group.test.tsx pins the primitive half.
  */
-test("pressing the checked half again leaves the view where it is", async () => {
+test("pressing the half already on screen leaves the view where it is", async () => {
   const user = userEvent.setup();
   await renderPlanning("demo.player");
 
@@ -420,7 +430,7 @@ test("pressing the checked half again leaves the view where it is", async () => 
 
 ```bash
 npx vitest run web/src/pages/Events.test.tsx -t "view switch"
-npx vitest run web/src/pages/Events.test.tsx -t "checked half again"
+npx vitest run web/src/pages/Events.test.tsx -t "already on screen"
 ```
 
 Expected: FAIL — `Unable to find an accessible element with the role "radiogroup"`.
@@ -430,7 +440,7 @@ Expected: FAIL — `Unable to find an accessible element with the role "radiogro
 Add to the imports, after the `Button` import at line 4:
 
 ```tsx
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
 ```
 
 Replace lines 338-344 — the `<Button>` holding `showPast`/`showPlanning` — with:
@@ -442,25 +452,20 @@ Replace lines 338-344 — the `<Button>` holding `showPast`/`showPlanning` — w
             carried no state at all, unlike that neighbour, so nothing announced
             which view was on screen. #182.
 
-            THE EMPTY VALUE IS REFUSED HERE rather than in the primitive. Radix
-            lets the checked radio be pressed again and hands us "", which would
-            be a planning that is neither upcoming nor past, and it offers no
-            prop to turn that off — so the guard is this early return. See
-            ui/toggle-group.tsx's docblock for why it does not live there. */}
-        <ToggleGroup
-          type="single"
+            NO GUARD ON THE INCOMING VALUE, and that is a property of the
+            primitive rather than an omission here: a radio group cannot be
+            cleared by its user, so `next` is always one of the two values
+            below. ui/radio-group.tsx's docblock records what ToggleGroup would
+            have cost instead. */}
+        <RadioGroup
           value={showingPast ? "past" : "planning"}
+          orientation="horizontal"
           aria-label={t("events.viewSwitchAria")}
-          onValueChange={(next: string) => {
-            if (next === "") {
-              return;
-            }
-            setShowingPast(next === "past");
-          }}
+          onValueChange={(next: string) => setShowingPast(next === "past")}
         >
-          <ToggleGroupItem value="planning">{t("events.viewPlanning")}</ToggleGroupItem>
-          <ToggleGroupItem value="past">{t("events.viewPast")}</ToggleGroupItem>
-        </ToggleGroup>
+          <ToggleOption value="planning">{t("events.viewPlanning")}</ToggleOption>
+          <ToggleOption value="past">{t("events.viewPast")}</ToggleOption>
+        </RadioGroup>
 ```
 
 - [ ] **Step 7: Convert the three existing call sites**
@@ -802,6 +807,21 @@ In `web/e2e/members.spec.ts`, inside the existing `for (const path of [...])` lo
           44,
         );
       }
+
+      // THE ARROW KEY SELECTS, which is the entire reason RadioGroup was chosen
+      // over ToggleGroup — that one emits role="radio" and then never selects on
+      // an arrow at all. It cannot be asserted in jsdom, because Radix selects
+      // by calling click() from the item's onFocus while an arrow is held and
+      // that needs real focus events. So the reason for the primitive is
+      // guarded here or nowhere.
+      await page.getByRole("radio", { name: "Planning" }).focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(page.getByRole("radio", { name: "Passés" })).toBeChecked();
+      // And the list below genuinely changed, not just the control.
+      await expect(page.getByRole("heading", { level: 2, name: "Événements passés" })).toBeVisible();
+
+      // Back, so the rest of the loop measures the upcoming view it expects.
+      await page.getByRole("radio", { name: "Planning" }).click();
 ```
 
 - [ ] **Step 2: Run it against the finished screens**
@@ -861,7 +881,7 @@ suite notices. Watched failing with the full label restored.
 
 ## Self-Review
 
-**Spec coverage.** §1 the add control → Task 3. §2 the view switch, its keys, the deleted keys, the re-pointed comment, the deselection guard, the radiogroup name → Tasks 1 and 2. §3 what does not change → no task, correctly: the calendar toggle, the day filter, the `past` state's home and `EventCard` are all explicitly out. §4 rejected options → no task by nature. §5 tests: the vacuous assertion → Task 3 Step 2; `expectNoSuchAction` re-confirmation → Task 3 Step 7; the four converted call sites → Task 2 Step 7 (three) and Task 3 Step 4 (one); `toggle-group.test.tsx` → Task 1; the e2e guard → Task 4; German parity via `typeof fr` → Task 2 Steps 1 and 3. §6 review focus 1 → Task 4 Step 3; 2 → Task 3 Step 3; 4 → left as a question for review, as the spec says. §7 close it with → Task 4 Step 4.
+**Spec coverage.** §1 the add control → Task 3. §2 the view switch, its keys, the deleted keys, the re-pointed comment, the radiogroup name and why it is `RadioGroup` rather than `ToggleGroup` → Tasks 1 and 2. The spec's empty-value guard is gone rather than unimplemented: a radio group cannot be cleared, which Task 1's third test proves and Task 2's screen-level test confirms. §3 what does not change → no task, correctly: the calendar toggle, the day filter, the `past` state's home and `EventCard` are all explicitly out. §4 rejected options → no task by nature. §5 tests: the vacuous assertion → Task 3 Step 2; `expectNoSuchAction` re-confirmation → Task 3 Step 7; the four converted call sites → Task 2 Step 7 (three) and Task 3 Step 4 (one); `radio-group.test.tsx` → Task 1, minus the floor and the arrow key, which jsdom cannot see and which Task 4 measures instead; the e2e guard → Task 4; German parity via `typeof fr` → Task 2 Steps 1 and 3. §6 review focus 1 → Task 4 Step 3; 2 → Task 3 Step 3; 4 → left as a question for review, as the spec says. §7 close it with → Task 4 Step 4.
 
 **Gap found and closed.** §6's review focus 3 — touch, the tap-through case #118's e2e exists for — had no step. It is a review question rather than a new behaviour, and the page-level menu does sit above the first card's own controls. Adding it to Task 4:
 
@@ -879,4 +899,4 @@ Add it to Task 4's commit.
 
 **Placeholder scan.** No TBD, no "add error handling", no "similar to Task N". Every code step carries its code. Task 1 Step 5 asks for a number rather than giving one, deliberately — it is a manual observation whose value Task 4 then asserts.
 
-**Type consistency.** `ToggleGroup` / `ToggleGroupItem` are the names Task 1 exports and Task 2 imports. `switchView(user, to)` is defined once in Task 2 Step 4 and used at Task 2 Step 7's three sites. `events.addTrigger` and `events.addTriggerAria` are both introduced in Task 3 Step 1 and used in Task 3 Step 6 and Task 4 Step 3b — note the spec's §1 names only `addTrigger`; the `Aria` variant is a second key this plan adds, because WCAG 2.5.3 needs the longer name and a catalogue is where the app's strings live. `events.viewPlanning`, `events.viewPast`, `events.viewSwitchAria` are introduced in Task 2 Step 1 and used in Task 2 Step 6 and its tests. `overflowTriggers()` and `expectNoSuchAction()` are existing helpers, not redefined.
+**Type consistency.** `RadioGroup` / `ToggleOption` are the names Task 1 exports and Task 2 imports — `ToggleOption` rather than Radix's `RadioGroupItem`, because the thing on screen is a segment and a caller reaching for `RadioGroupItem` would reach for a dot and a label with it. `switchView(user, to)` is defined once in Task 2 Step 4 and used at Task 2 Step 7's three sites. `events.addTrigger` and `events.addTriggerAria` are both introduced in Task 3 Step 1 and used in Task 3 Step 6 and Task 4 Step 3b — note the spec's §1 names only `addTrigger`; the `Aria` variant is a second key this plan adds, because WCAG 2.5.3 needs the longer name and a catalogue is where the app's strings live. `events.viewPlanning`, `events.viewPast`, `events.viewSwitchAria` are introduced in Task 2 Step 1 and used in Task 2 Step 6 and its tests. `overflowTriggers()` and `expectNoSuchAction()` are existing helpers, not redefined.
