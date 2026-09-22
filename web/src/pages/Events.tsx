@@ -462,10 +462,15 @@ export function Events() {
           to be distinguished from: a lone "Planning" under a page titled
           "Planning" is a line of chrome costing a line of screen. ALWAYS
           PRESENT IN THE PAST VIEW, where "Événements passés" is the only
-          thing on the page saying which half is on screen (#182). NEVER OVER
-          AN EMPTY LIST EITHER, in either view: a heading names the list
-          beneath it, and the empty-message block above renders instead —
-          the two are alternatives, not siblings. */}
+          thing on the page saying which half is on screen (#182). AND NEVER
+          OVER AN EMPTY LIST, in either view, which is the clause that cost two
+          rounds to get right: this section and the empty-message block above
+          ARE siblings rather than alternatives, so nothing but `planned.length`
+          stops a heading rendering with no list under it — "Aucun événement
+          passé." followed by a labelled, empty "Événements passés". Note the
+          two conditions read different arrays on purpose: the message asks
+          about `events`, this asks about `planned`, so a player owed an answer
+          on everything gets neither (the block above holds it all). */}
       <section className="mt-block" aria-labelledby={showHeading ? "planning-heading" : undefined}>
         {showHeading ? (
           <h2 id="planning-heading" className="font-display text-xl">
