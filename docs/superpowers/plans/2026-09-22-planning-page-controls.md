@@ -149,14 +149,15 @@ describe("ToggleGroup", () => {
     expect(screen.getByRole("radio", { name: "Planning" })).toBeChecked();
   });
 
-  it("clears the 44px floor on every item", () => {
-    render(<Harness />);
-
-    for (const item of screen.getAllByRole("radio")) {
-      expect(item.className).toContain("min-h-touch");
-    }
-  });
 });
+
+// THE 44px FLOOR IS NOT ASSERTED HERE, deliberately. jsdom computes no layout,
+// so the only thing this file could check is that the string "min-h-touch"
+// appears in a className — which passes just as happily if the token is
+// misspelled, if styles.css stops defining --spacing-touch, or if a later class
+// in the cascade overrides the height. That is a test of the source text, not of
+// the control a thumb has to hit. The floor is measured for real, once, in a
+// browser: web/e2e/members.spec.ts, added in Task 4.
 ```
 
 - [ ] **Step 2: Run it to make sure it fails**
@@ -252,21 +253,11 @@ export { ToggleGroup, ToggleGroupItem };
 npx vitest run web/src/components/ui/toggle-group.test.tsx
 ```
 
-Expected: PASS, 4 tests.
+Expected: PASS, 3 tests.
 
 If `toBeChecked()` throws on a `role="radio"` that is not an `<input>`, jest-dom supports `aria-checked` on `role="radio"` — check the element really carries `role="radio"` by logging `screen.getByRole("radio", { name: "Planning" }).outerHTML`. Do not change the assertion to `toHaveAttribute("aria-checked", "true")` without first confirming the role is right; the role is the thing under test.
 
-- [ ] **Step 5: Verify the primitive is honest about the floor in a browser, not just in jsdom**
-
-jsdom computes no layout, so Step 1's floor test only proves the class is present. Confirm the rendered height once:
-
-```bash
-npm run dev:mock &
-```
-
-Then in the browser at http://localhost:5173, or by extending Task 4's e2e — whichever you prefer — check a rendered item's `getBoundingClientRect().height` is `>= 44`. Note the number; Task 4 asserts it for real.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git status --short   # package-lock.json must NOT be listed; if it is, git checkout -- package-lock.json
@@ -799,6 +790,18 @@ In `web/e2e/members.spec.ts`, inside the existing `for (const path of [...])` lo
         .first()
         .evaluate((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
       expect(firstCardTop, "the control block above the first card has grown").toBeLessThan(300);
+
+      // THE 44px FLOOR, MEASURED, which is the only place it can be. The jsdom
+      // suite can see that `min-h-touch` is in a className and nothing more —
+      // not a misspelt token, not a missing --spacing-touch, not a later class
+      // winning the cascade. Both halves of the new switch are controls a thumb
+      // has to hit on the phone this whole issue is about.
+      for (const name of ["Planning", "Passés"]) {
+        const box = await page.getByRole("radio", { name }).boundingBox();
+        expect(box?.height, `the "${name}" segment is under the 44px floor`).toBeGreaterThanOrEqual(
+          44,
+        );
+      }
 ```
 
 - [ ] **Step 2: Run it against the finished screens**
