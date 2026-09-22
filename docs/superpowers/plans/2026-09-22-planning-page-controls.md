@@ -26,14 +26,20 @@
 
 From the spec, at 390x844 on the mocked stack as `demo.direction`:
 
-| | today | after |
-| --- | --- | --- |
-| control rows | 2 | **1** |
-| control block | 104px | **44px** |
-| first card top | 337 | **287** |
-| first card top, a player | 353 | 355 |
-| cards fully above the fold | 2 | 2 (saturated — see the spec's floor measurement) |
-| `scrollWidth - clientWidth` | 0 | 0 |
+| | today | predicted | **as built** |
+| --- | --- | --- | --- |
+| control rows | 2 | 1 | **1** |
+| the controls' own height | 104px | 44px | **50px** |
+| first card top | 337 | 287 | **291** |
+| first card top, a player | 353 | 355 | **359** |
+| cards fully above the fold | 2 | 2 | **2** (saturated — see the spec's floor measurement) |
+| `scrollWidth - clientWidth` | 0 | 0 | **0** |
+
+The predicted column came from candidates built as injected DOM; the built one
+was measured on the finished screens on 2026-09-22 and is what closes the issue.
+The gap is one thing the candidate could not model: the switch's bordered group
+is 50px around its 44px segments, not 44px. The spec's "What it costs and what
+it buys" has the full account.
 
 ## File Structure
 

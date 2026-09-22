@@ -39,7 +39,7 @@ measured. That layout is not shippable; it answers one question only.
 | variant                   | first card top | 3rd card bottom | cards fully above 844 |
 | ------------------------- | -------------- | --------------- | --------------------- |
 | today                     | 337            | 1123            | 2                     |
-| this design               | 287            | 1073            | 2                     |
+| this design, as built     | **291**        | 1077            | 2                     |
 | **floor, zero controls**  | **217**        | **1003**        | **2**                 |
 
 y=217 is the floor: the site header, the section's `py-8`, the `h1` and its
@@ -70,20 +70,41 @@ plus a fourth that the measurement raised.
 
 ## What it costs and what it buys
 
-| | today | this design |
+Re-measured on the finished screens on 2026-09-22, after Tasks 1-3 shipped. The
+design's figures were taken from candidates built as injected DOM, and three of
+them were a few pixels optimistic; these are the built ones and they are what
+the issue is closed on.
+
+| | today | this design, as built |
 | --- | --- | --- |
 | control rows, `events.manage` | 2 | **1** |
-| control block, `events.manage` | 104px | **44px** |
-| first card top, `events.manage` | 337 | **287** |
-| first card top, a player | 353 | 355 |
+| the controls' own height, `events.manage` | 104px | **50px** |
+| the heading's row, `events.manage` | 36px | 44px — it now carries the trigger |
+| first card top, `events.manage` | 337 | **291** (46px earlier) |
+| first card top, a player | 353 | **359** (6px later) |
 | cards fully above the fold | 2 | 2 (saturated) |
 | `scrollWidth - clientWidth` at 390px | 0 | 0 |
+
+**Where the design's numbers were wrong, and why.** It predicted a first card at
+287 and a 2px cost to a player; the built figures are 291 and 6px. Both come
+from one thing the injected candidate could not model: the switch's row is
+**50px**, not the 44px a bare button occupied — the bordered group adds 2px of
+padding and 1px of border on each axis around its 44px segments. The segments
+themselves measure exactly as predicted, 90px and 77px. The heading's row also
+grows from 36px to 44px, because the trigger riding on it is taller than the
+`h1`; that is part of the 46px rather than a surprise, since the row it replaced
+was 44px too.
+
+The shape of the result is unchanged: two control rows become one, and the first
+card moves up by 46px for the committee. A player still pays a few pixels for a
+change that buys them no space, which §2 already said and which is still the
+right trade for the reason given there.
 
 ## 1. The add control
 
 One primary button reading `Ajouter` (**103px**), opening a two-item menu.
 
-**The whole 50px is this, and it is this because of one adjacency.** The
+**The whole saving is this — 46px, as built — and it is this because of one adjacency.** The
 heading is 170px and the trigger 103px: 170 + 103 + 16 of gap is 289px against
 358px, so the trigger sits on the heading's own line and its row disappears
 altogether. Today's pair is 175 + 144 + 8 = 327px, which fits on one line but
@@ -110,10 +131,14 @@ Three consequences, each of which was checked rather than assumed:
   therefore still quotes the exact words now sitting in the menu, and the trap
   it was written to avoid — spelling a button's label out a second time, so
   the two come to disagree — is not reintroduced.
-- **The trigger's accessible name is `Ajouter au planning`** (`Zum Programm
-  hinzufügen`), which starts with the visible `Ajouter`, so a voice-control
-  user saying the visible word still matches it (WCAG 2.5.3). That is the rule
-  `ButtonLink`'s docblock already states for the row actions.
+- **The trigger's accessible name is `Ajouter au planning`** (`Hinzufügen zur
+  Planung`), which starts with the visible word in both languages, so a
+  voice-control user saying it still matches (WCAG 2.5.3). That is the rule
+  `ButtonLink`'s docblock already states for the row actions. **The German was
+  wrong here first** — `Zum Programm hinzufügen`, which ends with the visible
+  word rather than leading with it, and which used a noun appearing nowhere else
+  in `de.ts`. German word order pushes a separable verb to the end, so this rule
+  has to be checked per language instead of carried over from the French.
 - **Both items are real anchors**, `DropdownMenuItem asChild` straight to
   react-router's `Link`, never `useNavigate`. One Slot layer lands Radix's
   props and two drops them — the mechanism `RowActions`'s `ItemFor` docblock
@@ -122,12 +147,14 @@ Three consequences, each of which was checked rather than assumed:
 ## 2. The view switch
 
 `Planning | Passés` as one control: **169px** (90 + 77) against today's 213px,
-on the same 44px row.
+in a row of 50px where the button's was 44px.
 
-**The honest accounting: this buys zero height, and costs a player 2px.** The
-segmented control's border makes it 1px taller than a bare button, so a reader
-without `events.manage` — who never had the `Ajouter` pair — goes from a first
-card at y=353 to one at y=355. It is kept anyway, reaffirmed on 2026-09-22
+**The honest accounting: this buys zero height, and costs a player 6px.** The
+bordered group is 50px where the bare button was 44px — 2px of padding and 1px
+of border on each axis around a 44px segment — so a reader without
+`events.manage`, who never had the `Ajouter` pair, goes from a first card at
+y=353 to one at y=359. The design first put that cost at 2px from an injected
+candidate; 6px is the measurement of the built control. It is kept anyway, reaffirmed on 2026-09-22
 knowing this, for two reasons that are not about space:
 
 - **It stops a view switch looking like an action.** It sat in a row beside
@@ -227,6 +254,19 @@ the primitive or at the call site, and no test for one.
 property of the test environment rather than of `RadioGroup`: the mechanism
 needs real focus events. Measured on both. So the arrow-selection assertion
 lives in the Playwright suite, alongside the 44px floor, for the same reason.
+
+**And in a browser it needs the key held, which is a real fragility.** Radix
+defers the focus move to a `setTimeout` (`@radix-ui/react-roving-focus`), and the
+click-on-focus only fires while `isArrowKeyPressedRef` is still true — a flag a
+document `keydown`/`keyup` pair sets and clears. Playwright's zero-delay
+`press("ArrowRight")` dispatches both back to back, and the keyup's synchronous
+reset can beat the deferred timeout: focus lands on the other segment and
+`aria-checked` never flips. Found while writing the e2e guard, on a finished and
+correct screen. `{ delay: 50 }` is what a human keypress looks like and makes it
+reproducible, so the test holds the key — but note what it implies: the selection
+depends on the keyup not arriving first, so a synthetic or assistive-technology
+arrow press faster than a frame may move focus without selecting. Not fixable
+from this repo, and worth knowing before trusting arrow-select as an input path.
 
 **It is a radio group, and that is the announcement we want.** The root carries
 `role="radiogroup"` and each item `role="radio"` with `aria-checked`, so the
@@ -403,8 +443,9 @@ the one new key fails `npm run typecheck` until both catalogues carry it.
 
 ## 7. Close it with
 
-- The control block's height and the first card's y, before and after, for
-  `demo.direction` and for a player: 104px/337 and 44px/287; 353 and 355.
+- The controls' own height and the first card's y, before and after, for
+  `demo.direction` and for a player: 104px/337 becomes 50px/291; a player's
+  353 becomes 359.
 - 390x844 screenshots of `/events` as `demo.direction` and as `demo.player`.
 - `document.scrollWidth === document.clientWidth` still holding at 390px, from
   [#89](https://github.com/hoferan/website-les-canetons/issues/89).
