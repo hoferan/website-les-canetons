@@ -261,6 +261,34 @@ because Radix's naming invites exactly that confusion.
   view in the URL is a real improvement — a shareable link, a working back
   button — and it is a separate change with its own reasons; doing it here
   would widen a layout fix into routing.
+
+### One thing it DOES change, added 2026-09-22 after the switch was built
+
+**The past view renders no heading, and `events.pastHeading` is dead.** Found
+while writing the view switch's tests, which tried to assert that heading and
+could not. `Events.tsx:461-467` gates the section's `<h2>` on
+`awaiting.length > 0`, and `awaiting` is unconditionally empty when
+`showingPast` is true — nobody is owed an answer about last Saturday — so
+`showingPast ? t("events.pastHeading") : t("events.restHeading")` can only ever
+reach `restHeading`. The past view therefore has no heading at all, and its
+`<section>` no `aria-labelledby`, so it has no accessible name either.
+
+The gate's own comment justifies itself for the upcoming view — a lone
+"Le reste du planning" under a page titled "Planning" is a line of chrome
+costing a line of screen — and that reasoning does not transfer. "Événements
+passés" is not redundant under "Planning": it is the only thing on the page
+that says which half is being shown.
+
+**It is fixed in this branch rather than deferred**, decided by André on
+2026-09-22 against the one-issue-one-PR rule, because it is the same question as
+Review Focus 4: what tells a reader the list was replaced. Without it the answer
+in the past view is "the radiogroup, alone". The condition becomes
+`showingPast || awaiting.length > 0`.
+
+**It does not move any number in this spec.** The measurements above are all of
+the upcoming view, where the gate's behaviour is unchanged: `demo.direction` is
+in no register, so `awaiting` is empty and there is no heading at y=287 either
+way, and a player already had one.
 - **`EventCard`, `RowActions`, and every per-row action.** #118 owns those and
   is closed.
 

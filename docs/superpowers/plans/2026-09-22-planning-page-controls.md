@@ -49,6 +49,8 @@ From the spec, at 390x844 on the mocked stack as `demo.direction`:
 
 Task order is forced only at 1 → 2. Task 3 is independent of Tasks 1 and 2; Task 4 measures the result of 2 and 3 together.
 
+**Added after Task 2 was built (2026-09-22):** Task 2's implementer discovered that the brief asked it to assert a heading that can never render — `events.pastHeading` is unreachable, because `Events.tsx:461-467` gates the `<h2>` on `awaiting.length > 0` and `awaiting` is always empty in the past view. André chose to fix it in this branch rather than defer it, so Task 2 gains a fix pass: the gate becomes `showingPast || awaiting.length > 0`, and the assertion the brief originally wanted is restored. The spec's §3 records the reasoning. No measurement changes — the closing numbers are all of the upcoming view.
+
 ---
 
 ### Task 1: The `radio-group` primitive
