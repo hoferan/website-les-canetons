@@ -620,3 +620,74 @@ test("the login pills render on the card in German", async () => {
     "Konto nie benutzt",
   );
 });
+
+/* ------------------------------------------------------------------------ *
+ * Searching and filtering (#97)
+ * ------------------------------------------------------------------------ */
+
+test("typing a name narrows the roster, accents and case aside", async () => {
+  const user = userEvent.setup();
+  await renderRoster();
+
+  // "perrine", no capital: the server's collation ignores case and accents,
+  // and the mocked handler folds the same way.
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un membre" }), "PERRINE");
+
+  await screen.findByText("1 sur 5 membres");
+  expect(lastNamesIn(cards())).toEqual(["Player"]);
+});
+
+test("the pupitre filter narrows the roster, and 'Aucun pupitre' finds the organisers", async () => {
+  const user = userEvent.setup();
+  await renderRoster();
+
+  await user.selectOptions(screen.getByRole("combobox", { name: "Pupitre" }), "Cloches");
+  await screen.findByText("1 sur 5 membres");
+  expect(lastNamesIn(cards())).toEqual(["Player"]);
+
+  await user.selectOptions(screen.getByRole("combobox", { name: "Pupitre" }), "none");
+  await screen.findByText("1 sur 5 membres");
+  expect(lastNamesIn(cards())).toEqual(["Direction"]);
+});
+
+test("the rôle filter narrows the roster and combines with the search", async () => {
+  const user = userEvent.setup();
+  await renderRoster();
+
+  // Role 1 is `direction`: Dominique and Bastien hold it.
+  await user.selectOptions(screen.getByRole("combobox", { name: "Rôle" }), "1");
+  await screen.findByText("2 sur 5 membres");
+  expect(lastNamesIn(cards())).toEqual(["Both", "Direction"]);
+
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un membre" }), "bastien");
+  await screen.findByText("1 sur 5 membres");
+  expect(lastNamesIn(cards())).toEqual(["Both"]);
+});
+
+test("a search that finds nobody says so, and clearing it brings the roster back", async () => {
+  const user = userEvent.setup();
+  await renderRoster();
+
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un membre" }), "zzz");
+
+  expect(
+    await screen.findByText("Aucun membre ne correspond à cette recherche."),
+  ).toBeInTheDocument();
+  expect(screen.getByTestId("roster-count")).toHaveTextContent("0 sur 5 membres");
+
+  await user.click(screen.getByRole("button", { name: "Effacer les filtres" }));
+
+  await screen.findByText("5 membres");
+  expect(screen.getByRole("searchbox", { name: "Rechercher un membre" })).toHaveValue("");
+  expect(lastNamesIn(cards())).toHaveLength(5);
+});
+
+test("the filtered count declines in German", async () => {
+  const user = userEvent.setup();
+  await renderRoster("de-CH");
+
+  await user.type(screen.getByRole("searchbox", { name: "Mitglied suchen" }), "perrine");
+
+  // Dative after «von»: «Mitgliedern», which no French-shaped plural gives.
+  expect(await screen.findByText("1 von 5 Mitgliedern")).toBeInTheDocument();
+});

@@ -1135,3 +1135,80 @@ test("deleting names the event in German, with tight quotes", async () => {
   // ConfirmByTypingName's own two words, which belong to no one screen.
   expect(within(dialog).getByRole("button", { name: "Abbrechen" })).toBeInTheDocument();
 });
+
+/* ------------------------------------------------------------------------ *
+ * Searching (#97)
+ * ------------------------------------------------------------------------ */
+
+function titlesOnScreen(): string[] {
+  return screen
+    .getAllByTestId("event-title")
+    .map((title) => title.textContent ?? "")
+    .sort();
+}
+
+test("typing narrows the planning to the events whose title matches", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  // Accent-free and upper-cased: the server's collation folds both.
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un événement" }), "APERITIF");
+
+  await waitFor(() => expect(titlesOnScreen()).toEqual(["Répétition + apéritif de Noël"]));
+});
+
+test("the search matches the place as well as the title", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un événement" }), "lac noir");
+
+  await waitFor(() => expect(titlesOnScreen()).toEqual(["Weekend musical"]));
+});
+
+test("the search carries over to the past", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un événement" }), "werkhof");
+  await waitFor(() => expect(titlesOnScreen()).toHaveLength(3));
+
+  await user.click(screen.getByRole("radio", { name: "Passés" }));
+
+  // The one past rehearsal, which is also at the Werkhof.
+  await waitFor(() => expect(titlesOnScreen()).toEqual(["Répétition"]));
+});
+
+test("a search that finds nothing says so, without the empty planning's hint", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un événement" }), "zzz");
+
+  expect(
+    await screen.findByText("Aucun événement ne correspond à cette recherche."),
+  ).toBeInTheDocument();
+  // The committee's "add a series" hint is for a planning with nothing in
+  // it, not for words that matched nothing.
+  expect(screen.queryByText("Aucun événement au planning.")).not.toBeInTheDocument();
+  expect(screen.queryByText(/générez toute une saison/)).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Effacer la recherche" }));
+
+  await waitFor(() => expect(titlesOnScreen()).toHaveLength(6));
+});
+
+test("a search re-partitions the top block, like a day does", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.player");
+
+  // Perrine owes answers on several events; a search for one of them leaves
+  // exactly that one in "À répondre".
+  await user.type(screen.getByRole("searchbox", { name: "Rechercher un événement" }), "cheyres");
+
+  await waitFor(() =>
+    expect(owedCards().map((card) => within(card).getByTestId("event-title").textContent)).toEqual([
+      "Vendanges Cheyres",
+    ]),
+  );
+});

@@ -1053,6 +1053,11 @@ export type eventIndexResponse200 = {
   status: 200;
 };
 
+export type eventIndexResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
 export type eventIndexResponse401 = {
   data: Problem401Response;
   status: 401;
@@ -1066,7 +1071,9 @@ export type eventIndexResponse503 = {
 export type eventIndexResponseSuccess = eventIndexResponse200 & {
   headers: Headers;
 };
-export type eventIndexResponseError = (eventIndexResponse401 | eventIndexResponse503) & {
+export type eventIndexResponseError = (
+  eventIndexResponse400 | eventIndexResponse401 | eventIndexResponse503
+) & {
   headers: Headers;
 };
 
@@ -1098,6 +1105,9 @@ export const getEventIndexUrl = (params?: EventIndexParams) => {
  *
  * An event taking place today stays in the planning for the whole of that
  * day; it does not move to the history the moment it starts.
+ *
+ * `?q=` narrows either half to the events whose title or location contains
+ * it, ignoring case and accents. `meta.total` counts the matches.
  * @summary List the planning
  */
 export const eventIndex = async (
@@ -1116,7 +1126,7 @@ export const getEventIndexQueryKey = (params?: EventIndexParams) => {
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1139,11 +1149,11 @@ export const getEventIndexQueryOptions = <
 };
 
 export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
-export type EventIndexQueryError = Problem401Response | Problem503Response;
+export type EventIndexQueryError = Problem400Response | Problem401Response | Problem503Response;
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem503Response,
 >(
   params: undefined | EventIndexParams,
   options: {
@@ -1162,7 +1172,7 @@ export function useEventIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1181,7 +1191,7 @@ export function useEventIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1196,7 +1206,7 @@ export function useEventIndex<
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -6374,6 +6384,11 @@ export type memberIndexResponse200 = {
   status: 200;
 };
 
+export type memberIndexResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
 export type memberIndexResponse401 = {
   data: Problem401Response;
   status: 401;
@@ -6393,7 +6408,7 @@ export type memberIndexResponseSuccess = memberIndexResponse200 & {
   headers: Headers;
 };
 export type memberIndexResponseError = (
-  memberIndexResponse401 | memberIndexResponse403 | memberIndexResponse503
+  memberIndexResponse400 | memberIndexResponse401 | memberIndexResponse403 | memberIndexResponse503
 ) & {
   headers: Headers;
 };
@@ -6424,6 +6439,13 @@ export const getMemberIndexUrl = (params?: MemberIndexParams) => {
  * No password and no hash is ever included, and neither are effective
  * permissions: a role is what grants them, so read `GET /api/v1/roles` and
  * join on `roleIds`.
+ *
+ * Three optional filters narrow the roster, and combine when given
+ * together. `q` matches a first name, a last name, a username, or the
+ * whole name in either order, ignoring case and accents. `section` takes a
+ * register id, or `none` for the members in no register. `role` takes a
+ * role id. An id that names nothing matches nobody rather than failing,
+ * and `meta.total` counts the matches, not the whole roster.
  * @summary List the roster
  */
 export const memberIndex = async (
@@ -6442,7 +6464,7 @@ export const getMemberIndexQueryKey = (params?: MemberIndexParams) => {
 
 export const getMemberIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: MemberIndexParams,
   options?: {
@@ -6465,11 +6487,12 @@ export const getMemberIndexQueryOptions = <
 };
 
 export type MemberIndexQueryResult = NonNullable<Awaited<ReturnType<typeof memberIndex>>>;
-export type MemberIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
+export type MemberIndexQueryError =
+  Problem400Response | Problem401Response | Problem403Response | Problem503Response;
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params: undefined | MemberIndexParams,
   options: {
@@ -6488,7 +6511,7 @@ export function useMemberIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: MemberIndexParams,
   options?: {
@@ -6507,7 +6530,7 @@ export function useMemberIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: MemberIndexParams,
   options?: {
@@ -6522,7 +6545,7 @@ export function useMemberIndex<
 
 export function useMemberIndex<
   TData = Awaited<ReturnType<typeof memberIndex>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: MemberIndexParams,
   options?: {

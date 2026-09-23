@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ import { rowsOf, totalOf } from "../api/collection";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
+import { SearchField, useDebouncedValue } from "../components/SearchField";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { t } from "../i18n";
 import { roleLabel } from "../i18n";
@@ -56,13 +57,42 @@ import { MemberForm, type MemberDraft } from "../members/MemberForm";
  * key, and never the permission strings: "why does she have this?" is answered
  * with "because she is in Team Direction" (design §3).
  *
+ * SEARCHED AND FILTERED ON THE SERVER (#97), never over the rows this screen
+ * happens to hold: the collection envelope slices on the server, so a filter
+ * here would search one page of a roster that had been cut short and say
+ * nothing about the rest. See
+ * docs/superpowers/specs/2026-09-23-roster-and-planning-search-design.md.
+ *
  * INVARIANT REFUSALS COME FROM THE SERVER. This screen does not pre-empt
  * cannot_delete_self or cannot_remove_last_administrator with its own copy of
  * the rule — a duplicated rule drifts, and then the two disagree in front of
  * somebody trying to fix a lockout. It renders what the API says, translated.
  */
 export function Members() {
-  const roster = useMemberIndex();
+  // What is typed, and what has been asked for. The box follows every
+  // keystroke; the request follows the box once it has been still for 250ms.
+  const [typed, setTyped] = useState("");
+  const q = useDebouncedValue(typed.trim());
+  // "" is "all"; "none" is the members in no register; anything else an id.
+  const [sectionFilter, setSectionFilter] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+
+  const filters = {
+    ...(q === "" ? {} : { q }),
+    ...(sectionFilter === "" ? {} : { section: sectionFilter }),
+    ...(roleFilter === "" ? {} : { role: Number(roleFilter) }),
+  };
+  const filtering = Object.keys(filters).length > 0;
+
+  // THE PREVIOUS ANSWER STAYS ON SCREEN while the next one loads, so typing
+  // narrows the list rather than blanking it into "Chargement" per keystroke.
+  const roster = useMemberIndex(filtering ? filters : undefined, {
+    query: { placeholderData: keepPreviousData },
+  });
+  // The whole roster, for the "3 sur 45" count. Unfiltered it is the SAME
+  // query as the one above — same key — so it costs no second request; while
+  // filtering it is the cached answer from before the first keystroke.
+  const wholeRoster = useMemberIndex();
   const sections = useSectionIndex();
   const committeeFunctions = useCommitteeFunctionIndex();
   const roles = useRoleIndex();
@@ -129,7 +159,8 @@ export function Members() {
   // it reads `roster.data.data.data`, three identically named hops of which
   // only the middle one is the envelope.
   const members = rowsOf<MemberResource>(roster.data);
-  const rosterCount = totalOf(roster.data);
+  const rosterCount = totalOf(wholeRoster.data);
+  const matchCount = totalOf(roster.data);
   const sectionList = rowsOf<SectionResource>(sections.data);
   const committeeFunctionList = rowsOf<CommitteeFunctionResource>(committeeFunctions.data);
   const roleList = rowsOf<RoleResource>(roles.data);
@@ -139,7 +170,15 @@ export function Members() {
     return key === undefined ? "" : roleLabel(key);
   };
 
+  // No params: the key is a prefix of every filtered roster's as well, so a
+  // write refreshes whichever search is on screen and the count beside it.
   const refresh = () => queryClient.invalidateQueries({ queryKey: getMemberIndexQueryKey() });
+
+  function clearFilters() {
+    setTyped("");
+    setSectionFilter("");
+    setRoleFilter("");
+  }
 
   function openCreate() {
     form.clear();
@@ -321,7 +360,9 @@ export function Members() {
             the day this list is ever cut short. */}
         {rosterCount === null ? null : (
           <span className="text-ink-muted" data-testid="roster-count">
-            {t("members.count", { count: rosterCount })}
+            {filtering && matchCount !== null
+              ? t("members.filteredCount", { matches: matchCount, count: rosterCount })
+              : t("members.count", { count: rosterCount })}
           </span>
         )}
       </div>
@@ -353,6 +394,52 @@ export function Members() {
         </p>
       ) : null}
 
+      {/* THE FILTERS. The labels are visually hidden, for the reason
+          SearchField gives; each select's "all" option names what it filters,
+          so it reads as "Tous les pupitres" until somebody picks one. */}
+      <div className="mt-block flex flex-wrap gap-tight" data-testid="roster-filters">
+        <SearchField
+          id="roster-search"
+          label={t("members.searchLabel")}
+          value={typed}
+          onChange={setTyped}
+          className="w-full sm:w-72"
+        />
+        <label htmlFor="roster-section" className="sr-only">
+          {t("members.sectionFilter")}
+        </label>
+        <select
+          id="roster-section"
+          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          value={sectionFilter}
+          onChange={(event) => setSectionFilter(event.target.value)}
+        >
+          <option value="">{t("members.allSections")}</option>
+          {sectionList.map((section) => (
+            <option key={section.id} value={String(section.id)}>
+              {section.name}
+            </option>
+          ))}
+          <option value="none">{t("members.noSection")}</option>
+        </select>
+        <label htmlFor="roster-role" className="sr-only">
+          {t("members.roleFilter")}
+        </label>
+        <select
+          id="roster-role"
+          className="focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink"
+          value={roleFilter}
+          onChange={(event) => setRoleFilter(event.target.value)}
+        >
+          <option value="">{t("members.allRoles")}</option>
+          {roleList.map((role) => (
+            <option key={role.id} value={String(role.id)}>
+              {roleLabel(role.key)}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {roster.isPending ? <p className="mt-block">{t("common.loading")}</p> : null}
       {roster.isError ? (
         <p role="alert" className="mt-block text-danger">
@@ -372,6 +459,18 @@ export function Members() {
           unexplained lines under a name — and the label also puts the meaning
           next to the value in the reading order, which is the part a screen
           reader lost when the real <th> went. */}
+      {/* A SEARCH THAT FOUND NOBODY SAYS SO, and offers the way back. Without
+          it the screen is a heading, a count and nothing, which reads as a
+          roster that failed to load. */}
+      {filtering && !roster.isPending && !roster.isError && members.length === 0 ? (
+        <div className="mt-block" data-testid="roster-no-match">
+          <p className="text-ink-muted">{t("members.noMatch")}</p>
+          <Button type="button" variant="outline" className="mt-tight" onClick={clearFilters}>
+            {t("members.clearFilters")}
+          </Button>
+        </div>
+      ) : null}
+
       <ul
         data-testid="roster-cards"
         className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"

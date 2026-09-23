@@ -240,6 +240,8 @@ export const fr = {
     // ConfirmByTypingName's field, which only the roster arms today. Whole
     // sentence, guillemets included, for the reason the whole file repeats.
     typeToConfirm: "Tapez «\u00a0{{phrase}}\u00a0» pour confirmer",
+    // SearchField's clear button (#97), on the roster and on the planning.
+    clearSearch: "Effacer la recherche",
     // RowActions' own trigger label, shared by the three screens that
     // compose with it. Moved out of events.* (was events.moreActionsAria)
     // because the roster and the guest list hand it a PERSON's name, not an
@@ -549,6 +551,10 @@ export const fr = {
     showAll: "Voir tout le planning",
     loadFailed: "Le planning n’a pas pu être chargé.",
     empty: "Aucun événement au planning.",
+    // A search that found nothing is not an empty planning (#97), and must
+    // not bring the committee's "add a series" hint with it.
+    searchLabel: "Rechercher un événement",
+    noMatch: "Aucun événement ne correspond à cette recherche.",
     emptyPast: "Aucun événement passé.",
     // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.
     // The hint quotes the button beside it, so spelling the label out twice
@@ -778,6 +784,21 @@ export const fr = {
     rolesLabel: "Rôles\u00a0: {{value}}",
     noSection: "Aucun pupitre",
     noRoles: "Aucun rôle",
+
+    // Searching the roster (#97). The label is the field's accessible name
+    // and its placeholder; the two selects default to "all".
+    searchLabel: "Rechercher un membre",
+    sectionFilter: "Pupitre",
+    roleFilter: "Rôle",
+    allSections: "Tous les pupitres",
+    allRoles: "Tous les rôles",
+    // The matches out of the whole roster. PLURAL ON THE ROSTER, not on the
+    // matches: the noun is what `count` is, so "1 sur 45 membres" and never
+    // "1 sur 45 membre".
+    filteredCount_one: "{{matches}} sur {{count}} membre",
+    filteredCount_other: "{{matches}} sur {{count}} membres",
+    noMatch: "Aucun membre ne correspond à cette recherche.",
+    clearFilters: "Effacer les filtres",
 
     // Used as the button's sr-only text AND as the dialog's title.
     editPerson: "Modifier {{name}}",

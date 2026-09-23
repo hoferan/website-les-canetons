@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
+import { SearchField, useDebouncedValue } from "../components/SearchField";
 import { AttendanceControls } from "../events/AttendanceControls";
 import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
@@ -100,6 +101,14 @@ export function Events() {
   const [showingCalendar, setShowingCalendar] = useState(false);
   const [day, setDay] = useState<string | null>(null);
 
+  // THE SEARCH (#97), ON THE SERVER. Unlike the day, which narrows the loaded
+  // half of the planning to one date on the calendar drawn from it, a search
+  // has to see the whole list — and only the server does once the envelope
+  // ever cuts it short. The box follows each keystroke; the request follows
+  // the box once it has been still for 250ms.
+  const [typed, setTyped] = useState("");
+  const q = useDebouncedValue(typed.trim());
+
   const destructive = useApiFormError(t("events.deleteFailed"));
 
   // The event being deleted, together with the tag of the read the dialog was
@@ -122,7 +131,13 @@ export function Events() {
   // `past: "1"` is the magic value the API reads; anything else is the
   // upcoming view. Passing undefined rather than "0" keeps the query string
   // absent altogether, which is what the default case looks like on the wire.
-  const planning = useEventIndex(showingPast ? { past: "1" } : undefined);
+  //
+  // The previous answer STAYS ON SCREEN while a new search loads, so typing
+  // narrows the list rather than blanking it into "Chargement" per keystroke.
+  const params = { ...(showingPast ? { past: "1" as const } : {}), ...(q === "" ? {} : { q }) };
+  const planning = useEventIndex(Object.keys(params).length > 0 ? params : undefined, {
+    query: { placeholderData: keepPreviousData },
+  });
 
   // Through rowsOf, which owns the status narrowing and the collection
   // envelope's own `data` hop — see web/src/api/collection.ts.
@@ -162,10 +177,15 @@ export function Events() {
   // what releases the hold: a new mount, the past toggle, a day chosen or
   // cleared on the calendar. Data arriving is NOT a settle — a background
   // refetch must not move a card the reader is looking at.
-  const scope = `${showingPast}|${day ?? ""}`;
+  //
+  // A SEARCH IS A RE-SCOPE TOO, like a day: the blocks re-partition on what
+  // the search found. NOT WHILE THE PREVIOUS ANSWER IS STANDING IN for it —
+  // keepPreviousData means the rows on screen belong to the last search for
+  // a moment, and a snapshot taken then would pin them under the new one.
+  const scope = `${showingPast}|${day ?? ""}|${q}`;
   const [owed, setOwed] = useState<{ scope: string; ids: Set<number> } | null>(null);
 
-  if (!planning.isPending && owed?.scope !== scope) {
+  if (!planning.isPending && !planning.isPlaceholderData && owed?.scope !== scope) {
     // Set during render, which React answers by re-rendering before it commits
     // anything — the documented way to derive state from something that
     // changed. An effect would paint one frame of the wrong partition first.
@@ -430,6 +450,14 @@ export function Events() {
         </div>
       ) : null}
 
+      <SearchField
+        id="planning-search"
+        label={t("events.searchLabel")}
+        value={typed}
+        onChange={setTyped}
+        className="mt-related w-full sm:w-72"
+      />
+
       {/* VISIBLE AT EVERY WIDTH, unlike the calendar that sets it. A narrowed
           list whose only control has just been hidden by a resize is a
           planning that has silently lost most of its events. */}
@@ -455,12 +483,19 @@ export function Events() {
       {/* The empty branch SAYS SOMETHING. A blank screen reads as broken, and
           this is the state a committee sees before they have entered the
           season — the first thing they will ever see on this page. */}
+      {/* A SEARCH THAT FOUND NOTHING IS NOT AN EMPTY PLANNING, and gets
+          neither the empty planning's sentence nor the committee's hint to
+          add a series: nothing is missing, the words just matched nothing. */}
       {!planning.isPending && !planning.isError && events.length === 0 ? (
         <div className="mt-block">
           <p className="text-ink-muted">
-            {showingPast ? t("events.emptyPast") : t("events.empty")}
+            {q !== ""
+              ? t("events.noMatch")
+              : showingPast
+                ? t("events.emptyPast")
+                : t("events.empty")}
           </p>
-          {mayManage && !showingPast ? (
+          {mayManage && !showingPast && q === "" ? (
             <p className="mt-tight text-sm text-ink-muted">
               {/* THE HINT QUOTES THE BUTTON BESIDE IT, so the label is read
                   from the same key that renders it rather than written out a
