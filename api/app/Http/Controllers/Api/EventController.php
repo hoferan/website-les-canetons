@@ -11,6 +11,7 @@ use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
 use App\Support\Permission;
+use App\Support\Search;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
@@ -36,6 +37,9 @@ class EventController extends Controller
      *
      * An event taking place today stays in the planning for the whole of that
      * day; it does not move to the history the moment it starts.
+     *
+     * `?q=` narrows either half to the events whose title or location contains
+     * it, ignoring case and accents. `meta.total` counts the matches.
      */
     // `type` is the LITERAL '1', not `string`. Scramble parses this argument as
     // a PHPDoc type, so a constant string becomes an enum of one value — which
@@ -74,6 +78,18 @@ class EventController extends Controller
         // paragraph, decision codes and test names included, to /api/docs.
         $past = $request->query('past') === '1';
 
+        // `q` is validated, unlike `past`: leniency there fails safe towards
+        // the planning, but there is no safe reading of a 5,000-character
+        // search, so it is refused rather than guessed at.
+        $filters = $request->validate([
+            /**
+             * Text to find in an event's title or location.
+             *
+             * @example concert
+             */
+            'q' => Search::RULES,
+        ]);
+
         // The split is on BandTime::startOfToday(), not now(): a rehearsal
         // that began an hour ago must stay in the planning of somebody
         // running late. Pinned by
@@ -84,6 +100,16 @@ class EventController extends Controller
         $query = $past
             ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
             : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
+
+        // A WHERE on the one query, not a filter over its rows (#97): the
+        // envelope slices what this returns, and the query budget holds.
+        // isset() rather than when()'s truthiness, so a search for "0" is one.
+        $query->when(isset($filters['q']), function ($query) use ($filters): void {
+            $pattern = Search::contains($filters['q']);
+            $query->where(fn ($match) => $match
+                ->where('title', 'like', $pattern)
+                ->orWhere('location', 'like', $pattern));
+        });
 
         // THE DENOMINATOR RIDES THE REQUEST, not the collection envelope.
         // It is one number for the whole list, so running the COUNT per row

@@ -168,6 +168,7 @@ export const de: typeof fr = {
     bootFailed:
       "Die Website konnte nicht gestartet werden. Bitte versuchen Sie es in wenigen Augenblicken erneut.",
     typeToConfirm: "Tippen Sie «{{phrase}}», um zu bestätigen",
+    clearSearch: "Suche löschen",
     // RowActions' own trigger label. für, not zu -- see fr.ts for why the
     // key moved here (M4/M5, #118 whole-branch review). The old
     // events.moreActionsAria shipped zu on the reasoning that it matched
@@ -333,6 +334,9 @@ export const de: typeof fr = {
     showAll: "Ganze Planung anzeigen",
     loadFailed: "Die Planung konnte nicht geladen werden.",
     empty: "Keine Anlässe in der Planung.",
+    searchLabel: "Anlass suchen",
+    searchPlaceholder: "Suchen",
+    noMatch: "Kein Anlass entspricht dieser Suche.",
     emptyPast: "Keine vergangenen Anlässe.",
     // ENGE GUILLEMETS, und {{action}} ist der Wert eines anderen Schlüssels:
     // Der Hinweis zitiert die Schaltfläche daneben.
@@ -483,6 +487,17 @@ export const de: typeof fr = {
     rolesLabel: "Rollen: {{value}}",
     noSection: "Kein Register",
     noRoles: "Keine Rolle",
+
+    searchLabel: "Mitglied suchen",
+    sectionFilter: "Register",
+    roleFilter: "Rolle",
+    allSections: "Alle Register",
+    allRoles: "Alle Rollen",
+    // DATIV nach «von»: «3 von 45 Mitgliedern».
+    filteredCount_one: "{{matches}} von {{count}} Mitglied",
+    filteredCount_other: "{{matches}} von {{count}} Mitgliedern",
+    noMatch: "Kein Mitglied entspricht dieser Suche.",
+    clearFilters: "Filter zurücksetzen",
 
     editPerson: "{{name}} bearbeiten",
     password: "Passwort",

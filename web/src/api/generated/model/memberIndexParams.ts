@@ -302,6 +302,23 @@
 
 export type MemberIndexParams = {
   /**
+   * Text to find in a first name, a last name, a username, or the whole name.
+   * @maxLength 100
+   * @nullable
+   */
+  q?: string | null;
+  /**
+   * A register id, or `none` for the members in no register.
+   * @nullable
+   * @pattern ^([0-9]+|none)$
+   */
+  section?: string | null;
+  /**
+   * A role id.
+   * @nullable
+   */
+  role?: number | null;
+  /**
    * How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.
    * @minimum 1
    * @maximum 1000

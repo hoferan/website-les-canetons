@@ -638,12 +638,25 @@
         "/events": {
             "get": {
                 "operationId": "event.index",
-                "description": "Any logged-in member; no permission is needed. Returns the events still\nto come, soonest first, each carrying `myAttendance`: the caller's own\nanswer, or `null` where they have not given one.\n\n`?past=1` returns the history instead, the events that have already\nhappened, newest first. Any other value, or none, gives the upcoming\nplanning. The two are halves of the list rather than a list and a\nsuperset of it.\n\nAn event taking place today stays in the planning for the whole of that\nday; it does not move to the history the moment it starts.",
+                "description": "Any logged-in member; no permission is needed. Returns the events still\nto come, soonest first, each carrying `myAttendance`: the caller's own\nanswer, or `null` where they have not given one.\n\n`?past=1` returns the history instead, the events that have already\nhappened, newest first. Any other value, or none, gives the upcoming\nplanning. The two are halves of the list rather than a list and a\nsuperset of it.\n\nAn event taking place today stays in the planning for the whole of that\nday; it does not move to the history the moment it starts.\n\n`?q=` narrows either half to the events whose title or location contains\nit, ignoring case and accents. `meta.total` counts the matches.",
                 "summary": "List the planning",
                 "tags": [
                     "Events"
                 ],
                 "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Text to find in an event's title or location.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        },
+                        "example": "concert"
+                    },
                     {
                         "name": "past",
                         "in": "query",
@@ -731,6 +744,9 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
@@ -3501,12 +3517,50 @@
         "/members": {
             "get": {
                 "operationId": "member.index",
-                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`.",
+                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`.\n\nThree optional filters narrow the roster, and combine when given\ntogether. `q` matches a first name, a last name, a username, or the\nwhole name in either order, ignoring case and accents. `section` takes a\nregister id, or `none` for the members in no register. `role` takes a\nrole id. An id that names nothing matches nobody rather than failing,\nand `meta.total` counts the matches, not the whole roster.",
                 "summary": "List the roster",
                 "tags": [
                     "Members"
                 ],
                 "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Text to find in a first name, a last name, a username, or the whole name.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "maxLength": 100
+                        },
+                        "example": "perrine"
+                    },
+                    {
+                        "name": "section",
+                        "in": "query",
+                        "description": "A register id, or `none` for the members in no register.",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "pattern": "^([0-9]+|none)$"
+                        },
+                        "example": "3"
+                    },
+                    {
+                        "name": "role",
+                        "in": "query",
+                        "description": "A role id.",
+                        "schema": {
+                            "type": [
+                                "integer",
+                                "null"
+                            ]
+                        },
+                        "example": 1
+                    },
                     {
                         "name": "limit",
                         "in": "query",
@@ -3584,6 +3638,9 @@
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"

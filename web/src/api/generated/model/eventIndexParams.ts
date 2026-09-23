@@ -302,6 +302,12 @@
 
 export type EventIndexParams = {
   /**
+   * Text to find in an event's title or location.
+   * @maxLength 100
+   * @nullable
+   */
+  q?: string | null;
+  /**
    * Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.
    */
   past?: "1";

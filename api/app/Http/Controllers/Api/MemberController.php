@@ -11,6 +11,7 @@ use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\Emits;
 use App\Support\GeneratedPassword;
+use App\Support\Search;
 use App\Support\SessionRevoker;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
@@ -34,9 +35,37 @@ class MemberController extends Controller
      * No password and no hash is ever included, and neither are effective
      * permissions: a role is what grants them, so read `GET /api/v1/roles` and
      * join on `roleIds`.
+     *
+     * Three optional filters narrow the roster, and combine when given
+     * together. `q` matches a first name, a last name, a username, or the
+     * whole name in either order, ignoring case and accents. `section` takes a
+     * register id, or `none` for the members in no register. `role` takes a
+     * role id. An id that names nothing matches nobody rather than failing,
+     * and `meta.total` counts the matches, not the whole roster.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
+        $filters = $request->validate([
+            /**
+             * Text to find in a first name, a last name, a username, or the whole name.
+             *
+             * @example perrine
+             */
+            'q' => Search::RULES,
+            /**
+             * A register id, or `none` for the members in no register.
+             *
+             * @example 3
+             */
+            'section' => ['nullable', 'regex:/^([0-9]+|none)$/'],
+            /**
+             * A role id.
+             *
+             * @example 1
+             */
+            'role' => ['nullable', 'integer'],
+        ]);
+
         // Ordered by name because this screen is scanned for a person, not
         // browsed by register. Grouping by register is the UI's business, and
         // it has sectionName to do it with.
@@ -52,7 +81,31 @@ class MemberController extends Controller
         // blank lines to find it. Measured 2026-09-10: this paragraph, test
         // name included, was being served at /api/docs. An intervening
         // statement is what breaks the association.
+        //
+        // THE FILTERS ARE WHEREs ON THAT ONE QUERY (#97), so the budget above
+        // holds with any of them set, and they narrow the query rather than
+        // the rows: PaginatesCollections slices what comes back, and a filter
+        // applied after the slice would search one page of the roster. The
+        // accent and case folding is the collation's — see App\Support\Search.
         $roster = Member::with(['section', 'roles'])
+            // isset() rather than when()'s own truthiness, which would read a
+            // search for "0" as no search at all.
+            ->when(isset($filters['q']), function ($query) use ($filters): void {
+                $pattern = Search::contains($filters['q']);
+                $query->where(fn ($match) => $match
+                    ->where('first_name', 'like', $pattern)
+                    ->orWhere('last_name', 'like', $pattern)
+                    ->orWhere('username', 'like', $pattern)
+                    // The whole name as somebody says it, and as the roster
+                    // sorts it: "perrine pl" and "player perr" both find her.
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$pattern])
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", [$pattern]));
+            })
+            ->when(isset($filters['section']), fn ($query) => $filters['section'] === 'none'
+                ? $query->whereNull('section_id')
+                : $query->where('section_id', (int) $filters['section']))
+            ->when(isset($filters['role']), fn ($query) => $query
+                ->whereHas('roles', fn ($held) => $held->whereKey((int) $filters['role'])))
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();

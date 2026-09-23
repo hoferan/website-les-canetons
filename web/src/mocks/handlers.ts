@@ -572,6 +572,21 @@ const DEFAULT_LIMIT = 500;
 const MAX_LIMIT = 1000;
 
 /**
+ * Whether `q` is a substring of any of `fields`, ignoring case and accents.
+ *
+ * What the real endpoints get from the `utf8mb4_unicode_ci` collation (see
+ * App\Support\Search): "helene" finds "Hélène". A mock matching exactly would
+ * let a screen test pass on input the real API folds differently. Stripping
+ * the combining marks after NFD is close enough to the collation for names and
+ * places; it is not a claim to reproduce it.
+ */
+function matchesSearch(fields: string[], q: string): boolean {
+  const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  const needle = fold(q);
+  return fields.some((field) => fold(field).includes(needle));
+}
+
+/**
  * One collection, enveloped and paged the way the real API does it.
  *
  * The mocked backend earns its keep by REFUSING and RESHAPING the way the real
@@ -1705,9 +1720,40 @@ const overrides = [
     if (refusal) {
       return refusal;
     }
-    const ordered = [...members].sort(
-      (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
-    );
+    // THE FILTERS THE REAL ENDPOINT TAKES (#97), applied before the envelope
+    // slices, as MemberController does. Malformed values are not refused here:
+    // the screen only ever sends ids it was handed, and the refusals are
+    // pinned by MemberSearchTest against the real thing.
+    const query = new URL(request.url).searchParams;
+    const q = query.get("q")?.trim() ?? "";
+    const section = query.get("section");
+    const role = query.get("role");
+
+    const ordered = [...members]
+      .filter(
+        (member) =>
+          q === "" ||
+          matchesSearch(
+            [
+              member.firstName,
+              member.lastName,
+              member.username,
+              `${member.firstName} ${member.lastName}`,
+              `${member.lastName} ${member.firstName}`,
+            ],
+            q,
+          ),
+      )
+      .filter(
+        (member) =>
+          section === null ||
+          section === "" ||
+          (section === "none" ? member.sectionId === null : member.sectionId === Number(section)),
+      )
+      .filter((member) => role === null || role === "" || member.roleIds.includes(Number(role)))
+      .sort(
+        (a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName),
+      );
     return collection(ordered, request);
   }),
 
@@ -1961,11 +2007,14 @@ const overrides = [
     // fail-safe direction the real endpoint takes: a truncated or misspelled
     // value must never be the one that hides events.
     const past = new URL(request.url).searchParams.get("past") === "1";
+    const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
     const planning = events
       .filter((event) =>
         past ? Date.parse(event.startsAt) < boundary : Date.parse(event.startsAt) >= boundary,
       )
+      // `?q=` narrows either half, on the title or the place (#97).
+      .filter((event) => q === "" || matchesSearch([event.title, event.location], q))
       .sort((a, b) =>
         past
           ? Date.parse(b.startsAt) - Date.parse(a.startsAt)
