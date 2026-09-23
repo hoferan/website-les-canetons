@@ -554,6 +554,8 @@ export const fr = {
     // A search that found nothing is not an empty planning (#97), and must
     // not bring the committee's "add a series" hint with it.
     searchLabel: "Rechercher un événement",
+    // The visible placeholder only, beside the switch on a phone (#97).
+    searchPlaceholder: "Rechercher",
     noMatch: "Aucun événement ne correspond à cette recherche.",
     emptyPast: "Aucun événement passé.",
     // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.

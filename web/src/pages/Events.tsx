@@ -424,6 +424,22 @@ export function Events() {
           <ToggleOption value="past">{t("events.viewPast")}</ToggleOption>
         </RadioGroup>
 
+        {/* BESIDE THE SWITCH, NOT ON A ROW OF ITS OWN. A row costs the first
+            card 60px at 390px, which is the exact budget #182 won back and
+            members.spec.ts guards (first card above y=300). Beside the 173px
+            switch it gets ~177px, so the visible placeholder is the short
+            word and the full "Rechercher un événement" stays its accessible
+            name. It takes the rest of the row and wraps under the switch
+            only on a screen narrower than any phone this band carries. */}
+        <SearchField
+          id="planning-search"
+          label={t("events.searchLabel")}
+          placeholder={t("events.searchPlaceholder")}
+          value={typed}
+          onChange={setTyped}
+          className="min-w-40 flex-1 sm:max-w-72"
+        />
+
         {/* md AND UP ONLY, and absent from a phone altogether rather than
             shrunk onto one. A month grid is for somebody planning a season at
             a desk; the list is the whole phone view and stays the default
@@ -449,14 +465,6 @@ export function Events() {
           <EventCalendar events={allEvents} selected={day} onSelect={setDay} />
         </div>
       ) : null}
-
-      <SearchField
-        id="planning-search"
-        label={t("events.searchLabel")}
-        value={typed}
-        onChange={setTyped}
-        className="mt-related w-full sm:w-72"
-      />
 
       {/* VISIBLE AT EVERY WIDTH, unlike the calendar that sets it. A narrowed
           list whose only control has just been hidden by a resize is a

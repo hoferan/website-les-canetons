@@ -335,6 +335,7 @@ export const de: typeof fr = {
     loadFailed: "Die Planung konnte nicht geladen werden.",
     empty: "Keine Anlässe in der Planung.",
     searchLabel: "Anlass suchen",
+    searchPlaceholder: "Suchen",
     noMatch: "Kein Anlass entspricht dieser Suche.",
     emptyPast: "Keine vergangenen Anlässe.",
     // ENGE GUILLEMETS, und {{action}} ist der Wert eines anderen Schlüssels:
