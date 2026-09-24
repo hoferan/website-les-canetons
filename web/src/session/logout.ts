@@ -1,5 +1,5 @@
 import { useAuthLogout } from "../api/generated/endpoints";
-import { currentLocale, t } from "../i18n";
+import { currentLocale } from "../i18n";
 import { pathInLocale } from "../i18n/locale";
 
 /**
@@ -19,12 +19,15 @@ import { pathInLocale } from "../i18n/locale";
  * IN THE CHROME, NOT ON A PAGE, for exactly that reason. A member held on
  * /account by the forced-password gate reaches the nav and nothing else, so a
  * logout living on some other route would be unreachable by the one person who
- * most needs it.
+ * most needs it. It sits in AccountMenu, which is in the nav.
  *
- * A BUTTON, NOT A LINK. It changes server state; there is no /logout URL to
+ * AN ACTION, NOT A LINK. It changes server state; there is no /logout URL to
  * bookmark, prefetch, or land on by pressing Back.
+ *
+ * A hook, because the logout is a menu item (#99) and the menu renders it.
+ * All this owns is what selecting it does.
  */
-export function LogoutButton({ onDone }: { onDone: () => void }) {
+export function useLogout(onDone: () => void): { logOut: () => void; isPending: boolean } {
   const logout = useAuthLogout({
     mutation: {
       // A FULL PAGE LOAD, NOT A ROUTER NAVIGATION, AND NOT CACHE SURGERY.
@@ -67,22 +70,13 @@ export function LogoutButton({ onDone }: { onDone: () => void }) {
     },
   });
 
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        if (logout.isPending) return;
-        logout.mutate();
-      }}
-      // aria-disabled rather than disabled, as everywhere else here: `disabled`
-      // blurs the focused control mid-submit and drops the keyboard user
-      // somewhere they did not ask to be. The early return above is the guard.
-      aria-disabled={logout.isPending}
-      className="focus-ring flex min-h-12 w-full items-center px-4 text-left text-white/80 hover:text-white md:min-h-0 md:w-auto md:px-0 md:py-1 md:text-ink-muted md:hover:text-ink"
-    >
-      {t("nav.logout")}
-    </button>
-  );
+  return {
+    logOut: () => {
+      if (logout.isPending) return;
+      logout.mutate();
+    },
+    isPending: logout.isPending,
+  };
 }
 
 /**
@@ -91,7 +85,8 @@ export function LogoutButton({ onDone }: { onDone: () => void }) {
  * EXPORTED SO IT CAN BE TESTED AT ALL. The navigation below cannot be: this is
  * a real full page load, and window.location is non-configurable in this jsdom
  * setup, so a spy on .assign throws "Cannot redefine property: assign" instead
- * of recording the call. the docblock above `ends the session on the server` in web/src/components/Layout.test.tsx documents that, having hit it,
+ * of recording the call. The docblock above `ends the session on the server`
+ * in web/src/components/Layout.test.tsx documents that, having hit it,
  * and proves the server half only. Splitting the destination out gives the
  * decision a unit test and leaves the landing to a real browser, which is
  * where it was always checked.

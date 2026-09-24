@@ -1,140 +1,75 @@
-import { ExternalLink, Menu } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Calendar, Inbox, type LucideIcon, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
+import { DesktopNav } from "./DesktopNav";
+import { type NavEntry } from "./NavEntry";
+import { DESK_ACTIVE, DESK_IDLE, DESK_LINK } from "./navStyles";
+import { type MemberEntry, PhoneNav } from "./PhoneNav";
 
 import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
-import { LogoutButton } from "../session/LogoutButton";
+import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * The public nav — what a stranger sees, in the order a stranger wants it.
+ * The public nav, IN ORDER OF IMPORTANCE, left to right — what a stranger
+ * wants, in the order a stranger wants it. The desktop bar folds from the
+ * right into "Plus" when it runs out of room, so this order is also the order
+ * in which entries disappear (#99).
  *
  * "Nous rejoindre" is first because recruiting is what this site is for: the
  * band takes players from 7 to 18 and loses them at 18, so the visitor worth
- * optimising for is a parent deciding whether to turn up on Saturday. The two
- * people pages follow, then the prose, then the way to write in.
+ * optimising for is a parent deciding whether to turn up on Saturday. The
+ * people page follows, then the way to write in, and last the pages a parent
+ * needs least. The gallery, an external site, comes after all of them.
  *
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
  */
-const NAV: Array<{ to: string; labelKey: TranslationKey }> = [
+const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/join", labelKey: "nav.join" },
   { to: "/agenda", labelKey: "nav.agenda" },
   { to: "/band", labelKey: "nav.band" },
+  { to: "/contact", labelKey: "nav.contact" },
   { to: "/committee", labelKey: "nav.committee" },
   { to: "/history", labelKey: "nav.history" },
-  { to: "/contact", labelKey: "nav.contact" },
 ];
 
+const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";
+
 /**
- * Screens grouped under "Direction", each gated by the permission that gates
- * the API route behind it.
+ * The committee's screens, each gated by the permission that gates the API
+ * route behind it. Under the avatar on desktop, in "Mon espace" on a phone.
  *
- * THE GROUP IS ABSENT, NOT REFUSED (design §4). A member who cannot use
+ * THE ENTRY IS ABSENT, NOT REFUSED (design §4). A member who cannot use
  * /members never sees the word: showing a link that leads to "Accès refusé"
  * teaches people that parts of the site are broken for them.
  *
  * Gated on a PERMISSION, never a role name — the same rule the middleware and
  * the route guards follow.
  */
-const DIRECTION_NAV: Array<{ to: string; labelKey: TranslationKey; permission: string }> = [
-  { to: "/members", labelKey: "nav.members", permission: "members.manage" },
-  { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view" },
-];
-
-/**
- * THE THIRD NAV CATEGORY: needs a session and nothing more.
- *
- * Neither public like Galerie nor permission-gated like Membres. Reading the
- * planning is something everybody in the band does, so gating it on a
- * permission would be the same mistake as gating the ability to answer for an
- * event — but it is not for strangers either, because R1c is the members' tool
- * and the public planning is R2's (C1).
- *
- * An array rather than an entry special-cased inside the map, for the reason
- * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
- * item is added.
- */
-const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
-  { to: "/events", labelKey: "nav.events" },
-];
-
-/**
- * One nav row. On a phone this is a 48px full-width row on the dark stage
- * surface, with a divider; above `md` it collapses back to an inline item on
- * the light bar.
- *
- * Extracted because there are TWELVE call sites — ten links, the Flickr anchor
- * and the auth item — and the phone nav's targets were about 24px before this,
- * roughly half the 44px minimum. A rule applied by hand twelve times is a rule
- * that lasts until the next item is added.
- */
-const NAV_ROW = "focus-ring flex min-h-12 items-center px-4 md:min-h-0 md:px-0 md:py-1";
-
-/**
- * The active item is PINK on the dark phone panel and violet on the light
- * desktop bar: violet on --color-stage does not carry enough contrast, and pink
- * is exactly the "emphasis, never a whole surface" role the palette reserves.
- */
-const NAV_ROW_ACTIVE = "font-semibold text-pink md:border-b-2 md:border-violet md:text-violet";
-const NAV_ROW_IDLE = "text-white/80 hover:text-white md:text-ink-muted md:hover:text-ink";
-
-/** The divider between phone rows, gone above `md`. */
-const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
-
-/**
- * One internal nav row. Extracted when the third category arrived and the
- * same nine lines would have been written a third time — see NAV_ROW's own
- * comment on rules applied by hand.
- *
- * Link, not NavLink: NavLink's own aria-current is gated by its internal
- * isActive, which matches `to` literally against the URL. Link leaves
- * aria-current and className to us instead.
- */
-function NavItem({
-  to,
-  labelKey,
-  active,
-  close,
-  badge,
-}: {
-  to: string;
-  labelKey: TranslationKey;
-  active: string;
-  close: () => void;
-  /** Trailing content, e.g. the inbox's unread count — absent for every
-   *  other entry. */
-  badge?: ReactNode;
-}) {
-  return (
-    <li className={NAV_ITEM}>
-      <Link
-        to={to}
-        onClick={close}
-        aria-current={active === to ? "page" : undefined}
-        className={`${NAV_ROW} ${active === to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-      >
-        {t(labelKey)}
-        {badge}
-      </Link>
-    </li>
-  );
-}
+const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; icon: LucideIcon }> =
+  [
+    { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
+    { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view", icon: Inbox },
+  ];
 
 export function Layout() {
   const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  // Every link in the phone layer closes it on click, but a route change can
+  // also come from Back or from a redirect, and the layer covers the whole
+  // screen, so it must never outlive the page it was opened on.
+  useEffect(() => setOpen(false), [pathname]);
   const active = pathname;
-  const close = () => setOpen(false);
 
   const mayReadInbox = can("messages.view");
   // Disabled rather than gated in the render below: a query that never runs
@@ -144,6 +79,46 @@ export function Layout() {
   const inboxSummary = useInboxSummary({ query: { enabled: user !== null && mayReadInbox } });
   const inboxTotal =
     inboxSummary.data && inboxSummary.data.status === 200 ? inboxSummary.data.data.total : 0;
+
+  // The lists the two navs lay out. Built here, in one place, so the desktop
+  // bar and the phone list cannot disagree about what exists.
+  const publicEntries: NavEntry[] = [
+    ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
+    { key: "gallery", href: GALLERY_URL, label: t("nav.gallery") },
+  ];
+  // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
+  // everybody in the band does every week, so it is the last thing to fold.
+  // Needs a session and nothing more — gating it on a permission would be the
+  // same mistake as gating the ability to answer for an event.
+  const memberEntries: NavEntry[] = [{ key: "/events", to: "/events", label: t("nav.events") }];
+  const tools = TOOLS.filter((item) => can(item.permission));
+  const countFor = (to: string) => (to === "/inbox" ? inboxTotal : 0);
+  const accountTools: AccountTool[] = tools.map((item) => ({
+    to: item.to,
+    label: t(item.labelKey),
+    icon: item.icon,
+    count: countFor(item.to),
+  }));
+  // The phone layer's "mine" card: Événements, then the committee's screens,
+  // each with its icon and the inbox with its count.
+  const mineEntries: MemberEntry[] = [
+    { key: "/events", to: "/events", label: t("nav.events"), icon: Calendar },
+    ...tools.map((item) => ({
+      key: item.to,
+      to: item.to,
+      label: t(item.labelKey),
+      icon: item.icon,
+      badge:
+        countFor(item.to) > 0 ? (
+          <span
+            aria-label={t("nav.pending", { n: countFor(item.to) })}
+            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
+          >
+            {countFor(item.to)}
+          </span>
+        ) : undefined,
+    })),
+  ];
 
   // REFRESHES THE BADGE ON NAVIGATION, AND ONLY THEN — never a timer. Layout
   // wraps every route and never remounts, so TanStack Query's own
@@ -178,146 +153,61 @@ export function Layout() {
       <EnvRibbon env={config.env} />
 
       <header className="bg-stage text-white">
-        <div className="mx-auto flex max-w-shell items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-3">
           {/* The lockup, and the reasoning for splitting the mark from the
               wordmark, both live in Logo.tsx. */}
           <Logo />
+          {/* Desktop only. The phone's copy sits in the Menu bar below; see
+              LanguageSwitch for why the two differ. */}
+          <div className="hidden md:block">
+            <LanguageSwitch surface="dark" />
+          </div>
         </div>
-
-        {/* NAMED, and it has to be. The band page carries a second nav (the
-            register index), and the front page repeats four of these links as
-            destination cards — so "the link called Nous rejoindre" matches two
-            elements on / and a query has nothing to scope to. Two navs without
-            names are also indistinguishable to a screen-reader user moving by
-            landmark. */}
-        <nav aria-label={t("nav.primary")} className="border-t border-white/10 bg-panel text-ink">
-          <button
-            type="button"
-            aria-label={t("nav.menuLabel")}
-            aria-expanded={open}
-            aria-controls="nav-menu"
-            onClick={() => setOpen((wasOpen) => !wasOpen)}
-            className="focus-ring flex min-h-touch items-center gap-2 px-4 font-semibold text-ink md:hidden"
-          >
-            <Menu className="h-6 w-6" />
-            {t("nav.menu")}
-          </button>
-
-          <ul
-            id="nav-menu"
-            className={`${open ? "block" : "hidden"} animate-reveal border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
-          >
-            {NAV.map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                labelKey={item.labelKey}
-                active={active}
-                close={close}
-              />
-            ))}
-
-            {/* Logged in, whatever they can do. */}
-            {user
-              ? MEMBER_NAV.map((item) => (
-                  <NavItem
-                    key={item.to}
-                    to={item.to}
-                    labelKey={item.labelKey}
-                    active={active}
-                    close={close}
-                  />
-                ))
-              : null}
-
-            {DIRECTION_NAV.filter((item) => can(item.permission)).map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                labelKey={item.labelKey}
-                active={active}
-                close={close}
-                // Special-cased on `to` rather than a field on every
-                // DIRECTION_NAV entry: the inbox is the only one with a live
-                // count today, and a badge nobody else needs is not a
-                // property worth giving every other entry.
-                badge={
-                  item.to === "/inbox" && inboxTotal > 0 ? (
-                    <span
-                      data-testid="inbox-badge"
-                      aria-label={t("nav.pending", { n: inboxTotal })}
-                      className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
-                    >
-                      {inboxTotal}
-                    </span>
-                  ) : undefined
-                }
-              />
-            ))}
-
-            <li className={NAV_ITEM}>
-              {/* External: a plain anchor, not a NavLink. */}
-              <a
-                href="https://www.flickr.com/photos/201962767@N02/collections"
-                target="_blank"
-                rel="noreferrer"
-                className={`${NAV_ROW} ${NAV_ROW_IDLE}`}
-              >
-                {t("nav.gallery")} <ExternalLink className="inline h-4 w-4 align-middle" />
-              </a>
-            </li>
-
-            {/* HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-                The "Galerie" link above is current and stays: it is now the only
-                media destination in the nav.
-            <li className={NAV_ITEM}>
-              <Link
-                to="/multimedia"
-                onClick={() => setOpen(false)}
-                aria-current={active === "/multimedia" ? "page" : undefined}
-                className={`${NAV_ROW} ${active === "/multimedia" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-              >
-                Multimédia
-              </Link>
-            </li>
-            */}
-
-            {/* Points at /account once somebody is logged in: their own name
-                leading back to a login form is a dead end, and /account is the
-                one screen every account holder has. */}
-            <li className={`nav-auth ${NAV_ITEM} md:ml-auto`}>
-              <NavLink
-                to={user ? "/account" : "/login"}
-                onClick={() => setOpen(false)}
-                className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
-              >
-                {user ? user.username : t("nav.login")}
-              </NavLink>
-            </li>
-
-            {/* THE WAY OUT, and it is here rather than on /account because the
-                forced-password gate lets a member reach the chrome and nothing
-                else. See LogoutButton for what its absence had been costing
-                since R1a. */}
-            {user ? (
-              <li className={NAV_ITEM}>
-                <LogoutButton onDone={close} />
-              </li>
-            ) : null}
-
-            {/* LAST, so on desktop it sits rightmost — where a language
-                switcher is looked for — and on a phone it is the final row
-                rather than pushing twelve destinations further down.
-
-                It is a plain link because changing locale is a full page load
-                (`basename` is fixed at mount), which also makes it one of the
-                hreflang alternates a crawler can actually follow. */}
-            <li className={NAV_ITEM}>
-              <LanguageSwitch onDone={close} />
-            </li>
-          </ul>
-        </nav>
       </header>
+
+      {/* NAMED, and it has to be. The band page carries a second nav (the
+          register index), and the front page repeats four of these links as
+          destination cards — so "the link called Nous rejoindre" matches two
+          elements on / and a query has nothing to scope to. Two navs without
+          names are also indistinguishable to a screen-reader user moving by
+          landmark.
+
+          A SIBLING OF THE HEADER, NOT INSIDE IT, so that it can stick: a
+          sticky element only sticks within its parent, and inside the header
+          it would scroll away with it. On a phone the Menu bar stays at the
+          top, so the menu opens from anywhere on a long page; the desktop bar
+          scrolls away as before. */}
+      <nav
+        aria-label={t("nav.primary")}
+        className="sticky top-0 z-30 border-b border-line bg-panel text-ink md:static md:border-b-0"
+      >
+        <PhoneNav
+          open={open}
+          onOpenChange={setOpen}
+          member={user}
+          mine={user ? mineEntries : []}
+          band={publicEntries}
+          active={active}
+        />
+
+        <DesktopNav
+          entries={user ? [...memberEntries, ...publicEntries] : publicEntries}
+          active={active}
+          trailing={
+            user ? (
+              <AccountDropdown member={user} active={active} tools={accountTools} />
+            ) : (
+              <Link
+                to="/login"
+                aria-current={active === "/login" ? "page" : undefined}
+                className={`${DESK_LINK} font-semibold ${active === "/login" ? DESK_ACTIVE : DESK_IDLE}`}
+              >
+                {t("nav.login")}
+              </Link>
+            )
+          }
+        />
+      </nav>
 
       {/* Renders nothing; keeps the head's alternates in step with the page. */}
       <Hreflang />

@@ -304,7 +304,19 @@ export const fr = {
     inbox: "Boîte de réception",
     gallery: "Galerie",
     login: "Connexion",
+    account: "Mon compte",
+    // The desktop trigger shows only initials, so this is its whole name.
+    accountMenu: "Compte de {{name}}",
     logout: "Déconnexion",
+    // The desktop bar's overflow: the entries that do not fit fold in here.
+    more: "Plus",
+    // The ✕ of the phone menu's full-screen layer.
+    close: "Fermer le menu",
+    // The phone list's two headings, once somebody is logged in.
+    groupMine: "Mon espace",
+    groupBand: "Le groupe",
+    // The accessible name of the FR / DE pair in the header.
+    language: "Langue",
     // The inbox badge's accessible name. {{n}} is i18next interpolation,
     // unlike contactMessages' {name}, which the component replaces by hand.
     //

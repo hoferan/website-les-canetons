@@ -16,7 +16,7 @@ async function logIn(page: import("@playwright/test").Page, username: string) {
   await page.getByLabel("Identifiant").fill(username);
   await page.getByLabel("Mot de passe").fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("link", { name: username })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
 }
 
 /**
@@ -32,7 +32,8 @@ test("logging out ends the session and lands on the public front page", async ({
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Membres");
 
-  await page.getByRole("button", { name: "Déconnexion" }).locator("visible=true").click();
+  await page.getByRole("button", { name: "Compte de demo.direction" }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
 
   // `/`, not `/login`: logging out is finishing, not starting again.
   await expect(page).toHaveURL(/\/$/);
@@ -53,8 +54,53 @@ test("logging out is reachable from inside the forced-password gate", async ({ p
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
 
-  await page.getByRole("button", { name: "Déconnexion" }).locator("visible=true").click();
+  await page.getByRole("button", { name: "Compte de demo.mustchange" }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("depuis 2002");
+});
+
+/**
+ * THE PHONE SHAPE (#99, "Scène"): a full-screen layer over the page, with the
+ * account in a footer at the bottom. The pushed-down white list before it
+ * did not read as a menu; this pins that the layer covers the whole screen and
+ * that the way out works from it.
+ */
+test("on a phone the menu is a full-screen layer, and logs out from its footer", async ({
+  page,
+}) => {
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/events");
+
+  await page.getByRole("button", { name: "Menu de navigation" }).click();
+  const layer = page.getByRole("dialog", { name: "Menu" });
+  await expect(layer).toBeVisible();
+  // Polled: the reveal animation starts the layer 4px high.
+  await expect.poll(async () => Math.round((await layer.boundingBox())!.y)).toBe(0);
+  const box = (await layer.boundingBox())!;
+  expect(Math.round(box.width)).toBe(390);
+  expect(Math.round(box.height)).toBe(844);
+
+  const logout = layer.getByRole("button", { name: "Déconnexion" });
+  await expect(logout).toBeInViewport();
+  await logout.click();
+  await expect(page).toHaveURL(/\/$/);
+});
+
+/**
+ * THE MENU BAR STICKS on a phone, so the menu opens from the bottom of a long
+ * page without scrolling back up first.
+ */
+test("on a phone the Menu bar stays at the top while the page scrolls", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/events");
+  await expect(page.getByTestId("event-card").first()).toBeVisible();
+
+  await page.mouse.wheel(0, 2000);
+  const toggle = page.getByRole("button", { name: "Menu de navigation" });
+  await expect(toggle).toBeInViewport();
+  await expect.poll(async () => (await toggle.boundingBox())!.y).toBeLessThan(10);
 });
 
 /**
@@ -281,7 +327,7 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // context at 390x844 straight away, as the brief originally had it, fails
   // for the identical reason: below `md` the nav collapses behind the
   // hamburger (Layout.tsx's `hidden md:flex`), so logIn's
-  // `getByRole("link", { name: username })` check never finds a visible link
+  // account-avatar check never finds a visible trigger
   // and every run of this test times out on login, before it ever reaches the
   // tap it exists to test. Confirmed by running it exactly as the brief wrote
   // it first.

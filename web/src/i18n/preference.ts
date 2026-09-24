@@ -49,7 +49,7 @@ export function rememberLocale(locale: Locale): void {
  *
  * A PURE FUNCTION SO IT CAN BE TESTED AT ALL. main.tsx's boot cannot be: it
  * navigates, and jsdom implements no navigation. Extracting the decision is
- * the same move logoutDestination() makes in LogoutButton.tsx, for the same
+ * the same move logoutDestination() makes in session/logout.ts, for the same
  * reason.
  *
  * ONLY THE BARE ROOT. Everywhere else the URL is the authority, and a stored

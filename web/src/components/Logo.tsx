@@ -38,7 +38,7 @@ export function Logo() {
     <Link
       to="/"
       aria-label="Les Canetons de Fribourg"
-      className="focus-ring flex items-center gap-3 rounded"
+      className="focus-ring-stage flex items-center gap-3 rounded"
     >
       {/* alt="", deliberately: the wordmark beside it is real text saying the
           same thing, so describing the image repeats the band's name.
