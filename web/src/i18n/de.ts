@@ -203,6 +203,9 @@ export const de: typeof fr = {
     account: "Mein Konto",
     accountMenu: "Konto von {{name}}",
     logout: "Abmelden",
+    more: "Mehr",
+    groupMine: "Mein Bereich",
+    groupBand: "Der Verein",
     language: "Sprache",
     pending: "{{n}} ausstehend",
     // Identisch zum Französischen: siehe die Notiz in fr.ts.

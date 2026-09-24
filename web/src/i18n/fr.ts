@@ -306,6 +306,11 @@ export const fr = {
     // The desktop trigger shows only initials, so this is its whole name.
     accountMenu: "Compte de {{name}}",
     logout: "Déconnexion",
+    // The desktop bar's overflow: the entries that do not fit fold in here.
+    more: "Plus",
+    // The phone list's two headings, once somebody is logged in.
+    groupMine: "Mon espace",
+    groupBand: "Le groupe",
     // The accessible name of the FR / DE pair in the header.
     language: "Langue",
     // The inbox badge's accessible name. {{n}} is i18next interpolation,

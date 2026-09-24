@@ -1,111 +1,72 @@
-import { ExternalLink, Menu } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Inbox, type LucideIcon, Menu, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
-import { NAV_ITEM, NAV_ROW, NAV_ROW_ACTIVE, NAV_ROW_IDLE } from "./navStyles";
+import { DesktopNav } from "./DesktopNav";
+import { type NavEntry } from "./NavEntry";
+import {
+  DESK_ACTIVE,
+  DESK_IDLE,
+  DESK_LINK,
+  PHONE_ACTIVE,
+  PHONE_IDLE,
+  PHONE_ROW,
+} from "./navStyles";
+import { PhoneNav } from "./PhoneNav";
 
 import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
-import { AccountMenu } from "../session/AccountMenu";
+import { AccountDisclosure, AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
 import { Toaster } from "./ui/sonner";
 
 /**
- * The public nav — what a stranger sees, in the order a stranger wants it.
+ * The public nav, IN ORDER OF IMPORTANCE, left to right — what a stranger
+ * wants, in the order a stranger wants it. The desktop bar folds from the
+ * right into "Plus" when it runs out of room, so this order is also the order
+ * in which entries disappear (#99).
  *
  * "Nous rejoindre" is first because recruiting is what this site is for: the
  * band takes players from 7 to 18 and loses them at 18, so the visitor worth
- * optimising for is a parent deciding whether to turn up on Saturday. The two
- * people pages follow, then the prose, then the way to write in.
+ * optimising for is a parent deciding whether to turn up on Saturday. The
+ * people page follows, then the way to write in, and last the pages a parent
+ * needs least. The gallery, an external site, comes after all of them.
  *
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
  */
-const NAV: Array<{ to: string; labelKey: TranslationKey }> = [
+const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/join", labelKey: "nav.join" },
   { to: "/agenda", labelKey: "nav.agenda" },
   { to: "/band", labelKey: "nav.band" },
+  { to: "/contact", labelKey: "nav.contact" },
   { to: "/committee", labelKey: "nav.committee" },
   { to: "/history", labelKey: "nav.history" },
-  { to: "/contact", labelKey: "nav.contact" },
 ];
 
+const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";
+
 /**
- * Screens grouped under "Direction", each gated by the permission that gates
- * the API route behind it.
+ * The committee's screens, each gated by the permission that gates the API
+ * route behind it. Under the avatar on desktop, in "Mon espace" on a phone.
  *
- * THE GROUP IS ABSENT, NOT REFUSED (design §4). A member who cannot use
+ * THE ENTRY IS ABSENT, NOT REFUSED (design §4). A member who cannot use
  * /members never sees the word: showing a link that leads to "Accès refusé"
  * teaches people that parts of the site are broken for them.
  *
  * Gated on a PERMISSION, never a role name — the same rule the middleware and
  * the route guards follow.
  */
-const DIRECTION_NAV: Array<{ to: string; labelKey: TranslationKey; permission: string }> = [
-  { to: "/members", labelKey: "nav.members", permission: "members.manage" },
-  { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view" },
-];
-
-/**
- * THE THIRD NAV CATEGORY: needs a session and nothing more.
- *
- * Neither public like Galerie nor permission-gated like Membres. Reading the
- * planning is something everybody in the band does, so gating it on a
- * permission would be the same mistake as gating the ability to answer for an
- * event — but it is not for strangers either, because R1c is the members' tool
- * and the public planning is R2's (C1).
- *
- * An array rather than an entry special-cased inside the map, for the reason
- * NAV_ROW exists: a rule applied by hand is a rule that lasts until the next
- * item is added.
- */
-const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
-  { to: "/events", labelKey: "nav.events" },
-];
-
-/**
- * One internal nav row. Extracted when the third category arrived and the
- * same nine lines would have been written a third time — see NAV_ROW's own
- * comment on rules applied by hand.
- *
- * Link, not NavLink: NavLink's own aria-current is gated by its internal
- * isActive, which matches `to` literally against the URL. Link leaves
- * aria-current and className to us instead.
- */
-function NavItem({
-  to,
-  labelKey,
-  active,
-  close,
-  badge,
-}: {
-  to: string;
-  labelKey: TranslationKey;
-  active: string;
-  close: () => void;
-  /** Trailing content, e.g. the inbox's unread count — absent for every
-   *  other entry. */
-  badge?: ReactNode;
-}) {
-  return (
-    <li className={NAV_ITEM}>
-      <Link
-        to={to}
-        onClick={close}
-        aria-current={active === to ? "page" : undefined}
-        className={`${NAV_ROW} ${active === to ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-      >
-        {t(labelKey)}
-        {badge}
-      </Link>
-    </li>
-  );
-}
+const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; icon: LucideIcon }> =
+  [
+    { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
+    { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view", icon: Inbox },
+  ];
 
 export function Layout() {
   const { config, user, can } = useSession();
@@ -122,6 +83,50 @@ export function Layout() {
   const inboxSummary = useInboxSummary({ query: { enabled: user !== null && mayReadInbox } });
   const inboxTotal =
     inboxSummary.data && inboxSummary.data.status === 200 ? inboxSummary.data.data.total : 0;
+
+  // The lists the two navs lay out. Built here, in one place, so the desktop
+  // bar and the phone list cannot disagree about what exists.
+  const publicEntries: NavEntry[] = [
+    ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
+    { key: "gallery", href: GALLERY_URL, label: t("nav.gallery") },
+  ];
+  // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
+  // everybody in the band does every week, so it is the last thing to fold.
+  // Needs a session and nothing more — gating it on a permission would be the
+  // same mistake as gating the ability to answer for an event.
+  const memberEntries: NavEntry[] = [{ key: "/events", to: "/events", label: t("nav.events") }];
+  const tools = TOOLS.filter((item) => can(item.permission));
+  const countFor = (to: string) => (to === "/inbox" ? inboxTotal : 0);
+  const accountTools: AccountTool[] = tools.map((item) => ({
+    to: item.to,
+    label: t(item.labelKey),
+    icon: item.icon,
+    count: countFor(item.to),
+  }));
+  const toolEntries: NavEntry[] = tools.map((item) => ({
+    key: item.to,
+    to: item.to,
+    label: t(item.labelKey),
+    badge:
+      countFor(item.to) > 0 ? (
+        <span
+          aria-label={t("nav.pending", { n: countFor(item.to) })}
+          className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
+        >
+          {countFor(item.to)}
+        </span>
+      ) : undefined,
+  }));
+  const loginLink = (base: string, on: string, off: string) => (
+    <Link
+      to="/login"
+      onClick={close}
+      aria-current={active === "/login" ? "page" : undefined}
+      className={`${base} font-semibold ${active === "/login" ? on : off}`}
+    >
+      {t("nav.login")}
+    </Link>
+  );
 
   // REFRESHES THE BADGE ON NAVIGATION, AND ONLY THEN — never a timer. Layout
   // wraps every route and never remounts, so TanStack Query's own
@@ -189,106 +194,33 @@ export function Layout() {
             <LanguageSwitch surface="light" />
           </div>
 
-          <ul
-            id="nav-menu"
-            className={`${open ? "block" : "hidden"} animate-reveal border-t border-line bg-panel text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:px-4 md:py-2`}
-          >
-            {NAV.map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                labelKey={item.labelKey}
-                active={active}
-                close={close}
-              />
-            ))}
+          {/* Rendered only while open, so the closed phone menu adds nothing
+              to the page and the desktop bar is the only copy a test or a
+              screen reader meets at desktop width. */}
+          {open ? (
+            <PhoneNav
+              account={
+                user ? <AccountDisclosure member={user} active={active} onDone={close} /> : null
+              }
+              mine={user ? [...memberEntries, ...toolEntries] : []}
+              band={publicEntries}
+              login={user ? null : loginLink(PHONE_ROW, PHONE_ACTIVE, PHONE_IDLE)}
+              active={active}
+              close={close}
+            />
+          ) : null}
 
-            {/* Logged in, whatever they can do. */}
-            {user
-              ? MEMBER_NAV.map((item) => (
-                  <NavItem
-                    key={item.to}
-                    to={item.to}
-                    labelKey={item.labelKey}
-                    active={active}
-                    close={close}
-                  />
-                ))
-              : null}
-
-            {DIRECTION_NAV.filter((item) => can(item.permission)).map((item) => (
-              <NavItem
-                key={item.to}
-                to={item.to}
-                labelKey={item.labelKey}
-                active={active}
-                close={close}
-                // Special-cased on `to` rather than a field on every
-                // DIRECTION_NAV entry: the inbox is the only one with a live
-                // count today, and a badge nobody else needs is not a
-                // property worth giving every other entry.
-                badge={
-                  item.to === "/inbox" && inboxTotal > 0 ? (
-                    <span
-                      data-testid="inbox-badge"
-                      aria-label={t("nav.pending", { n: inboxTotal })}
-                      className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
-                    >
-                      {inboxTotal}
-                    </span>
-                  ) : undefined
-                }
-              />
-            ))}
-
-            <li className={NAV_ITEM}>
-              {/* External: a plain anchor, not a NavLink. */}
-              <a
-                href="https://www.flickr.com/photos/201962767@N02/collections"
-                target="_blank"
-                rel="noreferrer"
-                className={`${NAV_ROW} ${NAV_ROW_IDLE}`}
-              >
-                {t("nav.gallery")} <ExternalLink className="inline h-4 w-4 align-middle" />
-              </a>
-            </li>
-
-            {/* HIDDEN 2026-08-31 with its route — see web/src/routes.tsx for why.
-                The "Galerie" link above is current and stays: it is now the only
-                media destination in the nav.
-            <li className={NAV_ITEM}>
-              <Link
-                to="/multimedia"
-                onClick={() => setOpen(false)}
-                aria-current={active === "/multimedia" ? "page" : undefined}
-                className={`${NAV_ROW} ${active === "/multimedia" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-              >
-                Multimédia
-              </Link>
-            </li>
-            */}
-
-            {/* Logged in, this holds "Mon compte" and the way out. The logout
-                is in the chrome rather than on /account because the
-                forced-password gate lets a member reach the chrome and nothing
-                else; see session/logout.ts for what its absence had been
-                costing since R1a. Last, and pushed right on desktop, because
-                that is where an account is looked for. */}
-            <li className={`${NAV_ITEM} md:ml-auto`}>
-              {user ? (
-                <AccountMenu member={user} onAccountPage={active === "/account"} onDone={close} />
+          <DesktopNav
+            entries={user ? [...memberEntries, ...publicEntries] : publicEntries}
+            active={active}
+            trailing={
+              user ? (
+                <AccountDropdown member={user} active={active} tools={accountTools} />
               ) : (
-                <Link
-                  to="/login"
-                  onClick={close}
-                  aria-current={active === "/login" ? "page" : undefined}
-                  className={`${NAV_ROW} font-semibold ${active === "/login" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-                >
-                  {t("nav.login")}
-                </Link>
-              )}
-            </li>
-          </ul>
+                loginLink(DESK_LINK, DESK_ACTIVE, DESK_IDLE)
+              )
+            }
+          />
         </nav>
       </header>
 

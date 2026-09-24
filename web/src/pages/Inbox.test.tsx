@@ -77,7 +77,9 @@ test("shows no badge when the count is zero", async () => {
   setMockUser("demo.committee");
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  expect(await screen.findByRole("link", { name: /Boîte de réception/ })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("button", { name: "Compte de demo.committee" }),
+  ).toBeInTheDocument();
   expect(screen.queryByTestId("inbox-badge")).not.toBeInTheDocument();
 });
 

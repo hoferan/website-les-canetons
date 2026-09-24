@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test } from "vitest";
@@ -51,38 +51,96 @@ test("the auth link says Connexion when nobody is logged in", async () => {
 });
 
 /**
- * THE ACCOUNT CONTROL HAS TWO SHAPES (#99): a disclosure in the phone list and
- * a dropdown under an avatar on desktop. jsdom applies no CSS, so both are in
- * the tree here and each test names the one it drives: the phone row by the
- * username it shows, the desktop trigger by its accessible name.
+ * THE NAV HAS TWO SHAPES (#99): a desktop bar with the account under an avatar,
+ * and a phone list that exists only while the Menu is open. jsdom applies no
+ * CSS, so the desktop bar is always in the tree here; a phone test opens the
+ * Menu first, and names the phone account row by the username it shows.
  */
+const openPhoneMenu = (user: ReturnType<typeof userEvent.setup>) =>
+  user.click(screen.getByRole("button", { name: "Menu de navigation" }));
+
 test("the desktop avatar opens the account menu once logged in", async () => {
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  const trigger = screen.getByRole("button", { name: "Compte de demo.direction" });
+  const trigger = screen.getByRole("button", { name: /^Compte de demo\.direction/ });
   expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   expect(screen.queryByRole("link", { name: "Connexion" })).toBeNull();
 });
 
-test("the desktop menu names who is logged in, then offers the account and the way out", async () => {
+test("the desktop menu names who is logged in, then the account, the committee's screens and the way out", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  await user.click(screen.getByRole("button", { name: "Compte de demo.direction" }));
+  await user.click(screen.getByRole("button", { name: /^Compte de demo\.direction/ }));
 
   const menu = await screen.findByRole("menu");
   expect(menu).toHaveTextContent("Dominique Direction");
   const items = screen.getAllByRole("menuitem");
-  expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
+  expect(items.map((item) => item.textContent)).toEqual([
+    "Mon compte",
+    "Membres",
+    "Boîte de réception2",
+    "Déconnexion",
+  ]);
   // Not back at the login form: the member's own account.
   expect(items[0]).toHaveAttribute("href", "/account");
+  expect(items[1]).toHaveAttribute("href", "/members");
 });
 
-test("the phone row expands in place into the account and the way out", async () => {
+/**
+ * THE COMMITTEE'S SCREENS LEFT THE BAR (#99), so the bar keeps to pages and
+ * fits on one line. Their count moved onto the avatar.
+ */
+test("the committee's screens are under the avatar, not in the desktop bar", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
+  expect(screen.queryByRole("link", { name: /Boîte de réception/ })).toBeNull();
+  expect(
+    await screen.findByRole("button", { name: "Compte de demo.direction, 2 en attente" }),
+  ).toBeInTheDocument();
+});
+
+test("a member with no committee screen gets only the account and the way out", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.player");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  await user.click(screen.getByRole("button", { name: "Compte de demo.player" }));
+
+  // ABSENT, not refused: a link that leads to "Accès refusé" teaches people
+  // that parts of the site are broken for them.
+  const items = await screen.findAllByRole("menuitem");
+  expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
+});
+
+test("the phone list starts with the account row, then the member's own group", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
+
+  const mine = screen.getByRole("list", { name: "Mon espace" });
+  expect(
+    within(mine)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href")),
+  ).toEqual(["/events", "/members", "/inbox"]);
+  const band = screen.getByRole("list", { name: "Le groupe" });
+  expect(within(band).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
+
+  // The account row comes before both groups.
+  const row = screen.getByRole("button", { name: "demo.direction" });
+  expect(row.compareDocumentPosition(mine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("the phone account row expands in place into the account and the way out", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
 
   const row = screen.getByRole("button", { name: "demo.direction" });
   expect(row).toHaveAttribute("aria-expanded", "false");
@@ -96,16 +154,29 @@ test("the phone row expands in place into the account and the way out", async ()
   expect(screen.queryByRole("menu")).toBeNull();
 });
 
+test("logged out, the phone list has no headings and ends with Connexion", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<AppRoutes />, { route: "/" });
+  await openPhoneMenu(user);
+
+  expect(screen.queryByText("Mon espace")).toBeNull();
+  expect(screen.queryByText("Le groupe")).toBeNull();
+  const links = within(document.getElementById("nav-menu")!).getAllByRole("link");
+  expect(links.at(-1)).toHaveAccessibleName("Connexion");
+});
+
 /**
  * #99's whole point: the name and the logout used to sit side by side as nav
- * items, one stray click apart. Until one of the two controls is opened there
- * is no logout anywhere in the tree.
+ * items, one stray click apart. Until one of the account controls is opened
+ * there is no logout anywhere in the tree.
  */
 test("keeps the logout out of reach until the account control is opened", async () => {
+  const user = userEvent.setup();
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/events" });
 
-  await screen.findByRole("button", { name: "demo.player" });
+  await screen.findByRole("button", { name: "Compte de demo.player" });
+  await openPhoneMenu(user);
   expect(screen.queryByText("Déconnexion")).toBeNull();
 });
 
@@ -115,6 +186,7 @@ test("marks the account control as the current page on /account", async () => {
   await renderWithSession(<AppRoutes />, { route: "/account" });
   await screen.findByRole("heading", { name: "Mon compte" });
 
+  await openPhoneMenu(user);
   expect(screen.getByRole("button", { name: "demo.player" })).toHaveClass("text-violet");
 
   await user.click(screen.getByRole("button", { name: "Compte de demo.player" }));
@@ -124,22 +196,10 @@ test("marks the account control as the current page on /account", async () => {
   );
 });
 
-test("shows the Membres entry to a member who can administer members", async () => {
-  setMockUser("demo.direction");
+test("hides the committee's screens from an anonymous visitor", async () => {
+  const user = userEvent.setup();
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  expect(screen.getByRole("link", { name: "Membres" })).toHaveAttribute("href", "/members");
-});
-
-test("hides the Membres entry entirely from a member who cannot", async () => {
-  setMockUser("demo.player");
-  await renderWithSession(<AppRoutes />, { route: "/login" });
-  // ABSENT, not refused: a link that leads to "Accès refusé" teaches people
-  // that parts of the site are broken for them.
-  expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
-});
-
-test("hides it from an anonymous visitor", async () => {
-  await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
   expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
 });
 
@@ -156,10 +216,13 @@ test("the hamburger toggles the menu and reports its state", async () => {
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 });
 
-test("shows Événements to any logged-in member, whatever they can do", async () => {
+test("shows Événements to any logged-in member, first in the bar", async () => {
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  expect(screen.getByRole("link", { name: "Événements" })).toHaveAttribute("href", "/events");
+  const bar = screen.getByRole("navigation", { name: "Navigation principale" });
+  const first = within(within(bar).getAllByRole("list")[0]!).getAllByRole("link")[0];
+  expect(first).toHaveAccessibleName("Événements");
+  expect(first).toHaveAttribute("href", "/events");
 });
 
 test("hides Événements from an anonymous visitor", async () => {
@@ -210,7 +273,7 @@ test("ends the session on the server", async () => {
   // session/logout.ts.
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
-  await user.click(await screen.findByRole("button", { name: "Compte de demo.direction" }));
+  await user.click(await screen.findByRole("button", { name: /^Compte de demo\.direction/ }));
   await user.click(await screen.findByRole("menuitem", { name: "Déconnexion" }));
 
   await waitFor(() => expect(currentMockUser()).toBeNull());
@@ -221,7 +284,9 @@ test("ends the session from the phone row too", async () => {
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
-  await user.click(await screen.findByRole("button", { name: "demo.direction" }));
+  await screen.findByRole("heading", { name: "Membres" });
+  await openPhoneMenu(user);
+  await user.click(screen.getByRole("button", { name: "demo.direction" }));
   await user.click(screen.getByRole("button", { name: "Déconnexion" }));
 
   await waitFor(() => expect(currentMockUser()).toBeNull());
