@@ -161,3 +161,20 @@ test("a French page is left exactly as the shell shipped it", async ({ page }) =
     "/assets/icons/manifest.json",
   );
 });
+
+/**
+ * VISIBLE ON A PHONE WITHOUT OPENING THE MENU (#99). It used to be the last row
+ * behind the hamburger, where a German-speaking parent on the French front
+ * page had to go looking for it.
+ */
+test("on a phone the switch is visible without opening the menu", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+
+  await expect(page.getByRole("button", { name: "Menu de navigation" })).toHaveAttribute(
+    "aria-expanded",
+    "false",
+  );
+  await page.getByRole("link", { name: "Auf Deutsch wechseln" }).click();
+  await expect(page).toHaveURL(/\/de\/?$/);
+});

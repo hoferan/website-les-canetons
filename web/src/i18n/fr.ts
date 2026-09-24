@@ -306,6 +306,8 @@ export const fr = {
     // The desktop trigger shows only initials, so this is its whole name.
     accountMenu: "Compte de {{name}}",
     logout: "Déconnexion",
+    // The accessible name of the FR / DE pair in the header.
+    language: "Langue",
     // The inbox badge's accessible name. {{n}} is i18next interpolation,
     // unlike contactMessages' {name}, which the component replaces by hand.
     //

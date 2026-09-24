@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, test } from "vitest";
 
@@ -48,22 +48,41 @@ test("A PATH THAT MERELY STARTS WITH THOSE LETTERS IS NOT THE GERMAN MOUNT", () 
  * The control
  * -------------------------------------------------------------------------- */
 
-// AN ENDONYM, NOT A TRANSLATION, in both directions: somebody who cannot read
-// the current page has to recognise the way out of it. Two tests rather than
-// two renders in one, because render() does not unmount the previous tree
-// mid-test and both links would then be on the page at once.
+// The way out is named in the TARGET's language, in both directions: somebody
+// who cannot read the current page has to recognise it. The visible label is
+// the code. Two tests rather than two renders in one, because render() does
+// not unmount the previous tree mid-test and both would then be on the page.
 test("a French page offers German, named in German", async () => {
-  await renderWithSession(<LanguageSwitch />);
-  expect(screen.getByRole("link", { name: "Auf Deutsch wechseln" })).toHaveTextContent("Deutsch");
+  await renderWithSession(<LanguageSwitch surface="dark" />);
+  const link = screen.getByRole("link", { name: "Auf Deutsch wechseln" });
+  expect(link).toHaveTextContent("DE");
+  expect(link).toHaveAttribute("title", "Deutsch");
 });
 
 test("a German page offers French, named in French", async () => {
-  await renderWithSession(<LanguageSwitch />, { locale: "de-CH" });
-  expect(screen.getByRole("link", { name: "Passer en français" })).toHaveTextContent("Français");
+  await renderWithSession(<LanguageSwitch surface="dark" />, { locale: "de-CH" });
+  const link = screen.getByRole("link", { name: "Passer en français" });
+  expect(link).toHaveTextContent("FR");
+  expect(link).toHaveAttribute("title", "Français");
+});
+
+/**
+ * SHOWS WHERE YOU ARE, which the single "Deutsch" link it replaced never did.
+ * The current language is marked and is not a link, since it would point at
+ * the page you are on; exactly one link remains.
+ */
+test("marks the current language, and does not link to it", async () => {
+  await renderWithSession(<LanguageSwitch surface="dark" />);
+
+  const group = screen.getByRole("group", { name: "Langue" });
+  expect(within(group).getAllByRole("link")).toHaveLength(1);
+  const current = group.querySelector('[aria-current="true"]');
+  expect(current).toHaveTextContent("Français");
+  expect(current?.closest("a")).toBeNull();
 });
 
 test("the link declares the target's language, not the page's", async () => {
-  await renderWithSession(<LanguageSwitch />);
+  await renderWithSession(<LanguageSwitch surface="dark" />);
 
   const link = screen.getByRole("link", { name: "Auf Deutsch wechseln" });
   // hreflang tells a crawler what is on the other end; lang stops a screen
@@ -84,18 +103,9 @@ test("THE PREFERENCE IS WRITTEN BEFORE THE NAVIGATION, or the switch bounces", a
   //
   // MUTATION TEST: drop rememberLocale from the handler and this fails with
   // null — and the app gets a switcher that cannot leave German.
-  await renderWithSession(<LanguageSwitch />, { locale: "de-CH" });
+  await renderWithSession(<LanguageSwitch surface="dark" />, { locale: "de-CH" });
 
   await userEvent.click(screen.getByRole("link", { name: "Passer en français" }));
 
   expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe("fr");
-});
-
-test("it closes the mobile menu it was tapped in", async () => {
-  let closed = 0;
-  await renderWithSession(<LanguageSwitch onDone={() => (closed += 1)} />);
-
-  await userEvent.click(screen.getByRole("link", { name: "Auf Deutsch wechseln" }));
-
-  expect(closed).toBe(1);
 });
