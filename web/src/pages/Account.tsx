@@ -1,28 +1,19 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { KeyRound } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-
-import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
 import type { AuthMe200 } from "../api/generated/model";
-import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
-import { Notice } from "../components/Notice";
+import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
 import { roleLabel, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
- * Who I am, and change my own password.
+ * Who I am, at /account. The account menu links here.
  *
- * The identity card comes first because the account menu links here, and a
- * member who opens it wants to see who they are logged in as before any
- * password field. It is read-only; see below.
- *
- * The only screen every account holder needs and nobody administers. It is also
- * where every FIRST login lands, because a committee-issued password arrives
- * with must_change_password set — so the page has to work as both the routine
- * screen and the one you cannot leave. The difference is one notice.
+ * The password is one row with a button, and the form lives on its own page,
+ * /account/password (#125). Changing it is a rare act, and a member who opens
+ * this page to see who they are logged in as should not be looking at three
+ * empty password fields. A committee-issued password never shows this page at
+ * all: MustChangePassword sends that member straight to the form.
  *
  * THERE IS NO "DELETE MY ACCOUNT" AND NO PROFILE EDITING. A member's name and
  * register are roster data the committee owns (§4), and a child removing
@@ -31,125 +22,29 @@ import { useSession } from "../session/SessionProvider";
 export function Account() {
   const { user } = useSession();
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [mismatch, setMismatch] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const queryClient = useQueryClient();
-  const change = useAccountPassword();
-  const { error, setFromThrown, clear, messageFor } = useApiFormError(t("account.changeFailed"));
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-
-    // aria-disabled, not disabled — so this early return is what actually
-    // prevents a double submit.
-    if (change.isPending) {
-      return;
-    }
-
-    clear();
-    setDone(false);
-
-    // Client-side, deliberately: the API has no confirmation field, so there is
-    // no token to translate — and a typo here costs no round-trip and burns no
-    // re-authentication attempt against the throttle.
-    if (newPassword !== confirmation) {
-      setMismatch(true);
-      return;
-    }
-    setMismatch(false);
-
-    try {
-      await change.mutateAsync({ data: { currentPassword, newPassword } });
-    } catch (thrown) {
-      setFromThrown(thrown);
-      // Only the passwords are cleared: whatever was wrong, retyping all three
-      // is the honest cost, and leaving a rejected value in the box invites
-      // pressing the button again unchanged.
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmation("");
-      return;
-    }
-
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmation("");
-    setDone(true);
-
-    // mustChangePassword has just flipped, and MustChangePassword reads it — so
-    // the session must be refetched or the member stays trapped on this page
-    // after succeeding.
-    await queryClient.invalidateQueries({ queryKey: getAuthMeQueryKey() });
-  }
-
   return (
     <PageSection width="form">
       <h1 className="font-display text-4xl">{t("account.heading")}</h1>
 
-      {user?.mustChangePassword ? (
-        // Why it says anything at all, rather than merely bouncing them: see
-        // account.provisionalNotice in i18n/fr.ts.
-        <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
-      ) : null}
-
       {user ? <Identity user={user} /> : null}
 
-      <h2 className="mt-block font-display text-2xl">{t("account.password")}</h2>
-
-      <form onSubmit={submit} className="mt-related flex flex-col gap-related">
-        <FormField
-          id="currentPassword"
-          label={t("account.currentPassword")}
-          type="password"
-          value={currentPassword}
-          onChange={setCurrentPassword}
-          problem={messageFor("currentPassword")}
-          required
-          autoComplete="current-password"
-        />
-
-        <FormField
-          id="newPassword"
-          label={t("account.newPassword")}
-          type="password"
-          value={newPassword}
-          onChange={setNewPassword}
-          problem={messageFor("newPassword")}
-          required
-          autoComplete="new-password"
-        />
-
-        <FormField
-          id="confirmation"
-          label={t("account.confirmPassword")}
-          type="password"
-          value={confirmation}
-          onChange={setConfirmation}
-          problem={mismatch ? t("account.mismatch") : undefined}
-          required
-          autoComplete="new-password"
-        />
-
-        <FormError error={error} />
-
-        {/*
-          Always in the tree, never conditionally inserted — the same reasoning
-          as FormError's alert region: a live region added to the DOM in the
-          same commit as other churn is announced by some browser/AT pairs and
-          missed by others.
-        */}
-        <div role="status">
-          {done ? <p className="text-ink-muted">{t("account.changed")}</p> : null}
+      <section
+        aria-label={t("account.password")}
+        className="mt-related flex flex-wrap items-center justify-between gap-related rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+      >
+        <div>
+          <p className="text-sm text-ink-muted">{t("account.password")}</p>
+          {/* Eight dots whatever the length: the page cannot know it, and a
+              screen reader has the label and the button already. */}
+          <p aria-hidden="true" className="tracking-widest text-ink">
+            ••••••••
+          </p>
         </div>
-
-        <Button type="submit" aria-disabled={change.isPending}>
-          {change.isPending ? t("account.changing") : t("account.change")}
-        </Button>
-      </form>
+        <ButtonLink to="/account/password" variant="outline">
+          <KeyRound aria-hidden="true" />
+          {t("account.change")}
+        </ButtonLink>
+      </section>
     </PageSection>
   );
 }

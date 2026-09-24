@@ -61,8 +61,9 @@ function DesktopDropdown({
   const fullName = `${member.firstName} ${member.lastName}`.trim();
   const pending = tools.reduce((sum, tool) => sum + (tool.count ?? 0), 0);
   // The avatar's "you are here", the job the underline does for the text
-  // entries beside it: on /account or on any screen the menu leads to.
-  const here = active === "/account" || tools.some((tool) => tool.to === active);
+  // entries beside it: anywhere under /account, or on any screen the menu
+  // leads to.
+  const here = active.startsWith("/account") || tools.some((tool) => tool.to === active);
   const name = t("nav.accountMenu", { name: member.username });
 
   return (

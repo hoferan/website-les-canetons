@@ -16,7 +16,7 @@ import { safeReturnTo } from "../lib/returnTo";
  *
  * WHERE IT GOES AFTERWARDS, in order:
  *
- *   1. `/account`, when the account must change its password. A
+ *   1. `/account/password`, when the account must change its password. A
  *      committee-issued password was read out loud down a phone, so it is not a
  *      secret. MustChangePassword enforces this globally; sending them straight
  *      there just avoids a pointless bounce through a page they cannot use.
@@ -74,7 +74,7 @@ export function Login() {
       getAuthMeQueryKey(),
     );
 
-    navigate(me?.data?.mustChangePassword ? "/account" : attempted, { replace: true });
+    navigate(me?.data?.mustChangePassword ? "/account/password" : attempted, { replace: true });
   }
 
   return (

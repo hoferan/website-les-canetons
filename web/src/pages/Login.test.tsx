@@ -129,7 +129,7 @@ test("a second click while the first is in flight sends nothing", async () => {
   release();
 });
 
-test("a member who must change their password lands on /account", async () => {
+test("a member who must change their password lands on /account/password", async () => {
   // A committee-issued password was read out loud down a phone, so it is not a
   // secret. MustChangePassword enforces this globally; going straight there
   // avoids a pointless bounce through a page they cannot use.
@@ -156,7 +156,8 @@ test("a member who must change their password lands on /account", async () => {
   );
   await fillAndSubmit("demo.young", "demo");
 
-  expect(await screen.findByTestId("location")).toHaveTextContent("/account");
+  // Exact, not a substring: "/account" alone would match the old target too.
+  expect(await screen.findByTestId("location")).toHaveTextContent(/^\/account\/password$/);
 });
 
 test("otherwise it returns to wherever the guard turned them away from", async () => {

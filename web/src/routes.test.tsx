@@ -45,10 +45,12 @@ test("sends an anonymous visitor from /members to the login page", async () => {
   expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();
 });
 
-test("holds a member with a committee-issued password on /account", async () => {
+test("holds a member with a committee-issued password on /account/password", async () => {
   setMockUser("demo.mustchange");
   await renderWithSession(<AppRoutes />, { route: "/members" });
-  expect(await screen.findByRole("heading", { name: "Mon compte" })).toBeInTheDocument();
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Mot de passe" }),
+  ).toBeInTheDocument();
 });
 
 // The catch-all must survive the new nesting. Apache serves the SPA shell for

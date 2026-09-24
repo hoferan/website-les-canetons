@@ -212,7 +212,7 @@ function AccountFooter({
           to="/account"
           onClick={close}
           aria-current={active === "/account" ? "page" : undefined}
-          className={`${action} ${active === "/account" ? "bg-violet" : ""}`}
+          className={`${action} ${active.startsWith("/account") ? "bg-violet" : ""}`}
         >
           <User aria-hidden="true" className="size-4" />
           {t("nav.account")}

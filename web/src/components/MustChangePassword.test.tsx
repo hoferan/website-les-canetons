@@ -16,6 +16,7 @@ function tree() {
       <Route element={<MustChangePassword />}>
         <Route path="/" element={<h1>Accueil</h1>} />
         <Route path="/account" element={<h1>Mon compte</h1>} />
+        <Route path="/account/password" element={<h1>Mot de passe</h1>} />
       </Route>
     </Routes>
   );
@@ -36,18 +37,28 @@ test("lets an anonymous visitor through", async () => {
   expect(await screen.findByRole("heading", { name: "Accueil" })).toBeInTheDocument();
 });
 
-test("sends a member who must change their password to /account", async () => {
+test("sends a member who must change their password to /account/password", async () => {
   setMockUser("demo.mustchange");
   await renderWithSession(tree(), { route: "/" });
 
-  expect(await screen.findByRole("heading", { name: "Mon compte" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Mot de passe" })).toBeInTheDocument();
 });
 
-test("does not redirect /account to itself", async () => {
+test("does not redirect /account/password to itself", async () => {
   setMockUser("demo.mustchange");
-  // The loop this prevents: a gate that redirects unconditionally sends
-  // /account to /account forever and the page never renders at all.
+  // The loop this prevents: a gate that redirects unconditionally sends the
+  // password page to itself forever and the page never renders at all.
+  await renderWithSession(tree(), { route: "/account/password" });
+
+  expect(await screen.findByRole("heading", { name: "Mot de passe" })).toBeInTheDocument();
+});
+
+// #125 narrowed the exemption to the password page. The rest of /account is a
+// profile, and reading it is not what a committee-issued password is for.
+test("does not exempt the rest of /account", async () => {
+  setMockUser("demo.mustchange");
   await renderWithSession(tree(), { route: "/account" });
 
-  expect(await screen.findByRole("heading", { name: "Mon compte" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Mot de passe" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Mon compte" })).toBeNull();
 });
