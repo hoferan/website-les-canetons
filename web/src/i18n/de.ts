@@ -205,7 +205,7 @@ export const de: typeof fr = {
     logout: "Abmelden",
     more: "Mehr",
     groupMine: "Mein Bereich",
-    groupBand: "Der Verein",
+    groupBand: "Die Gugge",
     language: "Sprache",
     pending: "{{n}} ausstehend",
     // Identisch zum Französischen: siehe die Notiz in fr.ts.
