@@ -249,6 +249,11 @@ export const fr = {
     // in the events namespace was never right for those two call sites.
     // See #118's whole-branch review, M4/M5.
     moreActionsAria: "Autres actions pour {{name}}",
+    // FormField's reveal toggle, on every password field (#101). One fixed
+    // name, with aria-pressed carrying the state. A toggle that renames
+    // itself between "show" and "hide" announces as a different control each
+    // time it is pressed.
+    showPassword: "Afficher le mot de passe",
   },
 
   /**
@@ -1061,6 +1066,13 @@ export const fr = {
     // Checked in the browser before anything is sent, so it is this screen's
     // own sentence rather than one of the API's error tokens.
     mismatch: "Les deux mots de passe ne correspondent pas.",
+    // The rule, stated under the field before anything is sent (#101). `min`
+    // is MIN_PASSWORD_LENGTH, never a literal, so it cannot disagree with the
+    // API. `ruleMet` is read only by a screen reader, after the rule, since
+    // the tick that says it on screen is an icon.
+    rule: "Au moins {{min}} caractères",
+    ruleMet: "respecté",
+    matches: "Les mots de passe correspondent.",
     changed: "Votre mot de passe a été changé.",
     change: "Changer le mot de passe",
     changing: "Changement…",

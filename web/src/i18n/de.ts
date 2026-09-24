@@ -175,6 +175,7 @@ export const de: typeof fr = {
     // registrationsAria ("Anmeldungen zu {{title}}"), which holds for an
     // event and stops holding once the same string names a person.
     moreActionsAria: "Weitere Aktionen für {{name}}",
+    showPassword: "Passwort anzeigen",
   },
 
   meta: {
@@ -673,6 +674,9 @@ export const de: typeof fr = {
     newPassword: "Neues Passwort",
     confirmPassword: "Neues Passwort bestätigen",
     mismatch: "Die beiden Passwörter stimmen nicht überein.",
+    rule: "Mindestens {{min}} Zeichen",
+    ruleMet: "erfüllt",
+    matches: "Die Passwörter stimmen überein.",
     changed: "Ihr Passwort wurde geändert.",
     change: "Passwort ändern",
     changing: "Wird geändert…",

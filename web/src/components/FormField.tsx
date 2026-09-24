@@ -1,7 +1,11 @@
+import { Eye, EyeOff } from "lucide-react";
+import { useState, type ReactNode } from "react";
+
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import type { TranslatedError } from "../i18n";
+import { t, type TranslatedError } from "../i18n";
 
 /**
  * The form-wide error, in a live region that is ALWAYS in the tree.
@@ -49,6 +53,16 @@ export function FormError({ error }: { error: TranslatedError | null }) {
  *
  * `type` applies to the input only — a textarea has none, and passing one
  * alongside `as="textarea"` type-checks but is silently ignored.
+ *
+ * `type="password"` brings a reveal toggle with it (#101), so no password
+ * field in the app can be written without one. It goes back to hidden when the
+ * field is emptied: the password page clears every field after a submit,
+ * whatever the outcome, and a revealed box that stays revealed would show the
+ * next password to whoever is looking over the member's shoulder.
+ *
+ * `hint` is the text that belongs to the field before anything goes wrong,
+ * such as a rule. It is described ahead of `problem`, so a screen reader reads
+ * the rule and then what broke it.
  */
 export function FormField({
   id,
@@ -56,6 +70,7 @@ export function FormField({
   value,
   onChange,
   problem,
+  hint,
   as = "input",
   type = "text",
   required = false,
@@ -66,19 +81,35 @@ export function FormField({
   value: string;
   onChange: (value: string) => void;
   problem?: string;
+  hint?: ReactNode;
   as?: "input" | "textarea";
   type?: string;
   required?: boolean;
   autoComplete?: string;
 }) {
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
+  const describedBy = [hint ? hintId : null, problem ? errorId : null].filter(Boolean).join(" ");
+
+  const [revealed, setRevealed] = useState(false);
+  // Adjusting state while rendering, React's documented alternative to an
+  // effect: an effect would paint one frame with the cleared field still
+  // revealed.
+  const [wasEmpty, setWasEmpty] = useState(value === "");
+  if ((value === "") !== wasEmpty) {
+    setWasEmpty(value === "");
+    if (value === "") {
+      setRevealed(false);
+    }
+  }
+
   const shared = {
     id,
     required,
     autoComplete,
     value,
     "aria-invalid": problem ? true : undefined,
-    "aria-describedby": problem ? errorId : undefined,
+    "aria-describedby": describedBy || undefined,
   };
 
   return (
@@ -94,9 +125,37 @@ export function FormField({
             problem ? "border-danger" : "border-line",
           )}
         />
+      ) : type === "password" ? (
+        <div className="relative">
+          <Input
+            {...shared}
+            type={revealed ? "text" : "password"}
+            onChange={(event) => onChange(event.target.value)}
+            // Room for the toggle, which sits over the input's right edge the
+            // way SearchField's clear button does.
+            className="pr-12"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute top-1/2 right-0 -translate-y-1/2"
+            aria-label={t("common.showPassword")}
+            aria-pressed={revealed}
+            aria-controls={id}
+            onClick={() => setRevealed((shown) => !shown)}
+          >
+            {revealed ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+          </Button>
+        </div>
       ) : (
         <Input {...shared} type={type} onChange={(event) => onChange(event.target.value)} />
       )}
+      {hint ? (
+        <div id={hintId} className="text-sm text-ink-muted">
+          {hint}
+        </div>
+      ) : null}
       {problem ? (
         <span id={errorId} className="block text-sm text-danger">
           {problem}

@@ -1,11 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { ArrowLeft, Circle, CircleCheck } from "lucide-react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
+import { MIN_PASSWORD_LENGTH } from "../api/passwordPolicy";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { Notice } from "../components/Notice";
@@ -32,6 +34,8 @@ export function AccountPassword() {
   const [confirmation, setConfirmation] = useState("");
   const [mismatch, setMismatch] = useState(false);
   const [done, setDone] = useState(false);
+
+  const matches = confirmation !== "" && confirmation === newPassword;
 
   const queryClient = useQueryClient();
   const change = useAccountPassword();
@@ -123,6 +127,11 @@ export function AccountPassword() {
           value={newPassword}
           onChange={setNewPassword}
           problem={messageFor("newPassword")}
+          hint={
+            <Check met={newPassword.length >= MIN_PASSWORD_LENGTH}>
+              {t("account.rule", { min: MIN_PASSWORD_LENGTH })}
+            </Check>
+          }
           required
           autoComplete="new-password"
         />
@@ -133,7 +142,10 @@ export function AccountPassword() {
           type="password"
           value={confirmation}
           onChange={setConfirmation}
-          problem={mismatch ? t("account.mismatch") : undefined}
+          // A mismatch reported on submit stops being true the moment the two
+          // agree, and saying both at once would contradict itself.
+          problem={mismatch && !matches ? t("account.mismatch") : undefined}
+          hint={matches ? <Check met>{t("account.matches")}</Check> : undefined}
           required
           autoComplete="new-password"
         />
@@ -155,5 +167,24 @@ export function AccountPassword() {
         </Button>
       </form>
     </PageSection>
+  );
+}
+
+/**
+ * One line under a field that is either satisfied or not yet (#101).
+ *
+ * Neither state is an error, so nothing here is red: an unmet rule is muted
+ * text beside an empty circle, a met one is full ink beside a tick. The palette
+ * has no green, and one hint does not earn one. The tick is an icon, so a
+ * screen reader gets `ruleMet` in words instead.
+ */
+function Check({ met, children }: { met: boolean; children: ReactNode }) {
+  const Icon = met ? CircleCheck : Circle;
+  return (
+    <span data-met={met} className={cn("inline-flex items-center gap-1.5", met && "text-ink")}>
+      <Icon aria-hidden="true" className={cn("size-4 shrink-0", met && "text-violet")} />
+      {children}
+      {met ? <span className="sr-only">{`, ${t("account.ruleMet")}`}</span> : null}
+    </span>
   );
 }
