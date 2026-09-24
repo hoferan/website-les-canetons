@@ -60,6 +60,75 @@ test("onChange receives the value, not the event", async () => {
   expect(seen).toEqual(["a", "b"]);
 });
 
+// #101: a committee-issued password is read down a phone and typed into a
+// phone, which is exactly where a field you cannot see costs the most.
+test("a password field can be revealed and hidden again", async () => {
+  const user = userEvent.setup();
+  render(<FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />);
+  const input = screen.getByLabelText("Mot de passe");
+  const toggle = screen.getByRole("button", { name: "Afficher le mot de passe" });
+  expect(toggle).toHaveAttribute("aria-pressed", "false");
+  expect(toggle).toHaveAttribute("aria-controls", "demo-pw");
+
+  await user.click(toggle);
+  expect(input).toHaveAttribute("type", "text");
+  expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+  await user.click(toggle);
+  expect(input).toHaveAttribute("type", "password");
+});
+
+test("the reveal button never submits the form it sits in", async () => {
+  const user = userEvent.setup();
+  let submitted = false;
+  render(
+    <form onSubmit={(event) => ((submitted = true), event.preventDefault())}>
+      <FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />
+    </form>,
+  );
+  await user.click(screen.getByRole("button", { name: "Afficher le mot de passe" }));
+  expect(submitted).toBe(false);
+});
+
+test("only a password field gets a reveal button", () => {
+  render(<FormField id="demo-name" label="Nom :" value="" onChange={noop} />);
+  expect(screen.queryByRole("button")).toBeNull();
+});
+
+// The page clears every password after a submit, success or failure, so going
+// back to hidden when emptied is what stops a new password sitting on screen.
+test("an emptied password field goes back to hidden", async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(
+    <FormField id="demo-pw" label="Mot de passe" type="password" value="x" onChange={noop} />,
+  );
+  await user.click(screen.getByRole("button", { name: "Afficher le mot de passe" }));
+  rerender(
+    <FormField id="demo-pw" label="Mot de passe" type="password" value="" onChange={noop} />,
+  );
+  expect(screen.getByLabelText("Mot de passe")).toHaveAttribute("type", "password");
+  expect(screen.getByRole("button", { name: "Afficher le mot de passe" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+});
+
+test("a hint is announced with the field, before any problem", () => {
+  render(
+    <FormField
+      id="demo-pw"
+      label="Mot de passe"
+      value=""
+      onChange={noop}
+      hint="Au moins 8 caractères"
+      problem="Trop court"
+    />,
+  );
+  const input = screen.getByLabelText("Mot de passe");
+  expect(input).toHaveAttribute("aria-describedby", "demo-pw-hint demo-pw-error");
+  expect(screen.getByText("Au moins 8 caractères")).toHaveAttribute("id", "demo-pw-hint");
+});
+
 // The whole point of FormError: the live region is resident, so an error that
 // appears later is a CONTENT change inside an existing alert rather than a
 // freshly-inserted one. Rendering it conditionally again would pass every form

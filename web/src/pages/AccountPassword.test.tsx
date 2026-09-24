@@ -89,6 +89,41 @@ test("reports a too-short password with the minimum, not a placeholder", async (
   expect(problem).not.toHaveTextContent("{{min}}");
 });
 
+// #101: the rule is on screen before the first submit.
+test("states the length rule before anything is submitted, and ticks it at eight", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AccountPassword />, { route: "/account/password" });
+  const field = screen.getByLabelText("Nouveau mot de passe");
+  const rule = screen.getByText(/Au moins 8 caractères/);
+  expect(field.getAttribute("aria-describedby")).toContain(rule.closest("[id]")!.id);
+  expect(rule.closest("[data-met]")).toHaveAttribute("data-met", "false");
+
+  await userEvent.type(field, "1234567");
+  expect(rule.closest("[data-met]")).toHaveAttribute("data-met", "false");
+  await userEvent.type(field, "8");
+  expect(rule.closest("[data-met]")).toHaveAttribute("data-met", "true");
+});
+
+test("says so once the confirmation matches", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AccountPassword />, { route: "/account/password" });
+  await userEvent.type(screen.getByLabelText("Nouveau mot de passe"), "un-mot-de-passe");
+  await userEvent.type(
+    screen.getByLabelText("Confirmer le nouveau mot de passe"),
+    "un-mot-de-pass",
+  );
+  expect(screen.queryByText("Les mots de passe correspondent.")).toBeNull();
+
+  await userEvent.type(screen.getByLabelText("Confirmer le nouveau mot de passe"), "e");
+  expect(screen.getByText("Les mots de passe correspondent.")).toBeInTheDocument();
+});
+
+test("every password field on the page can be revealed", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AccountPassword />, { route: "/account/password" });
+  expect(screen.getAllByRole("button", { name: "Afficher le mot de passe" })).toHaveLength(3);
+});
+
 test("explains the forced change rather than just refusing to leave", async () => {
   setMockUser("demo.mustchange");
   await renderWithSession(<AccountPassword />, { route: "/account/password" });
@@ -153,6 +188,8 @@ test("labels all three fields and the submit in German", async () => {
     "new-password",
   );
   expect(screen.getByRole("button", { name: "Passwort ändern" })).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: "Passwort anzeigen" })).toHaveLength(3);
+  expect(screen.getByText(/Mindestens 8 Zeichen/)).toBeInTheDocument();
 });
 
 async function changeInGerman(current: string, next: string, confirmation = next) {
