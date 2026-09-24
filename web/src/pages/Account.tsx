@@ -4,15 +4,20 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
+import type { AuthMe200 } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError, FormField } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
-import { t } from "../i18n";
+import { roleLabel, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
 /**
- * Change my own password.
+ * Who I am, and change my own password.
+ *
+ * The identity card comes first because the account menu links here, and a
+ * member who opens it wants to see who they are logged in as before any
+ * password field. It is read-only; see below.
  *
  * The only screen every account holder needs and nobody administers. It is also
  * where every FIRST login lands, because a committee-issued password arrives
@@ -91,7 +96,11 @@ export function Account() {
         <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
       ) : null}
 
-      <form onSubmit={submit} className="mt-block flex flex-col gap-related">
+      {user ? <Identity user={user} /> : null}
+
+      <h2 className="mt-block font-display text-2xl">{t("account.password")}</h2>
+
+      <form onSubmit={submit} className="mt-related flex flex-col gap-related">
         <FormField
           id="currentPassword"
           label={t("account.currentPassword")}
@@ -142,5 +151,49 @@ export function Account() {
         </Button>
       </form>
     </PageSection>
+  );
+}
+
+/**
+ * Each label sits above its value, because a seat name like
+ * "Vice-présidente - secrétaire" wraps badly beside its label on a phone.
+ *
+ * Register and seat names are data the committee typed, so they are rendered
+ * verbatim. Roles are translated by key, as everywhere else.
+ */
+function Identity({ user }: { user: AuthMe200 }) {
+  const rows = [
+    { label: t("account.username"), value: user.username },
+    { label: t("account.section"), value: user.sectionName ?? t("account.sectionNone") },
+    {
+      label: t("account.committeeFunction"),
+      value: user.committeeFunctionName ?? t("account.committeeFunctionNone"),
+    },
+    {
+      label: t("account.roles"),
+      value:
+        user.roleKeys.length > 0
+          ? user.roleKeys.map((key) => roleLabel(key)).join(", ")
+          : t("account.rolesNone"),
+    },
+  ];
+
+  return (
+    <section
+      aria-label={t("account.identity")}
+      className="mt-block rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+    >
+      <h2 className="font-display text-2xl">
+        {user.firstName} {user.lastName}
+      </h2>
+      <dl className="mt-related grid gap-related sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <dt className="text-sm text-ink-muted">{row.label}</dt>
+            <dd className="text-ink">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }

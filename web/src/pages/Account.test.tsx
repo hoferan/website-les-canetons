@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
@@ -14,6 +14,65 @@ async function change(current: string, next: string, confirmation = next) {
   await userEvent.type(screen.getByLabelText("Confirmer le nouveau mot de passe"), confirmation);
   await userEvent.click(screen.getByRole("button", { name: "Changer le mot de passe" }));
 }
+
+/**
+ * Who you are, before what you can change (#100). Read from the card by its
+ * labels, so a value printed under the wrong label fails.
+ */
+function field(label: string): string {
+  const card = screen.getByRole("region", { name: /identité|identität/i });
+  const term = within(card).getByText(label, { selector: "dt" });
+  return term.nextElementSibling?.textContent ?? "";
+}
+
+test("shows who the member is: name, identifiant, pupitre, seat and roles", async () => {
+  setMockUser("demo.committee");
+  await renderWithSession(<Account />, { route: "/account" });
+
+  const card = screen.getByRole("region", { name: "Identité" });
+  expect(within(card).getByText("Camille Committee")).toBeInTheDocument();
+  expect(field("Identifiant")).toBe("demo.committee");
+  expect(field("Pupitre")).toBe("Trombones");
+  expect(field("Fonction au comité")).toBe("Responsable intendance");
+  // Translated by key through roleLabel, never the raw key.
+  expect(field("Rôles")).toBe("Comité");
+});
+
+test("says so when the member sits on no committee seat and holds no role", async () => {
+  setMockUser("demo.young");
+  await renderWithSession(<Account />, { route: "/account" });
+
+  expect(field("Fonction au comité")).toBe("Aucune");
+  expect(field("Rôles")).toBe("Aucun");
+});
+
+test("says so when the member plays in no register", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<Account />, { route: "/account" });
+
+  expect(field("Pupitre")).toBe("Ne joue pas");
+});
+
+test("keeps the identity on screen while a committee-issued password must be replaced", async () => {
+  setMockUser("demo.mustchange");
+  await renderWithSession(<Account />, { route: "/account" });
+
+  expect(screen.getByText(/doit être remplacé/)).toBeInTheDocument();
+  expect(field("Identifiant")).toBe("demo.mustchange");
+  expect(screen.getByLabelText("Mot de passe actuel")).toBeInTheDocument();
+});
+
+test("shows the identity card in German", async () => {
+  setMockUser("demo.committee");
+  await renderWithSession(<Account />, { route: "/account", locale: "de-CH" });
+
+  expect(screen.getByRole("region", { name: "Identität" })).toBeInTheDocument();
+  expect(field("Benutzername")).toBe("demo.committee");
+  expect(field("Register")).toBe("Trombones");
+  expect(field("Funktion im Vorstand")).toBe("Responsable intendance");
+  expect(field("Rollen")).toBe("Vorstand");
+  expect(screen.getByRole("heading", { name: "Passwort" })).toBeInTheDocument();
+});
 
 test("changes the password and says so", async () => {
   setMockUser("demo.direction");
