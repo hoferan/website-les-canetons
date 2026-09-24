@@ -9,7 +9,7 @@ test("the login page renders a usable form", async ({ page }) => {
   // rendered document and the submit is actually reachable. See
   // docs/traps.md — a passing assertion is not a rendered page.
   await expect(page.getByLabel("Identifiant")).toBeVisible();
-  await expect(page.getByLabel("Mot de passe")).toBeVisible();
+  await expect(page.getByLabel("Mot de passe", { exact: true })).toBeVisible();
 
   const submit = page.getByRole("button", { name: "Se connecter" });
   await expect(submit).toBeVisible();

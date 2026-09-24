@@ -12,7 +12,7 @@ import { expect, type Page, test } from "@playwright/test";
 async function logInAsDirection(page: Page, path: string) {
   await page.goto("/login");
   await page.getByLabel("Identifiant").fill("demo.direction");
-  await page.getByLabel("Mot de passe").fill("demo");
+  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page.getByRole("button", { name: /^Compte de demo\.direction/ })).toBeVisible();
   await page.goto(path);

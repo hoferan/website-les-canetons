@@ -99,7 +99,7 @@ test("every page publishes both alternates and an x-default", async ({ page }) =
 test("the session survives the switch", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Identifiant").fill("demo.direction");
-  await page.getByLabel("Mot de passe").fill("demo");
+  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page).toHaveURL(/\/$/);
 
