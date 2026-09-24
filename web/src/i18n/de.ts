@@ -658,6 +658,15 @@ export const de: typeof fr = {
 
   account: {
     heading: "Mein Konto",
+    identity: "Identität",
+    username: "Benutzername",
+    section: "Register",
+    sectionNone: "Spielt nicht",
+    committeeFunction: "Funktion im Vorstand",
+    committeeFunctionNone: "Keine",
+    roles: "Rollen",
+    rolesNone: "Keine",
+    password: "Passwort",
     provisionalNotice:
       "Ihr Passwort wurde vom Vorstand ausgegeben und muss ersetzt werden, bevor Sie fortfahren.",
     currentPassword: "Aktuelles Passwort",

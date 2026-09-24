@@ -1032,15 +1032,25 @@ export const fr = {
   },
 
   /**
-   * The account screen (/account), which today is a password form.
+   * The account screen (/account): who you are, then the password form.
    *
-   * #100 and #125 are about to make it an actual account page and move the
-   * password change to its own route. These keys move with it — the cheaper
-   * direction, and the reason this slice did not wait: a restructure that
-   * moves KEYS beats one that moves literals and then has to translate them.
+   * #125 is about to move the password change to its own route. These keys
+   * move with it — the cheaper direction: a restructure that moves KEYS beats
+   * one that moves literals and then has to translate them.
    */
   account: {
     heading: "Mon compte",
+    // Who you are, above the password form (#100). An empty value is spelled
+    // out, because a blank or a dash reads as data that failed to load.
+    identity: "Identité",
+    username: "Identifiant",
+    section: "Pupitre",
+    sectionNone: "Ne joue pas",
+    committeeFunction: "Fonction au comité",
+    committeeFunctionNone: "Aucune",
+    roles: "Rôles",
+    rolesNone: "Aucun",
+    password: "Mot de passe",
     // EXPLAINED, NOT MERELY ENFORCED: a member bounced back here by the gate
     // with no reason given would think the site was broken.
     provisionalNotice:

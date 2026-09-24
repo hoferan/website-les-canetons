@@ -74,6 +74,9 @@ test("GET /me reports whoever setMockUser logged in", async () => {
     lastName: "Direction",
     isPlayer: false,
     mustChangePassword: false,
+    sectionName: null,
+    committeeFunctionName: null,
+    roleKeys: ["direction"],
     permissions: [
       "events.manage",
       "attendance.view_all",

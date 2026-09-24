@@ -315,18 +315,18 @@ test("ends the session from the phone layer too", async () => {
 /**
  * IT IS REACHABLE FROM INSIDE THE FORCED-PASSWORD GATE, which is the case the
  * whole "in the chrome, not on a page" decision exists for: that member can
- * reach /account and nothing else, so a logout living on any other route would
+ * reach /account/password and nothing else, so a logout living on any other route would
  * be unreachable by the one person most likely to want it.
  *
- * Mutation-tested: moving the button onto /account's own page fails this test
+ * Mutation-tested: moving the button onto the password page fails this test
  * and nothing else.
  */
-test("stays reachable for a member held on /account by the password gate", async () => {
+test("stays reachable for a member held on /account/password by the password gate", async () => {
   const user = userEvent.setup();
   setMockUser("demo.mustchange");
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
-  await screen.findByRole("heading", { name: "Mon compte" });
+  await screen.findByRole("heading", { level: 1, name: "Mot de passe" });
   await user.click(screen.getByRole("button", { name: "Compte de demo.mustchange" }));
   expect(await screen.findByRole("menuitem", { name: "Déconnexion" })).toBeInTheDocument();
 });

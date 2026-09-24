@@ -308,4 +308,16 @@ export type AuthMe200 = {
   isPlayer: boolean;
   mustChangePassword: boolean;
   permissions: string[];
+  /**
+   * The register they play in, or null if they do not play.
+   * @nullable
+   */
+  sectionName: string | null;
+  /**
+   * Their seat on the committee, or null if they hold none.
+   * @nullable
+   */
+  committeeFunctionName: string | null;
+  /** The keys of the roles they hold. For display only: authorise on `permissions`. */
+  roleKeys: string[];
 };

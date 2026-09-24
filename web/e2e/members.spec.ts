@@ -45,14 +45,31 @@ test("logging out ends the session and lands on the public front page", async ({
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Connexion");
 });
 
+// #125: the password form is one tap away from the account page and one tap
+// back, and the account page itself carries no password field.
+test("the account page leads to the password form and back", async ({ page }) => {
+  await logIn(page, "demo.player");
+  await page.getByRole("button", { name: "Compte de demo.player" }).click();
+  await page.getByRole("menuitem", { name: "Mon compte" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Changer le mot de passe" }).click();
+  await expect(page).toHaveURL(/\/account\/password$/);
+  await expect(page.getByLabel("Mot de passe actuel")).toBeVisible();
+
+  await page.getByRole("link", { name: "Mon compte" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
+});
+
 test("logging out is reachable from inside the forced-password gate", async ({ page }) => {
   await logIn(page, "demo.mustchange");
 
-  // That member is held on /account and can reach the chrome and nothing else,
-  // which is the whole reason the control lives in the nav rather than on a
-  // page of its own.
+  // That member is held on /account/password and can reach the chrome and
+  // nothing else, which is the whole reason the control lives in the nav
+  // rather than on a page of its own.
   await page.goto("/members");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mot de passe");
 
   await page.getByRole("button", { name: "Compte de demo.mustchange" }).click();
   await page.getByRole("menuitem", { name: "Déconnexion" }).click();
@@ -179,7 +196,13 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
   // two controls went from `size="sm"` to the default when this screen moved
   // to the shared RowActions component — `RowAction` carries no size field —
   // which is exactly the axis #118 exists to fix.
-  for (const path of ["/events", "/members", "/account", "/events/7/registrations"]) {
+  for (const path of [
+    "/events",
+    "/members",
+    "/account",
+    "/account/password",
+    "/events/7/registrations",
+  ]) {
     await page.goto(path);
     // Anchored on the card rather than on load, so the measurement cannot run
     // against a page that has not painted its rows yet.

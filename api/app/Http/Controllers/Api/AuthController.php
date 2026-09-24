@@ -170,8 +170,12 @@ class AuthController extends Controller
      * password before anything else (`mustChangePassword`), and `permissions`.
      *
      * `permissions` is the flat list of permission tokens the caller's roles
-     * add up to, and it is what a client shows or hides a screen on. Roles are
-     * not sent, because nothing in this API is authorised by role name.
+     * add up to, and it is what a client shows or hides a screen on.
+     *
+     * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
+     * caller sits in the band, for their own account page. They are for
+     * display only. Nothing in this API is authorised by role, so a client
+     * decides what to show from `permissions` and ignores `roleKeys` for that.
      *
      * The response is never cacheable. An anonymous caller answers
      * `401 not_authenticated`.
@@ -190,11 +194,29 @@ class AuthController extends Controller
             'isPlayer' => $member->isPlayer(),
             'mustChangePassword' => $member->must_change_password,
             'permissions' => $member->permissions()->map(fn ($p) => $p->value)->all(),
+            /** The register they play in, or null if they do not play. */
+            'sectionName' => $member->section?->name,
+            /** Their seat on the committee, or null if they hold none. */
+            'committeeFunctionName' => $member->committeeFunction?->name,
+            /** The keys of the roles they hold. For display only: authorise on `permissions`. */
+            'roleKeys' => $this->roleKeys($member),
             // Redundant with the `no-store` middleware the whole authenticated
             // group carries, and kept: this body IS an identity, so it should
             // not depend on a route registration elsewhere to stay out of a
             // shared proxy.
         ])->header('Cache-Control', 'no-store, private');
+    }
+
+    /**
+     * A typed method rather than an inline pluck, for the reason
+     * MemberResource::roleIds() gives: the docblock is what makes Scramble
+     * publish string[] instead of an untyped object.
+     *
+     * @return list<string>
+     */
+    private function roleKeys(Member $member): array
+    {
+        return $member->roles->pluck('key')->map(fn ($key): string => (string) $key)->sort()->values()->all();
     }
 
     /**

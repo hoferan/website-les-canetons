@@ -354,7 +354,7 @@
         "/me": {
             "get": {
                 "operationId": "auth.me",
-                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they play in a register (`isPlayer`, the single fact that\ndecides who is answerable for an event), whether they must change their\npassword before anything else (`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on. Roles are\nnot sent, because nothing in this API is authorised by role name.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
+                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they play in a register (`isPlayer`, the single fact that\ndecides who is answerable for an event), whether they must change their\npassword before anything else (`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
                 "summary": "Read the current member and what they may do",
                 "tags": [
                     "Session"
@@ -390,6 +390,27 @@
                                             "items": {
                                                 "type": "string"
                                             }
+                                        },
+                                        "sectionName": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "The register they play in, or null if they do not play."
+                                        },
+                                        "committeeFunctionName": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "Their seat on the committee, or null if they hold none."
+                                        },
+                                        "roleKeys": {
+                                            "type": "array",
+                                            "description": "The keys of the roles they hold. For display only: authorise on `permissions`.",
+                                            "items": {
+                                                "type": "string"
+                                            }
                                         }
                                     },
                                     "required": [
@@ -399,7 +420,10 @@
                                         "lastName",
                                         "isPlayer",
                                         "mustChangePassword",
-                                        "permissions"
+                                        "permissions",
+                                        "sectionName",
+                                        "committeeFunctionName",
+                                        "roleKeys"
                                     ]
                                 }
                             }

@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout";
 import { MustChangePassword } from "./components/MustChangePassword";
 import { RequirePermission, RequireSession } from "./components/guards";
 import { Account } from "./pages/Account";
+import { AccountPassword } from "./pages/AccountPassword";
 import { Agenda } from "./pages/Agenda";
 import { Band } from "./pages/Band";
 import { Committee } from "./pages/Committee";
@@ -38,9 +39,9 @@ import { NotFound } from "./pages/NotFound";
  *
  * MustChangePassword wraps everything INSIDE the layout: a committee-issued
  * password must be replaced before any other screen is usable, and the gate has
- * to see the pathname to exempt /account from its own redirect. `/login` sits
+ * to see the pathname to exempt /account/password from its own redirect. `/login` sits
  * inside it on purpose — a member who must change their password and navigates
- * there is already logged in, so sending them to /account is right. It cannot
+ * there is already logged in, so sending them to /account/password is right. It cannot
  * trap anyone, because logging out is a button in the chrome rather than a
  * route.
  *
@@ -49,7 +50,7 @@ import { NotFound } from "./pages/NotFound";
  * every other unknown path.
  *
  * THE PUBLIC PAGES SIT OUTSIDE MustChangePassword, and that is the one thing
- * about this table worth reading twice. The gate holds a member on /account
+ * about this table worth reading twice. The gate holds a member on /account/password
  * until they have replaced a committee-issued password — which is right for
  * the members' tool and wrong for the public site: a member in that state who
  * taps "Histoire" has no business being bounced to a password form, because
@@ -93,6 +94,7 @@ export function AppRoutes() {
         <Route element={<MustChangePassword />}>
           <Route path="/login" element={<Login />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/account/password" element={<AccountPassword />} />
 
           {/* Needs a SESSION and nothing more — reading the planning is
               something everybody in the band does. It still sits behind
