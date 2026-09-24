@@ -308,6 +308,8 @@ export const fr = {
     logout: "Déconnexion",
     // The desktop bar's overflow: the entries that do not fit fold in here.
     more: "Plus",
+    // The ✕ of the phone menu's full-screen layer.
+    close: "Fermer le menu",
     // The phone list's two headings, once somebody is logged in.
     groupMine: "Mon espace",
     groupBand: "Le groupe",

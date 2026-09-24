@@ -60,30 +60,47 @@ test("logging out is reachable from inside the forced-password gate", async ({ p
 });
 
 /**
- * THE PHONE SHAPE (#99): a disclosure inside the nav list, not the desktop
- * dropdown. The first version used the dropdown here too, and its popover
- * floated over the page beside the list. This pins that the rows open in
- * place, below the name, and that the way out works from there.
+ * THE PHONE SHAPE (#99, "Scène"): a full-screen layer over the page, with the
+ * account in a footer at the bottom. The pushed-down white list before it
+ * did not read as a menu; this pins that the layer covers the whole screen and
+ * that the way out works from it.
  */
-test("on a phone the account rows open in place under the name, and log out", async ({ page }) => {
+test("on a phone the menu is a full-screen layer, and logs out from its footer", async ({
+  page,
+}) => {
   await logIn(page, "demo.direction");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/events");
 
   await page.getByRole("button", { name: "Menu de navigation" }).click();
-  const row = page.getByRole("button", { name: "demo.direction", exact: true });
-  await row.click();
-  await expect(row).toHaveAttribute("aria-expanded", "true");
-  await expect(page.getByRole("menu")).toHaveCount(0);
+  const layer = page.getByRole("dialog", { name: "Menu" });
+  await expect(layer).toBeVisible();
+  // Polled: the reveal animation starts the layer 4px high.
+  await expect.poll(async () => Math.round((await layer.boundingBox())!.y)).toBe(0);
+  const box = (await layer.boundingBox())!;
+  expect(Math.round(box.width)).toBe(390);
+  expect(Math.round(box.height)).toBe(844);
 
-  const logout = page.getByRole("button", { name: "Déconnexion" });
-  const rowBox = await row.boundingBox();
-  const logoutBox = await logout.boundingBox();
-  expect(logoutBox!.y).toBeGreaterThan(rowBox!.y);
-  expect(logoutBox!.width).toBeGreaterThan(300);
-
+  const logout = layer.getByRole("button", { name: "Déconnexion" });
+  await expect(logout).toBeInViewport();
   await logout.click();
   await expect(page).toHaveURL(/\/$/);
+});
+
+/**
+ * THE MENU BAR STICKS on a phone, so the menu opens from the bottom of a long
+ * page without scrolling back up first.
+ */
+test("on a phone the Menu bar stays at the top while the page scrolls", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/events");
+  await expect(page.getByTestId("event-card").first()).toBeVisible();
+
+  await page.mouse.wheel(0, 2000);
+  const toggle = page.getByRole("button", { name: "Menu de navigation" });
+  await expect(toggle).toBeInViewport();
+  await expect.poll(async () => (await toggle.boundingBox())!.y).toBeLessThan(10);
 });
 
 /**

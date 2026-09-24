@@ -1,25 +1,18 @@
-import { Inbox, type LucideIcon, Menu, Users } from "lucide-react";
+import { Calendar, Inbox, type LucideIcon, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
 import { DesktopNav } from "./DesktopNav";
 import { type NavEntry } from "./NavEntry";
-import {
-  DESK_ACTIVE,
-  DESK_IDLE,
-  DESK_LINK,
-  PHONE_ACTIVE,
-  PHONE_IDLE,
-  PHONE_ROW,
-} from "./navStyles";
-import { PhoneNav } from "./PhoneNav";
+import { DESK_ACTIVE, DESK_IDLE, DESK_LINK } from "./navStyles";
+import { type MemberEntry, PhoneNav } from "./PhoneNav";
 
 import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
-import { AccountDisclosure, AccountDropdown, type AccountTool } from "../session/AccountMenu";
+import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
@@ -72,8 +65,11 @@ export function Layout() {
   const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  // Every link in the phone layer closes it on click, but a route change can
+  // also come from Back or from a redirect, and the layer covers the whole
+  // screen, so it must never outlive the page it was opened on.
+  useEffect(() => setOpen(false), [pathname]);
   const active = pathname;
-  const close = () => setOpen(false);
 
   const mayReadInbox = can("messages.view");
   // Disabled rather than gated in the render below: a query that never runs
@@ -103,30 +99,26 @@ export function Layout() {
     icon: item.icon,
     count: countFor(item.to),
   }));
-  const toolEntries: NavEntry[] = tools.map((item) => ({
-    key: item.to,
-    to: item.to,
-    label: t(item.labelKey),
-    badge:
-      countFor(item.to) > 0 ? (
-        <span
-          aria-label={t("nav.pending", { n: countFor(item.to) })}
-          className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
-        >
-          {countFor(item.to)}
-        </span>
-      ) : undefined,
-  }));
-  const loginLink = (base: string, on: string, off: string) => (
-    <Link
-      to="/login"
-      onClick={close}
-      aria-current={active === "/login" ? "page" : undefined}
-      className={`${base} font-semibold ${active === "/login" ? on : off}`}
-    >
-      {t("nav.login")}
-    </Link>
-  );
+  // The phone layer's "mine" card: Événements, then the committee's screens,
+  // each with its icon and the inbox with its count.
+  const mineEntries: MemberEntry[] = [
+    { key: "/events", to: "/events", label: t("nav.events"), icon: Calendar },
+    ...tools.map((item) => ({
+      key: item.to,
+      to: item.to,
+      label: t(item.labelKey),
+      icon: item.icon,
+      badge:
+        countFor(item.to) > 0 ? (
+          <span
+            aria-label={t("nav.pending", { n: countFor(item.to) })}
+            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
+          >
+            {countFor(item.to)}
+          </span>
+        ) : undefined,
+    })),
+  ];
 
   // REFRESHES THE BADGE ON NAVIGATION, AND ONLY THEN — never a timer. Layout
   // wraps every route and never remounts, so TanStack Query's own
@@ -171,58 +163,51 @@ export function Layout() {
             <LanguageSwitch surface="dark" />
           </div>
         </div>
-
-        {/* NAMED, and it has to be. The band page carries a second nav (the
-            register index), and the front page repeats four of these links as
-            destination cards — so "the link called Nous rejoindre" matches two
-            elements on / and a query has nothing to scope to. Two navs without
-            names are also indistinguishable to a screen-reader user moving by
-            landmark. */}
-        <nav aria-label={t("nav.primary")} className="border-t border-white/10 bg-panel text-ink">
-          <div className="flex items-center justify-between pr-2 md:hidden">
-            <button
-              type="button"
-              aria-label={t("nav.menuLabel")}
-              aria-expanded={open}
-              aria-controls="nav-menu"
-              onClick={() => setOpen((wasOpen) => !wasOpen)}
-              className="focus-ring flex min-h-touch items-center gap-2 px-4 font-semibold text-ink"
-            >
-              <Menu className="h-6 w-6" />
-              {t("nav.menu")}
-            </button>
-            <LanguageSwitch surface="light" />
-          </div>
-
-          {/* Rendered only while open, so the closed phone menu adds nothing
-              to the page and the desktop bar is the only copy a test or a
-              screen reader meets at desktop width. */}
-          {open ? (
-            <PhoneNav
-              account={
-                user ? <AccountDisclosure member={user} active={active} onDone={close} /> : null
-              }
-              mine={user ? [...memberEntries, ...toolEntries] : []}
-              band={publicEntries}
-              login={user ? null : loginLink(PHONE_ROW, PHONE_ACTIVE, PHONE_IDLE)}
-              active={active}
-              close={close}
-            />
-          ) : null}
-
-          <DesktopNav
-            entries={user ? [...memberEntries, ...publicEntries] : publicEntries}
-            active={active}
-            trailing={
-              user ? (
-                <AccountDropdown member={user} active={active} tools={accountTools} />
-              ) : (
-                loginLink(DESK_LINK, DESK_ACTIVE, DESK_IDLE)
-              )
-            }
-          />
-        </nav>
       </header>
+
+      {/* NAMED, and it has to be. The band page carries a second nav (the
+          register index), and the front page repeats four of these links as
+          destination cards — so "the link called Nous rejoindre" matches two
+          elements on / and a query has nothing to scope to. Two navs without
+          names are also indistinguishable to a screen-reader user moving by
+          landmark.
+
+          A SIBLING OF THE HEADER, NOT INSIDE IT, so that it can stick: a
+          sticky element only sticks within its parent, and inside the header
+          it would scroll away with it. On a phone the Menu bar stays at the
+          top, so the menu opens from anywhere on a long page; the desktop bar
+          scrolls away as before. */}
+      <nav
+        aria-label={t("nav.primary")}
+        className="sticky top-0 z-30 border-b border-line bg-panel text-ink md:static md:border-b-0"
+      >
+        <PhoneNav
+          open={open}
+          onOpenChange={setOpen}
+          member={user}
+          mine={user ? mineEntries : []}
+          band={publicEntries}
+          active={active}
+        />
+
+        <DesktopNav
+          entries={user ? [...memberEntries, ...publicEntries] : publicEntries}
+          active={active}
+          trailing={
+            user ? (
+              <AccountDropdown member={user} active={active} tools={accountTools} />
+            ) : (
+              <Link
+                to="/login"
+                aria-current={active === "/login" ? "page" : undefined}
+                className={`${DESK_LINK} font-semibold ${active === "/login" ? DESK_ACTIVE : DESK_IDLE}`}
+              >
+                {t("nav.login")}
+              </Link>
+            )
+          }
+        />
+      </nav>
 
       {/* Renders nothing; keeps the head's alternates in step with the page. */}
       <Hreflang />

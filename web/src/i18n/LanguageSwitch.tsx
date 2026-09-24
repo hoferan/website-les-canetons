@@ -78,7 +78,9 @@ export function LanguageSwitch({ surface }: { surface: "dark" | "light" }) {
   const current = currentLocale();
   const pill = surface === "dark" ? "bg-white text-stage" : "bg-violet text-white";
   const other =
-    surface === "dark" ? "text-white/70 hover:text-white" : "text-ink-muted hover:text-ink";
+    surface === "dark"
+      ? "focus-ring-stage text-white/70 hover:text-white"
+      : "focus-ring text-ink-muted hover:text-ink";
 
   return (
     <div role="group" aria-label={t("nav.language")} className="flex items-center text-sm">
@@ -109,7 +111,7 @@ export function LanguageSwitch({ surface }: { surface: "dark" | "light" }) {
             title={ENDONYM[locale]}
             aria-label={t(locale === "de-CH" ? "nav.switchToGerman" : "nav.switchToFrench")}
             onClick={() => rememberLocale(locale)}
-            className={`${other} focus-ring inline-flex min-h-touch min-w-touch items-center justify-center rounded`}
+            className={`${other} inline-flex min-h-touch min-w-touch items-center justify-center rounded`}
           >
             <span className="px-2 py-1 leading-none font-semibold">{CODE[locale]}</span>
           </a>

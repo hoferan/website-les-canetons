@@ -236,6 +236,23 @@ h2 {
   }
 }
 
+/* The phone's Menu bar is sticky (Layout), so a jump to an anchor would
+   land under it. 3rem clears its 44px. From `md` the bar scrolls away. */
+@media (max-width: 47.99rem) {
+  html {
+    scroll-padding-top: 3rem;
+  }
+}
+
+/* The same ring on the black stage, where violet is about 2.5:1 and barely
+   shows: the phone menu's layer and the header band. */
+@utility focus-ring-stage {
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
 /* E2c: every duration to near-zero under reduced motion. This covers the
    Button press transition, the reveal animation, and sonner's own toast
    animation, in one place — a per-site motion-reduce: variant would be a

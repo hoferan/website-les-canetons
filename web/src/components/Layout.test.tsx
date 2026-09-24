@@ -116,42 +116,44 @@ test("a member with no committee screen gets only the account and the way out", 
   expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
 });
 
-test("the phone list starts with the account row, then the member's own group", async () => {
+/**
+ * THE PHONE MENU IS A FULL-SCREEN LAYER (#99, "Scène"): the member's own
+ * screens first, then the public pages, and the account in a footer, last.
+ */
+test("the phone layer puts the member's screens first and the account last", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
   await openPhoneMenu(user);
 
-  const mine = screen.getByRole("list", { name: "Mon espace" });
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  const mine = within(layer).getByRole("list", { name: "Mon espace" });
   expect(
     within(mine)
       .getAllByRole("link")
       .map((link) => link.getAttribute("href")),
   ).toEqual(["/events", "/members", "/inbox"]);
-  const band = screen.getByRole("list", { name: "Le groupe" });
+  const band = within(layer).getByRole("list", { name: "Le groupe" });
   expect(within(band).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 
-  // The account row comes before both groups.
-  const row = screen.getByRole("button", { name: "demo.direction" });
-  expect(row.compareDocumentPosition(mine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  // The account comes after both lists.
+  const account = within(layer).getByRole("link", { name: "Mon compte" });
+  expect(band.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(layer).getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
 });
 
-test("the phone account row expands in place into the account and the way out", async () => {
+test("a player's card holds only Événements", async () => {
   const user = userEvent.setup();
-  setMockUser("demo.direction");
+  setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/login" });
   await openPhoneMenu(user);
 
-  const row = screen.getByRole("button", { name: "demo.direction" });
-  expect(row).toHaveAttribute("aria-expanded", "false");
-
-  await user.click(row);
-
-  expect(row).toHaveAttribute("aria-expanded", "true");
-  expect(screen.getByRole("link", { name: "Mon compte" })).toHaveAttribute("href", "/account");
-  expect(screen.getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
-  // A disclosure, not a menu: nothing floats.
-  expect(screen.queryByRole("menu")).toBeNull();
+  const mine = await screen.findByRole("list", { name: "Mon espace" });
+  expect(
+    within(mine)
+      .getAllByRole("link")
+      .map((link) => link.textContent),
+  ).toEqual(["Événements"]);
 });
 
 test("logged out, the phone list has no headings and ends with Connexion", async () => {
@@ -167,27 +169,30 @@ test("logged out, the phone list has no headings and ends with Connexion", async
 
 /**
  * #99's whole point: the name and the logout used to sit side by side as nav
- * items, one stray click apart. Until one of the account controls is opened
- * there is no logout anywhere in the tree.
+ * items, one stray click apart. Until a menu is opened there is no logout
+ * anywhere in the tree.
  */
-test("keeps the logout out of reach until the account control is opened", async () => {
-  const user = userEvent.setup();
+test("keeps the logout out of reach until a menu is opened", async () => {
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/events" });
 
   await screen.findByRole("button", { name: "Compte de demo.player" });
-  await openPhoneMenu(user);
   expect(screen.queryByText("Déconnexion")).toBeNull();
 });
 
-test("marks the account control as the current page on /account", async () => {
+test("marks the account as the current page on /account", async () => {
   const user = userEvent.setup();
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/account" });
   await screen.findByRole("heading", { name: "Mon compte" });
 
   await openPhoneMenu(user);
-  expect(screen.getByRole("button", { name: "demo.player" })).toHaveClass("text-violet");
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  expect(within(layer).getByRole("link", { name: "Mon compte" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await user.click(within(layer).getByRole("button", { name: "Fermer le menu" }));
 
   await user.click(screen.getByRole("button", { name: "Compte de demo.player" }));
   expect(await screen.findByRole("menuitem", { name: "Mon compte" })).toHaveAttribute(
@@ -203,17 +208,33 @@ test("hides the committee's screens from an anonymous visitor", async () => {
   expect(screen.queryByRole("link", { name: "Membres" })).toBeNull();
 });
 
-test("the hamburger toggles the menu and reports its state", async () => {
+test("the Menu button opens the layer, and the ✕ and Escape close it", async () => {
+  const user = userEvent.setup();
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
   const toggle = screen.getByRole("button", { name: "Menu de navigation" });
   expect(toggle).toHaveAttribute("aria-expanded", "false");
 
-  await userEvent.click(toggle);
+  await user.click(toggle);
   expect(toggle).toHaveAttribute("aria-expanded", "true");
-
-  await userEvent.click(toggle);
+  await user.click(screen.getByRole("button", { name: "Fermer le menu" }));
   expect(toggle).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("dialog")).toBeNull();
+
+  await user.click(toggle);
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("dialog")).toBeNull();
+});
+
+test("choosing a page in the layer closes it", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
+
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  await user.click(within(layer).getByRole("link", { name: "Contact" }));
+
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 test("shows Événements to any logged-in member, first in the bar", async () => {
@@ -279,14 +300,13 @@ test("ends the session on the server", async () => {
   await waitFor(() => expect(currentMockUser()).toBeNull());
 });
 
-test("ends the session from the phone row too", async () => {
+test("ends the session from the phone layer too", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
   await screen.findByRole("heading", { name: "Membres" });
   await openPhoneMenu(user);
-  await user.click(screen.getByRole("button", { name: "demo.direction" }));
   await user.click(screen.getByRole("button", { name: "Déconnexion" }));
 
   await waitFor(() => expect(currentMockUser()).toBeNull());

@@ -204,6 +204,7 @@ export const de: typeof fr = {
     accountMenu: "Konto von {{name}}",
     logout: "Abmelden",
     more: "Mehr",
+    close: "Menü schliessen",
     groupMine: "Mein Bereich",
     groupBand: "Die Gugge",
     language: "Sprache",
