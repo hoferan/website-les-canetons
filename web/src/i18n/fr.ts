@@ -302,6 +302,7 @@ export const fr = {
     inbox: "Boîte de réception",
     gallery: "Galerie",
     login: "Connexion",
+    account: "Mon compte",
     logout: "Déconnexion",
     // The inbox badge's accessible name. {{n}} is i18next interpolation,
     // unlike contactMessages' {name}, which the component replaces by hand.

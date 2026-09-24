@@ -74,7 +74,7 @@ export function LanguageSwitch({ onDone }: { onDone?: () => void }) {
         rememberLocale(target);
         onDone?.();
       }}
-      className="focus-ring flex min-h-12 items-center px-4 text-white/80 hover:text-white md:min-h-0 md:px-0 md:py-1 md:text-ink-muted md:hover:text-ink"
+      className="focus-ring flex min-h-12 items-center px-4 text-ink-muted hover:text-ink md:min-h-0 md:px-0 md:py-1"
     >
       {ENDONYM[target]}
     </a>

@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "vitest";
 
 import { setLocale } from "../i18n";
-import { logoutDestination } from "./LogoutButton";
+import { logoutDestination } from "./logout";
 
 afterEach(async () => {
   await setLocale("fr");

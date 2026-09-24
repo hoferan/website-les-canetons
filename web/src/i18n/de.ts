@@ -200,6 +200,7 @@ export const de: typeof fr = {
     inbox: "Posteingang",
     gallery: "Galerie",
     login: "Anmelden",
+    account: "Mein Konto",
     logout: "Abmelden",
     pending: "{{n}} ausstehend",
     // Identisch zum Französischen: siehe die Notiz in fr.ts.

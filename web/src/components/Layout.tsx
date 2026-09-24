@@ -1,6 +1,6 @@
 import { ExternalLink, Menu } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
 
@@ -8,7 +8,7 @@ import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
-import { LogoutButton } from "../session/LogoutButton";
+import { AccountMenu } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
 import { ScrollToTop } from "./ScrollToTop";
@@ -68,9 +68,8 @@ const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
 ];
 
 /**
- * One nav row. On a phone this is a 48px full-width row on the dark stage
- * surface, with a divider; above `md` it collapses back to an inline item on
- * the light bar.
+ * One nav row. On a phone this is a 48px full-width row with a divider; above
+ * `md` it collapses back to an inline item. Both sit on the light panel.
  *
  * Extracted because there are TWELVE call sites — ten links, the Flickr anchor
  * and the auth item — and the phone nav's targets were about 24px before this,
@@ -80,15 +79,21 @@ const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
 const NAV_ROW = "focus-ring flex min-h-12 items-center px-4 md:min-h-0 md:px-0 md:py-1";
 
 /**
- * The active item is PINK on the dark phone panel and violet on the light
- * desktop bar: violet on --color-stage does not carry enough contrast, and pink
- * is exactly the "emphasis, never a whole surface" role the palette reserves.
+ * The active item is violet on every screen: a bar down its left edge in the
+ * phone list, an underline on the desktop bar.
+ *
+ * LIGHT ON THE PHONE TOO (#99). The phone panel used to be dark, with the
+ * active item in pink, because violet on --color-stage is about 2.6:1 and pink
+ * on white about 3:1: no single colour passed on both surfaces, so the same
+ * state read two ways. It now uses the same light panel as the desktop bar.
+ * Only the header with the logo keeps the stage colour.
  */
-const NAV_ROW_ACTIVE = "font-semibold text-pink md:border-b-2 md:border-violet md:text-violet";
-const NAV_ROW_IDLE = "text-white/80 hover:text-white md:text-ink-muted md:hover:text-ink";
+const NAV_ROW_ACTIVE =
+  "border-l-4 border-violet pl-3 font-semibold text-violet md:border-b-2 md:border-l-0 md:pl-0";
+const NAV_ROW_IDLE = "text-ink-muted hover:text-ink";
 
 /** The divider between phone rows, gone above `md`. */
-const NAV_ITEM = "border-b border-white/10 last:border-0 md:border-0";
+const NAV_ITEM = "border-b border-line last:border-0 md:border-0";
 
 /**
  * One internal nav row. Extracted when the third category arrived and the
@@ -205,7 +210,7 @@ export function Layout() {
 
           <ul
             id="nav-menu"
-            className={`${open ? "block" : "hidden"} animate-reveal border-t border-white/10 bg-stage text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:bg-panel md:px-4 md:py-2`}
+            className={`${open ? "block" : "hidden"} animate-reveal border-t border-line bg-panel text-sm md:mx-auto md:flex md:max-w-shell md:flex-wrap md:items-center md:gap-5 md:border-0 md:px-4 md:py-2`}
           >
             {NAV.map((item) => (
               <NavItem
@@ -282,28 +287,31 @@ export function Layout() {
             </li>
             */}
 
-            {/* Points at /account once somebody is logged in: their own name
-                leading back to a login form is a dead end, and /account is the
-                one screen every account holder has. */}
-            <li className={`nav-auth ${NAV_ITEM} md:ml-auto`}>
-              <NavLink
-                to={user ? "/account" : "/login"}
-                onClick={() => setOpen(false)}
-                className={`${NAV_ROW} font-semibold ${NAV_ROW_IDLE}`}
-              >
-                {user ? user.username : t("nav.login")}
-              </NavLink>
+            {/* Logged in, the member's own name opens a menu holding
+                "Mon compte" and the way out. The logout is in the chrome
+                rather than on /account because the forced-password gate lets
+                a member reach the chrome and nothing else; see
+                session/logout.ts for what its absence had been costing since
+                R1a. */}
+            <li className={`${NAV_ITEM} md:ml-auto`}>
+              {user ? (
+                <AccountMenu
+                  username={user.username}
+                  onAccountPage={active === "/account"}
+                  className={`${NAV_ROW} font-semibold ${active === "/account" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
+                  onDone={close}
+                />
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={close}
+                  aria-current={active === "/login" ? "page" : undefined}
+                  className={`${NAV_ROW} font-semibold ${active === "/login" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
+                >
+                  {t("nav.login")}
+                </Link>
+              )}
             </li>
-
-            {/* THE WAY OUT, and it is here rather than on /account because the
-                forced-password gate lets a member reach the chrome and nothing
-                else. See LogoutButton for what its absence had been costing
-                since R1a. */}
-            {user ? (
-              <li className={NAV_ITEM}>
-                <LogoutButton onDone={close} />
-              </li>
-            ) : null}
 
             {/* LAST, so on desktop it sits rightmost — where a language
                 switcher is looked for — and on a phone it is the final row

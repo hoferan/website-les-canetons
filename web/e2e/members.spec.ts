@@ -16,7 +16,7 @@ async function logIn(page: import("@playwright/test").Page, username: string) {
   await page.getByLabel("Identifiant").fill(username);
   await page.getByLabel("Mot de passe").fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("link", { name: username })).toBeVisible();
+  await expect(page.getByRole("button", { name: username })).toBeVisible();
 }
 
 /**
@@ -32,7 +32,8 @@ test("logging out ends the session and lands on the public front page", async ({
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Membres");
 
-  await page.getByRole("button", { name: "Déconnexion" }).locator("visible=true").click();
+  await page.getByRole("button", { name: "demo.direction" }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
 
   // `/`, not `/login`: logging out is finishing, not starting again.
   await expect(page).toHaveURL(/\/$/);
@@ -53,7 +54,8 @@ test("logging out is reachable from inside the forced-password gate", async ({ p
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
 
-  await page.getByRole("button", { name: "Déconnexion" }).locator("visible=true").click();
+  await page.getByRole("button", { name: "demo.mustchange" }).click();
+  await page.getByRole("menuitem", { name: "Déconnexion" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("depuis 2002");
 });
 
@@ -281,7 +283,7 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // context at 390x844 straight away, as the brief originally had it, fails
   // for the identical reason: below `md` the nav collapses behind the
   // hamburger (Layout.tsx's `hidden md:flex`), so logIn's
-  // `getByRole("link", { name: username })` check never finds a visible link
+  // `getByRole("button", { name: username })` check never finds a visible one
   // and every run of this test times out on login, before it ever reaches the
   // tap it exists to test. Confirmed by running it exactly as the brief wrote
   // it first.
