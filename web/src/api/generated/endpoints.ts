@@ -729,8 +729,12 @@ export const getAuthMeUrl = () => {
  * password before anything else (`mustChangePassword`), and `permissions`.
  *
  * `permissions` is the flat list of permission tokens the caller's roles
- * add up to, and it is what a client shows or hides a screen on. Roles are
- * not sent, because nothing in this API is authorised by role name.
+ * add up to, and it is what a client shows or hides a screen on.
+ *
+ * `sectionName`, `committeeFunctionName` and `roleKeys` say where the
+ * caller sits in the band, for their own account page. They are for
+ * display only. Nothing in this API is authorised by role, so a client
+ * decides what to show from `permissions` and ignores `roleKeys` for that.
  *
  * The response is never cacheable. An anonymous caller answers
  * `401 not_authenticated`.

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
@@ -77,6 +78,40 @@ class MeTest extends TestCase
             ['events.manage', 'attendance.view_all'],
             $response->json('permissions'),
         );
+    }
+
+    public function test_it_says_where_the_member_sits_in_the_band(): void
+    {
+        $section = Section::create(['name' => 'Clarinettes', 'sort_order' => 1]);
+        $seat = CommitteeFunction::where('name', 'Présidente')->firstOrFail();
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->inSection($section)->create();
+        $member->committeeFunction()->associate($seat)->save();
+        $member->roles()->attach(Role::where('key', 'direction')->firstOrFail());
+
+        $response = $this->actingAsMember($member->fresh())
+            ->getJson('/api/v1/me')->assertOk();
+
+        $this->assertSame('Clarinettes', $response->json('sectionName'));
+        $this->assertSame('Présidente', $response->json('committeeFunctionName'));
+        $this->assertSame(['direction'], $response->json('roleKeys'));
+    }
+
+    public function test_a_member_with_no_place_gets_nulls_and_an_empty_list(): void
+    {
+        $member = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->create();
+
+        $response = $this->actingAsMember($member->fresh())
+            ->getJson('/api/v1/me')->assertOk();
+
+        // assertSame, not assertJson: a missing key and a null read the same
+        // under assertJson's loose comparison, and the client relies on the
+        // keys being present.
+        $body = $response->json();
+        $this->assertArrayHasKey('sectionName', $body);
+        $this->assertNull($body['sectionName']);
+        $this->assertArrayHasKey('committeeFunctionName', $body);
+        $this->assertNull($body['committeeFunctionName']);
+        $this->assertSame([], $body['roleKeys']);
     }
 
     public function test_it_never_leaks_the_password_hash(): void

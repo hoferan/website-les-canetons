@@ -70,6 +70,9 @@ const USERS = {
     lastName: "Direction",
     isPlayer: false,
     mustChangePassword: false,
+    sectionName: null,
+    committeeFunctionName: null,
+    roleKeys: ["direction"],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -91,6 +94,9 @@ const USERS = {
     lastName: "Player",
     isPlayer: true,
     mustChangePassword: false,
+    sectionName: "Cloches",
+    committeeFunctionName: null,
+    roleKeys: [],
     permissions: [],
   },
   // BOTH — the case the old role matrix could not express: an organiser who
@@ -107,6 +113,9 @@ const USERS = {
     lastName: "Both",
     isPlayer: true,
     mustChangePassword: true,
+    sectionName: "Trompettes",
+    committeeFunctionName: null,
+    roleKeys: ["direction"],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -131,6 +140,9 @@ const USERS = {
     lastName: "Committee",
     isPlayer: true,
     mustChangePassword: false,
+    sectionName: "Trombones",
+    committeeFunctionName: "Responsable intendance",
+    roleKeys: ["committee"],
     permissions: ["registrations.view", "messages.view"],
   },
   // A FIRST LOGIN: a committee-issued password that must be replaced. A
@@ -144,6 +156,9 @@ const USERS = {
     lastName: "Nouveau",
     isPlayer: true,
     mustChangePassword: true,
+    sectionName: "Cloches",
+    committeeFunctionName: null,
+    roleKeys: [],
     permissions: [],
   },
   // A young member whose parent uses the login on their behalf. Plays, holds
@@ -155,6 +170,9 @@ const USERS = {
     lastName: "Sansconnexion",
     isPlayer: true,
     mustChangePassword: false,
+    sectionName: "Batteurs",
+    committeeFunctionName: null,
+    roleKeys: [],
     permissions: [],
   },
 } satisfies Record<string, MockUser>;
