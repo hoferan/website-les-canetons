@@ -201,6 +201,7 @@ export const de: typeof fr = {
     gallery: "Galerie",
     login: "Anmelden",
     account: "Mein Konto",
+    accountMenu: "Konto von {{name}}",
     logout: "Abmelden",
     pending: "{{n}} ausstehend",
     // Identisch zum Französischen: siehe die Notiz in fr.ts.

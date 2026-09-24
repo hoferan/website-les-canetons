@@ -303,6 +303,8 @@ export const fr = {
     gallery: "Galerie",
     login: "Connexion",
     account: "Mon compte",
+    // The desktop trigger shows only initials, so this is its whole name.
+    accountMenu: "Compte de {{name}}",
     logout: "Déconnexion",
     // The inbox badge's accessible name. {{n}} is i18next interpolation,
     // unlike contactMessages' {name}, which the component replaces by hand.

@@ -16,7 +16,7 @@ async function logIn(page: import("@playwright/test").Page, username: string) {
   await page.getByLabel("Identifiant").fill(username);
   await page.getByLabel("Mot de passe").fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("button", { name: username })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
 }
 
 /**
@@ -32,7 +32,7 @@ test("logging out ends the session and lands on the public front page", async ({
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Membres");
 
-  await page.getByRole("button", { name: "demo.direction" }).click();
+  await page.getByRole("button", { name: "Compte de demo.direction" }).click();
   await page.getByRole("menuitem", { name: "Déconnexion" }).click();
 
   // `/`, not `/login`: logging out is finishing, not starting again.
@@ -54,9 +54,36 @@ test("logging out is reachable from inside the forced-password gate", async ({ p
   await page.goto("/members");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mon compte");
 
-  await page.getByRole("button", { name: "demo.mustchange" }).click();
+  await page.getByRole("button", { name: "Compte de demo.mustchange" }).click();
   await page.getByRole("menuitem", { name: "Déconnexion" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("depuis 2002");
+});
+
+/**
+ * THE PHONE SHAPE (#99): a disclosure inside the nav list, not the desktop
+ * dropdown. The first version used the dropdown here too, and its popover
+ * floated over the page beside the list. This pins that the rows open in
+ * place, below the name, and that the way out works from there.
+ */
+test("on a phone the account rows open in place under the name, and log out", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/events");
+
+  await page.getByRole("button", { name: "Menu de navigation" }).click();
+  const row = page.getByRole("button", { name: "demo.direction", exact: true });
+  await row.click();
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+
+  const logout = page.getByRole("button", { name: "Déconnexion" });
+  const rowBox = await row.boundingBox();
+  const logoutBox = await logout.boundingBox();
+  expect(logoutBox!.y).toBeGreaterThan(rowBox!.y);
+  expect(logoutBox!.width).toBeGreaterThan(300);
+
+  await logout.click();
+  await expect(page).toHaveURL(/\/$/);
 });
 
 /**
@@ -283,7 +310,7 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // context at 390x844 straight away, as the brief originally had it, fails
   // for the identical reason: below `md` the nav collapses behind the
   // hamburger (Layout.tsx's `hidden md:flex`), so logIn's
-  // `getByRole("button", { name: username })` check never finds a visible one
+  // account-avatar check never finds a visible trigger
   // and every run of this test times out on login, before it ever reaches the
   // tap it exists to test. Confirmed by running it exactly as the brief wrote
   // it first.

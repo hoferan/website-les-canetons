@@ -50,53 +50,78 @@ test("the auth link says Connexion when nobody is logged in", async () => {
   expect(link).toHaveAttribute("href", "/login");
 });
 
-test("the username opens the account menu once logged in", async () => {
+/**
+ * THE ACCOUNT CONTROL HAS TWO SHAPES (#99): a disclosure in the phone list and
+ * a dropdown under an avatar on desktop. jsdom applies no CSS, so both are in
+ * the tree here and each test names the one it drives: the phone row by the
+ * username it shows, the desktop trigger by its accessible name.
+ */
+test("the desktop avatar opens the account menu once logged in", async () => {
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
-  const trigger = screen.getByRole("button", { name: "demo.direction" });
+  const trigger = screen.getByRole("button", { name: "Compte de demo.direction" });
   expect(trigger).toHaveAttribute("aria-haspopup", "menu");
   expect(screen.queryByRole("link", { name: "Connexion" })).toBeNull();
 });
 
-test("points a logged-in member at their own account, not back at the login form", async () => {
+test("the desktop menu names who is logged in, then offers the account and the way out", async () => {
   const user = userEvent.setup();
   setMockUser("demo.direction");
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  await user.click(screen.getByRole("button", { name: "demo.direction" }));
+  await user.click(screen.getByRole("button", { name: "Compte de demo.direction" }));
 
-  expect(await screen.findByRole("menuitem", { name: "Mon compte" })).toHaveAttribute(
-    "href",
-    "/account",
-  );
+  const menu = await screen.findByRole("menu");
+  expect(menu).toHaveTextContent("Dominique Direction");
+  const items = screen.getAllByRole("menuitem");
+  expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
+  // Not back at the login form: the member's own account.
+  expect(items[0]).toHaveAttribute("href", "/account");
+});
+
+test("the phone row expands in place into the account and the way out", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const row = screen.getByRole("button", { name: "demo.direction" });
+  expect(row).toHaveAttribute("aria-expanded", "false");
+
+  await user.click(row);
+
+  expect(row).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("link", { name: "Mon compte" })).toHaveAttribute("href", "/account");
+  expect(screen.getByRole("button", { name: "Déconnexion" })).toBeInTheDocument();
+  // A disclosure, not a menu: nothing floats.
+  expect(screen.queryByRole("menu")).toBeNull();
 });
 
 /**
  * #99's whole point: the name and the logout used to sit side by side as nav
- * items, one stray click apart. The logout exists only inside the open menu,
- * and it is the second item, behind a separator, not the first.
+ * items, one stray click apart. Until one of the two controls is opened there
+ * is no logout anywhere in the tree.
  */
-test("keeps the logout out of reach until the account menu is opened", async () => {
-  const user = userEvent.setup();
+test("keeps the logout out of reach until the account control is opened", async () => {
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/events" });
 
   await screen.findByRole("button", { name: "demo.player" });
-  expect(screen.queryByRole("button", { name: "Déconnexion" })).toBeNull();
-  expect(screen.queryByRole("menuitem", { name: "Déconnexion" })).toBeNull();
-
-  await user.click(screen.getByRole("button", { name: "demo.player" }));
-
-  const items = await screen.findAllByRole("menuitem");
-  expect(items.map((item) => item.textContent)).toEqual(["Mon compte", "Déconnexion"]);
+  expect(screen.queryByText("Déconnexion")).toBeNull();
 });
 
-test("marks the account menu as the current page on /account", async () => {
+test("marks the account control as the current page on /account", async () => {
+  const user = userEvent.setup();
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/account" });
   await screen.findByRole("heading", { name: "Mon compte" });
 
   expect(screen.getByRole("button", { name: "demo.player" })).toHaveClass("text-violet");
+
+  await user.click(screen.getByRole("button", { name: "Compte de demo.player" }));
+  expect(await screen.findByRole("menuitem", { name: "Mon compte" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("shows the Membres entry to a member who can administer members", async () => {
@@ -164,7 +189,7 @@ test("offers a logout to every logged-in member, whatever they can do", async ()
   setMockUser("demo.player");
   await renderWithSession(<AppRoutes />, { route: "/events" });
 
-  await user.click(await screen.findByRole("button", { name: "demo.player" }));
+  await user.click(await screen.findByRole("button", { name: "Compte de demo.player" }));
 
   expect(await screen.findByRole("menuitem", { name: "Déconnexion" })).toBeInTheDocument();
 });
@@ -185,8 +210,19 @@ test("ends the session on the server", async () => {
   // session/logout.ts.
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
-  await user.click(await screen.findByRole("button", { name: "demo.direction" }));
+  await user.click(await screen.findByRole("button", { name: "Compte de demo.direction" }));
   await user.click(await screen.findByRole("menuitem", { name: "Déconnexion" }));
+
+  await waitFor(() => expect(currentMockUser()).toBeNull());
+});
+
+test("ends the session from the phone row too", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/members" });
+
+  await user.click(await screen.findByRole("button", { name: "demo.direction" }));
+  await user.click(screen.getByRole("button", { name: "Déconnexion" }));
 
   await waitFor(() => expect(currentMockUser()).toBeNull());
 });
@@ -206,7 +242,7 @@ test("stays reachable for a member held on /account by the password gate", async
   await renderWithSession(<AppRoutes />, { route: "/members" });
 
   await screen.findByRole("heading", { name: "Mon compte" });
-  await user.click(screen.getByRole("button", { name: "demo.mustchange" }));
+  await user.click(screen.getByRole("button", { name: "Compte de demo.mustchange" }));
   expect(await screen.findByRole("menuitem", { name: "Déconnexion" })).toBeInTheDocument();
 });
 
@@ -215,7 +251,7 @@ test("the account menu reads German under the German locale", async () => {
   setMockUser("demo.player");
   await renderWithSession(<Layout />, { locale: "de-CH" });
 
-  await user.click(await screen.findByRole("button", { name: "demo.player" }));
+  await user.click(await screen.findByRole("button", { name: "Konto von demo.player" }));
 
   expect(await screen.findByRole("menuitem", { name: "Mein Konto" })).toBeInTheDocument();
   expect(screen.getByRole("menuitem", { name: "Abmelden" })).toBeInTheDocument();

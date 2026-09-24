@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
 import { Logo } from "./Logo";
+import { NAV_ITEM, NAV_ROW, NAV_ROW_ACTIVE, NAV_ROW_IDLE } from "./navStyles";
 
 import { useInboxSummary } from "../api/generated/endpoints";
 import { type TranslationKey, t } from "../i18n";
@@ -66,34 +67,6 @@ const DIRECTION_NAV: Array<{ to: string; labelKey: TranslationKey; permission: s
 const MEMBER_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/events", labelKey: "nav.events" },
 ];
-
-/**
- * One nav row. On a phone this is a 48px full-width row with a divider; above
- * `md` it collapses back to an inline item. Both sit on the light panel.
- *
- * Extracted because there are TWELVE call sites — ten links, the Flickr anchor
- * and the auth item — and the phone nav's targets were about 24px before this,
- * roughly half the 44px minimum. A rule applied by hand twelve times is a rule
- * that lasts until the next item is added.
- */
-const NAV_ROW = "focus-ring flex min-h-12 items-center px-4 md:min-h-0 md:px-0 md:py-1";
-
-/**
- * The active item is violet on every screen: a bar down its left edge in the
- * phone list, an underline on the desktop bar.
- *
- * LIGHT ON THE PHONE TOO (#99). The phone panel used to be dark, with the
- * active item in pink, because violet on --color-stage is about 2.6:1 and pink
- * on white about 3:1: no single colour passed on both surfaces, so the same
- * state read two ways. It now uses the same light panel as the desktop bar.
- * Only the header with the logo keeps the stage colour.
- */
-const NAV_ROW_ACTIVE =
-  "border-l-4 border-violet pl-3 font-semibold text-violet md:border-b-2 md:border-l-0 md:pl-0";
-const NAV_ROW_IDLE = "text-ink-muted hover:text-ink";
-
-/** The divider between phone rows, gone above `md`. */
-const NAV_ITEM = "border-b border-line last:border-0 md:border-0";
 
 /**
  * One internal nav row. Extracted when the third category arrived and the
@@ -287,20 +260,14 @@ export function Layout() {
             </li>
             */}
 
-            {/* Logged in, the member's own name opens a menu holding
-                "Mon compte" and the way out. The logout is in the chrome
-                rather than on /account because the forced-password gate lets
-                a member reach the chrome and nothing else; see
-                session/logout.ts for what its absence had been costing since
-                R1a. */}
+            {/* Logged in, this holds "Mon compte" and the way out. The logout
+                is in the chrome rather than on /account because the
+                forced-password gate lets a member reach the chrome and nothing
+                else; see session/logout.ts for what its absence had been
+                costing since R1a. */}
             <li className={`${NAV_ITEM} md:ml-auto`}>
               {user ? (
-                <AccountMenu
-                  username={user.username}
-                  onAccountPage={active === "/account"}
-                  className={`${NAV_ROW} font-semibold ${active === "/account" ? NAV_ROW_ACTIVE : NAV_ROW_IDLE}`}
-                  onDone={close}
-                />
+                <AccountMenu member={user} onAccountPage={active === "/account"} onDone={close} />
               ) : (
                 <Link
                   to="/login"
