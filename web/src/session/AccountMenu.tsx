@@ -122,13 +122,6 @@ function PhoneDisclosure({
   );
 }
 
-/**
- * Styled here rather than in ui/dropdown-menu, so the row menus on /events and
- * /members keep their own look until somebody decides they should match.
- */
-const MENU_ITEM =
-  "gap-3 rounded-md px-2.5 text-ink focus:bg-violet/10 focus:text-violet [&_svg]:size-4 [&_svg]:text-ink-muted focus:[&_svg]:text-violet";
-
 function DesktopDropdown({
   member,
   onAccountPage,
@@ -161,11 +154,7 @@ function DesktopDropdown({
           />
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent
-          align="end"
-          sideOffset={8}
-          className="w-64 rounded-lg border-line bg-panel p-1.5 shadow-lg"
-        >
+        <DropdownMenuContent align="end" sideOffset={8} className="w-64">
           {/* WHO IS LOGGED IN, since the trigger shows only initials. On the
               shared family computer this is the line that says whose session
               it is. Plain markup, not a menu item: nothing to select. */}
@@ -184,18 +173,13 @@ function DesktopDropdown({
           {/* asChild straight onto Link, for the reason RowActions' ItemFor
               gives: a real anchor survives middle-click, and one Slot layer is
               all it takes for Radix's props to land. */}
-          <DropdownMenuItem asChild className={MENU_ITEM}>
+          <DropdownMenuItem asChild>
             <Link to="/account" onClick={onDone} aria-current={onAccountPage ? "page" : undefined}>
               <User aria-hidden="true" />
               {t("nav.account")}
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className={MENU_ITEM}
-            textValue={t("nav.logout")}
-            aria-disabled={isPending}
-            onSelect={logOut}
-          >
+          <DropdownMenuItem textValue={t("nav.logout")} aria-disabled={isPending} onSelect={logOut}>
             <LogOut aria-hidden="true" />
             {t("nav.logout")}
           </DropdownMenuItem>

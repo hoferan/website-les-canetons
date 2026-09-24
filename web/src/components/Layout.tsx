@@ -260,12 +260,23 @@ export function Layout() {
             </li>
             */}
 
+            {/* Pushed right on desktop, just before the account control, which
+                is the last item because that is where an account is looked
+                for. On a phone it sits near the end of the list rather than
+                pushing twelve destinations further down.
+
+                It is a plain link because changing locale is a full page load
+                (`basename` is fixed at mount), which also makes it one of the
+                hreflang alternates a crawler can actually follow. */}
+            <li className={`${NAV_ITEM} md:ml-auto`}>
+              <LanguageSwitch onDone={close} />
+            </li>
             {/* Logged in, this holds "Mon compte" and the way out. The logout
                 is in the chrome rather than on /account because the
                 forced-password gate lets a member reach the chrome and nothing
                 else; see session/logout.ts for what its absence had been
                 costing since R1a. */}
-            <li className={`${NAV_ITEM} md:ml-auto`}>
+            <li className={NAV_ITEM}>
               {user ? (
                 <AccountMenu member={user} onAccountPage={active === "/account"} onDone={close} />
               ) : (
@@ -278,17 +289,6 @@ export function Layout() {
                   {t("nav.login")}
                 </Link>
               )}
-            </li>
-
-            {/* LAST, so on desktop it sits rightmost — where a language
-                switcher is looked for — and on a phone it is the final row
-                rather than pushing twelve destinations further down.
-
-                It is a plain link because changing locale is a full page load
-                (`basename` is fixed at mount), which also makes it one of the
-                hreflang alternates a crawler can actually follow. */}
-            <li className={NAV_ITEM}>
-              <LanguageSwitch onDone={close} />
             </li>
           </ul>
         </nav>

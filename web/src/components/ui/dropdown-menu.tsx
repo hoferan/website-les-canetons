@@ -53,7 +53,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          "z-50 min-w-[10rem] overflow-hidden rounded-md border bg-background p-1 shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+          "z-50 min-w-[12rem] overflow-hidden rounded-lg border border-line bg-panel p-1.5 text-ink shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
           className,
         )}
         {...props}
@@ -74,7 +74,11 @@ function DropdownMenuItem({
       className={cn(
         // min-h-touch, not a height: the 44px floor is the same one
         // ui/button.tsx puts on every control, and a menu item is a control.
-        "relative flex min-h-touch cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        //
+        // Focus is a violet tint, the nav's own accent, and Radix moves focus
+        // with the pointer, so this is the hover state too. A destructive item
+        // stays red on focus rather than turning violet.
+        "relative flex min-h-touch cursor-default items-center gap-3 rounded-md px-2.5 py-1.5 text-sm text-ink outline-none select-none focus:bg-violet/10 focus:text-violet data-[destructive]:text-danger data-[destructive]:focus:bg-danger/10 data-[destructive]:focus:text-danger data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
         className,
       )}
       {...props}
@@ -89,7 +93,7 @@ function DropdownMenuSeparator({
   return (
     <DropdownMenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("-mx-1 my-1 h-px bg-border", className)}
+      className={cn("-mx-1.5 my-1.5 h-px bg-line", className)}
       {...props}
     />
   );
