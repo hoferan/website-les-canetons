@@ -14,7 +14,7 @@ import { expect, test } from "@playwright/test";
 async function logIn(page: import("@playwright/test").Page, username: string) {
   await page.goto("/login");
   await page.getByLabel("Identifiant").fill(username);
-  await page.getByLabel("Mot de passe").fill("demo");
+  await page.getByLabel("Mot de passe", { exact: true }).fill("demo");
   await page.getByRole("button", { name: "Se connecter" }).click();
   await expect(page.getByRole("button", { name: `Compte de ${username}` })).toBeVisible();
 }
