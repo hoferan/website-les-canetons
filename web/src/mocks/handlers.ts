@@ -11,6 +11,7 @@ import type {
   ContactRequest,
   EventResource,
   HandleContactMessageRequest,
+  HistoryEntryResource,
   InboxItemResource,
   InboxSummary200Counts,
   MemberResource,
@@ -24,6 +25,7 @@ import type {
   StoreRegistrationRequest,
   UpdateRegistrationRequest,
   SectionResource,
+  StoreHistoryEntryRequest,
 } from "../api/generated/model";
 
 /**
@@ -79,6 +81,7 @@ const USERS = {
       // clears the inbox.
       "messages.view",
       "messages.manage",
+      "history.manage",
     ],
   },
   // Plays, organises nothing.
@@ -120,6 +123,7 @@ const USERS = {
       "registrations.manage",
       "messages.view",
       "messages.manage",
+      "history.manage",
     ],
   },
   // The `committee` role's own permissions: registrations.view is the reason
@@ -342,6 +346,7 @@ const ROLES: RoleResource[] = [
       "registrations.manage",
       "messages.view",
       "messages.manage",
+      "history.manage",
     ],
   },
   { id: 2, key: "committee", permissions: ["registrations.view", "messages.view"] },
@@ -953,6 +958,100 @@ function resetEvents(): void {
 }
 
 /* ------------------------------------------------------------------------ *
+ * History
+ * ------------------------------------------------------------------------ */
+
+/** Task 3's migration, shortened; entry 3 also carries German so /de exercises both branches. */
+function initialHistory(): HistoryEntryResource[] {
+  const stamp = { createdAt: "2026-09-26T00:00:00+00:00", updatedAt: "2026-09-26T00:00:00+00:00" };
+  return [
+    {
+      id: 1,
+      occurredOn: "2002-10-01",
+      precision: "month",
+      important: true,
+      icon: "flag",
+      titleFr: "Les débuts",
+      bodyFr:
+        "La guggen d’enfants « Les Canetons » de Fribourg s’est officiellement créée en octobre 2002.",
+      titleDe: null,
+      bodyDe: null,
+      ...stamp,
+    },
+    {
+      id: 2,
+      occurredOn: "2007-01-01",
+      precision: "year",
+      important: false,
+      icon: null,
+      titleFr: null,
+      bodyFr: "Dès la saison 2007/2008, les Directeurs (tous d’anciens Canetons) se sont succédé.",
+      titleDe: null,
+      bodyDe: null,
+      ...stamp,
+    },
+    {
+      id: 3,
+      occurredOn: "2019-01-01",
+      precision: "year",
+      important: false,
+      icon: "music",
+      titleFr: "Delphine Maillard et Laura Mantel",
+      bodyFr: null,
+      titleDe: "Delphine Maillard und Laura Mantel",
+      bodyDe: null,
+      ...stamp,
+    },
+    {
+      id: 4,
+      occurredOn: "2026-01-01",
+      precision: "year",
+      important: false,
+      icon: "users",
+      titleFr: "Le flambeau passe",
+      bodyFr: "Elles passent le flambeau à Lilou Keller et Anaïs Meuwly.",
+      titleDe: null,
+      bodyDe: null,
+      ...stamp,
+    },
+  ];
+}
+
+let historyEntries: HistoryEntryResource[] = initialHistory();
+let nextHistoryId = 5;
+
+function resetHistory(): void {
+  historyEntries = initialHistory();
+  nextHistoryId = 5;
+}
+
+/** StoreHistoryEntryRequest's normalisation: blank text is none, and the date is truncated to its precision. */
+function normaliseHistory(body: StoreHistoryEntryRequest) {
+  const text = (value: string | null | undefined) =>
+    value && value.trim() !== "" ? value.trim() : null;
+  const [year, month] = body.occurredOn.split("-");
+  const occurredOn =
+    body.precision === "year"
+      ? `${year}-01-01`
+      : body.precision === "month"
+        ? `${year}-${month}-01`
+        : body.occurredOn;
+  return {
+    occurredOn,
+    precision: body.precision,
+    important: body.important,
+    icon: body.icon ?? null,
+    titleFr: text(body.titleFr),
+    bodyFr: text(body.bodyFr),
+    titleDe: text(body.titleDe),
+    bodyDe: text(body.bodyDe),
+  };
+}
+
+function hasHistoryText(body: ReturnType<typeof normaliseHistory>): boolean {
+  return [body.titleFr, body.bodyFr, body.titleDe, body.bodyDe].some((value) => value !== null);
+}
+/* ------------------------------------------------------------------------ *
  * Attendance
  * ------------------------------------------------------------------------ */
 
@@ -1533,6 +1632,7 @@ export function resetMockState(): void {
   // Dropping this line fails tests only when the WHOLE FILE runs, which reads
   // as flakiness and is not — the roster store proved it first.
   resetEvents();
+  resetHistory();
   resetAnswers();
   resetRegistrations();
   resetContactMessages();
@@ -2184,6 +2284,93 @@ const overrides = [
     return HttpResponse.json({ ok: true });
   }),
 
+  /* ---------------------------------------------------------------------- *
+   * History
+   * ---------------------------------------------------------------------- */
+
+  // PUBLIC, like the real list, and oldest first.
+  http.get("/api/v1/history", ({ request }) =>
+    collection(
+      [...historyEntries].sort((a, b) => a.occurredOn.localeCompare(b.occurredOn) || a.id - b.id),
+      request,
+    ),
+  ),
+
+  http.get("/api/v1/history/:id", ({ params }) => {
+    const refusal = refuseWithout("history.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const found = historyEntries.find((candidate) => candidate.id === Number(params.id));
+    return found
+      ? HttpResponse.json(found, { headers: { ETag: mockEntityTag(found) } })
+      : notFound();
+  }),
+
+  http.post("/api/v1/history", async ({ request }) => {
+    const refusal = refuseWithout("history.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const body = normaliseHistory((await request.json()) as StoreHistoryEntryRequest);
+    if (!hasHistoryText(body)) {
+      return problem(422, "history_entry_empty", "A history entry needs a title or a text");
+    }
+    const now = new Date().toISOString();
+    const created: HistoryEntryResource = {
+      ...body,
+      id: nextHistoryId++,
+      createdAt: now,
+      updatedAt: now,
+    };
+    historyEntries = [...historyEntries, created];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.put("/api/v1/history/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("history.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = historyEntries.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const body = normaliseHistory((await request.json()) as StoreHistoryEntryRequest);
+    if (!hasHistoryText(body)) {
+      return problem(422, "history_entry_empty", "A history entry needs a title or a text");
+    }
+    const updated: HistoryEntryResource = {
+      ...existing,
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+    historyEntries = historyEntries.map((candidate) =>
+      candidate.id === updated.id ? updated : candidate,
+    );
+    return HttpResponse.json(updated, { headers: { ETag: mockEntityTag(updated) } });
+  }),
+
+  http.delete("/api/v1/history/:id", ({ request, params }) => {
+    const refusal = refuseWithout("history.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = historyEntries.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    historyEntries = historyEntries.filter((candidate) => candidate.id !== existing.id);
+    return HttpResponse.json({ ok: true });
+  }),
   /* ---------------------------------------------------------------------- *
    * Attendance
    * ---------------------------------------------------------------------- */

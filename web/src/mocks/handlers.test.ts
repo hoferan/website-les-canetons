@@ -83,6 +83,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       // Granted by 2026_09_15_000002, alongside the seeded set above.
       "messages.view",
       "messages.manage",
+      "history.manage",
     ],
   });
 });
