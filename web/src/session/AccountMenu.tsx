@@ -81,7 +81,7 @@ function DesktopDropdown({
           <span
             data-testid="inbox-badge"
             aria-hidden="true"
-            className="absolute -top-0.5 -right-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-panel bg-pink px-1 text-xs leading-4 font-semibold text-white"
+            className="absolute -top-0.5 -right-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-panel bg-pink px-1 text-xs leading-4 font-semibold text-ink"
           >
             {pending}
           </span>
@@ -117,7 +117,7 @@ function DesktopDropdown({
               {tool.count ? (
                 <span
                   aria-label={t("nav.pending", { n: tool.count })}
-                  className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 text-xs leading-5 font-semibold text-white"
+                  className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 text-xs leading-5 font-semibold text-ink"
                 >
                   {tool.count}
                 </span>

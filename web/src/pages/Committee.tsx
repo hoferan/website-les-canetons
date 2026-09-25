@@ -42,7 +42,7 @@ export function Committee() {
       <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
         <p className="mt-tight">
-          <Link to="/contact" className="text-violet hover:underline">
+          <Link to="/contact" className="text-violet underline">
             {t("committee.writeToCommittee")}
           </Link>
         </p>

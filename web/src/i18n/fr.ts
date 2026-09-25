@@ -300,6 +300,8 @@ export const fr = {
    */
   nav: {
     primary: "Navigation principale",
+    // The first thing a Tab reaches on every page, hidden until focused.
+    skipToContent: "Aller au contenu",
     menu: "Menu",
     menuLabel: "Menu de navigation",
     join: "Nous rejoindre",
