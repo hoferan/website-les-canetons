@@ -20,7 +20,13 @@ import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { FormError, FormField } from "../components/FormField";
+import {
+  FormError,
+  FormField,
+  RequiredLegend,
+  formIsValid,
+  useBrowserProblem,
+} from "../components/FormField";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t, type TranslationKey } from "../i18n";
 import { formatDay } from "../lib/date";
@@ -33,6 +39,7 @@ const FIELDS: {
   type?: string;
   autoComplete?: string;
   required?: boolean;
+  hintKey?: TranslationKey;
 }[] = [
   {
     name: "lastName",
@@ -61,7 +68,7 @@ const FIELDS: {
     required: true,
   },
   { name: "address", labelKey: "booking.fields.address", autoComplete: "street-address" },
-  { name: "tableName", labelKey: "booking.fields.tableName" },
+  { name: "tableName", labelKey: "booking.fields.tableName", hintKey: "booking.tableHint" },
 ];
 
 type Contact = Record<(typeof FIELDS)[number]["name"], string>;
@@ -170,13 +177,14 @@ export function EventBooking() {
     onError: setFromThrown,
   });
 
-  function submit(event: FormEvent) {
+  function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     // aria-disabled leaves the control clickable and Enter in a field submits
     // regardless, so this early return is the only thing preventing a double
     // booking.
     if (send.isPending) return;
     clear();
+    if (!formIsValid(event.currentTarget)) return;
 
     const token = formToken.data?.status === 200 ? formToken.data.data.token : null;
     if (!token) {
@@ -267,9 +275,10 @@ export function EventBooking() {
           <FormError error={error} />
 
           <Card asChild className="mt-related gap-0 p-5">
-            <form onSubmit={submit} className="space-y-related">
+            <form onSubmit={submit} noValidate className="space-y-related">
               <fieldset className="flex flex-col gap-related">
                 <legend className="font-display text-xl">{t("booking.contactLegend")}</legend>
+                <RequiredLegend />
                 {FIELDS.map((field) => (
                   <FormField
                     key={field.name}
@@ -277,6 +286,7 @@ export function EventBooking() {
                     label={t(field.labelKey)}
                     type={field.type}
                     required={field.required}
+                    hint={field.hintKey ? t(field.hintKey) : undefined}
                     autoComplete={field.autoComplete}
                     problem={messageFor(field.name)}
                     value={contact[field.name]}
@@ -285,7 +295,6 @@ export function EventBooking() {
                     }
                   />
                 ))}
-                <p className="text-sm text-ink-muted">{t("booking.optionalHint")}</p>
               </fieldset>
 
               <fieldset className="flex flex-col gap-related">
@@ -376,6 +385,10 @@ function QuantityField({
   onChange: (value: string) => void;
 }) {
   const id = `option-${option.id}`;
+  const errorId = `${id}-error`;
+  // Outside FormField, so the browser's finding is picked up by hand. `max` is
+  // 50, and without this a 99 typed here blocks the submit with no message.
+  const browser = useBrowserProblem(option.label);
 
   return (
     // A GRID, NOT `flex flex-wrap justify-between`, and this was measured at
@@ -415,8 +428,19 @@ function QuantityField({
         className="w-20"
         value={value}
         placeholder="0"
-        onChange={(changed) => onChange(changed.target.value)}
+        aria-invalid={browser.problem ? true : undefined}
+        aria-describedby={browser.problem ? errorId : undefined}
+        onInvalid={browser.onInvalid}
+        onChange={(changed) => {
+          browser.clear();
+          onChange(changed.target.value);
+        }}
       />
+      {browser.problem ? (
+        <span id={errorId} className="col-span-2 text-sm text-danger">
+          {browser.problem}
+        </span>
+      ) : null}
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { getAuthMeQueryKey, useAuthLogin } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { safeReturnTo } from "../lib/returnTo";
@@ -45,7 +45,7 @@ export function Login() {
 
   const attempted = safeReturnTo((location.state as { from?: unknown } | null)?.from);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     // aria-disabled, not disabled — so THIS early return is what actually
@@ -55,6 +55,9 @@ export function Login() {
     }
 
     clear();
+    if (!formIsValid(event.currentTarget)) {
+      return;
+    }
 
     try {
       await login.mutateAsync({ data: { username, password } });
@@ -81,7 +84,8 @@ export function Login() {
     <PageSection width="form">
       <h1 className="font-display text-4xl">{t("nav.login")}</h1>
 
-      <form onSubmit={submit} className="mt-block flex flex-col gap-related">
+      <form onSubmit={submit} noValidate className="mt-block flex flex-col gap-related">
+        <RequiredLegend />
         <FormField
           id="username"
           label={t("auth.username")}

@@ -20,7 +20,7 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { ContactLink } from "../components/ContactLink";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { RowActions, type RowAction } from "../components/RowActions";
 import { formatEventWhen } from "../events/formatEventWhen";
@@ -57,11 +57,14 @@ const AMENDABLE: {
   name: keyof UpdateRegistrationRequest;
   labelKey: TranslationKey;
   type?: string;
+  required?: boolean;
 }[] = [
-  { name: "lastName", labelKey: "booking.fields.lastName" },
-  { name: "firstName", labelKey: "booking.fields.firstName" },
-  { name: "email", labelKey: "booking.fields.email", type: "email" },
-  { name: "phone", labelKey: "booking.fields.phone", type: "tel" },
+  // Required as they are on the booking form. The API's rules are
+  // `sometimes|required`, and this form always sends all four.
+  { name: "lastName", labelKey: "booking.fields.lastName", required: true },
+  { name: "firstName", labelKey: "booking.fields.firstName", required: true },
+  { name: "email", labelKey: "booking.fields.email", type: "email", required: true },
+  { name: "phone", labelKey: "booking.fields.phone", type: "tel", required: true },
   { name: "address", labelKey: "booking.fields.address" },
   { name: "tableName", labelKey: "booking.fields.tableName" },
 ];
@@ -733,10 +736,11 @@ function AmendForm({
 
   return (
     <form
+      noValidate
       className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
       onSubmit={(submitted) => {
         submitted.preventDefault();
-        if (busy) {
+        if (busy || !formIsValid(submitted.currentTarget)) {
           return;
         }
         onSubmit({
@@ -756,12 +760,15 @@ function AmendForm({
         {t("registrations.amendTitle", { name: `${booking.firstName} ${booking.lastName}` })}
       </h2>
 
+      <RequiredLegend />
+
       {AMENDABLE.map((field) => (
         <FormField
           key={field.name}
           id={`amend-${field.name}`}
           label={t(field.labelKey)}
           type={field.type}
+          required={field.required}
           value={draft[field.name as keyof typeof draft]}
           onChange={(value) => setDraft((current) => ({ ...current, [field.name]: value }))}
           problem={problemFor(field.name)}

@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { getAuthMeQueryKey, useAccountPassword } from "../api/generated/endpoints";
 import { MIN_PASSWORD_LENGTH } from "../api/passwordPolicy";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
@@ -41,7 +41,7 @@ export function AccountPassword() {
   const change = useAccountPassword();
   const { error, setFromThrown, clear, messageFor } = useApiFormError(t("account.changeFailed"));
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     // aria-disabled, not disabled — so this early return is what actually
@@ -52,6 +52,9 @@ export function AccountPassword() {
 
     clear();
     setDone(false);
+    if (!formIsValid(event.currentTarget)) {
+      return;
+    }
 
     // Client-side, deliberately: the API has no confirmation field, so there is
     // no token to translate — and a typo here costs no round-trip and burns no
@@ -108,7 +111,8 @@ export function AccountPassword() {
         <Notice className="mt-related">{t("account.provisionalNotice")}</Notice>
       ) : null}
 
-      <form onSubmit={submit} className="mt-block flex flex-col gap-related">
+      <form onSubmit={submit} noValidate className="mt-block flex flex-col gap-related">
+        <RequiredLegend />
         <FormField
           id="currentPassword"
           label={t("account.currentPassword")}

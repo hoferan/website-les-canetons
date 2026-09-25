@@ -321,3 +321,47 @@ test("the running total counts in German and prices in Swiss German", async () =
   // exact rule in this effort.
   await expect.poll(() => screen.getByTestId("booking-total").textContent).toContain("1 Person");
 });
+
+// #102. The four required fields say so, and an empty form is refused by the
+// app in the page's language rather than by the browser in its own.
+test("marks the four required fields, and refuses an empty form in French", async () => {
+  const user = userEvent.setup();
+  let posted = false;
+  server.use(
+    http.post("/api/v1/events/:id/registrations", () => {
+      posted = true;
+      return HttpResponse.json({}, { status: 201 });
+    }),
+  );
+  await renderBooking();
+
+  expect(screen.getByLabelText("Téléphone")).toBeRequired();
+  expect(screen.getByLabelText("Adresse")).not.toBeRequired();
+
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  expect(screen.getByText("Nom est requis")).toBeInTheDocument();
+  expect(screen.getByText("Téléphone est requis")).toBeInTheDocument();
+  expect(screen.getByLabelText("Nom", { exact: true })).toHaveFocus();
+  expect(posted).toBe(false);
+});
+
+test("says what the Table field is for, on the field itself", async () => {
+  await renderBooking();
+  expect(screen.getByLabelText("Table")).toHaveAccessibleDescription(
+    "Avec qui vous aimeriez être placé.",
+  );
+});
+
+test("a quantity out of range is refused against its own option", async () => {
+  const user = userEvent.setup();
+  await renderBooking();
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 99);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  expect(screen.getByLabelText(/Repas adulte/)).toHaveAccessibleDescription(
+    "Repas adulte n'est pas un nombre valide",
+  );
+  expect(screen.getByLabelText(/Repas adulte/)).toHaveFocus();
+});

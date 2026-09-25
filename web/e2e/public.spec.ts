@@ -63,12 +63,12 @@ test("the contact form is usable and sends", async ({ page }) => {
   await page.goto("/contact");
 
   // getByLabel matches SUBSTRINGS in Playwright, unlike Testing Library's
-  // getByLabelText — "Nom:" also matches "Prénom:" without `exact`.
-  await page.getByLabel("Nom:", { exact: true }).fill("Rossier");
-  await page.getByLabel("Prénom:", { exact: true }).fill("Claire");
-  await page.getByLabel("E-mail:", { exact: true }).fill("claire@example.ch");
-  await page.getByLabel("Sujet:", { exact: true }).fill("Une question");
-  await page.getByLabel("Contenu du message:", { exact: true }).fill("Bonjour !");
+  // getByLabelText — "Nom" also matches "Prénom" without `exact`.
+  await page.getByLabel("Nom", { exact: true }).fill("Rossier");
+  await page.getByLabel("Prénom", { exact: true }).fill("Claire");
+  await page.getByLabel("E-mail", { exact: true }).fill("claire@example.ch");
+  await page.getByLabel("Sujet", { exact: true }).fill("Une question");
+  await page.getByLabel("Message", { exact: true }).fill("Bonjour !");
 
   await page.getByRole("button", { name: "Envoyer" }).click();
 
@@ -76,6 +76,21 @@ test("the contact form is usable and sends", async ({ page }) => {
   // has typed five fields it is old enough for the server to accept. That is
   // the ordering this test exercises and a component test cannot.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Message envoyé");
+});
+
+// #102, and only a real browser can check it: jsdom has no interactive
+// validation, so the component tests pass whether or not the form is
+// `noValidate`. Here, without it, Chromium never fires the submit event.
+// FormField cancels the bubble and still shows its message, but nothing moves
+// focus to the field, and the focus assertion is the one that goes red.
+test("an empty contact form is refused in the page's language, not the browser's", async ({
+  page,
+}) => {
+  await page.goto("/contact");
+  await page.getByRole("button", { name: "Envoyer" }).click();
+
+  await expect(page.getByText("Nom est requis", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Nom", { exact: true })).toBeFocused();
 });
 
 test("the public pages carry no horizontal overflow on a phone", async ({ page }) => {

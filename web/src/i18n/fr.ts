@@ -212,6 +212,9 @@ export const fr = {
    */
   common: {
     loading: "Chargement…",
+    // The key to the star beside a required label (#102). Rendered after the
+    // star itself, so it reads "* champ obligatoire".
+    requiredLegend: "champ obligatoire",
     backToPlanning: "← Retour au planning",
     cancel: "Annuler",
     save: "Enregistrer",
@@ -924,8 +927,9 @@ export const fr = {
 
     contactLegend: "Vos coordonnées",
     choiceLegend: "Votre choix",
-    optionalHint:
-      "L’adresse et la table sont facultatives. La table, c’est avec qui vous aimeriez être placé.",
+    // Under the Table field. Which fields are optional is said by the star on
+    // the others; what "table" means here is not said anywhere else.
+    tableHint: "Avec qui vous aimeriez être placé.",
     nothingOffered: "Rien n’est encore proposé pour cette soirée. Revenez d’ici quelques jours.",
 
     chooseSomeone: "Choisissez au moins une personne.",
@@ -1234,11 +1238,11 @@ export const fr = {
     sentBody:
       "Merci ! Le comité a reçu votre message et vous répondra à l’adresse que vous avez indiquée.",
     fields: {
-      lastName: "Nom:",
-      firstName: "Prénom:",
-      email: "E-mail:",
-      subject: "Sujet:",
-      message: "Contenu du message:",
+      lastName: "Nom",
+      firstName: "Prénom",
+      email: "E-mail",
+      subject: "Sujet",
+      message: "Message",
     },
   },
 
