@@ -691,7 +691,7 @@ function BookingActions({
   // the top margin that used to live on that same element now lives on the
   // element that contains it instead of being dropped.
   return (
-    <div className="mt-tight">
+    <div data-testid="booking-actions" className="mt-tight">
       <RowActions actions={actions} inlineKey="amend" rowName={who} />
     </div>
   );
