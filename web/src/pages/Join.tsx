@@ -115,7 +115,7 @@ export function Join() {
           ))}
           <p className="mt-related text-sm text-ink-muted">
             {t("join.contactMeanwhile")}{" "}
-            <Link to="/contact" className="text-violet hover:underline">
+            <Link to="/contact" className="text-violet underline">
               {t("join.contactPageLink")}
             </Link>
             .

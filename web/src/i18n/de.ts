@@ -191,6 +191,7 @@ export const de: typeof fr = {
 
   nav: {
     primary: "Hauptnavigation",
+    skipToContent: "Zum Inhalt springen",
     menu: "Menü",
     menuLabel: "Navigationsmenü",
     join: "Mitmachen",

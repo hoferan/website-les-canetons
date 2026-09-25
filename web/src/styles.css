@@ -36,7 +36,9 @@
   /* The interface accent: links, the active nav item, primary buttons. */
   --color-violet: #4b2ed6;
 
-  /* Emphasis only — never a whole surface. */
+  /* Emphasis only — never a whole surface. Text ON it is ink, never white:
+     white is 3.28:1 here and ink is 5.6:1, and the badges carry 12px text,
+     which needs 4.5:1 (#15). */
   --color-pink: #ff3d9a;
 
   /* Errors, and the non-prod ribbon, which is the same meaning. This replaces

@@ -112,7 +112,7 @@ export function Layout() {
         countFor(item.to) > 0 ? (
           <span
             aria-label={t("nav.pending", { n: countFor(item.to) })}
-            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-white"
+            className="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-pink px-1.5 py-0.5 text-xs font-semibold text-ink"
           >
             {countFor(item.to)}
           </span>
@@ -149,6 +149,18 @@ export function Layout() {
           instead of remounting on every page. See its own doc comment for
           why, including the measured symptom and the hash exclusion. */}
       <ScrollToTop />
+
+      {/* THE SKIP LINK, first in the tab order (#15). The header and the nav
+          are ten stops on the desktop front page before the content starts.
+          Hidden until focused, then pinned over the header's top left. A
+          plain fragment link: following it focuses <main>, which is why that
+          element carries tabIndex -1. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-panel focus:px-4 focus:py-3 focus:text-ink focus:outline-2 focus:outline-violet"
+      >
+        {t("nav.skipToContent")}
+      </a>
 
       <EnvRibbon env={config.env} />
 
@@ -212,7 +224,8 @@ export function Layout() {
       {/* Renders nothing; keeps the head's alternates in step with the page. */}
       <Hreflang />
 
-      <main>
+      {/* tabIndex -1 so the skip link can move focus here; it is never a tab stop. */}
+      <main id="main" tabIndex={-1} className="outline-none">
         <Outlet />
       </main>
 

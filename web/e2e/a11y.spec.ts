@@ -69,16 +69,7 @@ const VISITS: { as: string | null; paths: string[] }[] = [
  * `<who> <path> @<width>: <axe rule>`, sorted. Empty means axe finds nothing
  * on any page this spec visits.
  */
-const KNOWN: string[] = [
-  // The violet "contact" link inside the paragraph: 1.12:1 against the grey
-  // body text around it and no underline, so colour alone marks it.
-  "anonymous /join @desktop: link-in-text-block",
-  "anonymous /join @phone: link-in-text-block",
-  // The pink "Jamais utilisé" and "Provisoire" pills: white 12px text on
-  // #ff3d9a is 3.28:1, under the 4.5:1 that text that size needs.
-  "demo.direction /members @desktop: color-contrast",
-  "demo.direction /members @phone: color-contrast",
-];
+const KNOWN: string[] = [];
 
 async function logIn(page: Page, username: string) {
   await page.goto("/login");
@@ -152,4 +143,37 @@ for (const size of WIDTHS) {
       await context.close();
     });
   }
+}
+
+/**
+ * THE SKIP LINK (#15). On the desktop front page the header and the nav are
+ * ten tab stops before the first link in the content. axe's `bypass` rule
+ * passes anyway, because landmarks satisfy it, but landmarks only help a
+ * screen reader, not somebody on a keyboard alone.
+ *
+ * MUTATION TEST: remove the link from Layout and the first Tab lands on the
+ * logo; drop `tabIndex={-1}` from <main> and following the link leaves focus
+ * where it was.
+ */
+for (const size of WIDTHS) {
+  test(`the first Tab offers a skip to the content, at ${size.name}`, async ({ page }) => {
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await page.goto("/");
+    await page.getByRole("heading", { level: 1 }).waitFor();
+
+    await page.keyboard.press("Tab");
+    const skip = page.getByRole("link", { name: "Aller au contenu" });
+    await expect(skip).toBeFocused();
+    // Visible once focused, rather than a 1px sr-only box nobody can see.
+    const box = await skip.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThan(40);
+
+    await page.keyboard.press("Enter");
+    await expect(page.locator("main")).toBeFocused();
+
+    // The next Tab is inside the content, past the header and the nav.
+    await page.keyboard.press("Tab");
+    const inMain = await page.evaluate(() => !!document.activeElement?.closest("main"));
+    expect(inMain).toBe(true);
+  });
 }

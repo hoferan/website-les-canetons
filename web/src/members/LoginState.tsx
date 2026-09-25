@@ -11,7 +11,8 @@ import { loginState, type LoginStatusFields } from "./loginStatus";
  * inventing a token. That badge is already this app's "something needs you"
  * affordance, so a second one should speak the same language. `--color-pink`
  * is documented in styles.css as emphasis only, never a whole surface; a pill
- * is emphasis. `--color-danger` is NOT borrowed here: it is error-only by
+ * is emphasis. The text on it is ink, for contrast; styles.css says why.
+ * `--color-danger` is NOT borrowed here: it is error-only by
  * construction, and a member who has not logged in is not an error.
  *
  * IT RENDERS NOTHING FOR AN ACCOUNT IN NORMAL USE beyond the date, like
@@ -33,7 +34,7 @@ export function LoginState({ member }: { member: LoginStatusFields }) {
               // one that stands on its own, because a screen reader reaches
               // `Provisoire` without the card around it to supply the noun.
               aria-label={pill.accessibleName}
-              className="rounded-full bg-pink px-2 py-0.5 text-xs font-semibold text-white"
+              className="rounded-full bg-pink px-2 py-0.5 text-xs font-semibold text-ink"
             >
               {pill.label}
             </span>
