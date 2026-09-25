@@ -49,3 +49,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0023](0023-locale-in-the-path-text-in-typed-catalogues.md)         | Put the locale in the URL and every string in two typed catalogues            |
 | [0024](0024-lay-out-every-list-as-cards.md)                         | Lay out every list as cards, at every width                                   |
 | [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing                     |
+| [0026](0026-user-typed-content-carries-its-own-translations.md)     | Store user-typed content in both languages, and fall back per entry           |
