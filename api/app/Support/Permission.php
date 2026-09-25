@@ -51,4 +51,12 @@ enum Permission: string
      * call, and `committee` deliberately does not hold this.
      */
     case MessagesManage = 'messages.manage';
+
+    /**
+     * Adding, correcting and deleting the entries of the band's history.
+     *
+     * Granted to `direction` by migration. Not to `committee`, whose role is
+     * reading what the public sends, not publishing on the band's behalf.
+     */
+    case HistoryManage = 'history.manage';
 }

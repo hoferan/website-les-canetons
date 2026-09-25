@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ export function formIsValid(form: HTMLFormElement): boolean {
  * What the browser found wrong with one control, in the catalogue's words.
  *
  * Composed exactly as `translateApiError` composes a server refusal, label
- * then reason, so "Nom est requis" reads the same whichever side caught it.
+ * then reason, so "Nom est obligatoire" reads the same whichever side caught it.
  * The label is the control's own rather than a `fields.*` lookup, because the
  * control has one and a lookup can miss.
  *
@@ -159,6 +159,11 @@ export function RequiredLegend() {
  * `problem` is the server's. The browser's own finding (see `formIsValid`) is
  * shown only when the server has said nothing, because the server knows
  * things the browser cannot, "déjà utilisé" among them.
+ *
+ * `describedBy` names elements OUTSIDE the field that describe it too, such as
+ * a rule or an error about a group of fields, and `invalid` marks the field
+ * as part of such an error when it has no problem of its own. The history
+ * form's "at least one of four" is the case both exist for.
  */
 export function FormField({
   id,
@@ -171,6 +176,10 @@ export function FormField({
   type = "text",
   required = false,
   autoComplete,
+  describedBy: outside,
+  invalid = false,
+  maxLength,
+  inputMode,
 }: {
   id: string;
   label: string;
@@ -182,13 +191,19 @@ export function FormField({
   type?: string;
   required?: boolean;
   autoComplete?: string;
+  describedBy?: string;
+  invalid?: boolean;
+  maxLength?: number;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
 
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
-  const describedBy = [hint ? hintId : null, shown ? errorId : null].filter(Boolean).join(" ");
+  const describedBy = [outside ?? null, hint ? hintId : null, shown ? errorId : null]
+    .filter(Boolean)
+    .join(" ");
 
   const [revealed, setRevealed] = useState(false);
   // Adjusting state while rendering, React's documented alternative to an
@@ -207,8 +222,10 @@ export function FormField({
     required,
     autoComplete,
     value,
+    maxLength,
+    inputMode,
     onInvalid: browser.onInvalid,
-    "aria-invalid": shown ? true : undefined,
+    "aria-invalid": shown || invalid ? true : undefined,
     "aria-describedby": describedBy || undefined,
   };
 
@@ -235,7 +252,7 @@ export function FormField({
           onChange={(event) => change(event.target.value)}
           className={cn(
             "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
-            shown ? "border-danger" : "border-line",
+            shown || invalid ? "border-danger" : "border-line",
           )}
         />
       ) : type === "password" ? (

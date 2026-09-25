@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Http\Resources\ContactMessageResource;
 use App\Http\Resources\EventResource;
+use App\Http\Resources\HistoryEntryResource;
 use App\Http\Resources\MemberResource;
 use App\Http\Resources\RegistrationOptionResource;
 use App\Http\Resources\RegistrationResource;
@@ -80,6 +81,7 @@ final class EntityTag
         'member' => 'member',
         'registration' => 'registration',
         'contact_message' => 'contactMessage',
+        'history' => 'historyEntry',
     ];
 
     /**
@@ -186,6 +188,7 @@ final class EntityTag
             'registration' => (new RegistrationResource($model->load('choices.option')))->toArray(self::bare()),
 
             'contact_message' => (new ContactMessageResource($model->load('handledBy')))->toArray(self::bare()),
+            'history' => (new HistoryEntryResource($model))->toArray(self::bare()),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

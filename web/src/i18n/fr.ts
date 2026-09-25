@@ -98,13 +98,16 @@ export const fr = {
     spam_suspected: "Envoi refusé. Rechargez la page et réessayez.",
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
+    history_entry_empty: "Écrivez au moins un titre ou un texte, en français ou en allemand.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
     not_found: "Introuvable",
   },
   validation: {
-    required: "est requis",
+    // "obligatoire", not "requis": it reads the same for a feminine label,
+    // where "requis" gave "Année est requis".
+    required: "est obligatoire",
     too_long: "est trop long (maximum {{max}} caractères)",
     invalid_format: "n'est pas dans un format valide",
     invalid_type: "a un type invalide",
@@ -138,6 +141,14 @@ export const fr = {
     weekend: "Week-end",
     isPublic: "Visible publiquement",
     notes: "Remarques",
+    occurredOn: "Date",
+    precision: "Précision de la date",
+    titleFr: "Titre en français",
+    bodyFr: "Texte en français",
+    titleDe: "Titre en allemand",
+    bodyDe: "Texte en allemand",
+    important: "Étape importante",
+    icon: "Icône",
     // The registration window on an event. Setting the close date is what
     // turns public registration on at all.
     registrationOpensAt: "Ouverture des inscriptions",
@@ -1155,6 +1166,94 @@ export const fr = {
         description: "Nous écrire, réserver les Canetons, et qui fait quoi.",
       },
     },
+  },
+
+  /**
+   * The band's history, /history. The entries themselves are content typed by
+   * the committee and rendered verbatim; these are only the page's own words.
+   */
+  history: {
+    heading: "L’Histoire des Canetons",
+    empty: "L’histoire n’a pas encore été écrite.",
+    loadFailed: "L’histoire n’a pas pu être chargée.",
+    // Under an entry shown in the other language. Which one is shown depends
+    // on the entry's language, not the page's.
+    inFrench: "En français",
+    inGerman: "En allemand",
+    // Read before the date in an important entry's heading, so its punctuation
+    // is each language's own.
+    importantPrefix: "Étape importante : ",
+    add: "Ajouter",
+    addAria: "Ajouter à l’histoire",
+    edit: "Modifier",
+    delete: "Supprimer",
+    // The accessible names, which carry the entry, in each language's word order.
+    editAria: "Modifier {{name}}",
+    deleteAria: "Supprimer {{name}}",
+    // Non-breaking spaces inside the guillemets and before the question mark,
+    // so neither is ever left alone at the start of a line.
+    deleteHeadingNamed: "Supprimer « {{title}} » ({{date}}) ?",
+    deleteHeadingUntitled: "Supprimer l’entrée {{of}} ?",
+    deleteDescription: "Elle disparaît de la page publique.",
+    deleteFailed: "La suppression a échoué.",
+    // An untitled entry is named by its date, so three of them do not have
+    // three identical buttons. {{of}} is one of `of` below.
+    untitledEntry: "l’entrée {{of}}",
+    // "de 2007", "d’octobre 2002", "du 11.11.2023": the preposition depends on
+    // the precision, and elides before a month that starts with a vowel.
+    of: {
+      year: "de {{date}}",
+      month: "de {{date}}",
+      monthVowel: "d’{{date}}",
+      day: "du {{date}}",
+    },
+    // Announced after the timeline is back, since the save or the delete
+    // leaves no visible trace where focus lands.
+    saved: "Entrée enregistrée.",
+    deleted: "Entrée supprimée.",
+    icons: {
+      none: "Aucune",
+      flag: "Drapeau",
+      star: "Étoile",
+      music: "Musique",
+      trophy: "Trophée",
+      users: "Personnes",
+      "party-popper": "Fête",
+      "map-pin": "Lieu",
+      heart: "Cœur",
+    },
+  },
+
+  /** The history editor, /history/new and /history/:id/edit. Field labels are `fields.*`. */
+  historyForm: {
+    newHeading: "Nouvelle entrée",
+    editHeading: "Modifier l’entrée",
+    french: "Français",
+    german: "Allemand",
+    atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
+    // Worded as what the timeline will show, because "précision" alone did not
+    // say that a year entry keeps no day.
+    precisions: {
+      year: "L’année seulement (2019)",
+      month: "Le mois et l’année (octobre 2002)",
+      day: "La date exacte (11.11.2023)",
+    },
+    year: "Année",
+    month: "Mois",
+    yearInvalid: "Indiquez l’année en quatre chiffres.",
+    // Colons carry each language's own spacing, so they live here.
+    preview: "Sur la frise :",
+    labelSeparator: " : ",
+    // Instead of a bare "…", which a screen reader reads as "points de
+    // suspension".
+    previewIncomplete: "date à compléter",
+    monthPlaceholder: "Choisir le mois",
+    monthMissing: "Choisissez le mois.",
+    // Read as words; "8 / 120" alone is read as "huit barre oblique cent vingt".
+    counter: "{{n}} caractères sur {{max}}",
+    iconLegend: "Icône sur la frise",
+    saveFailed: "L’enregistrement a échoué.",
+    loadFailed: "L’entrée n’a pas pu être chargée.",
   },
 
   /**

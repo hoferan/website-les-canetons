@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Attendance;
 use App\Models\ContactMessage;
 use App\Models\Event;
+use App\Models\HistoryEntry;
 use App\Models\Member;
 use App\Models\Registration;
 use App\Models\Role;
@@ -391,6 +392,7 @@ class ConditionalWriteTest extends TestCase
             'member' => Member::factory()->inSection('Cloches')->create(),
             'registration' => Registration::factory()->create(),
             'contact_message' => ContactMessage::factory()->create(),
+            'history' => HistoryEntry::factory()->create(),
         ];
 
         foreach (EntityTag::facets() as $facet) {

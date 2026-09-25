@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\FormTokenController;
 use App\Http\Controllers\Api\GuestListExportController;
+use App\Http\Controllers\Api\HistoryEntryController;
 use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
@@ -86,6 +87,10 @@ Route::get('/events/{event}/registration', [RegistrationController::class, 'form
 // because the flag defaults to false, so appearing in public is a decision
 // somebody made about an event rather than the default for the whole diary.
 Route::get('/agenda', [AgendaController::class, 'index']);
+
+// The band's history. PUBLIC: it is the page a parent reads before signing a
+// child up, and it holds nothing the band would not print on a flyer.
+Route::get('/history', [HistoryEntryController::class, 'index']);
 
 Route::get('/band', [BandController::class, 'index']);
 Route::get('/committee', [CommitteeController::class, 'index']);
@@ -225,6 +230,18 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // mis-aimed tap is the confirmation in the UI.
         Route::delete('/events/{event}', [EventController::class, 'destroy'])
             ->middleware('etag:event');
+    });
+
+    // Changing the history, and the single-entry read its edit form starts
+    // from. Inside auth:sanctum, so an anonymous caller gets 401, not 403.
+    Route::middleware('permission:history.manage')->group(function () {
+        Route::get('/history/{historyEntry}', [HistoryEntryController::class, 'show'])
+            ->middleware('etag:history');
+        Route::post('/history', [HistoryEntryController::class, 'store']);
+        Route::put('/history/{historyEntry}', [HistoryEntryController::class, 'update'])
+            ->middleware('etag:history');
+        Route::delete('/history/{historyEntry}', [HistoryEntryController::class, 'destroy'])
+            ->middleware('etag:history');
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a

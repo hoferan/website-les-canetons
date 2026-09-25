@@ -340,8 +340,8 @@ test("marks the four required fields, and refuses an empty form in French", asyn
 
   await user.click(screen.getByRole("button", { name: "M’inscrire" }));
 
-  expect(screen.getByText("Nom est requis")).toBeInTheDocument();
-  expect(screen.getByText("Téléphone est requis")).toBeInTheDocument();
+  expect(screen.getByText("Nom est obligatoire")).toBeInTheDocument();
+  expect(screen.getByText("Téléphone est obligatoire")).toBeInTheDocument();
   expect(screen.getByLabelText("Nom", { exact: true })).toHaveFocus();
   expect(posted).toBe(false);
 });

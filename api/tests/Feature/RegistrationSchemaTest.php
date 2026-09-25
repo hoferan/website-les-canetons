@@ -206,5 +206,6 @@ class RegistrationSchemaTest extends TestCase
         );
         $this->assertNotContains(Permission::RegistrationsManage->value, $permissions);
         $this->assertNotContains(Permission::MessagesManage->value, $permissions);
+        $this->assertNotContains(Permission::HistoryManage->value, $permissions);
     }
 }
