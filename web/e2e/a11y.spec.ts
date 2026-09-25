@@ -61,6 +61,9 @@ const VISITS: { as: string | null; paths: string[] }[] = [
       "/events/7/attendance",
       "/events/7/registrations",
       "/events/7/registration-options",
+      "/history",
+      "/history/new",
+      "/history/3/edit",
     ],
   },
 ];

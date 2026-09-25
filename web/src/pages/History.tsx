@@ -21,6 +21,10 @@ import { useSession } from "../session/SessionProvider";
  * one, otherwise in the other, with `lang` on the entry and a note in the
  * page's language saying which. ADR 0026.
  *
+ * THE DATE SITS ABOVE THE TITLE AT EVERY WIDTH. A date column beside the line
+ * was considered for desktop, but the page is a text-width column, and a
+ * second column only narrows the text it is there to show.
+ *
  * The controls are ABSENT without the permission rather than refused, like
  * the planning's: a link that leads to "Accès refusé" teaches people that
  * parts of the site are broken for them.
