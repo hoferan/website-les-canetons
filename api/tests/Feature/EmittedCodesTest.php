@@ -17,7 +17,7 @@ use Tests\TestCase;
  * DERIVED FROM THE ROUTES, not from a list written out here, so an eleventh
  * annotated action is covered without an edit — and an extension that quietly
  * stops running fails here rather than going green on a document it no longer
- * touches. That failure is the one the whole A3 family of tests exists for: a
+ * touches. That failure is the one the whole family of contract tests exists for: a
  * Scramble transformer that is never called changes nothing and says nothing.
  */
 class EmittedCodesTest extends TestCase

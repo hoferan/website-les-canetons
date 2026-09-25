@@ -32,7 +32,7 @@ import { t, type TranslationKey } from "../i18n";
 import { formatDay } from "../lib/date";
 import { formatCents } from "../money";
 
-/** The contact fields, in the order a Swiss committee needs them (G4). */
+/** The contact fields, in the order a Swiss committee needs them. */
 const FIELDS: {
   name: "lastName" | "firstName" | "email" | "phone" | "address" | "tableName";
   labelKey: TranslationKey;

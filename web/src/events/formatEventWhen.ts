@@ -13,7 +13,8 @@ import { intlTag, type Locale } from "../i18n/locale";
  *
  * A two-day event renders as a date RANGE rather than one date and two times.
  * That falls straight out of comparing the two dates, which is what the old
- * `weekend` boolean was faking — see the events migration (decision C6).
+ * `weekend` boolean was faking — see the events migration, which made
+ * `ends_at` required.
  *
  * SHORT, AND COMPOSED BY Intl RATHER THAN BY HAND (#162). This file used to
  * build the weekday and the date itself, because `fr-CH` puts a comma between

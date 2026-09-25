@@ -30,7 +30,7 @@ import { useSession } from "../session/SessionProvider";
  * copies them for WhatsApp; the answers sit below. The old site had this the
  * other way round — a table of everybody, scrolling sideways at 390px,
  * answering "who is coming?" when the question the committee actually has on a
- * Thursday evening is "who must I still chase?" (design §5).
+ * Thursday evening is "who must I still chase?".
  *
  * ONE LAYOUT: CARDS, AT EVERY WIDTH, in a grid that widens (#130). A table
  * from `md` up used to sit beside them, hand-maintained, and the answer it
@@ -191,7 +191,7 @@ export function EventAttendance() {
                   ) : null}
                 </span>
 
-                {/* C14 ON SCREEN. The on-behalf endpoint refuses its own
+                {/* THE CALLER'S OWN ROW. The on-behalf endpoint refuses its own
                     caller, so Bastien — who plays and holds the permission —
                     must not be offered buttons here that would 409. His own
                     answer belongs on the planning, which is also where the
@@ -336,7 +336,7 @@ export function EventAttendance() {
  * answer they are about to change rather than the eleventh "Corriger" on the
  * page.
  *
- * C14 ON SCREEN, here as in the Sans réponse block above: the on-behalf
+ * THE CALLER'S OWN ROW, here as in the Sans réponse block above: the on-behalf
  * endpoint refuses its own caller, so Bastien — who plays and holds the
  * permission — is told where his own answer lives instead of being offered a
  * button that would 409.

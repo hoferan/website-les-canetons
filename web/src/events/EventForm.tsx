@@ -97,7 +97,7 @@ export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
     notes: draft.notes.trim() === "" ? null : draft.notes,
     // THE DATE IS THE SWITCH, and the time beside it is never consulted on
     // its own. An empty closing date sends null, which is what turns public
-    // registration off — there is no separate boolean, per D9, because a flag
+    // registration off — there is no separate boolean (ADR 0020), because a flag
     // beside a date is a flag that drifts out of step with it. Bookings
     // already taken survive being switched off.
     registrationOpensAt: instantOrNull(draft.registrationOpensDate, draft.registrationOpensTime),
@@ -303,7 +303,7 @@ export function EventForm({
 
       {/* THE REGISTRATION WINDOW, and the closing date is the switch. There is
           no "activer les inscriptions" checkbox to go out of step with the
-          dates — D9, and the same call the API makes. The copy below is what
+          dates (ADR 0020), and the API makes the same call. The copy below is what
           carries that, because a date field is not self-evidently a switch. */}
       <fieldset className="flex flex-col gap-related rounded-md border border-line p-4">
         <legend className="px-1 font-display text-lg">{t("eventForm.registrationsLegend")}</legend>

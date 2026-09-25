@@ -55,7 +55,7 @@ class EventSeriesTest extends TestCase
 
     public function test_every_created_event_is_independent(): void
     {
-        // C3: nothing links them. This is what makes "how does a player attend
+        // Nothing links them. This is what makes "how does a player attend
         // one occurrence?" a non-question — each one is an ordinary event.
         $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', $this->payload());
 
@@ -223,7 +223,7 @@ class EventSeriesTest extends TestCase
 
     public function test_the_template_is_applied_to_every_event(): void
     {
-        // NON-DEFAULT VALUES THROUGHOUT, for the reason Task 5's review found
+        // NON-DEFAULT VALUES THROUGHOUT, for the reason a review found
         // the hard way: isPublic false and notes null are also the column
         // defaults, so a generator that never wrote those two columns passed
         // every assertion made against the default payload.

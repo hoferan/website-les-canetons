@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Schema;
  * The planning: rehearsals and gigs the committee enters and members answer
  * for. Replaces the old date + two TIME columns + `weekend` boolean.
  *
- * `starts_at`/`ends_at` as a datetime PAIR is what dissolves `weekend`
- * (decision C6): a multi-day event is simply one whose start and end fall on
+ * `starts_at`/`ends_at` as a datetime PAIR is what dissolves `weekend`:
+ * a multi-day event is simply one whose start and end fall on
  * different days, so there is no flag to keep in step with the dates. The live
  * planning has "Weekend musical, 3-4 October", which the old schema could not
  * express as a single row. `ends_at` is NOT NULL so that fact stays true —
@@ -48,15 +48,15 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamps();
 
-            // Every query in this plan orders or filters by it, and the
+            // Every query on events orders or filters by it, and the
             // planning is the most-loaded screen the band has.
             $table->index('starts_at');
         });
     }
 
     /**
-     * Drops the table outright. Nothing points at `events` yet — R1c-2's
-     * `attendance` will, with ON DELETE CASCADE.
+     * Drops the table outright. Nothing points at `events` yet — the later
+     * `attendance` table will, with ON DELETE CASCADE.
      */
     public function down(): void
     {

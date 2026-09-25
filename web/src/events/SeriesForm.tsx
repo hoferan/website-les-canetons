@@ -115,7 +115,7 @@ const EMPTY: SeriesDraft = {
  * THE BUTTON NAMES THE COUNT. A generator whose button says only "Créer" is
  * one nobody checks before pressing, and this one writes up to sixty rows.
  *
- * What it generates are INDEPENDENT EVENTS (C3). Nothing links them: there is
+ * What it generates are INDEPENDENT EVENTS. Nothing links them: there is
  * no series row, no recurrence rule and no `series_id`, so "how does a player
  * attend one occurrence?" is not a question anybody has to answer. This form
  * is the only thing that ever knows they arrived together, and it forgets as

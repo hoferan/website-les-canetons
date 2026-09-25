@@ -70,7 +70,8 @@ test('the dispatch rules precede the SPA fallback', () => {
 });
 
 test('the site rules carry no legacy RedirectMatch', () => {
-  // Deleted 2026-09-07 with their targets (design D10/D11). They carried both
+  // Deleted 2026-09-07 with their targets: every URL is English now and the
+  // rebuild owes no backwards compatibility (ADR 0003). They carried both
   // of the template's negative-lookahead landmines, so a re-added rule needs
   // its own assertions — see the note left in site.htaccess.
   const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
@@ -148,9 +149,8 @@ test('the SPA fallback keeps both of its guards', () => {
   // of 10 internal redirects" — on EVERY url of the site, not one page. The
   // !^/assets/ guard is what lets the hashed bundles be served as files.
   //
-  // Neither had a test until 2026-09-07, which was found by reviewing the
-  // task that deleted this file's other assertions: the plan said to keep the
-  // REDIRECT_STATUS test and there was none to keep.
+  // Neither had a test until 2026-09-07. That gap came to light while this
+  // file's other assertions were being deleted.
   const template = readFileSync('config/htaccess/site.htaccess', 'utf8');
   const lines = template.split(/\r?\n/);
 

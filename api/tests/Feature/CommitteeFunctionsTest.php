@@ -17,7 +17,7 @@ use Tests\TestCase;
  * "Caissière" above "Présidente" — a typo was published, and a typed name is
  * content no translation layer can ever reach. A table with a `sort_order`
  * answers all three at once, and it is the same rung of the editability ladder
- * the registers sit on (design §3.1): editable in the database today, editable
+ * the registers sit on (ADR 0014): editable in the database today, editable
  * by the committee when the deferred editor ships.
  *
  * A MIGRATION SEEDS IT, like the registers and for the same reason: the shared

@@ -142,7 +142,8 @@ test("a viewer gets the list and no way to change it", async () => {
   //
   // STILL A PAGE-WIDE QUERY, and only because this screen has two actions and
   // RowActions therefore draws no menu. A third action turns this into a
-  // closed menu and this assertion into a tautology — see #118's spec, §6.
+  // closed menu and this assertion into a tautology, because a closed Radix
+  // menu's items are not in the DOM at all.
   expect(screen.queryAllByRole("button", { name: /^Corriger/ })).toHaveLength(0);
   expect(screen.queryAllByRole("button", { name: /^Annuler l’inscription/ })).toHaveLength(0);
 });

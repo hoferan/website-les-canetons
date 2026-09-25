@@ -97,7 +97,7 @@ class ChaseListTest extends TestCase
     public function test_each_entry_carries_what_the_chase_list_renders(): void
     {
         // assertSame on VALUES, not assertJsonStructure: key presence alone
-        // stayed green through a field swap in Task 4 and had to be
+        // stayed green through a field swap once and had to be
         // strengthened afterwards.
         $player = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->create();
         Attendance::factory()->no()->recordedBy($this->organiser)->create([

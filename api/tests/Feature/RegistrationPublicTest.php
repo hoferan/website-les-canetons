@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * The public half of R3: the form's data, and booking a place. Anonymous
- * throughout — the people booking are not band members.
+ * The public half of registration: the form's data, and booking a place.
+ * Anonymous throughout — the people booking are not band members.
  */
 class RegistrationPublicTest extends TestCase
 {
@@ -224,8 +224,8 @@ class RegistrationPublicTest extends TestCase
 
     public function test_a_failing_mail_server_does_not_lose_the_booking(): void
     {
-        // BEST-EFFORT ON PURPOSE (G5). The row is already committed and this
-        // host has no queue to retry from; an SMTP blip must not throw away
+        // BEST-EFFORT ON PURPOSE (ADR 0009). The row is already committed and
+        // this host has no queue to retry from; an SMTP blip must not throw away
         // a real registration.
         Mail::shouldReceive('to')->andThrow(new \RuntimeException('smtp is down'));
 
@@ -414,8 +414,9 @@ class RegistrationPublicTest extends TestCase
     public function test_the_contact_form_is_guarded_too(): void
     {
         // The orphan this middleware finally adopts: POST /api/v1/contact
-        // shipped with no protection of any kind and still had none when R3
-        // was designed. No token AND no decoy field: both must refuse.
+        // shipped with no protection of any kind and still had none when
+        // public registration was designed. No token AND no decoy field: both
+        // must refuse.
         $this->postJson('/api/v1/contact', [
             'firstName' => 'A',
             'lastName' => 'B',

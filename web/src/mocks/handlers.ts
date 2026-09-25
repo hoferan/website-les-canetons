@@ -46,14 +46,9 @@ import type {
  * OpenAPI document's title, which is why tools/openapi.mjs pins APP_NAME. An
  * unpinned title renames this export between machines.
  *
- * During the R1a rebuild this file only covered what the API still had:
- * /api/v1/config, /api/v1/contact, and auth. R1b adds the roster — reference data,
- * /api/v1/members and the account password — and it is a real little backend
- * rather than a fixture dump: a screen that creates a member and then lists
- * them must see what it created, or the test is asserting against a fixture
- * instead of a flow. The event/signup/response/altcha handlers that used to
- * live here modeled the domain R1a deleted; R1c brings their replacements back
- * alongside the real endpoints.
+ * It is a real little backend rather than a fixture dump: a screen that
+ * creates a member and then lists them must see what it created, or the test
+ * is asserting against a fixture instead of a flow.
  */
 
 // Tied to the generated model, not retyped by hand: a shape change in
@@ -329,7 +324,7 @@ const COMMITTEE_FUNCTIONS: CommitteeFunctionResource[] = [
  * afterwards, which is why they are not part of that first migration's own
  * set.
  *
- * No display name, deliberately (decision B6): the API is English without
+ * No display name, deliberately (ADR 0014): the API is English without
  * exception, and the UI resolves the French from `key` through
  * web/src/i18n/fr.ts. A `label` here would let a screen render a name the real
  * API never sends.
@@ -787,8 +782,8 @@ function at(dayOffset: number, time: string): string {
 }
 
 /**
- * The seeded planning, mirroring the real season recorded in the R1c spec §1
- * rather than inventing one: Saturday rehearsals at the Werkhof, the Christmas
+ * The seeded planning, mirroring the band's real season rather than inventing
+ * one: Saturday rehearsals at the Werkhof, the Christmas
  * one that runs an hour long, the two-day musical weekend, a gig, and one
  * rehearsal already past.
  *
@@ -854,7 +849,7 @@ function initialEvents(): EventResource[] {
     },
     {
       // The two-day case, which is the whole reason `ends_at` is a datetime
-      // rather than a time beside a `weekend` boolean (C6).
+      // rather than a time beside a `weekend` boolean.
       id: 4,
       title: "Weekend musical",
       startsAt: at(28, "09:00"),
@@ -917,10 +912,10 @@ function initialEvents(): EventResource[] {
       guestCount: null,
     },
     {
-      // THE ONLY EVENT THAT TAKES BOOKINGS, and the one R3's four screens are
-      // looked at against. The souper generalised (D9): registration is a
-      // property of an event, so this is an ordinary row with three dates
-      // filled in rather than a second kind of thing.
+      // THE ONLY EVENT THAT TAKES BOOKINGS, and the one the four registration
+      // screens are looked at against. The souper generalised (ADR 0020):
+      // registration is a property of an event, so this is an ordinary row with
+      // three dates filled in rather than a second kind of thing.
       //
       // Its window is open NOW and closes before the event, which is the
       // ordinary state and the only one in which the public form can be
@@ -961,7 +956,7 @@ function resetEvents(): void {
  * Attendance
  * ------------------------------------------------------------------------ */
 
-/** C12's undo window, in milliseconds: AttendanceIntegrity::UNDO_WINDOW_MINUTES. */
+/** The undo window (ADR 0018), in milliseconds: AttendanceIntegrity::UNDO_WINDOW_MINUTES. */
 const UNDO_WINDOW_MS = 5 * 60 * 1000;
 
 /**
@@ -980,11 +975,11 @@ function answerKey(eventId: number, memberId: number): string {
 }
 
 /**
- * An instant far enough back that C12's undo window has closed.
+ * An instant far enough back that the undo window has closed.
  *
  * Seeded answers are SETTLED on purpose. Recorded "just now" every one of them
- * would offer an undo, and the five-minute window — the rule that keeps C11
- * from being decorative — would never be seen in the state it spends its life
+ * would offer an undo, and the five-minute window — the rule that keeps the
+ * withdrawal reason from being decorative — would never be seen in the state it spends its life
  * in.
  */
 function settledAt(): string {
@@ -996,7 +991,7 @@ function settledAt(): string {
  * event the chase list is read about.
  *
  * One of each state the screen has to render: a yes, a no carrying the reason
- * C11 collects, an answer the direction entered on somebody's behalf, and a
+ * a withdrawal collects, an answer the direction entered on somebody's behalf, and a
  * member nobody has heard from. That last one is Bastien, who is therefore
  * also the row an on-behalf write is aimed at.
  */
@@ -1319,7 +1314,7 @@ function withRegistrationFlag(event: EventResource): EventResource {
   return { ...event, takesRegistrations: event.registrationClosesAt !== null };
 }
 
-/** The four facts PublicEventResource publishes, plus what R3 added to it. */
+/** The four facts PublicEventResource publishes, plus what registration added to it. */
 function publicEvent(event: EventResource) {
   return {
     id: event.id,
@@ -1536,7 +1531,7 @@ export function resetMockState(): void {
   setCurrentUser(null);
   resetRoster();
   // Dropping this line fails tests only when the WHOLE FILE runs, which reads
-  // as flakiness and is not — R1b proved it on the roster store.
+  // as flakiness and is not — the roster store proved it first.
   resetEvents();
   resetAnswers();
   resetRegistrations();
@@ -1984,7 +1979,7 @@ const overrides = [
     return HttpResponse.json({ generatedPassword: GENERATED_PASSWORD, sessionsEnded: 1 });
   }),
 
-  // The ONE endpoint that still re-authenticates (decision B7). Knowing the
+  // The ONE endpoint that still re-authenticates (ADR 0017). Knowing the
   // current password is this operation's own input, not ceremony: without it a
   // borrowed, unlocked phone locks the real owner out of their own account.
   http.post("/api/v1/me/password", async ({ request }) => {
@@ -2065,7 +2060,7 @@ const overrides = [
     };
 
     // One event per date, each independent — no series_id, nothing linking
-    // them (C3). The generator is the only thing that knows they arrived
+    // them. The generator is the only thing that knows they arrived
     // together, and it forgets immediately.
     const created = body.dates.map((date) => {
       const day = new Date(`${date}T00:00:00`);
@@ -2247,7 +2242,7 @@ const overrides = [
     const key = answerKey(event.id, currentUser.id);
     const existing = answers.get(key) ?? null;
 
-    // C11: taking back a yes costs a reason. It lands as an ORDINARY
+    // Taking back a yes costs a reason (ADR 0018). It lands as an ORDINARY
     // validation failure against `note` rather than as a code of its own, so
     // the dialog shows it under the field the member is looking at.
     if (existing?.status === "yes" && body.status === "no" && !body.note?.trim()) {
@@ -2272,7 +2267,7 @@ const overrides = [
     return HttpResponse.json(recorded);
   }),
 
-  // UNDO, and it expires (C12).
+  // UNDO, and it expires after five minutes.
   http.delete("/api/v1/events/:id/attendance", ({ params }) => {
     if (!currentUser) {
       return unauthenticated();
@@ -2312,8 +2307,9 @@ const overrides = [
       return notFound();
     }
 
-    // C14, checked BEFORE answerability, exactly as the real controller orders
-    // it. This route is exempt from C11's reason rule (C13), which is
+    // The caller's own row is refused, checked BEFORE answerability, exactly
+    // as the real controller orders it. This route is exempt from the
+    // withdrawal reason rule, which is
     // precisely why aiming it at yourself has to be refused: Bastien plays and
     // holds the permission, and could otherwise take back his own yes for
     // free.
@@ -2329,7 +2325,7 @@ const overrides = [
 
     const recorded: AttendanceResource = {
       status: body.status,
-      // NO REASON REQUIRED, withdrawal included (C13): the committee is
+      // NO REASON REQUIRED, withdrawal included (ADR 0018): the committee is
       // writing down what they were told, and inventing a reason on somebody
       // else's behalf puts words in their mouth.
       note: body.note?.trim() ? body.note : null,

@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 /**
- * Re-proving who you are, immediately before something irreversible (spec §6,
- * decision B1).
+ * Re-proving who you are, immediately before something irreversible. Its one
+ * caller is POST /me/password (ADR 0017).
  *
  * The threat this defends against is not an outsider — it is an authenticated
  * one. Without a limit, an attacker holding a stolen session cookie has a

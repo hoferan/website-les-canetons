@@ -90,7 +90,7 @@ class RegistrationController extends Controller
         // prepareForValidation(), not here: it has to run BEFORE validation
         // or the caller gets a 400 about option ids instead. See there.
         //
-        // NO CAPACITY CHECK (decision G1), and that absence is what keeps
+        // NO CAPACITY CHECK (ADR 0020), and that absence is what keeps
         // this lock-free: a count-then-insert would need a locking read on
         // the one endpoint strangers can hammer. The committee watches the
         // guest list and closes the date early instead.
@@ -279,7 +279,7 @@ class RegistrationController extends Controller
     /**
      * Sends the confirmation, and never lets it fail the booking.
      *
-     * BEST-EFFORT ON PURPOSE (decision G5). The row is already committed:
+     * BEST-EFFORT ON PURPOSE (ADR 0009). The row is already committed:
      * this host has no queue worker and no way to run one — no shell, no
      * supervisor, and a cron job would have to be configured by hand on
      * each server, whose failure mode is mail that silently never sends. So

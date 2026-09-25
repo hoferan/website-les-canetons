@@ -99,8 +99,8 @@ class AuthController extends Controller
         // Not 419 invalid_session, which means "prime the cookie and retry" —
         // advice that would loop forever here, because the request will never
         // become stateful by retrying. Session auth needs a browser on a
-        // configured origin; a server-to-server caller needs the token
-        // credential that A6 adds.
+        // configured origin; a server-to-server caller would need a token
+        // credential, which this API deliberately does not offer (ADR 0010).
         if (! $request->hasSession()) {
             return ApiError::json(400, 'stateful_request_required', 'This endpoint requires a session');
         }

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Schema;
  * no translation layer can reach — German is plausible in bilingual Fribourg
  * and a typed name would never be reachable by it. A table with `sort_order`
  * answers all three, and puts seats on the same rung of the editability ladder
- * as the registers (design §3.1): the database today, the deferred editor
+ * as the registers (ADR 0014): the database today, the deferred editor
  * later.
  *
  * SHAPED EXACTLY LIKE `sections`, deliberately — id, unique name, sort_order,

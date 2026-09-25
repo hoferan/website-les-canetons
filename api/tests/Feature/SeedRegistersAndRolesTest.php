@@ -12,8 +12,7 @@ use Tests\TestCase;
 /**
  * The registers and roles arrive as a MIGRATION, not a seeder, because the
  * shared host has no shell: `artisan db:seed` cannot be run on a server, and
- * the only remote trigger that exists is the migration path. See the rebuild
- * design's §7 and decision B2 in the R1b plan.
+ * the only remote trigger that exists is the migration path. See ADR 0014.
  *
  * RefreshDatabase runs migrations, so every test in the suite now starts with
  * these rows present. That is intentional — they are reference data, not

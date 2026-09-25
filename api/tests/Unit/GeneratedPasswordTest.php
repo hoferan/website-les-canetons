@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * §4.4: a committee-issued password, shown exactly once, to read down the phone
+ * ADR 0016: a committee-issued password, shown exactly once, to read down the phone
  * or hand over on paper. The failure mode this guards against is a second phone
  * call, not a breach — so the alphabet matters more than entropy theatre.
  */

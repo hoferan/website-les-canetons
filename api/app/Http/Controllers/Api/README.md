@@ -34,8 +34,8 @@ Rules:
   what comes back.
 - **Name every refusal a caller can act on**, with its `code`. A refusal they
   cannot avoid (a 500) is not worth documenting.
-- **No dates, no measurements, no mutation notes, no decision references.**
-  `C11`, `MEASURED 2026-09-10` and `found by mutation` mean nothing to a
+- **No dates, no measurements, no mutation notes, no ADR references.**
+  `ADR 0018`, `MEASURED 2026-09-10` and `found by mutation` mean nothing to a
   reader outside this repository.
 - Write in the same voice as the rest of the reference. A developer reading
   twenty endpoints should not be able to tell they had different authors.
@@ -43,14 +43,14 @@ Rules:
 ## The body is for the next maintainer, with one exception
 
 Everything else goes in `//` comments inside the method. That is where the
-measurements, the decision references, the traps and the arguments belong,
+measurements, the ADR references, the traps and the arguments belong,
 and nothing is lost by moving them there.
 
 **Except directly above a `return`.** Measured 2026-09-10: Scramble
 publishes the comment immediately preceding a return statement as that
 operation's **200 response description**. Two endpoints had shipped a
-paragraph of internal notes to `/api/docs` that way, decision codes and test
-names included, while their docblocks were perfectly clean.
+paragraph of internal notes to `/api/docs` that way, test names included,
+while their docblocks were perfectly clean.
 
 So either put the note higher in the method, or leave a blank line between it
 and the `return`. A blank line is enough, and it is worth saying why in the
@@ -59,9 +59,9 @@ comment so nobody closes the gap while tidying.
 ```php
 public function store(StoreRegistrationRequest $request, Event $event): JsonResponse
 {
-    // NO CAPACITY CHECK (G1), and that absence is what keeps this lock-free:
-    // a count-then-insert would need a locking read on the one endpoint
-    // strangers can hammer.
+    // NO CAPACITY CHECK (ADR 0020), and that absence is what keeps this
+    // lock-free: a count-then-insert would need a locking read on the one
+    // endpoint strangers can hammer.
     ...
 }
 ```

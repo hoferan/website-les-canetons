@@ -32,8 +32,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * v1 configures none of them and this middleware emits nothing. It is built and
  * tested now because the alternative is writing it during the one week it has to
- * work, against a contract that already has consumers. See A1 in
- * docs/superpowers/specs/2026-09-11-api-v1-public-contract-design.md.
+ * work, against a contract that already has consumers. See ADR 0013.
  *
  * It deliberately does NOT apply to routes/meta.php (/api/docs, /api/migrate).
  * Those are unversioned — they describe or operate the API rather than being part

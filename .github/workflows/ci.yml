@@ -23,7 +23,7 @@ jobs:
   # Is there anything outside docs/ in this change?
   #
   # A docs-only change cannot break the build, the API or the browser, so making
-  # it wait through six jobs and then DEPLOY TO TEST is pure cost — the E2a
+  # it wait through six jobs and then DEPLOY TO TEST is pure cost — one
   # handover update was a 136-line Markdown diff that redeployed a byte-identical
   # artifact.
   #
@@ -88,7 +88,7 @@ jobs:
             # Note this is docs/ ONLY. CLAUDE.md, README.md and staging/README.md
             # sit outside it and still run everything, deliberately: CLAUDE.md is
             # the instructions every session loads, and being wrong about it is
-            # not the same kind of cheap as being wrong about a plan document.
+            # not the same kind of cheap as being wrong about a file under docs/.
             echo "Result: docs/ only — skipping the build, the suites and the deploy."
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
@@ -331,7 +331,7 @@ jobs:
   # `tests-api` and `openapi-drift`. Do not let a green run here be read as "the
   # API works".
   #
-  # This suite existed from E1 onwards but ran in NO workflow, so a broken spec
+  # This suite existed almost from the start but ran in NO workflow, so a broken spec
   # reached main unnoticed at least once. `npm run test:web` does not cover
   # web/e2e/ — the two suites are separate runners over separate directories.
   e2e:

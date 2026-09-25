@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\RateLimiter;
 /**
  * Verifies that the caller knows their own current password.
  *
- * SCOPE, since decision B7 (2026-09-08): this is used by ONE caller,
+ * SCOPE, since 2026-09-08 (ADR 0017): this is used by ONE caller,
  * AccountPasswordController. The destructive roster endpoints no longer
  * re-authenticate — the session cookie is trusted there, as it already was for
  * reading the whole roster and editing anyone.
@@ -56,15 +56,15 @@ final class Reauthentication
 
         // Fails closed, explicitly.
         //
-        // MEASURED 2026-09-08, correcting a claim this code used to carry: the
-        // plan said Hash::check() against a null hash raises a TypeError. It
-        // does not — Laravel's AbstractHasher::check() returns false for a null
-        // or empty hash, so the comparison below would already refuse. Removing
+        // MEASURED 2026-09-08, correcting a claim this code used to carry, that
+        // Hash::check() against a null hash raises a TypeError. It does not —
+        // Laravel's AbstractHasher::check() returns false for a null or empty
+        // hash, so the comparison below would already refuse. Removing
         // this branch changes no observable behaviour, and no test can
         // distinguish the two, which is why there is no mutation test for it.
         //
         // Kept anyway, as intent rather than as load-bearing logic: this is the
-        // path that authorises destroying a member, and "no password set must
+        // path that authorises a password change, and "no password set must
         // never mean any password matches" is worth saying in code rather than
         // inheriting from a framework method's edge case. A reader who prefers
         // to lean on the framework can delete it knowing exactly what it does.

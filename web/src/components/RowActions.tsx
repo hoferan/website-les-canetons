@@ -75,7 +75,7 @@ export function RowActions({
   }
 
   // The designated one if the screen passed it, otherwise whatever came
-  // first: rules 1 and 2 of the spec's §5.
+  // first.
   const inlineIndex = Math.max(
     0,
     actions.findIndex((a) => a.key === inlineKey),

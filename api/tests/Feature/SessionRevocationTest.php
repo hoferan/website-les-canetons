@@ -81,7 +81,7 @@ class SessionRevocationTest extends TestCase
 
     public function test_revoking_all_but_one_session_leaves_that_one_alive(): void
     {
-        // §6 wants revocation to be immediate on a password change. Taken
+        // ADR 0010 wants revocation to be immediate on a password change. Taken
         // literally that also kills the session the actor is standing in — and
         // the forced-change screen is where every first login begins, so the
         // literal reading bounces every new account straight back to the login

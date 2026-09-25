@@ -55,14 +55,14 @@ class MeTest extends TestCase
             'lastName' => 'Keller',
         ]);
 
-        // Tasks 1-6 deliberately removed `role` from the API surface (spec
-        // D4): permissions come from the roles-as-data enum, and no role name
+        // `role` was deliberately removed from the API surface (ADR 0014):
+        // permissions come from the roles-as-data enum, and no role name
         // may ever appear in an authorization decision or a response body.
         // assertJson() above only checks that the listed keys are PRESENT
         // with the given values — it says nothing about extra keys, so a
         // reintroduced 'role' entry would pass every assertion above (and
         // below) undetected. This is the one assertion that actually
-        // enforces the "no role key" half of D4.
+        // enforces the "no role key" half of ADR 0014.
         $this->assertArrayNotHasKey('role', $response->json());
 
         // assertJson() above compares LOOSELY (PHPUnit array-subset semantics

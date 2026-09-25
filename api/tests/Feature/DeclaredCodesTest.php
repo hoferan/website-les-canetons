@@ -9,10 +9,11 @@ use PHPUnit\Framework\TestCase;
  * Every failure this API can answer with is declared by the operation that can
  * answer with it.
  *
- * THE GAP THIS CLOSES. A3 declared failures by attaching a SHARED component per
- * status — `Problem401`, `Problem409` — each carrying exactly one `code` in its
- * enum. That was right while every declared failure was derived from middleware,
- * because a middleware-derived failure has exactly one cause. It stopped being
+ * THE GAP THIS CLOSES. The contract first declared failures by attaching a
+ * SHARED component per status — `Problem401`, `Problem409` — each carrying
+ * exactly one `code` in its enum. That was right while every declared
+ * failure was derived from middleware, because a middleware-derived failure
+ * has exactly one cause. It stopped being
  * right the moment a second cause appeared for a status: on 2026-09-12
  * `POST /events/{event}/registrations` declared a 409 whose enum named only
  * `idempotency_key_reuse`, while the controller also answers 409

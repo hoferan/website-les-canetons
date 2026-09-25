@@ -5,11 +5,11 @@ import { pathInLocale } from "../i18n/locale";
 /**
  * The way out.
  *
- * IT DID NOT EXIST UNTIL 2026-09-14. `POST /api/v1/logout` was built in R1a
- * and has Laravel tests; nothing on screen had ever called it, so a member's
+ * IT DID NOT EXIST UNTIL 2026-09-14. `POST /api/v1/logout` was built with the
+ * login and has Laravel tests; nothing on screen had ever called it, so a member's
  * only way to end a session was to clear their cookies — on the shared family
  * computer a young member's parent logs in from, that is the whole problem.
- * Found by André during R2's manual pass.
+ * Found by André during a manual pass over the public pages.
  *
  * What kept it hidden is worth more than the bug: MustChangePassword's own
  * docblock argued its gate could trap nobody BECAUSE "logout is a button in
@@ -56,8 +56,8 @@ export function useLogout(onDone: () => void): { logOut: () => void; isPending: 
       // roster, the planning and the chase list cannot be recovered from
       // memory by pressing Back.
       //
-      // TO `/` RATHER THAN `/login`, which is only possible after R2: until
-      // this release the front page was the 404 view, so there was nowhere to
+      // TO `/` RATHER THAN `/login`, which is only possible now the public
+      // home page exists: before it the front page was the 404 view, so there was nowhere to
       // land. Logging out is finishing, not starting again.
       onSuccess: () => leave(onDone),
 

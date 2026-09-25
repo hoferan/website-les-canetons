@@ -237,7 +237,7 @@ export async function deleteFiles(stale, remoteRoot, accessOpts, concurrency, on
       } catch (err) {
         if (err?.code === 550) {
           // 550 also covers rare permission-denied cases, but treating it as
-          // already-gone is the spec'd trade-off: a survivor stays on the
+          // already-gone is a deliberate trade-off: a survivor stays on the
           // server and is re-detected as stale by the next --relist.
           continue; // already gone — the goal state is reached either way
         }

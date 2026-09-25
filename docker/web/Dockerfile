@@ -17,8 +17,8 @@ FROM php:8.4-fpm
 # php.ini-production, not -development: log_errors=1 sends PHP errors to the
 # FPM log (and so to `docker compose logs web`), and display_errors=0 matches
 # production. Development's display_errors=1 would prepend HTML warnings to
-# JSON API responses, corrupting them mid-stream, which would make the Task 8
-# smoke checks fail in confusing ways.
+# JSON API responses, corrupting them mid-stream, which would make the
+# `npm run smoke` checks fail in confusing ways.
 #
 # rm -f .../index.html: the apache2 package ships a "It works!" default page
 # at the default DocumentRoot; harmless once a real docroot is bind-mounted
@@ -26,7 +26,7 @@ FROM php:8.4-fpm
 # ext-zip is for the XLSX guest-list export (openspout writes a zip container).
 # MEASURED 2026-09-10: php:8.4-fpm does NOT ship it, so without this the export
 # fails locally with "Class ZipArchive not found" — and the failure looked at
-# first like a shared-host problem, because the R3 spec had flagged ext-zip as
+# first like a shared-host problem, because ext-zip had already been flagged as
 # unverified on the host. It is unverified there AND was absent here.
 #
 # libzip-dev is the build dependency; the extension itself is ext-zip.

@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * The rebuild carries no data forward (design §2, D13), so the old domain's
+ * The rebuild carries no data forward (ADR 0015), so the old domain's
  * tables are dropped rather than adopted or migrated.
  *
  * Order matters: children before parents, because responses and users hold

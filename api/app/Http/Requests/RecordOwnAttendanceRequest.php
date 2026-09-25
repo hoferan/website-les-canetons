@@ -29,7 +29,7 @@ class RecordOwnAttendanceRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // WITHDRAWING A YES COSTS A REASON (decision C11). A blank note comes
+        // WITHDRAWING A YES COSTS A REASON (ADR 0018). A blank note comes
         // back as an ordinary validation failure against that field — no new
         // error vocabulary invented, and it lands in the dialog beside the box
         // the member has to fill in.
@@ -37,9 +37,9 @@ class RecordOwnAttendanceRequest extends FormRequest
         // The rule is asymmetric on purpose. Saying yes late costs nothing;
         // taking a yes back is what leaves the cook with a headcount that is
         // wrong and the committee with a gap in a Guggenmusik's front row.
-        // Recording on somebody's behalf is exempt (C13) and uses
-        // RecordMemberAttendanceRequest instead — which is also why C14 makes
-        // the on-behalf route refuse its own caller, because otherwise this
+        // Recording on somebody's behalf is exempt and uses
+        // RecordMemberAttendanceRequest instead — which is also why the
+        // on-behalf route refuses its own caller, because otherwise this
         // rule would be one request away from evadable.
         return [
             /** Whether the member is coming. One of `yes` or `no`. */

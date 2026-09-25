@@ -11,9 +11,10 @@ use Tests\TestCase;
  * The public agenda: what a visitor may come and watch.
  *
  * THE FIRST AND ONLY READER OF `is_public`. The column has been settable since
- * R1c-1 and meant nothing until this endpoint, which is why these tests lean
- * on it harder than the shape: a filter that silently stopped working would
- * publish the band's whole rehearsal schedule, addresses included, to anybody.
+ * the planning shipped and meant nothing until this endpoint, which is why
+ * these tests lean on it harder than the shape: a filter that silently stopped
+ * working would publish the band's whole rehearsal schedule, addresses
+ * included, to anybody.
  */
 class AgendaTest extends TestCase
 {
@@ -115,7 +116,7 @@ class AgendaTest extends TestCase
      * tell a visitor things about the band's diary that the filter above is
      * there to keep out.
      *
-     * `id` and `registrationOpen` joined the four when R3's booking form was
+     * `id` and `registrationOpen` joined the four when the booking form was
      * built: the agenda is the only public list of events, so without them a
      * visitor has no way to reach the form. See PublicEventResource.
      */

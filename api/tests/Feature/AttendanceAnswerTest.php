@@ -110,7 +110,7 @@ class AttendanceAnswerTest extends TestCase
             ->assertJsonPath('errors.0.params.allowed', ['yes', 'no']);
     }
 
-    // ------------------------------------------------ C11: withdrawing a yes
+    // ----------------------------------------------------- withdrawing a yes
 
     public function test_withdrawing_a_yes_costs_a_reason(): void
     {
@@ -207,7 +207,7 @@ class AttendanceAnswerTest extends TestCase
         $this->assertNull(Attendance::query()->sole()->recorded_by_member_id);
     }
 
-    // -------------------------------------------------------- C12: undo
+    // ------------------------------------------------------------- undo
 
     public function test_undo_removes_the_answer_entirely(): void
     {
@@ -226,8 +226,8 @@ class AttendanceAnswerTest extends TestCase
 
     public function test_undo_expires(): void
     {
-        // An unlimited undo would make C11 decorative: erase the yes, answer
-        // no, never give a reason.
+        // An unlimited undo would make the withdrawal reason decorative:
+        // erase the yes, answer no, never give a reason.
         $answer = Attendance::factory()->create([
             'event_id' => $this->event->id,
             'member_id' => $this->player->id,

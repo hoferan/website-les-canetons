@@ -34,8 +34,8 @@ export function PhotoPending({ sentence, token }: { sentence: string; token: str
     // shows eight of them: 1280px, 42% of the page, reserved for content that
     // is not there. The photographed page is LONGER than the placeholder page
     // — about 3554px against 3034px at 390px — so the height was never
-    // standing in for anything. See the E2a spec. Dashed and muted so it still
-    // reads as a gap rather than as copy.
+    // standing in for anything; RegisterIndex is what answers the length.
+    // Dashed and muted so it still reads as a gap rather than as copy.
     <p
       className="mt-related rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
       data-photo-pending={token}

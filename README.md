@@ -82,7 +82,7 @@ dist/build/     Generated FTP deploy payload (npm run build). Git-ignored; never
 config/htaccess/ The site .htaccess template, merged per environment by tools/build-overlays.mjs
 docker/         Local dev stack (web Dockerfile + Apache config, env.docker, empty-DB init)
 tools/          Cross-platform dev scripts (build, deploy, secret guard)
-docs/           Design specs and implementation plans
+docs/           Architecture decision records (docs/adr/), traps, web-session notes
 .github/        CI workflows, PR & issue templates
 ```
 

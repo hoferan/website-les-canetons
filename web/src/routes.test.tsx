@@ -6,9 +6,8 @@ import { AppRoutes } from "./routes";
 import { renderWithSession } from "./test/renderWithSession";
 
 /**
- * The route table after R1b: /login, /account and /members, plus the 404
- * fallback. The public pages and the events domain are still absent and each
- * waits on its own release — see routes.tsx.
+ * The route table: which page each URL reaches, which guard stands in front of
+ * it, and the 404 fallback. See routes.tsx.
  */
 test("/login renders its page", async () => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
@@ -21,7 +20,7 @@ test("an unknown URL renders the 404 view rather than nothing", async () => {
 });
 
 // Legacy French paths are NOT redirected — the rebuild owes no backwards
-// compatibility (design §7) — so the old login URL now falls through to 404
+// compatibility (ADR 0003) — so the old login URL now falls through to 404
 // like any other unknown path.
 test("the legacy login URL is not redirected and falls through to 404", async () => {
   await renderWithSession(<AppRoutes />, { route: "/authentification_inscription" });
@@ -116,10 +115,10 @@ test("does not hold a member with a committee-issued password away from the publ
 });
 
 /**
- * THE FRONT DOOR. Until R2 there was no `/` at all: the site's own address
- * fell through to the catch-all and answered 200 with the 404 view, which is
- * the worst possible first impression and was invisible to every test because
- * a page did render.
+ * THE FRONT DOOR. Until the public pages were rebuilt there was no `/` at all:
+ * the site's own address fell through to the catch-all and answered 200 with
+ * the 404 view, which is the worst possible first impression and was invisible
+ * to every test because a page did render.
  */
 test("/ renders the home page rather than the 404 view", async () => {
   await renderWithSession(<AppRoutes />, { route: "/" });

@@ -60,7 +60,7 @@ class ContactController extends Controller
     /**
      * Tells the committee, and never lets that fail the submission.
      *
-     * BEST-EFFORT ON PURPOSE, as the booking confirmation is (decision G5).
+     * BEST-EFFORT ON PURPOSE, as the booking confirmation is (ADR 0009).
      * The row is committed and readable in the inbox either way, this host has
      * no queue to retry from, and the visitor did nothing wrong — so an SMTP
      * blip must not answer them with an error for a message that was stored.

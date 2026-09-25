@@ -39,10 +39,6 @@ async function rowsOf<T>(url: string): Promise<T[]> {
  * so it gets its own tests. Going through the GENERATED client rather than
  * fetch() directly is the point: it exercises the same path the app takes,
  * including the mutator's envelope.
- *
- * During the R1a rebuild this only covers what the mocked API still has:
- * /api/v1/config, /api/v1/contact, and auth. The event/signup/altcha coverage that
- * used to live here modeled the domain Task 1 deleted.
  */
 
 test("GET /config answers with the shape the boot gate reads", async () => {
@@ -302,7 +298,7 @@ test("refuses to remove your own administration", async () => {
 
 test("a destructive roster call needs no password, only the session", async () => {
   setMockUser("demo.direction");
-  // Decision B7: the cookie is trusted here, as it already is for reading the
+  // ADR 0017: the cookie is trusted here, as it already is for reading the
   // whole roster and editing anyone. Mistake-prevention is the type-the-name
   // confirmation in the UI. If re-authentication is ever reintroduced on the
   // roster, this test is what says so.
@@ -403,7 +399,7 @@ test("roles carry a key and their permissions, and no display name", async () =>
   setMockUser("demo.direction");
   const roles = await rowsOf<Record<string, unknown>>("/api/v1/roles");
 
-  // Decision B6: the UI resolves the French from `key`. A label here would let
+  // ADR 0014: the UI resolves the French from `key`. A label here would let
   // a screen render a name the real API never sends.
   expect(roles.map((role) => role.key)).toEqual(["direction", "committee"]);
   expect(roles.every((role) => !("label" in role) && !("labelFr" in role))).toBe(true);

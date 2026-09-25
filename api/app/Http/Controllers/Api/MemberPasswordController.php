@@ -41,13 +41,13 @@ class MemberPasswordController extends Controller
     #[Endpoint(operationId: 'memberPassword.reset')]
     public function __invoke(Request $request, Member $member): JsonResponse
     {
-        // §4.4 describes ONE mechanism for a password coming into being — open
-        // a member, hit "Réinitialiser le mot de passe", read out what appears
-        // — so there is one endpoint for it. Since 2026_09_08_000001 every
-        // member already has a password, so this is always a reset; the "give
-        // this person an account" case is POST /api/v1/members, which mints one at
-        // creation using the same generator and the same forced-change
-        // semantics.
+        // There is ONE mechanism for a password coming into being (ADR 0016)
+        // — open a member, hit "Réinitialiser le mot de passe", read out what
+        // appears — so there is one endpoint for it. Since 2026_09_08_000001
+        // every member already has a password, so this is always a reset; the
+        // "give this person an account" case is POST /api/v1/members, which
+        // mints one at creation using the same generator and the same
+        // forced-change semantics.
         //
         // NOT make(): a reissue must not land on the password already stored
         // (#92). See GeneratedPassword::makeDifferentFrom for why a guard

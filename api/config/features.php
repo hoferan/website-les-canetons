@@ -3,9 +3,8 @@
 return [
 
     /*
-     * R1c-2's calendar. No consumer yet — declared here so the mechanism has
-     * something real to carry and so the .env key can reach every server
-     * before the feature lands.
+     * The calendar view on the events page (web/src/pages/Events.tsx). Off
+     * unless a server's .env switches it on.
      *
      * filter_var, not a bare env() read: a dotenv value is a STRING, so
      * "false" would be truthy — the same reason config/docs.php casts

@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *
  * WHAT THIS REPLACES, AND WHY IT MATTERED. Scramble's built-in described a 404
  * as Laravel's `{"message": "..."}` on `application/json`, and nineteen
- * operations referenced it. This API has not answered that shape since A2:
+ * operations referenced it. This API never answers that shape (ADR 0012):
  * every failure is an RFC 9457 problem document on
  * `application/problem+json`. So the single most common failure in the whole
  * contract was described as a body that cannot occur, in a media type it is

@@ -93,7 +93,7 @@ class ContactEndpointTest extends TestCase
 
     public function test_a_failing_mail_server_does_not_lose_the_message(): void
     {
-        // BEST-EFFORT ON PURPOSE, as the booking confirmation is (G5). The
+        // BEST-EFFORT ON PURPOSE, as the booking confirmation is (ADR 0009). The
         // row is already committed and the committee can read it in their
         // inbox; an SMTP blip must not show a visitor an error for something
         // that worked.

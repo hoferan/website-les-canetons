@@ -52,9 +52,6 @@ services:
   # against the Vite dev server on :5173 (the `assets` service above); this is
   # the parity check, and what `npm run smoke` asserts against. Re-run
   # `npm run build` to refresh what it serves.
-  #
-  # See docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md and
-  # docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md.
   web:
     build: ./docker/web
     ports:

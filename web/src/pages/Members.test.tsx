@@ -100,7 +100,7 @@ test("shows roles by their French label, never the key or the permissions", asyn
 
   const direction = rowFor("Direction");
   // "why does she have this?" is answered with "because she is in Team
-  // Direction" (design §3) — never the key "direction", and never the raw
+  // Direction" (ADR 0014) — never the key "direction", and never the raw
   // permission strings.
   // On the whole line, because the card labels its fields — "Rôles : Team
   // Direction" — since #130 took the column heads away with the table.
@@ -231,7 +231,7 @@ test("seats somebody on the committee by picking from the list, not by typing", 
 });
 
 test("refuses to save over a change somebody else made while the form was open", async () => {
-  // THE WHOLE POINT OF A4, at the screen. Two administrators have the roster
+  // THE WHOLE POINT OF If-Match (ADR 0013), at the screen. Two administrators have the roster
   // open, one corrects a register while the other is typing a name, and before
   // this the second save discarded the first silently.
   await renderRoster();
@@ -286,7 +286,7 @@ test("requires the person's name to be typed before deleting", async () => {
   await user.click(within(menu).getByRole("menuitem", { name: "Supprimer Perrine Player" }));
   const dialog = await screen.findByRole("alertdialog");
 
-  // Decision B7: the server no longer re-authenticates a delete, so this typed
+  // ADR 0017: the server no longer re-authenticates a delete, so this typed
   // confirmation is the ONLY guard against a mis-aimed tap. Pressing the button
   // with the box empty must do nothing at all.
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
@@ -313,7 +313,7 @@ test("deletes the person once their name is typed", async () => {
  * Members.tsx passes `confirmPhrase` to `ConfirmByTypingName`, unlike the
  * planning's own delete dialog — so this is the one place in the branch that
  * exercises the menu -> dialog focus handoff against a field somebody actually
- * has to type into (spec §3). The planning's equivalent test says explicitly
+ * has to type into. The planning's equivalent test says explicitly
  * why it could carry no field: "typing a title back is friction with nothing
  * behind it."
  */
@@ -361,11 +361,10 @@ test("keeps the person and explains, when the server refuses", async () => {
 });
 
 /**
- * Review Focus 4. A row goes busy while the read behind `Modifier` and
- * `Supprimer` is in flight (`opening === member.id` in Members.tsx), and both
- * carry `disabled: busy` on their `RowAction`. This proves the guard survives
- * being reached by keyboard, not only by a disabled click handler's early
- * return.
+ * A row goes busy while the read behind `Modifier` and `Supprimer` is in
+ * flight (`opening === member.id` in Members.tsx), and both carry
+ * `disabled: busy` on their `RowAction`. This proves the guard survives being
+ * reached by keyboard, not only by a disabled click handler's early return.
  *
  * MUTATION TEST: drop `disabled: busy` from the "delete" action in
  * MemberActions and this fails — Radix stops excluding the item from roving

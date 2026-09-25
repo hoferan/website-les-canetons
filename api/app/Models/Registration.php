@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 /**
  * One booking, made by a stranger from the public form.
  *
- * WRITE-ONCE FROM THE PUBLIC SIDE (decision G2). There is no cancel token and
+ * WRITE-ONCE FROM THE PUBLIC SIDE (ADR 0020). There is no cancel token and
  * no self-service: the committee corrects and cancels, on the guest-list
  * screen they need anyway. Every additional anonymous endpoint is another
  * thing to rate-limit, and a token that reads back an address and a phone

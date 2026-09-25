@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Schema;
  * IDEMPOTENT AND NON-DESTRUCTIVE, in the same style as every migration in this
  * project: it inserts what is missing and touches nothing that exists. A role's
  * permissions are seeded ONLY when the role itself is new, because the
- * committee can edit them (design §3) and a migration that re-synced them
+ * committee can edit them (ADR 0014) and a migration that re-synced them
  * would silently undo that on the next deploy.
  */
 return new class extends Migration

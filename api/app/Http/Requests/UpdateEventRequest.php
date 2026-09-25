@@ -114,7 +114,7 @@ class UpdateEventRequest extends FormRequest
      * another INPUT field, and when that field was not sent Laravel resolves
      * it to null and the comparison passes vacuously — so a form posting only
      * a corrected end time could set it before the beginning, and the row that
-     * C6 made `ends_at` NOT NULL for becomes an event of negative length after
+     * `ends_at` was made NOT NULL for becomes an event of negative length after
      * all. Measured by mutation 2026-09-10: with the plain form, PATCHing an
      * endsAt an hour before the stored start answers 200 and stores it.
      *

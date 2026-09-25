@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
  *    text, so an example written in full is itself a class it will generate --
  *    which is how the first draft of this very comment put a dark-mode rule
  *    back into the bundle it was warning about.
- * 4. `active:scale-[0.98]` on the base variant -- E2c's press feedback. The
+ * 4. `active:scale-[0.98]` on the base variant -- the press feedback. The
  *    existing `transition-all` animates it and the global reduced-motion
  *    block in styles.css zeroes it; do not add a duration here.
  */

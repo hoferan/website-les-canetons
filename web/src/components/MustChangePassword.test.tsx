@@ -31,7 +31,7 @@ test("lets an ordinary member through", async () => {
 
 test("lets an anonymous visitor through", async () => {
   // It is NOT an auth guard. A public page must not depend on being logged in,
-  // and R2 adds several.
+  // and there are several.
   await renderWithSession(tree(), { route: "/" });
 
   expect(await screen.findByRole("heading", { name: "Accueil" })).toBeInTheDocument();

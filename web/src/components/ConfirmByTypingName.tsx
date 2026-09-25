@@ -22,12 +22,12 @@ import { t, type TranslatedError } from "../i18n";
  *
  *   - NAMING THE DAMAGE. "Êtes-vous sûr ?" is a question nobody reads. `title`
  *     and `description` carry the person's actual name and what will happen to
- *     them (design §4: no destructive action without naming the damage).
+ *     them: no destructive action without naming the damage.
  *   - THE CONFIRMATION ITSELF, in the same dialog as the warning, so it is
  *     performed while reading what it authorises rather than as a separate step
  *     that becomes muscle memory.
  *
- * WHY TYPING A NAME AND NOT A PASSWORD. Until decision B7 (2026-09-08) this
+ * WHY TYPING A NAME AND NOT A PASSWORD. Until 2026-09-08 (ADR 0017) this
  * dialog took the actor's password and the server verified it. The server no
  * longer does: the session cookie is already trusted to read the whole roster
  * and edit anyone, so re-authentication was an extra lock on three doors out of

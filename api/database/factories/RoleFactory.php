@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  * data would also mean a committee editing a role turns the suite red, and
  * roles are editable data.
  *
- * Roles carry no display name (decision B6): the UI translates by `key`.
+ * Roles carry no display name: the UI translates by `key`.
  *
  * @extends Factory<Role>
  */

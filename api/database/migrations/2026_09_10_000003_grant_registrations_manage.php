@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * since granted it themselves.
  *
  * Deliberately NOT granted to `committee`. If the band wants that, it is an
- * Adminer edit today and a role editor's job later (decision B3).
+ * Adminer edit today and a role editor's job later (ADR 0014).
  */
 return new class extends Migration
 {

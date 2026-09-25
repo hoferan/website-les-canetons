@@ -27,12 +27,12 @@ import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 
 /**
- * The route table after R1b.
+ * The route table.
  *
  * URLs ARE RESOURCE-ORIENTED, and there is deliberately no `/admin` or
  * `/manage` namespace: under real RBAC there is no single privileged area —
  * `events.manage` and `members.manage` are different people — and a namespace
- * named after a permission level is a lie about the model (design §4). The nav
+ * named after a permission level is a lie about the model (ADR 0014). The nav
  * still groups Direction screens under one heading; nav grouping and URL
  * structure are different problems, and only one of them has to encode
  * authorization.
@@ -46,7 +46,7 @@ import { NotFound } from "./pages/NotFound";
  * route.
  *
  * Legacy French paths are NOT redirected — the rebuild owes no backwards
- * compatibility (design §7/D11) — so they fall through to the 404 view like
+ * compatibility (ADR 0003) — so they fall through to the 404 view like
  * every other unknown path.
  *
  * THE PUBLIC PAGES SIT OUTSIDE MustChangePassword, and that is the one thing
@@ -57,7 +57,7 @@ import { NotFound } from "./pages/NotFound";
  * that page is what a stranger sees and owes nothing to who is logged in. The
  * gate still covers everything the password actually unlocks.
  *
- * R3 adds three: `/events/:id/book` above with the public pages, and
+ * Registration adds three: `/events/:id/book` above with the public pages, and
  * `/events/:id/registrations` and `/events/:id/registration-options` below
  * with the committee's. The three sit under one prefix and answer to three
  * different guards, which is the argument against an `/admin` namespace made
@@ -80,9 +80,10 @@ export function AppRoutes() {
 
         {/* THE BOOKING FORM IS A PUBLIC PAGE under a path whose other
             segments are not, and that is deliberate rather than untidy:
-            registration is a property of an EVENT (D9), so the event is what
-            the URL is about, and inventing /booking/:id would say the souper
-            is a feature of its own — which is the shape R3 exists to delete.
+            registration is a property of an EVENT (ADR 0020), so the event is
+            what the URL is about, and inventing /booking/:id would say the
+            souper is a feature of its own, which is the shape that decision
+            removed.
             Nothing leaks by sitting here: the endpoint behind it answers 404
             for an event that takes no bookings, whether or not it exists.
 
@@ -98,8 +99,8 @@ export function AppRoutes() {
 
           {/* Needs a SESSION and nothing more — reading the planning is
               something everybody in the band does. It still sits behind
-              login: R1c is the members' tool, and a public planning is R2's
-              (C1). */}
+              login: this planning is the members' tool, and the public
+              agenda is a separate page. */}
           <Route element={<RequireSession />}>
             <Route path="/events" element={<Events />} />
           </Route>
@@ -125,7 +126,8 @@ export function AppRoutes() {
 
           {/* The chase list. A SEPARATE PERMISSION from managing events:
               seeing who has not answered and entering the planning are
-              different jobs, and App\Support\Capability is what makes that
+              different jobs, and the `permission:` route middleware
+              (App\Http\Middleware\RequirePermission) is what makes that
               real — this guard only mirrors it. */}
           <Route element={<RequirePermission permission="attendance.view_all" />}>
             <Route path="/events/:id/attendance" element={<EventAttendance />} />
@@ -145,7 +147,7 @@ export function AppRoutes() {
           </Route>
 
           {/* messages.view, both routes: the worklist across every open
-              source (Task 11) and the archive for one of them (Task 10). The
+              source and the archive for one of them. The
               nav only offers either link to someone who holds the
               permission, so guarding the routes on the same token keeps each
               page consistent with its own entry. */}

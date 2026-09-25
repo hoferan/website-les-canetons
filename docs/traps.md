@@ -8,10 +8,6 @@ misleading — it named seeded logins that no longer exist, a smoke-check count
 that had changed, and `api-laravel/` paths from before the `_api/` rename. Only
 the entries below were still true.
 
-Several completed plans under `docs/superpowers/plans/2026-08-*` still point at
-`docs/continue-here.md`. They are archival records of work already shipped and
-were left untouched rather than rewritten; this file is where their traps went.
-
 **This file is for traps that live nowhere else.** Anything already in
 `CLAUDE.md` — the PowerShell-vs-Git-Bash Vitest failure, `MSYS_NO_PATHCONV`,
 `npm run check` not building, the `FTP_PASSWORD`/`FTP_PASS` mismatch, never
@@ -379,26 +375,3 @@ It matters before you open a file rather than after, because a test that
 matches an error message on the wrong character fails as **"unable to find the
 text"**, which reads as a message that is not rendered rather than as a quote
 mark. Check the catalogue, not your keyboard.
-
-# Decisions taken in conversation, not visible in the code
-
-- **WordPress is abandoned.** A greenfield rebuild was designed and half-built
-  between 2026-07-28 and 2026-08-28, then dropped: *"the effort to migrate
-  completely to wordpress is too high! I don't want to learn wordpress, I'm a
-  developer."* The branch, its remote and its Docker volumes are deleted. Any
-  WordPress design document still reachable in history — including one claiming
-  to supersede every other design — is void.
-- **The backend question was reopened and closed: Laravel stays.** It owns the
-  schema, does Sanctum cookie auth, generates the client, and already runs on
-  this shared FTP host.
-- **Hard cutover over building alongside.** `app/` was deleted up front rather
-  than kept as a running parity reference. The live site is now the only one
-  left — that pull request was squash-merged, and no branch holds the old pages'
-  commits any more.
-- **Icons are `lucide-react`** — the same set as the old site, as components.
-  There is no central icon registry; the old `assets/js/icons.js` existed only
-  because the vanilla library needed one.
-- **Guards refuse in place rather than redirect** when a logged-in member lacks
-  the permission. Bouncing somebody already past the login form reads as "your
-  session expired" and invites them to log in again at something they will never
-  be allowed to see. This is what R1b's `RequirePermission` guard must do.

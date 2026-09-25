@@ -30,7 +30,7 @@ import { safeReturnTo } from "../lib/returnTo";
  * from a body that does not have it.
  *
  * NO "FORGOT PASSWORD" LINK. There is no address to send one to: `members` has
- * no email column, and every password is committee-issued (§4.4). A link that
+ * no email column, and every password is committee-issued (ADR 0016). A link that
  * opened a dead end would be worse than its absence.
  */
 export function Login() {

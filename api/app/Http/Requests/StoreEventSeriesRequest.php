@@ -35,7 +35,7 @@ class StoreEventSeriesRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // A LIST OF DATES, NOT A RECURRENCE RULE (decision C3). The browser
+        // A LIST OF DATES, NOT A RECURRENCE RULE. The browser
         // computes the candidate dates, the committee unticks the ones that
         // fall in school holidays, and what arrives here is exactly the rows
         // they looked at. No rule engine exists on either side of the wire,

@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
  * so the focus moves and `aria-checked` stays false behind it. It claims to be
  * a radio and does not behave as one. RadioGroup implements the pattern its
  * roles promise, by clicking the item its own onFocus lands on while an arrow
- * is held. The spec's §2 records the measurement.
+ * is held. jsdom cannot show this, so web/e2e/members.spec.ts measures it.
  *
  * AND IT CANNOT BE CLEARED. A ToggleGroup hands the caller `onValueChange("")`
  * when the pressed item is pressed again, which on the planning would mean a

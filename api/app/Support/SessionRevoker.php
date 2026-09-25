@@ -32,12 +32,13 @@ final class SessionRevoker
     /**
      * Ends every session belonging to a member EXCEPT one.
      *
-     * For a member changing their OWN password. The property §6 wants is that a
-     * stolen session stops working the moment the password changes, and that
-     * holds as long as every other session dies. Killing the current one as
-     * well would log the actor out of the screen they are standing on — and the
-     * forced-change screen is where every first login begins, so the literal
-     * reading of §6 bounces every new account straight back to the login form.
+     * For a member changing their OWN password. The property ADR 0010 wants is
+     * that a stolen session stops working the moment the password changes, and
+     * that holds as long as every other session dies. Killing the current one
+     * as well would log the actor out of the screen they are standing on — and
+     * the forced-change screen is where every first login begins, so the
+     * literal reading of that rule bounces every new account straight back to
+     * the login form.
      *
      * forMember() stays the right call for an administrator resetting SOMEBODY
      * ELSE's password, or deleting them: there, every session should die.

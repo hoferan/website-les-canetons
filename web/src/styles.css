@@ -1,6 +1,6 @@
 /* Font faces first: a CSS @import has to precede every rule, and Vite resolves
    these bare specifiers to the packages in node_modules. Self-hosted on
-   purpose — see docs/superpowers/specs/2026-08-29-visual-foundation-design.md. */
+   purpose — see ADR 0022. */
 @import "tailwindcss";
 @import "@fontsource-variable/karla";
 @import "@fontsource/bungee";
@@ -50,7 +50,7 @@
      convention that lasts until the next page is written. */
   --spacing-touch: 2.75rem;
 
-  /* The vertical scale (E2c). Four steps, named for RELATIONSHIPS rather than
+  /* The vertical scale. Four steps, named for RELATIONSHIPS rather than
      sizes, because "is this a label or a section?" has an answer where "mt-3
      or mt-4?" does not:
        tight    0.5rem  a label to the thing it labels
@@ -59,14 +59,14 @@
        section  4rem    between major sections of a page
      Pages use these instead of choosing a number. A CONVENTION, not a lint
      rule: the vendored ui/ components keep their own spacing, and the
-     recorded one-offs stay (the footer's mt-16 from E1, Logo's lockup
-     mt-1.5, scroll-mt-*). See the E2c spec for why exactly four. */
+     recorded one-offs stay (the footer's mt-16, Logo's lockup mt-1.5,
+     scroll-mt-*). The four steps replaced ten ad hoc mt-* values. */
   --spacing-tight: 0.5rem;
   --spacing-related: 1rem;
   --spacing-block: 2rem;
   --spacing-section: 4rem;
 
-  /* E2c's reveal: a 150ms fade-and-settle that REPLAYS each time the element
+  /* The reveal: a 150ms fade-and-settle that REPLAYS each time the element
      re-enters the rendering tree, because display:none -> visible restarts a
      CSS animation. That is the whole mechanism: the phone nav (hidden/block
      class) and the past-events disclosure (the hidden attribute) both toggle
@@ -119,7 +119,7 @@
  *
  * This is the single point at which a component library could quietly
  * neutralise a palette that IS the band's identity. Anyone editing it should
- * read docs/superpowers/specs/2026-08-29-visual-foundation-design.md first.
+ * read docs/adr/0022-one-light-theme-and-vendored-components.md first.
  *
  * --color-pink is DELIBERATELY ABSENT. shadcn spends --accent on hover
  * SURFACES, and the palette's rule is "emphasis only -- never a whole
@@ -127,8 +127,8 @@
  * where it already is: the band name in the header.
  *
  * THERE IS NO .dark BLOCK, and there must not be one. Scène commits to a single
- * look -- the visual-foundation spec rejected dark mode explicitly, as "two
- * would double the surface for nobody who has asked". shadcn writes a .dark
+ * look, and dark mode was rejected explicitly (ADR 0022): a second theme
+ * would double the surface for nobody who has asked. shadcn writes a .dark
  * block by default, so a future `shadcn` run that offers to rewrite this file
  * will try to put one back. Leaving it would mean a stray `dark` class renders
  * a design nobody approved, and nothing in the test suite would notice.
@@ -253,7 +253,7 @@ h2 {
   }
 }
 
-/* E2c: every duration to near-zero under reduced motion. This covers the
+/* Every duration to near-zero under reduced motion. This covers the
    Button press transition, the reveal animation, and sonner's own toast
    animation, in one place — a per-site motion-reduce: variant would be a
    convention that lasts until the next transition is written. 0.01ms rather

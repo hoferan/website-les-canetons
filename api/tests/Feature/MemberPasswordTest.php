@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * An administrator issues a member a new password, and reads it out (§4.4).
+ * An administrator issues a member a new password, and reads it out (ADR 0016).
  *
- * Issuing a credential and resetting one are the SAME operation — §4.4
+ * Issuing a credential and resetting one are the SAME operation — ADR 0016
  * describes one mechanism, so there is one endpoint. Since 2026_09_08_000001
  * every member already has a password, so this is always a reset; the "give
  * this person an account" case is POST /api/v1/members, which mints one at

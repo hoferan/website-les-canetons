@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Schema;
  * must never delete the answer, because the answer is what the cook counts.
  *
  * `note` is optional except on one transition — a member changing their OWN
- * answer from yes to no must supply one (decision C11). One column,
+ * answer from yes to no must supply one (ADR 0018). One column,
  * conditionally required, not a second "reason" column: it is the same
  * sentence either way and the chase list renders it the same.
  *
@@ -51,7 +51,7 @@ return new class extends Migration
             // Both CASCADE: an answer to a deleted event, or from a deleted
             // member, is not a record of anything. DELETE /api/events reports
             // how many went with it rather than letting the deletion be
-            // silent — see the R3 spec §4.
+            // silent.
             $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
             $table->foreignId('member_id')->constrained('members')->cascadeOnDelete();
 

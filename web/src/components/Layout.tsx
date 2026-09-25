@@ -48,7 +48,7 @@ const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";
  * The committee's screens, each gated by the permission that gates the API
  * route behind it. Under the avatar on desktop, in "Mon espace" on a phone.
  *
- * THE ENTRY IS ABSENT, NOT REFUSED (design §4). A member who cannot use
+ * THE ENTRY IS ABSENT, NOT REFUSED. A member who cannot use
  * /members never sees the word: showing a link that leads to "Accès refusé"
  * teaches people that parts of the site are broken for them.
  *

@@ -8,8 +8,9 @@ import { t } from "../i18n";
  * are coming back — so the page has to be designed PHOTOGRAPHED. Measured, the
  * photographed page is ~3554px at 390px against 3034px without them: the length
  * is inherent to the requirement, not a placeholder artefact. What the page
- * lacked was a way in. See the E2a spec for the two alternatives that were
- * rejected (side-by-side registers, and disclosures).
+ * lacked was a way in. Two alternatives were rejected: side-by-side registers
+ * help on a desktop only and leave uneven rows, and disclosures would hide the
+ * band, and already mean "archive" on this site.
  *
  * It knows nothing about registers — the page owns that list — so the same
  * component works whether the photographs are present or pending, and now

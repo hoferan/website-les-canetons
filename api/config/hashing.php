@@ -4,7 +4,7 @@ return [
 
     /*
      * argon2id, not bcrypt. There is no legacy hash to migrate — the rebuild
-     * issues every member a fresh credential (design D13) — so nothing forces
+     * issues every member a fresh credential (ADR 0015) — so nothing forces
      * the older algorithm.
      *
      * NOTE FOR DEPLOYS: argon2id needs a PHP built with argon2 support.

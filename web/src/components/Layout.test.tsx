@@ -247,7 +247,7 @@ test("shows Événements to any logged-in member, first in the bar", async () =>
 });
 
 test("hides Événements from an anonymous visitor", async () => {
-  // R1c is the members' tool (C1). The public planning is R2's.
+  // The planning is the members' tool. The public agenda is a separate page.
   await renderWithSession(<AppRoutes />, { route: "/login" });
   expect(screen.queryByRole("link", { name: "Événements" })).toBeNull();
 });
@@ -255,7 +255,7 @@ test("hides Événements from an anonymous visitor", async () => {
 /**
  * THE WAY OUT, which did not exist until 2026-09-14.
  *
- * `POST /api/v1/logout` shipped in R1a with Laravel tests and nothing on
+ * `POST /api/v1/logout` shipped with the login, with Laravel tests and nothing on
  * screen ever called it, so a member's only way to end a session was to clear
  * their cookies. What hid it was MustChangePassword's docblock, which argued
  * its gate could trap nobody BECAUSE logout was a button in the chrome — an

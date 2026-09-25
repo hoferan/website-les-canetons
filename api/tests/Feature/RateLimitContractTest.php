@@ -10,9 +10,10 @@ use Tests\TestCase;
  * A rate-limited request answers in the contract, like every other failure.
  *
  * FOUND BY A BLACK-BOX REVIEW on 2026-09-11, and it is the same hole as the 404
- * that A2 closed — closed only for 404. ThrottleRequestsException IS an
- * HttpException, ApiError::invalidSession() returns null for every status but
- * 419, so the middleware's 429 fell through to Laravel's default renderer:
+ * that problem documents (ADR 0012) closed — closed only for 404.
+ * ThrottleRequestsException IS an HttpException, ApiError::invalidSession()
+ * returns null for every status but 419, so the middleware's 429 fell
+ * through to Laravel's default renderer:
  *
  *     {"message":"Too Many Attempts.","exception":"…","file":"…","trace":[45 frames]}
  *

@@ -16,7 +16,7 @@ type Session = {
    *
    * It takes the permission STRING the API sends, never a role name. Roles
    * merely group permissions, and nothing in the UI may branch on WHICH role
-   * granted one (design §3) — the same rule the middleware follows, which is
+   * granted one (ADR 0014) — the same rule the middleware follows, which is
    * what keeps "why can she do this?" answerable in one place.
    */
   can: (permission: string) => boolean;

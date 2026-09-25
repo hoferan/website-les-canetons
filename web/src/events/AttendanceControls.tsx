@@ -68,7 +68,7 @@ function patchMyAttendance(
 /**
  * Answering for an event, from the planning, without leaving it.
  *
- * THE PRODUCT IS A 13-YEAR-OLD ON A PHONE ON A BUS (design §4). Everything
+ * THE PRODUCT IS A 13-YEAR-OLD ON A PHONE ON A BUS. Everything
  * here follows from that:
  *
  *   - BOTH ANSWERS ARE ALWAYS VISIBLE, rather than one toggle that has to be
@@ -81,8 +81,9 @@ function patchMyAttendance(
  *     does not move at all, now by design — see the planning's docblock for
  *     why an instant answer made a mis-tap likelier until the card was held in
  *     place (#95).
- *   - A FIRST ANSWER IS UNDOABLE for five minutes (C12), from the toast and
- *     nowhere else. The window is what keeps C11 honest: without it a member
+ *   - A FIRST ANSWER IS UNDOABLE for five minutes (ADR 0018), from the toast
+ *     and nowhere else. The window is what keeps the withdrawal reason honest:
+ *     without it a member
  *     could erase a `oui` and re-answer `non` for free, with no reason. A
  *     CHANGE is not undoable here, because the only thing behind undo is a
  *     DELETE — see the comment where the toast is raised.
@@ -177,8 +178,8 @@ export function AttendanceControls({
       // answer that is exactly right, and it is the state a second PUT cannot
       // express. On a CHANGE it would be a button labelled "Annuler" that
       // throws away the previous answer as well as the new one — and, when the
-      // change was a withdrawal, throws away the reason C11 just collected
-      // along with the `oui` it was given for. Somebody who mis-tapped a change
+      // change was a withdrawal, throws away the reason just collected along
+      // with the `oui` it was given for. Somebody who mis-tapped a change
       // taps the other answer again, which costs nothing in that direction.
       // NAMED, because the undo below is only usable by somebody who can tell
       // they answered the wrong event. "Vous venez." is the same sentence
@@ -219,7 +220,7 @@ export function AttendanceControls({
   }
 
   function answerNo() {
-    // C11: only this transition costs a reason. A first `non`, and a `non`
+    // Only this transition costs a reason (ADR 0018). A first `non`, and a `non`
     // that is already stored, go straight through.
     if (answer?.status === "yes") {
       refusal.clear();
