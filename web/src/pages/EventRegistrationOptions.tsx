@@ -1,4 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -296,28 +297,33 @@ export function EventRegistrationOptions() {
                   problem={priceProblems[row.key] ?? form.messageFor(`options.${index}.priceCents`)}
                 />
 
-                <div className="flex flex-wrap gap-tight">
+                {/* ICON-ONLY, and the aria-label is the whole name: it carries
+                    the option, so a screen reader hears which row moves.
+                    Remove sits at the far end, away from the arrows, so a
+                    thumb aiming for "down" does not land on it. See
+                    docs/adr/0025-icons-on-controls.md. */}
+                <div className="flex gap-tight">
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     aria-label={t("registrationOptions.moveUp", {
                       option: row.label || t("registrationOptions.thisOption"),
                     })}
                     onClick={() => move(index, -1)}
                   >
-                    {t("registrationOptions.up")}
+                    <ArrowUp aria-hidden="true" />
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     aria-label={t("registrationOptions.moveDown", {
                       option: row.label || t("registrationOptions.thisOption"),
                     })}
                     onClick={() => move(index, 1)}
                   >
-                    {t("registrationOptions.down")}
+                    <ArrowDown aria-hidden="true" />
                   </Button>
                   {/* REMOVING IS LOCAL UNTIL THE SAVE, because the write is
                       replace-all: a row taken out here is simply absent from
@@ -327,7 +333,8 @@ export function EventRegistrationOptions() {
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="icon"
+                    className="ml-auto"
                     aria-label={t("registrationOptions.remove", {
                       option: row.label || t("registrationOptions.thisOption"),
                     })}
@@ -335,7 +342,7 @@ export function EventRegistrationOptions() {
                       setDrafts((current) => current.filter((other) => other.key !== row.key))
                     }
                   >
-                    {t("registrationOptions.removeShort")}
+                    <Trash2 aria-hidden="true" />
                   </Button>
                 </div>
               </li>
@@ -350,6 +357,7 @@ export function EventRegistrationOptions() {
               variant="outline"
               onClick={() => setDrafts((current) => [...current, blankDraft()])}
             >
+              <Plus aria-hidden="true" />
               {t("registrationOptions.addOption")}
             </Button>
             {saved ? (

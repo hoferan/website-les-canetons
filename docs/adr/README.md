@@ -48,3 +48,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0022](0022-one-light-theme-and-vendored-components.md)             | Use one light theme, "Scène", with vendored components that alias it          |
 | [0023](0023-locale-in-the-path-text-in-typed-catalogues.md)         | Put the locale in the URL and every string in two typed catalogues            |
 | [0024](0024-lay-out-every-list-as-cards.md)                         | Lay out every list as cards, at every width                                   |
+| [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing                     |

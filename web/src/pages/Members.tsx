@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -383,6 +384,7 @@ export function Members() {
         />
       ) : (
         <Button className="mt-block" onClick={openCreate}>
+          <Plus aria-hidden="true" />
           {t("members.add")}
         </Button>
       )}

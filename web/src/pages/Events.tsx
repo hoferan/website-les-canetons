@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RadioGroup, ToggleOption } from "@/components/ui/radio-group";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
@@ -380,6 +380,7 @@ export function Events() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button type="button" aria-label={t("events.addTriggerAria")}>
+                <Plus aria-hidden="true" />
                 {t("events.addTrigger")}
                 <ChevronDown aria-hidden="true" />
               </Button>

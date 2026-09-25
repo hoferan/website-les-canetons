@@ -1027,17 +1027,14 @@ export const fr = {
 
     label: "Intitulé",
     description: "Description",
-    // The visible button words. Their accessible names are moveUp/moveDown/
-    // remove above, which carry the option — the two are not the same string.
-    up: "Monter",
-    down: "Descendre",
-    removeShort: "Retirer",
     optionNumber: "Option {{n}}",
     addOption: "Ajouter une option",
     price: "Prix en francs",
 
-    // {{option}} is what the committee typed, or `thisOption` for a row that
-    // has no title yet — content either way, rendered verbatim.
+    // The ONLY names these three controls have: they are icon-only, so this is
+    // what a screen reader reads. {{option}} is what the committee typed, or
+    // `thisOption` for a row that has no title yet — content either way,
+    // rendered verbatim.
     moveUp: "Monter {{option}}",
     moveDown: "Descendre {{option}}",
     remove: "Retirer {{option}}",
