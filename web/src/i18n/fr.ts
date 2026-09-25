@@ -1167,6 +1167,40 @@ export const fr = {
   },
 
   /**
+   * The band's history, /history. The entries themselves are content typed by
+   * the committee and rendered verbatim; these are only the page's own words.
+   */
+  history: {
+    heading: "L’Histoire des Canetons",
+    empty: "L’histoire n’a pas encore été écrite.",
+    loadFailed: "L’histoire n’a pas pu être chargée.",
+    // Under an entry shown in the other language. Which one is shown depends
+    // on the entry's language, not the page's.
+    inFrench: "En français",
+    inGerman: "En allemand",
+    important: "Étape importante",
+    add: "Ajouter",
+    edit: "Modifier",
+    delete: "Supprimer",
+    deleteHeading: "Supprimer cette entrée ?",
+    deleteDescription: "Elle disparaît de la page publique.",
+    deleteFailed: "La suppression a échoué.",
+    // The row's name in the edit and delete labels when the entry has no title.
+    untitled: "cette entrée",
+    icons: {
+      none: "Aucune",
+      flag: "Drapeau",
+      star: "Étoile",
+      music: "Musique",
+      trophy: "Trophée",
+      users: "Personnes",
+      "party-popper": "Fête",
+      "map-pin": "Lieu",
+      heart: "Cœur",
+    },
+  },
+
+  /**
    * The public schedule — /agenda's own heading and empty state, and
    * AgendaEntry/PublicAgenda's shared copy (the front page's block and the
    * full page render the same entries).

@@ -741,6 +741,33 @@ export const de: typeof fr = {
     },
   },
 
+  history: {
+    heading: "Die Geschichte der Canetons",
+    empty: "Die Geschichte wurde noch nicht geschrieben.",
+    loadFailed: "Die Geschichte konnte nicht geladen werden.",
+    inFrench: "Auf Französisch",
+    inGerman: "Auf Deutsch",
+    important: "Wichtiger Meilenstein",
+    add: "Hinzufügen",
+    edit: "Bearbeiten",
+    delete: "Löschen",
+    deleteHeading: "Diesen Eintrag löschen?",
+    deleteDescription: "Er verschwindet von der öffentlichen Seite.",
+    deleteFailed: "Das Löschen ist fehlgeschlagen.",
+    untitled: "diesen Eintrag",
+    icons: {
+      none: "Keines",
+      flag: "Fahne",
+      star: "Stern",
+      music: "Musik",
+      trophy: "Pokal",
+      users: "Personen",
+      "party-popper": "Fest",
+      "map-pin": "Ort",
+      heart: "Herz",
+    },
+  },
+
   agenda: {
     heading: "Wo Sie uns sehen",
     intro: "Die nächsten Auftritte der Canetons. Kommen Sie uns zuhören!",
