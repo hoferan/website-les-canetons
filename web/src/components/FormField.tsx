@@ -159,6 +159,11 @@ export function RequiredLegend() {
  * `problem` is the server's. The browser's own finding (see `formIsValid`) is
  * shown only when the server has said nothing, because the server knows
  * things the browser cannot, "déjà utilisé" among them.
+ *
+ * `describedBy` names elements OUTSIDE the field that describe it too, such as
+ * a rule or an error about a group of fields, and `invalid` marks the field
+ * as part of such an error when it has no problem of its own. The history
+ * form's "at least one of four" is the case both exist for.
  */
 export function FormField({
   id,
@@ -171,6 +176,9 @@ export function FormField({
   type = "text",
   required = false,
   autoComplete,
+  describedBy: outside,
+  invalid = false,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -182,13 +190,18 @@ export function FormField({
   type?: string;
   required?: boolean;
   autoComplete?: string;
+  describedBy?: string;
+  invalid?: boolean;
+  maxLength?: number;
 }) {
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
 
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
-  const describedBy = [hint ? hintId : null, shown ? errorId : null].filter(Boolean).join(" ");
+  const describedBy = [outside ?? null, hint ? hintId : null, shown ? errorId : null]
+    .filter(Boolean)
+    .join(" ");
 
   const [revealed, setRevealed] = useState(false);
   // Adjusting state while rendering, React's documented alternative to an
@@ -207,8 +220,9 @@ export function FormField({
     required,
     autoComplete,
     value,
+    maxLength,
     onInvalid: browser.onInvalid,
-    "aria-invalid": shown ? true : undefined,
+    "aria-invalid": shown || invalid ? true : undefined,
     "aria-describedby": describedBy || undefined,
   };
 

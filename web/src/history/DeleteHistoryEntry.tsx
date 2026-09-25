@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   AlertDialog,
@@ -20,7 +20,8 @@ import {
 import type { HistoryEntryResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
-import { t } from "../i18n";
+import { currentLocale, t } from "../i18n";
+import { historyDate, shownIn } from "./entry";
 
 /**
  * The delete confirmation for one history entry.
@@ -30,19 +31,34 @@ import { t } from "../i18n";
  * change while the dialog is open then answers 412 instead of being deleted
  * unseen. The dialog stays open on a refusal so the 412 is read next to the
  * entry it is about.
+ *
+ * IT NAMES THE ENTRY, by title and date, or by date alone: on a phone the
+ * dialog covers the row it was opened from.
+ *
+ * After a delete the button it was opened from is gone, so `afterDelete`
+ * says where focus goes instead.
  */
 export function DeleteHistoryEntry({
   entry,
   onClose,
+  afterDelete,
 }: {
   entry: HistoryEntryResource | null;
   onClose: () => void;
+  afterDelete: () => void;
 }) {
   const queryClient = useQueryClient();
   const action = useApiFormError(t("history.deleteFailed"));
   const [busy, setBusy] = useState(false);
   const [opened, setOpened] = useState<{ id: number; etag: string | null } | null>(null);
   const entryId = entry?.id ?? null;
+  const deleted = useRef(false);
+  const locale = currentLocale();
+  const shown = entry ? shownIn(entry, locale) : null;
+  const date = entry ? historyDate(entry.occurredOn, entry.precision, locale) : "";
+  const title = shown?.title
+    ? t("history.deleteHeadingNamed", { title: shown.title, date })
+    : t("history.deleteHeadingUntitled", { date });
 
   useEffect(() => {
     if (entryId === null) {
@@ -85,6 +101,7 @@ export function DeleteHistoryEntry({
       }
       await historyEntryDestroy(entry.id, ifMatch(etag));
       await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
+      deleted.current = true;
       onClose();
     } catch (thrown) {
       action.setFromThrown(thrown);
@@ -103,9 +120,17 @@ export function DeleteHistoryEntry({
         }
       }}
     >
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (deleted.current) {
+            deleted.current = false;
+            event.preventDefault();
+            afterDelete();
+          }
+        }}
+      >
         <AlertDialogHeader>
-          <AlertDialogTitle>{t("history.deleteHeading")}</AlertDialogTitle>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{t("history.deleteDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
 

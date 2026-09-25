@@ -249,3 +249,29 @@ test("formIsValid answers true, and focuses nothing, for a valid form", () => {
   expect(formIsValid(form)).toBe(true);
   expect(screen.getByLabelText("E-mail")).not.toHaveFocus();
 });
+
+/**
+ * A DESCRIPTION SHARED BY SEVERAL FIELDS, such as a rule or an error about a
+ * group of them, reaches each field through `describedBy`, ahead of the
+ * field's own hint and problem.
+ */
+test("describedBy, invalid and maxLength reach the control", () => {
+  render(
+    <>
+      <p id="group-rule">Au moins un des deux.</p>
+      <FormField
+        id="demo-title"
+        label="Titre"
+        value=""
+        onChange={noop}
+        describedBy="group-rule"
+        invalid
+        maxLength={120}
+      />
+    </>,
+  );
+  const input = screen.getByLabelText("Titre");
+  expect(input).toHaveAccessibleDescription("Au moins un des deux.");
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input).toHaveAttribute("maxlength", "120");
+});

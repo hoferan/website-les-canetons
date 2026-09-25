@@ -26,11 +26,64 @@ test("the entries render oldest first, with dates in the page's language", async
   expect(items[1]).toHaveTextContent("2007");
 });
 
-test("an entry without a title shows its date and text", async () => {
+/**
+ * THE DATE IS IN THE HEADING (#104's review). On a timeline the year is the
+ * landmark, so heading navigation has to reach it, and an entry without a
+ * title still gets a heading: its date.
+ */
+test("an entry without a title has its date as its heading, and its text", async () => {
   const timeline = await renderHistory();
   const second = within(timeline).getAllByRole("listitem")[1] as HTMLElement;
-  expect(within(second).queryByRole("heading")).toBeNull();
+  expect(within(second).getByRole("heading", { level: 2 })).toHaveAccessibleName("2007");
   expect(second).toHaveTextContent("Dès la saison 2007/2008");
+});
+
+test("a titled entry's heading carries its date too", async () => {
+  await renderHistory();
+  expect(screen.getByRole("heading", { name: /octobre 2002.*Les débuts/ })).toBeInTheDocument();
+});
+
+test("the importance is announced in the page's own punctuation", async () => {
+  await renderHistory("de-CH");
+  expect(
+    screen.getByRole("heading", { name: /^Wichtiger Meilenstein: Oktober 2002/ }),
+  ).toBeInTheDocument();
+});
+
+test("Ajouter says what it adds to", async () => {
+  await renderHistory("fr", "demo.direction");
+  expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveTextContent("Ajouter");
+});
+
+test("the delete dialog names the entry it deletes", async () => {
+  const user = userEvent.setup();
+  await renderHistory("fr", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  expect(
+    await screen.findByRole("alertdialog", { name: "Supprimer « Le flambeau passe » (2026) ?" }),
+  ).toBeInTheDocument();
+  await user.keyboard("{Escape}");
+
+  await user.click(screen.getByRole("button", { name: "Supprimer cette entrée" }));
+  expect(
+    await screen.findByRole("alertdialog", { name: "Supprimer l’entrée de 2007 ?" }),
+  ).toBeInTheDocument();
+});
+
+test("cancelling a delete gives focus back to its button, and a delete to Ajouter", async () => {
+  const user = userEvent.setup();
+  await renderHistory("fr", "demo.direction");
+  const trigger = screen.getByRole("button", { name: "Supprimer Le flambeau passe" });
+
+  await user.click(trigger);
+  await user.click(await screen.findByRole("button", { name: "Annuler" }));
+  expect(trigger).toHaveFocus();
+
+  await user.click(trigger);
+  const dialog = await screen.findByRole("alertdialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  await expect.poll(() => screen.queryByText("Le flambeau passe")).toBeNull();
+  expect(screen.getByRole("link", { name: "Ajouter à l’histoire" })).toHaveFocus();
 });
 
 test("an important entry says so to a screen reader", async () => {

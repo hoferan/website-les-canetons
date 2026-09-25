@@ -32,6 +32,7 @@ export function ButtonLink({
   variant = "default",
   className,
   ariaLabel,
+  id,
 }: {
   to: string;
   children: React.ReactNode;
@@ -46,15 +47,17 @@ export function ButtonLink({
    * voice-control user saying "Modifier" still matches (WCAG 2.5.3).
    */
   ariaLabel?: string;
+  /** For a screen that moves focus here itself, after deleting a row. */
+  id?: string;
 }) {
   return (
     <Button asChild variant={variant} className={className}>
       {external ? (
-        <a href={to} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
+        <a id={id} href={to} target="_blank" rel="noreferrer" aria-label={ariaLabel}>
           {children}
         </a>
       ) : (
-        <Link to={to} aria-label={ariaLabel}>
+        <Link id={id} to={to} aria-label={ariaLabel}>
           {children}
         </Link>
       )}

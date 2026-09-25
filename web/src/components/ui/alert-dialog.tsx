@@ -34,17 +34,48 @@ function AlertDialogOverlay({
   );
 }
 
+/**
+ * LOCAL CHANGE: focus goes back to whatever had it when the dialog opened.
+ *
+ * Radix returns focus to an AlertDialogTrigger, and no dialog in this app has
+ * one: each is opened from state, so on closing focus fell to <body> and a
+ * keyboard user started again from the top of the page. The element is taken
+ * as the dialog opens, just before Radix moves focus into it. When that
+ * element is gone (the row it belonged to was just deleted), focus is left
+ * alone, so the screen can put it somewhere sensible itself.
+ */
 function AlertDialogContent({
   className,
   size = "default",
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm";
 }) {
+  const openerRef = React.useRef<HTMLElement | null>(null);
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
+        onOpenAutoFocus={(event) => {
+          // Runs just before Radix moves focus inside, so this is still the
+          // element the dialog was opened from.
+          openerRef.current = document.activeElement as HTMLElement | null;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          const opener = openerRef.current;
+          if (event.defaultPrevented || !opener || opener === document.body) {
+            return;
+          }
+          event.preventDefault();
+          if (opener.isConnected) {
+            opener.focus();
+          }
+        }}
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(

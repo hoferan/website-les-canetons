@@ -1178,14 +1178,18 @@ export const fr = {
     // on the entry's language, not the page's.
     inFrench: "En français",
     inGerman: "En allemand",
-    important: "Étape importante",
+    // Read before the date in an important entry's heading, so its punctuation
+    // is each language's own.
+    importantPrefix: "Étape importante : ",
     add: "Ajouter",
+    addAria: "Ajouter à l’histoire",
     edit: "Modifier",
     delete: "Supprimer",
     // The accessible names, which carry the entry, in each language's word order.
     editAria: "Modifier {{name}}",
     deleteAria: "Supprimer {{name}}",
-    deleteHeading: "Supprimer cette entrée ?",
+    deleteHeadingNamed: "Supprimer « {{title}} » ({{date}}) ?",
+    deleteHeadingUntitled: "Supprimer l’entrée de {{date}} ?",
     deleteDescription: "Elle disparaît de la page publique.",
     deleteFailed: "La suppression a échoué.",
     // The row's name in the edit and delete labels when the entry has no title.
@@ -1210,11 +1214,19 @@ export const fr = {
     french: "Français",
     german: "Allemand",
     atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
+    // Worded as what the timeline will show, because "précision" alone did not
+    // say that a year entry keeps no day.
     precisions: {
-      year: "L’année",
-      month: "Le mois",
-      day: "Le jour",
+      year: "L’année seulement (2019)",
+      month: "Le mois et l’année (octobre 2002)",
+      day: "La date exacte (11.11.2023)",
     },
+    year: "Année",
+    month: "Mois",
+    yearInvalid: "Indiquez l’année en quatre chiffres.",
+    // Colons carry each language's own spacing, so they live here.
+    preview: "Sur la frise :",
+    labelSeparator: " : ",
     iconLegend: "Icône sur la frise",
     saveFailed: "L’enregistrement a échoué.",
     loadFailed: "L’entrée n’a pas pu être chargée.",

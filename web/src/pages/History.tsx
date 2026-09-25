@@ -9,19 +9,24 @@ import type { HistoryEntryResource } from "../api/generated/model";
 import { ButtonLink } from "../components/ButtonLink";
 import { RowActions } from "../components/RowActions";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
-import { historyDate, iconFor, shownIn } from "../history/entry";
+import { historyDate, shownIn } from "../history/entry";
+import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
+
+const ADD_ID = "history-add";
 
 /**
  * The band's history as a vertical timeline (#104).
  *
  * The committee writes it (history.manage), so its text is content and
  * renders verbatim. Each entry is shown in the page's language when it has
- * one, otherwise in the other, with `lang` on the entry and a note in the
- * page's language saying which. ADR 0026.
+ * one, otherwise in the other, with `lang` on the entry's text and a note in
+ * the page's language saying which. ADR 0026.
  *
- * THE DATE SITS ABOVE THE TITLE AT EVERY WIDTH. A date column beside the line
+ * THE DATE IS IN THE HEADING, above the title, at every width. On a timeline
+ * the year is the landmark, so heading navigation has to reach it, and an
+ * entry without a title still gets a heading. A date column beside the line
  * was considered for desktop, but the page is a text-width column, and a
  * second column only narrows the text it is there to show.
  *
@@ -41,7 +46,7 @@ export function History() {
       <div className="flex flex-wrap items-center justify-between gap-related">
         <h1 className="font-display text-4xl">{t("history.heading")}</h1>
         {mayEdit ? (
-          <ButtonLink to="/history/new">
+          <ButtonLink to="/history/new" ariaLabel={t("history.addAria")} id={ADD_ID}>
             <Plus aria-hidden="true" />
             {t("history.add")}
           </ButtonLink>
@@ -71,7 +76,13 @@ export function History() {
         </ol>
       ) : null}
 
-      <DeleteHistoryEntry entry={deleting} onClose={() => setDeleting(null)} />
+      <DeleteHistoryEntry
+        entry={deleting}
+        onClose={() => setDeleting(null)}
+        // The entry and its button are gone, so focus goes to the one
+        // control that is always there for an editor.
+        afterDelete={() => document.getElementById(ADD_ID)?.focus()}
+      />
     </PageSection>
   );
 }
@@ -87,48 +98,42 @@ function TimelineEntry({
 }) {
   const locale = currentLocale();
   const shown = shownIn(entry, locale);
-  const Icon = iconFor(entry.icon);
   const rowName = shown.title ?? t("history.untitled");
-  // LANG ON THE ENTRY'S OWN TEXT ONLY. The date, the hidden "Étape
-  // importante" and the controls are page copy, and a lang on the whole entry
-  // would have a screen reader read them in the entry's language.
+  // LANG ON THE ENTRY'S OWN TEXT ONLY. The date, the hidden importance and
+  // the controls are page copy, and a lang on the whole entry would have a
+  // screen reader read them in the entry's language.
   const textLang = shown.fallback ? shown.lang : undefined;
-
-  // The marker, centred on the line: a large pink circle for an important
-  // entry, a violet circle around an icon, or a plain violet dot. Decorative;
-  // importance reaches a screen reader through the hidden text below.
-  const marker = entry.important
-    ? "size-10 bg-pink text-ink"
-    : Icon
-      ? "size-8 bg-violet text-white"
-      : "size-4 bg-violet";
 
   return (
     <li className="relative mb-block pl-8">
-      <span
-        aria-hidden="true"
-        className={`absolute top-0 left-0 flex -translate-x-[calc(50%+1px)] items-center justify-center rounded-full border-4 border-ground ${marker}`}
-      >
-        {Icon ? <Icon className={entry.important ? "size-5" : "size-4"} /> : null}
-      </span>
+      <TimelineMarker
+        important={entry.important}
+        icon={entry.icon}
+        className="absolute top-0 left-0 -translate-x-[calc(50%+1px)]"
+      />
 
-      <p className="text-sm font-semibold text-violet">
-        {historyDate(entry.occurredOn, entry.precision, locale)}
-      </p>
-
-      {shown.title !== null ? (
-        <h2 className={`font-display ${entry.important ? "text-2xl" : "text-xl"}`}>
-          {entry.important ? (
-            <span className="sr-only">{`${t("history.important")} : `}</span>
-          ) : null}
-          <span lang={textLang}>{shown.title}</span>
-        </h2>
-      ) : entry.important ? (
-        <p className="sr-only">{t("history.important")}</p>
-      ) : null}
+      {/* WRAP ANYWHERE: a pasted URL or a German compound is one unbroken
+          word, and at 390px it pushed the whole page sideways. */}
+      <h2 className="wrap-anywhere hyphens-auto">
+        {entry.important ? <span className="sr-only">{t("history.importantPrefix")}</span> : null}
+        <span className="block text-sm font-semibold text-violet">
+          {historyDate(entry.occurredOn, entry.precision, locale)}
+        </span>
+        {shown.title !== null ? (
+          <span
+            lang={textLang}
+            className={`block font-display ${entry.important ? "text-xl sm:text-2xl" : "text-xl"}`}
+          >
+            {shown.title}
+          </span>
+        ) : null}
+      </h2>
 
       {shown.body !== null ? (
-        <p lang={textLang} className="mt-tight whitespace-pre-line text-ink">
+        <p
+          lang={textLang}
+          className="mt-tight wrap-anywhere hyphens-auto whitespace-pre-line text-ink"
+        >
           {shown.body}
         </p>
       ) : null}
