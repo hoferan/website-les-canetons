@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Copy } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -174,6 +175,7 @@ export function EventAttendance() {
               {t("attendance.silentHeading")}
             </h2>
             <Button type="button" variant="outline" onClick={() => void copySilent()}>
+              <Copy aria-hidden="true" />
               {t("attendance.copyForWhatsApp")}
             </Button>
           </div>

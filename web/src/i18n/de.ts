@@ -650,9 +650,6 @@ export const de: typeof fr = {
 
     label: "Bezeichnung",
     description: "Beschreibung",
-    up: "Nach oben",
-    down: "Nach unten",
-    removeShort: "Entfernen",
     optionNumber: "Option {{n}}",
     addOption: "Option hinzufügen",
     price: "Preis in Franken",

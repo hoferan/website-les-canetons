@@ -138,6 +138,24 @@ test("can be saved twice without a reload", async () => {
 });
 
 /**
+ * ICON-ONLY, SO THE LABEL IS ALL A SCREEN READER HAS. Each control is found
+ * by the name that carries the option, and has no visible text of its own.
+ *
+ * MUTATION TEST: drop any one `aria-label` and its lookup fails, because the
+ * button's name falls back to nothing at all.
+ */
+test("the reorder and remove controls are icons named for their option", async () => {
+  await renderEditor();
+  await expect.poll(() => row(1).getByLabelText("Intitulé")).toHaveValue("Repas adulte");
+
+  for (const name of ["Monter Repas adulte", "Descendre Repas adulte", "Retirer Repas adulte"]) {
+    const control = row(1).getByRole("button", { name });
+    expect(control).toHaveTextContent(/^$/);
+    expect(control.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  }
+});
+
+/**
  * The invariant the whole replace-all shape exists for: removing an option
  * people have already booked would silently rewrite what those people
  * ordered, so it is refused instead.
