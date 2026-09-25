@@ -30,6 +30,7 @@ import { AttendanceControls } from "../events/AttendanceControls";
 import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
 import { EventMeta } from "../events/EventMeta";
+import { SeriesCreatedNotice } from "../events/SeriesCreatedNotice";
 import { bandZoneParts } from "../events/bandTime";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -402,6 +403,8 @@ export function Events() {
           </DropdownMenu>
         ) : null}
       </div>
+
+      <SeriesCreatedNotice />
 
       <div className="mt-related flex flex-wrap items-center gap-tight">
         {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was

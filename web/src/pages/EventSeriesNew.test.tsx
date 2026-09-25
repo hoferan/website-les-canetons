@@ -1,18 +1,39 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
 
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventSeriesNew } from "./EventSeriesNew";
+import { Events } from "./Events";
+
+/** Where the router is, so a test can see a navigation the way a reader does. */
+function WhereAmI() {
+  const location = useLocation();
+  return (
+    <>
+      <p data-testid="pathname">{location.pathname}</p>
+      <p data-testid="history-state">{JSON.stringify(location.state ?? null)}</p>
+    </>
+  );
+}
 
 async function renderGenerator(locale: Locale = "fr") {
   setMockUser("demo.direction");
-  const result = await renderWithSession(<EventSeriesNew />, {
-    route: "/events/new/series",
-    locale,
-  });
+  const result = await renderWithSession(
+    <>
+      <Routes>
+        <Route path="/events/new/series" element={<EventSeriesNew />} />
+        <Route path="/events" element={<Events />} />
+      </Routes>
+      <WhereAmI />
+    </>,
+    { route: "/events/new/series", locale },
+  );
   await screen.findByLabelText(locale === "fr" ? "Titre" : "Titel");
   return result;
 }
@@ -68,17 +89,88 @@ test("the button counts what will actually be created", async () => {
   expect(await screen.findByRole("button", { name: "Créer 4 événements" })).toBeInTheDocument();
 });
 
-test("creating a season lands them all in the planning", async () => {
+/**
+ * THE URL SAYS IT WORKED (#103). The generator used to report the count in
+ * place, on the form's own path, and a check that read the URL concluded the
+ * save had failed and ran it again: two identical seasons on TEST, cleaned up
+ * by id. Landing on the planning puts the reader where the new rehearsals are.
+ *
+ * The count is then cleared from the history entry, or a reload would report
+ * the same season as created again. MUTATION TEST: drop the replacing
+ * navigate() in SeriesCreatedNotice and the last assertion fails.
+ */
+test("creating a season goes to the planning and says how many were created", async () => {
   await renderGenerator();
   await fillSeptember();
   await userEvent.click(await screen.findByRole("button", { name: "Créer 4 événements" }));
 
-  expect(await screen.findByText(/4 événements créés/)).toBeInTheDocument();
+  expect(await screen.findByRole("status")).toHaveTextContent("4 événements créés.");
+  expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/events$/);
+  expect(screen.getByRole("link", { name: "Créer une autre série" })).toHaveAttribute(
+    "href",
+    "/events/new/series",
+  );
+  await expect.poll(() => screen.getByTestId("history-state").textContent).toBe("null");
 });
 
-test("nothing is offered to create before a range is chosen", async () => {
+test("the count on the planning goes away when dismissed", async () => {
   await renderGenerator();
-  expect(screen.queryByRole("button", { name: /Créer/ })).toBeNull();
+  await fillSeptember();
+  await userEvent.click(await screen.findByRole("button", { name: "Créer 4 événements" }));
+  await screen.findByRole("status");
+
+  await userEvent.click(screen.getByRole("button", { name: "Fermer ce message" }));
+
+  expect(screen.queryByText("4 événements créés.")).toBeNull();
+});
+
+/**
+ * PRESENT BUT INERT before there is anything to create (#103). The page used
+ * to open with "Annuler" as its only action, which reads as a broken form.
+ * The button is there from the start and points at the line saying what it
+ * still needs.
+ *
+ * MUTATION TEST: go back to rendering the button only once a date is chosen
+ * and this lookup fails.
+ */
+test("before a range is chosen, the button is there, inert, and says why", async () => {
+  await renderGenerator();
+
+  const button = screen.getByRole("button", { name: "Créer les événements" });
+  expect(button).toHaveAttribute("aria-disabled", "true");
+  expect(button).toHaveAccessibleDescription(
+    "Choisissez un jour et une période pour voir les dates qui seront créées.",
+  );
+});
+
+/**
+ * THE ONE STATE WHERE ONLY onSubmit's EARLY RETURN STOPS THE POST. Every
+ * field is filled, so the browser's own checks pass, and nothing is chosen.
+ * MUTATION TEST: drop `chosen.length === 0` from that return and a request
+ * for zero events is sent.
+ */
+test("with every date unticked, the button says to tick one and sends nothing", async () => {
+  let posted = false;
+  server.use(
+    http.post("/api/v1/events/series", () => {
+      posted = true;
+      return HttpResponse.json({}, { status: 500 });
+    }),
+  );
+  await renderGenerator();
+  await fillSeptember();
+
+  const preview = await screen.findByTestId("series-preview");
+  for (const box of within(preview).getAllByRole("checkbox")) {
+    await userEvent.click(box);
+  }
+
+  const button = screen.getByRole("button", { name: "Créer les événements" });
+  expect(button).toHaveAttribute("aria-disabled", "true");
+  expect(button).toHaveAccessibleDescription("Cochez au moins une date.");
+
+  await userEvent.click(button);
+  expect(posted).toBe(false);
 });
 
 test("changing the range unticks nothing and re-ticks everything", async () => {
@@ -150,11 +242,20 @@ test("the create button counts in German, singular and plural", async () => {
   expect(await screen.findByRole("button", { name: "1 Anlass erstellen" })).toBeInTheDocument();
 });
 
-test("the success panel counts in German", async () => {
+test("the count on the planning is German", async () => {
   await renderGenerator("de-CH");
   await fillSeptember("de-CH");
   await userEvent.click(await screen.findByRole("button", { name: "4 Anlässe erstellen" }));
 
   expect(await screen.findByRole("status")).toHaveTextContent("4 Anlässe erstellt.");
-  expect(screen.getByRole("button", { name: "Weitere Serie erstellen" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Weitere Serie erstellen" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Meldung schliessen" })).toBeInTheDocument();
+});
+
+test("the inert button and its reason are German", async () => {
+  await renderGenerator("de-CH");
+
+  expect(screen.getByRole("button", { name: "Anlässe erstellen" })).toHaveAccessibleDescription(
+    "Wählen Sie einen Tag und einen Zeitraum, um die Termine zu sehen, die erstellt werden.",
+  );
 });

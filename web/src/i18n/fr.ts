@@ -754,14 +754,15 @@ export const fr = {
     creating: "Création…",
     create_one: "Créer {{count}} événement",
     create_other: "Créer {{count}} événements",
+    // The button's label while nothing is chosen yet, when there is no count
+    // to name. It is inert then, and described by noDates or noneChosen.
+    createNone: "Créer les événements",
+    noneChosen: "Cochez au moins une date.",
+    // Shown on the planning, where the generator lands after saving.
     createdCount_one: "{{count}} événement créé.",
     createdCount_other: "{{count}} événements créés.",
-    // ITS OWN KEY, not events.viewPlanning. That one NAMES the upcoming half
-    // of the list, as one segment of the view switch; this one is a link that
-    // navigates to the planning after a series was created. Two different
-    // jobs, and the switch's label is now one word where this is three.
-    seePlanning: "Voir le planning",
     another: "Créer une autre série",
+    dismissCreated: "Fermer ce message",
   },
 
   /**
