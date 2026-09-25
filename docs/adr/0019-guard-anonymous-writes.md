@@ -1,8 +1,12 @@
-# 0019. Guard anonymous writes with a honeypot, a signed timing token and a throttle
+---
+status: accepted
+date: 2026-09-10
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-09-10
+# Guard anonymous writes with a honeypot, a signed timing token and a throttle
 
-## Context
+## Context and Problem Statement
 
 Two endpoints accept writes from anyone: the contact form and event bookings. Both
 store rows, and a booking sends a confirmation to an address the caller chooses,
@@ -12,7 +16,20 @@ The first answer, in July 2026, was a proof-of-work challenge (Altcha) with a ta
 used challenges. It needs a browser widget, and it costs the most on the oldest phones,
 which is who the site serves.
 
-## Decision
+How should the two anonymous write endpoints be protected against abuse?
+
+## Considered Options
+
+- A honeypot, a signed timing token and a throttle
+- Proof-of-work (Altcha)
+- Single-use tokens
+- Third-party CAPTCHA services
+
+## Decision Outcome
+
+Chosen option: "A honeypot, a signed timing token and a throttle", because it needs no
+browser widget and no table of used challenges, and it does not put its cost on the
+oldest phones.
 
 `PublicWriteGuard` sits on both routes and checks two things:
 
@@ -28,14 +45,27 @@ A `public-write` rate limit of 10 per minute per address covers both POSTs and `
 /form-token`. Because the token can be replayed within its window, the throttle is the
 half that does the real work.
 
-Rejected: proof-of-work, single-use tokens, and third-party CAPTCHA services.
+### Consequences
 
-## Consequences
+- Good, because no addresses are stored.
+- Good, because resubmitting after a validation error works.
+- Bad, because a token replayed inside its two hours is accepted. That is a small
+  risk, bounded by the throttle.
 
-No addresses are stored.
-
-A token replayed inside its two hours is accepted. That is a small risk, bounded by
+Both POSTs also require an `Idempotency-Key`
+([ADR-0013](0013-hold-the-api-to-public-standards.md)), which runs after the guard and
 the throttle.
 
-Both POSTs also require an `Idempotency-Key` (ADR 0013), which runs after the guard
-and the throttle.
+## Pros and Cons of the Options
+
+### Proof-of-work (Altcha)
+
+This was the first answer, in July 2026.
+
+- Bad, because it needs a browser widget and a table of used challenges.
+- Bad, because it costs the most on the oldest phones, which is who the site serves.
+
+### Single-use tokens
+
+- Bad, because resubmitting after a validation error would need a new token.
+

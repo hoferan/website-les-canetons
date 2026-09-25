@@ -1,8 +1,12 @@
-# 0002. Serve a Laravel API and a React SPA from one origin
+---
+status: accepted
+date: 2026-08-28
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-08-28
+# Serve a Laravel API and a React SPA from one origin
 
-## Context
+## Context and Problem Statement
 
 The original site was hand-rolled PHP: one front controller mixing JSON endpoints and
 server-rendered pages, with no framework to stop the structure drifting. It has one
@@ -16,7 +20,24 @@ A Laravel API was built from July 2026. A WordPress rebuild was then tried from 
 and abandoned on 08-28, when the backend question was settled in Laravel's favour: 235
 green tests, and TEST already serving it.
 
-## Decision
+What should the site be built on, and how are its pages served?
+
+## Considered Options
+
+- A Laravel API and a client-rendered React SPA on one origin
+- Keep the hand-rolled PHP
+- A Slim or vanilla PHP rewrite
+- WordPress
+- Build-time prerendering
+- A PHP or Twig shell per route
+- An incremental route-by-route cutover
+- List every SPA route in `.htaccess` to get real 404s
+
+## Decision Outcome
+
+Chosen option: "A Laravel API and a client-rendered React SPA on one origin", because
+the Laravel API already had 235 green tests with TEST serving it, and one origin lets
+Sanctum's cookie flow work without any cross-origin setup.
 
 Two applications, one origin:
 
@@ -24,28 +45,51 @@ Two applications, one origin:
 - `web/` is a client-rendered React and TypeScript single-page app, built by Vite. It
   answers every other path with `index.html` and hashed assets.
 
-Apache splits the traffic before either application runs (ADR 0003). There is no PHP
-outside `api/`, and no server rendering of pages.
+Apache splits the traffic before either application runs
+([ADR-0003](0003-laravel-inside-the-document-root-behind-htaccess.md)). There is no
+PHP outside `api/`, and no server rendering of pages.
 
-Rejected along the way: keeping the hand-rolled PHP, a Slim or vanilla PHP rewrite,
-WordPress, build-time prerendering, a PHP or Twig shell per route, and an incremental
-route-by-route cutover. The old front end in `app/` was deleted up front rather than
-kept running beside the SPA. The WordPress branch, its remote and its Docker volumes
-are deleted too, and anything about WordPress left in git history is void. Listing every SPA route in `.htaccess` to get real 404s was
-rejected because that list would drift from `web/src/routes.tsx`.
+### Consequences
 
-## Consequences
+- Good, because one origin means no CORS, and Sanctum's cookie flow works without any
+  cross-origin setup ([ADR-0010](0010-session-cookie-is-the-only-credential.md)).
+- Bad, because an unknown URL answers 200 with the SPA's own 404 view.
+- Bad, because the chroot puts the Laravel tree physically inside the document root,
+  so the `.htaccess` files are a security boundary as well as routing
+  ([ADR-0003](0003-laravel-inside-the-document-root-behind-htaccess.md)).
+- Bad, because the build order is load-bearing. Vite empties its output directory, so
+  the SPA is built before the Laravel copy.
+- Bad, because crawlers that run no JavaScript see one static French shell.
+  `web/index.html` carries the metadata they read.
 
-One origin means no CORS, and Sanctum's cookie flow works without any cross-origin
-setup (ADR 0010).
+### Confirmation
 
-An unknown URL answers 200 with the SPA's own 404 view.
+CI's `build` job asserts that both halves of the artifact exist.
 
-The chroot puts the Laravel tree physically inside the document root, so the
-`.htaccess` files are a security boundary as well as routing (ADR 0003).
+## Pros and Cons of the Options
 
-The build order is load-bearing. Vite empties its output directory, so the SPA is
-built before the Laravel copy, and CI's `build` job asserts both halves exist.
+A Slim or vanilla PHP rewrite, build-time prerendering and a PHP or Twig shell per
+route were rejected along the way. No reason for them was recorded.
 
-Crawlers that run no JavaScript see one static French shell. `web/index.html` carries
-the metadata they read.
+### Keep the hand-rolled PHP
+
+- Bad, because one front controller mixes JSON endpoints and server-rendered pages,
+  with no framework to stop the structure drifting.
+
+### WordPress
+
+- Bad, because it was tried from 07-28 and abandoned on 08-28, once the Laravel API
+  had 235 green tests and TEST was already serving it.
+
+The WordPress branch, its remote and its Docker volumes are deleted, and anything about
+WordPress left in git history is void.
+
+### An incremental route-by-route cutover
+
+- Bad, because it keeps the old front end running beside the SPA. The old front end in
+  `app/` was deleted up front instead.
+
+### List every SPA route in `.htaccess`
+
+- Good, because unknown URLs would get real 404s.
+- Bad, because that list would drift from `web/src/routes.tsx`.

@@ -1,14 +1,31 @@
-# 0016. Let the committee issue every password
+---
+status: accepted
+date: 2026-09-07
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-09-07
+# Let the committee issue every password
 
-## Context
+## Context and Problem Statement
 
-Members have no email address (ADR 0015), so there is nowhere to send a reset link.
-Before the rebuild there was no way to create or reset a login short of editing the
-database by hand.
+Members have no email address
+([ADR-0015](0015-one-roster-every-member-has-an-account.md)), so there is nowhere to
+send a reset link. Before the rebuild there was no way to create or reset a login
+short of editing the database by hand.
 
-## Decision
+How does a member get a password, and a new one when they forget it?
+
+## Considered Options
+
+- The committee mints every password, shown once
+- Email or token resets
+- Administrators setting a password they choose
+- An artisan command for the first account
+
+## Decision Outcome
+
+Chosen option: "The committee mints every password, shown once", because there is no
+address to send a reset to, and no administrator should know anyone's password.
 
 Creating a member mints a password, and resetting one (`POST
 /members/{member}/password`) is the same operation. The password is shown once, to be
@@ -27,16 +44,29 @@ The first administrator comes from a migration that reads `BOOTSTRAP_ADMIN_*` fr
 server's `.env`, and only runs while nobody holds `members.manage`. It refuses a
 password shorter than 12 characters.
 
-Rejected: email or token resets, with no address to send them to; administrators
-setting a password they choose, because no administrator should know anyone's
-password; and an artisan command for the first account, with no shell to run it.
+### Consequences
 
-## Consequences
+- Good, because a minted password is never logged, and the member replaces it with
+  their own at the next login.
+- Bad, because the login page has no "forgot password" link. A member who forgets asks
+  the committee.
+- Bad, because the forced change after a first login is enforced by the SPA
+  (`web/src/components/MustChangePassword.tsx`). The API does not refuse other calls
+  while the flag is set.
 
-The login page has no "forgot password" link. A member who forgets asks the committee.
+`BOOTSTRAP_ADMIN_*` is one of the keys each server's `.env` must carry
+([ADR-0005](0005-server-owned-files-never-travel-with-a-deploy.md)).
 
-The forced change after a first login is enforced by the SPA
-(`web/src/components/MustChangePassword.tsx`). The API does not refuse other calls
-while the flag is set.
+## Pros and Cons of the Options
 
-`BOOTSTRAP_ADMIN_*` is one of the keys each server's `.env` must carry (ADR 0005).
+### Email or token resets
+
+- Bad, because there is no address to send them to.
+
+### Administrators setting a password they choose
+
+- Bad, because no administrator should know anyone's password.
+
+### An artisan command for the first account
+
+- Bad, because there is no shell to run it.

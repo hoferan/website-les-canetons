@@ -1,7 +1,8 @@
 # Architecture decision records
 
 One file per decision that shaped this project and would otherwise have to be pieced
-together from guesswork. Each records the context, the decision, and what it costs.
+together from guesswork. Each records the context, the options that were weighed, the
+one chosen, and what it costs.
 
 They explain why, not how. The code is the authority on how, and it changes; a record
 that described the implementation would be wrong within a release. Where a test, a type
@@ -14,15 +15,15 @@ decision goes instead.
 
 ## Format
 
-`NNNN-short-title.md`, numbered in the order written. A heading `# NNNN. Title`, a
-status line, then Context, Decision and Consequences. The status is Accepted with the
-date the decision was taken. A record that a later one replaces says Superseded by
-NNNN, and the later one says what it supersedes.
+[MADR 4](https://adr.github.io/madr/), as [ADR-0000](0000-use-markdown-architectural-decision-records.md)
+decides. Copy [`adr-template.md`](adr-template.md), name the file
+`NNNN-title-with-dashes.md` with the next free number, and add a row below.
 
 ## Records
 
 |                                                                     | Decision                                                                      |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [0000](0000-use-markdown-architectural-decision-records.md)         | Use Markdown Architectural Decision Records                                   |
 | [0001](0001-keep-working-documents-out-of-the-repository.md)        | Keep working documents out of the repository                                  |
 | [0002](0002-one-origin-laravel-api-and-react-spa.md)                | Serve a Laravel API and a React SPA from one origin                           |
 | [0003](0003-laravel-inside-the-document-root-behind-htaccess.md)    | Put Laravel in the document root as `_api/`, behind one `.htaccess`           |

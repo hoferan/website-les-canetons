@@ -1,8 +1,12 @@
-# 0005. Keep server-owned files out of every deploy
+---
+status: accepted
+date: 2026-09-07
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-09-07
+# Keep server-owned files out of every deploy
 
-## Context
+## Context and Problem Statement
 
 Some files differ per server and cannot ship in a shared artifact: the Basic Auth block
 with its absolute `.htpasswd` path, `robots.txt`, and Laravel's `_api/.env` with its
@@ -10,15 +14,27 @@ secrets. One FTP account reaches every environment.
 
 The deploy tool used to protect these by basename, at any depth. That silently dropped
 `api/.htaccess` and `api/public/.htaccess`, the authorization boundary around the
-Laravel tree (ADR 0003), from every upload for the whole life of the project. No server
-ever had them until 2026-09-07.
+Laravel tree ([ADR-0003](0003-laravel-inside-the-document-root-behind-htaccess.md)),
+from every upload for the whole life of the project. No server ever had them until
+2026-09-07.
 
-## Decision
+How does a deploy leave each server's own files alone, and how do those files reach
+the server?
 
-The protected set is a list of exact root-relative paths, `PROTECTED_PATHS` in
-`tools/deploy/preflight.mjs`: `.htaccess`, `robots.txt`, `.htpasswd`, `config.php`,
-`_api/.env`, and the tool's own `.sync-state.json`. A deploy never uploads and never
-deletes them.
+## Considered Options
+
+- Protect a list of exact root-relative paths, and place those files per server
+- Protect the files by basename, at any depth
+
+## Decision Outcome
+
+Chosen option: "Protect a list of exact root-relative paths, and place those files per
+server", because the basename match silently dropped the authorization boundary around
+the Laravel tree from every upload.
+
+The protected set is `PROTECTED_PATHS` in `tools/deploy/preflight.mjs`: `.htaccess`,
+`robots.txt`, `.htpasswd`, `config.php`, `_api/.env`, and the tool's own
+`.sync-state.json`. A deploy never uploads and never deletes them.
 
 Each server gets them another way:
 
@@ -33,18 +49,24 @@ keys, never its values, with `api/.env.example`. A key missing on either side re
 the deploy and names the keys. Each target also refuses unless its `FTP_DIR` matches
 the environment's name.
 
-## Consequences
+### Consequences
 
-Code that expects a new `.env` key fails that server's deploy instead of answering 500
-on every request afterwards. The price is that every new key has to be hand-added on
-every server before its next deploy. Optional settings therefore live in
-`api/config/*.php` with defaults and never in `.env.example`.
+- Good, because code that expects a new `.env` key fails that server's deploy instead
+  of answering 500 on every request afterwards.
+- Bad, because every new key has to be hand-added on every server before its next
+  deploy. Optional settings therefore live in `api/config/*.php` with defaults and
+  never in `.env.example`.
+- Bad, because renaming `_api/` must be mirrored in `PROTECTED_PATHS`. If the
+  `_api/.env` entry stops matching, the next `--relist` classifies each server's API
+  configuration as stale and deletes it.
+- Bad, because the overlay does not move with the code. Rolling back means redeploying
+  a tag and, if the template changed, placing the previous overlay too.
+- Bad, because placing the new overlay on a server still running the old site takes it
+  down, so on QA and PROD the overlay and the artifact move together, at the cutover.
 
-Renaming `_api/` must be mirrored in `PROTECTED_PATHS`. If the `_api/.env` entry stops
-matching, the next `--relist` classifies each server's API configuration as stale and
-deletes it.
+## Pros and Cons of the Options
 
-The overlay does not move with the code. Rolling back means redeploying a tag and, if
-the template changed, placing the previous overlay too. Placing the new overlay on a
-server still running the old site takes it down, so on QA and PROD the overlay and the
-artifact move together, at the cutover.
+### Protect the files by basename, at any depth
+
+- Bad, because it also matched `api/.htaccess` and `api/public/.htaccess`, and silently
+  dropped them from every upload. No server had them until 2026-09-07.

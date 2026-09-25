@@ -1,17 +1,30 @@
-# 0009. Work without a scheduler or a queue
+---
+status: accepted
+date: 2026-09-10
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-09-10
+# Work without a scheduler or a queue
 
-## Context
+## Context and Problem Statement
 
 The host runs no cron and no long-lived processes, so Laravel's scheduler and queue
 workers are not available. Several features would normally lean on them: mail after a
 booking or a contact message, expiry of stored idempotency answers, and reminders for
 members who have not answered an event.
 
-## Decision
+How does the API do that work without anything running later?
 
-Nothing in the API depends on work happening later.
+## Considered Options
+
+- Nothing depends on work happening later
+- Laravel's scheduler and queue workers
+- Automatic reminders by email or push
+
+## Decision Outcome
+
+Chosen option: "Nothing depends on work happening later", because the host offers no
+cron and no long-lived process to do that work.
 
 - Mail is sent inline, after the database transaction commits. A failed send is logged
   at `error` and never fails the request. `RegistrationController` and
@@ -20,14 +33,24 @@ Nothing in the API depends on work happening later.
   small fraction of requests, configured in `api/config/api.php`.
 - There are no automatic reminders. The direction gets a chase list of members who
   have not answered, with a button that copies a message for WhatsApp, which is where
-  the band already talks. Nobody is emailed or pushed, and most members are children.
+  the band already talks. Nobody is emailed or pushed.
 
-## Consequences
+### Consequences
 
-A slow mail server makes the request slower. A mail that fails is lost apart from the
-log line, and the row it was about is still stored.
+- Good, because if the band moves to a host with a scheduler, each of these is a small
+  change and none of them needs a redesign.
+- Bad, because a slow mail server makes the request slower.
+- Bad, because a mail that fails is lost apart from the log line. The row it was about
+  is still stored.
 
 A sweep that never draws the lottery leaves expired rows behind, which is harmless.
 
-If the band moves to a host with a scheduler, each of these is a small change rather
-than a redesign.
+## Pros and Cons of the Options
+
+### Laravel's scheduler and queue workers
+
+- Bad, because the host runs no cron and no long-lived processes.
+
+### Automatic reminders by email or push
+
+- Bad, because most members are children, and the band already talks on WhatsApp.

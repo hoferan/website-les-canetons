@@ -304,7 +304,8 @@ here instead.
 origin, why FTP mirroring, why migrations run on a request, why permissions and
 never roles, and so on. Read the index in `docs/adr/README.md` before changing
 anything one of them covers, and write a new record when you take a decision of
-that weight.
+that weight. Records are MADR 4 (ADR 0000), started from
+`docs/adr/adr-template.md`.
 
 Specs and plans written by the skills below are working documents. They go in
 `docs/superpowers/`, which is git-ignored, and they are never committed or

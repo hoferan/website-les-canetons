@@ -1,8 +1,12 @@
-# 0004. Deploy by mirroring over FTP against a content-hash manifest
+---
+status: accepted
+date: 2026-07-25
+decision-makers: André Hofer
+---
 
-Status: Accepted, 2026-07-25
+# Deploy by mirroring over FTP against a content-hash manifest
 
-## Context
+## Context and Problem Statement
 
 FTP is the only way onto the host. The artifact is 6,500 to 7,000 files, most of them
 Laravel's `vendor/`, and the first Laravel deploy crawled over one serial connection.
@@ -13,9 +17,26 @@ seconds, even when nothing has changed. Its file timestamps cannot be trusted, a
 comparing sizes misses a same-size edit, which is how `deployment.json` kept not
 being uploaded.
 
-## Decision
+How does a deploy get the artifact onto the host quickly and reliably, and decide what
+to upload and what to delete?
 
-`tools/deploy/` is a Node mirror over `basic-ftp`:
+## Considered Options
+
+- A Node mirror over `basic-ftp`, against a content-hash manifest
+- rclone, lftp or SFTP wrappers
+- A single-connection GitHub action
+- Upload one zip and unpack it through an endpoint
+- Opt-in pruning of stale files
+- A LIST of the remote tree on every deploy
+
+## Decision Outcome
+
+Chosen option: "A Node mirror over `basic-ftp`, against a content-hash manifest",
+because a content hash catches the same-size edits that sizes miss, the manifest
+spares a routine deploy the full LIST, and pooled connections that retry survive a
+host that drops them.
+
+`tools/deploy/` works like this:
 
 - Every local file is hashed with sha256.
 - `.sync-state.json` at the remote root records each deployed path's size and hash,
@@ -29,22 +50,37 @@ being uploaded.
 - A safety brake refuses, with exit code 2, a deploy that would delete more than 50
   files and more than 20% of the remote tree. `--force-delete` overrides it.
 
-Rejected: rclone, lftp and SFTP wrappers (native binaries break parity between a laptop
-and CI, and over FTP they fall back to comparing sizes); a single-connection GitHub
-action; uploading one zip and unpacking it through an endpoint, which trades FTP
-flakiness for `max_execution_time` on a shared host; opt-in pruning, which lets Vite's
-hashed files pile up; and a LIST on every deploy.
+### Consequences
 
-## Consequences
+- Good, because routine deploys are fast and resumable.
+- Good, because deletion is bounded by the manifest and the brake.
+- Bad, because the tool trusts the manifest without checking it. A file uploaded by
+  hand is invisible to the tool until a `--relist`.
+- Bad, because nothing is atomic. The site is a mix of old and new files between the
+  upload and the delete phase.
+- Bad, because the first deploy to QA or PROD, where the old site still sits, will trip
+  the brake. Always `--dry-run` a first deploy.
 
-Routine deploys are fast and resumable, and deletion is bounded by the manifest and the
-brake.
+## Pros and Cons of the Options
 
-The manifest is trusted, not checked. A file uploaded by hand is invisible to the tool
-until a `--relist`.
+### rclone, lftp or SFTP wrappers
 
-Nothing is atomic. The site is a mix of old and new files between the upload and the
-delete phase.
+- Bad, because native binaries break parity between a laptop and CI.
+- Bad, because over FTP they fall back to comparing sizes.
 
-The first deploy to QA or PROD, where the old site still sits, will trip the brake.
-Always `--dry-run` a first deploy.
+### A single-connection GitHub action
+
+- Bad, because one serial connection is what made the first Laravel deploy crawl.
+
+### Upload one zip and unpack it through an endpoint
+
+- Bad, because it trades FTP flakiness for `max_execution_time` on a shared host.
+
+### Opt-in pruning of stale files
+
+- Bad, because it lets Vite's hashed files pile up.
+
+### A LIST of the remote tree on every deploy
+
+- Bad, because a full recursive LIST takes about 30 seconds, even when nothing has
+  changed.
