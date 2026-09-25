@@ -59,13 +59,13 @@ test("shows the submit as busy without disabling it", async () => {
 });
 
 /* ---------------------------------------------------------------------------
- * The registration window (R3)
+ * The registration window
  * -------------------------------------------------------------------------- */
 
 test("offers the registration window, and says which field is the switch", async () => {
-  // THE CONTROL, not the label in fr.ts. `registrationClosesAt` has had a
-  // French label since R3's API half shipped and no input rendering it — the
-  // same shape as `instructor_of_section_id`, which sat in a draft, was sent
+  // THE CONTROL, not the label in fr.ts. `registrationClosesAt` had a French
+  // label from the day the registration API shipped and no input rendering
+  // it — the same shape as `instructor_of_section_id`, which sat in a draft, was sent
   // on every write, and could only ever be null.
   await renderForm();
 

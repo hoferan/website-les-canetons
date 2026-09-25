@@ -15,7 +15,7 @@ const PASSWORD_PAGE = "/account/password";
  * courtesy; this is what makes it hold.
  *
  * IT IS NOT AN AUTH GUARD. An anonymous visitor passes straight through: public
- * pages must not depend on being logged in, and R2 adds several.
+ * pages must not depend on being logged in, and there are several.
  *
  * The password page itself is exempt, or the redirect targets the page it is
  * redirecting from and the app renders nothing at all. Only that page: the

@@ -71,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // This API returns BARE payloads: /api/v1/config and /api/v1/me both do, and
-        // the {error, code, fields[]} error contract has no envelope either.
+        // the problem-document error contract has no envelope either.
         // JsonResource wraps COLLECTIONS in {"data": …} by default, which would
         // give the same API two shapes depending on whether a response happened
         // to be built from a Resource.

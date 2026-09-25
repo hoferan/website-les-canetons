@@ -114,7 +114,7 @@ export const fr = {
     invalid_number: "n'est pas un nombre valide",
     // FIELD-PAIR-SPECIFIC, unlike every other line here: it names the start
     // because `after:startsAt` on the event form is the only `after:` rule in
-    // the system. A second one against a different pair — R3's registration
+    // the system. A second one against a different pair — the registration
     // window is the obvious candidate — cannot reuse this sentence, and the
     // reason token carries no parameters to fill in the other field's name
     // (see App\Exceptions\ApiError's REASONS map for why it must not). That
@@ -177,7 +177,7 @@ export const fr = {
     dates: "Dates",
     template: "Modèle",
     // Attendance. `note` carries the reason a member owes when they take
-    // back a yes (C11), so it is the field a validation failure lands on in
+    // back a yes (ADR 0018), so it is the field a validation failure lands on in
     // that dialog.
     status: "Réponse",
     note: "Raison",
@@ -467,8 +467,8 @@ export const fr = {
     recordedByCommittee: "Saisie par le comité.",
     nobodyAnswerable:
       "Personne n’est encore inscrit dans un pupitre, donc personne n’a de réponse à donner.",
-    // C14 on screen: what the caller is told in place of buttons aimed at
-    // their own row, which the on-behalf endpoint would refuse.
+    // What the caller is told in place of buttons aimed at their own row,
+    // which the on-behalf endpoint refuses (ADR 0018).
     answerFromPlanning: "Répondez depuis le planning.",
     editFromPlanning: "Modifiable depuis le planning.",
     comingAria: "{{name}} vient",
@@ -512,7 +512,7 @@ export const fr = {
     undo: "Annuler",
     undoFailed: "L’annulation a échoué. Réessayez.",
 
-    // WithdrawDialog — the one answer that is not a single tap (C11).
+    // WithdrawDialog — the one answer that is not a single tap (ADR 0018).
     reason: "Raison",
     withdrawTitle: "Vous ne venez plus à «\u00a0{{title}}\u00a0»\u00a0?",
     withdrawDescription:
@@ -629,7 +629,7 @@ export const fr = {
     },
 
     /**
-     * The month grid (C8: an overview at a desk, never the phone's list).
+     * The month grid: an overview at a desk, never the phone's list.
      *
      * `dayAria` takes the date ALREADY FORMATTED, because the formatter is
      * locale-aware and lives in the component — see EventCalendar.tsx.
@@ -834,7 +834,7 @@ export const fr = {
     resetDescription:
       "Un nouveau mot de passe sera généré et affiché une seule fois. Cette personne sera déconnectée partout et devra le changer à la prochaine connexion.",
 
-    /** The one-time password reveal (§4.4). */
+    /** The one-time password reveal (ADR 0016). */
     generatedTitle: "Mot de passe de {{name}}",
     generatedDescription:
       "Notez-le ou lisez-le à la personne maintenant\u00a0: il ne sera plus jamais affiché. Elle devra le remplacer à sa première connexion.",

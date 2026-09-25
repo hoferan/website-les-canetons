@@ -6,7 +6,8 @@ use RuntimeException;
 
 /**
  * A destructive privileged action was refused because the actor did not
- * re-prove who they are (spec §6, decision B1).
+ * re-prove who they are. Since 2026-09-08 the only caller is a member changing
+ * their own password (ADR 0017).
  *
  * 403 for a wrong password, 429 when the actor has been throttled — so the
  * STATUS TRAVELS ON THE EXCEPTION rather than being assumed by the renderer.

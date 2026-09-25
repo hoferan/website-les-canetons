@@ -21,8 +21,8 @@ use Illuminate\Support\Facades\Schema;
  * translated. The distinction that matters is not French-vs-English, it is
  * whether a translation layer needs a key to look up.
  *
- * NOT REPLACED BY `label`. When roles become editable (deferred by decision
- * B3), a committee-typed name IS user input and will need a nullable column,
+ * NOT REPLACED BY `label`. When roles become editable (deferred, see
+ * ADR 0014), a committee-typed name IS user input and will need a nullable column,
  * with the UI falling back to the key's translation for rows nobody has
  * touched. Adding that column now would ship a branch no screen exercises.
  *

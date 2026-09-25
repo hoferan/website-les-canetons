@@ -19,7 +19,7 @@ class RegistrationSchemaTest extends TestCase
 
     public function test_registration_is_enabled_by_the_close_date_alone(): void
     {
-        // D9: no separate boolean. A flag beside a date is a flag that
+        // No separate boolean (ADR 0020). A flag beside a date is a flag that
         // drifts out of step with it, which is what the retired `weekend`
         // column did.
         $this->assertFalse(Event::factory()->create()->takesRegistrations());

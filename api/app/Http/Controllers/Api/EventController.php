@@ -65,7 +65,7 @@ class EventController extends Controller
         // takes with its `mode` parameter: a missing, misspelled or truncated
         // value must never be the one that hides events.
         //
-        // ONE eager load below, and it is the one R1c-2 was given room for:
+        // ONE eager load below, the one the query budget left room for:
         // the caller's own answer, constrained to them in the query.
         // MEASURED 2026-09-09 at exactly 1 query before attendance existed;
         // the join makes it 2, against the budget of 3 that
@@ -75,7 +75,7 @@ class EventController extends Controller
         // This note lives HERE and not immediately above the return, because
         // Scramble publishes the comment directly preceding a return as the
         // 200 response description. Measured 2026-09-10: it had shipped this
-        // paragraph, decision codes and test names included, to /api/docs.
+        // paragraph, test names included, to /api/docs.
         $past = $request->query('past') === '1';
 
         // `q` is validated, unlike `past`: leniency there fails safe towards
@@ -94,7 +94,7 @@ class EventController extends Controller
         // that began an hour ago must stay in the planning of somebody
         // running late. Pinned by
         // EventIndexTest::test_an_event_happening_today_stays_in_the_planning_all_day,
-        // and mutation-tested by hand against now() — see Task 4 step 7.
+        // and mutation-tested by hand against now().
         $startOfToday = BandTime::startOfToday();
 
         $query = $past
@@ -423,12 +423,12 @@ class EventController extends Controller
         // COUNTED BEFORE THE DELETE, because the cascade removes the rows
         // this counts. Deleting an event destroys every answer given for it,
         // and saying so is the difference between a confirmation that warns
-        // and one that merely asks again — see the R1c-1 plan Task 12, and
-        // the R3 spec §4 which adds registrationsDeleted beside it.
+        // and one that merely asks again. The same goes for the bookings, which
+        // is why registrationsDeleted sits beside it.
         //
-        // {ok: true} rather than 204 for the same reason: R1c-2 needed
-        // somewhere to put the count of answers that went with the event, and
-        // a 204 has no body to say it in.
+        // {ok: true} rather than 204 for the same reason: the confirmation
+        // needs somewhere to read the counts from, and a 204 has no body to
+        // say them in.
         $attendanceDeleted = $event->attendance()->count();
         $registrationsDeleted = $event->registrations()->count();
 

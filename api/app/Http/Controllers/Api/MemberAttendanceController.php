@@ -46,19 +46,20 @@ class MemberAttendanceController extends Controller
         // useMemberAttendanceDestroy.
         //
         // Without this endpoint a mis-aimed on-behalf write is permanent from
-        // the committee's side, and worse from the member's: C12 measures the
-        // undo window from `updated_at`, so the five minutes start ticking
-        // when the DIRECTION wrote it, and once they lapse C11 can demand a
-        // written reason from the member for a commitment they never made.
+        // the committee's side, and worse from the member's: the undo window
+        // is measured from `updated_at`, so the five minutes start ticking
+        // when the DIRECTION wrote it, and once they lapse withdrawing the yes
+        // costs the member a written reason for a commitment they never made
+        // (ADR 0018).
         //
-        // NOT subject to C12 itself. The window exists to stop a member
-        // erasing their own yes and re-answering for free; a committee
+        // NOT subject to the undo window itself. The window exists to stop a
+        // member erasing their own yes and re-answering for free; a committee
         // correcting its own typo an hour later is the case it was never
         // aimed at, and they can overwrite the row at will anyway.
         //
-        // Refuses its own caller, like the write does (C14): undoing your own
-        // answer through the exempt route would sidestep C11 exactly as
-        // writing it would.
+        // Refuses its own caller, like the write does: undoing your own
+        // answer through the exempt route would sidestep the reason rule
+        // exactly as writing it would.
         /** @var Member $actor */
         $actor = $request->user();
 
@@ -114,8 +115,8 @@ class MemberAttendanceController extends Controller
         Event $event,
         Member $member,
     ): AttendanceResource {
-        // REFUSES ITS OWN CALLER (decision C14). This route is exempt from
-        // C11's reason-for-a-withdrawal rule (C13), because making the
+        // REFUSES ITS OWN CALLER (ADR 0018). This route is exempt from the
+        // rule that withdrawing a yes costs a reason, because making the
         // committee invent a reason on a member's behalf puts words in their
         // mouth. That exemption is exactly why aiming it at yourself has to
         // be refused: demo.both plays and holds

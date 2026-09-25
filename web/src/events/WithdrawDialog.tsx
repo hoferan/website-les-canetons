@@ -15,7 +15,7 @@ import { FormError, FormField, RequiredLegend } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
 
 /**
- * Taking back a commitment: the one answer that is not one tap (C11).
+ * Taking back a commitment: the one answer that is not one tap (ADR 0018).
  *
  * ONE TRANSITION COSTS A REASON, and only one. Saying "Non" to an event nobody
  * counted on is a tap, and so is changing a "Non" into a "Oui" — saying yes

@@ -12,19 +12,19 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * about, and nothing else.
  *
  * DELIBERATELY NOT EventResource, which carries `notes` (internal) and
- * `isPublic` (R2's business) and is only ever served to a member. Four fields,
- * each one a fact already on a poster.
+ * `isPublic` (the public agenda's business) and is only ever served to a
+ * member. Four fields, each one a fact already on a poster.
  *
  * A RESOURCE RATHER THAN AN ARRAY INSIDE RegistrationFormResource, which is
  * where it lived until 2026-09-11. The shape was identical; what changed is
  * that the document now names it. An inline object is published anonymously,
  * so a generated client typed it as an unnamed nested object while every
- * sibling had a component of its own — and R2's public agenda, which needs
+ * sibling had a component of its own — and the public agenda, which needs
  * exactly these four fields, would have had no type to reuse.
  *
- * `id` AND `registrationOpen` WERE ADDED WHEN R3'S SCREENS WERE BUILT, and
- * they are the two facts a booking form is unreachable without. The agenda is
- * the only public list of events there is; with no id it cannot link to
+ * `id` AND `registrationOpen` WERE ADDED WHEN THE BOOKING SCREENS WERE BUILT,
+ * and they are the two facts a booking form is unreachable without. The agenda
+ * is the only public list of events there is; with no id it cannot link to
  * `/events/{id}/book`, and with no flag it would either link to a form that
  * refuses everybody or hide a form that is taking bookings. Neither is a
  * disclosure: the id opens nothing on its own — `GET /events/{event}/registration`

@@ -41,7 +41,7 @@ use Symfony\Component\HttpFoundation\Response;
  * has no entity to have a tag for — so requiring the header would mean a read
  * before every answer, against a design that exists to make answering one tap
  * on a bus with poor signal. The one race left is the committee recording on
- * somebody's behalf while that member answers, which C12's five-minute undo
+ * somebody's behalf while that member answers, which the five-minute undo
  * window and the audit entry already cover.
  *
  * NO CONDITIONAL GET. `If-None-Match` is not implemented and no 304 is ever

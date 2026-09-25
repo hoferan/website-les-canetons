@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
  *   form  — a single narrow form, as /authentification_inscription wants
  *
  * THE `text` COLUMN IS CENTRED, AND THAT IS A DECISION, not an oversight. The
- * E1 spec's §2 says prose inside the shell is "what makes the nav and the
- * content share a left edge" -- but a centred 44rem column cannot share an edge
+ * one shared shell width exists so that the nav and the content share a left
+ * edge -- but a centred 44rem column cannot share an edge
  * with a 72rem one, and left-aligning it leaves about 500px of empty page
  * beside the content at 1280. Both were built and compared in a browser; André
  * chose the centred column on 2026-09-01. So the shared left edge is true of

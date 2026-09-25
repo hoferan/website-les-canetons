@@ -155,8 +155,8 @@ class AttendanceController extends Controller
         // whole reason this endpoint exists rather than the client sending
         // the opposite answer.
         //
-        // The window is AttendanceIntegrity's (C12): five minutes from
-        // updated_at, so C11's reason-for-a-withdrawal rule is not decorative
+        // The window is AttendanceIntegrity's: five minutes from updated_at,
+        // so the rule that withdrawing a yes costs a reason is not decorative
         // — an unlimited undo would let a member erase a yes and re-answer no
         // for free.
         /** @var Member $member */

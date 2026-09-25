@@ -125,7 +125,7 @@ class MyAttendanceTest extends TestCase
     public function test_deleting_an_event_reports_how_many_answers_went_with_it(): void
     {
         // The confirmation dialog needs to name the damage, not just ask
-        // again. R3 adds registrationsDeleted beside this.
+        // again. registrationsDeleted is reported beside it.
         $organiser = Member::factory()->administrator()->create();
         $event = Event::factory()->create();
 

@@ -12,13 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * A rehearsal or gig on the planning. The committee enters it, every member
- * reads it, and (a later release) responds to it.
+ * reads it, and every player answers it.
  *
  * `starts_at`/`ends_at` replace the old date + two TIME columns + `weekend`
  * boolean: a multi-day event is one whose start and end fall on different
- * days, so there is no flag to keep in step with them. `ends_at` is NOT NULL
- * (decision C6) — see the migration for why that is what makes the flag
- * unnecessary rather than merely redundant.
+ * days, so there is no flag to keep in step with them. `ends_at` is NOT NULL;
+ * see the migration for why that is what makes the flag unnecessary rather
+ * than merely redundant.
  *
  * The @property tags below say what casts() already does at runtime. Larastan
  * runs at level 5 and cannot read casts(), so without them these read as their
@@ -140,9 +140,9 @@ class Event extends Model
     /**
      * Whether this event takes public registrations at all.
      *
-     * IFF `registration_closes_at IS NOT NULL` (D9). No separate boolean —
-     * a flag beside a date is a flag that drifts out of step with it, which
-     * is exactly what the retired `weekend` column did.
+     * IFF `registration_closes_at IS NOT NULL` (ADR 0020). No separate
+     * boolean — a flag beside a date is a flag that drifts out of step with it,
+     * which is exactly what the retired `weekend` column did.
      */
     public function takesRegistrations(): bool
     {

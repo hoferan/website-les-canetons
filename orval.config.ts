@@ -7,8 +7,8 @@ import { defineConfig } from "orval";
  * generate:api`, and commit the result. CI enforces this (see ci.yml).
  *
  * Every request goes through the mutator in web/src/api/http.ts, which owns the
- * cookie credentials, the Sanctum CSRF priming and the {error, code, fields}
- * error contract.
+ * cookie credentials, the Sanctum CSRF priming and the error contract: RFC 9457
+ * problem documents (ADR 0012), whose errors[] it hands callers as `fields`.
  */
 export default defineConfig({
   canetons: {

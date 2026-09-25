@@ -39,7 +39,7 @@ import { MemberForm, type MemberDraft } from "../members/MemberForm";
 /**
  * The roster: everybody in the band.
  *
- * ONE ROSTER (design §8), and since 2026_09_08_000001 everybody on it has an
+ * ONE ROSTER (ADR 0015), and since 2026_09_08_000001 everybody on it has an
  * account — the roster is the people the band tracks for events, and all of
  * them are answerable for one. People the band merely displays, such as
  * instructors or honorary members, are CONTENT and are not here at all.
@@ -55,13 +55,12 @@ import { MemberForm, type MemberDraft } from "../members/MemberForm";
  *
  * ROLES ARE SHOWN BY THEIR FRENCH LABEL, joined from GET /api/roles. Never the
  * key, and never the permission strings: "why does she have this?" is answered
- * with "because she is in Team Direction" (design §3).
+ * with "because she is in Team Direction" (ADR 0014).
  *
  * SEARCHED AND FILTERED ON THE SERVER (#97), never over the rows this screen
  * happens to hold: the collection envelope slices on the server, so a filter
  * here would search one page of a roster that had been cut short and say
- * nothing about the rest. See
- * docs/superpowers/specs/2026-09-23-roster-and-planning-search-design.md.
+ * nothing about the rest. See App\Support\Search.
  *
  * INVARIANT REFUSALS COME FROM THE SERVER. This screen does not pre-empt
  * cannot_delete_self or cannot_remove_last_administrator with its own copy of
@@ -523,12 +522,12 @@ export function Members() {
         title={t("members.deleteTitle", {
           name: `${deleting?.member.firstName} ${deleting?.member.lastName}`,
         })}
-        // NAMES THE DAMAGE (§4), and now that attendance exists it names that
+        // NAMES THE DAMAGE, and now that attendance exists it names that
         // too: deleting a member cascades their answers, and the committee
         // should know the planning loses them before they press this.
         //
-        // WHAT GOES, NOT HOW MUCH. The spec's example carries a count —
-        // "3 réponses à venir seront effacées" — and the count is deliberately
+        // WHAT GOES, NOT HOW MUCH. A count is the obvious addition —
+        // "3 réponses à venir seront effacées" — and it is deliberately
         // absent. Nothing reads it before the delete, and the obvious way to
         // supply it, a field on MemberResource, is the one place it must not
         // go: App\Support\EntityTag hashes the RENDERED resource, so a member's
@@ -537,7 +536,8 @@ export function Members() {
         // coupling EntityTag's own docblock says it avoids for events. The
         // event dialog made the same call for the same reason.
         //
-        // Registrations arrive in R3 and this sentence gains them then.
+        // Registrations are not in it: they belong to an event and a guest,
+        // and no registration row names a member.
         //
         // "CETTE PERSONNE", NOT THE NAME. The name is in the title and in the
         // phrase that has to be typed, so the description loses nothing by

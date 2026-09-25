@@ -80,7 +80,7 @@ test("a first answer can be taken back from the toast", async () => {
 test("a change offers no undo, because undo would erase the answer it changed", async () => {
   // MUTATION TEST: make the toast's action unconditional and this fails. The
   // only thing behind undo is DELETE, which returns the event to UNANSWERED —
-  // so on a withdrawal it would throw away the `oui` and the reason C11 just
+  // so on a withdrawal it would throw away the `oui` and the reason just
   // collected for it, in one tap, and record neither.
   await renderPlanning();
 

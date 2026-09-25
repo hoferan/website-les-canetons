@@ -117,7 +117,7 @@ class EventWriteTest extends TestCase
         // both the column default and Event::$attributes', and null is the
         // column's. Dropping either from Event::create() left this whole file
         // green until this test sent something else. The other tests keep the
-        // default shape, which is the one the plan pinned.
+        // default shape.
         $response = $this->actingAsMember($this->organiser)
             ->postJson('/api/v1/events', $this->validPayload([
                 'isPublic' => true,
@@ -197,8 +197,8 @@ class EventWriteTest extends TestCase
 
         // 201 alone cannot tell "the two-day event was stored" from "an event
         // was stored": a controller that dropped endsAt onto the start date
-        // would answer 201 and quietly turn C6's whole reason for existing
-        // back into a one-day row. Assert the two dates actually differ.
+        // would answer 201 and quietly turn a two-day event back into a
+        // one-day row. Assert the two dates actually differ.
         $event = Event::query()->sole();
         $this->assertSame('2026-10-03 07:00', $event->starts_at->utc()->format('Y-m-d H:i'));
         $this->assertSame('2026-10-04 14:00', $event->ends_at->utc()->format('Y-m-d H:i'));
@@ -268,8 +268,9 @@ class EventWriteTest extends TestCase
         // whole point: `isPublic` false and `attire`/`notes` null coincide with
         // the column defaults, so a PATCH that silently drops a field is
         // indistinguishable from one that writes it unless the test sends
-        // something else. Task 5 lost `is_public` out of its insert with all
-        // eight tests green for exactly that reason (see 6250d7f).
+        // something else. An earlier version lost `is_public` out of its
+        // insert with all eight tests green for exactly that reason (see
+        // 6250d7f).
         $event = Event::factory()->create();
 
         $this->actingAsMember($this->organiser)
@@ -501,13 +502,14 @@ class EventWriteTest extends TestCase
     public function test_an_unknown_event_is_a_404_not_a_500(): void
     {
         // assertStatus(404) alone cannot tell "route-model binding refused an
-        // unknown id" from "there is no such route": in Task 4 that bare
+        // unknown id" from "there is no such route": once that bare
         // assertion passed with the route deleted outright.
         //
         // It used to be told apart by Laravel's internal "No query results for
         // model [...]" message, which was only visible because 404 escaped this
-        // API's error contract. A2 closed that escape. The route is proved to
-        // exist by driving the same verb against an id that resolves — same
+        // API's error contract. Problem documents (ADR 0012) closed that
+        // escape. The route is proved to exist by driving the same verb
+        // against an id that resolves — same
         // pairing as EventIndexTest::test_an_unknown_event_is_a_404, and
         // stronger than the message match was.
         $event = Event::factory()->create();
@@ -526,10 +528,10 @@ class EventWriteTest extends TestCase
     public function test_an_organiser_switches_registration_on_and_off(): void
     {
         // THE HOLE THIS CLOSES. registration_closes_at is the enable switch
-        // for the whole R3 feature, and until 2026-09-10 no endpoint wrote
-        // it — the only way to run a souper was an Adminer edit, on a host
-        // with no shell, which is the constraint the release exists to work
-        // around.
+        // for the whole registration feature, and until 2026-09-10 no
+        // endpoint wrote it — the only way to run a souper was an Adminer
+        // edit, on a host with no shell, which is the constraint the release
+        // exists to work around.
         $event = Event::factory()->create();
         $this->assertFalse($event->takesRegistrations());
 

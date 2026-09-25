@@ -298,6 +298,20 @@ Keep it in one of them, not several. This file is loaded into every session, so
 a trap that belongs in `docs/traps.md` costs context on every turn if it lands
 here instead.
 
+## Decisions
+
+**`docs/adr/` records the decisions the code makes no sense without**: why one
+origin, why FTP mirroring, why migrations run on a request, why permissions and
+never roles, and so on. Read the index in `docs/adr/README.md` before changing
+anything one of them covers, and write a new record when you take a decision of
+that weight. Records are MADR 4 (ADR 0000), started from
+`docs/adr/adr-template.md`.
+
+Specs and plans written by the skills below are working documents. They go in
+`docs/superpowers/`, which is git-ignored, and they are never committed or
+cited. A code comment gives its reason in place, or points at an ADR or an
+issue, never at a spec section or a plan task. ADR 0001 has the reasoning.
+
 ## Superpowers Skills
 
 This project ships with [Superpowers](https://github.com/obra/superpowers) skills in `.claude/skills/`. These are loaded automatically at session start. Always use the `Skill` tool to invoke them — never read skill files manually.
@@ -390,9 +404,9 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   `api/config/api.php` and **must never reach `api/.env.example`**, where an
   extra key refuses every server's next deploy.
 - **Runtime configuration comes from `GET /api/v1/config`**, not from
-  `import.meta.env`. TEST, QA and PROD run the *same promoted bundle*, so no
-  environment-specific value may be baked in. That endpoint drives the non-prod
-  corner ribbon and the feature flags.
+  `import.meta.env`. TEST, QA and PROD run the same commit, built reproducibly
+  from its tag, so no environment-specific value may be baked in. That endpoint
+  drives the non-prod corner ribbon and the feature flags. See ADR 0007.
 - **The API reference lives at `GET /api/docs`**, gated by `API_DOCS_ENABLED`
   in each server's `.env` (default **off**, answering 404 rather than 403).
   It is a Scalar page reading the **committed** `openapi.json` that ships in
@@ -408,11 +422,13 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   claims that prefix before the SPA fallback. Scramble's own `/docs/api` is
   outside it and has always been swallowed by the fallback.
 - **Auth:** Laravel owns it — `POST /api/v1/login` / `POST /api/v1/logout` via
-  Sanctum's stateful SPA cookie flow. The capability matrix is **not a
-  hierarchy**: `user`/`moderator` may `respond`; `admin` may `manage_events` /
-  `view_summary`, and therefore may *not* respond. `App\Support\Capability`
-  (behind the `capability:` route middleware) is the only thing that enforces
-  anything; the SPA's guards mirror it for UX only.
+  Sanctum's stateful SPA cookie flow (ADR 0010). Authorization checks a
+  **permission, never a role**: the permissions are the cases of
+  `App\Support\Permission`, roles are data that group them, and the
+  `permission:<name>` route middleware (`App\Http\Middleware\RequirePermission`)
+  is the only thing that enforces anything. Answering an event is not a
+  permission at all: a member may answer if they play in a register. The SPA's
+  guards mirror the permissions for UX only. See ADR 0014.
 - **The contract is versioned: everything lives under `/api/v1/*`.** The prefix
   comes from `withRouting(apiPrefix: ApiVersion::PREFIX)` in
   `api/bootstrap/app.php`, and `App\Http\Middleware\ApiVersion` owns that
@@ -429,9 +445,9 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   as well as missing ones, so an optional key there would refuse every
   server's next deploy.
 - **API:** routes in `api/routes/api.php` (each with a comment saying why it is
-  public or which capability gates it), controllers in
+  public or which permission gates it), controllers in
   `api/app/Http/Controllers/Api/`, shared logic in `api/app/Support/`. Pair
-  `auth:sanctum` with `capability:` wherever both apply, so an anonymous caller
+  `auth:sanctum` with `permission:` wherever both apply, so an anonymous caller
   gets 401 rather than 403.
 - **The API error contract is a problem document**, rendered by
   `App\Exceptions\ApiError`, deliberately replacing Laravel's native
@@ -663,7 +679,7 @@ a merged PR closes it whether or not anyone remembers.
 ## Who may change what
 
 The editability ladder, and the reason it also decides what can ever be
-translated. Full version in the rebuild design §3.1.
+translated. The reasoning is in ADR 0014.
 
 | Thing | Changed by |
 | --- | --- |
@@ -672,7 +688,7 @@ translated. Full version in the rebuild design §3.1.
 | Which roles exist, what each grants, the register list | **nobody yet — by hand in the DB (DbGate on :8091).** A deferred editor release owns this |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
-| Events, attendance | `events.manage` (R1c) |
+| Events, attendance | `events.manage` |
 
 **Who names a thing decides whether it can be translated.** A developer-defined
 name is a fixed key, so a second language costs one catalogue file; a user-typed
@@ -696,7 +712,7 @@ repair it.
 
 ## Language
 
-- **Everything is written in English** — specs and plans (`docs/`), code,
+- **Everything is written in English** — documentation and ADRs (`docs/`), code,
   comments, DB table/column names, enum/stored values, identifiers, slugs, and
   file names.
 - **API JSON response bodies are English** — every error response's `title`,

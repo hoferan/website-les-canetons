@@ -14,9 +14,8 @@ namespace App\Support;
  * ever report is listed here, once, by a developer — same posture as
  * App\Support\Permission.
  *
- * One flag for now: `calendar`. Its consumer arrives in R1c-2; it is declared
- * in FLAGS below so the mechanism has something real to carry and so the .env
- * key can be placed on servers before the feature lands.
+ * One flag for now: `calendar`, which gates the calendar view on the events
+ * page. It is declared in FLAGS below.
  *
  * BOOLEAN CAST, NOT DECORATIVE. .env values arrive as strings, and
  * config/features.php's env('FEATURE_CALENDAR', false) only converts the

@@ -33,7 +33,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 return Application::configure(basePath: dirname(__DIR__))
     // The contract lives under /api/v1. The prefix is what makes a future v2
     // possible without renaming every URL at the moment clients exist — see
-    // docs/superpowers/specs/2026-09-11-api-v1-public-contract-design.md, A1.
+    // ADR 0013.
     //
     // The site .htaccess needs no change for this: its dispatch matches
     // `^api(/|$)`, which already covers /api/v1/..., and the substituted
@@ -85,14 +85,15 @@ return Application::configure(basePath: dirname(__DIR__))
         //
         // BOTH GROUPS, and `web` is not an afterthought. Laravel serves exactly
         // two things here: routes/api.php on the `api` group, and Sanctum's
-        // GET /sanctum/csrf-cookie on the `web` group. app/assets/js/api.js
-        // primes that cookie route before EVERY mutating call, so on a
+        // GET /sanctum/csrf-cookie on the `web` group. The SPA's mutator
+        // (web/src/api/http.ts) primes that cookie route before its first
+        // mutating call on every page load, so on a
         // never-migrated server the first Laravel request a real visitor makes
         // — a login, a contact submit — is the `web` one. With
         // SESSION_DRIVER=database, StartSession would read a `sessions` table
         // that does not exist yet and 500 before the middleware that would have
         // created it ever ran. Covering only `api` would have left the repair
-        // depending on some earlier page happening to fetch GET /api/config
+        // depending on some earlier page happening to fetch GET /api/v1/config
         // first, which is likely but not guaranteed.
         //
         // FIRST IN EACH GROUP, which is load-bearing and is why these calls come
@@ -184,16 +185,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // This governs only Laravel's DEFAULT renderer — whether it falls back
         // to JSON or an HTML error page. Render callbacks bypass it entirely,
         // so it does not scope any of the closures below. That is why each one
-        // repeats $request->is('api/*'): those guards are what keep the old
-        // app's web pages on HTML error pages, and deleting them as redundant
-        // would put the JSON contract on every non-api route too.
+        // repeats $request->is('api/*'): those guards are what keep the routes
+        // outside /api/* (Sanctum's csrf-cookie route, the /up health check) on
+        // Laravel's default renderer, and deleting them as redundant would put
+        // the JSON contract on every non-api route too.
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
 
-        // The front-end's French layer reads {error, code, fields[]} — see
-        // App\Exceptions\ApiError. These renderers replace Laravel's native
-        // {message, errors:{}} for every /api/* response.
+        // Every /api/* failure is an RFC 9457 problem document whose `code` and
+        // `errors[].reason` tokens the SPA translates. See
+        // App\Exceptions\ApiError and ADR 0012. These renderers replace
+        // Laravel's native {message, errors:{}} for every /api/* response.
         $exceptions->render(fn (ValidationException $e, Request $request) => $request->is('api/*')
             ? ApiError::validation($e)
             : null);
@@ -220,8 +223,8 @@ return Application::configure(basePath: dirname(__DIR__))
         //   - Gate::denyWithStatus(403) / Response::denyWithStatus(403), i.e.
         //     an AuthorizationException that hasStatus();
         //   - OriginMismatchException.
-        // The plan recommends Gate::authorize() as the safe idiom, and it is —
-        // but only for status-less denials, which is the arm that becomes an
+        // Gate::authorize() is the safe idiom, but only for status-less
+        // denials, which is the arm that becomes an
         // AccessDeniedHttpException. Attach a status and it silently leaves the
         // contract.
         $exceptions->render(fn (AccessDeniedHttpException $e, Request $request) => $request->is('api/*')
@@ -261,8 +264,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // 403 or 409. An answer was refused for a reason about the STATE of
         // things rather than a missing grant — see App\Support\
         // AttendanceIntegrity. The status travels on the exception because
-        // "you are in no register" is not a conflict while C12's closed undo
-        // window and C14's self-refusal are; hard-coding either here would
+        // "you are in no register" is not a conflict while the closed
+        // five-minute undo window and the on-behalf route's refusal of its own
+        // caller are (ADR 0018); hard-coding either here would
         // make one of the three lie.
         $exceptions->render(fn (AttendanceRefused $e, Request $request) => $request->is('api/*')
             ? ApiError::json($e->status, $e->errorCode, $e->getMessage())

@@ -119,7 +119,7 @@ class ResponseHygieneTest extends TestCase
      *
      * TWO THINGS THIS CAUGHT. `#/components/responses/ModelNotFoundException`
      * described a 404 as Laravel's `{"message": "..."}` on `application/json`,
-     * which this API has not answered since A2 — the most common failure in the
+     * which this API no longer answers (ADR 0012) — the most common failure in the
      * contract, described as a body that cannot occur, referenced by nineteen
      * operations. And the component NAME published an ORM word to readers who
      * have no ORM.

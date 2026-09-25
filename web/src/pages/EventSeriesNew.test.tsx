@@ -84,8 +84,7 @@ test("nothing is offered to create before a range is chosen", async () => {
 test("changing the range unticks nothing and re-ticks everything", async () => {
   // A tick state that survived a new range would be applied to whichever dates
   // happen to sit at those positions now, and the season would be quietly
-  // missing a rehearsal nobody chose to skip. This is the requirement the plan
-  // states and does not test.
+  // missing a rehearsal nobody chose to skip.
   await renderGenerator();
   await fillSeptember();
 

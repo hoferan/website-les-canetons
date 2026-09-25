@@ -73,7 +73,7 @@ function Register({ register }: { register: PublicSectionResource }) {
 
 /**
  * The band, register by register — generated from the roster rather than
- * authored, which is what R2 was waiting for R1's roster to exist.
+ * authored, which is why this page had to wait for the roster to exist.
  *
  * FIRST NAMES ONLY. The API sends both halves and this page renders one,
  * deliberately: these are children, the page is the one a parent checks for

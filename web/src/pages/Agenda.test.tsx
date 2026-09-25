@@ -98,7 +98,7 @@ test("the front page offers no link when it is already showing everything", asyn
 });
 
 /* ---------------------------------------------------------------------------
- * The way in to the booking form (R3)
+ * The way in to the booking form
  * -------------------------------------------------------------------------- */
 
 /**

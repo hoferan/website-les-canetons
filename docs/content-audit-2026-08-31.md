@@ -1,8 +1,5 @@
 # Content audit — 2026-08-31
 
-Sub-project **C** of
-`docs/superpowers/specs/2026-08-31-post-cutover-ship-and-cleanup-design.md`.
-
 Every public page, every outbound link, every factual claim. Links were probed
 live; nothing here is inferred from the code alone, and **nothing factual is
 invented** — where only the band knows the answer, this asks instead of guessing.

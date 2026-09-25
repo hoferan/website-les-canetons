@@ -61,7 +61,7 @@ test("useSession outside the provider fails loudly rather than returning undefin
  * can() is UX only — Laravel's `permission:` middleware is the sole
  * enforcement. These tests pin that it reads the permission STRINGS the API
  * sends and never a role name: which role granted a permission is not a
- * question any part of the UI may ask (design §3), the same rule the
+ * question any part of the UI may ask (ADR 0014), the same rule the
  * middleware follows.
  */
 function CanProbe() {

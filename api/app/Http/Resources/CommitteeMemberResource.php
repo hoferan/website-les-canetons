@@ -18,9 +18,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * on 2026-09-14, and that bought a rank and a single place to fix a typo — but
  * it is still text the committee types, so it is still rendered verbatim and no
  * translation layer reaches it. That is the trade the editability ladder makes:
- * whoever names a thing decides whether it can ever be translated (design
- * §3.1). A role's name is a developer's key and can be translated; this cannot.
- * A public page has no use for the id, so it is not sent.
+ * whoever names a thing decides whether it can ever be translated
+ * (ADR 0014). A role's name is a developer's key and can be translated; this
+ * cannot. A public page has no use for the id, so it is not sent.
  *
  * @mixin Member
  */

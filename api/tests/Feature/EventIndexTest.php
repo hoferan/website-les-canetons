@@ -25,7 +25,7 @@ class EventIndexTest extends TestCase
 
     public function test_an_anonymous_caller_is_refused(): void
     {
-        // 401, not 403: the planning is members-only in R1c (C1), and an
+        // 401, not 403: the planning is members-only, and an
         // anonymous caller has not failed a permission check — they have not
         // authenticated at all.
         $this->getJson('/api/v1/events')->assertStatus(401)->assertJson(['code' => 'not_authenticated']);
@@ -43,7 +43,7 @@ class EventIndexTest extends TestCase
 
     public function test_past_events_are_absent_by_default(): void
     {
-        // C4: "the planning" means what is ahead. By next carnival the full
+        // "The planning" means what is ahead. By next carnival the full
         // list is a hundred rehearsals to scroll past on a phone.
         Event::factory()->past()->create(['title' => 'Déjà joué']);
         Event::factory()->create(['title' => 'À venir']);
@@ -126,8 +126,9 @@ class EventIndexTest extends TestCase
 
     public function test_the_response_is_never_cached(): void
     {
-        // This list varies by identity in R1c-2, and a shared proxy that
-        // cached one member's view would serve it to another.
+        // This list varies by identity, since it carries the caller's own
+        // answers, and a shared proxy that cached one member's view would
+        // serve it to another.
         $this->actingAsMember($this->member)->getJson('/api/v1/events')
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');
@@ -156,14 +157,15 @@ class EventIndexTest extends TestCase
     {
         // assertStatus(404) alone cannot tell "route-model binding refused an
         // unknown id" from "there is no such route at all" — both answer 404,
-        // and in Task 4 that bare assertion passed with the route deleted
+        // and once that bare assertion passed with the route deleted
         // outright.
         //
         // This used to tell them apart by matching Laravel's internal "No query
         // results for model [...]" message, which was only ever visible because
         // 404 ESCAPED this API's error contract and fell through to the
-        // framework's default body. A2 closed that escape, so the string is
-        // gone and both cases now answer the same problem document — which is
+        // framework's default body. Problem documents (ADR 0012) closed that
+        // escape, so the string is gone and both cases now answer the same
+        // problem document — which is
         // correct: telling a caller which of the two happened is exactly the
         // enumeration a 404 exists to prevent.
         //

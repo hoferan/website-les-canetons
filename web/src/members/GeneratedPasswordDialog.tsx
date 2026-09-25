@@ -11,7 +11,7 @@ import {
 import { t } from "../i18n";
 
 /**
- * Shows a newly-issued password exactly once (§4.4).
+ * Shows a newly-issued password exactly once (ADR 0016).
  *
  * AS SELECTABLE TEXT, IN A LARGE MONOSPACE, NOT IN A PASSWORD FIELD. The whole
  * purpose is that an administrator reads it down the phone or hands it over on

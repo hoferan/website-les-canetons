@@ -28,10 +28,10 @@ import { t, type TranslatedError } from "../i18n";
  * is a wall. One button per row opens this, and the same control serves both
  * layouts — which is also the only way the two cannot drift apart.
  *
- * NO REASON IS REQUIRED, withdrawal included. That is C13: this is the
+ * NO REASON IS REQUIRED, withdrawal included (ADR 0018): this is the
  * committee writing down what somebody told them, and demanding a reason on
- * another person's behalf puts words in their mouth. C11's rule is for a
- * member taking back their own yes, and this is not that route.
+ * another person's behalf puts words in their mouth. The withdrawal reason is
+ * for a member taking back their own yes, and this is not that route.
  *
  * Like WithdrawDialog, the action is a plain Button rather than Radix's
  * AlertDialogAction, which closes the dialog on click: the request can be

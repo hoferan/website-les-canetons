@@ -27,7 +27,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * Permissions are absent because they are answered by the ROLE: this sends
  * roleIds, GET /api/v1/roles sends what each role grants, and the UI joins them.
  * That is what keeps "why does she have this?" answerable — always "because she
- * is in Team Direction" (design §3) — and it keeps the endpoint at a fixed
+ * is in Team Direction" (ADR 0014) — and it keeps the endpoint at a fixed
  * number of queries instead of one per member.
  *
  * @mixin Member

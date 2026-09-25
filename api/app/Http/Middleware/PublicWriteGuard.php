@@ -12,13 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
  * The only thing standing in front of this API's two ANONYMOUS write
  * endpoints: the contact form and public event registration.
  *
- * WHY IT EXISTS AT ALL. §6 of the rebuild spec required honeypot plus
- * submit-timing plus Altcha "applied generically to both public write
- * endpoints". That requirement was orphaned across three release slicings —
- * R1 covered the members' tool, R2 the public pages, R3 registration, and
- * none of them claimed the contact form — so POST /api/v1/contact shipped with
- * no protection of any kind and still had none when R3 was designed. This is
- * the owner it never had.
+ * WHY IT EXISTS AT ALL. Both public write endpoints were meant to carry a
+ * honeypot and submit-timing (ADR 0019), and until this middleware nothing
+ * owned that requirement: POST /api/v1/contact shipped with no protection of any
+ * kind and still had none when public registration was built. This is the
+ * owner it never had.
  *
  * TWO CHECKS, both server-side:
  *
@@ -28,7 +26,7 @@ use Symfony\Component\HttpFoundation\Response;
  *      two seconds old was not typed by a person. See App\Support\FormToken
  *      for why it is stateless and not single-use.
  *
- * ALTCHA'S PROOF-OF-WORK IS DELIBERATELY ABSENT (R3 spec §9). It needs a
+ * ALTCHA'S PROOF-OF-WORK IS DELIBERATELY ABSENT (ADR 0019). It needs a
  * browser widget, so it cannot be finished server-side, and its cost falls
  * hardest on a parent with an old phone. These two are the two thirds that
  * are free.

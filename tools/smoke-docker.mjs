@@ -19,11 +19,12 @@
 // there is no cheap way to observe it through the current routes. Only the
 // [L]-vs-the-fallback half is covered.
 //
-// See docs/superpowers/specs/2026-07-25-local-docker-prod-parity-design.md and
-// docs/superpowers/specs/2026-08-28-spa-clean-cutover-and-mocks-design.md.
+// The stack it runs against mirrors the host: one origin, Apache and PHP-FPM
+// over mod_proxy_fcgi, serving the built dist/build with api/ mounted at _api
+// and the generated .htaccess overlay on top.
 //
 // Trimmed 2026-09-07: four checks asserted the events/signups/altcha domain
-// that R1a deleted, and the deny-all check requested the framework's default
+// that the rebuild deleted, and the deny-all check requested the framework's default
 // /api/user, which this app's route table has never had. The file was 8/13 for
 // that whole period, which is worse than having no smoke test — a real
 // breakage would have arrived as one more red line among five.
@@ -110,7 +111,7 @@ check('/api/* reaches Laravel, and the deny-all did not block it', async () => {
   // deny — this is the ONLY request whose resolved file sits under that denied
   // tree. The JSON body distinguishes Laravel from any other 401.
   //
-  // /api/me, not the framework's default /api/user: R1a's route table has no
+  // /api/me, not the framework's default /api/user: this app's route table has no
   // /user, so this check asserted a 404 for weeks. Any authenticated route
   // would do; /api/me is the one guaranteed to exist for as long as there is a
   // session at all.
@@ -231,7 +232,7 @@ check('POST /api/contact is Laravel, answering in the problem-document contract'
   // MUTATING public endpoint — the one class of route where the dispatch is
   // most load-bearing and a 404 the most damaging.
   //
-  // IT NOW HAS TO GET PAST PublicWriteGuard, added 2026-09-12. R3 put a
+  // IT NOW HAS TO GET PAST PublicWriteGuard, added 2026-09-12 to put a
   // honeypot and a submit-timing floor in front of both anonymous write
   // endpoints, so a bare POST answers 422 `spam_suspected` and never reaches
   // validation — this check had been asserting a 400 it could no longer be
@@ -240,7 +241,7 @@ check('POST /api/contact is Laravel, answering in the problem-document contract'
   // over the real stack: api/tests/ covers the guard thoroughly and cannot
   // cover Apache and FastCGI at all.
   //
-  // IT ALSO HAS TO CARRY AN Idempotency-Key, added 2026-09-12 with A4. Both
+  // IT ALSO HAS TO CARRY AN Idempotency-Key, added 2026-09-12 (ADR 0013). Both
   // anonymous writes require one, so a submission without it answers 400
   // `idempotency_key_required` and never reaches validation either — the same
   // shape of breakage the write guard caused above, one layer further in.

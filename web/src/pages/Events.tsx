@@ -42,7 +42,7 @@ import { useSession } from "../session/SessionProvider";
  * (RequireSession). Creating and editing are gated on `events.manage`, and
  * those controls are ABSENT rather than refused for everybody else — a link
  * that leads to "Accès refusé" teaches people that parts of the site are
- * broken for them (design §4).
+ * broken for them.
  *
  * THE PAST REPLACES THE PLANNING RATHER THAN EXTENDING IT. It is the other
  * half of the list, not a superset: by next carnival the full history is a
@@ -97,7 +97,7 @@ export function Events() {
 
   // The calendar, and the day it has filtered the list down to. Both are here
   // rather than inside EventCalendar because the filter is what the calendar
-  // is FOR: it does not navigate, it narrows the list below it (C8).
+  // is FOR: it does not navigate, it narrows the list below it.
   const [showingCalendar, setShowingCalendar] = useState(false);
   const [day, setDay] = useState<string | null>(null);
 
@@ -443,7 +443,7 @@ export function Events() {
         {/* md AND UP ONLY, and absent from a phone altogether rather than
             shrunk onto one. A month grid is for somebody planning a season at
             a desk; the list is the whole phone view and stays the default
-            everywhere (C8). */}
+            everywhere. */}
         {calendarEnabled ? (
           <Button
             type="button"

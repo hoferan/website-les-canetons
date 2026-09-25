@@ -188,7 +188,7 @@ export function translateApiError(error: Pick<ApiError, "code" | "fields">): Tra
 /**
  * A role's French name and help text, resolved from its `key`.
  *
- * The API carries NO display name (decision B6): it is English without
+ * The API carries NO display name (ADR 0014): it is English without
  * exception, and a seeded role's name is system text a developer chose in a
  * migration rather than something a user typed. `key` is the fixed identifier,
  * and this is the only place it becomes French — the same rule

@@ -17,7 +17,7 @@ use Illuminate\Mail\Mailables\Envelope;
  * failure mode of mail that silently never sends. RegistrationController
  * sends it inline after the transaction commits and swallows any failure,
  * so a flaky SMTP cannot throw away a booking that is already stored
- * (decision G5).
+ * (ADR 0009).
  *
  * THE ONLY FRENCH IN THE API, and a deliberate exception to the project
  * rule that API bodies are English. The rule exists because

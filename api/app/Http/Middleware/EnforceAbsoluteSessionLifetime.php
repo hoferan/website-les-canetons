@@ -64,9 +64,9 @@ class EnforceAbsoluteSessionLifetime
         // config rather than hardcoding 'strict' so a server can still choose
         // a different value.
         //
-        // If Sanctum is ever removed — the project spec lists this as a likely
-        // future change — nothing calls configureSecureCookieSessions() any
-        // more, session.same_site is never disturbed in the first place, and
+        // If Sanctum is ever removed, nothing calls
+        // configureSecureCookieSessions() any more, session.same_site is never
+        // disturbed in the first place, and
         // this line becomes a harmless no-op reassignment of a config key to
         // itself.
         config(['session.same_site' => config('session.same_site_intended')]);
@@ -79,8 +79,8 @@ class EnforceAbsoluteSessionLifetime
         // unreachable through the front door — Sanctum authenticates this API
         // by session cookie, so no session means no user and the branch above
         // has already returned. It becomes reachable the moment a second
-        // credential exists that does not carry one: an API token, which the
-        // public-contract programme's A6 adds.
+        // credential exists that does not carry one: an API token, which
+        // ADR 0010 defers until a non-browser consumer needs one.
         //
         // Without this guard that request 500s on the session() call below,
         // which is the same defect a black-box review found in

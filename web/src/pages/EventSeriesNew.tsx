@@ -15,9 +15,8 @@ import { t } from "../i18n";
  * A whole season in one request.
  *
  * IT REPORTS THE COUNT AND STAYS, rather than returning to the planning the
- * moment it succeeds — a deviation from the plan, which said to navigate. Two
- * reasons, both from what this screen actually does: it writes up to sixty
- * rows at once, so "4 événements créés" is the only confirmation that the
+ * moment it succeeds. Two reasons, both from what this screen actually does:
+ * it writes up to sixty rows at once, so "4 événements créés" is the only confirmation that the
  * generator did what the preview promised, and a message shown on the way out
  * is a message nobody reads. The band's real season also has two rehearsal
  * variants, so generating a second series straight afterwards is the normal

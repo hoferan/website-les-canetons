@@ -16,8 +16,7 @@ use Tests\TestCase;
  * envelope slices on the server, so a filter that ran in the browser would
  * search page one of a cut-short roster and miss everybody else without
  * saying so. Here the query narrows first and the envelope slices what is
- * left, so `meta.total` counts the matches. See
- * docs/superpowers/specs/2026-09-23-roster-and-planning-search-design.md.
+ * left, so `meta.total` counts the matches. See App\Support\Search.
  */
 class MemberSearchTest extends TestCase
 {

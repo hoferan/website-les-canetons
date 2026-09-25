@@ -3,9 +3,10 @@ import { expect, test } from "@playwright/test";
 /**
  * The members' side, in a real browser — for the two things jsdom cannot see.
  *
- * Both were found by André's manual pass over R2 on 2026-09-14, and both had
- * been shipped and green since R1a/R1b: there was no way to log out at all, and
- * the roster form carried a field with no control. A component suite was happy
+ * Both were found by André's manual pass over the public pages on 2026-09-14,
+ * and both had been shipped and green since the login and the roster first
+ * shipped: there was no way to log out at all, and the roster form carried a
+ * field with no control. A component suite was happy
  * with each, because a control that is never rendered fails no assertion
  * nobody wrote.
  *
@@ -121,10 +122,10 @@ test("on a phone the Menu bar stays at the top while the page scrolls", async ({
 });
 
 /**
- * THE FIELD THAT HAD NO CONTROL. `instructor_of_section_id` shipped in R1a,
- * MemberForm carried it in its draft, and Members.tsx sent it on every write —
- * with nothing on screen ever setting it, so it could only be the null it
- * started as. R2's band page is the first thing that reads it.
+ * THE FIELD THAT HAD NO CONTROL. `instructor_of_section_id` shipped with the
+ * first roster, MemberForm carried it in its draft, and Members.tsx sent it on
+ * every write — with nothing on screen ever setting it, so it could only be the
+ * null it started as. The public band page is the first thing that reads it.
  */
 test("a member can be made the instructor of a register, and it reaches the public page", async ({
   page,
@@ -191,8 +192,8 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
   // "/events/7/registrations", NOT A CLICK-THROUGH: 7 is the souper's fixed
   // id in the mocked backend (handlers.ts's initialRegistrations/the one
   // event with takesRegistrations), and it is the only event with bookings
-  // to measure. Whole-branch review I1: the design doc measured the roster
-  // and the planning at 390px and never this screen, and BookingActions'
+  // to measure. Whole-branch review I1: the roster and the planning had
+  // been measured at 390px and this screen never had, and BookingActions'
   // two controls went from `size="sm"` to the default when this screen moved
   // to the shared RowActions component — `RowAction` carries no size field —
   // which is exactly the axis #118 exists to fix.
@@ -221,7 +222,7 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
     // widest row there is: five actions for demo.direction. Before this
     // change it wrapped to three lines and 148px.
     //
-    // CORRECTED FROM THE BRIEF'S LOCATOR: `RowActions` renders its own
+    // WHY THIS LOCATOR: `RowActions` renders its own
     // `flex flex-wrap gap-tight` wrapper around the inline control(s) and the
     // "..." trigger, and `EventCard` wraps THAT again in a `div` carrying the
     // identical class, so a plain `div.flex.flex-wrap.gap-tight` selector
@@ -280,15 +281,15 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
       // that needs real focus events. So the reason for the primitive is
       // guarded here or nowhere.
       //
-      // { delay: 50 }, FOUND HERE, NOT IN THE BRIEF: Radix's own arrow-key
+      // { delay: 50 }: Radix's own arrow-key
       // handling defers the focus move to `setTimeout(focusFirst)`
       // (@radix-ui/react-roving-focus), so the click-on-focus in
       // @radix-ui/react-radio-group only fires while its `isArrowKeyPressedRef`
       // is still true — a flag a document `keydown`/`keyup` pair sets and
       // clears. A zero-delay `press()` dispatches keydown and keyup back to
       // back, and the keyup's synchronous reset can beat the deferred
-      // `setTimeout`, so the same command that read as PASS in the brief's own
-      // Step 2 run failed here on the first try: focus moved to "Passés" but
+      // `setTimeout`, so a zero-delay press that passed once failed on the
+      // next try: focus moved to "Passés" but
       // `aria-checked` never flipped. A real key press is never that fast;
       // `delay: 50` is what a human's keydown-to-keyup actually looks like, and
       // it made the result reproducible across repeated runs.
@@ -326,8 +327,7 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
 });
 
 /**
- * TOUCH, WHICH `computer.click` NEVER EXERCISES. Spec §6, Review Focus 5: a
- * `tap` on a menu item must not also register on whatever the menu closing
+ * TOUCH, WHICH `computer.click` NEVER EXERCISES. A `tap` on a menu item must not also register on whatever the menu closing
  * reveals underneath it — the classic "tap-through" bug a mouse click cannot
  * catch because a mouse has no separate touchstart/touchend to race.
  *
@@ -348,13 +348,12 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
   // either after the fact), but the VIEWPORT starts wide and is narrowed only
   // after logIn's own assertion runs — the same "logged in first, then
   // narrowed" fix the overflow test above already documents. Creating the
-  // context at 390x844 straight away, as the brief originally had it, fails
+  // context at 390x844 straight away fails
   // for the identical reason: below `md` the nav collapses behind the
   // hamburger (Layout.tsx's `hidden md:flex`), so logIn's
   // account-avatar check never finds a visible trigger
   // and every run of this test times out on login, before it ever reaches the
-  // tap it exists to test. Confirmed by running it exactly as the brief wrote
-  // it first.
+  // tap it exists to test. Confirmed by running it that way first.
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     hasTouch: true,

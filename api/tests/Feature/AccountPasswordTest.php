@@ -106,7 +106,7 @@ class AccountPasswordTest extends TestCase
 
     public function test_it_ends_the_members_other_sessions_but_not_this_one(): void
     {
-        // A stolen session stops working the moment the password changes (§6)
+        // A stolen session stops working the moment the password changes
         // — but not the session standing on the screen. Every first login lands
         // on the forced-change form, so logging the actor out here would bounce
         // every new account straight back to the login page.

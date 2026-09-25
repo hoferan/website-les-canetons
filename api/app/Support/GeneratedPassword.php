@@ -6,7 +6,7 @@ use Random\Randomizer;
 use RuntimeException;
 
 /**
- * A committee-issued password, shown exactly once (§4.4).
+ * A committee-issued password, shown exactly once (ADR 0016).
  *
  * THE ALPHABET IS THE DESIGN. This gets read out loud — an administrator opens
  * a member, hits "Réinitialiser le mot de passe", and reads the result down the

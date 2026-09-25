@@ -52,7 +52,7 @@ test("the accessible name does not collide with the nav's Accueil link", () => {
   expect(name.toLowerCase()).not.toContain("accueil");
 });
 
-// THE E2-ROUND DECISION THIS PINS. The duck's beak is red; the wordmark used to
+// THE DECISION THIS PINS. The duck's beak is red; the wordmark used to
 // highlight "Canetons" in pink, so the header carried two competing accents an
 // inch apart. The beak is now the only colour in the header — colour in the
 // header means the MARK, colour in the nav means STATE. Asserted on the class

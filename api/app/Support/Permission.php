@@ -27,10 +27,10 @@ enum Permission: string
      * guest list.
      *
      * A separate case from RegistrationsView on purpose: guests get no
-     * self-service (G2), so the committee corrects mistakes — but `committee`
-     * holds RegistrationsView as its only permission, and widening that token
-     * would hand the role that merely looks at the list the power to delete
-     * from it.
+     * self-service (ADR 0020), so the committee corrects mistakes — but
+     * `committee` holds RegistrationsView as its only permission, and widening
+     * that token would hand the role that merely looks at the list the power to
+     * delete from it.
      */
     case RegistrationsManage = 'registrations.manage';
 

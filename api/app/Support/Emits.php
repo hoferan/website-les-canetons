@@ -10,15 +10,14 @@ use Attribute;
  * App\Support\Scramble\DocumentsFailureModes derives almost everything from a
  * route's own middleware — `permission:` IS the reason a 403 exists, so reading
  * it means the document cannot drift from the routes, and there is no
- * annotation to forget. That is the property A3 was built for and this does not
- * weaken it.
+ * annotation to forget. That is the property DocumentsFailureModes was built
+ * for, and this does not weaken it.
  *
  * WHAT IT CANNOT REACH is the refusals a controller or a domain service raises:
  * `registration_closed` comes out of a date comparison,
  * `cannot_remove_last_administrator` out of a count. Nothing about the route
- * says so, and no inference is going to find it. A3's own docblock says these
- * "need an attribute on the action — annotation is right there, because the
- * fact really is per-action". This is that attribute.
+ * says so, and no inference is going to find it. These need an attribute on
+ * the action, because the fact really is per-action. This is that attribute.
  *
  * #[Emits('registration_not_open', 'registration_closed')]
  *

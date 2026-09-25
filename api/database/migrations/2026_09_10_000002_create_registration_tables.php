@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Public registration — the souper, generalised.
  *
- * REGISTRATION IS A PROPERTY OF AN EVENT (decision D9), not a separate
+ * REGISTRATION IS A PROPERTY OF AN EVENT (ADR 0020), not a separate
  * feature. That is what retires `Occasion` with its MENU_VALUES /
  * MENU_LABELS / MENU_INFO lockstep, `ACTIVE_OCCASION`,
  * `SOUPER_SIGNUP_ENABLED` and the conditional route registration: next
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Schema;
  * the registration_* columns (a later release owns them)". This is that
  * release.
  *
- * NO CAPACITY COLUMN (decision G1). The old souper had no capacity check
+ * NO CAPACITY COLUMN (ADR 0020). The old souper had no capacity check
  * either, and adding one puts a count-then-insert race on the single
  * endpoint strangers can hammer. `registration_max_guests` is a per-BOOKING
  * cap — the old MAX_GUESTS — not a total.
@@ -78,7 +78,7 @@ return new class extends Migration
                 $table->id();
                 $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
 
-                // Name, email and phone required (G4): a Swiss committee
+                // Name, email and phone required: a Swiss committee
                 // reaches somebody by phone the evening before, and every
                 // required field beyond that is a reason to abandon the form.
                 $table->string('first_name');

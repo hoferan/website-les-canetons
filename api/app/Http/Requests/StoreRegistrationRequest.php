@@ -55,10 +55,10 @@ class StoreRegistrationRequest extends FormRequest
     /** @return array<string, array<int, mixed>> */
     public function rules(): array
     {
-        // THE ONLY ANONYMOUS WRITE THIS RELEASE ADDS, and the second in the
-        // whole API. It sits behind PublicWriteGuard.
+        // ONE OF ONLY TWO ANONYMOUS WRITES in the whole API, the contact
+        // form being the other. It sits behind PublicWriteGuard.
         //
-        // Name, email and phone are required (G4): a Swiss committee reaches
+        // Name, email and phone are required: a Swiss committee reaches
         // somebody by phone the evening before, and every required field past
         // that is a reason to abandon the form. Address and table are
         // optional.

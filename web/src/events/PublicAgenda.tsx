@@ -16,7 +16,7 @@ const SHOWN = 3;
  * the committee's notes and an answer slot. This has four fields, each one
  * already on a poster, and no caller who may see the rest.
  *
- * Keyed by its CALLER on the event's id, which the resource gained when R3's
+ * Keyed by its CALLER on the event's id, which the resource gained when the
  * booking form was built: two events do collide on a date here — the live
  * planning had two on 3 October — so the start and the title together were
  * only nearly unique.

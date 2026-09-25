@@ -43,11 +43,11 @@ class StoreMemberRequest extends FormRequest
         //
         // There is deliberately no `password` field. The password is GENERATED
         // by the controller and returned once — an administrator reads it down
-        // the phone (§4.4) — so nobody types a credential into this form and
-        // no weak one can be chosen.
+        // the phone (ADR 0016) — so nobody types a credential into this form
+        // and no weak one can be chosen.
         //
         // Field names are camelCase, matching what the SPA sends and what
-        // App\Exceptions\ApiError echoes into fields[].field, where
+        // App\Exceptions\ApiError echoes into errors[].field, where
         // web/src/i18n/fr.ts looks them up. Renaming one silently breaks its
         // French error message.
         //

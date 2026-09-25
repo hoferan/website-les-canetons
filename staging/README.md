@@ -520,7 +520,7 @@ all**, and the first request Apache dispatches into `_api/` dies on
      cannot tell you this one is wrong. Make it `database`: `array` is
      per-process and `file` is per-server, so any code that treats the cache as
      a store shared across PHP-FPM workers gets it silently wrong on anything
-     else. (Until the R1a rebuild the concrete case was the Altcha replay guard
+     else. (Until the rebuild the concrete case was the Altcha replay guard
      behind the souper signup, which refused to run on anything else;
      `api/.env.example`'s comment on this key still describes that. The guard
      and the feature are gone, the reason for `database` is not.)
@@ -538,7 +538,7 @@ all**, and the first request Apache dispatches into `_api/` dies on
 
    **`ALTCHA_HMAC_SECRET` and `SOUPER_SIGNUP_ENABLED` were both listed here
    until 2026-09-07, and must NOT be set any more.** The souper signup, its
-   Altcha challenge guard and every route they gated were deleted in the R1a
+   Altcha challenge guard and every route they gated were deleted in the
    rebuild, so neither key exists in `api/.env.example` — and because the
    key-shape check refuses on **extra** keys as well as missing ones, a server
    still carrying either one refuses every deploy with exit 2 until it is

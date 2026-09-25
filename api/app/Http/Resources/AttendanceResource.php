@@ -57,7 +57,7 @@ class AttendanceResource extends JsonResource
 
     /**
      * When this answer was last written, so a client can tell whether the
-     * five-minute undo window (C12) is still open.
+     * five-minute undo window is still open.
      *
      * Without it the only way to find out is to fire the DELETE and render
      * a 409 answer_already_settled as a surprise, which means the planning

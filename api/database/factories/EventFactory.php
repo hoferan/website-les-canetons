@@ -10,14 +10,14 @@ use Illuminate\Support\Carbon;
  * A row on the planning.
  *
  * `starts_at` DEFAULTS TO THE FUTURE, deliberately, and by more than a day.
- * Most tests in this plan — and all of R1c-2's — are about upcoming events,
+ * Most event tests are about upcoming events,
  * and a default of now() (or "today") would put every factory-built row
  * exactly on the boundary the upcoming/past split turns on. That produces
  * tests that fail once a day, at midnight, for reasons nobody can reproduce:
  * a wide margin (weeks out) keeps every row unambiguously on one side.
  *
  * `ends_at` defaults two hours after `starts_at` — a rehearsal's actual
- * length — rather than to Faker noise, since `ends_at` is NOT NULL (C6) and
+ * length — rather than to Faker noise, since `ends_at` is NOT NULL and
  * every row needs one that makes sense next to its start.
  *
  * @extends Factory<Event>
@@ -44,8 +44,8 @@ class EventFactory extends Factory
     }
 
     /**
-     * A row unambiguously in the past, since Task 4 needs one to test the
-     * upcoming/past split against. Weeks back, for the same reason the
+     * A row unambiguously in the past, for the tests that exercise the
+     * upcoming/past split. Weeks back, for the same reason the
      * default is weeks out: no ambiguity at the boundary.
      */
     public function past(): static
@@ -70,7 +70,7 @@ class EventFactory extends Factory
     /**
      * An event whose registration form is OPEN.
      *
-     * Registration is enabled iff `registration_closes_at` is set (D9), so
+     * Registration is enabled iff `registration_closes_at` is set (ADR 0020), so
      * setting the close date is the whole switch. `opens_at` is left null,
      * which means open immediately — the common case, and the one a test
      * that says nothing about dates wants.

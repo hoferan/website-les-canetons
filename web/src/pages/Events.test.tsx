@@ -376,14 +376,14 @@ test("deleting removes it from the planning", async () => {
   const dialog = await screen.findByRole("alertdialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
-  // The plan waited on a findByText matching any non-empty node, which matches
-  // every node on the page and throws for multiple matches. Polling the count
+  // A findByText matching any non-empty node matches every node on the page
+  // and throws for multiple matches. Polling the count
   // is what the rest of this file already does.
   await expect.poll(() => screen.getAllByTestId("event-card").length).toBe(before - 1);
 });
 
 test("a delete carries the tag of the read it was confirmed from", async () => {
-  // DELETE is a conditional write (A4): refused 428 without an If-Match and
+  // DELETE is a conditional write (ADR 0013): refused 428 without an If-Match and
   // 412 with a stale one. The planning hands out no tag — one tag cannot
   // validate five rows — so opening the dialog is also the read. Without that
   // read the mocked backend refuses exactly as the real one does, and this
@@ -447,7 +447,7 @@ test("the delete dialog opens from the menu and is usable once the menu has gone
 });
 
 /* -------------------------------------------------------------------------- *
- * Answering, from the planning (R1c-2)
+ * Answering, from the planning
  * -------------------------------------------------------------------------- */
 
 test("what you still owe an answer on is pinned above the rest", async () => {
@@ -642,7 +642,7 @@ test("taking back a yes opens the dialog rather than answering", async () => {
   expect(await screen.findByRole("alertdialog")).toHaveTextContent("Vous ne venez plus à");
 });
 
-test("the dialog will not submit until a reason is typed (C11)", async () => {
+test("the dialog will not submit until a reason is typed", async () => {
   // MUTATION TEST: delete `armed` from WithdrawDialog and the first assertion
   // fails — the button becomes pressable with an empty field, and the member
   // meets the server's refusal instead of the question.
@@ -727,7 +727,7 @@ test("somebody in no register is asked nothing", async () => {
 });
 
 /* -------------------------------------------------------------------------- *
- * The calendar (C8)
+ * The calendar
  * -------------------------------------------------------------------------- */
 
 test("the calendar is absent unless the server turns it on", async () => {
@@ -782,7 +782,7 @@ test("a narrowed planning says so at every width, and can be widened again", asy
 });
 
 /* ---------------------------------------------------------------------------
- * The way in to R3's two committee screens
+ * The way in to the two registration screens
  * -------------------------------------------------------------------------- */
 
 /**

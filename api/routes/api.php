@@ -41,10 +41,9 @@ Route::middleware('throttle:public-write')->group(function () {
 
 // Public: the contact form is open to anonymous visitors.
 //
-// NOW GUARDED, after three release slicings left it unprotected. §6 of the
-// rebuild spec required honeypot + submit-timing on "both public write
-// endpoints" and no release ever claimed this one; R3 adds the second such
-// endpoint and the middleware that covers them both.
+// NOW GUARDED. Honeypot plus submit-timing is required on both public write
+// endpoints (ADR 0019), and this one had neither until the registration
+// endpoint arrived with the middleware that covers them both.
 // THROTTLED AS WELL AS GUARDED, and the throttle is the half that matters.
 // PublicWriteGuard costs an attacker one extra GET and a two-second wait:
 // the stamp is not bound to a caller and is deliberately replayable for two
@@ -62,8 +61,8 @@ Route::middleware('throttle:public-write')->group(function () {
 Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->group(function () {
     Route::post('/contact', ContactController::class);
 
-    // Public event registration — the souper, generalised (D9). Anonymous
-    // by design: the people booking a place are not band members.
+    // Public event registration — the souper, generalised (ADR 0020).
+    // Anonymous by design: the people booking a place are not band members.
     Route::post('/events/{event}/registrations', [RegistrationController::class, 'store']);
 });
 
@@ -73,7 +72,7 @@ Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->grou
 Route::get('/events/{event}/registration', [RegistrationController::class, 'form']);
 
 // Public: the two people-pages of the public site, generated from the roster
-// rather than authored (design §8, R2). Both are read-only and both list ONLY
+// rather than authored (ADR 0015). Both are read-only and both list ONLY
 // the people who have consented to appear — the filter lives in the relations
 // and the query, never in a caller.
 //
@@ -82,10 +81,10 @@ Route::get('/events/{event}/registration', [RegistrationController::class, 'form
 // limiter here would buy nothing and would break the site for a school whose
 // pupils share one address.
 // Public: what the band is doing next, and the ONLY thing that has ever read
-// `is_public`. The column has been settable since R1c-1 and meant nothing
-// until now — a rehearsal stays off this list because the flag defaults to
-// false, so appearing in public is a decision somebody made about an event
-// rather than the default for the whole diary.
+// `is_public`. The column was settable before anything read it, and meant
+// nothing until this endpoint existed — a rehearsal stays off this list
+// because the flag defaults to false, so appearing in public is a decision
+// somebody made about an event rather than the default for the whole diary.
 Route::get('/agenda', [AgendaController::class, 'index']);
 
 Route::get('/band', [BandController::class, 'index']);
@@ -95,7 +94,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // `no-store` on the whole authenticated group: every response below depends on
 // who is asking, and a shared proxy that cached one would serve one member's
-// view to another (design §4). A middleware rather than nine ->header() calls,
+// view to another (ADR 0010). A middleware rather than nine ->header() calls,
 // so the tenth endpoint cannot forget.
 Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -110,12 +109,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
 
     // Member administration. `permission:` never sees a role name: roles merely
     // group permissions, and which role granted this one is not a question the
-    // enforcement point may ask (design §3). Paired with auth:sanctum so an
+    // enforcement point may ask (ADR 0014). Paired with auth:sanctum so an
     // anonymous caller gets 401 rather than 403.
     Route::middleware('permission:members.manage')->group(function () {
         // Read-only reference data the roster form needs. Gated on
         // members.manage because /members is the only consumer that exists;
-        // R2's public band page can widen it when it has a second one.
+        // a second consumer can widen it when there is one.
         Route::get('/sections', [SectionController::class, 'index']);
         Route::get('/roles', [RoleController::class, 'index']);
 
@@ -125,10 +124,9 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // business.
         Route::get('/committee-functions', [CommitteeFunctionController::class, 'index']);
 
-        // The roster. Everyone associated with the band, account or not — one
-        // roster (design §8), so a person with no credentials is listed here
-        // and can be given an account later rather than living on a second
-        // list somewhere else.
+        // The roster. Everyone the band tracks, and since 2026_09_08_000001
+        // every one of them has an account (ADR 0015), so there is one list of
+        // people and no second list of accounts beside it.
         Route::get('/members', [MemberController::class, 'index']);
 
         // ONE PERSON, and it exists because of the conditional writes below.
@@ -156,10 +154,10 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // member with a live session is theatre.
         //
         // NEITHER RE-AUTHENTICATES, and this comment said the opposite until
-        // 2026-09-10. Decision B1 did require `currentPassword` on both;
-        // decision B7 removed it, and the guard on a delete is now the
-        // type-the-name confirmation in the UI. Verified rather than assumed:
-        // `currentPassword` appears nowhere in app/ outside
+        // 2026-09-10. Both did once require `currentPassword`; that was
+        // dropped on 2026-09-08 (ADR 0017), and the guard on a delete is now
+        // the type-the-name confirmation in the UI. Verified rather than
+        // assumed: `currentPassword` appears nowhere in app/ outside
         // AccountPasswordController, and App\Support\Reauthentication has
         // exactly one caller. The stale claim was believed by a documentation
         // pass and nearly published to /api/docs.
@@ -181,7 +179,8 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::delete('/members/{member}', [MemberController::class, 'destroy'])
             ->middleware('etag:member');
 
-        // Issuing a credential and resetting one are the same operation (§4.4).
+        // Issuing a credential and resetting one are the same operation
+        // (ADR 0016).
         Route::post('/members/{member}/password', MemberPasswordController::class);
     });
 
@@ -213,7 +212,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // literal segment and a parameter sharing a prefix is worth keeping in
         // an order that stays correct if either ever gains the other's verb.
         //
-        // A GENERATOR, not a resource (C3): it writes N independent events and
+        // A GENERATOR, not a resource: it writes N independent events and
         // stores no rule and no series_id, so there is nothing here to GET.
         Route::post('/events/series', EventSeriesController::class);
 
@@ -221,7 +220,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:event');
 
         // No re-authentication on the delete, unlike the roster's — the call
-        // MemberController::destroy() documents (decision B7), and an event
+        // MemberController::destroy() documents (ADR 0017), and an event
         // carries none of a member's account state. Protection against a
         // mis-aimed tap is the confirmation in the UI.
         Route::delete('/events/{event}', [EventController::class, 'destroy'])
@@ -229,7 +228,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a
-    // decision rather than an oversight (design §3). Making it a grant is
+    // decision rather than an oversight (ADR 0014). Making it a grant is
     // what produced the old bug where an admin could not say whether they
     // were coming, and left the "Pas de réponse" counts meaningless. What
     // gates it instead is Member::isPlayer() — being in a register — checked
@@ -237,8 +236,8 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // person rather than something anybody granted them.
     //
     // PUT so the answer is an idempotent upsert; DELETE is undo, and it
-    // expires after five minutes (C12) so C11's reason rule is not
-    // decorative.
+    // expires after five minutes so the rule that withdrawing a yes costs a
+    // reason is not decorative (ADR 0018).
     Route::put('/events/{event}/attendance', [AttendanceController::class, 'update']);
     Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy']);
 
@@ -251,13 +250,13 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // Answering on somebody's behalf — the phone call to the committee. A
     // SEPARATE permission from viewing the list: seeing who is missing and
     // speaking for them are different acts, and roles are editable data that
-    // may well grant one without the other. Refuses its own caller (C14).
+    // may well grant one without the other. Refuses its own caller (ADR 0018).
     Route::middleware('permission:attendance.record_for_others')->group(function () {
         Route::put('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'update']);
 
         // Taking one back. A mis-aimed on-behalf write was otherwise
         // permanent, and it starts the member's own five-minute undo clock
-        // (C12) from the moment the DIRECTION wrote it.
+        // from the moment the DIRECTION wrote it.
         Route::delete('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'destroy']);
     });
 
@@ -276,7 +275,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     });
 
     // Correcting and cancelling a booking. A SEPARATE permission from
-    // reading the list: guests get no self-service (G2), so this is the
+    // reading the list: guests get no self-service (ADR 0020), so this is the
     // committee acting on somebody's personal data.
     Route::middleware('permission:registrations.manage')->group(function () {
         // The read that hands out the tag the two writes below require. Gated

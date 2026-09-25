@@ -5,6 +5,10 @@ config.php
 !/.env.example
 .superpowers
 .tmp
+
+# Superpowers specs and plans: working documents for a single task. Decisions
+# that outlive the task go into docs/adr/.
+/docs/superpowers/
 /public/
 
 # HTTP Basic Auth credential files (hashed, but still secrets — brute-forcible

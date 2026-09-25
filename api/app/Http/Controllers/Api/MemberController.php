@@ -167,10 +167,10 @@ class MemberController extends Controller
     #[Response(201, 'The new member, plus the generated password. It is shown once and never retrievable again.')]
     public function store(StoreMemberRequest $request): JsonResponse
     {
-        // THE PASSWORD IS MINTED HERE AND RETURNED ONCE. The plan had create
-        // make a person with no credential, leaving "give this person an
-        // account" as a separate operation. That cannot survive the credentials
-        // model: a member created with an unusable placeholder could be granted
+        // THE PASSWORD IS MINTED HERE AND RETURNED ONCE. Creating a person
+        // with no credential, and leaving "give this person an account" as a
+        // separate operation, cannot survive the credentials model: a member
+        // created with an unusable placeholder could be granted
         // members.manage and then be the only administrator left after a
         // deletion — holding the permission and unable to log in. That is the
         // ghost administrator 2026_09_08_000001 dissolved, and this is the door
@@ -290,14 +290,15 @@ class MemberController extends Controller
     #[Emits('cannot_remove_last_administrator', 'cannot_delete_self')]
     public function destroy(Request $request, Member $member): JsonResponse
     {
-        // Existence is the state (design D3): there is no `active` flag and no
+        // Existence is the state (ADR 0015): there is no `active` flag and no
         // soft delete.
         //
-        // NO RE-AUTHENTICATION (decision B7, 2026-09-08). The session cookie is
-        // trusted, as it already is for reading the whole roster and editing
-        // anyone. Protection against a mis-aimed tap is the type-the-name
-        // confirmation in the UI, which is where mistake-prevention belongs — a
-        // server cannot tell a typed confirmation from an automated one.
+        // NO RE-AUTHENTICATION (ADR 0017, since 2026-09-08). The session
+        // cookie is trusted, as it already is for reading the whole roster and
+        // editing anyone. Protection against a mis-aimed tap is the
+        // type-the-name confirmation in the UI, which is where
+        // mistake-prevention belongs — a server cannot tell a typed
+        // confirmation from an automated one.
         AccessIntegrity::assertMayDelete($request->user(), $member);
 
         // Captured BEFORE the delete, because the row is gone by the time

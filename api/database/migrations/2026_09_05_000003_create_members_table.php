@@ -19,11 +19,11 @@ use Illuminate\Support\Facades\Schema;
  *
  * There is deliberately no email column: members are children (~6-16) who often
  * have no address of their own, and passwords are admin-issued. There is also
- * no `active` flag — existence IS the state (design D3), so leaving the band is
+ * no `active` flag — existence IS the state (ADR 0015), so leaving the band is
  * a delete, and the foreign keys cascade.
  *
  * `role` is absent on purpose. Authorization comes from roles/permissions
- * (Task 3); nothing here grants anything.
+ * (ADR 0014); nothing here grants anything.
  */
 return new class extends Migration
 {

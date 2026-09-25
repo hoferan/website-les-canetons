@@ -25,7 +25,7 @@ class StoreEventRequest extends FormRequest
     public function rules(): array
     {
         // `endsAt` is REQUIRED and must come AFTER `startsAt`. Required
-        // because the column is (C6, 2026_09_09_000001): a nullable end is
+        // because the column is (2026_09_09_000001): a nullable end is
         // what would let the `weekend` boolean creep back, since without an
         // end there is nothing to read "this runs over two days" off. After,
         // because nothing else enforced it and a mistyped hour produces an
@@ -34,8 +34,8 @@ class StoreEventRequest extends FormRequest
         //
         // The rule is `after`, not `same day` plus an hour comparison:
         // "Weekend musical, 3-4 October" is a real row on the live planning,
-        // and spanning two days is precisely the case C6 dissolved the flag
-        // for.
+        // and spanning two days is precisely the case a required end
+        // dissolved the flag for.
         //
         // `attire` and `notes` are nullable because half the planning has
         // neither — a rehearsal in ordinary clothes with nothing to add is the
@@ -71,7 +71,7 @@ class StoreEventRequest extends FormRequest
             'notes' => ['nullable', 'string', 'max:5000'],
 
             // The registration window. Setting a close date is what enables
-            // public registration at all (D9), so these three are how a
+            // public registration at all (ADR 0020), so these three are how a
             // souper is switched on without touching the database.
             /** When public bookings start. Null means bookings are open as soon as `registrationClosesAt` is set. */
             'registrationOpensAt' => ['nullable', 'date'],

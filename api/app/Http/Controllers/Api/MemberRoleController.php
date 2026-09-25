@@ -47,8 +47,8 @@ class MemberRoleController extends Controller
     #[Emits('cannot_remove_last_administrator', 'cannot_demote_self')]
     public function __invoke(ReplaceMemberRolesRequest $request, Member $member): JsonResponse
     {
-        // NO RE-AUTHENTICATION (decision B7, 2026-09-08). The cookie is trusted
-        // here as it is everywhere else in this API.
+        // NO RE-AUTHENTICATION (ADR 0017, since 2026-09-08). The cookie is
+        // trusted here as it is everywhere else in this API.
         //
         // THE REMAINING ORDER IS STILL LOAD-BEARING: check the invariants
         // BEFORE the write, so a refusal leaves no trace; and write, then
@@ -64,9 +64,9 @@ class MemberRoleController extends Controller
         // time of the change.
         $label = $member->fullName();
 
-        // Sessions are revoked in the SAME transaction as the change (§6). A
-        // revoked permission that only takes effect at the next login is a
-        // permission the holder can keep using all evening.
+        // Sessions are revoked in the SAME transaction as the change
+        // (ADR 0010). A revoked permission that only takes effect at the next
+        // login is a permission the holder can keep using all evening.
         //
         // The note sits out here rather than beside the revoke call, because
         // Scramble publishes the comment preceding a return as the response

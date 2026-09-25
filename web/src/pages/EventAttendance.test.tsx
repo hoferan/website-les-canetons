@@ -76,7 +76,7 @@ test("the people who have not answered come before the people who have", async (
 });
 
 test("a withdrawal is shown with its reason beside the name", async () => {
-  // The spec's own example of what the direction should be able to read: a
+  // What the direction should be able to read: a
   // name, an answer, and the reason for it, in one sentence — not a count that
   // dropped by one.
   await renderChaseList();
@@ -113,11 +113,11 @@ test("the committee can answer for somebody who has not", async () => {
   expect(cardFor("Bastien Both")).toHaveTextContent("Saisie par le comité.");
 });
 
-test("the on-behalf controls are absent from the caller's own row (C14)", async () => {
+test("the on-behalf controls are absent from the caller's own row", async () => {
   // Bastien plays AND holds attendance.record_for_others — the case the whole
   // rule exists for. The on-behalf endpoint answers him 409
   // cannot_record_for_self, because that route is exempt from the reason a
-  // withdrawal costs, so aiming it at yourself walks around C11.
+  // withdrawal costs, so aiming it at yourself walks around that reason.
   //
   // MUTATION TEST: drop the `entry.memberId === user?.id` branch in
   // EventAttendance and this fails on the first assertion — the buttons are
@@ -208,7 +208,7 @@ test("the correction is offered once, not once per layout", async () => {
   ).toHaveLength(1);
 });
 
-test("the correction is absent from the caller's own answered row (C14)", async () => {
+test("the correction is absent from the caller's own answered row", async () => {
   // Bastien plays AND holds the permission, so once he has an answer his own
   // row appears among the Réponses — where a correction control would 409
   // exactly as one in the Sans réponse block would. The direction records
@@ -288,7 +288,7 @@ test("correcting an answer is German down to the dialog's buttons", async () => 
     .toContain("3 Ja · 0 Nein");
 });
 
-test("the on-behalf refusal notice is German too (C14)", async () => {
+test("the on-behalf refusal notice is German too", async () => {
   await renderChaseList("demo.both", "de-CH");
 
   const silent = screen.getByRole("region", { name: "Ohne Rückmeldung" });

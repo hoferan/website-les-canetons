@@ -15,7 +15,7 @@ use Tests\TestCase;
  * deleting them.
  *
  * These are the first callers AccessIntegrity and SessionRevoker have had since
- * R1a built them. Neither re-authenticates — decision B7 trusts the session
+ * they were built. Neither re-authenticates — ADR 0017 trusts the session
  * cookie here, as this API already does for reading the whole roster and
  * editing anyone. Both still check the invariants before writing and revoke
  * sessions inside the same transaction as the change.

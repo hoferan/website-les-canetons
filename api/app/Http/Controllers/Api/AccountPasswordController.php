@@ -61,7 +61,7 @@ class AccountPasswordController extends Controller
         // phone and a permanently stolen account. It reuses Reauthentication,
         // so the same per-actor throttle applies.
         //
-        // Since decision B7 (2026-09-08) this is Reauthentication's ONLY
+        // Since 2026-09-08 (ADR 0017) this is Reauthentication's ONLY
         // caller: the destructive roster endpoints no longer re-authenticate.
         $member = $request->user();
 

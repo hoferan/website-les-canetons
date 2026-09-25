@@ -20,8 +20,9 @@ import { cn } from "@/lib/utils";
  * mount a second RemoveScroll, or add a second focus trap and a second entry
  * to DismissableLayer's body-lock refcount — all of which the modal branch
  * does, and all of which have to unwind in the right order around the
- * AlertDialog these menus open. It is NOT a fix for a focus bug: the design
- * measured that path and there is no bug. See §3 of the spec.
+ * AlertDialog these menus open. It is NOT a fix for a focus bug: opening the
+ * AlertDialog from a menu item was measured at both settings and there is no
+ * bug.
  */
 function DropdownMenu({
   modal = false,

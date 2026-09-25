@@ -41,7 +41,7 @@ export function draftFrom(member: MemberResource | null): MemberDraft {
  * Create or edit one person.
  *
  * A PERSON, NOT A PROFILE FORM WITH A PASSWORD BOX. There is no password field
- * at all: issuing a credential is its own action (§4.4), and it is the same
+ * at all: issuing a credential is its own action (ADR 0016), and it is the same
  * action as resetting one. The form says so rather than leaving an empty
  * password box that would imply otherwise.
  *
@@ -209,11 +209,12 @@ export function MemberForm({
           teaches one and plays in another, and the public band page lists them
           under both — correctly, because both are true.
 
-          IT HAD NO CONTROL UNTIL 2026-09-14. The column shipped in R1a, the
-          draft carried it, and Members.tsx sent it on every write — but nothing
-          ever rendered an input, so the value could only ever be whatever it
+          IT HAD NO CONTROL UNTIL 2026-09-14. The column shipped with the first
+          roster, the draft carried it, and Members.tsx sent it on every write —
+          but nothing ever rendered an input, so the value could only ever be whatever it
           already was, which for every member was null. Found by André during
-          R2's manual pass, on the first release where anything READ it. */}
+          a manual pass over the public pages, on the first release where
+          anything READ it. */}
       <div className="flex flex-col gap-1">
         <label htmlFor="instructorOfSectionId">{t("memberForm.instructorOf")}</label>
         <select

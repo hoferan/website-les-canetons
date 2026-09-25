@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 /**
  * PUT /api/v1/events/{event}/attendance/{member} — the phone call to the
- * committee, and decisions C13 and C14.
+ * committee (ADR 0018).
  */
 class AttendanceOnBehalfTest extends TestCase
 {
@@ -122,11 +122,11 @@ class AttendanceOnBehalfTest extends TestCase
         $this->assertSame(0, Attendance::query()->count());
     }
 
-    // ------------------------------------------------- C13: exempt from C11
+    // ------------------------------------ exempt from the withdrawal reason
 
     public function test_the_committee_may_withdraw_a_yes_without_a_reason(): void
     {
-        // C13. The member phoned to say they cannot come; making the
+        // The member phoned to say they cannot come; making the
         // committee invent a written reason on their behalf would put words
         // in their mouth.
         Attendance::factory()->create([
@@ -142,14 +142,14 @@ class AttendanceOnBehalfTest extends TestCase
         $this->assertSame(AttendanceStatus::No, Attendance::query()->sole()->status);
     }
 
-    // ------------------------------------------- C14: it refuses its caller
+    // ------------------------------------------------ it refuses its caller
 
     public function test_it_refuses_its_own_caller(): void
     {
         // THE BYPASS THIS CLOSES. demo.both plays AND holds
         // attendance.record_for_others. Without this he could take back his
         // own yes through the exempt endpoint and never supply the reason
-        // C11 exists to collect. 409, not 403: he HAS the permission — the
+        // a withdrawn yes must carry. 409, not 403: he HAS the permission — the
         // request conflicts with the state of things.
         $both = Member::factory()->inSection('Trompettes')->administrator()->create();
 

@@ -15,7 +15,7 @@ import { useSession } from "../session/SessionProvider";
  *
  * They take a PERMISSION, never a role name. Roles merely group permissions,
  * and which role granted one is not a question any enforcement point — or any
- * mirror of one — may ask (design §3).
+ * mirror of one — may ask (ADR 0014).
  */
 
 /**
@@ -37,8 +37,8 @@ function useAttemptedPath(): string {
  * The planning is the case this exists for: reading it is something everybody
  * in the band does, not something the committee administers, so gating it on a
  * permission would be the same mistake as gating the ability to answer for an
- * event. It still sits behind login — R1c is the members' tool, and the public
- * planning is R2's (decision C1).
+ * event. It still sits behind login — this planning is the members' tool, and
+ * the public agenda is a separate page.
  *
  * REDIRECTS RATHER THAN REFUSING IN PLACE, which is the opposite of
  * RequirePermission below and is right for the opposite reason: an anonymous

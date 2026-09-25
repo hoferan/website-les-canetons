@@ -16,7 +16,7 @@ import { useSession } from "../session/SessionProvider";
  * all: MustChangePassword sends that member straight to the form.
  *
  * THERE IS NO "DELETE MY ACCOUNT" AND NO PROFILE EDITING. A member's name and
- * register are roster data the committee owns (§4), and a child removing
+ * register are roster data the committee owns, and a child removing
  * themselves from the band's roster is not a thing this site should offer.
  */
 export function Account() {

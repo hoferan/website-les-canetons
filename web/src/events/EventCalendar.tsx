@@ -79,7 +79,7 @@ function shiftMonth(month: string, by: number): string {
  * off on every server until it has been looked at on TEST, it is hidden below
  * `md` by the screen that mounts it, and clicking a day FILTERS THE LIST rather
  * than navigating — so the list stays the one way to do the primary job and
- * this stays an overview (design §6).
+ * this stays an overview.
  *
  * HAND-ROLLED, with CSS grid and Intl.DateTimeFormat. The project has no
  * runtime dependency beyond two fonts; a calendar library would bring a

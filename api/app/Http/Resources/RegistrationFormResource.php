@@ -11,9 +11,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * What an ANONYMOUS visitor may see of an event in order to book a place.
  *
  * DELIBERATELY NOT EventResource. That one carries `notes`, which is
- * internal, and `isPublic`, which is R2's business — and this endpoint is
- * reachable without a session. A stranger gets PublicEventResource's four
- * facts, the options, and whether the form is open.
+ * internal, and `isPublic`, which is the public agenda's business — and this
+ * endpoint is reachable without a session. A stranger gets
+ * PublicEventResource's four facts, the options, and whether the form is open.
  *
  * The `open` boolean is computed rather than left to the client to derive
  * from the two dates: a browser with a wrong clock would otherwise render an

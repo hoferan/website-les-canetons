@@ -27,7 +27,7 @@ class EventModelTest extends TestCase
 
     public function test_an_event_cannot_exist_without_an_end(): void
     {
-        // Decision C6. Required is what dissolves the `weekend` boolean: a
+        // Required is what dissolves the `weekend` boolean: a
         // multi-day event is one whose dates differ, so there is no flag to
         // keep in step.
         $this->expectException(QueryException::class);
