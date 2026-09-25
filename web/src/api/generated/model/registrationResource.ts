@@ -323,5 +323,10 @@ export interface RegistrationResource {
    * @nullable
    */
   totalCents: number | null;
+  /**
+   * When the committee recorded the payment, or null while it is unpaid.
+   * @nullable
+   */
+  paidAt: string | null;
   createdAt: string;
 }

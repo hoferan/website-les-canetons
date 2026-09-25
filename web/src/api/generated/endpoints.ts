@@ -4080,9 +4080,12 @@ export const getRegistrationUpdateUrl = (registration: number) => {
  * Send only the fields that change. An explicit `null` clears an
  * optional field; an omitted field is left alone.
  *
+ * `{"paid": true}` records the payment and `paidAt` says when. Sending it
+ * again keeps the first time. `{"paid": false}` clears it.
+ *
  * What was ordered cannot be changed here. Cancel the booking and make
  * a new one instead.
- * @summary Correct a booking's details
+ * @summary Correct a booking's details, or record that it has been paid
  */
 export const registrationUpdate = async (
   registration: number,
@@ -4181,7 +4184,7 @@ export type RegistrationUpdateMutationVariables = {
 };
 
 /**
- * @summary Correct a booking's details
+ * @summary Correct a booking's details, or record that it has been paid
  */
 export const useRegistrationUpdate = <
   TError =

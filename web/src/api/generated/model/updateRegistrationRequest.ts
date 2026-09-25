@@ -301,7 +301,7 @@
  */
 
 /**
- * Corrections to a booking's contact details.
+ * Corrections to a booking's contact details, and whether it has been paid.
  *
  * A PATCH: send only the fields that change. An omitted field is left as it
  * is, and an explicit `null` clears `address` or `tableName`.
@@ -337,4 +337,6 @@ export interface UpdateRegistrationRequest {
    * @nullable
    */
   tableName?: string | null;
+  /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
+  paid?: boolean;
 }

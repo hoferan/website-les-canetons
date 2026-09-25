@@ -26,6 +26,7 @@ use Illuminate\Support\Carbon;
  *
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property Carbon|null $paid_at
  * @property-read int $guest_count
  * @property-read int|null $total_cents
  */
@@ -42,7 +43,14 @@ class Registration extends Model
         'phone',
         'address',
         'table_name',
+        'paid_at',
     ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['paid_at' => 'datetime'];
+    }
 
     /** @return BelongsTo<Event, $this> */
     public function event(): BelongsTo

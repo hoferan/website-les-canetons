@@ -166,7 +166,7 @@ class RegistrationController extends Controller
     }
 
     /**
-     * Correct a booking's details.
+     * Correct a booking's details, or record that it has been paid.
      *
      * Requires `registrations.manage`. Guests cannot amend their own
      * booking, so this is how a misspelled name, a wrong number or a
@@ -174,6 +174,9 @@ class RegistrationController extends Controller
      *
      * Send only the fields that change. An explicit `null` clears an
      * optional field; an omitted field is left alone.
+     *
+     * `{"paid": true}` records the payment and `paidAt` says when. Sending it
+     * again keeps the first time. `{"paid": false}` clears it.
      *
      * What was ordered cannot be changed here. Cancel the booking and make
      * a new one instead.
@@ -202,6 +205,15 @@ class RegistrationController extends Controller
             if (array_key_exists($field, $data)) {
                 $registration->{$column} = $data[$field];
             }
+        }
+
+        // The stamp is when the money came in, so a second `true` keeps the
+        // first one: the screen may re-send it, and a treasurer reconciling
+        // the till wants the time the money was taken.
+        if (array_key_exists('paid', $data)) {
+            $registration->paid_at = $data['paid']
+                ? ($registration->paid_at ?? now())
+                : null;
         }
 
         $registration->save();

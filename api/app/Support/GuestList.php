@@ -62,7 +62,7 @@ final class GuestList
         return array_merge(
             ['Nom', 'Prénom', 'E-mail', 'Téléphone', 'Adresse', 'Table'],
             $this->options->map(fn (RegistrationOption $o): string => $o->label)->all(),
-            ['Personnes', 'Total CHF', 'Inscrit le'],
+            ['Personnes', 'Total CHF', 'Payé le', 'Inscrit le'],
         );
     }
 
@@ -96,6 +96,9 @@ final class GuestList
                 [
                     $registration->guest_count,
                     self::francs($registration->total_cents),
+                    // Null while unpaid, so the column stays blank until
+                    // money arrives.
+                    $registration->paid_at?->setTimezone(BandTime::ZONE)->format('d.m.Y H:i'),
                     $registration->created_at->setTimezone(BandTime::ZONE)->format('d.m.Y H:i'),
                 ],
             );
@@ -134,6 +137,7 @@ final class GuestList
             [
                 (int) $this->registrations->sum(fn (Registration $r) => $r->guest_count),
                 $totalCents->isEmpty() ? null : self::francs((int) $totalCents->sum()),
+                '',
                 '',
             ],
         );

@@ -1195,6 +1195,7 @@ function initialRegistrations(): MockRegistration[] {
       ],
       guestCount: 5,
       totalCents: 15000,
+      paidAt: null,
       createdAt: "2026-09-01T18:24:00.000Z",
     },
     {
@@ -1211,6 +1212,7 @@ function initialRegistrations(): MockRegistration[] {
       // Null, not zero: this booking owes an unknown amount rather than
       // nothing, and the two must be visibly different on screen.
       totalCents: null,
+      paidAt: null,
       createdAt: "2026-09-02T09:05:00.000Z",
     },
   ];
@@ -1360,6 +1362,7 @@ function guestListOf(eventId: number): {
     ...eventOptions.map((option) => option.label),
     "Personnes",
     "Total CHF",
+    "Payé le",
     "Inscrit le",
   ];
 
@@ -1375,6 +1378,7 @@ function guestListOf(eventId: number): {
     ),
     booking.guestCount,
     francs(booking.totalCents),
+    booking.paidAt === null ? null : booking.paidAt.slice(0, 16).replace("T", " "),
     booking.createdAt.slice(0, 16).replace("T", " "),
   ]);
 
@@ -1398,6 +1402,7 @@ function guestListOf(eventId: number): {
     ),
     bookings.reduce((sum, booking) => sum + booking.guestCount, 0),
     priced.length === 0 ? null : francs(priced.reduce((sum, cents) => sum + cents, 0)),
+    "",
     "",
   ];
 
@@ -2477,6 +2482,7 @@ const overrides = [
       tableName: body.tableName?.trim() ? body.tableName : null,
       choices,
       ...totalsOf(choices),
+      paidAt: null,
       createdAt: new Date().toISOString(),
     };
 
@@ -2620,6 +2626,14 @@ const overrides = [
       // nothing — the exact trap the server's own comment names.
       address: "address" in patch ? (patch.address ?? null) : existing.address,
       tableName: "tableName" in patch ? (patch.tableName ?? null) : existing.tableName,
+      // A second `true` keeps the first stamp, as the server does: the stamp
+      // records when the money came in.
+      paidAt:
+        patch.paid === undefined
+          ? existing.paidAt
+          : patch.paid
+            ? (existing.paidAt ?? new Date().toISOString())
+            : null,
     };
 
     registrations = registrations.map((candidate) =>

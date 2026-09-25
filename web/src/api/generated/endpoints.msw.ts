@@ -684,6 +684,7 @@ export const getRegistrationStoreResponseMock = (
   ),
   guestCount: faker.number.int(),
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
+  paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });
@@ -715,6 +716,7 @@ export const getRegistrationIndexResponseMock = (
     ),
     guestCount: faker.number.int(),
     totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
+    paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
     createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
@@ -797,6 +799,7 @@ export const getRegistrationShowResponseMock = (
   ),
   guestCount: faker.number.int(),
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
+  paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });
@@ -824,6 +827,7 @@ export const getRegistrationUpdateResponseMock = (
   ),
   guestCount: faker.number.int(),
   totalCents: faker.helpers.arrayElement([faker.number.int(), null]),
+  paidAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
 });

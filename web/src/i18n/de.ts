@@ -126,6 +126,7 @@ export const de: typeof fr = {
     subject: "Betreff",
     message: "Nachricht",
     handled: "Erledigt",
+    paid: "Bezahlt",
     first_name: "Vorname",
     last_name: "Nachname",
     address: "Adresse",
@@ -615,6 +616,22 @@ export const de: typeof fr = {
     cancelDescription:
       "Die Anmeldung und alles, was sie bestellt hat, werden gelöscht. Die Person wird nicht benachrichtigt. Diese Aktion ist endgültig.",
     cancelConfirm: "Anmeldung stornieren",
+    keepBooking: "Anmeldung behalten",
+
+    optionTotalsLabel: "Insgesamt:",
+    optionTotal: "{{count}} × {{label}}",
+
+    paid: "Bezahlt",
+    unpaid: "Nicht bezahlt",
+    markPaid: "Als bezahlt markieren",
+    markUnpaid: "Als nicht bezahlt markieren",
+    markPaidAria: "Anmeldung von {{name}} als bezahlt markieren",
+    markUnpaidAria: "Anmeldung von {{name}} als nicht bezahlt markieren",
+    payFailed: "Die Zahlung konnte nicht gespeichert werden.",
+    paidCount_one: "{{paid}}\u00a0von\u00a0{{count}}\u00a0bezahlt",
+    paidCount_other: "{{paid}}\u00a0von\u00a0{{count}}\u00a0bezahlt",
+
+    moreFormats: "Weitere Formate",
 
     amend: "Korrigieren",
     amendTitle: "Anmeldung von {{name}} korrigieren",

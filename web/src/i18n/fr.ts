@@ -157,6 +157,7 @@ export const fr = {
     subject: "Sujet",
     message: "Message",
     handled: "Traité",
+    paid: "Payé",
     first_name: "Prénom",
     last_name: "Nom",
     address: "Adresse",
@@ -958,11 +959,10 @@ export const fr = {
      * THE TWO "ANNULER"S, and they are not one key.
      *
      * `cancel` is the per-row button that CANCELS A BOOKING; common.cancel
-     * closes a form without doing anything. Identical in French, which is why
-     * #115 wants the French half renamed — and why German cannot wait for
-     * that: "stornieren" against "abbrechen". Keeping them apart here leaves
-     * #115 free to rename the French whenever it lands, without deciding
-     * anything twice. Third instance of this shape, after
+     * closes a form without doing anything. Identical in French, and German
+     * cannot share them: "stornieren" against "abbrechen". Where the two met
+     * head to head, in the cancel dialog, #115 gave the way out its own words
+     * (`keepBooking` below). Third instance of this shape, after
      * attendance.undo/common.cancel.
      */
     cancel: "Annuler",
@@ -975,6 +975,33 @@ export const fr = {
     cancelDescription:
       "L’inscription et tout ce qu’elle a commandé seront supprimés. La personne n’est pas prévenue. Cette action est définitive.",
     cancelConfirm: "Annuler l’inscription",
+    // The dialog's way out (#115). With common.cancel the dialog offered
+    // "Annuler" beside "Annuler l’inscription", which is ambiguous where a tap
+    // cannot be taken back, so this names what dismissing does.
+    keepBooking: "Garder l’inscription",
+
+    // What the kitchen is told: one entry per option, summed over every
+    // booking. Same shape as the per-card order line, so the two read alike.
+    optionTotalsLabel: "Au total\u00a0:",
+    optionTotal: "{{count}} × {{label}}",
+
+    // Paying. Only a booking with a price shows any of this: a free evening
+    // has nothing to collect.
+    paid: "Payé",
+    unpaid: "Non payé",
+    markPaid: "Marquer payé",
+    markUnpaid: "Marquer non payé",
+    markPaidAria: "Marquer l’inscription de {{name}} comme payée",
+    markUnpaidAria: "Marquer l’inscription de {{name}} comme non payée",
+    payFailed: "Le paiement n’a pas pu être enregistré.",
+    // {{count}} is the number of bookings that owe something; it picks the
+    // plural, and {{paid}} rides along. Non-breaking spaces, because on a phone
+    // the line broke inside the phrase and left "1" dangling.
+    paidCount_one: "{{paid}}\u00a0sur\u00a0{{count}}\u00a0payée",
+    paidCount_other: "{{paid}}\u00a0sur\u00a0{{count}}\u00a0payées",
+
+    // Markdown and JSON are developer formats, kept behind this (#115).
+    moreFormats: "Autres formats",
 
     amend: "Corriger",
     // Used as the row button's accessible name AND as the amend form's
