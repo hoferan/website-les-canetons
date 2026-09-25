@@ -57,6 +57,7 @@ export function ConfirmByTypingName({
   title,
   description,
   confirmLabel,
+  dismissLabel,
   confirmPhrase,
   busy,
   error,
@@ -67,6 +68,11 @@ export function ConfirmByTypingName({
   title: string;
   description: string;
   confirmLabel: string;
+  /**
+   * The way out, for when "Annuler" would read as the action itself
+   * (cancelling a booking, in French). Defaults to common.cancel.
+   */
+  dismissLabel?: string;
   /** When given, the action stays inert until this exact text is typed. */
   confirmPhrase?: string;
   busy: boolean;
@@ -112,7 +118,9 @@ export function ConfirmByTypingName({
         <FormError error={error} />
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogCancel onClick={close}>
+            {dismissLabel ?? t("common.cancel")}
+          </AlertDialogCancel>
           {/*
             A plain Button, NOT AlertDialogAction: the Radix action closes the
             dialog on click, and this action can fail — a 409 invariant, or a

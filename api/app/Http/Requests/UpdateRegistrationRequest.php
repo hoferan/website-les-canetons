@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * Corrections to a booking's contact details.
+ * Corrections to a booking's contact details, and whether it has been paid.
  *
  * A PATCH: send only the fields that change. An omitted field is left as it
  * is, and an explicit `null` clears `address` or `tableName`.
@@ -42,6 +42,8 @@ class UpdateRegistrationRequest extends FormRequest
             'address' => ['sometimes', 'nullable', 'string', 'max:255'],
             /** Who the guest sits with, as free text. Send `null` to clear it. */
             'tableName' => ['sometimes', 'nullable', 'string', 'max:255'],
+            /** `true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time. */
+            'paid' => ['sometimes', 'boolean'],
         ];
     }
 }

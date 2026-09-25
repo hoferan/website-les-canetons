@@ -29,10 +29,16 @@ import { t, type TranslationKey } from "../i18n";
 import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
 
-/** The four downloads, in the order the committee reaches for them. */
+/**
+ * The four downloads, in the order the committee reaches for them. Markdown
+ * and JSON are developer formats on a committee screen, so they sit behind
+ * `registrations.moreFormats` (#115).
+ */
 const FORMATS: { format: ExportFormat; label: string }[] = [
   { format: "xlsx", label: "Excel" },
   { format: "csv", label: "CSV" },
+];
+const MORE_FORMATS: { format: ExportFormat; label: string }[] = [
   { format: "md", label: "Markdown" },
   { format: "json", label: "JSON" },
 ];
@@ -141,6 +147,8 @@ export function EventRegistrations() {
       registrationDestroy(booking, ifMatch(etag)),
   });
 
+  const [paying, setPaying] = useState<number | null>(null);
+
   const bookings = rowsOf<RegistrationResource>(list.data);
   const bookingCount = totalOf(list.data);
   const mayManage = can("registrations.manage");
@@ -148,6 +156,8 @@ export function EventRegistrations() {
   const guests = bookings.reduce((sum, booking) => sum + booking.guestCount, 0);
   const priced = bookings.filter((booking) => booking.totalCents !== null);
   const total = priced.reduce((sum, booking) => sum + (booking.totalCents ?? 0), 0);
+  const paidCount = priced.filter((booking) => booking.paidAt !== null).length;
+  const perOption = optionTotalsOf(bookings);
 
   const title = event.data?.status === 200 ? event.data.data : null;
 
@@ -237,6 +247,44 @@ export function EventRegistrations() {
     await refresh();
   }
 
+  /**
+   * Records the payment, or takes it back. No dialog: the same button undoes
+   * it, and at the door there is a queue.
+   *
+   * Read-then-write like the amend form, because the PATCH is conditional.
+   * The concurrency window is only as wide as the button press, which is
+   * enough for a toggle. It SENDS WHAT THE BUTTON SAID. Flipping the fresh
+   * read instead would mean that if somebody else recorded the payment a
+   * second ago, "Marquer payé" would take it back. The server keeps the first
+   * stamp.
+   */
+  async function togglePaid(row: RegistrationResource) {
+    if (paying !== null) {
+      return;
+    }
+    setPaying(row.id);
+    try {
+      const loaded = await read(row);
+      if (!loaded) {
+        return;
+      }
+      if (loaded.etag === null) {
+        setReadError(t("registrations.loadFailedReload"));
+        return;
+      }
+      await registrationUpdate(row.id, { paid: row.paidAt === null }, ifMatch(loaded.etag));
+      await refresh();
+    } catch (thrown) {
+      setReadError(
+        thrown instanceof ApiError
+          ? translateApiError(thrown).message
+          : t("registrations.payFailed"),
+      );
+    } finally {
+      setPaying(null);
+    }
+  }
+
   async function download(format: ExportFormat) {
     setDownloading(format);
     setDownloadError(null);
@@ -287,28 +335,75 @@ export function EventRegistrations() {
           {/* Nothing when no booking carries a price: a total of CHF 0.00 over
               a list of unpriced options is a claim the data does not make. */}
           {priced.length === 0 ? null : <> · {formatCents(total)}</>}
+          {priced.length === 0 ? null : (
+            <>
+              {t("registrations.countsSeparator")}
+              {t("registrations.paidCount", { paid: paidCount, count: priced.length })}
+            </>
+          )}
         </p>
       ) : null}
 
-      <div className="mt-related flex flex-wrap gap-tight">
+      {/* WHAT THE KITCHEN IS TOLD (#115), and it is a sum of quantities the
+          server already sent per booking: nothing here multiplies a price.
+          The same numbers are the totals row of every download. */}
+      {perOption.length > 0 ? (
+        <div
+          data-testid="option-totals"
+          className="mt-tight flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-related"
+        >
+          <span className="text-ink-muted">{t("registrations.optionTotalsLabel")}</span>
+          {/* One per line on a phone, where a wrapped row put two options on
+              the first line and one on the second and read as two groups. */}
+          <ul className="flex flex-col sm:flex-row sm:flex-wrap sm:gap-x-related">
+            {perOption.map((option) => (
+              <li key={option.optionId} className="font-semibold">
+                {t("registrations.optionTotal", { count: option.quantity, label: option.label })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="mt-related flex flex-wrap items-center gap-tight">
         {FORMATS.map(({ format, label }) => (
-          <Button
+          <DownloadButton
             key={format}
-            type="button"
-            variant="outline"
-            size="sm"
-            aria-disabled={downloading === format}
+            label={label}
+            busy={downloading === format}
             onClick={() => {
               if (downloading !== null) {
                 return;
               }
               void download(format);
             }}
-          >
-            {downloading === format ? "…" : label}
-          </Button>
+          />
         ))}
       </div>
+      {/* A disclosure rather than a menu: it opens in place, at 390px as on a
+          desktop, and needs no floating layer for two buttons. It sits in its
+          own block below the row: inside the row, an open one wrapped its
+          buttons in beside Excel at a different height. */}
+      <details className="mt-tight">
+        <summary className="cursor-pointer text-sm text-ink-muted underline">
+          {t("registrations.moreFormats")}
+        </summary>
+        <div className="mt-tight flex flex-wrap gap-tight">
+          {MORE_FORMATS.map(({ format, label }) => (
+            <DownloadButton
+              key={format}
+              label={label}
+              busy={downloading === format}
+              onClick={() => {
+                if (downloading !== null) {
+                  return;
+                }
+                void download(format);
+              }}
+            />
+          ))}
+        </div>
+      </details>
       <p className="mt-tight text-sm text-ink-muted">{t("registrations.exportsHint")}</p>
 
       {downloadError ? (
@@ -391,6 +486,17 @@ export function EventRegistrations() {
                   {t("common.guests", { count: booking.guestCount })}
                   {booking.totalCents === null ? null : <> — {formatCents(booking.totalCents)}</>}
                 </p>
+                {/* Only a booking that owes something has a payment to record.
+                    An unpriced one owes an unknown amount, and "Non payé" on it
+                    would chase money nobody named. */}
+                {booking.totalCents === null ? null : (
+                  <PaymentLine
+                    booking={booking}
+                    mayManage={mayManage}
+                    busy={paying === booking.id}
+                    onToggle={() => void togglePaid(booking)}
+                  />
+                )}
                 {mayManage ? (
                   <BookingActions
                     booking={booking}
@@ -415,6 +521,7 @@ export function EventRegistrations() {
         })}
         description={t("registrations.cancelDescription")}
         confirmLabel={t("registrations.cancelConfirm")}
+        dismissLabel={t("registrations.keepBooking")}
         confirmPhrase={cancelling?.booking.lastName}
         busy={cancel.isPending}
         error={destructive.error}
@@ -431,6 +538,105 @@ export function EventRegistrations() {
 /** What one booking ordered, as one line. */
 function orderOf(booking: RegistrationResource): string {
   return booking.choices.map((choice) => `${choice.quantity} × ${choice.label}`).join(", ");
+}
+
+/**
+ * Every option anybody booked, with how many were booked across the list.
+ *
+ * Ordered by option id, which is the order the options were created in,
+ * because the list carries no `sortOrder`. An option nobody took is absent,
+ * since no booking on the list names it; the downloads carry every option
+ * with its zero.
+ */
+function optionTotalsOf(
+  bookings: RegistrationResource[],
+): { optionId: number; label: string; quantity: number }[] {
+  const tally = new Map<number, { optionId: number; label: string; quantity: number }>();
+  for (const booking of bookings) {
+    for (const choice of booking.choices) {
+      const entry = tally.get(choice.optionId) ?? {
+        optionId: choice.optionId,
+        label: choice.label ?? "",
+        quantity: 0,
+      };
+      entry.quantity += choice.quantity;
+      tally.set(choice.optionId, entry);
+    }
+  }
+  return [...tally.values()].sort((a, b) => a.optionId - b.optionId);
+}
+
+function DownloadButton({
+  label,
+  busy,
+  onClick,
+}: {
+  label: string;
+  busy: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <Button type="button" variant="outline" size="sm" aria-disabled={busy} onClick={onClick}>
+      {busy ? "…" : label}
+    </Button>
+  );
+}
+
+/**
+ * Paid or not, and for a manager the button that flips it.
+ *
+ * THE STATE IS WRITTEN OUT as well as coloured, so it survives a greyscale
+ * printout and a screen reader. The button carries the guest's name in its accessible
+ * name, because there is one per card.
+ */
+function PaymentLine({
+  booking,
+  mayManage,
+  busy,
+  onToggle,
+}: {
+  booking: RegistrationResource;
+  mayManage: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  const paid = booking.paidAt !== null;
+  const who = `${booking.firstName} ${booking.lastName}`;
+
+  return (
+    <div data-testid="payment" className="mt-tight flex flex-wrap items-center gap-tight">
+      <span
+        className={
+          paid
+            ? "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
+            : "rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
+        }
+      >
+        {paid ? t("registrations.paid") : t("registrations.unpaid")}
+      </span>
+      {mayManage ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          aria-disabled={busy}
+          aria-label={
+            paid
+              ? t("registrations.markUnpaidAria", { name: who })
+              : t("registrations.markPaidAria", { name: who })
+          }
+          onClick={() => {
+            if (busy) {
+              return;
+            }
+            onToggle();
+          }}
+        >
+          {paid ? t("registrations.markUnpaid") : t("registrations.markPaid")}
+        </Button>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -485,7 +691,7 @@ function BookingActions({
   // the top margin that used to live on that same element now lives on the
   // element that contains it instead of being dropped.
   return (
-    <div className="mt-tight">
+    <div data-testid="booking-actions" className="mt-tight">
       <RowActions actions={actions} inlineKey="amend" rowName={who} />
     </div>
   );

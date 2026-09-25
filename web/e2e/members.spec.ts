@@ -308,13 +308,14 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
     // l'inscription), so RowActions' own rule — a menu needs two items left
     // over once one goes inline — never has two to work with: both render
     // inline and no "..." trigger is drawn. `div.flex.flex-wrap.gap-tight` is
-    // therefore RowActions' own wrapper directly, unambiguous here because
-    // this screen has no EventCard-style outer duplicate of that class.
+    // therefore RowActions' own wrapper directly. Scoped to `booking-actions`,
+    // because the card's payment line (#115) carries the same classes.
     if (path === "/events/7/registrations") {
       const row = page
         .getByTestId("guest-cards")
         .locator("li")
         .first()
+        .getByTestId("booking-actions")
         .locator("css=div.flex.flex-wrap.gap-tight");
       const box = await row.boundingBox();
       expect(box?.height, "the guest list's booking row is more than one line").toBeLessThanOrEqual(

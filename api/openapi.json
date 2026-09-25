@@ -2327,8 +2327,8 @@
             },
             "patch": {
                 "operationId": "registration.update",
-                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number or a\nseating change is fixed.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\nWhat was ordered cannot be changed here. Cancel the booking and make\na new one instead.",
-                "summary": "Correct a booking's details",
+                "description": "Requires `registrations.manage`. Guests cannot amend their own\nbooking, so this is how a misspelled name, a wrong number or a\nseating change is fixed.\n\nSend only the fields that change. An explicit `null` clears an\noptional field; an omitted field is left alone.\n\n`{\"paid\": true}` records the payment and `paidAt` says when. Sending it\nagain keeps the first time. `{\"paid\": false}` clears it.\n\nWhat was ordered cannot be changed here. Cancel the booking and make\na new one instead.",
+                "summary": "Correct a booking's details, or record that it has been paid",
                 "tags": [
                     "Registration"
                 ],
@@ -5605,6 +5605,14 @@
                         ],
                         "description": "What the booking comes to, in centimes. Null when nothing booked carries a price, which is not the same as zero."
                     },
+                    "paidAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When the committee recorded the payment, or null while it is unpaid."
+                    },
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
@@ -5621,6 +5629,7 @@
                     "choices",
                     "guestCount",
                     "totalCents",
+                    "paidAt",
                     "createdAt"
                 ],
                 "title": "RegistrationResource"
@@ -6194,7 +6203,7 @@
             },
             "UpdateRegistrationRequest": {
                 "type": "object",
-                "description": "Corrections to a booking's contact details.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\nWhat was ordered cannot be changed here; there is no `choices` field.\nCancel the booking and make a new one instead. No mail is sent when a\nbooking is corrected.",
+                "description": "Corrections to a booking's contact details, and whether it has been paid.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears `address` or `tableName`.\n\nWhat was ordered cannot be changed here; there is no `choices` field.\nCancel the booking and make a new one instead. No mail is sent when a\nbooking is corrected.",
                 "properties": {
                     "firstName": {
                         "type": "string",
@@ -6230,6 +6239,10 @@
                         ],
                         "description": "Who the guest sits with, as free text. Send `null` to clear it.",
                         "maxLength": 255
+                    },
+                    "paid": {
+                        "type": "boolean",
+                        "description": "`true` records the payment, `false` takes it back. Sending `true` for a booking already paid keeps the original time."
                     }
                 },
                 "title": "UpdateRegistrationRequest"

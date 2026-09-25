@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
-import { beforeEach, expect, test, vi } from "vitest";
+import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
@@ -48,6 +48,28 @@ async function renderGuestList(
  */
 function cards() {
   return screen.getByTestId("guest-cards");
+}
+
+/** A priced, unpaid booking with these lines, for list overrides. */
+function booking(
+  id: number,
+  lastName: string,
+  choices: { optionId: number; label: string; quantity: number }[],
+) {
+  return {
+    id,
+    firstName: "Test",
+    lastName,
+    email: `${lastName.toLowerCase()}@example.ch`,
+    phone: "079 000 00 00",
+    address: null,
+    tableName: null,
+    choices: choices.map((choice) => ({ ...choice, priceCents: 4500 })),
+    guestCount: choices.reduce((sum, choice) => sum + choice.quantity, 0),
+    totalCents: 4500 * choices.reduce((sum, choice) => sum + choice.quantity, 0),
+    paidAt: null,
+    createdAt: "2026-09-01T18:24:00.000Z",
+  };
 }
 
 /** The one guest card containing this text. */
@@ -264,11 +286,139 @@ test("offers the four downloads and asks the server for the one that was clicked
 
   await renderGuestList();
 
-  for (const label of ["Excel", "CSV", "Markdown", "JSON"]) {
+  for (const label of ["Excel", "CSV"]) {
+    await user.click(screen.getByRole("button", { name: label }));
+  }
+  // The developer formats are one step further away (#115), and still there.
+  await user.click(screen.getByText("Autres formats"));
+  for (const label of ["Markdown", "JSON"]) {
     await user.click(screen.getByRole("button", { name: label }));
   }
 
   await expect.poll(() => asked).toEqual(["xlsx", "csv", "md", "json"]);
+});
+
+test("Markdown and JSON are not beside Excel at equal weight", async () => {
+  await renderGuestList();
+
+  // Inside a closed <details>: in the DOM, not visible. MUTATION TEST: move
+  // them back into FORMATS and both assertions fail.
+  expect(screen.getByRole("button", { name: "Excel" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Markdown", hidden: true })).not.toBeVisible();
+  expect(screen.getByRole("button", { name: "JSON", hidden: true })).not.toBeVisible();
+});
+
+/* ---------------------------------------------------------------------------
+ * The kitchen view (#115)
+ * -------------------------------------------------------------------------- */
+
+test("tells the kitchen how many of each option were booked", async () => {
+  await renderGuestList();
+
+  // Jeanne took 2 adult and 3 child meals, Marc one "Sans repas". MUTATION
+  // TEST: count bookings instead of summing quantities and the first entry
+  // reads "1 × Repas adulte".
+  const totals = within(screen.getByTestId("option-totals")).getAllByRole("listitem");
+  expect(totals.map((item) => item.textContent)).toEqual([
+    "2 × Repas adulte",
+    "3 × Repas enfant",
+    "1 × Sans repas",
+  ]);
+});
+
+test("the per-option totals add up across bookings", async () => {
+  server.use(
+    http.get("*/api/v1/events/:id/registrations", () =>
+      HttpResponse.json({
+        data: [
+          booking(1, "Aebischer", [{ optionId: 1, label: "Repas adulte", quantity: 2 }]),
+          booking(2, "Rossier", [
+            { optionId: 1, label: "Repas adulte", quantity: 4 },
+            { optionId: 2, label: "Repas enfant", quantity: 1 },
+          ]),
+        ],
+        meta: { total: 2, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+
+  await renderGuestList();
+
+  const totals = within(screen.getByTestId("option-totals")).getAllByRole("listitem");
+  expect(totals.map((item) => item.textContent)).toEqual(["6 × Repas adulte", "1 × Repas enfant"]);
+});
+
+test("says how many of the bookings that owe something have paid", async () => {
+  await renderGuestList();
+
+  // Only Jeanne's booking carries a price; Marc's owes an unknown amount and
+  // is not counted either way.
+  expect(screen.getByTestId("guest-counts")).toHaveTextContent("0 sur 1 payée");
+});
+
+test("marks a booking paid, quoting a tag, and the list shows it", async () => {
+  const user = userEvent.setup();
+  const sent: { body: unknown; ifMatch: string | null }[] = [];
+  const record = ({ request }: { request: Request }) => {
+    if (request.method === "PATCH") {
+      void request
+        .clone()
+        .json()
+        .then((body: unknown) => sent.push({ body, ifMatch: request.headers.get("If-Match") }));
+    }
+  };
+  server.events.on("request:start", record);
+  onTestFinished(() => server.events.removeListener("request:start", record));
+
+  await renderGuestList();
+
+  const jeanne = cardFor("Aebischer Jeanne");
+  expect(within(jeanne).getByTestId("payment")).toHaveTextContent("Non payé");
+
+  await user.click(
+    within(jeanne).getByRole("button", {
+      name: "Marquer l’inscription de Jeanne Aebischer comme payée",
+    }),
+  );
+
+  await expect
+    .poll(() => within(cardFor("Aebischer Jeanne")).getByTestId("payment").textContent)
+    .toContain("Payé");
+  expect(within(cardFor("Aebischer Jeanne")).getByTestId("payment")).not.toHaveTextContent(
+    "Non payé",
+  );
+  expect(screen.getByTestId("guest-counts")).toHaveTextContent("1 sur 1 payée");
+  expect(sent).toEqual([{ body: { paid: true }, ifMatch: expect.stringMatching(/^"[0-9a-f]+"$/) }]);
+});
+
+test("a booking with no price has no payment to record", async () => {
+  await renderGuestList();
+
+  expect(within(cardFor("1 × Sans repas")).queryByTestId("payment")).toBeNull();
+});
+
+test("a viewer sees who has paid and cannot change it", async () => {
+  await renderGuestList("demo.committee");
+
+  expect(within(cardFor("Aebischer Jeanne")).getByTestId("payment")).toHaveTextContent("Non payé");
+  expect(screen.queryAllByRole("button", { name: /comme payée$/ })).toHaveLength(0);
+});
+
+test("the cancel dialog's way out does not also say Annuler", async () => {
+  const user = userEvent.setup();
+  await renderGuestList();
+
+  await user.click(
+    within(cards()).getByRole("button", { name: "Annuler l’inscription de Jeanne Aebischer" }),
+  );
+
+  const dialog = await screen.findByRole("alertdialog");
+  // MUTATION TEST: drop dismissLabel and the first assertion fails.
+  expect(within(dialog).queryByRole("button", { name: "Annuler" })).toBeNull();
+  await user.click(within(dialog).getByRole("button", { name: "Garder l’inscription" }));
+
+  await expect.poll(() => screen.queryByRole("alertdialog")).toBeNull();
+  expect(within(cards()).getByText(/Aebischer/)).toBeInTheDocument();
 });
 
 /**

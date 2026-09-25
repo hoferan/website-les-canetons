@@ -201,6 +201,97 @@ class GuestListTest extends TestCase
         ]);
     }
 
+    // ----------------------------------------------------------- paying
+
+    public function test_a_new_booking_is_unpaid(): void
+    {
+        $this->book();
+
+        $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}/registrations")
+            ->assertOk()
+            ->assertJsonPath('data.0.paidAt', null);
+    }
+
+    public function test_marking_a_booking_paid_stamps_when(): void
+    {
+        $booking = $this->book();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['paid' => true])
+            ->assertOk()
+            ->assertJsonPath('paidAt', fn (?string $at) => $at !== null);
+
+        $this->assertNotNull($booking->fresh()->paid_at);
+    }
+
+    public function test_marking_it_paid_again_keeps_the_first_stamp(): void
+    {
+        // The stamp is WHEN THE MONEY CAME IN. A second press, or a PATCH
+        // that re-sends the whole form, must not move it to now.
+        $booking = $this->book();
+        $booking->forceFill(['paid_at' => '2027-01-10 18:00:00'])->save();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['paid' => true])
+            ->assertOk();
+
+        $this->assertSame('2027-01-10 18:00:00', $booking->fresh()->paid_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_marking_it_unpaid_clears_the_stamp(): void
+    {
+        // A tap on the wrong card is a normal thing to correct.
+        $booking = $this->book();
+        $booking->forceFill(['paid_at' => now()])->save();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['paid' => false])
+            ->assertOk()
+            ->assertJsonPath('paidAt', null);
+
+        $this->assertNull($booking->fresh()->paid_at);
+    }
+
+    public function test_correcting_a_name_leaves_the_payment_alone(): void
+    {
+        $booking = $this->book();
+        $booking->forceFill(['paid_at' => now()])->save();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['lastName' => 'Rossier'])
+            ->assertOk();
+
+        $this->assertNotNull($booking->fresh()->paid_at);
+    }
+
+    public function test_paid_must_be_a_boolean(): void
+    {
+        $booking = $this->book();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['paid' => 'maybe'])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'paid');
+    }
+
+    public function test_reading_the_list_does_not_let_you_mark_a_payment(): void
+    {
+        $booking = $this->book();
+
+        $this->actingAsMember(Member::factory()->committee()->create())
+            ->withHeaders($this->ifMatch('registration', $booking))
+            ->patchJson("/api/v1/registrations/{$booking->id}", ['paid' => true])
+            ->assertStatus(403);
+
+        $this->assertNull($booking->fresh()->paid_at);
+    }
+
     public function test_cancelling_removes_the_booking_and_its_choices(): void
     {
         $booking = $this->book('Cuennet', 2, 1);
@@ -459,6 +550,26 @@ class GuestListTest extends TestCase
         // (float) because JSON has no int/float distinction: a whole
         // 155.0 decodes as int(155), which assertSame rejects on type.
         $this->assertSame(155.0, (float) $row[$at('Total CHF')]);
+
+        // Unpaid is an empty cell, so a treasurer scanning the column sees
+        // only the payments.
+        $this->assertNull($row[$at('Payé le')]);
+    }
+
+    public function test_the_export_says_when_a_booking_was_paid(): void
+    {
+        // 17:00 UTC is 18:00 in Fribourg in January: the file is read by the
+        // committee, in band time, like `Inscrit le` beside it.
+        $this->book('Maillard')->forceFill(['paid_at' => '2027-01-10 17:00:00'])->save();
+
+        $json = $this->actingAsMember($this->organiser)
+            ->getJson("/api/v1/events/{$this->event->id}/registrations.json")
+            ->assertOk()
+            ->json();
+
+        $at = (int) array_search('Payé le', $json['headers'], true);
+
+        $this->assertSame('10.01.2027 18:00', $json['rows'][0][$at]);
     }
 
     public function test_the_totals_row_is_what_the_caterer_is_told(): void
