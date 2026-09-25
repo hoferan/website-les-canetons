@@ -16,7 +16,7 @@ import type {
 } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
@@ -242,7 +242,11 @@ export function EventRegistrationOptions() {
         <>
           {drafts.length === 0 ? (
             <p className="mt-block text-ink-muted">{t("registrationOptions.empty")}</p>
-          ) : null}
+          ) : (
+            <div className="mt-related">
+              <RequiredLegend />
+            </div>
+          )}
 
           <ul className="mt-block grid gap-related">
             {drafts.map((row, index) => (

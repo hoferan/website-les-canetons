@@ -154,6 +154,7 @@ export const de: typeof fr = {
 
   common: {
     loading: "Wird geladen…",
+    requiredLegend: "Pflichtfeld",
     backToPlanning: "← Zurück zur Planung",
     // ABBRECHEN, NICHT RÜCKGÄNGIG: Das Französische sagt für beides
     // «Annuler». Dieser Schlüssel schliesst einen Dialog, ohne etwas zu tun;
@@ -579,8 +580,7 @@ export const de: typeof fr = {
 
     contactLegend: "Ihre Kontaktangaben",
     choiceLegend: "Ihre Auswahl",
-    optionalHint:
-      "Adresse und Tisch sind freiwillig. Der Tisch ist, neben wem Sie gerne sitzen möchten.",
+    tableHint: "Neben wem Sie gerne sitzen möchten.",
     nothingOffered:
       "Für diesen Abend wird noch nichts angeboten. Schauen Sie in ein paar Tagen wieder vorbei.",
 
@@ -810,11 +810,11 @@ export const de: typeof fr = {
     sentBody:
       "Danke! Der Vorstand hat Ihre Nachricht erhalten und wird Ihnen an die angegebene Adresse antworten.",
     fields: {
-      lastName: "Name:",
-      firstName: "Vorname:",
-      email: "E-Mail:",
-      subject: "Betreff:",
-      message: "Inhalt der Nachricht:",
+      lastName: "Name",
+      firstName: "Vorname",
+      email: "E-Mail",
+      subject: "Betreff",
+      message: "Nachricht",
     },
   },
 

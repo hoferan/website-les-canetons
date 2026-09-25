@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
 import { bandZoneParts, composeInBandZone } from "./bandTime";
 
@@ -185,12 +185,13 @@ export function EventForm({
 
   return (
     <form
+      noValidate
       className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
       onSubmit={(submitted) => {
         submitted.preventDefault();
         // aria-disabled, not disabled — so this early return is what actually
         // prevents a double submit.
-        if (busy) {
+        if (busy || !formIsValid(submitted.currentTarget)) {
           return;
         }
         onSubmit(draft);
@@ -201,6 +202,8 @@ export function EventForm({
           ? t("eventForm.addTitle")
           : t("eventForm.editTitle", { title: event.title })}
       </h2>
+
+      <RequiredLegend />
 
       <FormField
         id="title"

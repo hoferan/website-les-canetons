@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import type { StoreEventSeriesRequest } from "../api/generated/model";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { weekdayDatesBetween } from "./eventDates";
@@ -158,10 +158,11 @@ export function SeriesForm({
 
   return (
     <form
+      noValidate
       className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
       onSubmit={(submitted) => {
         submitted.preventDefault();
-        if (busy || tooMany || chosen.length === 0) {
+        if (busy || tooMany || chosen.length === 0 || !formIsValid(submitted.currentTarget)) {
           return;
         }
         onSubmit({
@@ -180,6 +181,7 @@ export function SeriesForm({
     >
       <h2 className="font-display text-2xl">{t("seriesForm.heading")}</h2>
       <p className="text-sm text-ink-muted">{t("seriesForm.intro")}</p>
+      <RequiredLegend />
 
       <FormField
         id="title"

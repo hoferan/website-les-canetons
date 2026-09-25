@@ -8,7 +8,7 @@ import type {
   RoleResource,
   SectionResource,
 } from "../api/generated/model";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
 import { roleHint, roleLabel, t } from "../i18n";
 
@@ -99,12 +99,13 @@ export function MemberForm({
 
   return (
     <form
+      noValidate
       className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
       onSubmit={(event) => {
         event.preventDefault();
         // aria-disabled, not disabled — so this early return is what actually
         // prevents a double submit.
-        if (busy) {
+        if (busy || !formIsValid(event.currentTarget)) {
           return;
         }
         onSubmit(draft);
@@ -115,6 +116,8 @@ export function MemberForm({
           ? t("members.add")
           : t("members.editPerson", { name: `${member.firstName} ${member.lastName}` })}
       </h2>
+
+      <RequiredLegend />
 
       <FormField
         id="firstName"

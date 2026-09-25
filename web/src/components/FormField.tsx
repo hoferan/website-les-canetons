@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,98 @@ export function FormError({ error }: { error: TranslatedError | null }) {
     <div role="alert">
       {error ? <p className="mt-related text-danger">{error.message}</p> : null}
     </div>
+  );
+}
+
+/**
+ * Whether a form may be sent, checked by the app rather than by the browser.
+ *
+ * Every form in the app is `noValidate` (#102). The browser's own bubble is
+ * written in the browser's language, so an English browser said "Please fill
+ * out this field." on a French page, and nothing in `web/src/i18n/` could
+ * reach it. `noValidate` switches off the bubble but not the checks:
+ * `checkValidity()` still reads `required`, `type="email"` and `min`/`max`, and
+ * fires `invalid` at every control that fails, which is where each FormField
+ * picks up its own message (see `useBrowserProblem`).
+ *
+ * Call it after `preventDefault()` and return when it answers false. Focus
+ * goes to the first failing control, whose `aria-describedby` then reads its
+ * label and the message.
+ */
+export function formIsValid(form: HTMLFormElement): boolean {
+  if (form.checkValidity()) {
+    return true;
+  }
+  const first = Array.from(form.elements).find(
+    (element): element is HTMLInputElement =>
+      "validity" in element && !(element as HTMLInputElement).validity.valid,
+  );
+  first?.focus();
+  return false;
+}
+
+/**
+ * What the browser found wrong with one control, in the catalogue's words.
+ *
+ * Composed exactly as `translateApiError` composes a server refusal, label
+ * then reason, so "Nom est requis" reads the same whichever side caught it.
+ * The label is the control's own rather than a `fields.*` lookup, because the
+ * control has one and a lookup can miss.
+ *
+ * The message clears on the next change: it describes the value that was
+ * submitted, and the moment that value is edited it may no longer be true.
+ */
+export function useBrowserProblem(label: string) {
+  const [problem, setProblem] = useState<string>();
+
+  const onInvalid = (event: FormEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    // The bubble, in case a form forgets `noValidate`. The message below still
+    // appears, but the submit never fires, so formIsValid never focuses.
+    event.preventDefault();
+    const control = event.currentTarget;
+    setProblem(`${label} ${t(reasonFor(control.validity, control.type))}`);
+  };
+
+  return { problem, onInvalid, clear: () => setProblem(undefined) };
+}
+
+function reasonFor(validity: ValidityState, type: string) {
+  if (validity.valueMissing) {
+    return "validation.required" as const;
+  }
+  if (
+    validity.rangeUnderflow ||
+    validity.rangeOverflow ||
+    validity.stepMismatch ||
+    (validity.badInput && type === "number")
+  ) {
+    return "validation.invalid_number" as const;
+  }
+  return "validation.invalid_format" as const;
+}
+
+/**
+ * The star beside a required label, and the line that says what it means.
+ *
+ * Both are `aria-hidden`. A screen reader already hears "required" from the
+ * control's `required` attribute, and "astérisque" spoken after every label
+ * would add nothing to it. The star sits BESIDE the label rather than inside
+ * it, so the label's text stays "Nom" and every query by label still finds it.
+ */
+export function RequiredMark() {
+  return (
+    <span aria-hidden="true" className="text-danger">
+      *
+    </span>
+  );
+}
+
+/** Goes at the top of any form with a required field, so the star has a key. */
+export function RequiredLegend() {
+  return (
+    <p aria-hidden="true" className="text-sm text-ink-muted">
+      <RequiredMark /> {t("common.requiredLegend")}
+    </p>
   );
 }
 
@@ -63,6 +155,10 @@ export function FormError({ error }: { error: TranslatedError | null }) {
  * `hint` is the text that belongs to the field before anything goes wrong,
  * such as a rule. It is described ahead of `problem`, so a screen reader reads
  * the rule and then what broke it.
+ *
+ * `problem` is the server's. The browser's own finding (see `formIsValid`) is
+ * shown only when the server has said nothing, because the server knows
+ * things the browser cannot, "déjà utilisé" among them.
  */
 export function FormField({
   id,
@@ -87,9 +183,12 @@ export function FormField({
   required?: boolean;
   autoComplete?: string;
 }) {
+  const browser = useBrowserProblem(label);
+  const shown = problem ?? browser.problem;
+
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
-  const describedBy = [hint ? hintId : null, problem ? errorId : null].filter(Boolean).join(" ");
+  const describedBy = [hint ? hintId : null, shown ? errorId : null].filter(Boolean).join(" ");
 
   const [revealed, setRevealed] = useState(false);
   // Adjusting state while rendering, React's documented alternative to an
@@ -108,21 +207,35 @@ export function FormField({
     required,
     autoComplete,
     value,
-    "aria-invalid": problem ? true : undefined,
+    onInvalid: browser.onInvalid,
+    "aria-invalid": shown ? true : undefined,
     "aria-describedby": describedBy || undefined,
+  };
+
+  const change = (next: string) => {
+    browser.clear();
+    onChange(next);
   };
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id}>{label}</label>
+      <div>
+        <label htmlFor={id}>{label}</label>
+        {required ? (
+          <>
+            {" "}
+            <RequiredMark />
+          </>
+        ) : null}
+      </div>
       {as === "textarea" ? (
         <textarea
           {...shared}
           rows={6}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => change(event.target.value)}
           className={cn(
             "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
-            problem ? "border-danger" : "border-line",
+            shown ? "border-danger" : "border-line",
           )}
         />
       ) : type === "password" ? (
@@ -130,7 +243,7 @@ export function FormField({
           <Input
             {...shared}
             type={revealed ? "text" : "password"}
-            onChange={(event) => onChange(event.target.value)}
+            onChange={(event) => change(event.target.value)}
             // Room for the toggle, which sits over the input's right edge the
             // way SearchField's clear button does.
             className="pr-12"
@@ -149,16 +262,16 @@ export function FormField({
           </Button>
         </div>
       ) : (
-        <Input {...shared} type={type} onChange={(event) => onChange(event.target.value)} />
+        <Input {...shared} type={type} onChange={(event) => change(event.target.value)} />
       )}
       {hint ? (
         <div id={hintId} className="text-sm text-ink-muted">
           {hint}
         </div>
       ) : null}
-      {problem ? (
+      {shown ? (
         <span id={errorId} className="block text-sm text-danger">
-          {problem}
+          {shown}
         </span>
       ) : null}
     </div>

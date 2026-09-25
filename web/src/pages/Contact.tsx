@@ -9,7 +9,7 @@ import { contactStore, useFormTokenShow } from "../api/generated/endpoints";
 import type { ContactRequest } from "../api/generated/model";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -30,9 +30,9 @@ const EMPTY: ContactRequest = {
 };
 
 /**
- * Field order and labels are the legacy page's, colons and all — including the
- * missing space before them. That inconsistency is in the live site and is not
- * being tidied here.
+ * Field order is the legacy page's. The labels carry no colon, as on the
+ * booking form: each sits above its control, where a colon points at nothing
+ * (#102).
  */
 const FIELDS: {
   name: Exclude<keyof ContactRequest, "website">;
@@ -95,13 +95,14 @@ export function Contact() {
     onError: setFromThrown,
   });
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Explicit, not implied by the button: aria-disabled leaves the control
     // clickable, and Enter in a field submits through the default button
     // regardless. This early return is the only thing preventing a double send.
     if (send.isPending) return;
     clear();
+    if (!formIsValid(event.currentTarget)) return;
 
     // No token, no submission. The query is fired on mount and the form takes
     // longer than that to fill in, so this is the failed-fetch case (429 or
@@ -150,7 +151,8 @@ export function Contact() {
       {/* The values are NOT cleared on failure: a rejected message must not
           make someone retype it. Same rule as the event form. */}
       <Card asChild className="mt-related gap-0 p-5">
-        <form onSubmit={submit} className="space-y-related">
+        <form onSubmit={submit} noValidate className="space-y-related">
+          <RequiredLegend />
           {FIELDS.map((field) => (
             <FormField
               key={field.name}

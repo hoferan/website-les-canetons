@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, RequiredLegend } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
 
 /**
@@ -86,6 +86,7 @@ export function WithdrawDialog({
           <AlertDialogDescription>{t("attendance.withdrawDescription")}</AlertDialogDescription>
         </AlertDialogHeader>
 
+        <RequiredLegend />
         <FormField
           id="withdraw-note"
           label={t("attendance.reason")}
