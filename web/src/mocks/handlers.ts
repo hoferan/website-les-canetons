@@ -961,7 +961,10 @@ function resetEvents(): void {
  * History
  * ------------------------------------------------------------------------ */
 
-/** Task 3's migration, shortened; entry 3 also carries German so /de exercises both branches. */
+/**
+ * The four entries the seed migration writes, shortened. Entry 3 also
+ * carries German, so the mocked /de/history shows both branches.
+ */
 function initialHistory(): HistoryEntryResource[] {
   const stamp = { createdAt: "2026-09-26T00:00:00+00:00", updatedAt: "2026-09-26T00:00:00+00:00" };
   return [

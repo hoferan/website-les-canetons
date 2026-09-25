@@ -1182,6 +1182,9 @@ export const fr = {
     add: "Ajouter",
     edit: "Modifier",
     delete: "Supprimer",
+    // The accessible names, which carry the entry, in each language's word order.
+    editAria: "Modifier {{name}}",
+    deleteAria: "Supprimer {{name}}",
     deleteHeading: "Supprimer cette entrée ?",
     deleteDescription: "Elle disparaît de la page publique.",
     deleteFailed: "La suppression a échoué.",

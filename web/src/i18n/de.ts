@@ -751,6 +751,8 @@ export const de: typeof fr = {
     add: "Hinzufügen",
     edit: "Bearbeiten",
     delete: "Löschen",
+    editAria: "{{name}} bearbeiten",
+    deleteAria: "{{name}} löschen",
     deleteHeading: "Diesen Eintrag löschen?",
     deleteDescription: "Er verschwindet von der öffentlichen Seite.",
     deleteFailed: "Das Löschen ist fehlgeschlagen.",

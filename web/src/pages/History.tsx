@@ -89,6 +89,10 @@ function TimelineEntry({
   const shown = shownIn(entry, locale);
   const Icon = iconFor(entry.icon);
   const rowName = shown.title ?? t("history.untitled");
+  // LANG ON THE ENTRY'S OWN TEXT ONLY. The date, the hidden "Étape
+  // importante" and the controls are page copy, and a lang on the whole entry
+  // would have a screen reader read them in the entry's language.
+  const textLang = shown.fallback ? shown.lang : undefined;
 
   // The marker, centred on the line: a large pink circle for an important
   // entry, a violet circle around an icon, or a plain violet dot. Decorative;
@@ -100,7 +104,7 @@ function TimelineEntry({
       : "size-4 bg-violet";
 
   return (
-    <li lang={shown.fallback ? shown.lang : undefined} className="relative mb-block pl-8">
+    <li className="relative mb-block pl-8">
       <span
         aria-hidden="true"
         className={`absolute top-0 left-0 flex -translate-x-[calc(50%+1px)] items-center justify-center rounded-full border-4 border-ground ${marker}`}
@@ -117,19 +121,20 @@ function TimelineEntry({
           {entry.important ? (
             <span className="sr-only">{`${t("history.important")} : `}</span>
           ) : null}
-          {shown.title}
+          <span lang={textLang}>{shown.title}</span>
         </h2>
       ) : entry.important ? (
         <p className="sr-only">{t("history.important")}</p>
       ) : null}
 
       {shown.body !== null ? (
-        <p className="mt-tight whitespace-pre-line text-ink">{shown.body}</p>
+        <p lang={textLang} className="mt-tight whitespace-pre-line text-ink">
+          {shown.body}
+        </p>
       ) : null}
 
       {shown.fallback ? (
-        // In the page's language, although the entry around it is not.
-        <p lang={locale} className="mt-tight text-xs text-ink-muted">
+        <p className="mt-tight text-xs text-ink-muted">
           {shown.lang === "fr" ? t("history.inFrench") : t("history.inGerman")}
         </p>
       ) : null}
@@ -143,13 +148,13 @@ function TimelineEntry({
               {
                 key: "edit",
                 label: t("history.edit"),
-                ariaLabel: `${t("history.edit")} ${rowName}`,
+                ariaLabel: t("history.editAria", { name: rowName }),
                 to: `/history/${entry.id}/edit`,
               },
               {
                 key: "delete",
                 label: t("history.delete"),
-                ariaLabel: `${t("history.delete")} ${rowName}`,
+                ariaLabel: t("history.deleteAria", { name: rowName }),
                 destructive: true,
                 onSelect: onDelete,
               },

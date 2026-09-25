@@ -45,11 +45,18 @@ test("on the German page, an entry with German is German and one without is Fren
   const timeline = await renderHistory("de-CH");
   const items = within(timeline).getAllByRole("listitem");
   expect(items[2]).toHaveTextContent("Delphine Maillard und Laura Mantel");
-  expect(items[2]).not.toHaveAttribute("lang");
-  expect(items[0]).toHaveAttribute("lang", "fr");
-  // The note is in the page's language, not the entry's.
-  const note = within(items[0] as HTMLElement).getByText("Auf Französisch");
-  expect(note).toHaveAttribute("lang", "de-CH");
+  expect(items[2]?.querySelector("[lang]")).toBeNull();
+  // The entry's own text carries its language; the note is page copy.
+  expect(
+    within(items[0] as HTMLElement)
+      .getByText("Les débuts")
+      .closest("[lang]"),
+  ).toHaveAttribute("lang", "fr");
+  expect(
+    within(items[0] as HTMLElement)
+      .getByText("Auf Französisch")
+      .closest('[lang="fr"]'),
+  ).toBeNull();
 });
 
 test("a German-only entry on the French page is German, marked", async () => {
@@ -77,9 +84,73 @@ test("a German-only entry on the French page is German, marked", async () => {
   );
   const timeline = await renderHistory();
   const only = within(timeline).getByRole("listitem");
-  expect(only).toHaveAttribute("lang", "de-CH");
   expect(only).toHaveTextContent("En allemand");
-  expect(only).toHaveTextContent("Nur Deutsch");
+  expect(within(only).getByText("Nur Deutsch").closest("[lang]")).toHaveAttribute("lang", "de-CH");
+  // LANG ON THE ENTRY'S TEXT ONLY: the date is formatted in the page's
+  // language and must not be read with a German voice.
+  expect(within(only).getByText("2020").closest('[lang="de-CH"]')).toBeNull();
+});
+
+test("editing and deleting are named in the page's language and word order", async () => {
+  await renderHistory("de-CH", "demo.direction");
+  expect(screen.getByRole("link", { name: "Le flambeau passe bearbeiten" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "diesen Eintrag löschen" })).toBeInTheDocument();
+});
+
+/**
+ * THE DELETE QUOTES THE TAG FROM WHEN THE DIALOG OPENED, not a fresher one
+ * read at the moment of confirming, which would let a colleague's rewrite in
+ * between be deleted silently.
+ */
+test("a delete confirmed after somebody changed the entry is refused, and says so", async () => {
+  const user = userEvent.setup();
+  let version = "v1";
+  server.use(
+    http.get("/api/v1/history/:id", ({ params }) =>
+      HttpResponse.json(
+        {
+          id: Number(params.id),
+          occurredOn: "2026-01-01",
+          precision: "year",
+          important: false,
+          icon: "users",
+          titleFr: "Le flambeau passe",
+          bodyFr: null,
+          titleDe: null,
+          bodyDe: null,
+          createdAt: "2026-09-26T00:00:00+00:00",
+          updatedAt: "2026-09-26T00:00:00+00:00",
+        },
+        { headers: { ETag: `"${version}"` } },
+      ),
+    ),
+    http.delete("/api/v1/history/:id", ({ request }) =>
+      request.headers.get("If-Match") === `"${version}"`
+        ? HttpResponse.json({ ok: true })
+        : HttpResponse.json(
+            {
+              title: "Precondition Failed",
+              status: 412,
+              code: "if_match_failed",
+              instance: "/api/v1/history/4",
+              errors: [],
+              requestId: "01JB3K7QW8ZX7VN4S2QK9J0M1P",
+              detail: "stale",
+            },
+            { status: 412 },
+          ),
+    ),
+  );
+  await renderHistory("fr", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  const dialog = await screen.findByRole("alertdialog");
+
+  version = "v2"; // a colleague saves a change while the dialog is open
+
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+  expect(
+    await within(dialog).findByText(/Quelqu'un a modifié cet élément entre-temps/),
+  ).toBeInTheDocument();
 });
 
 test("no editing controls without history.manage", async () => {

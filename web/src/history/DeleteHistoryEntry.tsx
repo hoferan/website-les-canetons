@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   AlertDialog,
@@ -25,9 +25,11 @@ import { t } from "../i18n";
 /**
  * The delete confirmation for one history entry.
  *
- * It reads the entry for its tag when the delete is confirmed, because the
- * list hands out none. The dialog stays open on a refusal so a 412 is read
- * next to the entry it is about.
+ * IT READS THE ENTRY'S TAG AS THE DIALOG OPENS, because the list hands out
+ * none, and deletes with that tag and never a fresher one: a colleague's
+ * change while the dialog is open then answers 412 instead of being deleted
+ * unseen. The dialog stays open on a refusal so the 412 is read next to the
+ * entry it is about.
  */
 export function DeleteHistoryEntry({
   entry,
@@ -39,16 +41,42 @@ export function DeleteHistoryEntry({
   const queryClient = useQueryClient();
   const action = useApiFormError(t("history.deleteFailed"));
   const [busy, setBusy] = useState(false);
+  const [opened, setOpened] = useState<{ id: number; etag: string | null } | null>(null);
+  const entryId = entry?.id ?? null;
+
+  useEffect(() => {
+    if (entryId === null) {
+      setOpened(null);
+      return;
+    }
+    let abandoned = false;
+    historyEntryShow(entryId)
+      .then((read) => {
+        if (!abandoned) {
+          setOpened({ id: entryId, etag: entityTagOf(read) });
+        }
+      })
+      .catch((thrown: unknown) => {
+        if (!abandoned) {
+          setOpened({ id: entryId, etag: null });
+          action.setFromThrown(thrown);
+        }
+      });
+    return () => {
+      abandoned = true;
+    };
+    // action is a fresh object each render; only a new entry opens a new read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryId]);
 
   async function confirm() {
-    if (!entry || busy) {
+    if (!entry || busy || opened?.id !== entry.id) {
       return;
     }
     setBusy(true);
     action.clear();
     try {
-      const read = await historyEntryShow(entry.id);
-      const etag = entityTagOf(read);
+      const etag = opened.etag;
       if (etag === null) {
         // Without a tag the delete is refused with 428; the fallback
         // message is the honest thing to show instead.
