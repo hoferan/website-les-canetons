@@ -98,6 +98,7 @@ export const fr = {
     spam_suspected: "Envoi refusé. Rechargez la page et réessayez.",
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
+    history_entry_empty: "Écrivez au moins un titre ou un texte, en français ou en allemand.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
@@ -138,6 +139,14 @@ export const fr = {
     weekend: "Week-end",
     isPublic: "Visible publiquement",
     notes: "Remarques",
+    occurredOn: "Date",
+    precision: "Précision de la date",
+    titleFr: "Titre en français",
+    bodyFr: "Texte en français",
+    titleDe: "Titre en allemand",
+    bodyDe: "Texte en allemand",
+    important: "Étape importante",
+    icon: "Icône",
     // The registration window on an event. Setting the close date is what
     // turns public registration on at all.
     registrationOpensAt: "Ouverture des inscriptions",

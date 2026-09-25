@@ -74,6 +74,8 @@ export const de: typeof fr = {
     spam_suspected: "Senden abgelehnt. Laden Sie die Seite neu und versuchen Sie es erneut.",
     registration_not_open: "Die Anmeldung ist noch nicht geöffnet.",
     registration_closed: "Die Anmeldung ist geschlossen.",
+    history_entry_empty:
+      "Schreiben Sie mindestens einen Titel oder einen Text, auf Französisch oder Deutsch.",
     option_has_registrations:
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
     xlsx_unavailable:
@@ -109,6 +111,14 @@ export const de: typeof fr = {
     weekend: "Wochenende",
     isPublic: "Öffentlich sichtbar",
     notes: "Bemerkungen",
+    occurredOn: "Datum",
+    precision: "Genauigkeit des Datums",
+    titleFr: "Titel auf Französisch",
+    bodyFr: "Text auf Französisch",
+    titleDe: "Titel auf Deutsch",
+    bodyDe: "Text auf Deutsch",
+    important: "Wichtiger Meilenstein",
+    icon: "Symbol",
     registrationOpensAt: "Anmeldebeginn",
     registrationClosesAt: "Anmeldeschluss",
     registrationMaxGuests: "Personen pro Anmeldung",

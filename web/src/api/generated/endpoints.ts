@@ -115,7 +115,8 @@
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`.
+ * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -212,6 +213,7 @@
  * | `PUT /members/{member}/roles` | `GET /members/{member}` |
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  *
  * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
@@ -358,6 +360,12 @@ import type {
   EventSeries201,
   FormTokenShow200,
   HandleContactMessageRequest,
+  HistoryEntryDestroy200,
+  HistoryEntryIndex200,
+  HistoryEntryIndexParams,
+  HistoryEntryResource,
+  HistoryEntryStore422,
+  HistoryEntryUpdate422,
   InboxIndex200,
   InboxIndexParams,
   InboxSummary200,
@@ -407,6 +415,7 @@ import type {
   SectionIndexParams,
   StoreEventRequest,
   StoreEventSeriesRequest,
+  StoreHistoryEntryRequest,
   StoreMemberRequest,
   StoreRegistrationRequest,
   UpdateEventRequest,
@@ -8185,6 +8194,880 @@ export function useCommitteeIndex<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type historyEntryIndexResponse200 = {
+  data: HistoryEntryIndex200;
+  status: 200;
+};
+
+export type historyEntryIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type historyEntryIndexResponseSuccess = historyEntryIndexResponse200 & {
+  headers: Headers;
+};
+export type historyEntryIndexResponseError = historyEntryIndexResponse503 & {
+  headers: Headers;
+};
+
+export type historyEntryIndexResponse =
+  historyEntryIndexResponseSuccess | historyEntryIndexResponseError;
+
+export const getHistoryEntryIndexUrl = (params?: HistoryEntryIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/history?${stringifiedParams}` : `/history`;
+};
+
+/**
+ * @summary Every entry, oldest first. Public
+ */
+export const historyEntryIndex = async (
+  params?: HistoryEntryIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<historyEntryIndexResponse> => {
+  return customFetch<historyEntryIndexResponse>(getHistoryEntryIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getHistoryEntryIndexQueryKey = (params?: HistoryEntryIndexParams) => {
+  return [`/history`, ...(params ? [params] : [])] as const;
+};
+
+export const getHistoryEntryIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof historyEntryIndex>>,
+  TError = Problem503Response,
+>(
+  params?: HistoryEntryIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getHistoryEntryIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof historyEntryIndex>>> = ({ signal }) =>
+    historyEntryIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof historyEntryIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type HistoryEntryIndexQueryResult = NonNullable<
+  Awaited<ReturnType<typeof historyEntryIndex>>
+>;
+export type HistoryEntryIndexQueryError = Problem503Response;
+
+export function useHistoryEntryIndex<
+  TData = Awaited<ReturnType<typeof historyEntryIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | HistoryEntryIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof historyEntryIndex>>,
+          TError,
+          Awaited<ReturnType<typeof historyEntryIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useHistoryEntryIndex<
+  TData = Awaited<ReturnType<typeof historyEntryIndex>>,
+  TError = Problem503Response,
+>(
+  params?: HistoryEntryIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof historyEntryIndex>>,
+          TError,
+          Awaited<ReturnType<typeof historyEntryIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useHistoryEntryIndex<
+  TData = Awaited<ReturnType<typeof historyEntryIndex>>,
+  TError = Problem503Response,
+>(
+  params?: HistoryEntryIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Every entry, oldest first. Public
+ */
+
+export function useHistoryEntryIndex<
+  TData = Awaited<ReturnType<typeof historyEntryIndex>>,
+  TError = Problem503Response,
+>(
+  params?: HistoryEntryIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getHistoryEntryIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type historyEntryStoreResponse201 = {
+  data: HistoryEntryResource;
+  status: 201;
+};
+
+export type historyEntryStoreResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type historyEntryStoreResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type historyEntryStoreResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type historyEntryStoreResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type historyEntryStoreResponse422 = {
+  data: HistoryEntryStore422;
+  status: 422;
+};
+
+export type historyEntryStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type historyEntryStoreResponseSuccess = historyEntryStoreResponse201 & {
+  headers: Headers;
+};
+export type historyEntryStoreResponseError = (
+  | historyEntryStoreResponse400
+  | historyEntryStoreResponse401
+  | historyEntryStoreResponse403
+  | historyEntryStoreResponse419
+  | historyEntryStoreResponse422
+  | historyEntryStoreResponse503
+) & {
+  headers: Headers;
+};
+
+export type historyEntryStoreResponse =
+  historyEntryStoreResponseSuccess | historyEntryStoreResponseError;
+
+export const getHistoryEntryStoreUrl = () => {
+  return `/history`;
+};
+
+/**
+ * @summary Requires `history.manage`. Answers `201` with the created entry
+ */
+export const historyEntryStore = async (
+  storeHistoryEntryRequest: StoreHistoryEntryRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<historyEntryStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<historyEntryStoreResponse>(getHistoryEntryStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeHistoryEntryRequest),
+  });
+};
+
+export const getHistoryEntryStoreMutationKey = () => ["historyEntryStore"] as const;
+
+export const getHistoryEntryStoreMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | HistoryEntryStore422
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof historyEntryStore>>,
+    TError,
+    HistoryEntryStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof historyEntryStore>>,
+  TError,
+  HistoryEntryStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getHistoryEntryStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof historyEntryStore>>,
+    HistoryEntryStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return historyEntryStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HistoryEntryStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof historyEntryStore>>
+>;
+export type HistoryEntryStoreMutationBody = StoreHistoryEntryRequest;
+export type HistoryEntryStoreMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | HistoryEntryStore422
+  | Problem503Response;
+export type HistoryEntryStoreMutationVariables = { data: StoreHistoryEntryRequest };
+
+/**
+ * @summary Requires `history.manage`. Answers `201` with the created entry
+ */
+export const useHistoryEntryStore = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | HistoryEntryStore422
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof historyEntryStore>>,
+      TError,
+      HistoryEntryStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof historyEntryStore>>,
+  TError,
+  HistoryEntryStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getHistoryEntryStoreMutationOptions(options), queryClient);
+};
+
+export type historyEntryShowResponse200 = {
+  data: HistoryEntryResource;
+  status: 200;
+};
+
+export type historyEntryShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type historyEntryShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type historyEntryShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type historyEntryShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type historyEntryShowResponseSuccess = historyEntryShowResponse200 & {
+  headers: Headers;
+};
+export type historyEntryShowResponseError = (
+  | historyEntryShowResponse401
+  | historyEntryShowResponse403
+  | historyEntryShowResponse404
+  | historyEntryShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type historyEntryShowResponse =
+  historyEntryShowResponseSuccess | historyEntryShowResponseError;
+
+export const getHistoryEntryShowUrl = (historyEntry: number) => {
+  return `/history/${historyEntry}`;
+};
+
+/**
+ * @summary One entry, with the `ETag` its update and delete must quote. Requires `history.manage`
+ */
+export const historyEntryShow = async (
+  historyEntry: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<historyEntryShowResponse> => {
+  return customFetch<historyEntryShowResponse>(getHistoryEntryShowUrl(historyEntry), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getHistoryEntryShowQueryKey = (historyEntry: number) => {
+  return [`/history/${historyEntry}`] as const;
+};
+
+export const getHistoryEntryShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof historyEntryShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  historyEntry: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getHistoryEntryShowQueryKey(historyEntry);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof historyEntryShow>>> = ({ signal }) =>
+    historyEntryShow(historyEntry, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: historyEntry !== null && historyEntry !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type HistoryEntryShowQueryResult = NonNullable<Awaited<ReturnType<typeof historyEntryShow>>>;
+export type HistoryEntryShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useHistoryEntryShow<
+  TData = Awaited<ReturnType<typeof historyEntryShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  historyEntry: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof historyEntryShow>>,
+          TError,
+          Awaited<ReturnType<typeof historyEntryShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useHistoryEntryShow<
+  TData = Awaited<ReturnType<typeof historyEntryShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  historyEntry: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof historyEntryShow>>,
+          TError,
+          Awaited<ReturnType<typeof historyEntryShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useHistoryEntryShow<
+  TData = Awaited<ReturnType<typeof historyEntryShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  historyEntry: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary One entry, with the `ETag` its update and delete must quote. Requires `history.manage`
+ */
+
+export function useHistoryEntryShow<
+  TData = Awaited<ReturnType<typeof historyEntryShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  historyEntry: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof historyEntryShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getHistoryEntryShowQueryOptions(historyEntry, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type historyEntryUpdateResponse200 = {
+  data: HistoryEntryResource;
+  status: 200;
+};
+
+export type historyEntryUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type historyEntryUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type historyEntryUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type historyEntryUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type historyEntryUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type historyEntryUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type historyEntryUpdateResponse422 = {
+  data: HistoryEntryUpdate422;
+  status: 422;
+};
+
+export type historyEntryUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type historyEntryUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type historyEntryUpdateResponseSuccess = historyEntryUpdateResponse200 & {
+  headers: Headers;
+};
+export type historyEntryUpdateResponseError = (
+  | historyEntryUpdateResponse400
+  | historyEntryUpdateResponse401
+  | historyEntryUpdateResponse403
+  | historyEntryUpdateResponse404
+  | historyEntryUpdateResponse412
+  | historyEntryUpdateResponse419
+  | historyEntryUpdateResponse422
+  | historyEntryUpdateResponse428
+  | historyEntryUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type historyEntryUpdateResponse =
+  historyEntryUpdateResponseSuccess | historyEntryUpdateResponseError;
+
+export const getHistoryEntryUpdateUrl = (historyEntry: number) => {
+  return `/history/${historyEntry}`;
+};
+
+/**
+ * @summary Replaces the entry. Requires `history.manage` and the `If-Match` from its read
+ */
+export const historyEntryUpdate = async (
+  historyEntry: number,
+  storeHistoryEntryRequest: StoreHistoryEntryRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<historyEntryUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<historyEntryUpdateResponse>(getHistoryEntryUpdateUrl(historyEntry), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeHistoryEntryRequest),
+  });
+};
+
+export const getHistoryEntryUpdateMutationKey = () => ["historyEntryUpdate"] as const;
+
+export const getHistoryEntryUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | HistoryEntryUpdate422
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof historyEntryUpdate>>,
+    TError,
+    HistoryEntryUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof historyEntryUpdate>>,
+  TError,
+  HistoryEntryUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getHistoryEntryUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof historyEntryUpdate>>,
+    HistoryEntryUpdateMutationVariables
+  > = (props) => {
+    const { historyEntry, data } = props ?? {};
+
+    return historyEntryUpdate(historyEntry, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HistoryEntryUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof historyEntryUpdate>>
+>;
+export type HistoryEntryUpdateMutationBody = StoreHistoryEntryRequest;
+export type HistoryEntryUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | HistoryEntryUpdate422
+  | Problem428Response
+  | Problem503Response;
+export type HistoryEntryUpdateMutationVariables = {
+  historyEntry: number;
+  data: StoreHistoryEntryRequest;
+};
+
+/**
+ * @summary Replaces the entry. Requires `history.manage` and the `If-Match` from its read
+ */
+export const useHistoryEntryUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | HistoryEntryUpdate422
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof historyEntryUpdate>>,
+      TError,
+      HistoryEntryUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof historyEntryUpdate>>,
+  TError,
+  HistoryEntryUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getHistoryEntryUpdateMutationOptions(options), queryClient);
+};
+
+export type historyEntryDestroyResponse200 = {
+  data: HistoryEntryDestroy200;
+  status: 200;
+};
+
+export type historyEntryDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type historyEntryDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type historyEntryDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type historyEntryDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type historyEntryDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type historyEntryDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type historyEntryDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type historyEntryDestroyResponseSuccess = historyEntryDestroyResponse200 & {
+  headers: Headers;
+};
+export type historyEntryDestroyResponseError = (
+  | historyEntryDestroyResponse401
+  | historyEntryDestroyResponse403
+  | historyEntryDestroyResponse404
+  | historyEntryDestroyResponse412
+  | historyEntryDestroyResponse419
+  | historyEntryDestroyResponse428
+  | historyEntryDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type historyEntryDestroyResponse =
+  historyEntryDestroyResponseSuccess | historyEntryDestroyResponseError;
+
+export const getHistoryEntryDestroyUrl = (historyEntry: number) => {
+  return `/history/${historyEntry}`;
+};
+
+/**
+ * @summary Requires `history.manage` and the `If-Match` from its read
+ */
+export const historyEntryDestroy = async (
+  historyEntry: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<historyEntryDestroyResponse> => {
+  return customFetch<historyEntryDestroyResponse>(getHistoryEntryDestroyUrl(historyEntry), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getHistoryEntryDestroyMutationKey = () => ["historyEntryDestroy"] as const;
+
+export const getHistoryEntryDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof historyEntryDestroy>>,
+    TError,
+    HistoryEntryDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof historyEntryDestroy>>,
+  TError,
+  HistoryEntryDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getHistoryEntryDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof historyEntryDestroy>>,
+    HistoryEntryDestroyMutationVariables
+  > = (props) => {
+    const { historyEntry } = props ?? {};
+
+    return historyEntryDestroy(historyEntry, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type HistoryEntryDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof historyEntryDestroy>>
+>;
+
+export type HistoryEntryDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type HistoryEntryDestroyMutationVariables = { historyEntry: number };
+
+/**
+ * @summary Requires `history.manage` and the `If-Match` from its read
+ */
+export const useHistoryEntryDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof historyEntryDestroy>>,
+      TError,
+      HistoryEntryDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof historyEntryDestroy>>,
+  TError,
+  HistoryEntryDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getHistoryEntryDestroyMutationOptions(options), queryClient);
+};
 
 export type formTokenShowResponse200 = {
   data: FormTokenShow200;

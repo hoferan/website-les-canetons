@@ -115,7 +115,8 @@
  * `GET /api/v1/me` returns the caller's effective permissions.
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
- * `members.manage`, `registrations.view`, `registrations.manage`.
+ * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
+ * `messages.manage`, `history.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -212,6 +213,7 @@
  * | `PUT /members/{member}/roles` | `GET /members/{member}` |
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
+ * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  *
  * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
@@ -327,6 +329,9 @@ import type {
   EventResource,
   EventSeries201,
   FormTokenShow200,
+  HistoryEntryDestroy200,
+  HistoryEntryIndex200,
+  HistoryEntryResource,
   InboxIndex200,
   InboxSummary200,
   MemberAttendanceDestroy200,
@@ -1220,6 +1225,93 @@ export const getCommitteeIndexResponseMock = (
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
 });
+
+export const getHistoryEntryIndexResponseMock = (
+  overrideResponse: Partial<Extract<HistoryEntryIndex200, object>> = {},
+): HistoryEntryIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    titleFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    bodyFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    titleDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    bodyDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    important: faker.datatype.boolean(),
+    icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getHistoryEntryStoreResponseMock = (
+  overrideResponse: Partial<Extract<HistoryEntryResource, object>> = {},
+): HistoryEntryResource => ({
+  id: faker.number.int(),
+  occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  titleFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  titleDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  important: faker.datatype.boolean(),
+  icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+});
+
+export const getHistoryEntryShowResponseMock = (
+  overrideResponse: Partial<Extract<HistoryEntryResource, object>> = {},
+): HistoryEntryResource => ({
+  id: faker.number.int(),
+  occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  titleFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  titleDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  important: faker.datatype.boolean(),
+  icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+});
+
+export const getHistoryEntryUpdateResponseMock = (
+  overrideResponse: Partial<Extract<HistoryEntryResource, object>> = {},
+): HistoryEntryResource => ({
+  id: faker.number.int(),
+  occurredOn: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  precision: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  titleFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyFr: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  titleDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  important: faker.datatype.boolean(),
+  icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  ...overrideResponse,
+});
+
+export const getHistoryEntryDestroyResponseMock = (
+  overrideResponse: Partial<Extract<HistoryEntryDestroy200, object>> = {},
+): HistoryEntryDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
 export const getFormTokenShowResponseMock = (
   overrideResponse: Partial<Extract<FormTokenShow200, object>> = {},
@@ -2274,6 +2366,126 @@ export const getCommitteeIndexMockHandler = (
   );
 };
 
+export const getHistoryEntryIndexMockHandler = (
+  overrideResponse?:
+    | HistoryEntryIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<HistoryEntryIndex200> | HistoryEntryIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/history",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHistoryEntryIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHistoryEntryStoreMockHandler = (
+  overrideResponse?:
+    | HistoryEntryResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<HistoryEntryResource> | HistoryEntryResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/history",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHistoryEntryStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHistoryEntryShowMockHandler = (
+  overrideResponse?:
+    | HistoryEntryResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<HistoryEntryResource> | HistoryEntryResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/history/:historyEntry",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHistoryEntryShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHistoryEntryUpdateMockHandler = (
+  overrideResponse?:
+    | HistoryEntryResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<HistoryEntryResource> | HistoryEntryResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/history/:historyEntry",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHistoryEntryUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getHistoryEntryDestroyMockHandler = (
+  overrideResponse?:
+    | HistoryEntryDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<HistoryEntryDestroy200> | HistoryEntryDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/history/:historyEntry",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getHistoryEntryDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getFormTokenShowMockHandler = (
   overrideResponse?:
     | FormTokenShow200
@@ -2389,6 +2601,11 @@ export const getLesCanetonsAPIMock = () => [
   getAgendaIndexMockHandler(),
   getBandIndexMockHandler(),
   getCommitteeIndexMockHandler(),
+  getHistoryEntryIndexMockHandler(),
+  getHistoryEntryStoreMockHandler(),
+  getHistoryEntryShowMockHandler(),
+  getHistoryEntryUpdateMockHandler(),
+  getHistoryEntryDestroyMockHandler(),
   getFormTokenShowMockHandler(),
   getContactStoreMockHandler(),
   getConfigShowMockHandler(),

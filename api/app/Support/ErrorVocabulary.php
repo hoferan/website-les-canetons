@@ -224,6 +224,8 @@ final class ErrorVocabulary
         // reference's "Public forms" section; a script gets nothing.
         'spam_suspected' => [422, 'The submission was refused. Reload the form and send it again. Public '
             .'forms require a form token — see Public forms in the API reference.'],
+        'history_entry_empty' => [422, 'A history entry needs at least one of `titleFr`, `bodyFr`, '
+            .'`titleDe` or `bodyDe`. Blank text counts as none.'],
 
         // --------------------------------------------------- the server itself
 
