@@ -114,6 +114,7 @@ const EMPTY: SeriesDraft = {
  *
  * THE BUTTON NAMES THE COUNT. A generator whose button says only "Créer" is
  * one nobody checks before pressing, and this one writes up to sixty rows.
+ * Until a date is chosen there is no count, and the button is inert.
  *
  * What it generates are INDEPENDENT EVENTS. Nothing links them: there is
  * no series row, no recurrence rule and no `series_id`, so "how does a player
@@ -155,6 +156,18 @@ export function SeriesForm({
   }
 
   const tooMany = chosen.length > CAP;
+
+  // WHY THE BUTTON CANNOT BE PRESSED YET, as the id of the line that says so.
+  // Null when it can. The button is described by that line, so a screen
+  // reader hears the reason with the button rather than a bare "unavailable".
+  const blockedBy =
+    dates.length === 0
+      ? "series-no-dates"
+      : chosen.length === 0
+        ? "series-none-chosen"
+        : tooMany
+          ? "series-too-many"
+          : null;
 
   return (
     <form
@@ -285,7 +298,9 @@ export function SeriesForm({
       />
 
       {dates.length === 0 ? (
-        <p className="text-sm text-ink-muted">{t("seriesForm.noDates")}</p>
+        <p id="series-no-dates" className="text-sm text-ink-muted">
+          {t("seriesForm.noDates")}
+        </p>
       ) : (
         <fieldset data-testid="series-preview" className="flex flex-col gap-1">
           <legend>{t("seriesForm.datesLegend")}</legend>
@@ -310,23 +325,37 @@ export function SeriesForm({
       )}
 
       {tooMany ? (
-        <p role="alert" className="text-danger">
+        <p id="series-too-many" role="alert" className="text-danger">
           {/* {{n}}, not {{count}}: this line only appears ABOVE the cap, so
               it has no singular form for a `count` option to select. */}
           {t("seriesForm.tooMany", { n: chosen.length, cap: CAP })}
         </p>
       ) : null}
 
+      {dates.length > 0 && chosen.length === 0 ? (
+        <p id="series-none-chosen" className="text-sm text-ink-muted">
+          {t("seriesForm.noneChosen")}
+        </p>
+      ) : null}
+
       <FormError error={error} />
 
       <div className="flex flex-wrap gap-related">
-        {/* Absent, not inert, while there is nothing to create: a button
-            offering to create zero events is a question with no answer. */}
-        {chosen.length > 0 ? (
-          <Button type="submit" aria-disabled={busy || tooMany}>
-            {busy ? t("seriesForm.creating") : t("seriesForm.create", { count: chosen.length })}
-          </Button>
-        ) : null}
+        {/* PRESENT FROM THE START, inert until there is something to create
+            (#103). Hiding it left "Annuler" as the page's only action, which
+            reads as a broken form. With no count to name, it says what it
+            will do instead of offering to create zero events. */}
+        <Button
+          type="submit"
+          aria-disabled={busy || blockedBy !== null}
+          aria-describedby={blockedBy ?? undefined}
+        >
+          {busy
+            ? t("seriesForm.creating")
+            : chosen.length > 0
+              ? t("seriesForm.create", { count: chosen.length })
+              : t("seriesForm.createNone")}
+        </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel")}
         </Button>

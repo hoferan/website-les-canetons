@@ -1,26 +1,24 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { rowsOf } from "../api/collection";
 import { getEventIndexQueryKey, useEventSeries } from "../api/generated/endpoints";
 import type { EventResource, StoreEventSeriesRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
-import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
+import { type SeriesCreatedState } from "../events/SeriesCreatedNotice";
 import { SeriesForm } from "../events/SeriesForm";
 import { t } from "../i18n";
 
 /**
  * A whole season in one request.
  *
- * IT REPORTS THE COUNT AND STAYS, rather than returning to the planning the
- * moment it succeeds. Two reasons, both from what this screen actually does:
- * it writes up to sixty rows at once, so "4 événements créés" is the only confirmation that the
- * generator did what the preview promised, and a message shown on the way out
- * is a message nobody reads. The band's real season also has two rehearsal
- * variants, so generating a second series straight afterwards is the normal
- * case rather than an edge one.
+ * IT LANDS ON THE PLANNING, carrying the count (#103). It used to report the
+ * count in place, on its own path, and a check that read the URL took that
+ * for a failed save and ran it again: two identical seasons on TEST. The
+ * planning is also where the new rehearsals are, so the count is read beside
+ * them, and it stays there until dismissed, with a link to generate the
+ * season's second rehearsal variant straight away.
  *
  * THE COUNT IS THE SERVER'S, read off the created collection rather than off
  * the ticked dates. They should agree; if they ever do not, the honest number
@@ -32,17 +30,18 @@ export function EventSeriesNew() {
   const form = useApiFormError(t("seriesForm.createFailed"));
   const create = useEventSeries();
 
-  const [created, setCreated] = useState<number | null>(null);
-
   async function submit(request: StoreEventSeriesRequest) {
     form.clear();
 
     try {
       const result = await create.mutateAsync({ data: request });
+      await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
       // A 201 carrying a collection — which is exactly why rowsOf narrows on
       // any 2xx rather than on 200. See web/src/api/collection.ts.
-      setCreated(rowsOf<EventResource>(result).length);
-      await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+      const state: SeriesCreatedState = {
+        seriesCreated: rowsOf<EventResource>(result).length,
+      };
+      navigate("/events", { state });
     } catch (thrown) {
       // The form stays open, with the ticks intact: a refused template has to
       // be corrected where it was typed, and re-choosing the range would mean
@@ -55,33 +54,13 @@ export function EventSeriesNew() {
     <PageSection>
       <h1 className="font-display text-3xl">{t("seriesForm.newHeading")}</h1>
 
-      {created === null ? (
-        <SeriesForm
-          busy={create.isPending}
-          error={form.error}
-          problemFor={form.messageFor}
-          onSubmit={submit}
-          onCancel={() => navigate("/events")}
-        />
-      ) : (
-        <div className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4">
-          <p role="status" className="text-ink">
-            {t("seriesForm.createdCount", { count: created })}
-          </p>
-          <div className="flex flex-wrap gap-related">
-            <ButtonLink to="/events">{t("seriesForm.seePlanning")}</ButtonLink>
-            {/* The season has two rehearsal variants, so a second series is
-                the normal next step rather than an edge case. */}
-            <button
-              type="button"
-              className="focus-ring min-h-touch text-ink underline"
-              onClick={() => setCreated(null)}
-            >
-              {t("seriesForm.another")}
-            </button>
-          </div>
-        </div>
-      )}
+      <SeriesForm
+        busy={create.isPending}
+        error={form.error}
+        problemFor={form.messageFor}
+        onSubmit={submit}
+        onCancel={() => navigate("/events")}
+      />
     </PageSection>
   );
 }

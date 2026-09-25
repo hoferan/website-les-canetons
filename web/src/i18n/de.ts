@@ -472,10 +472,12 @@ export const de: typeof fr = {
     creating: "Wird erstellt…",
     create_one: "{{count}} Anlass erstellen",
     create_other: "{{count}} Anlässe erstellen",
+    createNone: "Anlässe erstellen",
+    noneChosen: "Wählen Sie mindestens einen Termin aus.",
     createdCount_one: "{{count}} Anlass erstellt.",
     createdCount_other: "{{count}} Anlässe erstellt.",
-    seePlanning: "Zur Planung",
     another: "Weitere Serie erstellen",
+    dismissCreated: "Meldung schliessen",
   },
 
   members: {
