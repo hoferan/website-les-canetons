@@ -80,7 +80,12 @@ test("a month entry asks for the month and the year", async () => {
 
 test("editing a year entry opens on its year, with no day to invent", async () => {
   await renderAt("/history/3/edit");
-  expect(await screen.findByLabelText(/^Année/)).toHaveValue(2019);
+  const year = await screen.findByLabelText(/^Année/);
+  expect(year).toHaveValue("2019");
+  // A text field with a numeric keypad, not type=number: a scroll wheel over
+  // a number field changes the year.
+  expect(year).toHaveAttribute("type", "text");
+  expect(year).toHaveAttribute("inputmode", "numeric");
   expect(screen.getByLabelText("Précision de la date")).toHaveValue("year");
   expect(screen.queryByLabelText(/^Date/)).toBeNull();
 });
@@ -119,6 +124,8 @@ test("a title stops at 120 characters and says how many are used", async () => {
 
   await user.type(titleFr, "Carnaval");
   expect(screen.getByTestId("titleFr-count")).toHaveTextContent("8 / 120");
+  // Read as words, not as "huit barre oblique cent vingt".
+  expect(titleFr).toHaveAccessibleDescription(/8 caractères sur 120/);
 });
 
 test("the chosen icon is named where a sighted user can read it", async () => {
@@ -188,4 +195,96 @@ test("the German form punctuates its labels the German way", async () => {
   );
   expect(await screen.findByText("Auf der Zeitleiste:")).toBeInTheDocument();
   expect(screen.getByTestId("icon-chosen").parentElement).toHaveTextContent(/^: Keines$/);
+});
+
+/** A MISSING MONTH SAYS SO (the second review). It used to fail in silence. */
+test("a month entry without its month says so at the month", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/new");
+  await user.selectOptions(await screen.findByLabelText("Précision de la date"), "month");
+  await user.type(screen.getByLabelText(/^Année/), "2002");
+  await user.type(screen.getByLabelText("Titre en français"), "Premier cortège");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  const month = screen.getByLabelText(/^Mois/);
+  expect(month).toHaveFocus();
+  expect(month).toHaveAttribute("aria-invalid", "true");
+  expect(month).toHaveAccessibleDescription("Choisissez le mois.");
+});
+
+/**
+ * SWITCHING THE PRECISION KEEPS WHAT IS KNOWN. An exact date typed and then
+ * narrowed to its month used to leave the month and year empty, and the
+ * preview could show a date nobody had entered.
+ */
+test("narrowing an exact date keeps its month and year, and widening it back keeps the day", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/new");
+  const precision = await screen.findByLabelText("Précision de la date");
+  await user.selectOptions(precision, "day");
+  await user.type(screen.getByLabelText(/^Date/), "2016-11-11");
+
+  await user.selectOptions(precision, "month");
+  expect(screen.getByLabelText(/^Mois/)).toHaveValue("11");
+  expect(screen.getByLabelText(/^Année/)).toHaveValue("2016");
+  expect(screen.getByTestId("history-preview")).toHaveTextContent("novembre 2016");
+
+  await user.selectOptions(precision, "day");
+  expect(screen.getByLabelText(/^Date/)).toHaveValue("2016-11-11");
+});
+
+test("widening a year entry offers no day it does not know", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/3/edit");
+  await user.selectOptions(await screen.findByLabelText("Précision de la date"), "day");
+  expect(screen.getByLabelText(/^Date/)).toHaveValue("");
+});
+
+test("the form keys its required marks", async () => {
+  await renderAt("/history/new");
+  expect(await screen.findByText(/champ obligatoire/)).toBeInTheDocument();
+});
+
+/** ONE MESSAGE, NOT TWO: the rule itself turns into the error. */
+test("an empty save turns the rule into the error rather than repeating it", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/new");
+  await user.type(await screen.findByLabelText(/^Année/), "2024");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(screen.queryByText(/Au moins un titre ou un texte/)).toBeNull();
+  expect(screen.getAllByText(/Écrivez au moins un titre ou un texte/)).toHaveLength(1);
+});
+
+test("nothing is read out as punctuation while the date is incomplete", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/new");
+  await user.selectOptions(await screen.findByLabelText("Précision de la date"), "month");
+
+  expect(screen.getByRole("option", { name: "Choisir le mois" })).toBeInTheDocument();
+  expect(screen.getByTestId("history-preview")).toHaveTextContent("date à compléter");
+});
+
+test("saving says so on the timeline", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/new");
+  await user.type(await screen.findByLabelText(/^Année/), "2024");
+  await user.type(screen.getByLabelText("Titre en français"), "Nouveau");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await timeline();
+  await expect.poll(() => screen.getByRole("status").textContent).toBe("Entrée enregistrée.");
+});
+
+test("the German form names the months in German", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(
+    <Routes>
+      <Route path="/history/new" element={<HistoryNew />} />
+    </Routes>,
+    { route: "/history/new", locale: "de-CH" },
+  );
+  const user = userEvent.setup();
+  await user.selectOptions(await screen.findByLabelText("Genauigkeit des Datums"), "month");
+  expect(screen.getByRole("option", { name: "Oktober" })).toBeInTheDocument();
 });

@@ -21,7 +21,7 @@ import type { HistoryEntryResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { currentLocale, t } from "../i18n";
-import { historyDate, shownIn } from "./entry";
+import { dateWithPreposition, historyDate, shownIn } from "./entry";
 
 /**
  * The delete confirmation for one history entry.
@@ -58,7 +58,9 @@ export function DeleteHistoryEntry({
   const date = entry ? historyDate(entry.occurredOn, entry.precision, locale) : "";
   const title = shown?.title
     ? t("history.deleteHeadingNamed", { title: shown.title, date })
-    : t("history.deleteHeadingUntitled", { date });
+    : t("history.deleteHeadingUntitled", {
+        of: entry ? dateWithPreposition(entry.occurredOn, entry.precision, locale) : "",
+      });
 
   useEffect(() => {
     if (entryId === null) {

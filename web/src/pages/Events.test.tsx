@@ -711,7 +711,7 @@ test("the server's own refusal lands under the field it is about", async () => {
   await userEvent.type(within(dialog).getByLabelText("Raison"), "x");
   await userEvent.click(within(dialog).getByRole("button", { name: "Je ne viens pas" }));
 
-  expect(await within(dialog).findByText(/Raison est requis/)).toBeInTheDocument();
+  expect(await within(dialog).findByText(/Raison est obligatoire/)).toBeInTheDocument();
 });
 
 test("somebody in no register is asked nothing", async () => {

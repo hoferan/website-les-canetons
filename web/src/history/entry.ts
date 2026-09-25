@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import type { HistoryEntryResource } from "../api/generated/model";
+import { t } from "../i18n";
 import { intlTag, type Locale } from "../i18n/locale";
 
 /** The server's closed set (App\Support\HistoryIcon), mirrored. */
@@ -89,4 +90,25 @@ export function historyDate(occurredOn: string, precision: string, locale: Local
     return String(date.getUTCFullYear());
   }
   return formatter(locale, precision === "month" ? "month" : "day").format(date);
+}
+
+/**
+ * "de 2007", "d'octobre 2002", "du 11.11.2023" / "von 2007", "vom 11.11.2023":
+ * the date with the preposition an untitled entry is named by.
+ *
+ * The preposition is the catalogue's; only which of its four forms applies is
+ * decided here, from the precision and, for a month, from whether the month
+ * name starts with a vowel (French elides "de" before "août" or "octobre").
+ */
+export function dateWithPreposition(occurredOn: string, precision: string, locale: Locale): string {
+  const date = historyDate(occurredOn, precision, locale);
+  const form =
+    precision === "day"
+      ? "day"
+      : precision === "month"
+        ? /^[aeiouyàâäéèêëîïôöûüh]/i.test(date)
+          ? "monthVowel"
+          : "month"
+        : "year";
+  return t(`history.of.${form}`, { date });
 }

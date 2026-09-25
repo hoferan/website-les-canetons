@@ -8,7 +8,13 @@ import type {
   StoreHistoryEntryRequestIcon,
   StoreHistoryEntryRequestPrecision,
 } from "../api/generated/model";
-import { FormError, FormField, formIsValid } from "../components/FormField";
+import {
+  FormError,
+  FormField,
+  RequiredLegend,
+  RequiredMark,
+  formIsValid,
+} from "../components/FormField";
 import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
@@ -35,7 +41,7 @@ const SIDES = [
 ] as const;
 
 const RULE_ID = "history-rule";
-const EMPTY_ID = "history-empty";
+const MONTH_ERROR_ID = "occurredMonth-error";
 
 type Draft = {
   precision: Precision;
@@ -131,19 +137,57 @@ export function HistoryForm({
   const [draft, setDraft] = useState<Draft>(() => draftFrom(entry));
   const [empty, setEmpty] = useState(false);
   const [yearProblem, setYearProblem] = useState<string | undefined>(undefined);
+  const [monthProblem, setMonthProblem] = useState<string | undefined>(undefined);
   const locale = currentLocale();
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
     setEmpty(false);
     setYearProblem(undefined);
+    setMonthProblem(undefined);
     setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * SWITCHING THE PRECISION KEEPS WHAT IS KNOWN. Narrowing an exact date takes
+   * its year and month from it; widening back to an exact date keeps a day
+   * only if it still agrees with the year and month, and never invents one.
+   */
+  function changePrecision(next: Precision) {
+    setEmpty(false);
+    setYearProblem(undefined);
+    setMonthProblem(undefined);
+    setDraft((current) => {
+      let { year, month, day } = current;
+      if (current.precision === "day" && day !== "") {
+        year = day.slice(0, 4);
+        month = day.slice(5, 7);
+      }
+      if (next === "day" && current.precision !== "day" && day !== "") {
+        const agrees =
+          day.slice(0, 4) === year && (current.precision === "year" || day.slice(5, 7) === month);
+        if (!agrees) {
+          day = "";
+        }
+      }
+      return { ...current, precision: next, year, month, day };
+    });
   }
 
   const date = occurredOn(draft);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || !formIsValid(event.currentTarget)) {
+    if (busy) {
+      return;
+    }
+    // BEFORE formIsValid, which would focus the select and say nothing: the
+    // select is not a FormField, so no message of the browser reaches it.
+    if (draft.precision === "month" && draft.month === "") {
+      setMonthProblem(t("historyForm.monthMissing"));
+      document.getElementById("occurredMonth")?.focus();
+      return;
+    }
+    if (!formIsValid(event.currentTarget)) {
       return;
     }
     if (draft.precision !== "day" && !/^\d{4}$/.test(draft.year)) {
@@ -172,7 +216,7 @@ export function HistoryForm({
     });
   }
 
-  const textDescription = empty ? `${RULE_ID} ${EMPTY_ID}` : RULE_ID;
+  const textDescription = RULE_ID;
   const selectClass = "focus-ring min-h-touch rounded-md border border-line bg-panel px-3 text-ink";
 
   return (
@@ -181,13 +225,14 @@ export function HistoryForm({
       onSubmit={submit}
       className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
     >
+      <RequiredLegend />
       <div className="flex flex-col gap-1">
         <label htmlFor="precision">{t("fields.precision")}</label>
         <select
           id="precision"
           className={selectClass}
           value={draft.precision}
-          onChange={(changed) => set("precision", changed.target.value as Precision)}
+          onChange={(changed) => changePrecision(changed.target.value as Precision)}
         >
           {PRECISIONS.map((precision) => (
             <option key={precision} value={precision}>
@@ -212,16 +257,20 @@ export function HistoryForm({
           <>
             {draft.precision === "month" ? (
               <div className="flex flex-col gap-1">
-                <label htmlFor="occurredMonth">{t("historyForm.month")}</label>
+                <div>
+                  <label htmlFor="occurredMonth">{t("historyForm.month")}</label> <RequiredMark />
+                </div>
                 <select
                   id="occurredMonth"
                   required
-                  className={selectClass}
+                  aria-invalid={monthProblem ? true : undefined}
+                  aria-describedby={monthProblem ? MONTH_ERROR_ID : undefined}
+                  className={`${selectClass} ${monthProblem ? "border-danger" : ""}`}
                   value={draft.month}
                   onChange={(changed) => set("month", changed.target.value)}
                 >
                   <option value="" disabled>
-                    …
+                    {t("historyForm.monthPlaceholder")}
                   </option>
                   {monthNames().map((name, index) => (
                     <option key={name} value={String(index + 1).padStart(2, "0")}>
@@ -229,11 +278,16 @@ export function HistoryForm({
                     </option>
                   ))}
                 </select>
+                {monthProblem ? (
+                  <span id={MONTH_ERROR_ID} className="block text-sm text-danger">
+                    {monthProblem}
+                  </span>
+                ) : null}
               </div>
             ) : null}
             <FormField
               id="occurredYear"
-              type="number"
+              inputMode="numeric"
               label={t("historyForm.year")}
               value={draft.year}
               onChange={(value) => set("year", value)}
@@ -252,19 +306,18 @@ export function HistoryForm({
             icon={draft.icon === "none" ? null : draft.icon}
           />
           <span className="font-semibold text-violet">
-            {date ? historyDate(date, draft.precision, locale) : "…"}
+            {date ? historyDate(date, draft.precision, locale) : t("historyForm.previewIncomplete")}
           </span>
         </span>
       </p>
 
-      <p id={RULE_ID} className="text-sm text-ink-muted">
-        {t("historyForm.atLeastOne")}
+      {/* ONE ELEMENT FOR THE RULE AND ITS BREACH: when the four texts are
+          empty the rule itself turns into the error, rather than a second
+          message saying nearly the same one line below. It describes each of
+          the four fields, and focus moves to the first, which reads it. */}
+      <p id={RULE_ID} className={`text-sm ${empty ? "text-danger" : "text-ink-muted"}`}>
+        {empty ? t("errors.history_entry_empty") : t("historyForm.atLeastOne")}
       </p>
-      {empty ? (
-        <p id={EMPTY_ID} role="alert" className="text-sm text-danger">
-          {t("errors.history_entry_empty")}
-        </p>
-      ) : null}
 
       {SIDES.map((side) => (
         <fieldset key={side.legend} className="flex flex-col gap-related">
@@ -279,9 +332,17 @@ export function HistoryForm({
             invalid={empty}
             maxLength={TITLE_MAX}
             hint={
-              <span data-testid={`${side.title.field}-count`}>
-                {draft[side.title.field].length} / {TITLE_MAX}
-              </span>
+              <>
+                <span aria-hidden="true" data-testid={`${side.title.field}-count`}>
+                  {draft[side.title.field].length} / {TITLE_MAX}
+                </span>
+                <span className="sr-only">
+                  {t("historyForm.counter", {
+                    n: draft[side.title.field].length,
+                    max: TITLE_MAX,
+                  })}
+                </span>
+              </>
             }
           />
           <FormField

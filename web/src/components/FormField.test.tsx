@@ -38,12 +38,18 @@ test("renders a textarea when asked for one", () => {
 // copy-pasted per input, and silently useless if the ids drift apart.
 test("a problem marks the control invalid and points it at the message", () => {
   render(
-    <FormField id="demo-name" label="Nom :" value="" onChange={noop} problem="Nom est requis" />,
+    <FormField
+      id="demo-name"
+      label="Nom :"
+      value=""
+      onChange={noop}
+      problem="Nom est obligatoire"
+    />,
   );
   const input = screen.getByLabelText("Nom :");
   expect(input).toHaveAttribute("aria-invalid", "true");
   expect(input).toHaveAttribute("aria-describedby", "demo-name-error");
-  expect(screen.getByText("Nom est requis")).toHaveAttribute("id", "demo-name-error");
+  expect(screen.getByText("Nom est obligatoire")).toHaveAttribute("id", "demo-name-error");
 });
 
 test("no problem means no aria-invalid and no message", () => {
@@ -195,7 +201,7 @@ test("an empty required field says so in French, and points the control at it", 
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
   const input = screen.getByLabelText("E-mail");
-  expect(screen.getByText("E-mail est requis")).toHaveAttribute("id", "demo-field-error");
+  expect(screen.getByText("E-mail est obligatoire")).toHaveAttribute("id", "demo-field-error");
   expect(input).toHaveAttribute("aria-invalid", "true");
   expect(input).toHaveAttribute("aria-describedby", "demo-field-error");
   expect(input).toHaveFocus();
@@ -227,10 +233,10 @@ test("the message goes away as soon as the field is edited", async () => {
   }
   render(<Live />);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
-  expect(screen.getByText("Nom est requis")).toBeInTheDocument();
+  expect(screen.getByText("Nom est obligatoire")).toBeInTheDocument();
 
   await user.type(screen.getByLabelText("Nom"), "R");
-  expect(screen.queryByText("Nom est requis")).toBeNull();
+  expect(screen.queryByText("Nom est obligatoire")).toBeNull();
 });
 
 // The server knows things the browser cannot, "déjà utilisé" among them, so
@@ -240,7 +246,7 @@ test("a server problem wins over the browser's", async () => {
   render(<Validated value="" problem="E-mail est déjà utilisé" />);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
   expect(screen.getByText("E-mail est déjà utilisé")).toBeInTheDocument();
-  expect(screen.queryByText("E-mail est requis")).toBeNull();
+  expect(screen.queryByText("E-mail est obligatoire")).toBeNull();
 });
 
 test("formIsValid answers true, and focuses nothing, for a valid form", () => {
@@ -274,4 +280,9 @@ test("describedBy, invalid and maxLength reach the control", () => {
   expect(input).toHaveAccessibleDescription("Au moins un des deux.");
   expect(input).toHaveAttribute("aria-invalid", "true");
   expect(input).toHaveAttribute("maxlength", "120");
+});
+
+test("invalid marks a textarea red, like an input", () => {
+  render(<FormField id="demo-body" label="Texte" as="textarea" value="" onChange={noop} invalid />);
+  expect(screen.getByLabelText("Texte")).toHaveClass("border-danger");
 });

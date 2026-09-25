@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type HTMLAttributes, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,7 @@ export function formIsValid(form: HTMLFormElement): boolean {
  * What the browser found wrong with one control, in the catalogue's words.
  *
  * Composed exactly as `translateApiError` composes a server refusal, label
- * then reason, so "Nom est requis" reads the same whichever side caught it.
+ * then reason, so "Nom est obligatoire" reads the same whichever side caught it.
  * The label is the control's own rather than a `fields.*` lookup, because the
  * control has one and a lookup can miss.
  *
@@ -179,6 +179,7 @@ export function FormField({
   describedBy: outside,
   invalid = false,
   maxLength,
+  inputMode,
 }: {
   id: string;
   label: string;
@@ -193,6 +194,7 @@ export function FormField({
   describedBy?: string;
   invalid?: boolean;
   maxLength?: number;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   const browser = useBrowserProblem(label);
   const shown = problem ?? browser.problem;
@@ -221,6 +223,7 @@ export function FormField({
     autoComplete,
     value,
     maxLength,
+    inputMode,
     onInvalid: browser.onInvalid,
     "aria-invalid": shown || invalid ? true : undefined,
     "aria-describedby": describedBy || undefined,
@@ -249,7 +252,7 @@ export function FormField({
           onChange={(event) => change(event.target.value)}
           className={cn(
             "focus-ring w-full rounded-md border bg-panel px-3 py-2 text-ink outline-none",
-            shown ? "border-danger" : "border-line",
+            shown || invalid ? "border-danger" : "border-line",
           )}
         />
       ) : type === "password" ? (

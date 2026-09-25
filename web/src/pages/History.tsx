@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageSection } from "@/components/PageSection";
 
@@ -9,12 +9,17 @@ import type { HistoryEntryResource } from "../api/generated/model";
 import { ButtonLink } from "../components/ButtonLink";
 import { RowActions } from "../components/RowActions";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
-import { historyDate, shownIn } from "../history/entry";
+import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
+import { useLocation, useNavigate } from "react-router-dom";
+
 import { useSession } from "../session/SessionProvider";
 
 const ADD_ID = "history-add";
+
+/** What the history form hands the page as it navigates back after a save. */
+export type HistorySavedState = { historySaved: true };
 
 /**
  * The band's history as a vertical timeline (#104).
@@ -40,9 +45,31 @@ export function History() {
   const entries = rowsOf<HistoryEntryResource>(list.data);
   const mayEdit = can("history.manage");
   const [deleting, setDeleting] = useState<HistoryEntryResource | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // A SAVE ARRIVES AS HISTORY STATE from the form, and is announced once the
+  // page is here. Set after mount into a live region that already exists,
+  // which is what gets it read out; then cleared from the history entry, so a
+  // reload or "back" does not announce it again. SeriesCreatedNotice does the
+  // same for the planning.
+  useEffect(() => {
+    if ((location.state as HistorySavedState | null)?.historySaved !== true) {
+      return;
+    }
+    setAnnouncement(t("history.saved"));
+    void navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: null },
+    );
+  }, [location, navigate]);
 
   return (
     <PageSection width="text">
+      <p role="status" className="sr-only">
+        {announcement}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-related">
         <h1 className="font-display text-4xl">{t("history.heading")}</h1>
         {mayEdit ? (
@@ -81,7 +108,10 @@ export function History() {
         onClose={() => setDeleting(null)}
         // The entry and its button are gone, so focus goes to the one
         // control that is always there for an editor.
-        afterDelete={() => document.getElementById(ADD_ID)?.focus()}
+        afterDelete={() => {
+          document.getElementById(ADD_ID)?.focus();
+          setAnnouncement(t("history.deleted"));
+        }}
       />
     </PageSection>
   );
@@ -98,7 +128,11 @@ function TimelineEntry({
 }) {
   const locale = currentLocale();
   const shown = shownIn(entry, locale);
-  const rowName = shown.title ?? t("history.untitled");
+  const rowName =
+    shown.title ??
+    t("history.untitledEntry", {
+      of: dateWithPreposition(entry.occurredOn, entry.precision, locale),
+    });
   // LANG ON THE ENTRY'S OWN TEXT ONLY. The date, the hidden importance and
   // the controls are page copy, and a lang on the whole entry would have a
   // screen reader read them in the entry's language.
@@ -113,8 +147,10 @@ function TimelineEntry({
       />
 
       {/* WRAP ANYWHERE: a pasted URL or a German compound is one unbroken
-          word, and at 390px it pushed the whole page sideways. */}
-      <h2 className="wrap-anywhere hyphens-auto">
+          word, and at 390px it pushed the whole page sideways. Hyphenation
+          only on the title, where Bungee's wide capitals need it; on
+          ragged-right text it split ordinary words at every width. */}
+      <h2 className="wrap-anywhere">
         {entry.important ? <span className="sr-only">{t("history.importantPrefix")}</span> : null}
         <span className="block text-sm font-semibold text-violet">
           {historyDate(entry.occurredOn, entry.precision, locale)}
@@ -122,7 +158,7 @@ function TimelineEntry({
         {shown.title !== null ? (
           <span
             lang={textLang}
-            className={`block font-display ${entry.important ? "text-xl sm:text-2xl" : "text-xl"}`}
+            className={`block font-display hyphens-auto ${entry.important ? "text-xl sm:text-2xl" : "text-xl"}`}
           >
             {shown.title}
           </span>
@@ -130,10 +166,7 @@ function TimelineEntry({
       </h2>
 
       {shown.body !== null ? (
-        <p
-          lang={textLang}
-          className="mt-tight wrap-anywhere hyphens-auto whitespace-pre-line text-ink"
-        >
+        <p lang={textLang} className="mt-tight wrap-anywhere whitespace-pre-line text-ink">
           {shown.body}
         </p>
       ) : null}

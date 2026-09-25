@@ -39,6 +39,14 @@ test("a long unbroken word does not push the phone page sideways", async ({ page
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
   expect(overflow).toBe(0);
+
+  // WRAPPING, NOT HYPHENATION, on the text: on a ragged-right column
+  // hyphenation only split ordinary words ("oc-tobre") at every width.
+  const hyphens = await page
+    .getByTestId("history-timeline")
+    .getByText(/^Voir https/)
+    .evaluate((text) => getComputedStyle(text).hyphens);
+  expect(hyphens).toBe("manual");
 });
 
 /**

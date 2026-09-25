@@ -60,13 +60,15 @@ test("the delete dialog names the entry it deletes", async () => {
   await renderHistory("fr", "demo.direction");
   await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
   expect(
-    await screen.findByRole("alertdialog", { name: "Supprimer « Le flambeau passe » (2026) ?" }),
+    await screen.findByRole("alertdialog", {
+      name: "Supprimer « Le flambeau passe » (2026) ?",
+    }),
   ).toBeInTheDocument();
   await user.keyboard("{Escape}");
 
-  await user.click(screen.getByRole("button", { name: "Supprimer cette entrée" }));
+  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée de 2007" }));
   expect(
-    await screen.findByRole("alertdialog", { name: "Supprimer l’entrée de 2007 ?" }),
+    await screen.findByRole("alertdialog", { name: "Supprimer l’entrée de 2007 ?" }),
   ).toBeInTheDocument();
 });
 
@@ -147,7 +149,7 @@ test("a German-only entry on the French page is German, marked", async () => {
 test("editing and deleting are named in the page's language and word order", async () => {
   await renderHistory("de-CH", "demo.direction");
   expect(screen.getByRole("link", { name: "Le flambeau passe bearbeiten" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "diesen Eintrag löschen" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "den Eintrag von 2007 löschen" })).toBeInTheDocument();
 });
 
 /**
@@ -219,7 +221,7 @@ test("an editor sees Ajouter, and Modifier and Supprimer on every entry", async 
   // Two actions per row, so RowActions draws both inline and no "…" menu.
   expect(screen.getAllByRole("link", { name: /^Modifier / })).toHaveLength(4);
   expect(screen.getAllByRole("button", { name: /^Supprimer / })).toHaveLength(4);
-  expect(screen.getByRole("link", { name: "Modifier cette entrée" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Modifier l’entrée de 2007" })).toHaveAttribute(
     "href",
     "/history/2/edit",
   );
@@ -231,4 +233,77 @@ test("deleting an entry removes it after the confirmation", async () => {
   await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
   await user.click(await screen.findByRole("button", { name: "Supprimer" }));
   await expect.poll(() => screen.queryByText("Le flambeau passe")).toBeNull();
+});
+
+const untitled = (id: number, occurredOn: string, precision: string) => ({
+  id,
+  occurredOn,
+  precision,
+  important: false,
+  icon: null,
+  titleFr: null,
+  bodyFr: "Texte",
+  titleDe: null,
+  bodyDe: "Text",
+  createdAt: "2026-09-26T00:00:00+00:00",
+  updatedAt: "2026-09-26T00:00:00+00:00",
+});
+
+function serveOnly(...rows: ReturnType<typeof untitled>[]) {
+  server.use(
+    http.get("/api/v1/history", () =>
+      HttpResponse.json({ data: rows, meta: { total: rows.length, limit: 500, offset: 0 } }),
+    ),
+  );
+}
+
+/**
+ * AN UNTITLED ENTRY IS NAMED BY ITS DATE, in the right French and German:
+ * "d’octobre", "du 11.11.2023", "vom 11.11.2023". Named "cette entrée", three
+ * untitled rows had three identical buttons.
+ */
+test("an untitled entry's buttons and dialog use the right French for its date", async () => {
+  serveOnly(untitled(1, "2002-10-01", "month"), untitled(2, "2023-11-11", "day"));
+  const user = userEvent.setup();
+  await renderHistory("fr", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée d’octobre 2002" }));
+  expect(
+    await screen.findByRole("alertdialog", { name: "Supprimer l’entrée d’octobre 2002 ?" }),
+  ).toBeInTheDocument();
+  await user.keyboard("{Escape}");
+  await user.click(screen.getByRole("button", { name: "Supprimer l’entrée du 11.11.2023" }));
+  expect(
+    await screen.findByRole("alertdialog", { name: "Supprimer l’entrée du 11.11.2023 ?" }),
+  ).toBeInTheDocument();
+});
+
+test("the German dialog says vom for an exact date", async () => {
+  serveOnly(untitled(2, "2023-11-11", "day"));
+  const user = userEvent.setup();
+  await renderHistory("de-CH", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "den Eintrag vom 11.11.2023 löschen" }));
+  expect(
+    await screen.findByRole("alertdialog", { name: "Den Eintrag vom 11.11.2023 löschen?" }),
+  ).toBeInTheDocument();
+});
+
+/** Non-breaking spaces, so the guillemets and the question mark never start a line. */
+test("the French dialog title keeps its guillemets and question mark attached", async () => {
+  const user = userEvent.setup();
+  await renderHistory("fr", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  const dialog = await screen.findByRole("alertdialog");
+  expect(within(dialog).getByRole("heading").textContent).toBe(
+    "Supprimer « Le flambeau passe » (2026) ?",
+  );
+});
+
+test("a delete says so", async () => {
+  const user = userEvent.setup();
+  await renderHistory("fr", "demo.direction");
+  await user.click(screen.getByRole("button", { name: "Supprimer Le flambeau passe" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
+
+  await expect.poll(() => screen.getByRole("status").textContent).toBe("Entrée supprimée.");
 });

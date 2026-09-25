@@ -13,6 +13,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { HistoryForm } from "../history/HistoryForm";
 import { t } from "../i18n";
+import { type HistorySavedState } from "./History";
 
 /**
  * Correcting one entry of the history.
@@ -81,7 +82,8 @@ export function HistoryEdit() {
     try {
       await update.mutateAsync({ data, etag: opened.etag });
       await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
-      navigate("/history");
+      const state: HistorySavedState = { historySaved: true };
+      navigate("/history", { state });
     } catch (thrown) {
       // Open, so a 412 is read next to the values it is about.
       form.setFromThrown(thrown);

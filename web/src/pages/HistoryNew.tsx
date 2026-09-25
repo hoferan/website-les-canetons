@@ -7,6 +7,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { HistoryForm } from "../history/HistoryForm";
 import { t } from "../i18n";
+import { type HistorySavedState } from "./History";
 
 /**
  * Adding one entry to the band's history.
@@ -27,7 +28,8 @@ export function HistoryNew() {
     try {
       await create.mutateAsync(data);
       await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
-      navigate("/history");
+      const state: HistorySavedState = { historySaved: true };
+      navigate("/history", { state });
     } catch (thrown) {
       // The form stays open: a refusal is corrected where it was typed.
       form.setFromThrown(thrown);

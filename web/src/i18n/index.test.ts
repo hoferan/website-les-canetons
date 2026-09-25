@@ -12,7 +12,9 @@ test("a field error pairs the French label with the French reason", () => {
     code: "validation_failed",
     fields: [{ field: "startTime", reason: "required" }],
   });
-  expect(result.fields).toEqual([{ field: "startTime", message: "Heure de début est requis" }]);
+  expect(result.fields).toEqual([
+    { field: "startTime", message: "Heure de début est obligatoire" },
+  ]);
 });
 
 test("interpolation params reach the reason", () => {

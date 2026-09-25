@@ -209,8 +209,8 @@ test("an empty submission is refused in French, before anything is sent", async 
   await renderWithSession(<Contact />, { route: "/contact" });
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
-  expect(screen.getByText("Nom est requis")).toBeInTheDocument();
-  expect(screen.getByText("Message est requis")).toBeInTheDocument();
+  expect(screen.getByText("Nom est obligatoire")).toBeInTheDocument();
+  expect(screen.getByText("Message est obligatoire")).toBeInTheDocument();
   expect(screen.getByLabelText("Nom")).toHaveFocus();
   expect(posted).toBe(false);
 });

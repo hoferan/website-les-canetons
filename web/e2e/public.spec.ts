@@ -89,7 +89,7 @@ test("an empty contact form is refused in the page's language, not the browser's
   await page.goto("/contact");
   await page.getByRole("button", { name: "Envoyer" }).click();
 
-  await expect(page.getByText("Nom est requis", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nom est obligatoire", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Nom", { exact: true })).toBeFocused();
 });
 

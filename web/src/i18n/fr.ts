@@ -105,7 +105,9 @@ export const fr = {
     not_found: "Introuvable",
   },
   validation: {
-    required: "est requis",
+    // "obligatoire", not "requis": it reads the same for a feminine label,
+    // where "requis" gave "Année est requis".
+    required: "est obligatoire",
     too_long: "est trop long (maximum {{max}} caractères)",
     invalid_format: "n'est pas dans un format valide",
     invalid_type: "a un type invalide",
@@ -1180,7 +1182,7 @@ export const fr = {
     inGerman: "En allemand",
     // Read before the date in an important entry's heading, so its punctuation
     // is each language's own.
-    importantPrefix: "Étape importante : ",
+    importantPrefix: "Étape importante : ",
     add: "Ajouter",
     addAria: "Ajouter à l’histoire",
     edit: "Modifier",
@@ -1188,12 +1190,27 @@ export const fr = {
     // The accessible names, which carry the entry, in each language's word order.
     editAria: "Modifier {{name}}",
     deleteAria: "Supprimer {{name}}",
-    deleteHeadingNamed: "Supprimer « {{title}} » ({{date}}) ?",
-    deleteHeadingUntitled: "Supprimer l’entrée de {{date}} ?",
+    // Non-breaking spaces inside the guillemets and before the question mark,
+    // so neither is ever left alone at the start of a line.
+    deleteHeadingNamed: "Supprimer « {{title}} » ({{date}}) ?",
+    deleteHeadingUntitled: "Supprimer l’entrée {{of}} ?",
     deleteDescription: "Elle disparaît de la page publique.",
     deleteFailed: "La suppression a échoué.",
-    // The row's name in the edit and delete labels when the entry has no title.
-    untitled: "cette entrée",
+    // An untitled entry is named by its date, so three of them do not have
+    // three identical buttons. {{of}} is one of `of` below.
+    untitledEntry: "l’entrée {{of}}",
+    // "de 2007", "d’octobre 2002", "du 11.11.2023": the preposition depends on
+    // the precision, and elides before a month that starts with a vowel.
+    of: {
+      year: "de {{date}}",
+      month: "de {{date}}",
+      monthVowel: "d’{{date}}",
+      day: "du {{date}}",
+    },
+    // Announced after the timeline is back, since the save or the delete
+    // leaves no visible trace where focus lands.
+    saved: "Entrée enregistrée.",
+    deleted: "Entrée supprimée.",
     icons: {
       none: "Aucune",
       flag: "Drapeau",
@@ -1225,8 +1242,15 @@ export const fr = {
     month: "Mois",
     yearInvalid: "Indiquez l’année en quatre chiffres.",
     // Colons carry each language's own spacing, so they live here.
-    preview: "Sur la frise :",
-    labelSeparator: " : ",
+    preview: "Sur la frise :",
+    labelSeparator: " : ",
+    // Instead of a bare "…", which a screen reader reads as "points de
+    // suspension".
+    previewIncomplete: "date à compléter",
+    monthPlaceholder: "Choisir le mois",
+    monthMissing: "Choisissez le mois.",
+    // Read as words; "8 / 120" alone is read as "huit barre oblique cent vingt".
+    counter: "{{n}} caractères sur {{max}}",
     iconLegend: "Icône sur la frise",
     saveFailed: "L’enregistrement a échoué.",
     loadFailed: "L’entrée n’a pas pu être chargée.",
