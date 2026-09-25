@@ -87,6 +87,11 @@ for (const size of WIDTHS) {
     const who = visit.as ?? "anonymous";
 
     test(`axe: ${who} at ${size.name}`, async ({ browser }) => {
+      // A TIME BUDGET PER PAGE, not Playwright's flat 30s for the whole test:
+      // each test walks every page its account can reach, and at 13 pages
+      // demo.direction ran past 30s on CI's runner while passing locally.
+      test.setTimeout(20_000 + visit.paths.length * 8_000);
+
       // A FRESH CONTEXT PER ACCOUNT: a second login in a context that
       // already holds a session lands on the logged-in branch of /login.
       const context = await browser.newContext({
