@@ -41,6 +41,7 @@ class PermissionTest extends TestCase
                 'registrations.manage',
                 'messages.view',
                 'messages.manage',
+                'history.manage',
             ],
             array_column(Permission::cases(), 'value'),
         );
