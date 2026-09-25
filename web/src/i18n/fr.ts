@@ -1200,6 +1200,23 @@ export const fr = {
     },
   },
 
+  /** The history editor, /history/new and /history/:id/edit. Field labels are `fields.*`. */
+  historyForm: {
+    newHeading: "Nouvelle entrée",
+    editHeading: "Modifier l’entrée",
+    french: "Français",
+    german: "Allemand",
+    atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
+    precisions: {
+      year: "L’année",
+      month: "Le mois",
+      day: "Le jour",
+    },
+    iconLegend: "Icône sur la frise",
+    saveFailed: "L’enregistrement a échoué.",
+    loadFailed: "L’entrée n’a pas pu être chargée.",
+  },
+
   /**
    * The public schedule — /agenda's own heading and empty state, and
    * AgendaEntry/PublicAgenda's shared copy (the front page's block and the

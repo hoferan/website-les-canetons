@@ -19,6 +19,8 @@ import { EventRegistrations } from "./pages/EventRegistrations";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
+import { HistoryEdit } from "./pages/HistoryEdit";
+import { HistoryNew } from "./pages/HistoryNew";
 import { Home } from "./pages/Home";
 import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
@@ -151,6 +153,10 @@ export function AppRoutes() {
               nav only offers either link to someone who holds the
               permission, so guarding the routes on the same token keeps each
               page consistent with its own entry. */}
+          <Route element={<RequirePermission permission="history.manage" />}>
+            <Route path="/history/new" element={<HistoryNew />} />
+            <Route path="/history/:id/edit" element={<HistoryEdit />} />
+          </Route>
           <Route element={<RequirePermission permission="messages.view" />}>
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/contact-messages" element={<ContactMessages />} />

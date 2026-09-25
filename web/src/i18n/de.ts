@@ -768,6 +768,22 @@ export const de: typeof fr = {
     },
   },
 
+  historyForm: {
+    newHeading: "Neuer Eintrag",
+    editHeading: "Eintrag bearbeiten",
+    french: "Französisch",
+    german: "Deutsch",
+    atLeastOne: "Mindestens ein Titel oder ein Text, in einer der beiden Sprachen.",
+    precisions: {
+      year: "Das Jahr",
+      month: "Der Monat",
+      day: "Der Tag",
+    },
+    iconLegend: "Symbol auf der Zeitleiste",
+    saveFailed: "Das Speichern ist fehlgeschlagen.",
+    loadFailed: "Der Eintrag konnte nicht geladen werden.",
+  },
+
   agenda: {
     heading: "Wo Sie uns sehen",
     intro: "Die nächsten Auftritte der Canetons. Kommen Sie uns zuhören!",
