@@ -7,6 +7,7 @@ use App\Http\Requests\StoreMemberRequest;
 use App\Http\Requests\UpdateMemberRequest;
 use App\Http\Resources\MemberResource;
 use App\Models\Member;
+use App\Models\Role;
 use App\Support\AccessIntegrity;
 use App\Support\Audit;
 use App\Support\Emits;
@@ -156,8 +157,8 @@ class MemberController extends Controller
      * `POST /api/v1/members/{member}/password`. The new member is required to
      * change it before doing anything else.
      *
-     * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
-     * no password may be chosen here.
+     * Only the baseline role is granted: every account holds it. Any other role
+     * is `PUT /api/v1/members/{member}/roles`. No password may be chosen here.
      *
      * A missing required field answers `400 validation_failed` naming the
      * field with `required`. A username already in use answers the same with
@@ -181,16 +182,19 @@ class MemberController extends Controller
         // password an administrator read down the phone is not a secret worth
         // keeping.
         //
-        // IT GRANTS NO ROLES, and that is a security property rather than a
-        // simplification. Granting a permission is exactly one operation —
-        // PUT /members/{member}/roles — which checks the lockout invariants,
-        // ends the target's sessions and audits. Accepting roleIds here would
-        // have made the UNGUARDED path strictly easier than the guarded one: a
-        // stolen session could mint a member holding `direction` and read its
-        // password straight out of this response, a persistent backdoor.
+        // IT GRANTS THE BASELINE ROLE AND NOTHING ELSE, and that is a security
+        // property rather than a simplification. Every account holds the
+        // baseline (the planning, one's own password), attached here from the
+        // role's marker and never from the request. Any OTHER role is exactly
+        // one operation — PUT /members/{member}/roles — which checks the
+        // lockout invariants, ends the target's sessions and audits. Accepting
+        // roleIds here would have made the UNGUARDED path strictly easier than
+        // the guarded one: a stolen session could mint a member holding
+        // `direction` and read its password straight out of this response, a
+        // persistent backdoor. The baseline confers nothing that path guards.
         //
-        // No AccessIntegrity check is needed for the same reason: a person with
-        // no roles cannot orphan administration or demote anybody.
+        // No AccessIntegrity check is needed for the same reason: the baseline
+        // cannot orphan administration or demote anybody.
         $data = $request->validated();
         $password = GeneratedPassword::make();
 
@@ -206,6 +210,8 @@ class MemberController extends Controller
                 'instructor_of_section_id' => $data['instructorOfSectionId'] ?? null,
                 'public_visible' => $data['publicVisible'],
             ]);
+
+            $member->roles()->attach(Role::baseline()->id);
 
             return $member;
         });
