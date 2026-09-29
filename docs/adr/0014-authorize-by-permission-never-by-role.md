@@ -47,9 +47,9 @@ destroy: `registrations.view` and `registrations.manage`, `messages.view` and
 Answering an event is a permission, `attendance.respond`, held through the
 `musician` role. It was not one until 2026-09-29: it was derived from having a
 register, and the register could therefore decide who is counted. A register
-now only groups and displays. Every account also holds the baseline `member`
+only groups and displays (from #191). Every account also holds the baseline `member`
 role (`events.view`, `account.manage`), marked by `roles.is_baseline` and fixed:
-its grants cannot be edited and it cannot be deleted. The seeded `demo.both`,
+its grants cannot be edited and it cannot be deleted (enforced by #193). The seeded `demo.both`,
 who plays and manages, is still the case that breaks if anyone brings an
 either/or back.
 

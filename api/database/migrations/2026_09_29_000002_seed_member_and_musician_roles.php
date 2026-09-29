@@ -46,8 +46,8 @@ return new class extends Migration
     }
 
     /**
-     * Removes only the two roles, and only when nothing but this migration's own
-     * assignments attach to them. Detaches those assignments first.
+     * Deletes both roles together with every assignment and grant they carry,
+     * including any made after this migration ran.
      */
     public function down(): void
     {
@@ -73,18 +73,22 @@ return new class extends Migration
             return (int) $existing;
         }
 
-        $now = now();
-        $id = DB::table('roles')->insertGetId([
-            'key' => $key,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+        // One transaction: a request killed between the two inserts must not
+        // leave a role with no grants, which a re-run would skip seeding.
+        return DB::transaction(function () use ($key, $permissions): int {
+            $now = now();
+            $id = DB::table('roles')->insertGetId([
+                'key' => $key,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
 
-        DB::table('role_permissions')->insert(array_map(
-            fn (Permission $permission): array => ['role_id' => $id, 'permission' => $permission->value],
-            $permissions,
-        ));
+            DB::table('role_permissions')->insert(array_map(
+                fn (Permission $permission): array => ['role_id' => $id, 'permission' => $permission->value],
+                $permissions,
+            ));
 
-        return $id;
+            return (int) $id;
+        });
     }
 };

@@ -3,15 +3,20 @@
 namespace App\Support;
 
 /**
- * The complete set of permissions the API enforces.
+ * The complete set of permissions the API knows.
+ *
+ * Three of them (`events.view`, `attendance.respond`, `account.manage`) are
+ * seeded ahead of their middleware and are enforced from #191; until then
+ * Member::isPlayer() still decides who may answer an event.
  *
  * THIS IS CODE, NOT DATA, and that is the whole point. A permission is real
  * only if some middleware checks it, so the set cannot be invented in an admin
  * UI — roles (which are data) merely group these.
  *
  * Answering an event IS a permission (`attendance.respond`), held through the
- * `musician` role rather than derived from a register. A register only groups
- * and displays; it never grants anything (ADR 0014). An organiser who does not
+ * `musician` role rather than derived from a register (from #191; today
+ * Member::isPlayer() still derives it). A register only groups and displays;
+ * it never grants anything (ADR 0014). An organiser who does not
  * play simply does not hold `musician`, and one who does (`demo.both`) holds
  * both roles: that pair is what breaks if anyone brings an either/or back.
  */

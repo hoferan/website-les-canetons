@@ -51,10 +51,11 @@ export function draftFrom(member: MemberResource | null): MemberDraft {
  * not members.
  *
  * ROLES ARE INERT WHILE CREATING, and that is the API's shape rather than a
- * simplification: POST /api/members grants no roles, because granting a
- * permission is exactly one operation (PUT /members/{id}/roles) with its own
- * lockout invariants and its own audit entry. Accepting roles at creation would
- * make the unguarded path strictly easier than the guarded one.
+ * simplification: POST /api/members grants only the baseline role and
+ * ignores any roleIds, because granting anything else is exactly one operation
+ * (PUT /members/{id}/roles) with its own lockout invariants and its own audit
+ * entry. Accepting roles at creation would make the unguarded path strictly
+ * easier than the guarded one.
  *
  * THE `disabled` ATTRIBUTE ON THOSE CHECKBOXES IS THE ONE LEGITIMATE USE in
  * this app. The rule against it exists because disabling a FOCUSED SUBMIT

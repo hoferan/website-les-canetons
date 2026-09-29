@@ -112,8 +112,9 @@ class MemberFactory extends Factory
     }
 
     /**
-     * Sets the register only: it groups and displays; it grants nothing. Pair
-     * it with musician() for a member who answers for events.
+     * Sets the register only: it groups and displays. Today it alone still
+     * makes a member answerable (Member::isPlayer()); from #191 musician() is
+     * what grants that.
      */
     public function inSection(Section|string $section): static
     {

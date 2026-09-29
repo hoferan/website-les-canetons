@@ -153,11 +153,11 @@ test("reports a taken username against its own field, in French", async () => {
   expect(screen.getByLabelText("Prénom")).toHaveValue("Autre");
 });
 
-test("grants no roles on creation, and says why", async () => {
+test("disables the role checkboxes on the create form, and says roles are assigned after saving", async () => {
   await renderRoster();
   await userEvent.click(screen.getByRole("button", { name: "Ajouter une personne" }));
 
-  // The API refuses roleIds on create deliberately — granting a permission is
+  // The API ignores roleIds on create deliberately — granting a permission is
   // exactly one operation, and accepting it here would make the unguarded path
   // easier than the guarded one. An inert checkbox with no explanation is
   // worse than either, so the form says so.

@@ -41,20 +41,14 @@ class DevSeederTest extends TestCase
         $this->assertFalse($member->isPlayer());
     }
 
-    public function test_the_player_has_no_permissions_but_plays(): void
+    public function test_the_player_holds_the_baseline_and_musician_permissions_and_nothing_organising(): void
     {
         $member = Member::where('username', 'demo.player')->sole();
 
-        // Only the baseline and `musician` abilities: nothing that organises.
-        foreach ([
-            Permission::EventsManage,
-            Permission::AttendanceViewAll,
-            Permission::AttendanceRecordForOthers,
-            Permission::MembersManage,
-            Permission::RegistrationsView,
-        ] as $organising) {
-            $this->assertFalse($member->hasPermission($organising), $organising->value);
-        }
+        $this->assertEqualsCanonicalizing(
+            [Permission::EventsView, Permission::AccountManage, Permission::AttendanceRespond],
+            $member->permissions()->all(),
+        );
         $this->assertTrue($member->isPlayer());
     }
 

@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Schema;
  *
  * ROLE KEYS ARE IDENTITY, NEVER LOGIC (ADR 0014). The baseline role is the one
  * every member holds and whose grants and existence are fixed; the lockout
- * guard that enforces that reads this flag instead of comparing `member`.
+ * guard planned in #193 to enforce that reads this flag instead of comparing
+ * `member`.
  *
  * One small ALTER on a table of a handful of rows, guarded so a re-run does
  * nothing.
