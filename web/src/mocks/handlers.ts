@@ -171,8 +171,8 @@ const USERS = {
     roleKeys: ["member", "musician"],
     permissions: ["events.view", "account.manage", "attendance.respond"],
   },
-  // A young member whose parent uses the login on their behalf. Plays, holds
-  // nothing.
+  // A young member whose parent uses the login on their behalf. Plays and
+  // holds no organising permission.
   "demo.young": {
     id: 5,
     username: "demo.young",
@@ -1907,8 +1907,10 @@ const overrides = [
   }),
 
   // Creating a person creates an ACCOUNT and mints its password, returned once.
-  // IT GRANTS NO ROLES — the real API does not either, and a mock that did
-  // would hide the second, separately-guarded step from every test.
+  // IT GRANTS THE BASELINE ROLE AND NOTHING ELSE, like the real API, and it
+  // ignores any roleIds in the body. Every account holds `member`; any other
+  // role is the separate, guarded step, and a mock that granted it here would
+  // hide that step from every test.
   http.post("/api/v1/members", async ({ request }) => {
     const refusal = refuseWithoutMembersManage();
     if (refusal) {
@@ -1940,7 +1942,9 @@ const overrides = [
       committeeFunctionId: body.committeeFunctionId ?? null,
       instructorOfSectionId: body.instructorOfSectionId ?? null,
       publicVisible: body.publicVisible ?? false,
-      roleIds: [],
+      // The baseline `member` role of ROLES, and never `musician`: a register
+      // grants nothing by itself.
+      roleIds: [3],
     };
     members.push(member);
     return HttpResponse.json({ member, generatedPassword: GENERATED_PASSWORD }, { status: 201 });

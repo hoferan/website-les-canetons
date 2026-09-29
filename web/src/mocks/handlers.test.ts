@@ -213,7 +213,7 @@ test("refuses the roster to an anonymous caller with 401, not 403", async () => 
   expect(response.status).toBe(401);
 });
 
-test("creating a member never mints them a role", async () => {
+test("creating a member mints only the baseline role, whatever the body asks for", async () => {
   setMockUser("demo.direction");
   const response = await fetch("/api/v1/members", {
     method: "POST",
@@ -224,6 +224,7 @@ test("creating a member never mints them a role", async () => {
       username: "lea.nouvelle",
       sectionId: 4,
       publicVisible: false,
+      roleIds: [1],
     }),
   });
   const created = (await response.json()) as {
@@ -237,7 +238,9 @@ test("creating a member never mints them a role", async () => {
   };
 
   expect(response.status).toBe(201);
-  expect(created.member.roleIds).toEqual([]);
+  // The baseline `member` role (id 3), never `direction` (1) as asked and never
+  // `musician` (4) although a register was given.
+  expect(created.member.roleIds).toEqual([3]);
   // Derived from sectionId in the real Resource, so they can never disagree.
   expect(created.member.sectionName).toBe("Cloches");
   expect(created.member.isPlayer).toBe(true);

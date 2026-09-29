@@ -178,6 +178,22 @@ test("assigns a role to somebody who already exists", async () => {
   await expect.poll(() => rowFor("Player").textContent).toContain("Comité");
 });
 
+test("says plainly when a person holds no role at all", async () => {
+  // No seeded account is role-less any more: every one holds the baseline. The
+  // API still lets an administrator remove it (nothing guards that yet), so the
+  // roster has to say so instead of printing an empty line.
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+  await userEvent.click(screen.getByLabelText("Membre"));
+  await userEvent.click(screen.getByLabelText("Musicien·ne"));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => rowFor("Player").textContent).toContain("Aucun rôle");
+});
+
 test("changing a name and a role in one save does both", async () => {
   // THE CHAINED TAG. Roles travel on their own endpoint, so this save is two
   // conditional writes: the PATCH moves the member's tag, and the roles call

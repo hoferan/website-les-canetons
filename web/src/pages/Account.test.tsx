@@ -1,7 +1,9 @@
 import { screen, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { expect, test } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { currentMockUser, setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Account } from "./Account";
 
@@ -28,12 +30,26 @@ test("shows who the member is: name, identifiant, pupitre, seat and roles", asyn
   expect(field("Rôles")).toBe("Comité, Membre, Musicien·ne");
 });
 
-test("says so when the member sits on no committee seat and holds no role", async () => {
+test("says so when the member sits on no committee seat", async () => {
   setMockUser("demo.young");
   await renderWithSession(<Account />, { route: "/account" });
 
   expect(field("Fonction au comité")).toBe("Aucune");
   expect(field("Rôles")).toBe("Membre, Musicien·ne");
+});
+
+test("says so when the session holds no role at all", async () => {
+  // No seeded persona is role-less any more: each one holds the baseline. The
+  // card still has to handle an empty list rather than print a blank.
+  setMockUser("demo.young");
+  server.use(
+    http.get("/api/v1/me", () =>
+      HttpResponse.json({ ...currentMockUser(), roleKeys: [], permissions: [] }),
+    ),
+  );
+  await renderWithSession(<Account />, { route: "/account" });
+
+  expect(field("Rôles")).toBe("Aucun");
 });
 
 test("says so when the member plays in no register", async () => {
