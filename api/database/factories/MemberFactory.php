@@ -88,6 +88,20 @@ class MemberFactory extends Factory
         return $this->withRole('committee');
     }
 
+    /** Holds the seeded baseline role: the planning and one's own password. */
+    public function member(): static
+    {
+        return $this->afterCreating(function (Member $member): void {
+            $member->roles()->syncWithoutDetaching([Role::baseline()->id]);
+        });
+    }
+
+    /** Holds the seeded `musician` role, and so answers for events. */
+    public function musician(): static
+    {
+        return $this->withRole('musician');
+    }
+
     public function withRole(Role|string $role): static
     {
         return $this->afterCreating(function (Member $member) use ($role): void {
@@ -98,8 +112,8 @@ class MemberFactory extends Factory
     }
 
     /**
-     * Plays in a register, which is the single fact that makes somebody
-     * answerable for events.
+     * Sets the register only: it groups and displays; it grants nothing. Pair
+     * it with musician() for a member who answers for events.
      */
     public function inSection(Section|string $section): static
     {
