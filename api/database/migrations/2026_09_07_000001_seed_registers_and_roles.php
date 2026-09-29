@@ -57,14 +57,14 @@ return new class extends Migration
         // Every organising permission. The three account-level ones belong to
         // the baseline and musician roles (2026_09_29_000002), so a fresh
         // database agrees with a server that got them by migration.
-        $this->role('direction', 'Team Direction', array_values(array_filter(
+        $this->role('direction', 'Team Direction', array_filter(
             Permission::cases(),
             fn (Permission $permission): bool => ! in_array($permission, [
                 Permission::EventsView,
                 Permission::AttendanceRespond,
                 Permission::AccountManage,
             ], true),
-        )));
+        ));
         $this->role('committee', 'Comité', [Permission::RegistrationsView]);
     }
 

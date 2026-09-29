@@ -61,14 +61,14 @@ class SeedRegistersAndRolesTest extends TestCase
         // The three account-level permissions belong to `member` and `musician`.
         // Direction holds `member` beside them, so it still sees the planning;
         // it does not answer events unless it also plays.
-        $expected = array_values(array_filter(
+        $expected = array_filter(
             Permission::cases(),
             fn (Permission $p): bool => ! in_array($p, [
                 Permission::EventsView,
                 Permission::AttendanceRespond,
                 Permission::AccountManage,
             ], true),
-        ));
+        );
 
         $this->assertEqualsCanonicalizing($expected, $direction->permissions()->all());
     }
