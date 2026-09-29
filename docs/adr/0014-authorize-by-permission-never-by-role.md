@@ -44,9 +44,14 @@ Read and write are separate permissions per domain, so a role that only looks ca
 destroy: `registrations.view` and `registrations.manage`, `messages.view` and
 `messages.manage`, `attendance.view_all` and `attendance.record_for_others`.
 
-Answering an event is not a permission. A member is answerable if they play in a
-register (`Member::isPlayer()`, a non-null `section_id`). The seeded `demo.both`, who
-plays and manages, is the case that breaks if anyone brings an either/or back.
+Answering an event is a permission, `attendance.respond`, held through the
+`musician` role. It was not one until 2026-09-29: it was derived from having a
+register, and the register could therefore decide who is counted. A register
+now only groups and displays. Every account also holds the baseline `member`
+role (`events.view`, `account.manage`), marked by `roles.is_baseline` and fixed:
+its grants cannot be edited and it cannot be deleted. The seeded `demo.both`,
+who plays and manages, is still the case that breaks if anyone brings an
+either/or back.
 
 Adding a permission before its middleware exists is forbidden. `system.manage` waits
 for the editor.
@@ -65,6 +70,9 @@ for the editor.
   `members.manage` from `direction` and lock the band out, with no shell to repair it.
 - Bad, because a new permission needs its own additive grant migration, or every
   screen behind it answers 403 on existing servers.
+- Bad, because `events.view`, `attendance.respond` and `account.manage` exist before any
+  middleware checks them (#190 ships first; #191 enforces), an exception to "a
+  permission exists only if middleware checks it" that lasts one release.
 
 Registers and roles are reference data seeded by migrations, since there is no shell to
 run a seeder. Registers and roles have an immutable `key`, and the SPA translates the
@@ -81,4 +89,5 @@ name by that key. When the editor arrives they gain per-locale labels stored as 
 
 ### Answering an event as a permission
 
-- Bad, because making it a grant is exactly what locked `admin` out before.
+- Bad, because making it a grant was what locked `admin` out before. That objection no
+  longer applies, because roles are additive: an organiser simply also holds `musician`.
