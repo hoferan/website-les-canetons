@@ -54,11 +54,23 @@ class SeedRegistersAndRolesTest extends TestCase
         );
     }
 
-    public function test_the_direction_role_grants_every_permission(): void
+    public function test_the_direction_role_grants_every_organising_permission(): void
     {
         $direction = Role::where('key', 'direction')->sole();
 
-        $this->assertEqualsCanonicalizing(Permission::cases(), $direction->permissions()->all());
+        // The three account-level permissions belong to `member` and `musician`.
+        // Direction holds `member` beside them, so it still sees the planning;
+        // it does not answer events unless it also plays.
+        $expected = array_values(array_filter(
+            Permission::cases(),
+            fn (Permission $p): bool => ! in_array($p, [
+                Permission::EventsView,
+                Permission::AttendanceRespond,
+                Permission::AccountManage,
+            ], true),
+        ));
+
+        $this->assertEqualsCanonicalizing($expected, $direction->permissions()->all());
     }
 
     public function test_the_committee_role_grants_the_guest_list_and_the_inbox(): void
