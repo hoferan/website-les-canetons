@@ -31,6 +31,14 @@ export const fr = {
       label: "Comité",
       hint: "Consulte la liste des inscriptions.",
     },
+    member: {
+      label: "Membre",
+      hint: "Voit le planning et gère son propre mot de passe. Tous les comptes ont ce rôle.",
+    },
+    musician: {
+      label: "Musicien·ne",
+      hint: "Répond aux événements et compte parmi les personnes attendues.",
+    },
   },
 
   errors: {

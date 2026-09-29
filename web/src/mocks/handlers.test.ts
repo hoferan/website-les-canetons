@@ -72,7 +72,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["direction"],
+    roleKeys: ["direction", "member"],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -84,6 +84,8 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "events.view",
+      "account.manage",
     ],
   });
 });
@@ -402,7 +404,7 @@ test("roles carry a key and their permissions, and no display name", async () =>
 
   // ADR 0014: the UI resolves the French from `key`. A label here would let
   // a screen render a name the real API never sends.
-  expect(roles.map((role) => role.key)).toEqual(["direction", "committee"]);
+  expect(roles.map((role) => role.key)).toEqual(["direction", "committee", "member", "musician"]);
   expect(roles.every((role) => !("label" in role) && !("labelFr" in role))).toBe(true);
 });
 
@@ -429,7 +431,9 @@ test("editing a member changes only what the real request validates", async () =
   expect(member.sectionId).toBeNull();
   expect(member.sectionName).toBeNull();
   expect(member.isPlayer).toBe(false);
-  expect(member.roleIds).toEqual([]);
+  // The write did not touch roleIds: what remains is Perrine's seeded roles,
+  // member (3) and musician (4), not the [1] the body tried to set.
+  expect(member.roleIds).toEqual([3, 4]);
 });
 
 // ---------------------------------------------------------------- the planning

@@ -69,7 +69,7 @@ const USERS = {
     mustChangePassword: false,
     sectionName: null,
     committeeFunctionName: null,
-    roleKeys: ["direction"],
+    roleKeys: ["direction", "member"],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -82,6 +82,8 @@ const USERS = {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "events.view",
+      "account.manage",
     ],
   },
   // Plays, organises nothing.
@@ -94,8 +96,8 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Cloches",
     committeeFunctionName: null,
-    roleKeys: [],
-    permissions: [],
+    roleKeys: ["member", "musician"],
+    permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // BOTH — the case the old role matrix could not express: an organiser who
   // also plays. See DevSeeder's own comment for why this case matters.
@@ -113,7 +115,7 @@ const USERS = {
     mustChangePassword: true,
     sectionName: "Trompettes",
     committeeFunctionName: null,
-    roleKeys: ["direction"],
+    roleKeys: ["direction", "member", "musician"],
     permissions: [
       "events.manage",
       "attendance.view_all",
@@ -124,6 +126,9 @@ const USERS = {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "events.view",
+      "account.manage",
+      "attendance.respond",
     ],
   },
   // The `committee` role's own permissions: registrations.view is the reason
@@ -141,8 +146,14 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Trombones",
     committeeFunctionName: "Responsable intendance",
-    roleKeys: ["committee"],
-    permissions: ["registrations.view", "messages.view"],
+    roleKeys: ["committee", "member", "musician"],
+    permissions: [
+      "registrations.view",
+      "messages.view",
+      "events.view",
+      "account.manage",
+      "attendance.respond",
+    ],
   },
   // A FIRST LOGIN: a committee-issued password that must be replaced. A
   // session fixture with no roster row, deliberately — the five above mirror
@@ -157,8 +168,8 @@ const USERS = {
     mustChangePassword: true,
     sectionName: "Cloches",
     committeeFunctionName: null,
-    roleKeys: [],
-    permissions: [],
+    roleKeys: ["member", "musician"],
+    permissions: ["events.view", "account.manage", "attendance.respond"],
   },
   // A young member whose parent uses the login on their behalf. Plays, holds
   // nothing.
@@ -171,8 +182,8 @@ const USERS = {
     mustChangePassword: false,
     sectionName: "Batteurs",
     committeeFunctionName: null,
-    roleKeys: [],
-    permissions: [],
+    roleKeys: ["member", "musician"],
+    permissions: ["events.view", "account.manage", "attendance.respond"],
   },
 } satisfies Record<string, MockUser>;
 
@@ -350,6 +361,8 @@ const ROLES: RoleResource[] = [
     ],
   },
   { id: 2, key: "committee", permissions: ["registrations.view", "messages.view"] },
+  { id: 3, key: "member", permissions: ["events.view", "account.manage"] },
+  { id: 4, key: "musician", permissions: ["attendance.respond"] },
 ];
 
 /** The password the seeded accounts use, and so the one re-authentication takes. */
@@ -399,7 +412,7 @@ function initialMembers(): MemberResource[] {
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
-      roleIds: [1],
+      roleIds: [1, 3],
     },
     {
       id: 2,
@@ -414,7 +427,7 @@ function initialMembers(): MemberResource[] {
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
-      roleIds: [],
+      roleIds: [3, 4],
     },
     {
       // BOTH — plays and organises. The case the old either/or role matrix
@@ -447,7 +460,7 @@ function initialMembers(): MemberResource[] {
       // branch can be looked at without a server.
       instructorOfSectionId: 1,
       publicVisible: true,
-      roleIds: [1],
+      roleIds: [1, 3, 4],
     },
     {
       id: 4,
@@ -466,7 +479,7 @@ function initialMembers(): MemberResource[] {
       committeeFunctionId: 5,
       instructorOfSectionId: null,
       publicVisible: true,
-      roleIds: [2],
+      roleIds: [2, 3, 4],
     },
     {
       // Their parent uses the login on their behalf, so the account is used —
@@ -483,7 +496,7 @@ function initialMembers(): MemberResource[] {
       committeeFunctionId: null,
       instructorOfSectionId: null,
       publicVisible: true,
-      roleIds: [],
+      roleIds: [3, 4],
     },
   ];
 }

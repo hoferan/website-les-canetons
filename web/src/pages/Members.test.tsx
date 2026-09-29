@@ -107,7 +107,7 @@ test("shows roles by their French label, never the key or the permissions", asyn
   expect(direction).toHaveTextContent("Rôles : Team Direction");
   expect(direction.textContent).not.toContain("members.manage");
 
-  expect(rowFor("Committee")).toHaveTextContent("Rôles : Comité");
+  expect(rowFor("Committee")).toHaveTextContent("Rôles : Comité, Membre, Musicien·ne");
 });
 
 test("creates a person and shows them in the list", async () => {
@@ -199,7 +199,7 @@ test("changing a name and a role in one save does both", async () => {
   const row = await cards().findByText("Joueuse");
   const changed = row.closest("[data-member]");
   expect(changed).not.toBeNull();
-  expect(changed).toHaveTextContent("Rôles : Comité");
+  expect(changed).toHaveTextContent("Rôles : Membre, Musicien·ne, Comité");
 });
 
 test("seats somebody on the committee by picking from the list, not by typing", async () => {
@@ -529,8 +529,8 @@ test("the card's labels are German, and their colons lose the French space", asy
   // same bug as #152's Tbd separator, found in a fourth place.
   expect(card).toHaveTextContent("Benutzername: demo.player");
   expect(card).toHaveTextContent("Register: Cloches");
-  // Perrine holds no role, which is also the seeded case for "Keine Rolle".
-  expect(card).toHaveTextContent("Rollen: Keine Rolle");
+  // Every seeded account holds the member role, and Perrine plays in a register.
+  expect(card).toHaveTextContent("Rollen: Mitglied, Musiker·in");
 });
 
 test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {

@@ -25,7 +25,7 @@ test("shows who the member is: name, identifiant, pupitre, seat and roles", asyn
   expect(field("Pupitre")).toBe("Trombones");
   expect(field("Fonction au comité")).toBe("Responsable intendance");
   // Translated by key through roleLabel, never the raw key.
-  expect(field("Rôles")).toBe("Comité");
+  expect(field("Rôles")).toBe("Comité, Membre, Musicien·ne");
 });
 
 test("says so when the member sits on no committee seat and holds no role", async () => {
@@ -33,7 +33,7 @@ test("says so when the member sits on no committee seat and holds no role", asyn
   await renderWithSession(<Account />, { route: "/account" });
 
   expect(field("Fonction au comité")).toBe("Aucune");
-  expect(field("Rôles")).toBe("Aucun");
+  expect(field("Rôles")).toBe("Membre, Musicien·ne");
 });
 
 test("says so when the member plays in no register", async () => {
@@ -51,7 +51,7 @@ test("shows the identity card in German", async () => {
   expect(field("Benutzername")).toBe("demo.committee");
   expect(field("Register")).toBe("Trombones");
   expect(field("Funktion im Vorstand")).toBe("Responsable intendance");
-  expect(field("Rollen")).toBe("Vorstand");
+  expect(field("Rollen")).toBe("Vorstand, Mitglied, Musiker·in");
 });
 
 /**
