@@ -26,4 +26,10 @@ class RoleBaselineTest extends TestCase
 
         $this->assertTrue(Schema::hasColumn('roles', 'is_baseline'));
     }
+
+    public function test_exactly_one_role_is_the_baseline(): void
+    {
+        $this->assertTrue(Role::baseline()->is_baseline);
+        $this->assertSame(1, Role::where('is_baseline', true)->count());
+    }
 }

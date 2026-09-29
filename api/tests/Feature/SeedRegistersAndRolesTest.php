@@ -106,7 +106,8 @@ class SeedRegistersAndRolesTest extends TestCase
         $migration->up();
 
         $this->assertSame(6, Section::count());
-        $this->assertSame(2, Role::count());
+        // Later migrations add their own roles, so count only this migration's.
+        $this->assertSame(2, Role::whereIn('key', ['direction', 'committee'])->count());
         $this->assertSame(
             [Permission::RegistrationsView],
             Role::where('key', 'direction')->sole()->permissions()->all(),
