@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { EventResource } from "../api/generated/model";
 import { t } from "../i18n";
+import { isDraft } from "./eventDates";
 import { formatEventWhen } from "./formatEventWhen";
 
 /**
@@ -49,6 +50,18 @@ export function EventCard({
             {event.title}
           </h2>
 
+          {/* A DRAFT IS SAID, not implied by where it sits: the same card is
+              rendered in the drafts group and could be reached from a search
+              or a day, where the group heading is not in view. */}
+          {isDraft(event) ? (
+            <p
+              data-testid="draft-badge"
+              className="mt-tight inline-block rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink"
+            >
+              {t("events.draftBadge")}
+            </p>
+          ) : null}
+
           <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
             {formatEventWhen(event.startsAt, event.endsAt)}
           </p>
@@ -84,7 +97,7 @@ export function EventCard({
               page -- the Tbd bug of #152, exactly. */}
           <dt className="text-ink-muted">{t("events.card.location")}</dt>
           <dd data-testid="event-location" className="text-ink">
-            {event.location}
+            {event.location ?? t("events.card.locationMissing")}
           </dd>
         </div>
 

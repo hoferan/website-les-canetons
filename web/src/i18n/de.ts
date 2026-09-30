@@ -348,6 +348,14 @@ export const de: typeof fr = {
     heading: "Planung",
     // Ein Entwurf hat unter Umständen noch kein Datum.
     dateMissing: "Datum noch offen",
+    // Entwürfe: geschrieben und bearbeitbar, nur für die Leitung sichtbar.
+    draftsHeading: "Entwürfe",
+    draftBadge: "Entwurf",
+    publish: "Veröffentlichen",
+    publishAria: "{{title}} veröffentlichen",
+    unpublish: "Zurück zum Entwurf",
+    unpublishAria: "{{title}} zurück zum Entwurf",
+    publishFailed: "Die Veröffentlichung ist fehlgeschlagen.",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
     // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
@@ -402,6 +410,7 @@ export const de: typeof fr = {
 
     card: {
       location: "Ort:",
+      locationMissing: "Ort noch offen",
       attire: "Kleidung:",
       attireUnset: "Nicht festgelegt",
     },

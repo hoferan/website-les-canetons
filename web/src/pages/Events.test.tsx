@@ -1213,3 +1213,133 @@ test("a search re-partitions the top block, like a day does", async () => {
     ]),
   );
 });
+
+/* -------------------------------------------------------------------------- *
+ * Drafts
+ * -------------------------------------------------------------------------- */
+
+function draftsRegion(): HTMLElement {
+  return screen.getByRole("region", { name: "Brouillons" });
+}
+
+test("a manager's drafts sit in their own group above the dated planning, undated first", async () => {
+  await renderPlanning("demo.direction");
+
+  const titles = within(draftsRegion())
+    .getAllByTestId("event-title")
+    .map((title) => title.textContent);
+  expect(titles).toEqual(["Sortie de fin de saison", "Concert d'automne"]);
+
+  // ABOVE the rest of the planning, whichever way the DOM is ordered.
+  const firstPlanned = cardFor("Répétition + apéritif de Noël");
+  expect(
+    draftsRegion().compareDocumentPosition(firstPlanned) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});
+
+test("a player's planning has no drafts group and none of its events", async () => {
+  await renderPlanning("demo.player");
+
+  expect(screen.queryByRole("region", { name: "Brouillons" })).not.toBeInTheDocument();
+  const titles = screen.getAllByTestId("event-title").map((title) => title.textContent);
+  expect(titles).not.toContain("Concert d'automne");
+  expect(titles).not.toContain("Sortie de fin de saison");
+});
+
+test("a draft says what it is missing rather than leaving it blank", async () => {
+  await renderPlanning("demo.direction");
+
+  const card = within(draftsRegion()).getAllByTestId("event-card")[0] as HTMLElement;
+  expect(within(card).getByTestId("draft-badge")).toHaveTextContent("Brouillon");
+  expect(within(card).getByTestId("event-when")).toHaveTextContent("Date à fixer");
+  expect(within(card).getByTestId("event-location")).toHaveTextContent("Lieu à fixer");
+});
+
+test("a draft is not offered the chase list, which has nobody to chase yet", async () => {
+  await renderPlanning("demo.direction");
+
+  const card = cardFor("Concert d'automne");
+  expect(within(card).queryByRole("link", { name: /Qui vient/ })).not.toBeInTheDocument();
+});
+
+test("publishing an incomplete draft names the fields it is missing", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  await user.click(
+    within(cardFor("Sortie de fin de saison")).getByRole("button", {
+      name: "Publier Sortie de fin de saison",
+    }),
+  );
+
+  const alert = await screen.findByRole("alert");
+  expect(alert).toHaveTextContent("Complétez les champs manquants avant de publier.");
+  expect(alert).toHaveTextContent("Début est obligatoire");
+  expect(alert).toHaveTextContent("Fin est obligatoire");
+  expect(alert).toHaveTextContent("Lieu est obligatoire");
+
+  // Nothing moved: it is still a draft.
+  expect(within(draftsRegion()).getAllByTestId("event-card")).toHaveLength(2);
+});
+
+test("publishing a complete draft takes it out of the drafts group", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  await user.click(
+    within(cardFor("Concert d'automne")).getByRole("button", {
+      name: "Publier Concert d'automne",
+    }),
+  );
+
+  await waitFor(() => expect(within(draftsRegion()).getAllByTestId("event-card")).toHaveLength(1));
+  // Still on the planning, now among the dated events.
+  expect(cardFor("Concert d'automne")).toBeInTheDocument();
+  expect(within(cardFor("Concert d'automne")).queryByTestId("draft-badge")).not.toBeInTheDocument();
+});
+
+test("a published event with no answers can go back to draft, from the menu", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  const menu = await openMenuFor(
+    user,
+    cardFor("Répétition + apéritif de Noël"),
+    "Autres actions pour Répétition + apéritif de Noël",
+  );
+  await user.click(
+    within(menu).getByRole("menuitem", {
+      name: "Repasser Répétition + apéritif de Noël en brouillon",
+    }),
+  );
+
+  await waitFor(() => expect(within(draftsRegion()).getAllByTestId("event-card")).toHaveLength(3));
+});
+
+test("an event that has answers refuses to go back to draft, and says why", async () => {
+  const user = userEvent.setup();
+  await renderPlanning("demo.direction");
+
+  // The first Répétition is the one the seed gives three answers to.
+  const first = screen
+    .getAllByTestId("event-card")
+    .find(
+      (card) => within(card).getByTestId("event-title").textContent === "Répétition",
+    ) as HTMLElement;
+  const menu = await openMenuFor(user, first, "Autres actions pour Répétition");
+  await user.click(
+    within(menu).getByRole("menuitem", { name: "Repasser Répétition en brouillon" }),
+  );
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Des réponses ou des inscriptions existent déjà",
+  );
+});
+
+test("the drafts group is German in German", async () => {
+  await renderPlanning("demo.direction", "de-CH");
+
+  const region = screen.getByRole("region", { name: "Entwürfe" });
+  expect(within(region).getAllByTestId("draft-badge")[0]).toHaveTextContent("Entwurf");
+  expect(within(region).getAllByTestId("event-when")[0]).toHaveTextContent("Datum noch offen");
+});

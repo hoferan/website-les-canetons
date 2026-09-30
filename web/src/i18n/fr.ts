@@ -574,6 +574,14 @@ export const fr = {
     heading: "Planning",
     // Un brouillon peut ne pas avoir encore de date.
     dateMissing: "Date à fixer",
+    // Les brouillons : écrits, modifiables, visibles de la direction seule.
+    draftsHeading: "Brouillons",
+    draftBadge: "Brouillon",
+    publish: "Publier",
+    publishAria: "Publier {{title}}",
+    unpublish: "Repasser en brouillon",
+    unpublishAria: "Repasser {{title}} en brouillon",
+    publishFailed: "La publication a échoué.",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
     // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,
@@ -638,6 +646,7 @@ export const fr = {
     /** EventCard's detail list. `attireUnset` is also quoted by #166's form. */
     card: {
       location: "Lieu\u00a0:",
+      locationMissing: "Lieu à fixer",
       attire: "Tenue\u00a0:",
       attireUnset: "Non précisée",
     },

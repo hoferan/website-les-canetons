@@ -15,7 +15,9 @@ import { Link } from "react-router-dom";
 import { rowsOf } from "../api/collection";
 import {
   eventDestroy,
+  eventPublish,
   eventShow,
+  eventUnpublish,
   getEventIndexQueryKey,
   useEventIndex,
 } from "../api/generated/endpoints";
@@ -32,6 +34,7 @@ import { EventCard } from "../events/EventCard";
 import { EventMeta } from "../events/EventMeta";
 import { SeriesCreatedNotice } from "../events/SeriesCreatedNotice";
 import { bandZoneParts } from "../events/bandTime";
+import { isDraft } from "../events/eventDates";
 import { t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 
@@ -112,6 +115,11 @@ export function Events() {
 
   const destructive = useApiFormError(t("events.deleteFailed"));
 
+  // Publishing and unpublishing share one error, shown above the list. A
+  // refusal from publish names the fields the draft is still missing, and the
+  // message has to be read next to the card it is about.
+  const publishing = useApiFormError(t("events.publishFailed"));
+
   // The event being deleted, together with the tag of the read the dialog was
   // opened from. DELETE is a conditional write, and the planning hands out no
   // tag of its own: one tag cannot validate five rows, and a list-wide one
@@ -123,6 +131,7 @@ export function Events() {
     null,
   );
   const [opening, setOpening] = useState<number | null>(null);
+  const [working, setWorking] = useState<number | null>(null);
 
   const destroy = useMutation({
     mutationFn: ({ event, etag }: { event: number; etag: string }) =>
@@ -155,12 +164,19 @@ export function Events() {
   // Applied BEFORE the split, so a chosen day narrows both blocks. The day is
   // the Fribourg one, which is what bandZoneParts is for: slicing the ISO
   // string would file a 00:30 event under the previous day.
-  const events =
+  const shown =
     day === null
       ? allEvents
       : allEvents.filter(
           (event) => event.startsAt !== null && bandZoneParts(event.startsAt).date === day,
         );
+
+  // DRAFTS ARE THEIR OWN GROUP, above the planning, and never take part in the
+  // to-do partition below: nobody owes an answer about an event the band has
+  // not been told about. Only somebody with events.manage is sent any, so the
+  // group is absent for everyone else without this screen deciding anything.
+  const drafts = shown.filter(isDraft);
+  const events = shown.filter((event) => !isDraft(event));
 
   // The split that makes the top block a to-do list. Two things are never in
   // it. PAST EVENTS, because the screen asks what you owe an answer on and
@@ -223,7 +239,7 @@ export function Events() {
     // calls can().
     const actions: RowAction[] = [];
 
-    if (maySeeAnswers) {
+    if (maySeeAnswers && !isDraft(event)) {
       actions.push({
         key: "attendance",
         // THE SAME KEY AS THE SCREEN IT OPENS, so the link and its
@@ -238,12 +254,25 @@ export function Events() {
     // carry a link to an empty list that can never fill up, and the planning
     // is mostly rehearsals. `takesRegistrations` is the server's own
     // derivation from the closing date.
-    if (maySeeGuests && event.takesRegistrations) {
+    if (maySeeGuests && event.takesRegistrations && !isDraft(event)) {
       actions.push({
         key: "registrations",
         label: t("events.registrations"),
         ariaLabel: t("events.registrationsAria", { title: event.title }),
         to: `/events/${event.id}/registrations`,
+      });
+    }
+
+    // Publishing is the one thing a draft is FOR, so it is promoted inline.
+    // A draft has no chase list and no guest list: nothing can be answered
+    // or booked until it is published.
+    if (mayManage && isDraft(event)) {
+      actions.push({
+        key: "publish",
+        label: t("events.publish"),
+        ariaLabel: t("events.publishAria", { title: event.title }),
+        disabled: working === event.id,
+        onSelect: () => void changePublication(event, "publish"),
       });
     }
 
@@ -272,6 +301,16 @@ export function Events() {
           onSelect: () => void openDelete(event),
         },
       );
+
+      if (!isDraft(event)) {
+        actions.push({
+          key: "unpublish",
+          label: t("events.unpublish"),
+          ariaLabel: t("events.unpublishAria", { title: event.title }),
+          disabled: working === event.id,
+          onSelect: () => void changePublication(event, "unpublish"),
+        });
+      }
     }
 
     return (
@@ -288,7 +327,7 @@ export function Events() {
               // The weekly one. When the reader does not hold
               // attendance.view_all it is simply absent, and RowActions
               // promotes whatever is first — see its docblock.
-              inlineKey="attendance"
+              inlineKey={isDraft(event) ? "publish" : "attendance"}
               rowName={event.title}
             />
           ) : null
@@ -297,7 +336,11 @@ export function Events() {
         // buttons asking whether you are coming to a rehearsal that finished
         // last week is an invitation to nonsense, and the chase list is where a
         // late correction belongs.
-        answer={showingPast ? undefined : <AttendanceControls event={event} inOwed={inOwed} />}
+        answer={
+          showingPast || isDraft(event) ? undefined : (
+            <AttendanceControls event={event} inOwed={inOwed} />
+          )
+        }
         // WHAT THE SCREEN DECIDES, mirroring the API's gates for UX only —
         // the numbers are already null for anybody who may not see them, so
         // this suppresses an empty strip rather than protecting anything.
@@ -313,6 +356,34 @@ export function Events() {
         }
       />
     );
+  }
+
+  /**
+   * Publish a draft, or put a published event back.
+   *
+   * Both are conditional writes, so like the delete they start from a read of
+   * the one event: the tag it hands out is what says "the event you are
+   * publishing is the one you looked at". A refusal stays on screen next to
+   * the list, naming the missing fields or the answers in the way.
+   */
+  async function changePublication(row: EventResource, direction: "publish" | "unpublish") {
+    publishing.clear();
+    setWorking(row.id);
+    try {
+      const read = await eventShow(row.id);
+      const etag = read.status === 200 ? entityTagOf(read) : null;
+      if (etag === null) {
+        return;
+      }
+      await (direction === "publish"
+        ? eventPublish(row.id, ifMatch(etag))
+        : eventUnpublish(row.id, ifMatch(etag)));
+      await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+    } catch (thrown) {
+      publishing.setFromThrown(thrown);
+    } finally {
+      setWorking(null);
+    }
   }
 
   async function openDelete(row: EventResource) {
@@ -408,6 +479,19 @@ export function Events() {
 
       <SeriesCreatedNotice />
 
+      {publishing.error ? (
+        <div role="alert" className="mt-related text-danger">
+          <p>{publishing.error.message}</p>
+          {publishing.error.fields.length > 0 ? (
+            <ul className="mt-tight list-disc pl-5 text-sm">
+              {publishing.error.fields.map((entry) => (
+                <li key={entry.field}>{entry.message}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="mt-related flex flex-wrap items-center gap-tight">
         {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was
             a 213px imperative sentence in the same `variant="outline"` as the
@@ -500,7 +584,7 @@ export function Events() {
       {/* A SEARCH THAT FOUND NOTHING IS NOT AN EMPTY PLANNING, and gets
           neither the empty planning's sentence nor the committee's hint to
           add a series: nothing is missing, the words just matched nothing. */}
-      {!planning.isPending && !planning.isError && events.length === 0 ? (
+      {!planning.isPending && !planning.isError && shown.length === 0 ? (
         <div className="mt-block">
           <p className="text-ink-muted">
             {q !== ""
@@ -519,6 +603,17 @@ export function Events() {
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {drafts.length > 0 ? (
+        <section className="mt-block" aria-labelledby="drafts-heading">
+          <h2 id="drafts-heading" className="font-display text-xl">
+            {t("events.draftsHeading")}
+          </h2>
+          <div className="mt-related grid gap-related">
+            {drafts.map((draft) => card(draft, false))}
+          </div>
+        </section>
       ) : null}
 
       {awaiting.length > 0 ? (
