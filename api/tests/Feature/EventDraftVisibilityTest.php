@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\Role;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -195,6 +196,45 @@ class EventDraftVisibilityTest extends TestCase
             $this->actingAsMember($committee)->getJson("/api/v1/events/{$draft->id}/{$path}")->assertStatus(404);
         }
         $this->actingAsMember($this->organiser)->getJson("/api/v1/events/{$draft->id}/registrations")->assertOk();
+    }
+
+    /**
+     * A caller who holds NONE of a route's permissions must get the same answer
+     * for a draft as for an id nothing matches. Otherwise the permission check
+     * answers 403 for a draft that exists and 404 for one that does not, and a
+     * member can count the drafts by walking an id range.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function routesTakingAnEvent(): array
+    {
+        return [
+            'chase list' => ['GET', '/api/v1/events/%d/attendance'],
+            'record for another' => ['PUT', '/api/v1/events/%d/attendance/1'],
+            'withdraw for another' => ['DELETE', '/api/v1/events/%d/attendance/1'],
+            'guest list' => ['GET', '/api/v1/events/%d/registrations'],
+            'guest list export' => ['GET', '/api/v1/events/%d/registrations.json'],
+            'booking options' => ['GET', '/api/v1/events/%d/registration-options'],
+            'replace booking options' => ['PUT', '/api/v1/events/%d/registration-options'],
+            'edit' => ['PATCH', '/api/v1/events/%d'],
+            'delete' => ['DELETE', '/api/v1/events/%d'],
+            'publish' => ['POST', '/api/v1/events/%d/publish'],
+            'unpublish' => ['DELETE', '/api/v1/events/%d/publish'],
+        ];
+    }
+
+    #[DataProvider('routesTakingAnEvent')]
+    public function test_a_draft_answers_a_caller_without_permission_exactly_like_an_unknown_id(string $method, string $path): void
+    {
+        $draft = Event::factory()->draft()->create();
+        $unknown = $draft->id + 1000;
+        $nobody = Member::factory()->create();
+
+        $forDraft = $this->actingAsMember($nobody)->json($method, sprintf($path, $draft->id), []);
+        $forUnknown = $this->actingAsMember($nobody)->json($method, sprintf($path, $unknown), []);
+
+        $forUnknown->assertStatus(404);
+        $forDraft->assertStatus(404);
     }
 
     public function test_the_agenda_omits_a_public_draft(): void

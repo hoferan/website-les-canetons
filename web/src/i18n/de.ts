@@ -84,7 +84,7 @@ export const de: typeof fr = {
     registration_closed: "Die Anmeldung ist geschlossen.",
     history_entry_empty:
       "Schreiben Sie mindestens einen Titel oder einen Text, auf Französisch oder Deutsch.",
-    event_incomplete: "Ergänzen Sie die fehlenden Felder, bevor Sie veröffentlichen.",
+    event_incomplete: "Ergänzen oder korrigieren Sie die Felder, bevor Sie veröffentlichen.",
     event_not_published:
       "Diese Veranstaltung ist noch ein Entwurf: Sie nimmt keine Antworten entgegen.",
     event_has_answers:

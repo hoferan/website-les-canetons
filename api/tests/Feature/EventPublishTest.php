@@ -74,6 +74,25 @@ class EventPublishTest extends TestCase
         );
     }
 
+    public function test_publishing_refuses_an_end_that_is_not_after_the_start(): void
+    {
+        // A draft is built one field at a time, so PATCH can leave it with an
+        // end before its start. Publishing is where a well-formed event is
+        // held now, and an event of negative length must not reach the band.
+        $draft = Event::factory()->draft()->create([
+            'starts_at' => '2026-10-03 14:00:00',
+            'ends_at' => '2026-10-03 12:00:00',
+        ]);
+
+        $this->publish($draft)
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'event_incomplete')
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
+
+        $this->assertTrue($draft->fresh()->isDraft());
+    }
+
     public function test_publishing_twice_is_not_an_error(): void
     {
         $event = Event::factory()->create();
@@ -146,18 +165,21 @@ class EventPublishTest extends TestCase
     public function test_a_player_cannot_publish_or_unpublish(): void
     {
         $player = Member::factory()->inSection('Cloches')->create();
-        $draft = Event::factory()->draft()->create();
+        // A PUBLISHED event: the player can see it, so lacking the permission is
+        // a 403. Against a draft the same request is a 404, because the player
+        // may not know it exists (EventDraftVisibilityTest pins that answer).
+        $event = Event::factory()->create();
 
         $this->actingAsMember($player)
-            ->withHeaders($this->ifMatch('event', $draft))
-            ->postJson("/api/v1/events/{$draft->id}/publish")
+            ->withHeaders($this->ifMatch('event', $event))
+            ->postJson("/api/v1/events/{$event->id}/publish")
             ->assertStatus(403);
         $this->actingAsMember($player)
-            ->withHeaders($this->ifMatch('event', $draft))
-            ->deleteJson("/api/v1/events/{$draft->id}/publish")
+            ->withHeaders($this->ifMatch('event', $event))
+            ->deleteJson("/api/v1/events/{$event->id}/publish")
             ->assertStatus(403);
 
-        $this->assertTrue($draft->fresh()->isDraft());
+        $this->assertFalse($event->fresh()->isDraft());
     }
 
     public function test_publishing_needs_the_current_etag(): void

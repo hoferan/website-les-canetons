@@ -218,7 +218,11 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // rather than 403 — the same pairing the members.manage group makes, and
     // for the same reason: "log in" and "you may not" are different answers
     // and the SPA acts on each differently.
-    Route::middleware('permission:events.manage')->group(function () {
+    //
+    // `event.published` comes BEFORE `permission:` in every group below that takes
+    // an {event}. In the other order a caller without the permission is told 403
+    // for a draft and 404 for an id nothing matches, and can count the drafts.
+    Route::middleware(['event.published', 'permission:events.manage'])->group(function () {
         Route::post('/events', [EventController::class, 'store']);
 
         // BEFORE the parameterised routes, deliberately. Nothing collides
@@ -280,40 +284,35 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
 
     // The chase list. Answering is everybody's; reading who has NOT answered
     // is the committee's, so unlike answering this one is gated.
-    Route::middleware('permission:attendance.view_all')->group(function () {
-        Route::get('/events/{event}/attendance', [AttendanceController::class, 'index'])
-            ->middleware('event.published');
+    Route::middleware(['event.published', 'permission:attendance.view_all'])->group(function () {
+        Route::get('/events/{event}/attendance', [AttendanceController::class, 'index']);
     });
 
     // Answering on somebody's behalf — the phone call to the committee. A
     // SEPARATE permission from viewing the list: seeing who is missing and
     // speaking for them are different acts, and roles are editable data that
     // may well grant one without the other. Refuses its own caller (ADR 0018).
-    Route::middleware('permission:attendance.record_for_others')->group(function () {
-        Route::put('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'update'])
-            ->middleware('event.published');
+    Route::middleware(['event.published', 'permission:attendance.record_for_others'])->group(function () {
+        Route::put('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'update']);
 
         // Taking one back. A mis-aimed on-behalf write was otherwise
         // permanent, and it starts the member's own five-minute undo clock
         // from the moment the DIRECTION wrote it.
-        Route::delete('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'destroy'])
-            ->middleware('event.published');
+        Route::delete('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'destroy']);
     });
 
     // THE GUEST LIST, and reading it is all this grants. `committee` holds
     // registrations.view as its ONLY permission — the role exists so
     // somebody can look at the list — so this token must not also authorise
     // deleting from it.
-    Route::middleware('permission:registrations.view')->group(function () {
-        Route::get('/events/{event}/registrations', [RegistrationController::class, 'index'])
-            ->middleware('event.published');
+    Route::middleware(['event.published', 'permission:registrations.view'])->group(function () {
+        Route::get('/events/{event}/registrations', [RegistrationController::class, 'index']);
 
         // The same list as a file. `{format}` is constrained here rather
         // than validated in the controller, so an unknown one is a 404 from
         // the router instead of reaching code at all.
         Route::get('/events/{event}/registrations.{format}', GuestListExportController::class)
-            ->where('format', 'xlsx|csv|md|json')
-            ->middleware('event.published');
+            ->where('format', 'xlsx|csv|md|json');
     });
 
     // Correcting and cancelling a booking. A SEPARATE permission from
@@ -371,7 +370,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // rather than a registration permission — the same act as setting its
     // date. PUT and replace-all, matching /members/{member}/roles: an "add
     // one" API cannot express removal.
-    Route::middleware('permission:events.manage')->group(function () {
+    Route::middleware(['event.published', 'permission:events.manage'])->group(function () {
         // ITS OWN FACET, not the event's. The options are absent from
         // EventResource, so conditioning this write on `etag:event` would both
         // miss every option change — the tag would not move, and a lost update

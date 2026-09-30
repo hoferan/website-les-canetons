@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getEventIndexQueryKey, useEventStore } from "../api/generated/endpoints";
@@ -36,8 +37,14 @@ export function EventNew() {
   const form = useApiFormError(t("eventForm.saveFailed"));
   const create = useEventStore();
 
+  // BUSY FROM THE CREATE THROUGH THE PUBLISH. The create finishes before the
+  // publish starts, and `create.isPending` alone left the form open in the gap:
+  // a second tap on Publier saved a second event.
+  const [working, setWorking] = useState(false);
+
   async function submit(draft: EventDraft, intent: "save" | "publish") {
     form.clear();
+    setWorking(true);
 
     try {
       const created = await create.mutateAsync({ data: eventBodyFrom(draft) });
@@ -69,6 +76,8 @@ export function EventNew() {
       // The form STAYS OPEN. A refused date has to be corrected where it was
       // typed, and navigating away would throw the other five fields away too.
       form.setFromThrown(thrown);
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -79,7 +88,7 @@ export function EventNew() {
       <EventForm
         event={null}
         mode="draft"
-        busy={create.isPending}
+        busy={create.isPending || working}
         error={form.error}
         problemFor={form.messageFor}
         onSubmit={submit}

@@ -1,10 +1,12 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { HttpResponse, delay, http } from "msw";
 import { expect, test } from "vitest";
 
 import { eventIndex } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Route, Routes } from "react-router-dom";
 
@@ -297,7 +299,7 @@ test("publishing an incomplete form keeps the draft and names what is missing", 
   // and the form filled from what was saved. Staying on the create screen
   // would offer a second save that makes a second event.
   expect(
-    await screen.findByText("Complétez les champs manquants avant de publier."),
+    await screen.findByText("Complétez ou corrigez les champs avant de publier."),
   ).toBeInTheDocument();
   expect(screen.getByText("Début est obligatoire")).toBeInTheDocument();
   expect(screen.getByText("Lieu est obligatoire")).toBeInTheDocument();
@@ -347,4 +349,38 @@ test("a published event's form still requires its date and place", async () => {
   expect(screen.getByLabelText("Lieu")).toBeRequired();
   expect(screen.getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Publier" })).not.toBeInTheDocument();
+});
+
+test("the form stays busy from the create through the publish, so a second tap makes no second event", async () => {
+  // The create finishes before the publish starts. The form used to be busy
+  // only for the create, so a tap in the gap saved a second event. The publish
+  // is held open here so that the gap can be looked at.
+  server.use(
+    http.post("/api/v1/events/:id/publish", async () => {
+      await delay(400);
+      return HttpResponse.json({});
+    }),
+  );
+  await renderCreateAndEdit();
+  await fillIn({
+    Titre: "Un seul concert",
+    Lieu: "Halle des fêtes",
+    "Date de début": "2027-04-10",
+    "Heure de début": "17:00",
+    "Heure de fin": "19:00",
+  });
+
+  const publish = screen.getByRole("button", { name: "Publier" });
+  await userEvent.click(publish);
+
+  // The create is done once the event exists; the publish is still in flight.
+  await waitFor(async () => expect((await createdEvent("Un seul concert")).id).toBeGreaterThan(0));
+  expect(publish).toHaveAttribute("aria-disabled", "true");
+
+  await userEvent.click(publish);
+  await screen.findByText("planning");
+
+  const planning = await eventIndex({ limit: 1000 });
+  const rows = planning.status === 200 ? planning.data.data : [];
+  expect(rows.filter((event) => event.title === "Un seul concert")).toHaveLength(1);
 });

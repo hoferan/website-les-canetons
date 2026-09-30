@@ -107,7 +107,7 @@ export const fr = {
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
     history_entry_empty: "Écrivez au moins un titre ou un texte, en français ou en allemand.",
-    event_incomplete: "Complétez les champs manquants avant de publier.",
+    event_incomplete: "Complétez ou corrigez les champs avant de publier.",
     event_not_published: "Cet événement est encore un brouillon : il ne reçoit pas de réponses.",
     event_has_answers:
       "Des réponses ou des inscriptions existent déjà : l'événement ne peut plus repasser en brouillon.",

@@ -422,9 +422,11 @@ class EventController extends Controller
      * Requires `events.manage`. Makes the event visible to every member (and,
      * once `isPublic` is set, on the public agenda) and answers with it.
      *
-     * A published event always has a start, an end and a location. A draft
-     * missing any of them is refused with `event_incomplete`, and `errors`
-     * names each missing field with the reason `required`; nothing is changed.
+     * A published event always has a start, an end after it, and a location.
+     * A draft that lacks any of them is refused with `event_incomplete`, and
+     * `errors` names each field: `required` for one that is missing,
+     * `must_be_after` on `endsAt` when the end does not follow the start.
+     * Nothing is changed.
      * Publishing an event that is already published is not an error and moves
      * nothing.
      */
@@ -437,15 +439,22 @@ class EventController extends Controller
 
         // The columns no longer say a published event has both dates (decision
         // C6 in the events migration), so this is where it is held.
-        $missing = [];
+        $problems = [];
         foreach (['startsAt' => 'starts_at', 'endsAt' => 'ends_at', 'location' => 'location'] as $field => $column) {
             if ($event->{$column} === null) {
-                $missing[] = ['field' => $field, 'reason' => 'required'];
+                $problems[] = ['field' => $field, 'reason' => 'required'];
             }
         }
 
-        if ($missing !== []) {
-            return ApiError::json(422, 'event_incomplete', 'The event is missing fields it needs to be published', $missing);
+        // A draft is built one field at a time, so PATCH can leave it with an
+        // end before its start; the create and edit rules only compare the two
+        // when both arrive together. Checked here, once both exist.
+        if ($problems === [] && $event->ends_at <= $event->starts_at) {
+            $problems[] = ['field' => 'endsAt', 'reason' => 'must_be_after'];
+        }
+
+        if ($problems !== []) {
+            return ApiError::json(422, 'event_incomplete', 'The event cannot be published as it stands', $problems);
         }
 
         $event->published_at = CarbonImmutable::now();

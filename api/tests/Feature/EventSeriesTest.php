@@ -43,6 +43,16 @@ class EventSeriesTest extends TestCase
         ], $overrides);
     }
 
+    public function test_the_reference_says_the_generator_writes_drafts(): void
+    {
+        $document = json_decode(file_get_contents(base_path('openapi.json')), true);
+
+        $this->assertStringContainsString(
+            'draft',
+            $document['paths']['/events/series']['post']['description'],
+        );
+    }
+
     public function test_it_creates_one_event_per_date(): void
     {
         $this->actingAsMember($this->organiser)

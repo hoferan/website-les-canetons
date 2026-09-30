@@ -1273,7 +1273,7 @@ test("publishing an incomplete draft names the fields it is missing", async () =
   );
 
   const alert = await screen.findByRole("alert");
-  expect(alert).toHaveTextContent("Complétez les champs manquants avant de publier.");
+  expect(alert).toHaveTextContent("Complétez ou corrigez les champs avant de publier.");
   expect(alert).toHaveTextContent("Début est obligatoire");
   expect(alert).toHaveTextContent("Fin est obligatoire");
   expect(alert).toHaveTextContent("Lieu est obligatoire");

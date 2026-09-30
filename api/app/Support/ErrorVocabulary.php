@@ -211,8 +211,8 @@ final class ErrorVocabulary
         'registration_closed' => [409, 'Bookings for this event have closed. Those already taken are '
             .'unaffected.'],
 
-        'event_incomplete' => [422, 'The event cannot be published yet. `errors` names each field it is still missing; '
-            .'fill them in and publish again.'],
+        'event_incomplete' => [422, 'The event cannot be published yet. `errors` names each field that is missing or, for `endsAt`, '
+            .'not after the start; fix them and publish again.'],
 
         'event_not_published' => [409, 'This event is still a draft, so it takes no answers. Publish it first.'],
 
