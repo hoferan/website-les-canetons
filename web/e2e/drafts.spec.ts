@@ -91,3 +91,26 @@ test("a draft can be published from its card and then leaves the drafts group", 
     page.getByTestId("event-title").filter({ hasText: "Concert d'automne" }),
   ).toBeVisible();
 });
+
+test("the draft badge is wide enough for its own text", async ({ page }) => {
+  // Found by eye: the badge was a <p> squeezed to 32px, so its text ran out of
+  // the pill. jsdom lays nothing out, so only a real browser can say this.
+  await logIn(page, "demo.direction");
+  await page.goto("/events");
+
+  const fits = await page
+    .getByTestId("draft-badge")
+    .first()
+    .evaluate((el) => el.scrollWidth <= el.clientWidth);
+  expect(fits, "the badge text overflows its pill").toBe(true);
+});
+
+test("the drafts are set apart from the rest of the planning by a heading of its own", async ({
+  page,
+}) => {
+  await logIn(page, "demo.direction");
+  await page.goto("/events");
+
+  await expect(page.getByRole("heading", { name: "Brouillons" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Le reste du planning" })).toBeVisible();
+});

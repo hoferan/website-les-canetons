@@ -229,7 +229,10 @@ export function Events() {
   // WHETHER THE PLANNED-EVENTS SECTION GETS A HEADING (#182) — see the JSX
   // site below for the full reasoning. Never over an empty list either: a
   // heading names what is under it.
-  const showHeading = planned.length > 0 && (showingPast || awaiting.length > 0);
+  // A drafts group above it needs the heading too: without one the planned
+  // cards run straight on from the drafts with only a gap between them.
+  const showHeading =
+    planned.length > 0 && (showingPast || awaiting.length > 0 || drafts.length > 0);
 
   function card(event: EventResource, inOwed: boolean) {
     // WHAT THIS READER MAY DO TO THIS EVENT, as data rather than as markup.

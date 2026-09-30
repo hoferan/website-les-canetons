@@ -42,7 +42,11 @@ export function EventCard({
   return (
     <article
       data-testid="event-card"
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+      // A dashed edge on a draft, so it reads as unfinished even where the
+      // group heading is out of view.
+      className={`rounded-lg border bg-white p-4 shadow-sm ${
+        isDraft(event) ? "border-dashed border-gray-400" : "border-gray-200"
+      }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-related">
         <div className="min-w-0">
@@ -53,12 +57,17 @@ export function EventCard({
           {/* The badge states the draft outright. A search or a chosen day can
               show this card without the group heading in view. */}
           {isDraft(event) ? (
-            <p
-              data-testid="draft-badge"
-              className="mt-tight inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
-            >
-              {t("events.draftBadge")}
-            </p>
+            <div className="mt-tight flex">
+              {/* A flex child like the "Public" chip, not inline-block: an
+                  inline-block badge collapsed to 32px here and its text ran
+                  out of the pill. */}
+              <span
+                data-testid="draft-badge"
+                className="rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
+              >
+                {t("events.draftBadge")}
+              </span>
+            </div>
           ) : null}
 
           <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
