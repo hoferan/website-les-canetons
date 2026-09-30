@@ -29,6 +29,14 @@ export const de: typeof fr = {
       label: "Vorstand",
       hint: "Sieht die Anmeldeliste ein.",
     },
+    member: {
+      label: "Mitglied",
+      hint: "Sieht den Plan und verwaltet das eigene Passwort. Alle Konten haben diese Rolle.",
+    },
+    musician: {
+      label: "Musiker·in",
+      hint: "Antwortet auf Anlässe und gehört zu den erwarteten Personen.",
+    },
   },
 
   errors: {

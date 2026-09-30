@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Member;
 use App\Models\Role;
 use App\Models\Section;
+use App\Support\EffectivePermissions;
 use App\Support\Permission;
 use Database\Seeders\DevSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,11 +41,14 @@ class DevSeederTest extends TestCase
         $this->assertFalse($member->isPlayer());
     }
 
-    public function test_the_player_has_no_permissions_but_plays(): void
+    public function test_the_player_holds_the_baseline_and_musician_permissions_and_nothing_organising(): void
     {
         $member = Member::where('username', 'demo.player')->sole();
 
-        $this->assertTrue($member->permissions()->isEmpty());
+        $this->assertEqualsCanonicalizing(
+            [Permission::EventsView, Permission::AccountManage, Permission::AttendanceRespond],
+            $member->permissions()->all(),
+        );
         $this->assertTrue($member->isPlayer());
     }
 
@@ -55,6 +59,25 @@ class DevSeederTest extends TestCase
 
         $this->assertTrue($member->hasPermission(Permission::EventsManage));
         $this->assertTrue($member->isPlayer());
+    }
+
+    public function test_every_persona_keeps_exactly_the_abilities_it_had(): void
+    {
+        $this->seed(DevSeeder::class);
+
+        $has = fn (string $username, Permission $p): bool => EffectivePermissions::memberIdsWith($p)
+            ->contains(Member::where('username', $username)->value('id'));
+
+        foreach (['demo.direction', 'demo.player', 'demo.both', 'demo.committee', 'demo.young'] as $u) {
+            $this->assertTrue($has($u, Permission::EventsView), "$u sees the planning");
+            $this->assertTrue($has($u, Permission::AccountManage), "$u manages their own account");
+        }
+
+        // Answers events: everyone with a register, and Dominique does not.
+        foreach (['demo.player', 'demo.both', 'demo.committee', 'demo.young'] as $u) {
+            $this->assertTrue($has($u, Permission::AttendanceRespond), "$u answers");
+        }
+        $this->assertFalse($has('demo.direction', Permission::AttendanceRespond));
     }
 
     public function test_seeding_twice_does_not_duplicate_anyone(): void

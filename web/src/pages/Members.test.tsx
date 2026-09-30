@@ -107,7 +107,7 @@ test("shows roles by their French label, never the key or the permissions", asyn
   expect(direction).toHaveTextContent("Rôles : Team Direction");
   expect(direction.textContent).not.toContain("members.manage");
 
-  expect(rowFor("Committee")).toHaveTextContent("Rôles : Comité");
+  expect(rowFor("Committee")).toHaveTextContent("Rôles : Comité, Membre, Musicien·ne");
 });
 
 test("creates a person and shows them in the list", async () => {
@@ -153,11 +153,11 @@ test("reports a taken username against its own field, in French", async () => {
   expect(screen.getByLabelText("Prénom")).toHaveValue("Autre");
 });
 
-test("grants no roles on creation, and says why", async () => {
+test("disables the role checkboxes on the create form, and says roles are assigned after saving", async () => {
   await renderRoster();
   await userEvent.click(screen.getByRole("button", { name: "Ajouter une personne" }));
 
-  // The API refuses roleIds on create deliberately — granting a permission is
+  // The API ignores roleIds on create deliberately — granting a permission is
   // exactly one operation, and accepting it here would make the unguarded path
   // easier than the guarded one. An inert checkbox with no explanation is
   // worse than either, so the form says so.
@@ -176,6 +176,22 @@ test("assigns a role to somebody who already exists", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
 
   await expect.poll(() => rowFor("Player").textContent).toContain("Comité");
+});
+
+test("says plainly when a person holds no role at all", async () => {
+  // No seeded account is role-less any more: every one holds the baseline. The
+  // API still lets an administrator remove it (nothing guards that yet), so the
+  // roster has to say so instead of printing an empty line.
+  await renderRoster();
+
+  await userEvent.click(
+    within(rowFor("Player")).getByRole("button", { name: "Modifier Perrine Player" }),
+  );
+  await userEvent.click(screen.getByLabelText("Membre"));
+  await userEvent.click(screen.getByLabelText("Musicien·ne"));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await expect.poll(() => rowFor("Player").textContent).toContain("Aucun rôle");
 });
 
 test("changing a name and a role in one save does both", async () => {
@@ -199,7 +215,7 @@ test("changing a name and a role in one save does both", async () => {
   const row = await cards().findByText("Joueuse");
   const changed = row.closest("[data-member]");
   expect(changed).not.toBeNull();
-  expect(changed).toHaveTextContent("Rôles : Comité");
+  expect(changed).toHaveTextContent("Rôles : Membre, Musicien·ne, Comité");
 });
 
 test("seats somebody on the committee by picking from the list, not by typing", async () => {
@@ -529,8 +545,8 @@ test("the card's labels are German, and their colons lose the French space", asy
   // same bug as #152's Tbd separator, found in a fourth place.
   expect(card).toHaveTextContent("Benutzername: demo.player");
   expect(card).toHaveTextContent("Register: Cloches");
-  // Perrine holds no role, which is also the seeded case for "Keine Rolle".
-  expect(card).toHaveTextContent("Rollen: Keine Rolle");
+  // Every seeded account holds the member role, and Perrine plays in a register.
+  expect(card).toHaveTextContent("Rollen: Mitglied, Musiker·in");
 });
 
 test("EVERY ACCESSIBLE NAME STILL CARRIES THE PERSON, in German", async () => {

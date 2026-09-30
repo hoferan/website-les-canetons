@@ -18,15 +18,11 @@ class PermissionTest extends TestCase
         }
     }
 
-    public function test_responding_is_not_a_permission(): void
+    public function test_answering_for_oneself_is_a_permission(): void
     {
-        // Answering for yourself is what a member IS, not something granted.
-        // A `respond` permission would reintroduce the bug where an organiser
-        // could not record their own attendance.
         $values = array_column(Permission::cases(), 'value');
 
-        $this->assertNotContains('attendance.respond', $values);
-        $this->assertNotContains('respond', $values);
+        $this->assertContains('attendance.respond', $values);
     }
 
     public function test_the_expected_permissions_exist(): void
@@ -42,6 +38,9 @@ class PermissionTest extends TestCase
                 'messages.view',
                 'messages.manage',
                 'history.manage',
+                'events.view',
+                'attendance.respond',
+                'account.manage',
             ],
             array_column(Permission::cases(), 'value'),
         );

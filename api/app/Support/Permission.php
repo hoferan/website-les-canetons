@@ -3,16 +3,22 @@
 namespace App\Support;
 
 /**
- * The complete set of permissions the API enforces.
+ * The complete set of permissions the API knows.
+ *
+ * Three of them (`events.view`, `attendance.respond`, `account.manage`) are
+ * seeded ahead of their middleware and are enforced from #191; until then
+ * Member::isPlayer() still decides who may answer an event.
  *
  * THIS IS CODE, NOT DATA, and that is the whole point. A permission is real
  * only if some middleware checks it, so the set cannot be invented in an admin
  * UI — roles (which are data) merely group these.
  *
- * There is deliberately NO permission for answering an event. A member answers
- * for themselves when they belong to a register (Member::isPlayer()); making it
- * a grant is what produced the old bug where an admin could not say whether
- * they were coming, and left "Pas de réponse" counts meaningless.
+ * Answering an event IS a permission (`attendance.respond`), held through the
+ * `musician` role rather than derived from a register (from #191; today
+ * Member::isPlayer() still derives it). A register only groups and displays;
+ * it never grants anything (ADR 0014). An organiser who does not
+ * play simply does not hold `musician`, and one who does (`demo.both`) holds
+ * both roles: that pair is what breaks if anyone brings an either/or back.
  */
 enum Permission: string
 {
@@ -59,4 +65,28 @@ enum Permission: string
      * reading what the public sends, not publishing on the band's behalf.
      */
     case HistoryManage = 'history.manage';
+
+    /**
+     * Reading the planning: the event list and a single event.
+     *
+     * Held by the baseline `member` role, so every account has it. NOTHING
+     * CHECKS THIS YET: it is seeded ahead of the route middleware so a server
+     * carries the data before the code that requires it ships (#191).
+     */
+    case EventsView = 'events.view';
+
+    /**
+     * Answering for oneself: PUT and DELETE /events/{event}/attendance.
+     *
+     * Held by `musician`. Recording an answer FOR SOMEBODY ELSE is
+     * AttendanceRecordForOthers and is unrelated. Not yet checked (#191).
+     */
+    case AttendanceRespond = 'attendance.respond';
+
+    /**
+     * Managing one's own account: POST /me/password.
+     *
+     * Held by the baseline `member` role. Not yet checked (#191).
+     */
+    case AccountManage = 'account.manage';
 }

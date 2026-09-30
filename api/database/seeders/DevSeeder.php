@@ -12,6 +12,15 @@ use Illuminate\Database\Seeder;
  * Local development and test data. SYNTHETIC ONLY — never a real member's name
  * and never a real password.
  *
+ * Personas, by the roles they hold (every one also holds the baseline `member`
+ * role, and every one with a register also holds `musician`):
+ *
+ * - demo.direction: `direction`. Organises, does not play (no register).
+ * - demo.player: `musician`. Plays, organises nothing.
+ * - demo.both: `musician` and `direction`. Plays and organises.
+ * - demo.committee: `musician` and `committee`. Plays, and sees the guest list.
+ * - demo.young: `musician`. Plays; a parent uses the login.
+ *
  * Idempotent, because the dev container runs migrations (and may run this) on
  * every start.
  */
@@ -95,7 +104,7 @@ class DevSeeder extends Seeder
      */
     private function member(string $username, string $first, string $last, ?int $sectionId, array $extra = []): Member
     {
-        return Member::firstOrCreate(
+        $member = Member::firstOrCreate(
             ['username' => $username],
             [
                 'first_name' => $first,
@@ -106,5 +115,13 @@ class DevSeeder extends Seeder
                 ...$extra,
             ],
         );
+
+        // Every account holds the baseline; the register decides who plays.
+        $member->roles()->syncWithoutDetaching(array_filter([
+            Role::baseline()->id,
+            $sectionId !== null ? Role::where('key', 'musician')->value('id') : null,
+        ]));
+
+        return $member;
     }
 }

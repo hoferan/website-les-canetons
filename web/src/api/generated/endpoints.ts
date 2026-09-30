@@ -6642,8 +6642,8 @@ export const getMemberStoreUrl = () => {
  * `POST /api/v1/members/{member}/password`. The new member is required to
  * change it before doing anything else.
  *
- * No roles are granted. Roles are `PUT /api/v1/members/{member}/roles`, and
- * no password may be chosen here.
+ * Only the baseline role is granted: every account holds it. Any other role
+ * is `PUT /api/v1/members/{member}/roles`. No password may be chosen here.
  *
  * A missing required field answers `400 validation_failed` naming the
  * field with `required`. A username already in use answers the same with

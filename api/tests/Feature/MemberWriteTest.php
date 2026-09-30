@@ -71,7 +71,7 @@ class MemberWriteTest extends TestCase
         ];
     }
 
-    public function test_it_creates_a_person_with_a_register_but_never_a_role(): void
+    public function test_it_creates_a_person_with_a_register_and_only_the_baseline_role(): void
     {
         $section = $this->section();
 
@@ -87,7 +87,7 @@ class MemberWriteTest extends TestCase
         $this->assertSame($section->id, $member->section_id);
         $this->assertSame($this->seat('Présidente')->id, $member->committee_function_id);
         $this->assertTrue($member->public_visible);
-        $this->assertSame([], $member->roles->pluck('id')->all());
+        $this->assertSame([Role::baseline()->id], $member->roles->pluck('id')->all());
     }
 
     public function test_creating_a_person_cannot_grant_a_role_even_if_asked(): void
@@ -104,7 +104,11 @@ class MemberWriteTest extends TestCase
         ]))->assertCreated();
 
         $member = Member::where('username', 'perrine.player')->sole();
-        $this->assertSame([], $member->roles->pluck('id')->all(), 'create must never grant a role');
+        $this->assertSame(
+            [Role::baseline()->id],
+            $member->roles->pluck('id')->all(),
+            'create grants the baseline and nothing the request asked for',
+        );
     }
 
     public function test_a_created_person_can_log_in_with_the_password_it_returns(): void

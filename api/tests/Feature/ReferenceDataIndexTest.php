@@ -95,8 +95,17 @@ class ReferenceDataIndexTest extends TestCase
 
         $byKey = collect($body)->keyBy('key');
 
+        $organising = array_filter(
+            Permission::cases(),
+            fn (Permission $p): bool => ! in_array($p, [
+                Permission::EventsView,
+                Permission::AttendanceRespond,
+                Permission::AccountManage,
+            ], true),
+        );
+
         $this->assertEqualsCanonicalizing(
-            array_map(fn (Permission $p) => $p->value, Permission::cases()),
+            array_map(fn (Permission $p) => $p->value, $organising),
             $byKey['direction']['permissions'],
         );
         $this->assertEqualsCanonicalizing(

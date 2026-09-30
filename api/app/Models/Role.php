@@ -17,6 +17,12 @@ class Role extends Model
 
     protected $fillable = ['key'];
 
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['is_baseline' => 'boolean'];
+    }
+
     /** @return BelongsToMany<Member, $this> */
     public function members(): BelongsToMany
     {
@@ -56,5 +62,16 @@ class Role extends Model
                 DB::table('role_permissions')->insert($rows);
             }
         });
+    }
+
+    /**
+     * The role every member holds and whose grants are fixed.
+     *
+     * Found by the marker, never by `key`: nothing may decide anything from a
+     * role's name (ADR 0014).
+     */
+    public static function baseline(): self
+    {
+        return static::where('is_baseline', true)->sole();
     }
 }

@@ -16,9 +16,9 @@ use Illuminate\Foundation\Http\FormRequest;
  * response exactly once, for an administrator to pass on; it is never
  * retrievable afterwards.
  *
- * There is no `roleIds` field either. A new member starts with no roles and
- * no permissions; granting any is a separate call to
- * `PUT /api/v1/members/{member}/roles`.
+ * There is no `roleIds` field either. A new member starts with only the
+ * baseline role, which every account holds; any other role is a separate call
+ * to `PUT /api/v1/members/{member}/roles`.
  *
  * `sectionId` is the register the member plays in. A member with no register
  * is not answerable for events and never appears in an attendance list, which

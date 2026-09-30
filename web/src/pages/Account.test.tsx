@@ -1,7 +1,9 @@
 import { screen, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { expect, test } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { currentMockUser, setMockUser } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Account } from "./Account";
 
@@ -25,14 +27,28 @@ test("shows who the member is: name, identifiant, pupitre, seat and roles", asyn
   expect(field("Pupitre")).toBe("Trombones");
   expect(field("Fonction au comité")).toBe("Responsable intendance");
   // Translated by key through roleLabel, never the raw key.
-  expect(field("Rôles")).toBe("Comité");
+  expect(field("Rôles")).toBe("Comité, Membre, Musicien·ne");
 });
 
-test("says so when the member sits on no committee seat and holds no role", async () => {
+test("says so when the member sits on no committee seat", async () => {
   setMockUser("demo.young");
   await renderWithSession(<Account />, { route: "/account" });
 
   expect(field("Fonction au comité")).toBe("Aucune");
+  expect(field("Rôles")).toBe("Membre, Musicien·ne");
+});
+
+test("says so when the session holds no role at all", async () => {
+  // No seeded persona is role-less any more: each one holds the baseline. The
+  // card still has to handle an empty list rather than print a blank.
+  setMockUser("demo.young");
+  server.use(
+    http.get("/api/v1/me", () =>
+      HttpResponse.json({ ...currentMockUser(), roleKeys: [], permissions: [] }),
+    ),
+  );
+  await renderWithSession(<Account />, { route: "/account" });
+
   expect(field("Rôles")).toBe("Aucun");
 });
 
@@ -51,7 +67,7 @@ test("shows the identity card in German", async () => {
   expect(field("Benutzername")).toBe("demo.committee");
   expect(field("Register")).toBe("Trombones");
   expect(field("Funktion im Vorstand")).toBe("Responsable intendance");
-  expect(field("Rollen")).toBe("Vorstand");
+  expect(field("Rollen")).toBe("Vorstand, Mitglied, Musiker·in");
 });
 
 /**
