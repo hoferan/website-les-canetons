@@ -7009,18 +7009,27 @@
                         "maxLength": 255
                     },
                     "startsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC."
+                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Send `null` to clear it on a draft; a published event refuses that with `required`."
                     },
                     "endsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise."
+                        "description": "ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. Send `null` to clear it on a draft; a published event refuses that with `required`."
                     },
                     "location": {
-                        "type": "string",
-                        "description": "Where it happens, as free text.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Where it happens, as free text. Send `null` to clear it on a draft; a published event refuses that with `required`.",
                         "maxLength": 255
                     },
                     "attire": {

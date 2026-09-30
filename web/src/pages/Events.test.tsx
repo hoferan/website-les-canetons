@@ -1195,7 +1195,8 @@ test("a search that finds nothing says so, without the empty planning's hint", a
 
   await user.click(screen.getByRole("button", { name: "Effacer la recherche" }));
 
-  await waitFor(() => expect(titlesOnScreen()).toHaveLength(6));
+  // Six published upcoming events and the two seeded drafts.
+  await waitFor(() => expect(titlesOnScreen()).toHaveLength(8));
 });
 
 test("a search re-partitions the top block, like a day does", async () => {

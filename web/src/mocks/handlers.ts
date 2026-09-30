@@ -594,6 +594,46 @@ const refuseWithoutMembersManage = () => refuseWithout("members.manage");
 /** Route-model binding's own answer for an id nothing matches. */
 const notFound = () => problem(404, "not_found", "Not found");
 
+/** Whether the caller holds events.manage: the only people who know a draft exists. */
+function mayManageEvents(): boolean {
+  return currentUser?.permissions.includes("events.manage") ?? false;
+}
+
+/** The events the caller may know about: a draft is invisible without events.manage. */
+function visibleEvents(): EventResource[] {
+  return mayManageEvents() ? events : events.filter((event) => event.publishedAt !== null);
+}
+
+/**
+ * The start as a number to sort and split on. An undated draft sorts before
+ * everything, which is where the real list puts it.
+ */
+function startMs(event: EventResource): number {
+  return event.startsAt === null ? Number.NEGATIVE_INFINITY : Date.parse(event.startsAt);
+}
+
+function compareStart(a: EventResource, b: EventResource): number {
+  const [x, y] = [startMs(a), startMs(b)];
+  return x === y ? 0 : x < y ? -1 : 1;
+}
+
+/**
+ * Mirrors the event.published middleware and, for writes, the 409 a manager
+ * gets: 404 for somebody who may not know the draft exists, 409
+ * event_not_published for somebody who may but cannot answer it.
+ */
+function refuseDraft(event: EventResource, write: boolean) {
+  if (event.publishedAt !== null) {
+    return null;
+  }
+  if (!mayManageEvents()) {
+    return notFound();
+  }
+  return write
+    ? conflict("event_not_published", "This event is still a draft and takes no answers")
+    : null;
+}
+
 /* ------------------------------------------------------------------------ *
  * Collections
  * ------------------------------------------------------------------------ */
@@ -810,7 +850,7 @@ function at(dayOffset: number, time: string): string {
  * being the whole store.
  */
 function initialEvents(): EventResource[] {
-  return [
+  const published: Omit<EventResource, "publishedAt">[] = [
     {
       id: 1,
       title: "Répétition",
@@ -958,16 +998,66 @@ function initialEvents(): EventResource[] {
       guestCount: null,
     },
   ];
+
+  // TWO DRAFTS, one dated and one with nothing but a title, which is the pair
+  // the committee's list has to place: the dateless one has no start to sort
+  // by. The dated one is public on purpose. A draft marked public must still
+  // appear nowhere, and a seed that was not public could never show it.
+  const drafts: EventResource[] = [
+    {
+      id: 8,
+      title: "Concert d'automne",
+      startsAt: at(20, "17:00"),
+      endsAt: at(20, "19:00"),
+      location: "Église Saint-Nicolas",
+      attire: null,
+      isPublic: true,
+      notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
+      myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
+      publishedAt: null,
+    },
+    {
+      id: 9,
+      title: "Sortie de fin de saison",
+      startsAt: null,
+      endsAt: null,
+      location: null,
+      attire: null,
+      isPublic: false,
+      notes: null,
+      registrationOpensAt: null,
+      registrationClosesAt: null,
+      registrationMaxGuests: null,
+      takesRegistrations: false,
+      myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
+      publishedAt: null,
+    },
+  ];
+
+  return [
+    ...published.map((event) => ({ ...event, publishedAt: "2026-09-01T00:00:00+00:00" })),
+    ...drafts,
+  ];
 }
 
 let events: EventResource[] = initialEvents();
 
 /** Mirrors an auto-increment: never reuses a deleted id. */
-let nextEventId = 8;
+let nextEventId = 10;
 
 function resetEvents(): void {
   events = initialEvents();
-  nextEventId = 8;
+  nextEventId = 10;
 }
 
 /* ------------------------------------------------------------------------ *
@@ -1216,8 +1306,9 @@ const notAnswerable = () =>
  * The API's `endsAt`-after-`startsAt` refusal, in the shape ApiError renders.
  * Returns the refusal, or null when the pair is fine.
  */
-function refuseIfEndsBeforeStart(startsAt: string, endsAt: string) {
-  if (Date.parse(endsAt) > Date.parse(startsAt)) {
+function refuseIfEndsBeforeStart(startsAt: string | null, endsAt: string | null) {
+  // A draft may have neither, and there is nothing to compare then.
+  if (startsAt === null || endsAt === null || Date.parse(endsAt) > Date.parse(startsAt)) {
     return null;
   }
   return problem(400, "validation_failed", "Invalid form submission", [
@@ -1431,6 +1522,12 @@ function withRegistrationFlag(event: EventResource): EventResource {
 
 /** The four facts PublicEventResource publishes, plus what registration added to it. */
 function publicEvent(event: EventResource) {
+  // Only ever handed a published event, which has all four; the real resource
+  // throws on a draft for the same reason.
+  if (event.startsAt === null || event.endsAt === null || event.location === null) {
+    throw new Error("A draft reached publicEvent");
+  }
+
   return {
     id: event.id,
     title: event.title,
@@ -1694,8 +1791,12 @@ const overrides = [
   http.get("/api/v1/agenda", ({ request }) =>
     collection(
       events
-        .filter((event) => event.isPublic && Date.parse(event.startsAt) >= startOfTodayMs())
-        .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+        // Both filters, as on the server: a draft marked public appears nowhere.
+        .filter(
+          (event) =>
+            event.publishedAt !== null && event.isPublic && startMs(event) >= startOfTodayMs(),
+        )
+        .sort(compareStart)
         .map(publicEvent),
       request,
     ),
@@ -2147,17 +2248,19 @@ const overrides = [
     const past = new URL(request.url).searchParams.get("past") === "1";
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
-    const planning = events
-      .filter((event) =>
-        past ? Date.parse(event.startsAt) < boundary : Date.parse(event.startsAt) >= boundary,
-      )
+    // EVERY DRAFT BELONGS TO THE DEFAULT HALF, dated or not, and none to the
+    // history: a draft cannot ride the start-date split, and one dated last
+    // week is still unfinished business.
+    const planning = visibleEvents()
+      .filter((event) => {
+        if (past) {
+          return event.publishedAt !== null && startMs(event) < boundary;
+        }
+        return event.publishedAt === null || startMs(event) >= boundary;
+      })
       // `?q=` narrows either half, on the title or the place (#97).
-      .filter((event) => q === "" || matchesSearch([event.title, event.location], q))
-      .sort((a, b) =>
-        past
-          ? Date.parse(b.startsAt) - Date.parse(a.startsAt)
-          : Date.parse(a.startsAt) - Date.parse(b.startsAt),
-      );
+      .filter((event) => q === "" || matchesSearch([event.title, event.location ?? ""], q))
+      .sort((a, b) => (past ? compareStart(b, a) : compareStart(a, b)));
 
     return collection(planning.map(withMyAttendance).map(withCommitteeCounts), request);
   }),
@@ -2172,7 +2275,7 @@ const overrides = [
     }
 
     const body = (await request.json()) as {
-      template: Omit<EventResource, "id" | "startsAt" | "endsAt"> & {
+      template: Omit<EventResource, "id" | "startsAt" | "endsAt" | "publishedAt"> & {
         startTime: string;
         endTime: string;
       };
@@ -2182,7 +2285,7 @@ const overrides = [
     // One event per date, each independent — no series_id, nothing linking
     // them. The generator is the only thing that knows they arrived
     // together, and it forgets immediately.
-    const created = body.dates.map((date) => {
+    const created: EventResource[] = body.dates.map((date) => {
       const day = new Date(`${date}T00:00:00`);
       const offset = Math.round((day.getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
       return {
@@ -2202,6 +2305,9 @@ const overrides = [
         answeredCount: null,
         answerableCount: null,
         guestCount: null,
+        // A generated season is written as drafts: a wrong recurrence rule
+        // must not land every date on everybody's planning at once.
+        publishedAt: null,
       };
     });
 
@@ -2220,13 +2326,38 @@ const overrides = [
       return refusal;
     }
 
-    const body = (await request.json()) as Omit<EventResource, "id">;
-    const invalid = refuseIfEndsBeforeStart(body.startsAt, body.endsAt);
+    // Only the title is required: "I do not know the venue yet" is the reason
+    // a draft gets written, and every create is a draft.
+    const body = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+    if (!body.title?.trim()) {
+      return problem(400, "validation_failed", "Invalid form submission", [
+        { field: "title", reason: "required" },
+      ]);
+    }
+    const invalid = refuseIfEndsBeforeStart(body.startsAt ?? null, body.endsAt ?? null);
     if (invalid) {
       return invalid;
     }
 
-    const event = withRegistrationFlag({ ...body, id: nextEventId++ });
+    const event = withRegistrationFlag({
+      id: nextEventId++,
+      title: body.title,
+      startsAt: body.startsAt ?? null,
+      endsAt: body.endsAt ?? null,
+      location: body.location ?? null,
+      attire: body.attire ?? null,
+      isPublic: body.isPublic ?? false,
+      notes: body.notes ?? null,
+      registrationOpensAt: body.registrationOpensAt ?? null,
+      registrationClosesAt: body.registrationClosesAt ?? null,
+      registrationMaxGuests: body.registrationMaxGuests ?? null,
+      takesRegistrations: false,
+      myAttendance: null,
+      answeredCount: null,
+      answerableCount: null,
+      guestCount: null,
+      publishedAt: null,
+    });
     events = [...events, event];
     return HttpResponse.json(withCommitteeCounts(event), { status: 201 });
   }),
@@ -2235,7 +2366,7 @@ const overrides = [
     if (!currentUser) {
       return unauthenticated();
     }
-    const event = events.find((candidate) => candidate.id === Number(params.id));
+    const event = visibleEvents().find((candidate) => candidate.id === Number(params.id));
     // The read the two conditional writes below start from. The event's tag
     // deliberately ignores `myAttendance`, which is the caller's own answer, so
     // answering an event does not invalidate a pending edit of it.
@@ -2266,7 +2397,24 @@ const overrides = [
       return stale;
     }
 
-    const patch = (await request.json()) as Partial<Omit<EventResource, "id">>;
+    const patch = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+
+    // A DRAFT may lose its dates and location, a published event may not; the
+    // stored row decides, not the request.
+    if (existing.publishedAt !== null) {
+      const cleared = (["startsAt", "endsAt", "location"] as const).filter(
+        (field) => field in patch && patch[field] === null,
+      );
+      if (cleared.length > 0) {
+        return problem(
+          400,
+          "validation_failed",
+          "Invalid form submission",
+          cleared.map((field) => ({ field, reason: "required" })),
+        );
+      }
+    }
+
     const updated = withRegistrationFlag({ ...existing, ...patch });
 
     // The comparison reaches for the STORED start when the patch does not
@@ -2302,6 +2450,80 @@ const overrides = [
 
     events = events.filter((candidate) => candidate.id !== id);
     return HttpResponse.json({ ok: true });
+  }),
+
+  // PUBLISHING is its own act. It owes the current tag, like the other
+  // writes, and it is the only POST that does.
+  http.post("/api/v1/events/:id/publish", ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const existing = events.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    if (stale) {
+      return stale;
+    }
+
+    // Already published is not an error, and moves nothing.
+    if (existing.publishedAt === null) {
+      const missing = (["startsAt", "endsAt", "location"] as const).filter(
+        (field) => existing[field] === null,
+      );
+      if (missing.length > 0) {
+        return problem(
+          422,
+          "event_incomplete",
+          "The event is missing fields it needs to be published",
+          missing.map((field) => ({ field, reason: "required" })),
+        );
+      }
+    }
+
+    const updated = {
+      ...existing,
+      publishedAt: existing.publishedAt ?? new Date().toISOString(),
+    };
+    events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
+    return HttpResponse.json(withCommitteeCounts(withMyAttendance(updated)), {
+      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+    });
+  }),
+
+  http.delete("/api/v1/events/:id/publish", ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const existing = events.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    if (stale) {
+      return stale;
+    }
+
+    if (existing.publishedAt !== null) {
+      const answered = [...answers.keys()].some((key) => key.startsWith(`${existing.id}:`));
+      const booked = registrations.some((booking) => booking.eventId === existing.id);
+      if (answered || booked) {
+        return conflict("event_has_answers", "Members have already answered or booked this event");
+      }
+    }
+
+    const updated = { ...existing, publishedAt: null };
+    events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
+    return HttpResponse.json(withCommitteeCounts(withMyAttendance(updated)), {
+      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+    });
   }),
 
   /* ---------------------------------------------------------------------- *
@@ -2409,6 +2631,10 @@ const overrides = [
     if (!event) {
       return notFound();
     }
+    const hidden = refuseDraft(event, false);
+    if (hidden) {
+      return hidden;
+    }
 
     // Answerable means being in a register, which is Member::isPlayer() and
     // deliberately not a permission: making it one is how the old site ended
@@ -2439,6 +2665,10 @@ const overrides = [
     const event = events.find((candidate) => candidate.id === Number(params.id));
     if (!event) {
       return notFound();
+    }
+    const draft = refuseDraft(event, true);
+    if (draft) {
+      return draft;
     }
 
     if (!currentUser.isPlayer) {
@@ -2480,6 +2710,12 @@ const overrides = [
       return unauthenticated();
     }
 
+    const target = events.find((candidate) => candidate.id === Number(params.id));
+    const draft = target ? refuseDraft(target, true) : null;
+    if (draft) {
+      return draft;
+    }
+
     const key = answerKey(Number(params.id), currentUser.id);
     const existing = answers.get(key);
 
@@ -2507,6 +2743,10 @@ const overrides = [
     const event = events.find((candidate) => candidate.id === Number(params.id));
     if (!event) {
       return notFound();
+    }
+    const draft = refuseDraft(event, true);
+    if (draft) {
+      return draft;
     }
 
     const member = members.find((candidate) => candidate.id === Number(params.member));
@@ -2552,6 +2792,12 @@ const overrides = [
       return refusal;
     }
 
+    const target = events.find((candidate) => candidate.id === Number(params.id));
+    const draft = target ? refuseDraft(target, true) : null;
+    if (draft) {
+      return draft;
+    }
+
     const memberId = Number(params.member);
     if (currentUser?.id === memberId) {
       return conflict("cannot_record_for_self", "Answer for yourself from the planning");
@@ -2576,7 +2822,9 @@ const overrides = [
   http.get("/api/v1/events/:id/registration", ({ params }) => {
     const event = events.find((candidate) => candidate.id === Number(params.id));
 
-    if (!event || event.registrationClosesAt === null) {
+    // A draft is a 404 here for EVERYONE, a logged-in manager included: the
+    // public routes are the visitor's view of the event.
+    if (!event || event.publishedAt === null || event.registrationClosesAt === null) {
       return notFound();
     }
 
@@ -2600,8 +2848,8 @@ const overrides = [
     // StoreRegistrationRequest::prepareForValidation. With this check later,
     // booking an event that takes none answered a complaint about
     // `choices.0.optionId` — because the option genuinely is not this
-    // event's — and leaked that the event exists.
-    if (!event || event.registrationClosesAt === null) {
+    // event's — and leaked that the event exists. A draft answers the same 404.
+    if (!event || event.publishedAt === null || event.registrationClosesAt === null) {
       return notFound();
     }
 
@@ -2703,6 +2951,12 @@ const overrides = [
       return refusal;
     }
 
+    const listed = events.find((candidate) => candidate.id === Number(params.id));
+    const hidden = listed ? refuseDraft(listed, false) : null;
+    if (hidden) {
+      return hidden;
+    }
+
     return collection(
       registrations
         .filter((registration) => registration.eventId === Number(params.id))
@@ -2725,6 +2979,10 @@ const overrides = [
 
     const format = String(params.format);
     const event = events.find((candidate) => candidate.id === Number(params.id));
+    const hidden = event ? refuseDraft(event, false) : null;
+    if (hidden) {
+      return hidden;
+    }
     const list = guestListOf(Number(params.id));
     const stem =
       (event?.title ?? "evenement")

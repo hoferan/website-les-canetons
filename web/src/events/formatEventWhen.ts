@@ -1,4 +1,4 @@
-import { currentLocale } from "../i18n";
+import { currentLocale, t } from "../i18n";
 import { intlTag, type Locale } from "../i18n/locale";
 
 /**
@@ -114,8 +114,20 @@ function dayIn(zone: string, value: string): string {
   }).format(new Date(value));
 }
 
-export function formatEventWhen(startsAt: string, endsAt: string): string {
+export function formatEventWhen(startsAt: string | null, endsAt: string | null): string {
+  // A DRAFT MAY HAVE NEITHER, or only a start. Saying so beats an "Invalid
+  // Date" the committee has to interpret, and a start with no end is still
+  // worth showing.
+  if (startsAt === null) {
+    return t("events.dateMissing");
+  }
+
   const start = new Date(startsAt);
+
+  if (endsAt === null) {
+    return `${formatter("date").format(start)}, ${formatter("time").format(start)}`;
+  }
+
   const end = new Date(endsAt);
 
   if (dayIn(ZONE, startsAt) === dayIn(ZONE, endsAt)) {

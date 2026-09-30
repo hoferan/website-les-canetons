@@ -572,6 +572,8 @@ export const fr = {
    */
   events: {
     heading: "Planning",
+    // Un brouillon peut ne pas avoir encore de date.
+    dateMissing: "Date à fixer",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
     // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,

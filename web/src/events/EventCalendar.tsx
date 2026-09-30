@@ -107,12 +107,16 @@ export function EventCalendar({
   onSelect: (day: string | null) => void;
 }) {
   const [month, setMonth] = useState(() => {
-    const first = events[0];
-    return first ? monthOf(first.startsAt) : monthOf(new Date().toISOString());
+    // The first event WITH a date: a draft that has none has no month to open on.
+    const first = events.find((event) => event.startsAt !== null);
+    return first?.startsAt ? monthOf(first.startsAt) : monthOf(new Date().toISOString());
   });
 
   const counts = new Map<string, number>();
   for (const event of events) {
+    if (event.startsAt === null) {
+      continue;
+    }
     const day = bandZoneParts(event.startsAt).date;
     counts.set(day, (counts.get(day) ?? 0) + 1);
   }

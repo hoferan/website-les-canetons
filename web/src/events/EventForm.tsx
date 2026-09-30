@@ -43,8 +43,9 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
   // Split in Fribourg, never by slicing the ISO string: an event at 00:30
   // local is the previous day in UTC, and the obvious substring puts it in the
   // form a day early. See ./bandTime.
-  const start = event ? bandZoneParts(event.startsAt) : null;
-  const end = event ? bandZoneParts(event.endsAt) : null;
+  // A draft may have no dates yet, and its boxes are then simply empty.
+  const start = event?.startsAt ? bandZoneParts(event.startsAt) : null;
+  const end = event?.endsAt ? bandZoneParts(event.endsAt) : null;
   const opens = event?.registrationOpensAt ? bandZoneParts(event.registrationOpensAt) : null;
   const closes = event?.registrationClosesAt ? bandZoneParts(event.registrationClosesAt) : null;
 

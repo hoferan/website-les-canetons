@@ -346,6 +346,8 @@ export const de: typeof fr = {
     // ANLASS, NICHT VERANSTALTUNG: das schweizerische Wort für einen Auftritt
     // oder eine Probe, und das, was eine Guggenmusik selber sagt.
     heading: "Planung",
+    // Ein Entwurf hat unter Umständen noch kein Datum.
+    dateMissing: "Datum noch offen",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
     // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.

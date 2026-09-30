@@ -53,18 +53,19 @@ class UpdateEventRequest extends FormRequest
 
         // A DRAFT MAY LOSE ITS DATES AND LOCATION, a published event may not.
         // The stored row decides, not the request: nobody can un-date a
-        // published event by sending null. No bound event means the rules are
-        // being read outside a request (see above), where the strict set is
-        // the honest one to document.
-        $mayBeEmpty = $event?->isDraft() === true ? ['nullable'] : ['required'];
+        // published event by sending null. Only a bound, PUBLISHED event gets
+        // the strict set. With nothing bound the rules are being read to
+        // build the API reference, and a client has to be able to send the
+        // null a draft accepts, so that is the shape to document.
+        $mayBeEmpty = $event !== null && ! $event->isDraft() ? ['required'] : ['nullable'];
 
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
+            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Send `null` to clear it on a draft; a published event refuses that with `required`. */
             'startsAt' => ['sometimes', ...$mayBeEmpty, 'date'],
-            /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. */
+            /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. Send `null` to clear it on a draft; a published event refuses that with `required`. */
             'endsAt' => ['sometimes', ...$mayBeEmpty, 'date', ...$this->afterTheStart($event)],
-            /** Where it happens, as free text. */
+            /** Where it happens, as free text. Send `null` to clear it on a draft; a published event refuses that with `required`. */
             'location' => ['sometimes', ...$mayBeEmpty, 'string', 'max:255'],
             /** What to wear. Send `null` to clear it. */
             'attire' => ['sometimes', 'nullable', 'string', 'max:255'],

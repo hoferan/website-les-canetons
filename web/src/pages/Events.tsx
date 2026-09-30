@@ -158,7 +158,9 @@ export function Events() {
   const events =
     day === null
       ? allEvents
-      : allEvents.filter((event) => bandZoneParts(event.startsAt).date === day);
+      : allEvents.filter(
+          (event) => event.startsAt !== null && bandZoneParts(event.startsAt).date === day,
+        );
 
   // The split that makes the top block a to-do list. Two things are never in
   // it. PAST EVENTS, because the screen asks what you owe an answer on and
