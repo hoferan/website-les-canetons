@@ -26,6 +26,11 @@ class EventSeriesController extends Controller
      * `201` with the created events, in the same shape `GET /api/v1/events`
      * returns, so a client can refresh its list straight from the response.
      *
+     * Every event is created as a draft (`publishedAt` is `null`): visible to
+     * people who can manage events and to nobody else, so a season can be read
+     * through before the band sees it. Each one is published on its own with
+     * `POST /api/v1/events/{event}/publish`.
+     *
      * The events are independent, and there is no series afterwards: nothing
      * links them, and each one is edited, answered and deleted on its own.
      *

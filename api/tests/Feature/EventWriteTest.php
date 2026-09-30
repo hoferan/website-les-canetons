@@ -205,6 +205,92 @@ class EventWriteTest extends TestCase
         $this->assertSame($event->ends_at->toIso8601String(), $response->json('endsAt'));
     }
 
+    public function test_creating_an_event_makes_a_draft(): void
+    {
+        // Every create is a draft: publishing is a second, deliberate act, so a
+        // wrong venue is never on forty-five planning screens the moment the
+        // form is submitted.
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', $this->validPayload())
+            ->assertStatus(201)
+            ->assertJsonPath('publishedAt', null);
+
+        $this->assertNull(Event::query()->sole()->published_at);
+    }
+
+    public function test_a_draft_saves_with_only_a_title(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', ['title' => 'Concert, lieu à confirmer'])
+            ->assertStatus(201)
+            ->assertJsonPath('startsAt', null)
+            ->assertJsonPath('endsAt', null)
+            ->assertJsonPath('location', null)
+            ->assertJsonPath('isPublic', false);
+    }
+
+    public function test_a_draft_end_is_still_compared_to_its_start_when_both_are_sent(): void
+    {
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', [
+                'title' => 'Répétition',
+                'startsAt' => '2026-09-05T12:00:00+02:00',
+                'endsAt' => '2026-09-05T10:00:00+02:00',
+            ])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
+    }
+
+    public function test_editing_a_draft_may_clear_the_date_and_location(): void
+    {
+        $draft = Event::factory()->draft()->create();
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $draft))
+            ->patchJson("/api/v1/events/{$draft->id}", ['startsAt' => null, 'endsAt' => null, 'location' => null])
+            ->assertOk()
+            ->assertJsonPath('startsAt', null)
+            ->assertJsonPath('endsAt', null)
+            ->assertJsonPath('location', null);
+    }
+
+    public function test_editing_a_published_event_cannot_clear_the_date_or_location(): void
+    {
+        $event = Event::factory()->create();
+
+        foreach (['startsAt', 'endsAt', 'location'] as $field) {
+            $this->actingAsMember($this->organiser)
+                ->withHeaders($this->ifMatch('event', $event))
+                ->patchJson("/api/v1/events/{$event->id}", [$field => null])
+                ->assertStatus(400)
+                ->assertJsonPath('errors.0.field', $field)
+                ->assertJsonPath('errors.0.reason', 'required');
+        }
+    }
+
+    public function test_setting_only_the_end_of_a_dateless_draft_is_not_compared_to_a_missing_start(): void
+    {
+        $draft = Event::factory()->draft()->create(['starts_at' => null, 'ends_at' => null]);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $draft))
+            ->patchJson("/api/v1/events/{$draft->id}", ['endsAt' => '2026-09-05T12:00:00+02:00'])
+            ->assertOk();
+    }
+
+    public function test_the_end_of_a_dated_draft_is_still_compared_to_its_stored_start(): void
+    {
+        $draft = Event::factory()->draft()->create(['starts_at' => '2026-09-05 10:00:00', 'ends_at' => null]);
+
+        $this->actingAsMember($this->organiser)
+            ->withHeaders($this->ifMatch('event', $draft))
+            ->patchJson("/api/v1/events/{$draft->id}", ['endsAt' => '2026-09-05T08:00:00+00:00'])
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'endsAt')
+            ->assertJsonPath('errors.0.reason', 'must_be_after');
+    }
+
     public function test_a_missing_title_is_reported_against_its_own_field(): void
     {
         $this->actingAsMember($this->organiser)

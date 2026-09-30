@@ -51,3 +51,12 @@ export function weekdayDatesBetween(from: string, to: string, weekday: number): 
 
   return dates;
 }
+
+/**
+ * Whether an event is still a draft: written down, editable, and visible only
+ * to people who can manage events. `publishedAt` is the whole state, so there
+ * is no second flag to keep in step with it.
+ */
+export function isDraft(event: { publishedAt: string | null }): boolean {
+  return event.publishedAt === null;
+}

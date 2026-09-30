@@ -36,9 +36,11 @@ class MemberAttendanceController extends Controller
      * answer.
      */
     #[Response(200, 'Withdrawn. The member own five-minute undo window starts from this moment.')]
-    #[Emits('cannot_record_for_self')]
+    #[Emits('cannot_record_for_self', 'event_not_published')]
     public function destroy(Request $request, Event $event, Member $member): JsonResponse
     {
+        AttendanceIntegrity::assertPublished($event);
+
         // Answering on somebody else's behalf — the phone call to the
         // committee. Two verbs, so this controller is not single-action: PUT
         // records an answer and DELETE takes one back. The generated hooks
@@ -109,7 +111,7 @@ class MemberAttendanceController extends Controller
      * caller, whose own answer has its own endpoint, and `403 not_answerable`
      * when that member is in no register.
      */
-    #[Emits('cannot_record_for_self', 'not_answerable')]
+    #[Emits('cannot_record_for_self', 'not_answerable', 'event_not_published')]
     public function update(
         RecordMemberAttendanceRequest $request,
         Event $event,
@@ -129,6 +131,7 @@ class MemberAttendanceController extends Controller
         /** @var Member $actor */
         $actor = $request->user();
 
+        AttendanceIntegrity::assertPublished($event);
         AttendanceIntegrity::assertNotSelf($actor, $member);
         AttendanceIntegrity::assertAnswerable($member);
 

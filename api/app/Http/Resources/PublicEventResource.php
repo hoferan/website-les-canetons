@@ -6,6 +6,7 @@ use App\Models\Event;
 use App\Support\Iso8601;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use LogicException;
 
 /**
  * An event as a stranger sees it: enough to recognise the one they were told
@@ -47,13 +48,38 @@ class PublicEventResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             /** When it starts, in UTC. */
-            'startsAt' => Iso8601::utc($this->starts_at),
+            'startsAt' => $this->startsAt(),
             /** When it ends, in UTC. May fall on a later day. */
-            'endsAt' => Iso8601::utc($this->ends_at),
+            'endsAt' => $this->endsAt(),
             /** Where it happens, as free text. */
-            'location' => $this->location,
+            'location' => $this->location(),
             /** Whether this event is taking public bookings right now. Link to the booking form only when it is true. */
             'registrationOpen' => $this->registrationIsOpen(),
         ];
+    }
+
+    /**
+     * TYPED METHODS THAT REFUSE A NULL, so the document keeps promising strings.
+     *
+     * The model now types these three as nullable, because a draft may not
+     * have them yet, and Scramble reads types. This list only ever holds
+     * published events, which always have all four, so the contract must not
+     * widen with the model. A draft reaching here is a bug in a route that
+     * forgot to hide it, and failing loudly beats a null in a field a
+     * generated client treats as a string.
+     */
+    private function startsAt(): Iso8601
+    {
+        return Iso8601::utc($this->starts_at ?? throw new LogicException('A draft reached the public event resource.'));
+    }
+
+    private function endsAt(): Iso8601
+    {
+        return Iso8601::utc($this->ends_at ?? throw new LogicException('A draft reached the public event resource.'));
+    }
+
+    private function location(): string
+    {
+        return $this->location ?? throw new LogicException('A draft reached the public event resource.');
     }
 }

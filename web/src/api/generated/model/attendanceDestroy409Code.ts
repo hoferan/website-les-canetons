@@ -310,4 +310,5 @@ export type AttendanceDestroy409Code =
 
 export const AttendanceDestroy409Code = {
   answer_already_settled: "answer_already_settled",
+  event_not_published: "event_not_published",
 } as const;

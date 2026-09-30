@@ -50,3 +50,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0024](0024-lay-out-every-list-as-cards.md)                         | Lay out every list as cards, at every width                                   |
 | [0025](0025-icons-on-controls.md)                                   | Give a control an icon only where the icon says one thing                     |
 | [0026](0026-user-typed-content-carries-its-own-translations.md)     | Store user-typed content in both languages, and fall back per entry           |
+| [0027](0027-draft-events.md)                                        | Write events as drafts and publish them as a separate act                     |

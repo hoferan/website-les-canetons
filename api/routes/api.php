@@ -64,13 +64,19 @@ Route::middleware(['throttle:public-write', 'public-write', 'idempotent'])->grou
 
     // Public event registration — the souper, generalised (ADR 0020).
     // Anonymous by design: the people booking a place are not band members.
-    Route::post('/events/{event}/registrations', [RegistrationController::class, 'store']);
+    //
+    // `event.published:everyone`: a draft is a 404 here for ALL callers, a
+    // logged-in manager included, and the 404 comes before validation so an
+    // empty body cannot tell a stranger the draft exists.
+    Route::post('/events/{event}/registrations', [RegistrationController::class, 'store'])
+        ->middleware('event.published:everyone');
 });
 
 // Public: what the booking form needs to render itself. A GET, so it is not
 // behind the write guard — but it answers 404 for an event that takes no
 // registrations, so it cannot be used to enumerate the band's planning.
-Route::get('/events/{event}/registration', [RegistrationController::class, 'form']);
+Route::get('/events/{event}/registration', [RegistrationController::class, 'form'])
+    ->middleware('event.published:everyone');
 
 // Public: the two people-pages of the public site, generated from the roster
 // rather than authored (ADR 0015). Both are read-only and both list ONLY
@@ -201,15 +207,22 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // back. The list does not hand one out — one tag cannot validate thirty
     // events — so an edit starts by reading the one event it is about, which
     // is also the correct concurrency window: "while this form was open".
+    //
+    // `event.published`: a draft is a 404 for anybody without events.manage,
+    // here and on every other route below that takes an {event}.
     Route::get('/events/{event}', [EventController::class, 'show'])
-        ->middleware('etag:event');
+        ->middleware(['etag:event', 'event.published']);
 
     // Writing the planning IS administration, unlike reading it. Nested
     // inside the auth:sanctum group above so an anonymous caller gets 401
     // rather than 403 — the same pairing the members.manage group makes, and
     // for the same reason: "log in" and "you may not" are different answers
     // and the SPA acts on each differently.
-    Route::middleware('permission:events.manage')->group(function () {
+    //
+    // `event.published` comes BEFORE `permission:` in every group below that takes
+    // an {event}. In the other order a caller without the permission is told 403
+    // for a draft and 404 for an id nothing matches, and can count the drafts.
+    Route::middleware(['event.published', 'permission:events.manage'])->group(function () {
         Route::post('/events', [EventController::class, 'store']);
 
         // BEFORE the parameterised routes, deliberately. Nothing collides
@@ -222,6 +235,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::post('/events/series', EventSeriesController::class);
 
         Route::patch('/events/{event}', [EventController::class, 'update'])
+            ->middleware('etag:event');
+
+        // Publishing is its own act, not a field on the PATCH: a draft is
+        // saved as often as anybody likes and shown to the band once, on
+        // purpose. DELETE puts it back, and is refused after anybody has
+        // answered. Both carry the tag, like every other write on an event.
+        Route::post('/events/{event}/publish', [EventController::class, 'publish'])
+            ->middleware('etag:event');
+        Route::delete('/events/{event}/publish', [EventController::class, 'unpublish'])
             ->middleware('etag:event');
 
         // No re-authentication on the delete, unlike the roster's — the call
@@ -255,12 +277,14 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // PUT so the answer is an idempotent upsert; DELETE is undo, and it
     // expires after five minutes so the rule that withdrawing a yes costs a
     // reason is not decorative (ADR 0018).
-    Route::put('/events/{event}/attendance', [AttendanceController::class, 'update']);
-    Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy']);
+    Route::put('/events/{event}/attendance', [AttendanceController::class, 'update'])
+        ->middleware('event.published');
+    Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy'])
+        ->middleware('event.published');
 
     // The chase list. Answering is everybody's; reading who has NOT answered
     // is the committee's, so unlike answering this one is gated.
-    Route::middleware('permission:attendance.view_all')->group(function () {
+    Route::middleware(['event.published', 'permission:attendance.view_all'])->group(function () {
         Route::get('/events/{event}/attendance', [AttendanceController::class, 'index']);
     });
 
@@ -268,7 +292,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // SEPARATE permission from viewing the list: seeing who is missing and
     // speaking for them are different acts, and roles are editable data that
     // may well grant one without the other. Refuses its own caller (ADR 0018).
-    Route::middleware('permission:attendance.record_for_others')->group(function () {
+    Route::middleware(['event.published', 'permission:attendance.record_for_others'])->group(function () {
         Route::put('/events/{event}/attendance/{member}', [MemberAttendanceController::class, 'update']);
 
         // Taking one back. A mis-aimed on-behalf write was otherwise
@@ -281,7 +305,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // registrations.view as its ONLY permission — the role exists so
     // somebody can look at the list — so this token must not also authorise
     // deleting from it.
-    Route::middleware('permission:registrations.view')->group(function () {
+    Route::middleware(['event.published', 'permission:registrations.view'])->group(function () {
         Route::get('/events/{event}/registrations', [RegistrationController::class, 'index']);
 
         // The same list as a file. `{format}` is constrained here rather
@@ -346,7 +370,7 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // rather than a registration permission — the same act as setting its
     // date. PUT and replace-all, matching /members/{member}/roles: an "add
     // one" API cannot express removal.
-    Route::middleware('permission:events.manage')->group(function () {
+    Route::middleware(['event.published', 'permission:events.manage'])->group(function () {
         // ITS OWN FACET, not the event's. The options are absent from
         // EventResource, so conditioning this write on `etag:event` would both
         // miss every option change — the tag would not move, and a lost update

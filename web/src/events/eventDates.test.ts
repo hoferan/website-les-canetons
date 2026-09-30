@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 
-import { weekdayDatesBetween } from "./eventDates";
+import { isDraft, weekdayDatesBetween } from "./eventDates";
 
 test("it lists every Saturday in a range, inclusive of both ends", () => {
   // 5 September 2026 is a Saturday.
@@ -37,4 +37,9 @@ test("an incomplete range is empty, because a half-typed date is not a range", (
   // against NaN is false, which without a guard is the infinite loop again.
   expect(weekdayDatesBetween("", "2026-09-26", 6)).toEqual([]);
   expect(weekdayDatesBetween("2026-09-05", "", 6)).toEqual([]);
+});
+
+test("an event is a draft exactly when it has no publishedAt", () => {
+  expect(isDraft({ publishedAt: null })).toBe(true);
+  expect(isDraft({ publishedAt: "2026-09-01T00:00:00+00:00" })).toBe(false);
 });

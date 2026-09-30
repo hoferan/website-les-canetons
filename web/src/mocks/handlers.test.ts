@@ -518,8 +518,10 @@ test("patching only the end still compares against the stored start", async () =
   // request carries no startsAt, so a mock comparing input against input
   // would pass it vacuously.
   setMockUser("demo.direction");
-  const planning = await rowsOf<{ id: number }>("/api/v1/events");
-  const target = planning[0];
+  // A PUBLISHED, dated event: the list now opens with the drafts, and an
+  // undated one has no stored start to compare against.
+  const planning = await rowsOf<{ id: number; publishedAt: string | null }>("/api/v1/events");
+  const target = planning.find((event) => event.publishedAt !== null);
 
   const response = await fetch(`/api/v1/events/${target?.id}`, {
     method: "PATCH",
@@ -592,6 +594,204 @@ test("forgets a created event between tests", async () => {
   // If resetMockState() misses the events store, an event created by an
   // earlier test leaks into this count and it fails only when the whole file
   // runs — which reads as flakiness and is not.
-  // Six upcoming of the seven seeded; the seventh is the past one.
-  expect(before).toBe(6);
+  // Six upcoming of the seven published; the seventh is the past one. A
+  // manager's list also carries the two seeded drafts.
+  expect(before).toBe(8);
+});
+
+// ------------------------------------------------------------------- drafts
+
+type Row = { id: number; publishedAt: string | null; startsAt: string | null };
+
+const JSON_HEADERS = { "Content-Type": "application/json" };
+
+test("a manager sees drafts first in the default list, the undated one before the dated one", async () => {
+  setMockUser("demo.direction");
+  const rows = await rowsOf<Row>("/api/v1/events");
+  const drafts = rows.filter((row) => row.publishedAt === null);
+
+  expect(drafts.map((row) => row.id)).toEqual([9, 8]);
+  expect(rows[0]?.startsAt).toBeNull();
+});
+
+test("a draft is never in the history", async () => {
+  setMockUser("demo.direction");
+  const past = await rowsOf<Row>("/api/v1/events?past=1");
+
+  expect(past.some((row) => row.publishedAt === null)).toBe(false);
+});
+
+test("a player sees no draft in either half", async () => {
+  setMockUser("demo.player");
+  const rows = [
+    ...(await rowsOf<Row>("/api/v1/events")),
+    ...(await rowsOf<Row>("/api/v1/events?past=1")),
+  ];
+
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.some((row) => row.publishedAt === null)).toBe(false);
+});
+
+test("a draft is a 404 by id for a player and readable by a manager", async () => {
+  setMockUser("demo.player");
+  expect((await fetch("/api/v1/events/9")).status).toBe(404);
+
+  setMockUser("demo.direction");
+  expect((await fetch("/api/v1/events/9")).status).toBe(200);
+});
+
+test("creating an event makes a draft that only a manager can see", async () => {
+  setMockUser("demo.direction");
+  const created = await fetch("/api/v1/events", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ title: "Lieu à confirmer" }),
+  });
+
+  expect(created.status).toBe(201);
+  const event = (await created.json()) as Row;
+  expect(event.publishedAt).toBeNull();
+  expect(event.startsAt).toBeNull();
+
+  setMockUser("demo.player");
+  expect((await rowsOf<Row>("/api/v1/events")).some((row) => row.id === event.id)).toBe(false);
+});
+
+test("a published event cannot lose its date, a draft can", async () => {
+  setMockUser("demo.direction");
+  const published = (await rowsOf<Row>("/api/v1/events")).find((row) => row.publishedAt !== null);
+
+  const refused = await fetch(`/api/v1/events/${published?.id}`, {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, ...(await ifMatchFor(`/api/v1/events/${published?.id}`)) },
+    body: JSON.stringify({ startsAt: null }),
+  });
+  expect(refused.status).toBe(400);
+  const body = (await refused.json()) as { errors: { field: string; reason: string }[] };
+  expect(body.errors[0]).toMatchObject({ field: "startsAt", reason: "required" });
+
+  const allowed = await fetch("/api/v1/events/8", {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, ...(await ifMatchFor("/api/v1/events/8")) },
+    body: JSON.stringify({ startsAt: null, endsAt: null, location: null }),
+  });
+  expect(allowed.status).toBe(200);
+});
+
+test("publishing an incomplete draft names every missing field", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/v1/events/9/publish", {
+    method: "POST",
+    headers: await ifMatchFor("/api/v1/events/9"),
+  });
+
+  expect(response.status).toBe(422);
+  const body = (await response.json()) as { code: string; errors: { field: string }[] };
+  expect(body.code).toBe("event_incomplete");
+  expect(body.errors.map((error) => error.field).sort()).toEqual([
+    "endsAt",
+    "location",
+    "startsAt",
+  ]);
+});
+
+test("publishing a complete draft puts it on everybody's planning", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/v1/events/8/publish", {
+    method: "POST",
+    headers: await ifMatchFor("/api/v1/events/8"),
+  });
+  expect(response.status).toBe(200);
+  expect(((await response.json()) as Row).publishedAt).not.toBeNull();
+
+  setMockUser("demo.player");
+  expect((await rowsOf<Row>("/api/v1/events")).some((row) => row.id === 8)).toBe(true);
+});
+
+test("publishing needs the current tag", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/v1/events/8/publish", { method: "POST" });
+
+  expect(response.status).toBe(428);
+});
+
+test("an event nobody has answered goes back to draft, one with answers does not", async () => {
+  setMockUser("demo.direction");
+
+  const refused = await fetch("/api/v1/events/1/publish", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/events/1"),
+  });
+  expect(refused.status).toBe(409);
+  expect(((await refused.json()) as { code: string }).code).toBe("event_has_answers");
+
+  const allowed = await fetch("/api/v1/events/2/publish", {
+    method: "DELETE",
+    headers: await ifMatchFor("/api/v1/events/2"),
+  });
+  expect(allowed.status).toBe(200);
+  expect(((await allowed.json()) as Row).publishedAt).toBeNull();
+});
+
+test("a draft takes no answers: 404 for a player, 409 for a manager", async () => {
+  setMockUser("demo.player");
+  const asPlayer = await fetch("/api/v1/events/8/attendance", {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ status: "yes" }),
+  });
+  expect(asPlayer.status).toBe(404);
+
+  setMockUser("demo.both");
+  const asManager = await fetch("/api/v1/events/8/attendance", {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ status: "yes" }),
+  });
+  expect(asManager.status).toBe(409);
+  expect(((await asManager.json()) as { code: string }).code).toBe("event_not_published");
+});
+
+test("the public agenda leaves out a public draft", async () => {
+  setMockUser(null);
+  const agenda = await rowsOf<{ id: number }>("/api/v1/agenda");
+
+  // Draft 8 is seeded public precisely so that this can fail.
+  expect(agenda.some((row) => row.id === 8)).toBe(false);
+});
+
+test("a draft's booking form is a 404 for everyone, a manager included", async () => {
+  setMockUser("demo.direction");
+  await fetch("/api/v1/events/8", {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, ...(await ifMatchFor("/api/v1/events/8")) },
+    body: JSON.stringify({ registrationClosesAt: "2099-01-01T00:00:00+00:00" }),
+  });
+
+  expect((await fetch("/api/v1/events/8/registration")).status).toBe(404);
+});
+
+test("a generated season is created as drafts", async () => {
+  setMockUser("demo.direction");
+  const response = await fetch("/api/v1/events/series", {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({
+      template: {
+        title: "Répétition",
+        location: "Werkhof",
+        attire: null,
+        isPublic: false,
+        notes: null,
+        startTime: "20:00",
+        endTime: "22:00",
+      },
+      dates: ["2099-01-12", "2099-01-19"],
+    }),
+  });
+
+  expect(response.status).toBe(201);
+  const created = ((await response.json()) as { data: Row[] }).data;
+  expect(created).toHaveLength(2);
+  expect(created.every((row) => row.publishedAt === null)).toBe(true);
 });

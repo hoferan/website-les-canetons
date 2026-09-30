@@ -83,11 +83,18 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. */
-            'startsAt' => $this->startsAt(),
-            /** ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day. */
-            'endsAt' => $this->endsAt(),
+            /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet. */
+            'startsAt' => $this->starts_at === null ? null : Iso8601::utc($this->starts_at),
+            /** ISO 8601 in UTC. After `startsAt` when both are set, and may fall on a later day. Null only on a draft that has no date yet. */
+            'endsAt' => $this->ends_at === null ? null : Iso8601::utc($this->ends_at),
+            /** Where it happens. Null only on a draft that has no location yet. */
             'location' => $this->location,
+            /**
+             * When the event was published, in UTC. Null means it is still a
+             * draft: only people who can manage events see it, and it is not
+             * on anybody's planning yet.
+             */
+            'publishedAt' => $this->published_at === null ? null : Iso8601::utc($this->published_at),
             /** What to wear, or null when nothing was specified. */
             'attire' => $this->attire,
             /** Whether the event may be shown to people outside the band. */
@@ -155,35 +162,6 @@ class EventResource extends JsonResource
         $mine = $this->attendance->first();
 
         return $mine === null ? null : new AttendanceResource($mine);
-    }
-
-    /**
-     * A typed method, not an inline expression — the same pattern
-     * MemberResource::lastLoginAt() uses, and for the same measured reason:
-     * Scramble types an inline rendering call as an untyped object in the
-     * OpenAPI document, and the declared return type is what gives it a shape.
-     *
-     * THE UTC CONVERSION MOVED INTO App\Support\Iso8601 on 2026-09-11, with
-     * the argument for why it has to happen at all. It used to be written out
-     * at every call site with a warning above it; a rule that has to be
-     * remembered at nine call sites is a rule one of them will get wrong.
-     *
-     * The NULLABLE timestamps above are written as a ternary rather than as a
-     * `?Iso8601` helper, and that is not stylistic. A helper was tried and
-     * Scramble could not infer nullability through the static call, which
-     * silently retyped `registrationOpensAt` from `string|null` to `string` in
-     * the published contract — an optional field made required for every
-     * generated client. Scramble reads the expression, not the signature.
-     */
-    private function startsAt(): Iso8601
-    {
-        return Iso8601::utc($this->starts_at);
-    }
-
-    /** Typed for the same reason as startsAt(). */
-    private function endsAt(): Iso8601
-    {
-        return Iso8601::utc($this->ends_at);
     }
 
     /**

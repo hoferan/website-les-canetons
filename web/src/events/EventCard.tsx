@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { EventResource } from "../api/generated/model";
 import { t } from "../i18n";
+import { isDraft } from "./eventDates";
 import { formatEventWhen } from "./formatEventWhen";
 
 /**
@@ -41,13 +42,33 @@ export function EventCard({
   return (
     <article
       data-testid="event-card"
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+      // A dashed edge on a draft, so it reads as unfinished even where the
+      // group heading is out of view.
+      className={`rounded-lg border bg-white p-4 shadow-sm ${
+        isDraft(event) ? "border-dashed border-gray-400" : "border-gray-200"
+      }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-related">
         <div className="min-w-0">
           <h2 data-testid="event-title" className="font-display text-xl text-ink">
             {event.title}
           </h2>
+
+          {/* The badge states the draft outright. A search or a chosen day can
+              show this card without the group heading in view. */}
+          {isDraft(event) ? (
+            <div className="mt-tight flex">
+              {/* A flex child like the "Public" chip, not inline-block: an
+                  inline-block badge collapsed to 32px here and its text ran
+                  out of the pill. */}
+              <span
+                data-testid="draft-badge"
+                className="rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
+              >
+                {t("events.draftBadge")}
+              </span>
+            </div>
+          ) : null}
 
           <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
             {formatEventWhen(event.startsAt, event.endsAt)}
@@ -84,7 +105,9 @@ export function EventCard({
               page -- the Tbd bug of #152, exactly. */}
           <dt className="text-ink-muted">{t("events.card.location")}</dt>
           <dd data-testid="event-location" className="text-ink">
-            {event.location}
+            {event.location ?? (
+              <span className="text-ink-muted">{t("events.card.locationMissing")}</span>
+            )}
           </dd>
         </div>
 

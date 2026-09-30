@@ -194,6 +194,7 @@ export function SeriesForm({
     >
       <h2 className="font-display text-2xl">{t("seriesForm.heading")}</h2>
       <p className="text-sm text-ink-muted">{t("seriesForm.intro")}</p>
+      <p className="text-sm text-ink-muted">{t("seriesForm.draftsNote")}</p>
       <RequiredLegend />
 
       <FormField

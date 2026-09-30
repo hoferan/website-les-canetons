@@ -29,7 +29,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * WHICH WRITES. Every one that replaces or removes state a caller read first:
  * PATCH and DELETE on events, members and registrations, plus the two
- * replace-all PUTs (a member's roles, an event's bookable options). The two
+ * replace-all PUTs (a member's roles, an event's bookable options) and the
+ * publish POST on an event. The two
  * that change WHO MAY DO WHAT — replacing roles, deleting a member — are the
  * ones this matters most for, and they are the reason the member facet is
  * computed over `roleIds` rather than over `members.updated_at`.
@@ -59,8 +60,17 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class ConditionalWrite
 {
-    /** The methods that must prove they are working from current state. */
-    private const CONDITIONED = ['PUT', 'PATCH', 'DELETE'];
+    /**
+     * The methods that must prove they are working from current state.
+     *
+     * POST is here for one route: publishing an event. Every other write
+     * listed above is a PUT, PATCH or DELETE, but publishing also changes a
+     * thing somebody read first. Two people editing a draft, and one
+     * publishing it on the strength of what they saw, is the same lost update
+     * this class exists to stop. A POST that CREATES something must not carry
+     * `etag:`, because there is no entity yet to have a tag for.
+     */
+    private const CONDITIONED = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     public function handle(Request $request, Closure $next, string $facet): Response
     {

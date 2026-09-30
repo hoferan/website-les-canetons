@@ -107,6 +107,10 @@ export const fr = {
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
     history_entry_empty: "Écrivez au moins un titre ou un texte, en français ou en allemand.",
+    event_incomplete: "Complétez ou corrigez les champs avant de publier.",
+    event_not_published: "Cet événement est encore un brouillon : il ne reçoit pas de réponses.",
+    event_has_answers:
+      "Des réponses ou des inscriptions existent déjà : l'événement ne peut plus repasser en brouillon.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
@@ -568,6 +572,16 @@ export const fr = {
    */
   events: {
     heading: "Planning",
+    // Un brouillon peut ne pas avoir encore de date.
+    dateMissing: "Date à fixer",
+    // Les brouillons : écrits, modifiables, visibles de la direction seule.
+    draftsHeading: "Brouillons",
+    draftBadge: "Brouillon",
+    publish: "Publier",
+    publishAria: "Publier {{title}}",
+    unpublish: "Repasser en brouillon",
+    unpublishAria: "Repasser {{title}} en brouillon",
+    publishFailed: "La publication a échoué.",
     add: "Ajouter un événement",
     addSeries: "Ajouter une série",
     // THE TRIGGER, whose menu holds `add` and `addSeries` above. One word,
@@ -632,6 +646,7 @@ export const fr = {
     /** EventCard's detail list. `attireUnset` is also quoted by #166's form. */
     card: {
       location: "Lieu\u00a0:",
+      locationMissing: "Lieu à fixer",
       attire: "Tenue\u00a0:",
       attireUnset: "Non précisée",
     },
@@ -693,6 +708,11 @@ export const fr = {
     newHeading: "Nouvel événement",
     editHeading: "Modifier l’événement",
     saveFailed: "L’enregistrement a échoué.",
+    // Un brouillon s’enregistre tel quel ; la publication est un second geste.
+    saveDraft: "Enregistrer le brouillon",
+    publish: "Publier",
+    draftHint:
+      "Un brouillon peut rester incomplet : seule la direction le voit, jusqu’à sa publication.",
     loadFailed: "Cet événement n’a pas pu être chargé.",
     loadFailedReload: "Cet événement n’a pas pu être chargé. Rechargez la page.",
 
@@ -780,8 +800,12 @@ export const fr = {
     createNone: "Créer les événements",
     noneChosen: "Cochez au moins une date.",
     // Shown on the planning, where the generator lands after saving.
-    createdCount_one: "{{count}} événement créé.",
-    createdCount_other: "{{count}} événements créés.",
+    // Une série est créée en brouillons : une règle de récurrence fausse ne
+    // doit pas tomber d’un coup sur le planning de tout le monde.
+    draftsNote:
+      "Les événements sont créés comme brouillons : relisez-les sur le planning, puis publiez-les.",
+    createdCount_one: "{{count}} brouillon créé.",
+    createdCount_other: "{{count}} brouillons créés.",
     another: "Créer une autre série",
     dismissCreated: "Fermer ce message",
   },

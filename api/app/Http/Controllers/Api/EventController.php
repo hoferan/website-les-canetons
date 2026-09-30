@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
@@ -10,8 +11,10 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use App\Support\Emits;
 use App\Support\Permission;
 use App\Support\Search;
+use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
@@ -97,9 +100,30 @@ class EventController extends Controller
         // and mutation-tested by hand against now().
         $startOfToday = BandTime::startOfToday();
 
+        // DRAFTS HAVE A QUERY OF THEIR OWN, and are filtered here, in the
+        // query, rather than afterwards: the envelope slices what this
+        // returns, and meta.total has to count what the caller may see.
+        //
+        // They cannot ride the starts_at split. NULL >= anything is false, so
+        // a draft with no date would answer neither half and be invisible to
+        // the person who wrote it. Instead every draft belongs to the default
+        // half, dated or not, and none to the history: a draft dated last
+        // week is still unfinished business, and burying it in the history is
+        // how it gets forgotten. Undated ones sort first, since they have
+        // nowhere else to sort to.
+        $mayManage = EventResource::permissionsFor($request)->contains(Permission::EventsManage);
+
         $query = $past
-            ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
-            : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
+            ? Event::published()->where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
+            : Event::where(function ($planning) use ($mayManage, $startOfToday): void {
+                $planning->where(fn ($published) => $published
+                    ->whereNotNull('published_at')
+                    ->where('starts_at', '>=', $startOfToday));
+
+                if ($mayManage) {
+                    $planning->orWhereNull('published_at');
+                }
+            })->orderByRaw('starts_at IS NULL DESC')->orderBy('starts_at', 'asc');
 
         // A WHERE on the one query, not a filter over its rows (#97): the
         // envelope slices what this returns, and the query budget holds.
@@ -266,16 +290,18 @@ class EventController extends Controller
     }
 
     /**
-     * Put a rehearsal or a gig on the planning.
+     * Write down a rehearsal or a gig as a draft.
      *
-     * Requires `events.manage`. Answers `201` with the created event.
+     * Requires `events.manage`. Answers `201` with the created event, whose
+     * `publishedAt` is `null`: it is visible to people who can manage events and
+     * to nobody else until it is published.
      *
-     * `startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and
-     * `endsAt` must come after `startsAt` or it fails validation against that
-     * field with `must_be_after`. An event spanning two days is an ordinary
-     * row, not an error. `title`, `location`, `startsAt`, `endsAt` and
-     * `isPublic` are required; a missing one fails validation against itself
-     * with `required`.
+     * Only `title` is required; a missing one fails validation against itself
+     * with `required`. `startsAt`, `endsAt` and `location` may be left out and
+     * are required to publish. They are ISO 8601 instants carrying an offset, and
+     * when both dates are sent `endsAt` must come after `startsAt` or it fails
+     * validation against that field with `must_be_after`. An event spanning two
+     * days is an ordinary row, not an error. `isPublic` defaults to false.
      *
      * Setting `registrationClosesAt` is what opens the event to public
      * registration. It must come after `registrationOpensAt`, which may be
@@ -296,11 +322,11 @@ class EventController extends Controller
 
         $event = Event::create([
             'title' => $data['title'],
-            'starts_at' => $data['startsAt'],
-            'ends_at' => $data['endsAt'],
-            'location' => $data['location'],
+            'starts_at' => $data['startsAt'] ?? null,
+            'ends_at' => $data['endsAt'] ?? null,
+            'location' => $data['location'] ?? null,
             'attire' => $data['attire'] ?? null,
-            'is_public' => $data['isPublic'],
+            'is_public' => $data['isPublic'] ?? false,
             'notes' => $data['notes'] ?? null,
             'registration_opens_at' => $data['registrationOpensAt'] ?? null,
             'registration_closes_at' => $data['registrationClosesAt'] ?? null,
@@ -382,6 +408,93 @@ class EventController extends Controller
         // Loaded explicitly: an organiser who also plays has their own answer
         // on this event, and a response reporting myAttendance as null would
         // reset the buttons on their own screen. See EventResource.
+        $event->load(self::myAttendance($request));
+        $event->loadCount(self::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
+
+        return new EventResource($event);
+    }
+
+    /**
+     * Publish a draft.
+     *
+     * Requires `events.manage`. Makes the event visible to every member (and,
+     * once `isPublic` is set, on the public agenda) and answers with it.
+     *
+     * A published event always has a start, an end after it, and a location.
+     * A draft that lacks any of them is refused with `event_incomplete`, and
+     * `errors` names each field: `required` for one that is missing,
+     * `must_be_after` on `endsAt` when the end does not follow the start.
+     * Nothing is changed.
+     * Publishing an event that is already published is not an error and moves
+     * nothing.
+     */
+    #[Emits('event_incomplete')]
+    public function publish(Request $request, Event $event): JsonResponse|EventResource
+    {
+        if (! $event->isDraft()) {
+            return $this->present($request, $event);
+        }
+
+        // The columns no longer say a published event has both dates (decision
+        // C6 in the events migration), so this is where it is held.
+        $problems = [];
+        foreach (['startsAt' => 'starts_at', 'endsAt' => 'ends_at', 'location' => 'location'] as $field => $column) {
+            if ($event->{$column} === null) {
+                $problems[] = ['field' => $field, 'reason' => 'required'];
+            }
+        }
+
+        // A draft is built one field at a time, so PATCH can leave it with an
+        // end before its start; the create and edit rules only compare the two
+        // when both arrive together. Checked here, once both exist.
+        if ($problems === [] && $event->ends_at <= $event->starts_at) {
+            $problems[] = ['field' => 'endsAt', 'reason' => 'must_be_after'];
+        }
+
+        if ($problems !== []) {
+            return ApiError::json(422, 'event_incomplete', 'The event cannot be published as it stands', $problems);
+        }
+
+        $event->published_at = CarbonImmutable::now();
+        $event->save();
+
+        Audit::record($request->user(), 'event.published', 'event', $event->id, $event->title);
+
+        return $this->present($request, $event);
+    }
+
+    /**
+     * Put a published event back to draft.
+     *
+     * Requires `events.manage`. Refused with `event_has_answers` once any
+     * member has answered or anybody has booked, because their answers would
+     * then sit on an event nobody else can see. Unpublishing a draft is not an
+     * error and changes nothing.
+     */
+    #[Emits('event_has_answers')]
+    public function unpublish(Request $request, Event $event): JsonResponse|EventResource
+    {
+        if ($event->isDraft()) {
+            return $this->present($request, $event);
+        }
+
+        if ($event->attendance()->exists() || $event->registrations()->exists()) {
+            return ApiError::json(409, 'event_has_answers', 'Members have already answered or booked this event');
+        }
+
+        $event->published_at = null;
+        $event->save();
+
+        Audit::record($request->user(), 'event.unpublished', 'event', $event->id, $event->title);
+
+        return $this->present($request, $event);
+    }
+
+    /** The event as every write answers with it, carrying the caller's own answer and the counts. */
+    private function present(Request $request, Event $event): EventResource
+    {
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
         $event->loadSum('registrationChoices as guest_count', 'quantity');

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { eventShow, eventUpdate, getEventIndexQueryKey } from "../api/generated/endpoints";
 import type { EventResource, UpdateEventRequest } from "../api/generated/model";
@@ -8,7 +8,8 @@ import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
-import { t } from "../i18n";
+import { publishEvent } from "../events/publishEvent";
+import { t, type TranslatedError } from "../i18n";
 
 /**
  * Correcting one event.
@@ -35,6 +36,14 @@ export function EventEdit() {
   const form = useApiFormError(t("eventForm.saveFailed"));
 
   const eventId = Number(id);
+
+  // A refusal carried here from the create screen: a draft was saved and then
+  // refused publication, and the organiser is sent to the saved draft with
+  // the fields it still lacks. Cleared by the next save.
+  const location = useLocation();
+  const [carried, setCarried] = useState<TranslatedError | null>(
+    (location.state as { refusal?: TranslatedError } | null)?.refusal ?? null,
+  );
 
   const [opened, setOpened] = useState<{ event: EventResource; etag: string | null } | null>(null);
   const [readError, setReadError] = useState<string | null>(null);
@@ -80,8 +89,9 @@ export function EventEdit() {
     };
   }, [eventId]);
 
-  async function submit(draft: EventDraft) {
+  async function submit(draft: EventDraft, intent: "save" | "publish") {
     form.clear();
+    setCarried(null);
 
     if (opened?.etag == null) {
       // Without a tag the write is refused with 428, which reads on screen as
@@ -91,8 +101,21 @@ export function EventEdit() {
     }
 
     try {
-      await update.mutateAsync({ data: eventBodyFrom(draft), etag: opened.etag });
+      const saved = await update.mutateAsync({ data: eventBodyFrom(draft), etag: opened.etag });
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+
+      if (intent === "publish") {
+        // The save handed out the tag of what it wrote, which is the state
+        // being published. Keep it as the form's own tag first: if publishing
+        // is refused, the next save must not be refused as stale.
+        const fresh = saved.status === 200 ? entityTagOf(saved) : null;
+        if (saved.status === 200) {
+          setOpened({ event: saved.data, etag: fresh });
+        }
+        await publishEvent(eventId, fresh);
+        await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+      }
+
       navigate("/events");
     } catch (thrown) {
       // Open, for the same reason as the create screen — and here it also
@@ -119,9 +142,13 @@ export function EventEdit() {
       {opened ? (
         <EventForm
           event={opened.event}
+          mode={opened.event.publishedAt === null ? "draft" : "published"}
           busy={update.isPending}
-          error={form.error}
-          problemFor={form.messageFor}
+          error={form.error ?? carried}
+          problemFor={(field) =>
+            form.messageFor(field) ??
+            carried?.fields.find((entry) => entry.field === field)?.message
+          }
           onSubmit={submit}
           onCancel={() => navigate("/events")}
         />

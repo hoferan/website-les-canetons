@@ -51,14 +51,22 @@ class UpdateEventRequest extends FormRequest
         /** @var Event|null $event */
         $event = $this->route('event');
 
+        // A DRAFT MAY LOSE ITS DATES AND LOCATION, a published event may not.
+        // The stored row decides, not the request: nobody can un-date a
+        // published event by sending null. Only a bound, PUBLISHED event gets
+        // the strict set. With nothing bound the rules are being read to
+        // build the API reference, and a client has to be able to send the
+        // null a draft accepts, so that is the shape to document.
+        $mayBeEmpty = $event !== null && ! $event->isDraft() ? ['required'] : ['nullable'];
+
         return [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
-            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
-            'startsAt' => ['sometimes', 'required', 'date'],
-            /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. */
-            'endsAt' => ['sometimes', 'required', 'date', ...$this->afterTheStart($event)],
-            /** Where it happens, as free text. */
-            'location' => ['sometimes', 'required', 'string', 'max:255'],
+            /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Send `null` to clear it on a draft; a published event refuses that with `required`. */
+            'startsAt' => ['sometimes', ...$mayBeEmpty, 'date'],
+            /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. Send `null` to clear it on a draft; a published event refuses that with `required`. */
+            'endsAt' => ['sometimes', ...$mayBeEmpty, 'date', ...$this->afterTheStart($event)],
+            /** Where it happens, as free text. Send `null` to clear it on a draft; a published event refuses that with `required`. */
+            'location' => ['sometimes', ...$mayBeEmpty, 'string', 'max:255'],
             /** What to wear. Send `null` to clear it. */
             'attire' => ['sometimes', 'nullable', 'string', 'max:255'],
             /** Whether the event appears on the public agenda. Members see it either way. */
@@ -136,6 +144,9 @@ class UpdateEventRequest extends FormRequest
         //
         // No event bound means no comparison at all — see rules() on why this
         // has to survive being called with nothing bound.
-        return $event === null ? [] : ['after:'.$event->starts_at->toIso8601String()];
+        //
+        // A draft with no start has nothing to compare against, the same way a
+        // null opening date means no lower bound on the registration window.
+        return $event?->starts_at === null ? [] : ['after:'.$event->starts_at->toIso8601String()];
     }
 }

@@ -18,6 +18,7 @@ use RuntimeException;
  *                               yes costs being one request away from
  *                               evadable (ADR 0018)
  *   409 answer_already_settled  the five-minute undo window has closed
+ *   409 event_not_published     the event is still a draft
  *
  * The status travels ON the exception rather than being hard-coded in the
  * renderer, the same call ReauthenticationFailed makes: 403 and 409 are

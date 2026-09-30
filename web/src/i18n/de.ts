@@ -84,6 +84,11 @@ export const de: typeof fr = {
     registration_closed: "Die Anmeldung ist geschlossen.",
     history_entry_empty:
       "Schreiben Sie mindestens einen Titel oder einen Text, auf Französisch oder Deutsch.",
+    event_incomplete: "Ergänzen oder korrigieren Sie die Felder, bevor Sie veröffentlichen.",
+    event_not_published:
+      "Diese Veranstaltung ist noch ein Entwurf: Sie nimmt keine Antworten entgegen.",
+    event_has_answers:
+      "Es liegen bereits Antworten oder Anmeldungen vor: Die Veranstaltung kann nicht mehr zum Entwurf werden.",
     option_has_registrations:
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
     xlsx_unavailable:
@@ -341,6 +346,16 @@ export const de: typeof fr = {
     // ANLASS, NICHT VERANSTALTUNG: das schweizerische Wort für einen Auftritt
     // oder eine Probe, und das, was eine Guggenmusik selber sagt.
     heading: "Planung",
+    // Ein Entwurf hat unter Umständen noch kein Datum.
+    dateMissing: "Datum noch offen",
+    // Entwürfe: geschrieben und bearbeitbar, nur für die Leitung sichtbar.
+    draftsHeading: "Entwürfe",
+    draftBadge: "Entwurf",
+    publish: "Veröffentlichen",
+    publishAria: "{{title}} veröffentlichen",
+    unpublish: "Zurück zum Entwurf",
+    unpublishAria: "{{title}} zurück zum Entwurf",
+    publishFailed: "Die Veröffentlichung ist fehlgeschlagen.",
     add: "Anlass hinzufügen",
     addSeries: "Serie hinzufügen",
     // 131px gegen eine 152px breite Überschrift — passt, siehe fr.ts. #182.
@@ -395,6 +410,7 @@ export const de: typeof fr = {
 
     card: {
       location: "Ort:",
+      locationMissing: "Ort noch offen",
       attire: "Kleidung:",
       attireUnset: "Nicht festgelegt",
     },
@@ -424,6 +440,11 @@ export const de: typeof fr = {
     newHeading: "Neuer Anlass",
     editHeading: "Anlass bearbeiten",
     saveFailed: "Das Speichern ist fehlgeschlagen.",
+    // Ein Entwurf wird so gespeichert, wie er ist; das Veröffentlichen ist ein zweiter Schritt.
+    saveDraft: "Entwurf speichern",
+    publish: "Veröffentlichen",
+    draftHint:
+      "Ein Entwurf darf unvollständig bleiben: Nur die Leitung sieht ihn, bis er veröffentlicht wird.",
     loadFailed: "Dieser Anlass konnte nicht geladen werden.",
     loadFailedReload: "Dieser Anlass konnte nicht geladen werden. Laden Sie die Seite neu.",
 
@@ -493,8 +514,12 @@ export const de: typeof fr = {
     create_other: "{{count}} Anlässe erstellen",
     createNone: "Anlässe erstellen",
     noneChosen: "Wählen Sie mindestens einen Termin aus.",
-    createdCount_one: "{{count}} Anlass erstellt.",
-    createdCount_other: "{{count}} Anlässe erstellt.",
+    // Eine Serie entsteht als Entwürfe: Eine falsche Wiederholung soll nicht auf einen Schlag
+    // in der Planung aller landen.
+    draftsNote:
+      "Die Anlässe werden als Entwürfe erstellt: Lesen Sie sie in der Planung durch und veröffentlichen Sie sie dann.",
+    createdCount_one: "{{count}} Entwurf erstellt.",
+    createdCount_other: "{{count}} Entwürfe erstellt.",
     another: "Weitere Serie erstellen",
     dismissCreated: "Meldung schliessen",
   },

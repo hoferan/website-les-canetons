@@ -400,9 +400,19 @@ export const getEventIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
+    endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+    location: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    publishedAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
     attire: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
@@ -444,9 +454,16 @@ export const getEventStoreResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  location: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  publishedAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -483,9 +500,16 @@ export const getEventShowResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  location: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  publishedAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -522,9 +546,16 @@ export const getEventUpdateResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-  startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-  location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  location: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  publishedAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
   attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   isPublic: faker.datatype.boolean(),
   answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
@@ -571,9 +602,19 @@ export const getEventSeriesResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
-    startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-    endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
-    location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    startsAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
+    endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+    location: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    publishedAt: faker.helpers.arrayElement([
+      faker.date.past().toISOString().slice(0, 19) + "Z",
+      null,
+    ]),
     attire: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
@@ -607,6 +648,98 @@ export const getEventSeriesResponseMock = (
     ]),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getEventPublishResponseMock = (
+  overrideResponse: Partial<Extract<EventResource, object>> = {},
+): EventResource => ({
+  id: faker.number.int(),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  location: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  publishedAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  isPublic: faker.datatype.boolean(),
+  answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  registrationOpensAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  registrationClosesAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  takesRegistrations: faker.datatype.boolean(),
+  myAttendance: faker.helpers.arrayElement([
+    {
+      status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
+      note: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      recordedByDirection: faker.datatype.boolean(),
+      recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    },
+    null,
+  ]),
+  ...overrideResponse,
+});
+
+export const getEventUnpublishResponseMock = (
+  overrideResponse: Partial<Extract<EventResource, object>> = {},
+): EventResource => ({
+  id: faker.number.int(),
+  title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
+  location: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  publishedAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  attire: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  isPublic: faker.datatype.boolean(),
+  answeredCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  answerableCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  guestCount: faker.helpers.arrayElement([faker.number.int(), null]),
+  notes: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  registrationOpensAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  registrationClosesAt: faker.helpers.arrayElement([
+    faker.date.past().toISOString().slice(0, 19) + "Z",
+    null,
+  ]),
+  registrationMaxGuests: faker.helpers.arrayElement([faker.number.int(), null]),
+  takesRegistrations: faker.datatype.boolean(),
+  myAttendance: faker.helpers.arrayElement([
+    {
+      status: faker.helpers.arrayElement(Object.values(AttendanceStatus)),
+      note: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+      recordedByDirection: faker.datatype.boolean(),
+      recordedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    },
+    null,
+  ]),
   ...overrideResponse,
 });
 
@@ -1566,6 +1699,54 @@ export const getEventSeriesMockHandler = (
             : overrideResponse
           : getEventSeriesResponseMock(),
         { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventPublishMockHandler = (
+  overrideResponse?:
+    | EventResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<EventResource> | EventResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/events/:event/publish",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventPublishResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventUnpublishMockHandler = (
+  overrideResponse?:
+    | EventResource
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<EventResource> | EventResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/events/:event/publish",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventUnpublishResponseMock(),
+        { status: 200 },
       );
     },
     options,
@@ -2568,6 +2749,8 @@ export const getLesCanetonsAPIMock = () => [
   getEventUpdateMockHandler(),
   getEventDestroyMockHandler(),
   getEventSeriesMockHandler(),
+  getEventPublishMockHandler(),
+  getEventUnpublishMockHandler(),
   getAttendanceUpdateMockHandler(),
   getAttendanceDestroyMockHandler(),
   getAttendanceIndexMockHandler(),

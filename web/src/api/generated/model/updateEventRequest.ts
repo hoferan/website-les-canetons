@@ -320,15 +320,22 @@
 export interface UpdateEventRequest {
   /** @maxLength 255 */
   title?: string;
-  /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
-  startsAt?: string;
-  /** ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. */
-  endsAt?: string;
   /**
-   * Where it happens, as free text.
-   * @maxLength 255
+   * ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Send `null` to clear it on a draft; a published event refuses that with `required`.
+   * @nullable
    */
-  location?: string;
+  startsAt?: string | null;
+  /**
+   * ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. Send `null` to clear it on a draft; a published event refuses that with `required`.
+   * @nullable
+   */
+  endsAt?: string | null;
+  /**
+   * Where it happens, as free text. Send `null` to clear it on a draft; a published event refuses that with `required`.
+   * @maxLength 255
+   * @nullable
+   */
+  location?: string | null;
   /**
    * What to wear. Send `null` to clear it.
    * @maxLength 255

@@ -51,6 +51,12 @@ async function fillSeptember(locale: Locale = "fr") {
   await userEvent.type(screen.getByLabelText(label.to), "2026-09-26");
 }
 
+test("the generator says the events are created as drafts, not published", async () => {
+  await renderGenerator();
+
+  expect(screen.getByText(/créés comme brouillons/)).toBeInTheDocument();
+});
+
 test("previews every generated date before anything is created", async () => {
   await renderGenerator();
   await fillSeptember();
@@ -104,7 +110,7 @@ test("creating a season goes to the planning and says how many were created", as
   await fillSeptember();
   await userEvent.click(await screen.findByRole("button", { name: "Créer 4 événements" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("4 événements créés.");
+  expect(await screen.findByRole("status")).toHaveTextContent("4 brouillons créés.");
   expect(screen.getByTestId("pathname")).toHaveTextContent(/^\/events$/);
   expect(screen.getByRole("link", { name: "Créer une autre série" })).toHaveAttribute(
     "href",
@@ -121,7 +127,7 @@ test("the count on the planning goes away when dismissed", async () => {
 
   await userEvent.click(screen.getByRole("button", { name: "Fermer ce message" }));
 
-  expect(screen.queryByText("4 événements créés.")).toBeNull();
+  expect(screen.queryByText("4 brouillons créés.")).toBeNull();
 });
 
 /**
@@ -247,7 +253,7 @@ test("the count on the planning is German", async () => {
   await fillSeptember("de-CH");
   await userEvent.click(await screen.findByRole("button", { name: "4 Anlässe erstellen" }));
 
-  expect(await screen.findByRole("status")).toHaveTextContent("4 Anlässe erstellt.");
+  expect(await screen.findByRole("status")).toHaveTextContent("4 Entwürfe erstellt.");
   expect(screen.getByRole("link", { name: "Weitere Serie erstellen" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Meldung schliessen" })).toBeInTheDocument();
 });

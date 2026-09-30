@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\UtcDateTime;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,17 +17,22 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  *
  * `starts_at`/`ends_at` replace the old date + two TIME columns + `weekend`
  * boolean: a multi-day event is one whose start and end fall on different
- * days, so there is no flag to keep in step with them. `ends_at` is NOT NULL;
- * see the migration for why that is what makes the flag unnecessary rather
- * than merely redundant.
+ * days, so there is no flag to keep in step with them. A draft may lack both
+ * and its location; a PUBLISHED event never does, and the publish path is what
+ * holds that now (see the add_published_at migration).
+ *
+ * `published_at` null means draft. It is a separate axis from `is_public`:
+ * a draft is seen by nobody but `events.manage`, whatever `is_public` says.
  *
  * The @property tags below say what casts() already does at runtime. Larastan
  * runs at level 5 and cannot read casts(), so without them these read as their
  * raw column types and every caller has to defend against a type that never
  * occurs. Member.php carries the same block for the same reason.
  *
- * @property CarbonImmutable $starts_at
- * @property CarbonImmutable $ends_at
+ * @property CarbonImmutable|null $starts_at
+ * @property CarbonImmutable|null $ends_at
+ * @property string|null $location
+ * @property CarbonImmutable|null $published_at
  * @property bool $is_public
  * @property CarbonImmutable|null $registration_opens_at
  * @property CarbonImmutable|null $registration_closes_at
@@ -61,6 +67,7 @@ class Event extends Model
         'registration_opens_at',
         'registration_closes_at',
         'registration_max_guests',
+        'published_at',
     ];
 
     /**
@@ -137,6 +144,23 @@ class Event extends Model
         return $this->hasManyThrough(RegistrationChoice::class, Registration::class);
     }
 
+    /** Whether this event has not been published yet. */
+    public function isDraft(): bool
+    {
+        return $this->published_at === null;
+    }
+
+    /**
+     * Only the events the band can see.
+     *
+     * @param  Builder<Event>  $query
+     * @return Builder<Event>
+     */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->whereNotNull('published_at');
+    }
+
     /**
      * Whether this event takes public registrations at all.
      *
@@ -180,6 +204,8 @@ class Event extends Model
             // next writer is correct without knowing any of this.
             'starts_at' => UtcDateTime::class,
             'ends_at' => UtcDateTime::class,
+            // Same cast, same reason. Null is a draft.
+            'published_at' => UtcDateTime::class,
             'is_public' => 'boolean',
             // The same cast as the event's own times, and for the same
             // measured reason: a closing date typed as 23:59 in Fribourg

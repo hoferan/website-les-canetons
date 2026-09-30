@@ -331,6 +331,7 @@ import type {
   AttendanceIndexParams,
   AttendanceResource,
   AttendanceUpdate403,
+  AttendanceUpdate409,
   AuthLogin200,
   AuthLogin400,
   AuthLogin401,
@@ -356,8 +357,10 @@ import type {
   EventDestroy200,
   EventIndex200,
   EventIndexParams,
+  EventPublish422,
   EventResource,
   EventSeries201,
+  EventUnpublish409,
   FormTokenShow200,
   HandleContactMessageRequest,
   HistoryEntryDestroy200,
@@ -1287,20 +1290,22 @@ export const getEventStoreUrl = () => {
 };
 
 /**
- * Requires `events.manage`. Answers `201` with the created event.
+ * Requires `events.manage`. Answers `201` with the created event, whose
+ * `publishedAt` is `null`: it is visible to people who can manage events and
+ * to nobody else until it is published.
  *
- * `startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and
- * `endsAt` must come after `startsAt` or it fails validation against that
- * field with `must_be_after`. An event spanning two days is an ordinary
- * row, not an error. `title`, `location`, `startsAt`, `endsAt` and
- * `isPublic` are required; a missing one fails validation against itself
- * with `required`.
+ * Only `title` is required; a missing one fails validation against itself
+ * with `required`. `startsAt`, `endsAt` and `location` may be left out and
+ * are required to publish. They are ISO 8601 instants carrying an offset, and
+ * when both dates are sent `endsAt` must come after `startsAt` or it fails
+ * validation against that field with `must_be_after`. An event spanning two
+ * days is an ordinary row, not an error. `isPublic` defaults to false.
  *
  * Setting `registrationClosesAt` is what opens the event to public
  * registration. It must come after `registrationOpensAt`, which may be
  * left null to mean the form opens as soon as the closing date is set,
  * and `registrationMaxGuests` caps how many people one booking may cover.
- * @summary Put a rehearsal or a gig on the planning
+ * @summary Write down a rehearsal or a gig as a draft
  */
 export const eventStore = async (
   storeEventRequest: StoreEventRequest,
@@ -1387,7 +1392,7 @@ export type EventStoreMutationError =
 export type EventStoreMutationVariables = { data: StoreEventRequest };
 
 /**
- * @summary Put a rehearsal or a gig on the planning
+ * @summary Write down a rehearsal or a gig as a draft
  */
 export const useEventStore = <
   TError =
@@ -2008,6 +2013,11 @@ export const getEventSeriesUrl = () => {
  * `201` with the created events, in the same shape `GET /api/v1/events`
  * returns, so a client can refresh its list straight from the response.
  *
+ * Every event is created as a draft (`publishedAt` is `null`): visible to
+ * people who can manage events and to nobody else, so a season can be read
+ * through before the band sees it. Each one is published on its own with
+ * `POST /api/v1/events/{event}/publish`.
+ *
  * The events are independent, and there is no series afterwards: nothing
  * links them, and each one is edited, answered and deleted on its own.
  *
@@ -2138,6 +2148,348 @@ export const useEventSeries = <
   return useMutation(getEventSeriesMutationOptions(options), queryClient);
 };
 
+export type eventPublishResponse200 = {
+  data: EventResource;
+  status: 200;
+};
+
+export type eventPublishResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventPublishResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventPublishResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type eventPublishResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type eventPublishResponse422 = {
+  data: EventPublish422;
+  status: 422;
+};
+
+export type eventPublishResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventPublishResponseSuccess = eventPublishResponse200 & {
+  headers: Headers;
+};
+export type eventPublishResponseError = (
+  | eventPublishResponse401
+  | eventPublishResponse403
+  | eventPublishResponse404
+  | eventPublishResponse419
+  | eventPublishResponse422
+  | eventPublishResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventPublishResponse = eventPublishResponseSuccess | eventPublishResponseError;
+
+export const getEventPublishUrl = (event: number) => {
+  return `/events/${event}/publish`;
+};
+
+/**
+ * Requires `events.manage`. Makes the event visible to every member (and,
+ * once `isPublic` is set, on the public agenda) and answers with it.
+ *
+ * A published event always has a start, an end after it, and a location.
+ * A draft that lacks any of them is refused with `event_incomplete`, and
+ * `errors` names each field: `required` for one that is missing,
+ * `must_be_after` on `endsAt` when the end does not follow the start.
+ * Nothing is changed.
+ * Publishing an event that is already published is not an error and moves
+ * nothing.
+ * @summary Publish a draft
+ */
+export const eventPublish = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventPublishResponse> => {
+  return customFetch<eventPublishResponse>(getEventPublishUrl(event), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getEventPublishMutationKey = () => ["eventPublish"] as const;
+
+export const getEventPublishMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | EventPublish422
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventPublish>>,
+    TError,
+    EventPublishMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventPublish>>,
+  TError,
+  EventPublishMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventPublishMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventPublish>>,
+    EventPublishMutationVariables
+  > = (props) => {
+    const { event } = props ?? {};
+
+    return eventPublish(event, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventPublishMutationResult = NonNullable<Awaited<ReturnType<typeof eventPublish>>>;
+
+export type EventPublishMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | EventPublish422
+  | Problem503Response;
+export type EventPublishMutationVariables = { event: number };
+
+/**
+ * @summary Publish a draft
+ */
+export const useEventPublish = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | EventPublish422
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventPublish>>,
+      TError,
+      EventPublishMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventPublish>>,
+  TError,
+  EventPublishMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventPublishMutationOptions(options), queryClient);
+};
+
+export type eventUnpublishResponse200 = {
+  data: EventResource;
+  status: 200;
+};
+
+export type eventUnpublishResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventUnpublishResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventUnpublishResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type eventUnpublishResponse409 = {
+  data: EventUnpublish409;
+  status: 409;
+};
+
+export type eventUnpublishResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type eventUnpublishResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type eventUnpublishResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type eventUnpublishResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventUnpublishResponseSuccess = eventUnpublishResponse200 & {
+  headers: Headers;
+};
+export type eventUnpublishResponseError = (
+  | eventUnpublishResponse401
+  | eventUnpublishResponse403
+  | eventUnpublishResponse404
+  | eventUnpublishResponse409
+  | eventUnpublishResponse412
+  | eventUnpublishResponse419
+  | eventUnpublishResponse428
+  | eventUnpublishResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventUnpublishResponse = eventUnpublishResponseSuccess | eventUnpublishResponseError;
+
+export const getEventUnpublishUrl = (event: number) => {
+  return `/events/${event}/publish`;
+};
+
+/**
+ * Requires `events.manage`. Refused with `event_has_answers` once any
+ * member has answered or anybody has booked, because their answers would
+ * then sit on an event nobody else can see. Unpublishing a draft is not an
+ * error and changes nothing.
+ * @summary Put a published event back to draft
+ */
+export const eventUnpublish = async (
+  event: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventUnpublishResponse> => {
+  return customFetch<eventUnpublishResponse>(getEventUnpublishUrl(event), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getEventUnpublishMutationKey = () => ["eventUnpublish"] as const;
+
+export const getEventUnpublishMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | EventUnpublish409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventUnpublish>>,
+    TError,
+    EventUnpublishMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventUnpublish>>,
+  TError,
+  EventUnpublishMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventUnpublishMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventUnpublish>>,
+    EventUnpublishMutationVariables
+  > = (props) => {
+    const { event } = props ?? {};
+
+    return eventUnpublish(event, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventUnpublishMutationResult = NonNullable<Awaited<ReturnType<typeof eventUnpublish>>>;
+
+export type EventUnpublishMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | EventUnpublish409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type EventUnpublishMutationVariables = { event: number };
+
+/**
+ * @summary Put a published event back to draft
+ */
+export const useEventUnpublish = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | EventUnpublish409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventUnpublish>>,
+      TError,
+      EventUnpublishMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventUnpublish>>,
+  TError,
+  EventUnpublishMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventUnpublishMutationOptions(options), queryClient);
+};
+
 export type attendanceUpdateResponse200 = {
   data: AttendanceResource;
   status: 200;
@@ -2163,6 +2515,11 @@ export type attendanceUpdateResponse404 = {
   status: 404;
 };
 
+export type attendanceUpdateResponse409 = {
+  data: AttendanceUpdate409;
+  status: 409;
+};
+
 export type attendanceUpdateResponse419 = {
   data: Problem419Response;
   status: 419;
@@ -2181,6 +2538,7 @@ export type attendanceUpdateResponseError = (
   | attendanceUpdateResponse401
   | attendanceUpdateResponse403
   | attendanceUpdateResponse404
+  | attendanceUpdateResponse409
   | attendanceUpdateResponse419
   | attendanceUpdateResponse503
 ) & {
@@ -2256,6 +2614,7 @@ export const getAttendanceUpdateMutationOptions = <
     | Problem401Response
     | AttendanceUpdate403
     | Problem404Response
+    | AttendanceUpdate409
     | Problem419Response
     | Problem503Response,
   TContext = unknown,
@@ -2301,6 +2660,7 @@ export type AttendanceUpdateMutationError =
   | Problem401Response
   | AttendanceUpdate403
   | Problem404Response
+  | AttendanceUpdate409
   | Problem419Response
   | Problem503Response;
 export type AttendanceUpdateMutationVariables = { event: number; data: RecordOwnAttendanceRequest };
@@ -2314,6 +2674,7 @@ export const useAttendanceUpdate = <
     | Problem401Response
     | AttendanceUpdate403
     | Problem404Response
+    | AttendanceUpdate409
     | Problem419Response
     | Problem503Response,
   TContext = unknown,

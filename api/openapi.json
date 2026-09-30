@@ -786,8 +786,8 @@
             },
             "post": {
                 "operationId": "event.store",
-                "description": "Requires `events.manage`. Answers `201` with the created event.\n\n`startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and\n`endsAt` must come after `startsAt` or it fails validation against that\nfield with `must_be_after`. An event spanning two days is an ordinary\nrow, not an error. `title`, `location`, `startsAt`, `endsAt` and\n`isPublic` are required; a missing one fails validation against itself\nwith `required`.\n\nSetting `registrationClosesAt` is what opens the event to public\nregistration. It must come after `registrationOpensAt`, which may be\nleft null to mean the form opens as soon as the closing date is set,\nand `registrationMaxGuests` caps how many people one booking may cover.",
-                "summary": "Put a rehearsal or a gig on the planning",
+                "description": "Requires `events.manage`. Answers `201` with the created event, whose\n`publishedAt` is `null`: it is visible to people who can manage events and\nto nobody else until it is published.\n\nOnly `title` is required; a missing one fails validation against itself\nwith `required`. `startsAt`, `endsAt` and `location` may be left out and\nare required to publish. They are ISO 8601 instants carrying an offset, and\nwhen both dates are sent `endsAt` must come after `startsAt` or it fails\nvalidation against that field with `must_be_after`. An event spanning two\ndays is an ordinary row, not an error. `isPublic` defaults to false.\n\nSetting `registrationClosesAt` is what opens the event to public\nregistration. It must come after `registrationOpensAt`, which may be\nleft null to mean the form opens as soon as the closing date is set,\nand `registrationMaxGuests` caps how many people one booking may cover.",
+                "summary": "Write down a rehearsal or a gig as a draft",
                 "tags": [
                     "Events"
                 ],
@@ -1045,7 +1045,7 @@
         "/events/series": {
             "post": {
                 "operationId": "event.series",
-                "description": "Requires `events.manage`. Takes a `template` and a list of `Y-m-d`\n`dates`, at most 60 of them, and creates one event per date. Answers\n`201` with the created events, in the same shape `GET /api/v1/events`\nreturns, so a client can refresh its list straight from the response.\n\nThe events are independent, and there is no series afterwards: nothing\nlinks them, and each one is edited, answered and deleted on its own.\n\nThe template carries `startTime` and `endTime` as `H:i` wall-clock\nstrings rather than instants, applied in Europe/Zurich for each date.\nA season that crosses the daylight-saving change therefore keeps the\nsame time on the clock throughout. `endTime` must be after `startTime`.\n\n`title`, `location`, `isPublic`, `startTime` and `endTime` are required\non the template; `attire` and `notes` are optional. An empty date list\nfails validation against `dates` with `required`, more than 60 dates\nwith `too_long`, and a date that is not `Y-m-d` against its own entry\nwith `invalid_format`. A refused request writes nothing at all.",
+                "description": "Requires `events.manage`. Takes a `template` and a list of `Y-m-d`\n`dates`, at most 60 of them, and creates one event per date. Answers\n`201` with the created events, in the same shape `GET /api/v1/events`\nreturns, so a client can refresh its list straight from the response.\n\nEvery event is created as a draft (`publishedAt` is `null`): visible to\npeople who can manage events and to nobody else, so a season can be read\nthrough before the band sees it. Each one is published on its own with\n`POST /api/v1/events/{event}/publish`.\n\nThe events are independent, and there is no series afterwards: nothing\nlinks them, and each one is edited, answered and deleted on its own.\n\nThe template carries `startTime` and `endTime` as `H:i` wall-clock\nstrings rather than instants, applied in Europe/Zurich for each date.\nA season that crosses the daylight-saving change therefore keeps the\nsame time on the clock throughout. `endTime` must be after `startTime`.\n\n`title`, `location`, `isPublic`, `startTime` and `endTime` are required\non the template; `attire` and `notes` are optional. An empty date list\nfails validation against `dates` with `required`, more than 60 dates\nwith `too_long`, and a date that is not `Y-m-d` against its own entry\nwith `invalid_format`. A refused request writes nothing at all.",
                 "summary": "Generate a season of events from one template",
                 "tags": [
                     "Events"
@@ -1121,6 +1121,235 @@
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/events/{event}/publish": {
+            "post": {
+                "operationId": "event.publish",
+                "description": "Requires `events.manage`. Makes the event visible to every member (and,\nonce `isPublic` is set, on the public agenda) and answers with it.\n\nA published event always has a start, an end after it, and a location.\nA draft that lacks any of them is refused with `event_incomplete`, and\n`errors` names each field: `required` for one that is missing,\n`must_be_after` on `endsAt` when the end does not follow the start.\nNothing is changed.\nPublishing an event that is already published is not an error and moves\nnothing.",
+                "summary": "Publish a draft",
+                "tags": [
+                    "Events"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "422": {
+                        "description": "The submission looks automated. See Public forms.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "event_incomplete",
+                                                "spam_suspected"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "event.unpublish",
+                "description": "Requires `events.manage`. Refused with `event_has_answers` once any\nmember has answered or anybody has booked, because their answers would\nthen sit on an event nobody else can see. Unpublishing a draft is not an\nerror and changes nothing.",
+                "summary": "Put a published event back to draft",
+                "tags": [
+                    "Events"
+                ],
+                "parameters": [
+                    {
+                        "name": "event",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`EventResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventResource"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "event_has_answers"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1234,6 +1463,61 @@
                                 }
                             }
                         }
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "event_not_published"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -1309,7 +1593,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "answer_already_settled"
+                                                "answer_already_settled",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {
@@ -1596,7 +1881,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "cannot_record_for_self"
+                                                "cannot_record_for_self",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {
@@ -1714,7 +2000,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "cannot_record_for_self"
+                                                "cannot_record_for_self",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {
@@ -5525,17 +5812,35 @@
                         "type": "string"
                     },
                     "startsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts."
+                        "description": "ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet."
                     },
                     "endsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day."
+                        "description": "ISO 8601 in UTC. After `startsAt` when both are set, and may fall on a later day. Null only on a draft that has no date yet."
                     },
                     "location": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Where it happens. Null only on a draft that has no location yet."
+                    },
+                    "publishedAt": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time",
+                        "description": "When the event was published, in UTC. Null means it is still a\ndraft: only people who can manage events see it, and it is not\non anybody's planning yet."
                     },
                     "attire": {
                         "type": [
@@ -5618,6 +5923,7 @@
                     "startsAt",
                     "endsAt",
                     "location",
+                    "publishedAt",
                     "attire",
                     "isPublic",
                     "answeredCount",
@@ -6306,25 +6612,34 @@
             },
             "StoreEventRequest": {
                 "type": "object",
-                "description": "A new entry on the planning: a rehearsal, a gig or a concert.\n\n`startsAt` and `endsAt` are both required, and the end must come strictly\nafter the start. The end may fall on a later day; a two-day event such as a\ncarnival weekend is an ordinary row here, not a special case.\n\n`isPublic` is required rather than defaulted, because showing an event to\nstrangers is a decision somebody makes per event. `attire` and `notes` are\noptional and stay empty for the many rows that need neither.\n\nThe three `registration*` fields open the event to public bookings. Setting\n`registrationClosesAt` is what switches registration on at all; leave it\nnull and the public form answers `404`.",
+                "description": "A new entry on the planning: a rehearsal, a gig or a concert, created as a\nDRAFT. Only the title is required, because \"I do not know the venue yet\" is\nthe reason a draft gets written. The full rules run when it is published.\n\nWhen both dates are sent the end must come strictly after the start. The end\nmay fall on a later day; a two-day event such as a carnival weekend is an\nordinary row here, not a special case.\n\n`isPublic` defaults to false, the safe direction: it only matters once the\nevent is published, and it is still a per-event choice somebody makes.\n`attire` and `notes` are optional and stay empty for the many rows that need\nneither.\n\nThe three `registration*` fields open the event to public bookings. Setting\n`registrationClosesAt` is what switches registration on at all; leave it\nnull and the public form answers `404`.",
                 "properties": {
                     "title": {
                         "type": "string",
                         "maxLength": 255
                     },
                     "startsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC."
+                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Optional on a draft, required to publish."
                     },
                     "endsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601 with an offset, strictly after `startsAt`. May fall on a later day; a two-day event is normal."
+                        "description": "ISO 8601 with an offset, strictly after `startsAt` when both are sent. May fall on a later day; a two-day event is normal. Optional on a draft, required to publish."
                     },
                     "location": {
-                        "type": "string",
-                        "description": "Where it happens, as free text. Nothing geocodes it.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Where it happens, as free text. Nothing geocodes it. Optional on a draft, required to publish.",
                         "maxLength": 255
                     },
                     "attire": {
@@ -6337,7 +6652,7 @@
                     },
                     "isPublic": {
                         "type": "boolean",
-                        "description": "Whether the event appears on the public agenda. Members see it either way."
+                        "description": "Whether the event appears on the public agenda once published. Members see it either way. Defaults to false."
                     },
                     "notes": {
                         "type": [
@@ -6374,11 +6689,7 @@
                     }
                 },
                 "required": [
-                    "title",
-                    "startsAt",
-                    "endsAt",
-                    "location",
-                    "isPublic"
+                    "title"
                 ],
                 "title": "StoreEventRequest"
             },
@@ -6698,18 +7009,27 @@
                         "maxLength": 255
                     },
                     "startsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC."
+                        "description": "ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Send `null` to clear it on a draft; a published event refuses that with `required`."
                     },
                     "endsAt": {
-                        "type": "string",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
                         "format": "date-time",
-                        "description": "ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise."
+                        "description": "ISO 8601 with an offset, strictly after the start. Compared against `startsAt` when that is sent too, and against the stored start otherwise. Send `null` to clear it on a draft; a published event refuses that with `required`."
                     },
                     "location": {
-                        "type": "string",
-                        "description": "Where it happens, as free text.",
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Where it happens, as free text. Send `null` to clear it on a draft; a published event refuses that with `required`.",
                         "maxLength": 255
                     },
                     "attire": {

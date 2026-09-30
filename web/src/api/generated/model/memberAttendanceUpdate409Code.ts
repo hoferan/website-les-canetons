@@ -310,4 +310,5 @@ export type MemberAttendanceUpdate409Code =
 
 export const MemberAttendanceUpdate409Code = {
   cannot_record_for_self: "cannot_record_for_self",
+  event_not_published: "event_not_published",
 } as const;

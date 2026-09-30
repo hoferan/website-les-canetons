@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Exceptions\AttendanceRefused;
 use App\Models\Attendance;
+use App\Models\Event;
 use App\Models\Member;
 
 /**
@@ -32,6 +33,25 @@ final class AttendanceIntegrity
      * reconnect.
      */
     public const UNDO_WINDOW_MINUTES = 5;
+
+    /**
+     * Nobody answers a draft, whoever they are.
+     *
+     * A manager can see one, so 404 is not available to them, and an answer
+     * given now would sit on an event the rest of the band cannot see.
+     */
+    public static function assertPublished(Event $event): void
+    {
+        if (! $event->isDraft()) {
+            return;
+        }
+
+        throw new AttendanceRefused(
+            409,
+            'event_not_published',
+            'This event is still a draft and takes no answers',
+        );
+    }
 
     /**
      * Only somebody in a register is answerable — Member::isPlayer().
