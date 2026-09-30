@@ -144,7 +144,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // matching If-Match on a write. See the ConditionalWrite class for
             // which writes carry it, and why attendance deliberately does not.
             'etag' => ConditionalWrite::class,
-            // `event.published` — a draft event is a 404 to anybody without
+            // `event.published`: a draft event is a 404 to anybody without
             // events.manage. `event.published:everyone` for the public routes.
             'event.published' => HideDraftEvents::class,
             'docs' => EnsureDocsEnabled::class,

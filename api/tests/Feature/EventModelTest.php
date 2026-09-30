@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Event;
-use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -99,7 +98,7 @@ class EventModelTest extends TestCase
         $this->assertNull($draft->fresh()->published_at);
     }
 
-    private function addPublishedAt(): Migration
+    private function addPublishedAt(): object
     {
         return require database_path('migrations/2026_09_30_000001_add_published_at_to_events.php');
     }

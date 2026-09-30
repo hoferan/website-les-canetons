@@ -50,9 +50,8 @@ export function EventCard({
             {event.title}
           </h2>
 
-          {/* A DRAFT IS SAID, not implied by where it sits: the same card is
-              rendered in the drafts group and could be reached from a search
-              or a day, where the group heading is not in view. */}
+          {/* The badge states the draft outright. A search or a chosen day can
+              show this card without the group heading in view. */}
           {isDraft(event) ? (
             <p
               data-testid="draft-badge"

@@ -388,8 +388,8 @@ export function EventForm({
             <Button type="submit" aria-disabled={busy} onClick={() => (intent.current = "save")}>
               {busy ? t("eventForm.saving") : t("eventForm.saveDraft")}
             </Button>
-            {/* THE DELIBERATE ACT, and second: it is a different weight of
-                button so that it is never the thing Enter reaches for. */}
+            {/* Publishing is the deliberate act, so it comes second and is
+                outlined: Enter never reaches for it. */}
             <Button
               type="submit"
               variant="outline"

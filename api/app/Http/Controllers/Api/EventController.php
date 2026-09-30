@@ -14,6 +14,7 @@ use App\Support\BandTime;
 use App\Support\Emits;
 use App\Support\Permission;
 use App\Support\Search;
+use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
@@ -447,7 +448,7 @@ class EventController extends Controller
             return ApiError::json(422, 'event_incomplete', 'The event is missing fields it needs to be published', $missing);
         }
 
-        $event->published_at = now();
+        $event->published_at = CarbonImmutable::now();
         $event->save();
 
         Audit::record($request->user(), 'event.published', 'event', $event->id, $event->title);
