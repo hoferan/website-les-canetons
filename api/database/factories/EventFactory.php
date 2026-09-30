@@ -40,7 +40,16 @@ class EventFactory extends Factory
             'attire' => null,
             'is_public' => false,
             'notes' => null,
+            // PUBLISHED BY DEFAULT, so every test written before drafts existed
+            // still builds an event the band can see. A draft is the opt-in.
+            'published_at' => Carbon::now(),
         ];
+    }
+
+    /** An event nobody but events.manage can see yet. */
+    public function draft(): static
+    {
+        return $this->state(fn (): array => ['published_at' => null]);
     }
 
     /**
