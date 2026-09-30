@@ -306,11 +306,28 @@ import type { AttendanceResource } from "./attendanceResource";
 export interface EventResource {
   id: number;
   title: string;
-  /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. */
-  startsAt: string;
-  /** ISO 8601 in UTC. Always after `startsAt`, and may fall on a later day. */
-  endsAt: string;
-  location: string;
+  /**
+   * ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet.
+   * @nullable
+   */
+  startsAt: string | null;
+  /**
+   * ISO 8601 in UTC. After `startsAt` when both are set, and may fall on a later day. Null only on a draft that has no date yet.
+   * @nullable
+   */
+  endsAt: string | null;
+  /**
+   * Where it happens. Null only on a draft that has no location yet.
+   * @nullable
+   */
+  location: string | null;
+  /**
+   * When the event was published, in UTC. Null means it is still a
+   * draft: only people who can manage events see it, and it is not
+   * on anybody's planning yet.
+   * @nullable
+   */
+  publishedAt: string | null;
   /**
    * What to wear, or null when nothing was specified.
    * @nullable

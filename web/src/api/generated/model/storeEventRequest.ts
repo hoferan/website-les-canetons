@@ -303,15 +303,18 @@
  */
 
 /**
- * A new entry on the planning: a rehearsal, a gig or a concert.
+ * A new entry on the planning: a rehearsal, a gig or a concert, created as a
+ * DRAFT. Only the title is required, because "I do not know the venue yet" is
+ * the reason a draft gets written. The full rules run when it is published.
  *
- * `startsAt` and `endsAt` are both required, and the end must come strictly
- * after the start. The end may fall on a later day; a two-day event such as a
- * carnival weekend is an ordinary row here, not a special case.
+ * When both dates are sent the end must come strictly after the start. The end
+ * may fall on a later day; a two-day event such as a carnival weekend is an
+ * ordinary row here, not a special case.
  *
- * `isPublic` is required rather than defaulted, because showing an event to
- * strangers is a decision somebody makes per event. `attire` and `notes` are
- * optional and stay empty for the many rows that need neither.
+ * `isPublic` defaults to false, the safe direction: it only matters once the
+ * event is published, and it is still a per-event choice somebody makes.
+ * `attire` and `notes` are optional and stay empty for the many rows that need
+ * neither.
  *
  * The three `registration*` fields open the event to public bookings. Setting
  * `registrationClosesAt` is what switches registration on at all; leave it
@@ -320,23 +323,30 @@
 export interface StoreEventRequest {
   /** @maxLength 255 */
   title: string;
-  /** ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. */
-  startsAt: string;
-  /** ISO 8601 with an offset, strictly after `startsAt`. May fall on a later day; a two-day event is normal. */
-  endsAt: string;
   /**
-   * Where it happens, as free text. Nothing geocodes it.
-   * @maxLength 255
+   * ISO 8601. Send any offset and it is honoured; no offset is read as UTC. Stored and returned as UTC. Optional on a draft, required to publish.
+   * @nullable
    */
-  location: string;
+  startsAt?: string | null;
+  /**
+   * ISO 8601 with an offset, strictly after `startsAt` when both are sent. May fall on a later day; a two-day event is normal. Optional on a draft, required to publish.
+   * @nullable
+   */
+  endsAt?: string | null;
+  /**
+   * Where it happens, as free text. Nothing geocodes it. Optional on a draft, required to publish.
+   * @maxLength 255
+   * @nullable
+   */
+  location?: string | null;
   /**
    * What to wear, for example "Costume complet". Optional.
    * @maxLength 255
    * @nullable
    */
   attire?: string | null;
-  /** Whether the event appears on the public agenda. Members see it either way. */
-  isPublic: boolean;
+  /** Whether the event appears on the public agenda once published. Members see it either way. Defaults to false. */
+  isPublic?: boolean;
   /**
    * Anything else members should read. Optional, up to 5000 characters.
    * @maxLength 5000
