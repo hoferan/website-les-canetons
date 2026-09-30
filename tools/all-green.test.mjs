@@ -128,6 +128,15 @@ test("deploy-test waits on all-green rather than on a list of its own", () => {
   assert.ok(ci.jobs["deploy-test"].needs.includes("all-green"));
 });
 
+// pr-title is skipped on every push and sits upstream of all-green. Without an
+// explicit status function the implicit success() sees that skip and the
+// deploy never runs, while every job in the run still shows green.
+test("deploy-test names its own status check instead of the implicit success()", () => {
+  const condition = String(ci.jobs["deploy-test"].if);
+  assert.match(condition, /!cancelled\(\)/);
+  assert.match(condition, /needs\.all-green\.result == 'success'/);
+});
+
 test("the title check is part of ci.yml, so all-green covers it", () => {
   assert.ok(jobs.includes("pr-title"));
   assert.ok(ci.on.pull_request.types.includes("edited"));
