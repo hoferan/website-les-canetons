@@ -98,12 +98,13 @@ class AttendanceController extends Controller
      * Answering for yourself clears any mark saying the direction entered the
      * answer.
      */
-    #[Emits('not_answerable')]
+    #[Emits('not_answerable', 'event_not_published')]
     public function update(RecordOwnAttendanceRequest $request, Event $event): AttendanceResource
     {
         /** @var Member $member */
         $member = $request->user();
 
+        AttendanceIntegrity::assertPublished($event);
         AttendanceIntegrity::assertAnswerable($member);
 
         $data = $request->validated();
@@ -147,9 +148,11 @@ class AttendanceController extends Controller
      * can offer the undo or not rather than finding out from a refusal.
      */
     #[Response(200, 'Withdrawn. The member now counts as not having answered.')]
-    #[Emits('answer_already_settled')]
+    #[Emits('answer_already_settled', 'event_not_published')]
     public function destroy(Request $request, Event $event): JsonResponse
     {
+        AttendanceIntegrity::assertPublished($event);
+
         // UNDO. Removes the answer entirely, returning the event to
         // unanswered — which is what a second PUT cannot express, and the
         // whole reason this endpoint exists rather than the client sending

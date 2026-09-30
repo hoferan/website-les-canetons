@@ -1463,6 +1463,61 @@
                                 }
                             }
                         }
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "event_not_published"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -1538,7 +1593,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "answer_already_settled"
+                                                "answer_already_settled",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {
@@ -1825,7 +1881,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "cannot_record_for_self"
+                                                "cannot_record_for_self",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {
@@ -1943,7 +2000,8 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
-                                                "cannot_record_for_self"
+                                                "cannot_record_for_self",
+                                                "event_not_published"
                                             ]
                                         },
                                         "errors": {

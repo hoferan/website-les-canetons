@@ -99,9 +99,30 @@ class EventController extends Controller
         // and mutation-tested by hand against now().
         $startOfToday = BandTime::startOfToday();
 
+        // DRAFTS HAVE A QUERY OF THEIR OWN, and are filtered here, in the
+        // query, rather than afterwards: the envelope slices what this
+        // returns, and meta.total has to count what the caller may see.
+        //
+        // They cannot ride the starts_at split. NULL >= anything is false, so
+        // a draft with no date would answer neither half and be invisible to
+        // the person who wrote it. Instead every draft belongs to the default
+        // half, dated or not, and none to the history: a draft dated last
+        // week is still unfinished business, and burying it in the history is
+        // how it gets forgotten. Undated ones sort first, since they have
+        // nowhere else to sort to.
+        $mayManage = EventResource::permissionsFor($request)->contains(Permission::EventsManage);
+
         $query = $past
-            ? Event::where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
-            : Event::where('starts_at', '>=', $startOfToday)->orderBy('starts_at', 'asc');
+            ? Event::published()->where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
+            : Event::where(function ($planning) use ($mayManage, $startOfToday): void {
+                $planning->where(fn ($published) => $published
+                    ->whereNotNull('published_at')
+                    ->where('starts_at', '>=', $startOfToday));
+
+                if ($mayManage) {
+                    $planning->orWhereNull('published_at');
+                }
+            })->orderByRaw('starts_at IS NULL DESC')->orderBy('starts_at', 'asc');
 
         // A WHERE on the one query, not a filter over its rows (#97): the
         // envelope slices what this returns, and the query budget holds.

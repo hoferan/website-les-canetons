@@ -214,6 +214,8 @@ final class ErrorVocabulary
         'event_incomplete' => [422, 'The event cannot be published yet. `errors` names each field it is still missing; '
             .'fill them in and publish again.'],
 
+        'event_not_published' => [409, 'This event is still a draft, so it takes no answers. Publish it first.'],
+
         'event_has_answers' => [409, 'Members have already answered or booked this event, so it cannot go back to '
             .'draft: their answers would sit on an event nobody else can see.'],
 

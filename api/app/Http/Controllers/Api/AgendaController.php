@@ -42,6 +42,10 @@ class AgendaController extends Controller
         // reference: Scramble serves a comment preceding a return as the 200
         // description.
         $upcoming = Event::query()
+            // BOTH FILTERS: is_public says whether strangers may see a published
+            // event, published says whether anybody but the committee may see it
+            // at all. A draft marked public appears nowhere.
+            ->published()
             ->where('is_public', true)
             ->where('starts_at', '>=', BandTime::startOfToday())
             ->orderBy('starts_at')
