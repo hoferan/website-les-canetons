@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -90,9 +90,12 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
 export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
   return {
     title: draft.title,
-    startsAt: composeInBandZone(draft.startDate, draft.startTime),
-    endsAt: composeInBandZone(draft.endDate, draft.endTime),
-    location: draft.location,
+    // A DRAFT MAY LACK ALL THREE, and sends null for each: a blank date is
+    // no date, not an invalid one. On a published event the form's own
+    // `required` attributes keep them from ever being blank.
+    startsAt: instantOrNull(draft.startDate, draft.startTime),
+    endsAt: instantOrNull(draft.endDate, draft.endTime),
+    location: draft.location.trim() === "" ? null : draft.location,
     attire: draft.attire.trim() === "" ? null : draft.attire,
     isPublic: draft.isPublic,
     notes: draft.notes.trim() === "" ? null : draft.notes,
@@ -149,6 +152,7 @@ function instantOrNull(date: string, time: string): string | null {
  */
 export function EventForm({
   event,
+  mode,
   busy,
   error,
   problemFor,
@@ -156,13 +160,25 @@ export function EventForm({
   onCancel,
 }: {
   event: EventResource | null;
+  /**
+   * `draft`: only the title is required, and there are two ways to finish,
+   * save it as it is or publish it. `published`: an event the band already
+   * sees keeps every rule, and there is one way to finish.
+   */
+  mode: "draft" | "published";
   busy: boolean;
   error: TranslatedError | null;
   problemFor: (field: string) => string | undefined;
-  onSubmit: (draft: EventDraft) => void;
+  onSubmit: (draft: EventDraft, intent: "save" | "publish") => void;
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState<EventDraft>(() => draftFromEvent(event));
+
+  // WHICH BUTTON SUBMITTED, read from the click that came just before the
+  // submit event. Enter in a field submits with the first button's click, so
+  // it saves; it can never publish by accident.
+  const intent = useRef<"save" | "publish">("save");
+  const isDraftMode = mode === "draft";
 
   // Whether the end date is the organiser's own answer or the start's echo.
   // An existing event's end date is theirs by definition — it was saved once
@@ -195,7 +211,9 @@ export function EventForm({
         if (busy || !formIsValid(submitted.currentTarget)) {
           return;
         }
-        onSubmit(draft);
+        const chosen = intent.current;
+        intent.current = "save";
+        onSubmit(draft, chosen);
       }}
     >
       <h2 className="font-display text-2xl">
@@ -205,6 +223,8 @@ export function EventForm({
       </h2>
 
       <RequiredLegend />
+
+      {isDraftMode ? <p className="text-sm text-ink-muted">{t("eventForm.draftHint")}</p> : null}
 
       <FormField
         id="title"
@@ -223,7 +243,7 @@ export function EventForm({
           value={draft.startDate}
           onChange={setStartDate}
           problem={problemFor("startsAt")}
-          required
+          required={!isDraftMode || draft.startTime !== ""}
         />
         <FormField
           id="startTime"
@@ -231,7 +251,7 @@ export function EventForm({
           type="time"
           value={draft.startTime}
           onChange={(value) => set("startTime", value)}
-          required
+          required={!isDraftMode || draft.startDate !== ""}
         />
       </div>
 
@@ -245,7 +265,7 @@ export function EventForm({
             setEndDateIsOwn(true);
             set("endDate", value);
           }}
-          required
+          required={!isDraftMode || draft.endTime !== ""}
         />
         <FormField
           id="endTime"
@@ -256,7 +276,7 @@ export function EventForm({
           // The end of the event is where "doit être après le début" belongs:
           // it is the field the organiser has to change to fix it.
           problem={problemFor("endsAt")}
-          required
+          required={!isDraftMode || draft.endDate !== ""}
         />
       </div>
 
@@ -266,7 +286,7 @@ export function EventForm({
         value={draft.location}
         onChange={(value) => set("location", value)}
         problem={problemFor("location")}
-        required
+        required={!isDraftMode}
       />
 
       <FormField
@@ -363,9 +383,27 @@ export function EventForm({
       <FormError error={error} />
 
       <div className="flex flex-wrap gap-related">
-        <Button type="submit" aria-disabled={busy}>
-          {busy ? t("eventForm.saving") : t("common.save")}
-        </Button>
+        {isDraftMode ? (
+          <>
+            <Button type="submit" aria-disabled={busy} onClick={() => (intent.current = "save")}>
+              {busy ? t("eventForm.saving") : t("eventForm.saveDraft")}
+            </Button>
+            {/* THE DELIBERATE ACT, and second: it is a different weight of
+                button so that it is never the thing Enter reaches for. */}
+            <Button
+              type="submit"
+              variant="outline"
+              aria-disabled={busy}
+              onClick={() => (intent.current = "publish")}
+            >
+              {t("eventForm.publish")}
+            </Button>
+          </>
+        ) : (
+          <Button type="submit" aria-disabled={busy}>
+            {busy ? t("eventForm.saving") : t("common.save")}
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={onCancel}>
           {t("common.cancel")}
         </Button>

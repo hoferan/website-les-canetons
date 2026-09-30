@@ -440,6 +440,11 @@ export const de: typeof fr = {
     newHeading: "Neuer Anlass",
     editHeading: "Anlass bearbeiten",
     saveFailed: "Das Speichern ist fehlgeschlagen.",
+    // Ein Entwurf wird so gespeichert, wie er ist; das Veröffentlichen ist ein zweiter Schritt.
+    saveDraft: "Entwurf speichern",
+    publish: "Veröffentlichen",
+    draftHint:
+      "Ein Entwurf darf unvollständig bleiben: Nur die Leitung sieht ihn, bis er veröffentlicht wird.",
     loadFailed: "Dieser Anlass konnte nicht geladen werden.",
     loadFailedReload: "Dieser Anlass konnte nicht geladen werden. Laden Sie die Seite neu.",
 

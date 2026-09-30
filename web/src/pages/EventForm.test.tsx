@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
@@ -6,6 +6,9 @@ import { eventIndex } from "../api/generated/endpoints";
 import { type Locale } from "../i18n/locale";
 import { setMockUser } from "../mocks/handlers";
 import { renderWithSession } from "../test/renderWithSession";
+import { Route, Routes } from "react-router-dom";
+
+import { EventEdit } from "./EventEdit";
 import { EventNew } from "./EventNew";
 
 async function renderForm(locale: Locale = "fr") {
@@ -43,7 +46,7 @@ test("an end before the start is reported against its own field, in French", asy
   await userEvent.type(screen.getByLabelText("Heure de début"), "12:00");
   await userEvent.clear(screen.getByLabelText("Heure de fin"));
   await userEvent.type(screen.getByLabelText("Heure de fin"), "10:00");
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
 
   expect(await screen.findByText(/Fin .*après/)).toBeInTheDocument();
   // The form stays open so the wrong field can be corrected where it was typed.
@@ -54,7 +57,7 @@ test("shows the submit as busy without disabling it", async () => {
   await renderForm();
   // Never the disabled attribute: disabling the focused control blurs it to
   // <body> and throws focus away mid-submit.
-  const submit = screen.getByRole("button", { name: "Enregistrer" });
+  const submit = screen.getByRole("button", { name: "Enregistrer le brouillon" });
   expect(submit).not.toBeDisabled();
 });
 
@@ -123,7 +126,7 @@ test("a new event takes no bookings until a closing date is typed", async () => 
     "Heure de début": "10:00",
     "Heure de fin": "12:00",
   });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
 
   const created = await createdEvent("Répétition de novembre");
   expect(created.registrationClosesAt).toBeNull();
@@ -141,7 +144,7 @@ test("typing a closing date is what opens an event to the public", async () => {
     "Heure de fin": "23:30",
     "Clôture des inscriptions": "2026-11-14",
   });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
 
   const created = await createdEvent("Souper de novembre");
   // November, so +01:00 — the season runs through both offsets, which is why
@@ -165,7 +168,7 @@ test("an empty guest cap is no cap, not a cap of zero", async () => {
     "Heure de fin": "22:00",
     "Clôture des inscriptions": "2026-11-21",
   });
-  await userEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
 
   expect((await createdEvent("Loto de novembre")).registrationMaxGuests).toBeNull();
 });
@@ -187,7 +190,7 @@ test("every control is German", async () => {
   expect(screen.getByLabelText("Bemerkungen")).toBeInTheDocument();
   expect(screen.getByLabelText("Anmeldeschluss")).toBeInTheDocument();
   expect(screen.getByLabelText("Personen pro Anmeldung")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Speichern" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Entwurf speichern" })).toBeInTheDocument();
 });
 
 test("A CONTROL'S LABEL IS NOT THE FIELD'S NOUN, which is why they are separate keys", async () => {
@@ -218,7 +221,7 @@ test("A CONTROL'S LABEL IS NOT THE FIELD'S NOUN, which is why they are separate 
   await userEvent.type(screen.getByLabelText("Startzeit"), "12:00");
   await userEvent.clear(screen.getByLabelText("Endzeit"));
   await userEvent.type(screen.getByLabelText("Endzeit"), "10:00");
-  await userEvent.click(screen.getByRole("button", { name: "Speichern" }));
+  await userEvent.click(screen.getByRole("button", { name: "Entwurf speichern" }));
 
   expect(await screen.findByText("Ende muss nach dem Beginn liegen")).toBeInTheDocument();
   expect(screen.getByLabelText("Endzeit")).toBeInTheDocument();
@@ -234,4 +237,114 @@ test("the attire hint quotes the card's own words, in both languages", async () 
 
   await renderForm("de-CH");
   expect(screen.getByText(/Die Karte zeigt dann «Nicht festgelegt»/)).toBeInTheDocument();
+});
+
+/* -------------------------------------------------------------------------- *
+ * Draft and publish
+ * -------------------------------------------------------------------------- */
+
+async function renderCreateAndEdit() {
+  setMockUser("demo.direction");
+  await renderWithSession(
+    <Routes>
+      <Route path="/events/new" element={<EventNew />} />
+      <Route path="/events/:id/edit" element={<EventEdit />} />
+      <Route path="/events" element={<p>planning</p>} />
+    </Routes>,
+    { route: "/events/new" },
+  );
+  await screen.findByLabelText("Titre");
+}
+
+async function renderEdit(id: number) {
+  setMockUser("demo.direction");
+  await renderWithSession(
+    <Routes>
+      <Route path="/events/:id/edit" element={<EventEdit />} />
+      <Route path="/events" element={<p>planning</p>} />
+    </Routes>,
+    { route: `/events/${id}/edit` },
+  );
+  await screen.findByLabelText("Titre");
+}
+
+test("a new event is a draft, and saving it needs nothing but a title", async () => {
+  await renderCreateAndEdit();
+  await userEvent.type(screen.getByLabelText("Titre"), "Lieu à confirmer");
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  await screen.findByText("planning");
+  const created = await createdEvent("Lieu à confirmer");
+  expect(created.publishedAt).toBeNull();
+  expect(created.startsAt).toBeNull();
+  expect(created.location).toBeNull();
+});
+
+test("a new event offers the two actions separately", async () => {
+  await renderCreateAndEdit();
+
+  expect(screen.getByRole("button", { name: "Enregistrer le brouillon" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Publier" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Enregistrer" })).not.toBeInTheDocument();
+});
+
+test("publishing an incomplete form keeps the draft and names what is missing", async () => {
+  await renderCreateAndEdit();
+  await userEvent.type(screen.getByLabelText("Titre"), "Sortie à définir");
+  await userEvent.click(screen.getByRole("button", { name: "Publier" }));
+
+  // Sent to the saved draft's own edit screen, with the refusal carried along
+  // and the form filled from what was saved. Staying on the create screen
+  // would offer a second save that makes a second event.
+  expect(
+    await screen.findByText("Complétez les champs manquants avant de publier."),
+  ).toBeInTheDocument();
+  expect(screen.getByText("Début est obligatoire")).toBeInTheDocument();
+  expect(screen.getByText("Lieu est obligatoire")).toBeInTheDocument();
+  expect(screen.getByLabelText("Titre")).toHaveValue("Sortie à définir");
+
+  const saved = await createdEvent("Sortie à définir");
+  expect(saved.publishedAt).toBeNull();
+});
+
+test("publishing a complete form saves and publishes in one go", async () => {
+  await renderCreateAndEdit();
+  await fillIn({
+    Titre: "Concert de printemps",
+    Lieu: "Halle des fêtes",
+    "Date de début": "2027-03-13",
+    "Heure de début": "17:00",
+    "Heure de fin": "19:00",
+  });
+  await userEvent.click(screen.getByRole("button", { name: "Publier" }));
+
+  await screen.findByText("planning");
+  const created = await createdEvent("Concert de printemps");
+  expect(created.publishedAt).not.toBeNull();
+});
+
+test("editing a draft offers both actions and lets the date go", async () => {
+  await renderEdit(8);
+
+  expect(screen.getByRole("button", { name: "Enregistrer le brouillon" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Publier" })).toBeInTheDocument();
+
+  // A start needs both halves, or neither: while the time is filled in, the
+  // date is required, and clearing the pair is what lets the date go.
+  await userEvent.clear(screen.getByLabelText("Date de début"));
+  await userEvent.clear(screen.getByLabelText("Heure de début"));
+  expect(screen.getByLabelText("Date de début")).not.toBeRequired();
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  await screen.findByText("planning");
+  await waitFor(async () => expect((await createdEvent("Concert d'automne")).startsAt).toBeNull());
+});
+
+test("a published event's form still requires its date and place", async () => {
+  await renderEdit(3);
+
+  expect(screen.getByLabelText("Date de début")).toBeRequired();
+  expect(screen.getByLabelText("Lieu")).toBeRequired();
+  expect(screen.getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Publier" })).not.toBeInTheDocument();
 });

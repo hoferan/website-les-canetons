@@ -708,6 +708,11 @@ export const fr = {
     newHeading: "Nouvel événement",
     editHeading: "Modifier l’événement",
     saveFailed: "L’enregistrement a échoué.",
+    // Un brouillon s’enregistre tel quel ; la publication est un second geste.
+    saveDraft: "Enregistrer le brouillon",
+    publish: "Publier",
+    draftHint:
+      "Un brouillon peut rester incomplet : seule la direction le voit, jusqu’à sa publication.",
     loadFailed: "Cet événement n’a pas pu être chargé.",
     loadFailedReload: "Cet événement n’a pas pu être chargé. Rechargez la page.",
 
