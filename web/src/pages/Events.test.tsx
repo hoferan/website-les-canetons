@@ -1343,3 +1343,15 @@ test("the drafts group is German in German", async () => {
   expect(within(region).getAllByTestId("draft-badge")[0]).toHaveTextContent("Entwurf");
   expect(within(region).getAllByTestId("event-when")[0]).toHaveTextContent("Datum noch offen");
 });
+
+test("a draft shows no answer count, because nobody can answer it yet", async () => {
+  await renderPlanning("demo.direction");
+
+  // Found in a screenshot: a draft card read "0/4 réponses", a fraction of a
+  // question nobody has been asked.
+  expect(within(draftsRegion()).queryByText(/réponses/)).not.toBeInTheDocument();
+  // While a published card still carries its fraction.
+  expect(
+    within(cardFor("Répétition + apéritif de Noël")).getByText(/réponses/),
+  ).toBeInTheDocument();
+});

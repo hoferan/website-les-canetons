@@ -56,7 +56,7 @@ export function EventCard({
           {isDraft(event) ? (
             <p
               data-testid="draft-badge"
-              className="mt-tight inline-block rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-ink"
+              className="mt-tight inline-block rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
             >
               {t("events.draftBadge")}
             </p>
@@ -97,7 +97,9 @@ export function EventCard({
               page -- the Tbd bug of #152, exactly. */}
           <dt className="text-ink-muted">{t("events.card.location")}</dt>
           <dd data-testid="event-location" className="text-ink">
-            {event.location ?? t("events.card.locationMissing")}
+            {event.location ?? (
+              <span className="text-ink-muted">{t("events.card.locationMissing")}</span>
+            )}
           </dd>
         </div>
 

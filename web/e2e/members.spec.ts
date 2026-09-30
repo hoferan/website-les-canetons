@@ -255,11 +255,16 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
       // AND THE RESULT OF IT, which is the number #182 is closed on. 287 when
       // this was written; the bound leaves room for a font or a heading change
       // without pinning a pixel.
-      const firstCardTop = await page
-        .getByTestId("event-card")
+      //
+      // THE FIRST BLOCK, NOT THE FIRST CARD. The committee's list opens with
+      // the drafts group, whose heading now sits where the first card used to.
+      // What this measures is the controls above whatever comes first, and
+      // that is either that heading or a card.
+      const firstBlockTop = await page
+        .locator("h2, [data-testid='event-card']")
         .first()
         .evaluate((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
-      expect(firstCardTop, "the control block above the first card has grown").toBeLessThan(300);
+      expect(firstBlockTop, "the control block above the first card has grown").toBeLessThan(300);
 
       // THE 44px FLOOR, MEASURED, which is the only place it can be. The jsdom
       // suite can see that `min-h-touch` is in a className and nothing more —
@@ -398,7 +403,12 @@ test("selecting a menu item on a touch phone does not also hit what is under it"
 
   await page.setViewportSize({ width: 390, height: 844 });
 
-  const card = page.getByTestId("event-card").first();
+  // The first card that CAN be answered: the committee's list now opens with
+  // the drafts, which take no answers and so have no such button.
+  const card = page
+    .getByTestId("event-card")
+    .filter({ has: page.getByRole("button", { name: /^Je ne viens pas à/ }) })
+    .first();
   const title = (await card.getByTestId("event-title").textContent()) ?? "";
   // `attendance.notComingToAria`, the accessible name RowActions never
   // touches: it carries the event's own title, so this also pins the query

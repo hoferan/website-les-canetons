@@ -347,8 +347,14 @@ export function Events() {
         meta={
           <EventMeta
             isPublic={mayManage ? event.isPublic : undefined}
-            answered={maySeeAnswers ? (event.answeredCount ?? undefined) : undefined}
-            answerable={maySeeAnswers ? (event.answerableCount ?? undefined) : undefined}
+            // NOT ON A DRAFT: "0/4 réponses" is a fraction of a question that has
+            // not been asked, since nobody can answer an event until it is published.
+            answered={
+              maySeeAnswers && !isDraft(event) ? (event.answeredCount ?? undefined) : undefined
+            }
+            answerable={
+              maySeeAnswers && !isDraft(event) ? (event.answerableCount ?? undefined) : undefined
+            }
             guests={
               maySeeGuests && event.takesRegistrations ? (event.guestCount ?? undefined) : undefined
             }
