@@ -514,8 +514,12 @@ export const de: typeof fr = {
     create_other: "{{count}} Anlässe erstellen",
     createNone: "Anlässe erstellen",
     noneChosen: "Wählen Sie mindestens einen Termin aus.",
-    createdCount_one: "{{count}} Anlass erstellt.",
-    createdCount_other: "{{count}} Anlässe erstellt.",
+    // Eine Serie entsteht als Entwürfe: Eine falsche Wiederholung soll nicht auf einen Schlag
+    // in der Planung aller landen.
+    draftsNote:
+      "Die Anlässe werden als Entwürfe erstellt: Lesen Sie sie in der Planung durch und veröffentlichen Sie sie dann.",
+    createdCount_one: "{{count}} Entwurf erstellt.",
+    createdCount_other: "{{count}} Entwürfe erstellt.",
     another: "Weitere Serie erstellen",
     dismissCreated: "Meldung schliessen",
   },

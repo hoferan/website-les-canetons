@@ -800,8 +800,12 @@ export const fr = {
     createNone: "Créer les événements",
     noneChosen: "Cochez au moins une date.",
     // Shown on the planning, where the generator lands after saving.
-    createdCount_one: "{{count}} événement créé.",
-    createdCount_other: "{{count}} événements créés.",
+    // Une série est créée en brouillons : une règle de récurrence fausse ne
+    // doit pas tomber d’un coup sur le planning de tout le monde.
+    draftsNote:
+      "Les événements sont créés comme brouillons : relisez-les sur le planning, puis publiez-les.",
+    createdCount_one: "{{count}} brouillon créé.",
+    createdCount_other: "{{count}} brouillons créés.",
     another: "Créer une autre série",
     dismissCreated: "Fermer ce message",
   },
