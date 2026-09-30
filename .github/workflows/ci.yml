@@ -505,7 +505,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes, all-green]
     # all-green passes a docs-only change, so the skip is decided here.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.changes.outputs.code == 'true'
+    #
+    # The status check is spelled out because the implicit success() would
+    # fail this job. It requires every job upstream to have succeeded, not
+    # just the ones in `needs`, and pr-title is skipped on every push. From
+    # 2026-09-24 to 2026-09-30 that skipped the deploy on every merge to main.
+    if: >-
+      !cancelled()
+      && needs.all-green.result == 'success'
+      && github.ref == 'refs/heads/main'
+      && github.event_name == 'push'
+      && needs.changes.outputs.code == 'true'
     environment: test
     concurrency:
       group: deploy-test
