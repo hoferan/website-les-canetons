@@ -266,16 +266,18 @@ class EventController extends Controller
     }
 
     /**
-     * Put a rehearsal or a gig on the planning.
+     * Write down a rehearsal or a gig as a draft.
      *
-     * Requires `events.manage`. Answers `201` with the created event.
+     * Requires `events.manage`. Answers `201` with the created event, whose
+     * `publishedAt` is `null`: it is visible to people who can manage events and
+     * to nobody else until it is published.
      *
-     * `startsAt` and `endsAt` are ISO 8601 instants carrying an offset, and
-     * `endsAt` must come after `startsAt` or it fails validation against that
-     * field with `must_be_after`. An event spanning two days is an ordinary
-     * row, not an error. `title`, `location`, `startsAt`, `endsAt` and
-     * `isPublic` are required; a missing one fails validation against itself
-     * with `required`.
+     * Only `title` is required; a missing one fails validation against itself
+     * with `required`. `startsAt`, `endsAt` and `location` may be left out and
+     * are required to publish. They are ISO 8601 instants carrying an offset, and
+     * when both dates are sent `endsAt` must come after `startsAt` or it fails
+     * validation against that field with `must_be_after`. An event spanning two
+     * days is an ordinary row, not an error. `isPublic` defaults to false.
      *
      * Setting `registrationClosesAt` is what opens the event to public
      * registration. It must come after `registrationOpensAt`, which may be
@@ -296,11 +298,11 @@ class EventController extends Controller
 
         $event = Event::create([
             'title' => $data['title'],
-            'starts_at' => $data['startsAt'],
-            'ends_at' => $data['endsAt'],
-            'location' => $data['location'],
+            'starts_at' => $data['startsAt'] ?? null,
+            'ends_at' => $data['endsAt'] ?? null,
+            'location' => $data['location'] ?? null,
             'attire' => $data['attire'] ?? null,
-            'is_public' => $data['isPublic'],
+            'is_public' => $data['isPublic'] ?? false,
             'notes' => $data['notes'] ?? null,
             'registration_opens_at' => $data['registrationOpensAt'] ?? null,
             'registration_closes_at' => $data['registrationClosesAt'] ?? null,
