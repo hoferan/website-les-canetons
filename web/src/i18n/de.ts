@@ -84,6 +84,9 @@ export const de: typeof fr = {
     registration_closed: "Die Anmeldung ist geschlossen.",
     history_entry_empty:
       "Schreiben Sie mindestens einen Titel oder einen Text, auf Französisch oder Deutsch.",
+    event_incomplete: "Ergänzen Sie die fehlenden Felder, bevor Sie veröffentlichen.",
+    event_has_answers:
+      "Es liegen bereits Antworten oder Anmeldungen vor: Die Veranstaltung kann nicht mehr zum Entwurf werden.",
     option_has_registrations:
       "Eine bereits gebuchte Option kann nicht gelöscht werden. Stornieren Sie zuerst die betroffenen Anmeldungen.",
     xlsx_unavailable:

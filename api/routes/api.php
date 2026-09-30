@@ -224,6 +224,15 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::patch('/events/{event}', [EventController::class, 'update'])
             ->middleware('etag:event');
 
+        // Publishing is its own act, not a field on the PATCH: a draft is
+        // saved as often as anybody likes and shown to the band once, on
+        // purpose. DELETE puts it back, and is refused after anybody has
+        // answered. Both carry the tag, like every other write on an event.
+        Route::post('/events/{event}/publish', [EventController::class, 'publish'])
+            ->middleware('etag:event');
+        Route::delete('/events/{event}/publish', [EventController::class, 'unpublish'])
+            ->middleware('etag:event');
+
         // No re-authentication on the delete, unlike the roster's — the call
         // MemberController::destroy() documents (ADR 0017), and an event
         // carries none of a member's account state. Protection against a

@@ -211,6 +211,12 @@ final class ErrorVocabulary
         'registration_closed' => [409, 'Bookings for this event have closed. Those already taken are '
             .'unaffected.'],
 
+        'event_incomplete' => [422, 'The event cannot be published yet. `errors` names each field it is still missing; '
+            .'fill them in and publish again.'],
+
+        'event_has_answers' => [409, 'Members have already answered or booked this event, so it cannot go back to '
+            .'draft: their answers would sit on an event nobody else can see.'],
+
         'option_has_registrations' => [409, 'That option has already been booked, so it cannot be deleted. '
             .'Cancel the bookings that reference it first.'],
 

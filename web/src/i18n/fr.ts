@@ -107,6 +107,9 @@ export const fr = {
     registration_not_open: "Les inscriptions ne sont pas encore ouvertes.",
     registration_closed: "Les inscriptions sont closes.",
     history_entry_empty: "Écrivez au moins un titre ou un texte, en français ou en allemand.",
+    event_incomplete: "Complétez les champs manquants avant de publier.",
+    event_has_answers:
+      "Des réponses ou des inscriptions existent déjà : l'événement ne peut plus repasser en brouillon.",
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ApiError;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
@@ -10,6 +11,7 @@ use App\Models\Event;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use App\Support\Emits;
 use App\Support\Permission;
 use App\Support\Search;
 use Dedoc\Scramble\Attributes\Group;
@@ -384,6 +386,84 @@ class EventController extends Controller
         // Loaded explicitly: an organiser who also plays has their own answer
         // on this event, and a response reporting myAttendance as null would
         // reset the buttons on their own screen. See EventResource.
+        $event->load(self::myAttendance($request));
+        $event->loadCount(self::counts());
+        $event->loadSum('registrationChoices as guest_count', 'quantity');
+        $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
+
+        return new EventResource($event);
+    }
+
+    /**
+     * Publish a draft.
+     *
+     * Requires `events.manage`. Makes the event visible to every member (and,
+     * once `isPublic` is set, on the public agenda) and answers with it.
+     *
+     * A published event always has a start, an end and a location. A draft
+     * missing any of them is refused with `event_incomplete`, and `errors`
+     * names each missing field with the reason `required`; nothing is changed.
+     * Publishing an event that is already published is not an error and moves
+     * nothing.
+     */
+    #[Emits('event_incomplete')]
+    public function publish(Request $request, Event $event): JsonResponse|EventResource
+    {
+        if (! $event->isDraft()) {
+            return $this->present($request, $event);
+        }
+
+        // The columns no longer say a published event has both dates (decision
+        // C6 in the events migration), so this is where it is held.
+        $missing = [];
+        foreach (['startsAt' => 'starts_at', 'endsAt' => 'ends_at', 'location' => 'location'] as $field => $column) {
+            if ($event->{$column} === null) {
+                $missing[] = ['field' => $field, 'reason' => 'required'];
+            }
+        }
+
+        if ($missing !== []) {
+            return ApiError::json(422, 'event_incomplete', 'The event is missing fields it needs to be published', $missing);
+        }
+
+        $event->published_at = now();
+        $event->save();
+
+        Audit::record($request->user(), 'event.published', 'event', $event->id, $event->title);
+
+        return $this->present($request, $event);
+    }
+
+    /**
+     * Put a published event back to draft.
+     *
+     * Requires `events.manage`. Refused with `event_has_answers` once any
+     * member has answered or anybody has booked, because their answers would
+     * then sit on an event nobody else can see. Unpublishing a draft is not an
+     * error and changes nothing.
+     */
+    #[Emits('event_has_answers')]
+    public function unpublish(Request $request, Event $event): JsonResponse|EventResource
+    {
+        if ($event->isDraft()) {
+            return $this->present($request, $event);
+        }
+
+        if ($event->attendance()->exists() || $event->registrations()->exists()) {
+            return ApiError::json(409, 'event_has_answers', 'Members have already answered or booked this event');
+        }
+
+        $event->published_at = null;
+        $event->save();
+
+        Audit::record($request->user(), 'event.unpublished', 'event', $event->id, $event->title);
+
+        return $this->present($request, $event);
+    }
+
+    /** The event as every write answers with it, carrying the caller's own answer and the counts. */
+    private function present(Request $request, Event $event): EventResource
+    {
         $event->load(self::myAttendance($request));
         $event->loadCount(self::counts());
         $event->loadSum('registrationChoices as guest_count', 'quantity');
