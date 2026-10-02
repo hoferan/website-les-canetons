@@ -99,8 +99,12 @@ npm run fix     # auto-fix
 `npm run check` does not run the Laravel suite — it needs a live database:
 
 ```bash
-docker compose exec -w /var/www/html/_api web php artisan test
+npm run test:api
 ```
+
+PHP commands run in the compose `php` service when the stack is up:
+`npm run artisan -- <command>`, `npm run composer -- <command>`,
+`npm run php -- <args>`.
 
 A Husky pre-commit hook lints staged files automatically. See **[CLAUDE.md](CLAUDE.md)**
 for architecture details and conventions.

@@ -461,8 +461,9 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   that layer cannot translate — so any new error must emit a token that exists
   in **both** `web/src/i18n/fr.ts` and `web/src/i18n/de.ts`.
   `api/tests/Feature/ApiErrorVocabularyTest.php` enforces this, reading both
-  files directly (which is why the dev container mounts `web/` read-only at
-  `/srv/web` — the container's document root holds only built bundles).
+  files directly through the repository tree (the compose `php` service mounts
+  the whole repository, while `web`'s document root holds only built bundles,
+  so the suite must not run in `web`).
   German is not optional there: a token missing from `de.ts` falls back to the
   French string through i18next's `fallbackLng`, so a German page renders
   French and nothing complains.
@@ -476,7 +477,7 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
 npm run dev         # generate the docker .htaccess overlay, then bring the stack up
 npm run dev:web     # Vite dev server on :5173 — where you actually work
 npm run build       # refresh the artifact the :8090 stack serves
-npm run smoke       # HTTP smoke checks against the built artifact (9 checks)
+npm run smoke       # HTTP smoke checks against the built artifact (10 checks)
 npm run dev:down    # stop
 ```
 
@@ -512,12 +513,22 @@ Relatedly, the `dist/build` mount **must not be `:ro`**. The `.htaccess` mount
 nests inside it, and Docker cannot create that mountpoint against a read-only
 parent — the container never starts.
 
-**Six services**; five stay running and one is a one-shot. `deps` installs
-Laravel's Composer dependencies into the `api_vendor` volume and exits; `web`
-waits on it via `service_completed_successfully`, and on `db` being healthy —
-that healthcheck pings `-h 127.0.0.1`, not `localhost`, because the unix-socket
+**Six services, all long-running.** `php` is the PHP tools container
+(`docker/php/`): PHP 8.4 CLI with Composer, the whole repository at `/repo`,
+the `api_vendor` volume over `api/vendor` and `docker/api/env.docker` as
+`api/.env`. Its entrypoint runs `composer install` into the volume and only
+then reports healthy. `web` waits on that, and on `db` being healthy — that
+healthcheck pings `-h 127.0.0.1`, not `localhost`, because the unix-socket
 path falsely reports healthy against MariaDB's temporary `--skip-networking`
 init server.
+
+**Every PHP command goes through `tools/php-runner.mjs`**: `docker compose
+exec php …` when that service is healthy, a native `php` otherwise (web
+session, CI), and with neither it stops and says to run `npm run dev`. A
+Docker daemon without the stack does not count, so a CI runner takes the
+native branch. Pint, Larastan, the OpenAPI export and the Laravel suite all
+use it. In the container nothing is installed on the host: the volume is the
+only `vendor/` the tools see, and a host `api/vendor` is shadowed, not used.
 
 **Migrations run from the `web` entrypoint** (`php _api/artisan migrate
 --force`, wrapped in a retry because `artisan` has no connection retry of its
@@ -576,7 +587,14 @@ npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e)
 npm run test:js       # node:test over tools/
 npm run lint:api      # Laravel Pint (--test)
+npm run artisan -- route:list   # artisan, from api/
+npm run composer -- outdated    # Composer, from api/
+npm run php -- -v               # php, from the repo root
 ```
+
+The three pass-throughs run through `tools/php-runner.mjs`, so they land in
+the `php` service when the stack is up. The `--` is npm's: without it npm
+keeps the flags for itself.
 
 **`npm run check` does not run the Laravel suite.** It needs a live database,
 so it has a command of its own:
@@ -585,12 +603,13 @@ so it has a command of its own:
 npm run test:api
 ```
 
-`tools/phpunit.mjs` picks where to run it: inside the compose `web` service
-when the stack is up, natively otherwise. The raw form is still
-`docker compose exec -w /var/www/html/_api web php artisan test`, and in Git
-Bash that one needs `MSYS_NO_PATHCONV=1` in front or the `-w` argument is
-rewritten to a Windows path and Docker rejects it. PowerShell is unaffected.
-`npm run test:api` is not affected either way.
+`tools/phpunit.mjs` runs it through the runner: inside the compose `php`
+service when the stack is up, natively otherwise. The raw form is
+`docker compose exec -w /repo/api php php artisan test`, and in Git Bash that
+one needs `MSYS_NO_PATHCONV=1` in front or the `-w` argument is rewritten to a
+Windows path. PowerShell is unaffected, and so is `npm run test:api`. Do not
+run the suite in `web`: its document root has no `web/` source, so
+`ApiErrorVocabularyTest` fails there.
 
 **Run the web suite from PowerShell, not Git Bash.** Git Bash reports the cwd
 with a **lowercase** drive letter (`c:\Workspace\...`); PowerShell reports

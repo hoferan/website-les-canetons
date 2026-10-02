@@ -307,7 +307,9 @@ Playwright expects, and the full binary is the one verified working.
 Verified 2026-09-22: `web/e2e/members.spec.ts`, 5 tests, all passing.
 
 `npm run test:api` (`tools/phpunit.mjs`) runs the suite inside the compose
-`web` service when the stack is up, and natively otherwise. The native branch
+`php` service when the stack is up, and natively otherwise, which is always the
+case here. Pint, Larastan, the OpenAPI export and `npm run artisan|composer|php`
+choose the same way, through `tools/php-runner.mjs`. The native branch
 exports `DB_HOST=127.0.0.1`, because `api/phpunit.xml` pins `DB_HOST=db` — the
 compose service name, which resolves inside the stack and nowhere else. PHPUnit
 does not overwrite a variable that is already set, so one export is the whole

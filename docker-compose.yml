@@ -1,18 +1,42 @@
 services:
-  # One-shot init: installs the API's PHP deps into its shared volume, then
-  # exits. `web` waits for it via service_completed_successfully, which is why
-  # `docker compose up` needs no host-side vendor/ and no manual composer step.
+  # The PHP tools container, kept running so a PHP command never pays for a
+  # cold start. tools/php-runner.mjs execs into it for Pint, Larastan, the
+  # OpenAPI export, the Laravel suite and `npm run artisan|composer|php`.
   #
-  # It used to install two projects. The old front end's Composer project is
-  # gone — Laravel is the only PHP left.
-  deps:
-    image: composer:2
+  # Its entrypoint installs the API's Composer dependencies into api_vendor
+  # first, then marks the container healthy, and `web` waits for that. This is
+  # why `docker compose up` needs no host-side vendor/ and no manual composer
+  # step. See docker/php/entrypoint.sh.
+  #
+  # The whole repository is mounted, not only api/, because the suite reads
+  # web/src/i18n (ApiErrorVocabularyTest) and the runner execs with paths
+  # relative to the repository root. api_vendor sits over api/vendor, so the
+  # volume is the only vendor/ these tools see: a host-side api/vendor, if
+  # one exists, is shadowed rather than used.
+  php:
+    build: ./docker/php
+    working_dir: /repo
+    init: true
+    entrypoint: ["sh", "/repo/docker/php/entrypoint.sh"]
+    command: ["sleep", "infinity"]
     volumes:
-      - ./docker/web/install-vendor.sh:/install-vendor.sh:ro
-      - ./api:/api
-      - api_vendor:/api/vendor
-    entrypoint: ["sh", "/install-vendor.sh"]
-    restart: "no"
+      - .:/repo
+      - api_vendor:/repo/api/vendor
+      # The same file `web` reads as its .env, so artisan run here talks to
+      # the stack's own database and mail.
+      - ./docker/api/env.docker:/repo/api/.env:ro
+    # Healthy once the entrypoint's composer install has finished.
+    # start_period is the first install from an empty volume, which takes
+    # minutes; failures inside it do not count, and the first pass ends it.
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/vendor-ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+      start_period: 15m
+    depends_on:
+      db:
+        condition: service_healthy
 
   # The Vite dev server for web/, on :5173, proxying /api and /sanctum to the
   # `web` container (see vite.config.ts). The browser therefore sees ONE origin,
@@ -89,13 +113,6 @@ services:
       - ./api:/var/www/html/_api
       - ./docker/api/env.docker:/var/www/html/_api/.env:ro
       - api_vendor:/var/www/html/_api/vendor
-      # The tracked web/ tree, read-only and OUTSIDE the document root, purely
-      # so ApiErrorVocabularyTest can read web/src/i18n/fr.ts. That guard asserts
-      # every error token the API can emit has French copy, and the document
-      # root will hold only the built SPA — hashed bundles, no source. Mounting
-      # it under /var/www/html instead would put source in the document root for
-      # no reason. See ApiErrorVocabularyTest::I18N_PATHS.
-      - ./web:/srv/web:ro
     # No `environment:` block, deliberately. Laravel's configuration comes from
     # the .env mounted above — that mount is the whole point, since it
     # exercises Laravel's real dotenv path and mirrors how each server owns its
@@ -104,8 +121,8 @@ services:
     # DB_HOST silently wins over the file and that .env line becomes dead
     # config.
     depends_on:
-      deps:
-        condition: service_completed_successfully
+      php:
+        condition: service_healthy
       db:
         condition: service_healthy
       assets:

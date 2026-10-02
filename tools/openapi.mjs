@@ -1,10 +1,9 @@
 // Exports the Laravel API's OpenAPI document to api/openapi.json, which is
 // committed and consumed by orval (see orval.config.ts).
 //
-// Runs through runInPhp(), so it uses the php:8.4-cli container when a Docker
-// daemon is reachable and the locally-installed php when it is not (Claude Code
-// web sessions) — the same mechanism as tools/pint.mjs. It never talks to the
-// compose stack, so it also works with the stack down.
+// Runs through runPhp() (tools/php-runner.mjs): inside the compose `php`
+// service when it is up, with the native php otherwise (Claude Code web
+// sessions, CI) — the same mechanism as tools/pint.mjs.
 //
 // APP_KEY is a fixed dummy: exporting is static analysis over routes and
 // controllers and must never need a real key to regenerate a checked-in
@@ -32,15 +31,20 @@
 // database happens to be configured or reachable.
 //
 // Usage: node tools/openapi.mjs
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { ensureApiVendor } from "./api-vendor.mjs";
-import { runInPhp } from "./php-in-docker.mjs";
+import { phpTarget, runPhp } from "./php-runner.mjs";
 
-ensureApiVendor({
-  marker: "api/vendor/dedoc/scramble",
-  label: "openapi",
-  args: ["install", "--working-dir=api", "--no-interaction", "--no-progress", "--no-scripts"],
-});
+// Only the native branch installs: in the container, api/vendor is the
+// api_vendor volume, which the `php` service's entrypoint has already filled.
+// A host install there would write a second vendor/ that nothing reads.
+if (phpTarget() === "native") {
+  ensureApiVendor({
+    marker: "api/vendor/dedoc/scramble",
+    label: "openapi",
+    args: ["install", "--working-dir=api", "--no-interaction", "--no-progress", "--no-scripts"],
+  });
+}
 
 // APP_NAME is pinned for the same reason as everything else here: determinism.
 // config/scramble.php leaves `info.title` null, so Scramble falls back to
@@ -50,32 +54,33 @@ ensureApiVendor({
 // machine and Laravel's default "Laravel" on another, and the openapi-drift job
 // fails for whoever regenerated it somewhere else. The value matches
 // api/.env.example and docker/api/env.docker.
-const env =
-  'APP_NAME="Les Canetons API" ' +
-  "APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= " +
-  "APP_ENV=production DB_CONNECTION=sqlite DB_DATABASE=/tmp/openapi-export.sqlite";
+//
+// The throwaway database sits in api/database/, which its own .gitignore keeps
+// out of git (*.sqlite*). It has to be inside the repository: this script
+// creates and removes it from the host, and the container sees the host only
+// through the /repo bind mount. Laravel resolves the relative DB_DATABASE
+// against api/, the working directory of every step below.
+const SQLITE = "database/openapi-export.sqlite";
+const env = {
+  APP_NAME: "Les Canetons API",
+  APP_KEY: "base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+  APP_ENV: "production",
+  DB_CONNECTION: "sqlite",
+  DB_DATABASE: SQLITE,
+};
+const artisan = (...args) => runPhp(["php", "artisan", ...args], { cwd: "api", env });
 
-const steps = [
-  // Registers Scramble/Sanctum's service providers into bootstrap/cache — the
-  // composer install above runs with --no-scripts, so this hasn't happened yet.
-  `${env} php artisan package:discover --no-ansi`,
-  // Fresh throwaway schema every run — never reuse a stale file across runs.
-  // This wipe-at-start is what guarantees a fresh schema even after a
-  // previous run crashed before reaching its own cleanup below.
-  "rm -f /tmp/openapi-export.sqlite && touch /tmp/openapi-export.sqlite",
-  `${env} php artisan migrate --force`,
-  `${env} php artisan scramble:export`,
-  // Only the docker-run path auto-discards this file (container --rm); the
-  // local-php fallback (Claude Code web sessions) runs against the host's
-  // real /tmp, so clean up explicitly once the export has succeeded.
-  "rm -f /tmp/openapi-export.sqlite",
-];
-
-try {
-  runInPhp(`cd api && ${steps.join(" && ")}`);
-} catch {
-  process.exit(1);
-}
+// Registers Scramble/Sanctum's service providers into bootstrap/cache — the
+// native install above runs with --no-scripts, so this hasn't happened yet.
+artisan("package:discover", "--no-ansi");
+// Fresh throwaway schema every run — never reuse a stale file across runs.
+// This wipe-at-start is what guarantees a fresh schema even after a previous
+// run crashed before reaching its own cleanup below.
+rmSync(`api/${SQLITE}`, { force: true });
+writeFileSync(`api/${SQLITE}`, "");
+artisan("migrate", "--force");
+artisan("scramble:export");
+rmSync(`api/${SQLITE}`, { force: true });
 
 // scramble:export writes the file without a trailing newline, unlike every
 // other tracked JSON file in this repo (package.json, composer.json both end

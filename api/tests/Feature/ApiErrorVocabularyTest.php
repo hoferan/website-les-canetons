@@ -43,23 +43,19 @@ use ReflectionClass;
 class ApiErrorVocabularyTest extends TestCase
 {
     /**
-     * Candidate locations of each locale's vocabulary, because the two layouts
-     * differ.
+     * Where each locale's vocabulary lives: <root>/web/src/i18n/<locale>.ts,
+     * three levels up from this file.
      *
-     * In the repository tree — a developer's checkout and CI — it sits at
-     * <root>/web/src/i18n/<locale>.ts, three levels up from this file. In the
-     * dev container the document root is the BUILT artifact, which contains
-     * only hashed bundles, so the source is not reachable from _api/ at all;
-     * docker-compose.yml mounts the tracked web/ read-only at /srv/web purely
-     * so this guard can still read it. The suite runs with a -w of
-     * /var/www/html/_api, so neither cwd nor one absolute path would do.
+     * One layout covers every place the suite runs. A developer's checkout,
+     * CI and a web session run it from the repository tree, and so does the
+     * compose `php` service, which mounts the whole repository at /repo. Run
+     * it inside `web` instead and this fails: that container's document root
+     * is the built artifact, with no web/ source in it.
      *
-     * (api/app/ needs no such list: this file sits inside api/, so ../../app is
-     * the same relative path in both layouts.)
+     * Kept a list so the failure message below can name every place it looked.
      */
     private const I18N_DIRS = [
         __DIR__.'/../../../web/src/i18n',
-        '/srv/web/src/i18n',
     ];
 
     /**
