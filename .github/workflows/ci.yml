@@ -401,14 +401,10 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          # tools/openapi.mjs runs the actual export inside a php:8.4-cli
-          # Docker container when a daemon is reachable (see
-          # tools/php-in-docker.mjs) — true on GitHub-hosted ubuntu-latest
-          # runners, and that image was confirmed locally to already carry
-          # pdo_sqlite/sqlite3. These two are declared anyway for the local-php
-          # fallback path (no Docker daemon), the same belt-and-suspenders
-          # reasoning as tests-api declaring pdo_mysql above: none of them is in
-          # setup-php's default set.
+          # tools/openapi.mjs exports with this native php: a runner has a
+          # Docker daemon but no compose stack, so tools/php-runner.mjs takes
+          # its native branch. The export runs against a throwaway SQLite
+          # database, and neither extension is in setup-php's default set.
           extensions: pdo_sqlite, sqlite3
           tools: composer
           # No coverage anywhere in this repo; see the lint-api job above for
@@ -420,9 +416,8 @@ jobs:
       - name: Install Node dev tools
         run: npm ci
       # Same install as the `php` job's Pint step and tests-api's PHPUnit step.
-      # Pre-installing here means the Docker-run export below (which bind-mounts
-      # the repo) finds api/vendor already populated instead of installing it
-      # again inside the container.
+      # Pre-installing here means the export below finds api/vendor already
+      # populated, and its own ensureApiVendor() has nothing to do.
       - name: Install Laravel API dependencies
         run: composer install --no-interaction --no-progress --no-scripts --working-dir=api
       - name: Regenerate the OpenAPI document

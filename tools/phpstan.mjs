@@ -8,23 +8,22 @@
 //
 // Level 5, set in api/phpstan.neon with the reasoning for not going higher.
 //
-// Executes through runInPhp(), so it uses the php:8.4-cli container when a
-// Docker daemon is reachable and falls back to the locally-installed php when
-// it is not (Claude Code web sessions) — the same mechanism as pint.mjs and
-// php-lint.mjs. It never talks to the compose stack, so it also works with the
-// stack down.
+// Executes through runPhp() (tools/php-runner.mjs): inside the compose `php`
+// service when it is up, with the native php otherwise (Claude Code web
+// sessions, CI) — the same mechanism as pint.mjs.
 //
-// api/vendor/ lives in a Docker volume, never on the host, so the binary is
-// usually absent here: install it on first use through the same Composer
-// wrapper the rest of the tooling uses. Unlike Pint, Larastan BOOTS LARAVEL to
-// understand models and facades, so --no-scripts is not passed — the autoload
-// map and package discovery both have to be real.
+// On the native branch api/vendor is the host's own, so the binary may be
+// absent: install it on first use through the same Composer wrapper the rest
+// of the tooling uses. Unlike Pint, Larastan BOOTS LARAVEL to understand
+// models and facades, so --no-scripts is not passed — the autoload map and
+// package discovery both have to be real. In the container the service's
+// entrypoint has already installed everything, scripts included.
 //
 // Usage: node tools/phpstan.mjs [extra phpstan args]
 import { existsSync } from 'node:fs';
 
 import { ensureApiVendor } from './api-vendor.mjs';
-import { runInPhp } from './php-in-docker.mjs';
+import { phpTarget, runPhp } from './php-runner.mjs';
 
 const args = process.argv.slice(2);
 
@@ -51,20 +50,16 @@ if (process.env.CLAUDE_CODE_REMOTE === 'true' && !existsSync('api/vendor/bin/php
 
 // NOTE the missing --no-scripts, which is deliberate and explained above: the
 // autoload map and package discovery both have to be real for Larastan.
-ensureApiVendor({
-  marker: 'api/vendor/bin/phpstan',
-  label: 'phpstan',
-  args: ['install', '--working-dir=api', '--no-interaction', '--no-progress'],
-});
+if (phpTarget() === 'native') {
+  ensureApiVendor({
+    marker: 'api/vendor/bin/phpstan',
+    label: 'phpstan',
+    args: ['install', '--working-dir=api', '--no-interaction', '--no-progress'],
+  });
+}
 
 // --memory-limit: Larastan holds the whole framework's type graph, and the
 // default 128M is not enough to finish this project's app/ + tests/.
-try {
-  runInPhp(
-    `cd api && php vendor/bin/phpstan analyse --memory-limit=1G --no-progress ${args
-      .map((a) => `'${a}'`)
-      .join(' ')}`
-  );
-} catch {
-  process.exit(1);
-}
+runPhp(['php', 'vendor/bin/phpstan', 'analyse', '--memory-limit=1G', '--no-progress', ...args], {
+  cwd: 'api',
+});
