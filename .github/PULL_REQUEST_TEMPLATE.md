@@ -52,7 +52,7 @@
 ## Testing
 
 - [ ] `npm run check` passes locally
-- [ ] The Laravel suite passes in Docker (`docker compose exec -w /var/www/html/_api web php artisan test`) — API changes only
+- [ ] The Laravel suite passes in Docker (`npm run test:api` with the stack up) — API changes only
 - [ ] Verified in local Docker (`npm run dev`) where relevant
 
 ## Config & secrets safety
