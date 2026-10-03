@@ -216,7 +216,6 @@
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
  * | `POST /images/{image}/file` | `GET /images/{image}` |
- * | `PUT /photo-placements` | `GET /photo-placements` |
  * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
  * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
@@ -236,6 +235,11 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
+ * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
+ * image id in one place. Placements in different places never touch, and in the
+ * same place the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -349,7 +353,9 @@ import type {
   MemberResource,
   MemberRoleReplace200,
   MemberStore201,
-  PhotoPlacementsResource,
+  PhotoPlacementHistory200,
+  PhotoPlacementRegister200,
+  PhotoPlacementSite200,
   RegistrationDestroy200,
   RegistrationExport200Four,
   RegistrationFormResource,
@@ -1358,8 +1364,6 @@ export const getBandIndexResponseMock = (
           width: faker.number.int(),
           height: faker.number.int(),
           srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-          altFr: null,
-          altDe: null,
         },
         null,
       ]),
@@ -1409,14 +1413,6 @@ export const getHistoryEntryIndexResponseMock = (
     important: faker.datatype.boolean(),
     icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
     imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-    imageAltFr: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
-    imageAltDe: faker.helpers.arrayElement([
-      faker.string.alpha({ length: { min: 10, max: 20 } }),
-      null,
-    ]),
     photo: faker.helpers.arrayElement([
       faker.helpers.arrayElement([
         {
@@ -1424,14 +1420,6 @@ export const getHistoryEntryIndexResponseMock = (
           width: faker.number.int(),
           height: faker.number.int(),
           srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-          altFr: faker.helpers.arrayElement([
-            faker.string.alpha({ length: { min: 10, max: 20 } }),
-            null,
-          ]),
-          altDe: faker.helpers.arrayElement([
-            faker.string.alpha({ length: { min: 10, max: 20 } }),
-            null,
-          ]),
         },
         null,
       ]),
@@ -1457,14 +1445,6 @@ export const getHistoryEntryStoreResponseMock = (
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-  imageAltFr: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
-  imageAltDe: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
   photo: faker.helpers.arrayElement([
     faker.helpers.arrayElement([
       {
@@ -1472,14 +1452,6 @@ export const getHistoryEntryStoreResponseMock = (
         width: faker.number.int(),
         height: faker.number.int(),
         srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        altFr: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
-        altDe: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
       },
       null,
     ]),
@@ -1503,14 +1475,6 @@ export const getHistoryEntryShowResponseMock = (
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-  imageAltFr: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
-  imageAltDe: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
   photo: faker.helpers.arrayElement([
     faker.helpers.arrayElement([
       {
@@ -1518,14 +1482,6 @@ export const getHistoryEntryShowResponseMock = (
         width: faker.number.int(),
         height: faker.number.int(),
         srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        altFr: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
-        altDe: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
       },
       null,
     ]),
@@ -1549,14 +1505,6 @@ export const getHistoryEntryUpdateResponseMock = (
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-  imageAltFr: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
-  imageAltDe: faker.helpers.arrayElement([
-    faker.string.alpha({ length: { min: 10, max: 20 } }),
-    null,
-  ]),
   photo: faker.helpers.arrayElement([
     faker.helpers.arrayElement([
       {
@@ -1564,14 +1512,6 @@ export const getHistoryEntryUpdateResponseMock = (
         width: faker.number.int(),
         height: faker.number.int(),
         srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        altFr: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
-        altDe: faker.helpers.arrayElement([
-          faker.string.alpha({ length: { min: 10, max: 20 } }),
-          null,
-        ]),
       },
       null,
     ]),
@@ -1812,33 +1752,57 @@ export const getConfigShowResponseMock = (
   ...overrideResponse,
 });
 
-export const getPhotoPlacementShowResponseMock = (
-  overrideResponse: Partial<Extract<PhotoPlacementsResource, object>> = {},
-): PhotoPlacementsResource => ({
-  band: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
-  concert: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
-  registers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-    () => ({
-      sectionId: faker.number.int(),
-      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-    }),
-  ),
+export const getPhotoPlacementSiteResponseMock = (
+  overrideResponse: Partial<Extract<PhotoPlacementSite200, object>> = {},
+): PhotoPlacementSite200 => ({
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
   ...overrideResponse,
 });
 
-export const getPhotoPlacementUpdateResponseMock = (
-  overrideResponse: Partial<Extract<PhotoPlacementsResource, object>> = {},
-): PhotoPlacementsResource => ({
-  band: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
-  concert: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
-  registers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
-    () => ({
-      sectionId: faker.number.int(),
-      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
-      imageId: faker.helpers.arrayElement([faker.number.int(), null]),
-    }),
-  ),
+export const getPhotoPlacementRegisterResponseMock = (
+  overrideResponse: Partial<Extract<PhotoPlacementRegister200, object>> = {},
+): PhotoPlacementRegister200 => ({
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
+  ...overrideResponse,
+});
+
+export const getPhotoPlacementHistoryResponseMock = (
+  overrideResponse: Partial<Extract<PhotoPlacementHistory200, object>> = {},
+): PhotoPlacementHistory200 => ({
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
   ...overrideResponse,
 });
 
@@ -1852,8 +1816,6 @@ export const getSitePhotoIndexResponseMock = (
         width: faker.number.int(),
         height: faker.number.int(),
         srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        altFr: null,
-        altDe: null,
       },
       null,
     ]),
@@ -1866,8 +1828,6 @@ export const getSitePhotoIndexResponseMock = (
         width: faker.number.int(),
         height: faker.number.int(),
         srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
-        altFr: null,
-        altDe: null,
       },
       null,
     ]),
@@ -3340,23 +3300,23 @@ export const getConfigShowMockHandler = (
   );
 };
 
-export const getPhotoPlacementShowMockHandler = (
+export const getPhotoPlacementSiteMockHandler = (
   overrideResponse?:
-    | PhotoPlacementsResource
+    | PhotoPlacementSite200
     | ((
-        info: Parameters<Parameters<typeof http.get>[1]>[0],
-      ) => Promise<PhotoPlacementsResource> | PhotoPlacementsResource),
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<PhotoPlacementSite200> | PhotoPlacementSite200),
   options?: RequestHandlerOptions,
 ) => {
-  return http.get(
-    "*/photo-placements",
-    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+  return http.put(
+    "*/site-photos/:slot",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getPhotoPlacementShowResponseMock(),
+          : getPhotoPlacementSiteResponseMock(),
         { status: 200 },
       );
     },
@@ -3364,23 +3324,47 @@ export const getPhotoPlacementShowMockHandler = (
   );
 };
 
-export const getPhotoPlacementUpdateMockHandler = (
+export const getPhotoPlacementRegisterMockHandler = (
   overrideResponse?:
-    | PhotoPlacementsResource
+    | PhotoPlacementRegister200
     | ((
         info: Parameters<Parameters<typeof http.put>[1]>[0],
-      ) => Promise<PhotoPlacementsResource> | PhotoPlacementsResource),
+      ) => Promise<PhotoPlacementRegister200> | PhotoPlacementRegister200),
   options?: RequestHandlerOptions,
 ) => {
   return http.put(
-    "*/photo-placements",
+    "*/sections/:section/photo",
     async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
       return HttpResponse.json(
         overrideResponse !== undefined
           ? typeof overrideResponse === "function"
             ? await overrideResponse(info)
             : overrideResponse
-          : getPhotoPlacementUpdateResponseMock(),
+          : getPhotoPlacementRegisterResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getPhotoPlacementHistoryMockHandler = (
+  overrideResponse?:
+    | PhotoPlacementHistory200
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<PhotoPlacementHistory200> | PhotoPlacementHistory200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/history/:historyEntry/photo",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getPhotoPlacementHistoryResponseMock(),
         { status: 200 },
       );
     },
@@ -3473,7 +3457,8 @@ export const getLesCanetonsAPIMock = () => [
   getImageDestroyMockHandler(),
   getImageReplaceMockHandler(),
   getConfigShowMockHandler(),
-  getPhotoPlacementShowMockHandler(),
-  getPhotoPlacementUpdateMockHandler(),
+  getPhotoPlacementSiteMockHandler(),
+  getPhotoPlacementRegisterMockHandler(),
+  getPhotoPlacementHistoryMockHandler(),
   getSitePhotoIndexMockHandler(),
 ];

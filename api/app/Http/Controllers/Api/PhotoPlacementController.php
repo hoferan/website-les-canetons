@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\UpdatePhotoPlacementsRequest;
-use App\Http\Resources\PhotoPlacementsResource;
+use App\Http\Requests\PlacePhotoRequest;
+use App\Http\Resources\PhotoResource;
+use App\Models\HistoryEntry;
+use App\Models\Image;
 use App\Models\Section;
 use App\Models\SitePhoto;
 use App\Support\Audit;
@@ -12,64 +14,66 @@ use App\Support\ImageReference;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\JsonResponse;
 
+/**
+ * Puts a library photo in one place, or takes it out.
+ *
+ * ONE WRITE PER PLACE, because a photo is chosen on the page that shows it,
+ * one place at a time. Each write sets a single value, so two editors working
+ * on different places cannot overwrite each other, and none of them carries
+ * `If-Match`: see App\Http\Middleware\ConditionalWrite for why.
+ */
 #[Group('Images')]
 class PhotoPlacementController extends Controller
 {
     /**
-     * Where each photo is placed. Requires `images.manage`.
+     * Places the band photo or the concert photo. Requires `images.manage`.
      *
-     * The band photo, the concert photo and one slot per register, each the
-     * id of a library image or null. Read this before replacing the
-     * placements, and quote the `ETag` it returns in the `If-Match` header of
-     * the PUT.
+     * `{slot}` is `band` (the band page) or `concert` (the home page). Send
+     * `imageId` null to empty the slot.
      */
-    #[Endpoint(operationId: 'photoPlacement.show')]
-    #[Response(200, 'Every slot and what sits in it.')]
-    public function show(): PhotoPlacementsResource
+    #[Endpoint(operationId: 'photoPlacement.site')]
+    #[Response(200, 'The photo the slot now shows, or null.')]
+    public function site(PlacePhotoRequest $request, string $slot): JsonResponse
     {
-        return PhotoPlacementsResource::current();
+        /** @var SitePhoto $place */
+        $place = SitePhoto::query()->findOrFail($slot);
+
+        return $this->place($request, $place, 'site_photo', null, $slot);
     }
 
-    /**
-     * Places photos. Requires `images.manage` and the `If-Match` from the read.
-     *
-     * Send the complete placements, in the shape the read returns. Replaying
-     * the same body leaves the same placements, and `imageId` null empties a
-     * slot. The register list must name every register exactly once, or the
-     * request answers `400 validation_failed` against `registers`, as it does
-     * for an `imageId` that is not in the library.
-     *
-     * Returns the placements as they now stand.
-     */
-    #[Endpoint(operationId: 'photoPlacement.update')]
-    #[Response(200, 'The placements as they now stand.')]
-    public function update(UpdatePhotoPlacementsRequest $request): PhotoPlacementsResource
+    /** Places a register's photo on the band page. Requires `images.manage`. */
+    #[Endpoint(operationId: 'photoPlacement.register')]
+    #[Response(200, 'The photo the register now shows, or null.')]
+    public function register(PlacePhotoRequest $request, Section $section): JsonResponse
     {
-        /** @var array{band: array<string, mixed>, concert: array<string, mixed>, registers: list<array<string, mixed>>} $body */
-        $body = $request->validated();
+        return $this->place($request, $section, 'section', $section->id, $section->name);
+    }
 
-        $references = [];
-        foreach (SitePhoto::SLOTS as $slot) {
-            $references["{$slot}.imageId"] = $body[$slot]['imageId'] ?? null;
-        }
-        foreach ($body['registers'] as $index => $row) {
-            $references["registers.{$index}.imageId"] = $row['imageId'] ?? null;
-        }
+    /** Places a history entry's photo. Requires `history.manage` and `images.manage`. */
+    #[Endpoint(operationId: 'photoPlacement.history')]
+    #[Response(200, 'The photo the entry now shows, or null.')]
+    public function history(PlacePhotoRequest $request, HistoryEntry $historyEntry): JsonResponse
+    {
+        $label = $historyEntry->title_fr ?? $historyEntry->title_de ?? $historyEntry->occurred_on->toDateString();
 
-        ImageReference::guard(fn () => DB::transaction(function () use ($body): void {
-            foreach (SitePhoto::SLOTS as $slot) {
-                SitePhoto::query()->whereKey($slot)->update(['image_id' => $body[$slot]['imageId']]);
-            }
+        return $this->place($request, $historyEntry, 'history_entry', $historyEntry->id, mb_substr($label, 0, 80));
+    }
 
-            foreach ($body['registers'] as $row) {
-                Section::query()->whereKey($row['sectionId'])->update(['image_id' => $row['imageId']]);
-            }
-        }), $references);
+    private function place(PlacePhotoRequest $request, Model $place, string $type, ?int $id, string $label): JsonResponse
+    {
+        $imageId = $request->imageId();
 
-        Audit::record($request->user(), 'photos.placed', 'photos', null, 'band page photos');
+        ImageReference::guard(
+            fn () => $place->forceFill(['image_id' => $imageId])->save(),
+            ['imageId' => $imageId],
+        );
+        Audit::record($request->user(), $imageId === null ? 'photo.removed' : 'photo.placed', $type, $id, $label);
 
-        return PhotoPlacementsResource::current();
+        return response()->json([
+            'photo' => PhotoResource::of($imageId === null ? null : Image::query()->find($imageId)),
+        ]);
     }
 }

@@ -45,7 +45,7 @@ function Register({ register }: { register: PublicSectionResource }) {
       <SlotPhoto
         slot={{ kind: "register", sectionId: register.id, name: register.name }}
         photo={register.photo}
-        fallbackAlt={register.name}
+        alt={register.name}
       />
 
       <p className="mt-tight text-ink-muted">
@@ -103,11 +103,7 @@ export function Band() {
       {sitePhotos.isPending ? (
         <PhotoReserved />
       ) : (
-        <SlotPhoto
-          slot={{ kind: "band" }}
-          photo={bandPhoto}
-          fallbackAlt="Les Canetons de Fribourg"
-        />
+        <SlotPhoto slot={{ kind: "band" }} photo={bandPhoto} alt="Les Canetons de Fribourg" />
       )}
 
       <RegisterIndex

@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
 use App\Http\Controllers\Api\SitePhotoController;
 use App\Http\Middleware\RunPendingMigrations;
+use App\Models\SitePhoto;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -341,15 +342,17 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->whereNumber('image')
             ->middleware('etag:image');
 
-        // Where the photos sit: the band and concert photos and one per
-        // register, read and written as ONE document. One tag covers the lot
-        // (`etag:site_photos`, a facet with no model), because the PUT
-        // replaces every slot and two people editing different registers
-        // would otherwise overwrite each other's list.
-        Route::get('/photo-placements', [PhotoPlacementController::class, 'show'])
-            ->middleware('etag:site_photos');
-        Route::put('/photo-placements', [PhotoPlacementController::class, 'update'])
-            ->middleware('etag:site_photos');
+        // Where the photos sit, one place per write, chosen on the page that
+        // shows it. No `etag:`: each write is one value, so there is no half
+        // of it to lose (see ConditionalWrite).
+        Route::put('/site-photos/{slot}', [PhotoPlacementController::class, 'site'])
+            ->whereIn('slot', SitePhoto::SLOTS);
+        Route::put('/sections/{section}/photo', [PhotoPlacementController::class, 'register']);
+
+        // A history entry's photo is part of the entry and a placement both,
+        // so it takes both permissions. The entry's own PUT leaves it alone.
+        Route::put('/history/{historyEntry}/photo', [PhotoPlacementController::class, 'history'])
+            ->middleware('permission:history.manage');
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a

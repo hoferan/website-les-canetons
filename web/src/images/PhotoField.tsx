@@ -18,16 +18,9 @@ type Props = {
   onChange: (imageId: number | null, photo: PhotoData | null) => void;
 };
 
-/** A library image as the photo shape the API returns; it carries no alt text. */
+/** A library image as the photo shape the API returns. */
 function photoOf(image: ImageResource): PhotoData {
-  return {
-    url: image.url,
-    width: image.width,
-    height: image.height,
-    srcset: image.srcset,
-    altFr: null,
-    altDe: null,
-  };
+  return { url: image.url, width: image.width, height: image.height, srcset: image.srcset };
 }
 
 /**
@@ -50,7 +43,7 @@ export function PhotoField({ label, value, onChange }: Props) {
       {value ? (
         <Photo
           photo={value}
-          fallbackAlt={label}
+          alt={label}
           sizes={PHOTO_SIZES.formThumbnail}
           className="h-auto w-40 rounded-md border"
         />

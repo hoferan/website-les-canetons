@@ -6,11 +6,9 @@ import {
   getBandIndexQueryKey,
   getImageIndexQueryKey,
   getSitePhotoIndexQueryKey,
-  photoPlacementShow,
-  photoPlacementUpdate,
+  photoPlacementRegister,
+  photoPlacementSite,
 } from "../api/generated/endpoints";
-import type { PhotoPlacementsResource, UpdatePhotoPlacementsRequest } from "../api/generated/model";
-import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
 import { cn } from "@/lib/utils";
@@ -25,22 +23,11 @@ import { useUploadQueue } from "./useUploadQueue";
 export type PhotoSlot =
   { kind: "band" } | { kind: "concert" } | { kind: "register"; sectionId: number; name: string };
 
-type Read = { document: PhotoPlacementsResource; etag: string };
-
-/** The read as a PUT body, with `imageId` placed in the one slot and every other slot as it was read. */
-export function placementsWith(
-  document: PhotoPlacementsResource,
-  slot: PhotoSlot,
-  imageId: number | null,
-): UpdatePhotoPlacementsRequest {
-  return {
-    band: { imageId: slot.kind === "band" ? imageId : document.band.imageId },
-    concert: { imageId: slot.kind === "concert" ? imageId : document.concert.imageId },
-    registers: document.registers.map((row) => ({
-      sectionId: row.sectionId,
-      imageId: slot.kind === "register" && slot.sectionId === row.sectionId ? imageId : row.imageId,
-    })),
-  };
+/** Writes the one slot; no other slot is read or sent. */
+function placeIn(slot: PhotoSlot, imageId: number | null) {
+  return slot.kind === "register"
+    ? photoPlacementRegister(slot.sectionId, { imageId })
+    : photoPlacementSite(slot.kind, { imageId });
 }
 
 /** The accessible name, which says which of /band's seven slots the control belongs to. */
@@ -67,8 +54,8 @@ type Props = {
   slot: PhotoSlot;
   /** What the slot holds now; null draws the empty frame. */
   photo: PhotoData | null;
-  /** Used when the photo carries no alt text in either language. */
-  fallbackAlt: string;
+  /** What the photo shows, said by the page: the band's name or the register's. */
+  alt: string;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
   upload?: UploadFn | undefined;
   shrinker?: ShrinkFn | undefined;
@@ -89,15 +76,16 @@ type Props = {
  * sent exactly as they send it, and the image the server answers with is
  * placed here by the same write a pick makes.
  *
- * THE READ HAPPENS AS THE PICKER OPENS, or as the file is dropped, and the
- * write quotes its tag. The placements are one document and the PUT replaces
- * all of it, so the body is that read with this one slot changed. If somebody
- * placed a photo anywhere else in between, the write answers 412 and the
- * notice under the frame says so, rather than this write undoing theirs. A
- * fresh read just before the write would satisfy the server and protect
- * nobody; see web/src/api/ifMatch.ts.
+ * Each slot is written on its own and carries no `If-Match`: it is one value,
+ * so a placement somebody makes elsewhere is never touched by this one.
+ *
+ * FOCUS STAYS ON THE SLOT. The button that opened the picker is replaced when
+ * the slot fills or empties (the add frame becomes a pencil, or back), so the
+ * dialog hands focus back to a button that is about to go. Once the page shows
+ * the new state, focus moves to the slot's new button, and the status line
+ * says what happened.
  */
-export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }: Props) {
+export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) {
   const { can } = useSession();
   const queryClient = useQueryClient();
   const form = useApiFormError(t("photos.slotSaveFailed"));
@@ -107,11 +95,26 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
   const [notice, setNotice] = useState<string | null>(null);
   const [dropped, setDropped] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [outcome, setOutcome] = useState<string | null>(null);
   // dragenter and dragleave fire for every child the pointer crosses, so the
   // frame counts them rather than trusting the last one.
   const depth = useRef(0);
-  const read = useRef<Promise<Read> | null>(null);
+  const control = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
   const manages = can("images.manage");
+  const placed = photo !== null;
+
+  // Runs once the page has re-rendered the slot, so `control` is the new
+  // button. Only when focus went with the old one: a drop made while the
+  // editor works elsewhere on the page leaves their focus where it is.
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const active = document.activeElement;
+    if (active === null || active === document.body || !active.isConnected) {
+      control.current?.focus();
+    }
+  }, [placed]);
 
   // A file dropped beside a frame would open in the tab and leave the page,
   // taking any upload in progress with it. While an editor has a slot on
@@ -148,44 +151,37 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
       : null;
   const busy = progress !== null;
 
-  function beginRead() {
+  function reset() {
     form.clear();
     setNotice(null);
-    read.current = photoPlacementShow().then((response) => {
-      const etag = entityTagOf(response);
-      // The mutator throws on every non-2xx, so this only narrows the type.
-      if (response.status !== 200 || etag === null) {
-        throw new Error("The placements read carried no entity tag");
-      }
-      return { document: response.data, etag };
-    });
-    // Settled here so an abandoned read is not an unhandled rejection; save()
-    // awaits the same promise and reports its failure.
-    read.current.catch(() => {});
+    setOutcome(null);
   }
 
   async function save(imageId: number | null) {
-    if (!read.current || saving) return;
+    if (saving) return;
     setSaving(true);
     try {
-      const { document, etag } = await read.current;
-      await photoPlacementUpdate(placementsWith(document, slot, imageId), ifMatch(etag));
+      await placeIn(slot, imageId);
+      // Set before the refetch below makes the page re-render the slot, and
+      // only when it swaps the button: a new photo over an old one keeps the
+      // pencil, which the dialog has already focused.
+      refocus.current = (imageId === null) === placed;
       // The page shows the slot, and the library lists where each photo is.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getSitePhotoIndexQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getBandIndexQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getImageIndexQueryKey() }),
       ]);
+      setOutcome(t(imageId === null ? "photos.slotRemoved" : "photos.slotPlaced"));
     } catch (thrown) {
       form.setFromThrown(thrown);
     } finally {
-      read.current = null;
       setSaving(false);
     }
   }
 
   async function place(file: File) {
-    beginRead();
+    reset();
     const [id] = queue.add([file]);
     if (!id) return;
     setDropped(id);
@@ -194,14 +190,13 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
     if (card.state !== "failed" && card.imageId != null) {
       await save(card.imageId);
     } else {
-      read.current = null;
       setNotice(t(`photos.reason.${card.reason ?? "network"}`));
     }
   }
 
   function open() {
     if (busy) return;
-    beginRead();
+    reset();
     setPicking(true);
   }
 
@@ -232,10 +227,10 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
       const files = Array.from(event.dataTransfer?.files ?? []);
       const [file] = files;
       if (files.length > 1) {
-        form.clear();
+        reset();
         setNotice(t("photos.dropOnlyOne"));
       } else if (!file || !looksLikePhoto(file)) {
-        form.clear();
+        reset();
         setNotice(t("photos.dropNotPhoto"));
       } else {
         void place(file);
@@ -256,7 +251,7 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
           <>
             <Photo
               photo={photo}
-              fallbackAlt={fallbackAlt}
+              alt={alt}
               sizes={PHOTO_SIZES.textColumn}
               className="block h-auto w-full rounded-lg"
             />
@@ -266,6 +261,7 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
                 it reads on a dark or a light photograph; h-11 and min-w-11
                 keep the 44px touch target. */}
             <button
+              ref={control}
               type="button"
               aria-label={label}
               aria-disabled={busy}
@@ -279,9 +275,10 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
             </button>
           </>
         ) : (
-          // The same frame as a placed photo and as a visitor's placeholder:
-          // 3:2, the column's width, rounded-lg.
+          // Shaped like the photo it waits for, 3:2 at the column's width,
+          // where a visitor gets one line (see PhotoPending).
           <button
+            ref={control}
             type="button"
             aria-label={label}
             aria-disabled={busy}
@@ -324,7 +321,7 @@ export function SlotPhotoControl({ slot, photo, fallbackAlt, upload, shrinker }:
 
       {/* Always in the tree, so the change of text is announced. */}
       <p role="status" className="sr-only">
-        {progress}
+        {progress ?? outcome}
       </p>
       <FormError error={form.error ?? (notice ? { message: notice, fields: [] } : null)} />
 

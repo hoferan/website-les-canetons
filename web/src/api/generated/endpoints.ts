@@ -216,7 +216,6 @@
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
  * | `POST /images/{image}/file` | `GET /images/{image}` |
- * | `PUT /photo-placements` | `GET /photo-placements` |
  * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
  * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
@@ -236,6 +235,11 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
+ * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
+ * image id in one place. Placements in different places never touch, and in the
+ * same place the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -399,7 +403,10 @@ import type {
   MemberRoleReplace200,
   MemberRoleReplace409,
   MemberStore201,
-  PhotoPlacementsResource,
+  PhotoPlacementHistory200,
+  PhotoPlacementRegister200,
+  PhotoPlacementSite200,
+  PlacePhotoRequest,
   Problem400Response,
   Problem401Response,
   Problem403Response,
@@ -442,7 +449,6 @@ import type {
   UpdateEventRequest,
   UpdateImageRequest,
   UpdateMemberRequest,
-  UpdatePhotoPlacementsRequest,
   UpdateRegistrationRequest,
 } from "./model";
 
@@ -11368,236 +11374,72 @@ export function useConfigShow<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type photoPlacementShowResponse200 = {
-  data: PhotoPlacementsResource;
+export type photoPlacementSiteResponse200 = {
+  data: PhotoPlacementSite200;
   status: 200;
 };
 
-export type photoPlacementShowResponse401 = {
-  data: Problem401Response;
-  status: 401;
-};
-
-export type photoPlacementShowResponse403 = {
-  data: Problem403Response;
-  status: 403;
-};
-
-export type photoPlacementShowResponse503 = {
-  data: Problem503Response;
-  status: 503;
-};
-
-export type photoPlacementShowResponseSuccess = photoPlacementShowResponse200 & {
-  headers: Headers;
-};
-export type photoPlacementShowResponseError = (
-  photoPlacementShowResponse401 | photoPlacementShowResponse403 | photoPlacementShowResponse503
-) & {
-  headers: Headers;
-};
-
-export type photoPlacementShowResponse =
-  photoPlacementShowResponseSuccess | photoPlacementShowResponseError;
-
-export const getPhotoPlacementShowUrl = () => {
-  return `/photo-placements`;
-};
-
-/**
- * The band photo, the concert photo and one slot per register, each the
- * id of a library image or null. Read this before replacing the
- * placements, and quote the `ETag` it returns in the `If-Match` header of
- * the PUT.
- * @summary Where each photo is placed. Requires `images.manage`
- */
-export const photoPlacementShow = async (
-  options?: Parameters<typeof customFetch>[1],
-): Promise<photoPlacementShowResponse> => {
-  return customFetch<photoPlacementShowResponse>(getPhotoPlacementShowUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getPhotoPlacementShowQueryKey = () => {
-  return [`/photo-placements`] as const;
-};
-
-export const getPhotoPlacementShowQueryOptions = <
-  TData = Awaited<ReturnType<typeof photoPlacementShow>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoPlacementShow>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getPhotoPlacementShowQueryKey();
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof photoPlacementShow>>> = ({ signal }) =>
-    photoPlacementShow({ signal, ...requestOptions });
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof photoPlacementShow>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type PhotoPlacementShowQueryResult = NonNullable<
-  Awaited<ReturnType<typeof photoPlacementShow>>
->;
-export type PhotoPlacementShowQueryError =
-  Problem401Response | Problem403Response | Problem503Response;
-
-export function usePhotoPlacementShow<
-  TData = Awaited<ReturnType<typeof photoPlacementShow>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoPlacementShow>>, TError, TData>> &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof photoPlacementShow>>,
-          TError,
-          Awaited<ReturnType<typeof photoPlacementShow>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function usePhotoPlacementShow<
-  TData = Awaited<ReturnType<typeof photoPlacementShow>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof photoPlacementShow>>, TError, TData>
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof photoPlacementShow>>,
-          TError,
-          Awaited<ReturnType<typeof photoPlacementShow>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function usePhotoPlacementShow<
-  TData = Awaited<ReturnType<typeof photoPlacementShow>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoPlacementShow>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-/**
- * @summary Where each photo is placed. Requires `images.manage`
- */
-
-export function usePhotoPlacementShow<
-  TData = Awaited<ReturnType<typeof photoPlacementShow>>,
-  TError = Problem401Response | Problem403Response | Problem503Response,
->(
-  options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoPlacementShow>>, TError, TData>>;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getPhotoPlacementShowQueryOptions(options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
-    queryKey: DataTag<QueryKey, TData, TError>;
-  };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-export type photoPlacementUpdateResponse200 = {
-  data: PhotoPlacementsResource;
-  status: 200;
-};
-
-export type photoPlacementUpdateResponse400 = {
+export type photoPlacementSiteResponse400 = {
   data: Problem400Response;
   status: 400;
 };
 
-export type photoPlacementUpdateResponse401 = {
+export type photoPlacementSiteResponse401 = {
   data: Problem401Response;
   status: 401;
 };
 
-export type photoPlacementUpdateResponse403 = {
+export type photoPlacementSiteResponse403 = {
   data: Problem403Response;
   status: 403;
 };
 
-export type photoPlacementUpdateResponse412 = {
-  data: Problem412Response;
-  status: 412;
+export type photoPlacementSiteResponse404 = {
+  data: Problem404Response;
+  status: 404;
 };
 
-export type photoPlacementUpdateResponse419 = {
+export type photoPlacementSiteResponse419 = {
   data: Problem419Response;
   status: 419;
 };
 
-export type photoPlacementUpdateResponse428 = {
-  data: Problem428Response;
-  status: 428;
-};
-
-export type photoPlacementUpdateResponse503 = {
+export type photoPlacementSiteResponse503 = {
   data: Problem503Response;
   status: 503;
 };
 
-export type photoPlacementUpdateResponseSuccess = photoPlacementUpdateResponse200 & {
+export type photoPlacementSiteResponseSuccess = photoPlacementSiteResponse200 & {
   headers: Headers;
 };
-export type photoPlacementUpdateResponseError = (
-  | photoPlacementUpdateResponse400
-  | photoPlacementUpdateResponse401
-  | photoPlacementUpdateResponse403
-  | photoPlacementUpdateResponse412
-  | photoPlacementUpdateResponse419
-  | photoPlacementUpdateResponse428
-  | photoPlacementUpdateResponse503
+export type photoPlacementSiteResponseError = (
+  | photoPlacementSiteResponse400
+  | photoPlacementSiteResponse401
+  | photoPlacementSiteResponse403
+  | photoPlacementSiteResponse404
+  | photoPlacementSiteResponse419
+  | photoPlacementSiteResponse503
 ) & {
   headers: Headers;
 };
 
-export type photoPlacementUpdateResponse =
-  photoPlacementUpdateResponseSuccess | photoPlacementUpdateResponseError;
+export type photoPlacementSiteResponse =
+  photoPlacementSiteResponseSuccess | photoPlacementSiteResponseError;
 
-export const getPhotoPlacementUpdateUrl = () => {
-  return `/photo-placements`;
+export const getPhotoPlacementSiteUrl = (slot: "band" | "concert") => {
+  return `/site-photos/${slot}`;
 };
 
 /**
- * Send the complete placements, in the shape the read returns. Replaying
- * the same body leaves the same placements, and `imageId` null empties a
- * slot. The register list must name every register exactly once, or the
- * request answers `400 validation_failed` against `registers`, as it does
- * for an `imageId` that is not in the library.
- *
- * Returns the placements as they now stand.
- * @summary Places photos. Requires `images.manage` and the `If-Match` from the read
+ * `{slot}` is `band` (the band page) or `concert` (the home page). Send
+ * `imageId` null to empty the slot.
+ * @summary Places the band photo or the concert photo. Requires `images.manage`
  */
-export const photoPlacementUpdate = async (
-  updatePhotoPlacementsRequest: UpdatePhotoPlacementsRequest,
+export const photoPlacementSite = async (
+  slot: "band" | "concert",
+  placePhotoRequest: PlacePhotoRequest,
   options?: Parameters<typeof customFetch>[1],
-): Promise<photoPlacementUpdateResponse> => {
+): Promise<photoPlacementSiteResponse> => {
   const getHeaders = (
     h?: NonNullable<RequestInit["headers"]>,
   ): Record<string, string | readonly string[]> => {
@@ -11617,41 +11459,40 @@ export const photoPlacementUpdate = async (
     }
     return headers;
   };
-  return customFetch<photoPlacementUpdateResponse>(getPhotoPlacementUpdateUrl(), {
+  return customFetch<photoPlacementSiteResponse>(getPhotoPlacementSiteUrl(slot), {
     ...options,
     method: "PUT",
     headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
-    body: JSON.stringify(updatePhotoPlacementsRequest),
+    body: JSON.stringify(placePhotoRequest),
   });
 };
 
-export const getPhotoPlacementUpdateMutationKey = () => ["photoPlacementUpdate"] as const;
+export const getPhotoPlacementSiteMutationKey = () => ["photoPlacementSite"] as const;
 
-export const getPhotoPlacementUpdateMutationOptions = <
+export const getPhotoPlacementSiteMutationOptions = <
   TError =
     | Problem400Response
     | Problem401Response
     | Problem403Response
-    | Problem412Response
+    | Problem404Response
     | Problem419Response
-    | Problem428Response
     | Problem503Response,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof photoPlacementUpdate>>,
+    Awaited<ReturnType<typeof photoPlacementSite>>,
     TError,
-    PhotoPlacementUpdateMutationVariables,
+    PhotoPlacementSiteMutationVariables,
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof photoPlacementUpdate>>,
+  Awaited<ReturnType<typeof photoPlacementSite>>,
   TError,
-  PhotoPlacementUpdateMutationVariables,
+  PhotoPlacementSiteMutationVariables,
   TContext
 > => {
-  const mutationKey = getPhotoPlacementUpdateMutationKey();
+  const mutationKey = getPhotoPlacementSiteMutationKey();
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
       ? options
@@ -11659,62 +11500,426 @@ export const getPhotoPlacementUpdateMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof photoPlacementUpdate>>,
-    PhotoPlacementUpdateMutationVariables
+    Awaited<ReturnType<typeof photoPlacementSite>>,
+    PhotoPlacementSiteMutationVariables
   > = (props) => {
-    const { data } = props ?? {};
+    const { slot, data } = props ?? {};
 
-    return photoPlacementUpdate(data, requestOptions);
+    return photoPlacementSite(slot, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type PhotoPlacementUpdateMutationResult = NonNullable<
-  Awaited<ReturnType<typeof photoPlacementUpdate>>
+export type PhotoPlacementSiteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof photoPlacementSite>>
 >;
-export type PhotoPlacementUpdateMutationBody = UpdatePhotoPlacementsRequest;
-export type PhotoPlacementUpdateMutationError =
+export type PhotoPlacementSiteMutationBody = PlacePhotoRequest;
+export type PhotoPlacementSiteMutationError =
   | Problem400Response
   | Problem401Response
   | Problem403Response
-  | Problem412Response
+  | Problem404Response
   | Problem419Response
-  | Problem428Response
   | Problem503Response;
-export type PhotoPlacementUpdateMutationVariables = { data: UpdatePhotoPlacementsRequest };
+export type PhotoPlacementSiteMutationVariables = {
+  slot: "band" | "concert";
+  data: PlacePhotoRequest;
+};
 
 /**
- * @summary Places photos. Requires `images.manage` and the `If-Match` from the read
+ * @summary Places the band photo or the concert photo. Requires `images.manage`
  */
-export const usePhotoPlacementUpdate = <
+export const usePhotoPlacementSite = <
   TError =
     | Problem400Response
     | Problem401Response
     | Problem403Response
-    | Problem412Response
+    | Problem404Response
     | Problem419Response
-    | Problem428Response
     | Problem503Response,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof photoPlacementUpdate>>,
+      Awaited<ReturnType<typeof photoPlacementSite>>,
       TError,
-      PhotoPlacementUpdateMutationVariables,
+      PhotoPlacementSiteMutationVariables,
       TContext
     >;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof photoPlacementUpdate>>,
+  Awaited<ReturnType<typeof photoPlacementSite>>,
   TError,
-  PhotoPlacementUpdateMutationVariables,
+  PhotoPlacementSiteMutationVariables,
   TContext
 > => {
-  return useMutation(getPhotoPlacementUpdateMutationOptions(options), queryClient);
+  return useMutation(getPhotoPlacementSiteMutationOptions(options), queryClient);
+};
+
+export type photoPlacementRegisterResponse200 = {
+  data: PhotoPlacementRegister200;
+  status: 200;
+};
+
+export type photoPlacementRegisterResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type photoPlacementRegisterResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type photoPlacementRegisterResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type photoPlacementRegisterResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type photoPlacementRegisterResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type photoPlacementRegisterResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type photoPlacementRegisterResponseSuccess = photoPlacementRegisterResponse200 & {
+  headers: Headers;
+};
+export type photoPlacementRegisterResponseError = (
+  | photoPlacementRegisterResponse400
+  | photoPlacementRegisterResponse401
+  | photoPlacementRegisterResponse403
+  | photoPlacementRegisterResponse404
+  | photoPlacementRegisterResponse419
+  | photoPlacementRegisterResponse503
+) & {
+  headers: Headers;
+};
+
+export type photoPlacementRegisterResponse =
+  photoPlacementRegisterResponseSuccess | photoPlacementRegisterResponseError;
+
+export const getPhotoPlacementRegisterUrl = (section: number) => {
+  return `/sections/${section}/photo`;
+};
+
+/**
+ * @summary Places a register's photo on the band page. Requires `images.manage`
+ */
+export const photoPlacementRegister = async (
+  section: number,
+  placePhotoRequest: PlacePhotoRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<photoPlacementRegisterResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<photoPlacementRegisterResponse>(getPhotoPlacementRegisterUrl(section), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(placePhotoRequest),
+  });
+};
+
+export const getPhotoPlacementRegisterMutationKey = () => ["photoPlacementRegister"] as const;
+
+export const getPhotoPlacementRegisterMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof photoPlacementRegister>>,
+    TError,
+    PhotoPlacementRegisterMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof photoPlacementRegister>>,
+  TError,
+  PhotoPlacementRegisterMutationVariables,
+  TContext
+> => {
+  const mutationKey = getPhotoPlacementRegisterMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof photoPlacementRegister>>,
+    PhotoPlacementRegisterMutationVariables
+  > = (props) => {
+    const { section, data } = props ?? {};
+
+    return photoPlacementRegister(section, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PhotoPlacementRegisterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof photoPlacementRegister>>
+>;
+export type PhotoPlacementRegisterMutationBody = PlacePhotoRequest;
+export type PhotoPlacementRegisterMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type PhotoPlacementRegisterMutationVariables = { section: number; data: PlacePhotoRequest };
+
+/**
+ * @summary Places a register's photo on the band page. Requires `images.manage`
+ */
+export const usePhotoPlacementRegister = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof photoPlacementRegister>>,
+      TError,
+      PhotoPlacementRegisterMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof photoPlacementRegister>>,
+  TError,
+  PhotoPlacementRegisterMutationVariables,
+  TContext
+> => {
+  return useMutation(getPhotoPlacementRegisterMutationOptions(options), queryClient);
+};
+
+export type photoPlacementHistoryResponse200 = {
+  data: PhotoPlacementHistory200;
+  status: 200;
+};
+
+export type photoPlacementHistoryResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type photoPlacementHistoryResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type photoPlacementHistoryResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type photoPlacementHistoryResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type photoPlacementHistoryResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type photoPlacementHistoryResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type photoPlacementHistoryResponseSuccess = photoPlacementHistoryResponse200 & {
+  headers: Headers;
+};
+export type photoPlacementHistoryResponseError = (
+  | photoPlacementHistoryResponse400
+  | photoPlacementHistoryResponse401
+  | photoPlacementHistoryResponse403
+  | photoPlacementHistoryResponse404
+  | photoPlacementHistoryResponse419
+  | photoPlacementHistoryResponse503
+) & {
+  headers: Headers;
+};
+
+export type photoPlacementHistoryResponse =
+  photoPlacementHistoryResponseSuccess | photoPlacementHistoryResponseError;
+
+export const getPhotoPlacementHistoryUrl = (historyEntry: number) => {
+  return `/history/${historyEntry}/photo`;
+};
+
+/**
+ * @summary Places a history entry's photo. Requires `history.manage` and `images.manage`
+ */
+export const photoPlacementHistory = async (
+  historyEntry: number,
+  placePhotoRequest: PlacePhotoRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<photoPlacementHistoryResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<photoPlacementHistoryResponse>(getPhotoPlacementHistoryUrl(historyEntry), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(placePhotoRequest),
+  });
+};
+
+export const getPhotoPlacementHistoryMutationKey = () => ["photoPlacementHistory"] as const;
+
+export const getPhotoPlacementHistoryMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof photoPlacementHistory>>,
+    TError,
+    PhotoPlacementHistoryMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof photoPlacementHistory>>,
+  TError,
+  PhotoPlacementHistoryMutationVariables,
+  TContext
+> => {
+  const mutationKey = getPhotoPlacementHistoryMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof photoPlacementHistory>>,
+    PhotoPlacementHistoryMutationVariables
+  > = (props) => {
+    const { historyEntry, data } = props ?? {};
+
+    return photoPlacementHistory(historyEntry, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PhotoPlacementHistoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof photoPlacementHistory>>
+>;
+export type PhotoPlacementHistoryMutationBody = PlacePhotoRequest;
+export type PhotoPlacementHistoryMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type PhotoPlacementHistoryMutationVariables = {
+  historyEntry: number;
+  data: PlacePhotoRequest;
+};
+
+/**
+ * @summary Places a history entry's photo. Requires `history.manage` and `images.manage`
+ */
+export const usePhotoPlacementHistory = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof photoPlacementHistory>>,
+      TError,
+      PhotoPlacementHistoryMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof photoPlacementHistory>>,
+  TError,
+  PhotoPlacementHistoryMutationVariables,
+  TContext
+> => {
+  return useMutation(getPhotoPlacementHistoryMutationOptions(options), queryClient);
 };
 
 export type sitePhotoIndexResponse200 = {

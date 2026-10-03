@@ -216,7 +216,6 @@
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
  * | `POST /images/{image}/file` | `GET /images/{image}` |
- * | `PUT /photo-placements` | `GET /photo-placements` |
  * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
  * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
@@ -236,6 +235,11 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
+ * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
+ * image id in one place. Placements in different places never touch, and in the
+ * same place the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -464,10 +468,13 @@ export * from "./memberRoleReplace409";
 export * from "./memberRoleReplace409Code";
 export * from "./memberRoleReplace409ErrorsItem";
 export * from "./memberStore201";
-export * from "./photoPlacementRegisterResource";
-export * from "./photoPlacementsResource";
-export * from "./photoPlacementsResourceBand";
-export * from "./photoPlacementsResourceConcert";
+export * from "./photoPlacementHistory200";
+export * from "./photoPlacementHistory200Photo";
+export * from "./photoPlacementRegister200";
+export * from "./photoPlacementRegister200Photo";
+export * from "./photoPlacementSite200";
+export * from "./photoPlacementSite200Photo";
+export * from "./placePhotoRequest";
 export * from "./problem400Response";
 export * from "./problem400ResponseCode";
 export * from "./problem400ResponseErrorsItem";
@@ -564,8 +571,4 @@ export * from "./storeRegistrationRequestChoicesItem";
 export * from "./updateEventRequest";
 export * from "./updateImageRequest";
 export * from "./updateMemberRequest";
-export * from "./updatePhotoPlacementsRequest";
-export * from "./updatePhotoPlacementsRequestBand";
-export * from "./updatePhotoPlacementsRequestConcert";
-export * from "./updatePhotoPlacementsRequestRegistersItem";
 export * from "./updateRegistrationRequest";

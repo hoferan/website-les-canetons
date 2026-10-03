@@ -290,92 +290,84 @@ test("the German form names the months in German", async () => {
 });
 
 /**
- * The write's body, read by a handler that then lets the mock answer. The photo
- * keys are gated on images.manage server-side, so which of them are present is
- * the behaviour under test.
+ * Every history write in order, each read by a handler that then lets the mock
+ * answer. The entry and its photo are separate writes, and which ones happen,
+ * in which order, is the behaviour under test.
  */
-function recordHistoryWrites(method: "post" | "put"): Record<string, unknown>[] {
-  const bodies: Record<string, unknown>[] = [];
-  const path = method === "post" ? "/api/v1/history" : "/api/v1/history/:id";
+function recordHistoryWrites(): { method: string; path: string; body: Record<string, unknown> }[] {
+  const writes: { method: string; path: string; body: Record<string, unknown> }[] = [];
+  const record = async ({ request }: { request: Request }) => {
+    writes.push({
+      method: request.method,
+      path: new URL(request.url).pathname,
+      body: (await request.clone().json()) as Record<string, unknown>,
+    });
+  };
   server.use(
-    http[method](path, async ({ request }) => {
-      bodies.push((await request.clone().json()) as Record<string, unknown>);
-    }),
+    http.post("/api/v1/history", record),
+    http.put("/api/v1/history/:id", record),
+    http.put("/api/v1/history/:id/photo", record),
   );
-  return bodies;
+  return writes;
 }
 
-test("a new entry with a photo sends its id and both alt texts", async () => {
+test("a new entry with a photo is saved first, then its photo by its own write", async () => {
   const user = userEvent.setup();
-  const bodies = recordHistoryWrites("post");
+  const writes = recordHistoryWrites();
   await renderAt("/history/new");
-  // No photo yet, so no alt fields to fill in.
-  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
 
   await user.type(await screen.findByLabelText(/^Année/), "2024");
   await user.type(screen.getByLabelText("Titre en français"), "Le cortège");
   await user.click(screen.getByRole("button", { name: "Choisir" }));
   await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
-  await user.type(screen.getByLabelText("Texte alternatif de la photo en français"), "Le cortège");
-  await user.type(screen.getByLabelText("Texte alternatif de la photo en allemand"), "Der Umzug");
+  // No alt text to fill in: the entry's title describes the photo.
+  expect(screen.queryByLabelText(/Texte alternatif/)).toBeNull();
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  await waitFor(() => expect(bodies).toHaveLength(1));
-  expect(bodies[0]).toMatchObject({
-    imageId: 1,
-    imageAltFr: "Le cortège",
-    imageAltDe: "Der Umzug",
+  // The timeline shows the new entry with its photo, named after the title.
+  expect(
+    await within(await timeline()).findByRole("img", { name: "Le cortège" }),
+  ).toBeInTheDocument();
+  expect(writes.map((write) => `${write.method} ${write.path}`)).toEqual([
+    "POST /api/v1/history",
+    "PUT /api/v1/history/5/photo",
+  ]);
+  expect(writes[0]?.body).not.toHaveProperty("imageId");
+  expect(writes[1]?.body).toEqual({ imageId: 1 });
+});
+
+test("clearing the photo saves the entry, then empties its photo", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt("/history/4/edit");
+
+  await user.click(await screen.findByRole("button", { name: "Retirer" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[0]).toMatchObject({ method: "PUT", path: "/api/v1/history/4" });
+  expect(writes[0]?.body).not.toHaveProperty("imageId");
+  expect(writes[1]).toEqual({
+    method: "PUT",
+    path: "/api/v1/history/4/photo",
+    body: { imageId: null },
   });
 });
 
-test("clearing the photo sends a null imageId and hides the alt fields", async () => {
+test("an untouched photo is not written at all", async () => {
   const user = userEvent.setup();
-  const bodies = recordHistoryWrites("put");
+  const writes = recordHistoryWrites();
   await renderAt("/history/4/edit");
-  expect(await screen.findByLabelText("Texte alternatif de la photo en français")).toHaveValue(
-    "Les nouvelles directrices avec les anciennes",
-  );
-
-  await user.click(screen.getByRole("button", { name: "Retirer" }));
-  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
-  expect(screen.queryByLabelText("Texte alternatif de la photo en allemand")).toBeNull();
+  await screen.findByTestId("photo-field");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  await waitFor(() => expect(bodies).toHaveLength(1));
-  expect(bodies[0]).toHaveProperty("imageId", null);
+  await within(await timeline()).findByRole("img", { name: "Le flambeau passe" });
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/history/4"]);
 });
 
-test("an alt-only change sends the alts and not the image id", async () => {
+test("an editor without images.manage sees the photo, cannot change it, and writes only the entry", async () => {
   const user = userEvent.setup();
-  const bodies = recordHistoryWrites("put");
-  await renderAt("/history/4/edit");
-  await user.type(
-    await screen.findByLabelText("Texte alternatif de la photo en allemand"),
-    "Die neuen Leiterinnen",
-  );
-  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
-
-  await waitFor(() => expect(bodies).toHaveLength(1));
-  expect(bodies[0]).toMatchObject({ imageAltDe: "Die neuen Leiterinnen" });
-  expect(bodies[0]).not.toHaveProperty("imageId");
-});
-
-test("an untouched photo sends no photo key at all", async () => {
-  const user = userEvent.setup();
-  const bodies = recordHistoryWrites("put");
-  await renderAt("/history/4/edit");
-  await screen.findByLabelText("Texte alternatif de la photo en français");
-  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
-
-  await waitFor(() => expect(bodies).toHaveLength(1));
-  for (const key of ["imageId", "imageAltFr", "imageAltDe"]) {
-    expect(bodies[0]).not.toHaveProperty(key);
-  }
-});
-
-test("an editor without images.manage sees the photo, no alt fields, and sends no photo key", async () => {
-  const user = userEvent.setup();
-  const bodies = recordHistoryWrites("put");
+  const writes = recordHistoryWrites();
   setMockUser("demo.roster");
   await renderWithSession(
     <Routes>
@@ -386,26 +378,28 @@ test("an editor without images.manage sees the photo, no alt fields, and sends n
   );
   const field = await screen.findByTestId("photo-field");
   expect(within(field).queryByRole("button")).toBeNull();
-  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
 
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
-  await waitFor(() => expect(bodies).toHaveLength(1));
-  for (const key of ["imageId", "imageAltFr", "imageAltDe"]) {
-    expect(bodies[0]).not.toHaveProperty(key);
-  }
+  await within(await timeline()).findByRole("img", { name: "Le flambeau passe" });
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/history/4"]);
 });
 
-test("picking a different photo empties the alt texts of the old one", async () => {
+/**
+ * MUTATION TEST: navigate without `photoFailed` and the editor lands on a
+ * timeline that never says the photo is missing.
+ */
+test("a photo that fails to save after its entry did is reported on the timeline", async () => {
   const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  server.use(http.put("/api/v1/history/:id/photo", () => HttpResponse.json({}, { status: 503 })));
   await renderAt("/history/4/edit");
-  const altFr = await screen.findByLabelText("Texte alternatif de la photo en français");
-  expect(altFr).toHaveValue("Les nouvelles directrices avec les anciennes");
-  await user.type(screen.getByLabelText("Texte alternatif de la photo en allemand"), "Alt");
 
-  // Entry 4 shows photo 2, so photo 1 is a different one.
-  await user.click(screen.getByRole("button", { name: "Choisir" }));
-  await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
+  await user.click(await screen.findByRole("button", { name: "Retirer" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  expect(screen.getByLabelText("Texte alternatif de la photo en français")).toHaveValue("");
-  expect(screen.getByLabelText("Texte alternatif de la photo en allemand")).toHaveValue("");
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "L’entrée est enregistrée, mais pas sa photo.",
+  );
+  await timeline();
+  expect(writes.filter((write) => write.path === "/api/v1/history/4")).toHaveLength(1);
 });

@@ -19,7 +19,6 @@ import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import type { PhotoData } from "../images/Photo";
 import { PhotoField } from "../images/PhotoField";
-import { useSession } from "../session/SessionProvider";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
 import { TimelineMarker } from "./TimelineMarker";
 
@@ -58,8 +57,6 @@ type Draft = {
   important: boolean;
   icon: IconChoice;
   imageId: number | null;
-  imageAltFr: string;
-  imageAltDe: string;
 };
 
 function draftFrom(entry: HistoryEntryResource | null): Draft {
@@ -83,8 +80,6 @@ function draftFrom(entry: HistoryEntryResource | null): Draft {
     // An icon this bundle does not know opens as none, like the timeline's dot.
     icon: entry?.icon && iconFor(entry.icon) ? (entry.icon as HistoryIconKey) : "none",
     imageId: entry?.imageId ?? null,
-    imageAltFr: entry?.imageAltFr ?? "",
-    imageAltDe: entry?.imageAltDe ?? "",
   };
 }
 
@@ -102,42 +97,17 @@ function occurredOn(draft: Draft): string | null {
 
 const orNull = (value: string) => (value.trim() === "" ? null : value.trim());
 
-/** The API's limit on one alt text. */
-const ALT_MAX = 250;
-
 /**
- * The photo keys of a write, or none. They travel only for an editor holding
- * images.manage and only when one of them changed: the API answers 403 to a
- * body carrying any of the three from anybody else, so an untouched photo must
- * not be echoed back. Alt text alone is a valid change (the server applies it
- * to the entry's current photo); removing the photo sends `imageId: null` and
- * the server clears the alts.
+ * The photo to save after the entry, or null to leave it as it is.
+ *
+ * The photo has a write of its own, which needs images.manage on top of
+ * history.manage, so it is sent only when it changed: an editor who corrects
+ * a date never touches it.
  */
-function photoKeys(
-  draft: Draft,
-  entry: HistoryEntryResource | null,
-  mayPlace: boolean,
-): Pick<StoreHistoryEntryRequest, "imageId" | "imageAltFr" | "imageAltDe"> {
-  if (!mayPlace) {
-    return {};
-  }
-  const was = entry?.imageId ?? null;
-  const imageChanged = draft.imageId !== was;
-  if (draft.imageId === null) {
-    return imageChanged ? { imageId: null } : {};
-  }
-  const altFr = orNull(draft.imageAltFr);
-  const altDe = orNull(draft.imageAltDe);
-  const altsChanged =
-    altFr !== (entry?.imageAltFr ?? null) || altDe !== (entry?.imageAltDe ?? null);
-  if (!imageChanged && !altsChanged) {
-    return {};
-  }
-  return {
-    ...(imageChanged ? { imageId: draft.imageId } : {}),
-    imageAltFr: altFr,
-    imageAltDe: altDe,
-  };
+export type PhotoChange = { imageId: number | null } | null;
+
+function photoChange(draft: Draft, entry: HistoryEntryResource | null): PhotoChange {
+  return draft.imageId === (entry?.imageId ?? null) ? null : { imageId: draft.imageId };
 }
 
 function monthNames(): string[] {
@@ -178,7 +148,7 @@ export function HistoryForm({
   busy: boolean;
   error: TranslatedError | null;
   problemFor: (field: string) => string | undefined;
-  onSubmit: (body: StoreHistoryEntryRequest) => void;
+  onSubmit: (body: StoreHistoryEntryRequest, photo: PhotoChange) => void;
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState<Draft>(() => draftFrom(entry));
@@ -186,8 +156,6 @@ export function HistoryForm({
   const [yearProblem, setYearProblem] = useState<string | undefined>(undefined);
   const [monthProblem, setMonthProblem] = useState<string | undefined>(undefined);
   const [photo, setPhoto] = useState<PhotoData | null>(entry?.photo ?? null);
-  const { can } = useSession();
-  const mayPlace = can("images.manage");
   const locale = currentLocale();
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -254,17 +222,19 @@ export function HistoryForm({
     if (date === null) {
       return;
     }
-    onSubmit({
-      occurredOn: date,
-      precision: draft.precision as StoreHistoryEntryRequestPrecision,
-      titleFr: orNull(draft.titleFr),
-      bodyFr: orNull(draft.bodyFr),
-      titleDe: orNull(draft.titleDe),
-      bodyDe: orNull(draft.bodyDe),
-      important: draft.important,
-      icon: draft.icon === "none" ? null : (draft.icon as StoreHistoryEntryRequestIcon),
-      ...photoKeys(draft, entry, mayPlace),
-    });
+    onSubmit(
+      {
+        occurredOn: date,
+        precision: draft.precision as StoreHistoryEntryRequestPrecision,
+        titleFr: orNull(draft.titleFr),
+        bodyFr: orNull(draft.bodyFr),
+        titleDe: orNull(draft.titleDe),
+        bodyDe: orNull(draft.bodyDe),
+        important: draft.important,
+        icon: draft.icon === "none" ? null : (draft.icon as StoreHistoryEntryRequestIcon),
+      },
+      photoChange(draft, entry),
+    );
   }
 
   const textDescription = RULE_ID;
@@ -414,38 +384,9 @@ export function HistoryForm({
         value={photo}
         onChange={(imageId, next) => {
           setPhoto(next);
-          setDraft((current) => ({
-            ...current,
-            imageId,
-            // The alt texts describe one photo. Removing it, or swapping it for
-            // another, takes them along, so the new photo is never published
-            // under the old one's description.
-            ...(imageId !== current.imageId ? { imageAltFr: "", imageAltDe: "" } : {}),
-          }));
+          setDraft((current) => ({ ...current, imageId }));
         }}
       />
-      {/* The alt texts describe the photo, so they appear with one and only
-          for an editor who may set them. */}
-      {mayPlace && draft.imageId !== null ? (
-        <>
-          <FormField
-            id="imageAltFr"
-            label={t("historyForm.photoAltFr")}
-            value={draft.imageAltFr}
-            onChange={(value) => set("imageAltFr", value)}
-            problem={problemFor("imageAltFr")}
-            maxLength={ALT_MAX}
-          />
-          <FormField
-            id="imageAltDe"
-            label={t("historyForm.photoAltDe")}
-            value={draft.imageAltDe}
-            onChange={(value) => set("imageAltDe", value)}
-            problem={problemFor("imageAltDe")}
-            maxLength={ALT_MAX}
-          />
-        </>
-      ) : null}
 
       <label className="flex min-h-touch items-center gap-2">
         <input

@@ -34,13 +34,53 @@ test("the picker lists the library newest first and hands back the picked image"
   expect(onOpenChange).toHaveBeenCalledWith(false);
 });
 
-test("a photo added in the picker can be picked once the library lists it", async () => {
+/**
+ * MUTATION TEST: drop the effect that picks the added photo and onPick is
+ * never called, which is the extra tap a phone user did not know to make.
+ */
+test("a photo added in the picker is the one picked, as soon as the library lists it", async () => {
   setMockUser("demo.direction");
   const user = userEvent.setup();
   const onPick = vi.fn<(image: ImageResource) => void>();
+  const onOpenChange = vi.fn();
   // The real multipart path cannot run in jsdom; a duplicate answer for an
   // image the mock library already holds stands in for a finished upload.
   const upload = vi.fn(async () => ({ status: 200 as const, id: 2 }));
+  const shrinker = vi.fn(async (file: File) => [file]);
+  await renderWithSession(
+    <PhotoPicker
+      open
+      onOpenChange={onOpenChange}
+      onPick={onPick}
+      upload={upload}
+      shrinker={shrinker}
+    />,
+  );
+  await pick(2);
+
+  const input = screen.getByTestId("photo-picker-input");
+  // One photo: picking many at once is the library screen's job.
+  expect(input).not.toHaveAttribute("multiple");
+  expect(input).toHaveAttribute("accept", "image/*");
+  expect(screen.getByRole("button", { name: "Ajouter depuis l’appareil" })).toBeInTheDocument();
+  await user.upload(input, new File(["x"], "one.jpg", { type: "image/jpeg" }));
+
+  await waitFor(() => expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 2 })));
+  expect(onPick).toHaveBeenCalledTimes(1);
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+});
+
+test("closing the picker while a photo uploads lets it land without picking it", async () => {
+  setMockUser("demo.direction");
+  const user = userEvent.setup();
+  const onPick = vi.fn<(image: ImageResource) => void>();
+  let finish!: () => void;
+  const upload = vi.fn(
+    () =>
+      new Promise<{ status: 200; id: number }>((resolve) => {
+        finish = () => resolve({ status: 200, id: 2 });
+      }),
+  );
   const shrinker = vi.fn(async (file: File) => [file]);
   await renderWithSession(
     <PhotoPicker
@@ -53,16 +93,16 @@ test("a photo added in the picker can be picked once the library lists it", asyn
   );
   await pick(2);
 
-  const input = screen.getByTestId("photo-picker-input");
-  expect(input).toHaveAttribute("multiple");
-  expect(input).toHaveAttribute("accept", "image/*");
-  await user.upload(input, new File(["x"], "one.jpg", { type: "image/jpeg" }));
-
+  await user.upload(
+    screen.getByTestId("photo-picker-input"),
+    new File(["x"], "one.jpg", { type: "image/jpeg" }),
+  );
   await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
-  // Settled and listed: no status card is left beside the tile.
+  await user.click(screen.getByRole("button", { name: "Fermer la bibliothèque" }));
+  finish();
+
   await waitFor(() => expect(screen.queryByTestId("photo-picker-cards")).toBeNull());
-  await user.click(await pick(2));
-  expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+  expect(onPick).not.toHaveBeenCalled();
 });
 
 function Harness() {
@@ -72,8 +112,6 @@ function Harness() {
     height: 1000,
     srcset:
       "/api/v1/images/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd.jpg 800w",
-    altFr: null,
-    altDe: null,
   });
   return <PhotoField label="Photo" value={photo} onChange={(_id, next) => setPhoto(next)} />;
 }

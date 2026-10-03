@@ -153,12 +153,7 @@ export const de: typeof fr = {
     files: "Datei",
     // The library's label for a photo, on /media.
     name: "Name",
-    band: "Foto der Gruppe",
-    concert: "Konzertfoto",
-    registers: "Register",
     imageId: "Foto",
-    imageAltFr: "Alternativtext des Fotos auf Französisch",
-    imageAltDe: "Alternativtext des Fotos auf Deutsch",
     registrationOpensAt: "Anmeldebeginn",
     registrationClosesAt: "Anmeldeschluss",
     registrationMaxGuests: "Personen pro Anmeldung",
@@ -833,7 +828,9 @@ export const de: typeof fr = {
     remove: "Entfernen",
     close: "Bibliothek schliessen",
     pickerTitle: "Foto auswählen",
-    pickerDescription: "Tippen Sie auf ein Foto, um es auszuwählen, oder fügen Sie neue hinzu.",
+    pickerDescription:
+      "Tippen Sie auf ein Foto, um es auszuwählen, oder fügen Sie eines von Ihrem Gerät hinzu.",
+    pickerAdd: "Vom Gerät hinzufügen",
     pickerEmpty: "Die Bibliothek ist leer. Fügen Sie ein erstes Foto hinzu.",
     loadFailed: "Die Bibliothek konnte nicht geladen werden.",
     removeFromSlot: "Foto entfernen",
@@ -848,6 +845,8 @@ export const de: typeof fr = {
     changeConcert: "Foto ändern: Konzert",
     changeRegister: "Foto ändern: Register {{name}}",
     slotSaveFailed: "Das Foto konnte nicht geändert werden.",
+    slotPlaced: "Foto platziert.",
+    slotRemoved: "Foto entfernt.",
     dropHere: "Zum Hinzufügen ablegen",
     dropOnlyOne: "Nur ein Foto auf einmal.",
     dropNotPhoto: "Hier kann nur ein Foto abgelegt werden.",
@@ -954,6 +953,8 @@ export const de: typeof fr = {
     },
     saved: "Eintrag gespeichert.",
     deleted: "Eintrag gelöscht.",
+    photoFailed:
+      "Der Eintrag ist gespeichert, sein Foto aber nicht. Bearbeiten Sie den Eintrag, um es erneut auszuwählen.",
     icons: {
       none: "Keines",
       flag: "Fahne",
@@ -973,8 +974,6 @@ export const de: typeof fr = {
     french: "Französisch",
     german: "Deutsch",
     photo: "Foto",
-    photoAltFr: "Alternativtext des Fotos auf Französisch",
-    photoAltDe: "Alternativtext des Fotos auf Deutsch",
     atLeastOne: "Mindestens ein Titel oder ein Text, in einer der beiden Sprachen.",
     precisions: {
       year: "Nur das Jahr (2019)",

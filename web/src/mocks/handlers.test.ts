@@ -1002,7 +1002,9 @@ test("the library is for images.manage", async () => {
   setMockUser("demo.player");
   expect((await fetch("/api/v1/images")).status).toBe(403);
   expect((await upload(jpegFile(10, 10, 1))).status).toBe(403);
-  expect((await fetch("/api/v1/photo-placements")).status).toBe(403);
+  const place = { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ imageId: null }) };
+  expect((await fetch("/api/v1/site-photos/band", place)).status).toBe(403);
+  expect((await fetch("/api/v1/sections/4/photo", place)).status).toBe(403);
 
   setMockUser(null);
   expect((await fetch("/api/v1/images")).status).toBe(401);
@@ -1095,71 +1097,46 @@ test("a replace swaps the sizes under the same id and refuses another image's ph
   expect(other.id).not.toBe(1);
 });
 
-test("replacing the placements needs the current tag", async () => {
+/** PUT one place's photo, as PhotoPlacementController takes it: no If-Match. */
+const placePhoto = (url: string, body: unknown) =>
+  fetch(url, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+test("placing a photo writes one place, with no tag, and shows on the public pages", async () => {
   setMockUser("demo.direction");
-  const document = await (await fetch("/api/v1/photo-placements")).json();
-
-  const without = await fetch("/api/v1/photo-placements", {
-    method: "PUT",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(document),
-  });
-  expect(without.status).toBe(428);
-
-  const stale = await fetch("/api/v1/photo-placements", {
-    method: "PUT",
-    headers: { ...JSON_HEADERS, "If-Match": '"00000000"' },
-    body: JSON.stringify(document),
-  });
-  expect(stale.status).toBe(412);
-});
-
-test("placing a photo shows on the public pages, and the tag moves", async () => {
-  setMockUser("demo.direction");
-  const before = await fetch("/api/v1/photo-placements");
-  const document = (await before.json()) as {
-    band: { imageId: number | null };
-    concert: { imageId: number | null };
-    registers: { sectionId: number; imageId: number | null }[];
+  const site = (await (await fetch("/api/v1/site-photos")).json()) as {
+    band: { url: string } | null;
   };
-  const imageId = document.band.imageId as number;
+  expect(site.band).not.toBeNull();
 
-  document.concert = { imageId };
-  document.registers = document.registers.map((row) => ({ ...row, imageId: null }));
-  const put = await fetch("/api/v1/photo-placements", {
-    method: "PUT",
-    headers: { ...JSON_HEADERS, "If-Match": before.headers.get("ETag") ?? "" },
-    body: JSON.stringify(document),
-  });
-  expect(put.status).toBe(200);
-  expect(put.headers.get("ETag")).not.toBe(before.headers.get("ETag"));
+  const concert = await placePhoto("/api/v1/site-photos/concert", { imageId: 1 });
+  expect(concert.status).toBe(200);
+  expect(((await concert.json()) as { photo: { url: string } }).photo.url).toBe(site.band?.url);
+  expect((await placePhoto("/api/v1/sections/5/photo", { imageId: null })).status).toBe(200);
 
   setMockUser(null);
   const photos = (await (await fetch("/api/v1/site-photos")).json()) as {
-    concert: { altFr: string | null; url: string } | null;
+    band: { url: string } | null;
+    concert: { url: string } | null;
   };
+  // The band photo was not sent and is unchanged.
+  expect(photos.band?.url).toBe(site.band?.url);
   expect(photos.concert?.url).toMatch(/^\/api\/v1\/images\/[0-9a-f]{64}\.jpg$/);
-  // A page slot carries no alt text; the page describes it by the band's name.
-  expect(photos.concert?.altFr).toBeNull();
+  // No placement carries alt text; the page describes the photo.
+  expect(photos.concert).not.toHaveProperty("altFr");
   const band = await rowsOf<{ photo: unknown }>("/api/v1/band");
   expect(band.every((section) => section.photo === null)).toBe(true);
 });
 
-test("a register list that misses a register is refused against registers", async () => {
+test("a placement refuses a missing or unknown image id, and an unknown place", async () => {
   setMockUser("demo.direction");
-  const before = await fetch("/api/v1/photo-placements");
-  const document = (await before.json()) as { registers: unknown[] };
-  document.registers.pop();
-
-  const response = await fetch("/api/v1/photo-placements", {
-    method: "PUT",
-    headers: { ...JSON_HEADERS, "If-Match": before.headers.get("ETag") ?? "" },
-    body: JSON.stringify(document),
-  });
-  expect(response.status).toBe(400);
-  expect(((await response.json()) as { errors: unknown[] }).errors).toEqual([
-    { field: "registers", reason: "invalid_value" },
+  expect(await refusal(await placePhoto("/api/v1/sections/4/photo", {}))).toEqual([
+    { field: "imageId", reason: "required" },
   ]);
+  expect(await refusal(await placePhoto("/api/v1/sections/4/photo", { imageId: 999 }))).toEqual([
+    { field: "imageId", reason: "invalid_format" },
+  ]);
+  expect((await placePhoto("/api/v1/site-photos/poster", { imageId: 1 })).status).toBe(404);
+  expect((await placePhoto("/api/v1/sections/999/photo", { imageId: 1 })).status).toBe(404);
 });
 
 test("the band page carries the seeded register photo, and an empty register carries none", async () => {
@@ -1206,7 +1183,7 @@ test("an image file is served as a labelled placeholder of its own size", async 
   expect(await (await fetch(smallest.url)).text()).toContain(`width="${smallest.width}"`);
 });
 
-test("editing a history entry's alt text alone applies it to the photo it has", async () => {
+test("a history entry's photo has its own write, which the entry's PUT never touches", async () => {
   setMockUser("demo.direction");
   const entry = (await rowsOf<{ id: number; imageId: number | null }>("/api/v1/history")).find(
     (row) => row.imageId !== null,
@@ -1219,25 +1196,19 @@ test("editing a history entry's alt text alone applies it to the photo it has", 
     titleFr: "Le flambeau passe",
   };
 
-  const alone = await fetch(url, {
+  // An imageId in the entry's own body is ignored.
+  const edited = await fetch(url, {
     method: "PUT",
     headers: { ...JSON_HEADERS, ...(await ifMatchFor(url)) },
-    body: JSON.stringify({ ...text, imageAltFr: "Nouveau texte" }),
+    body: JSON.stringify({ ...text, imageId: null }),
   });
-  expect(alone.status).toBe(200);
-  const updated = (await alone.json()) as { imageId: number; photo: { altFr: string } };
-  expect(updated.imageId).toBe(entry?.imageId);
-  expect(updated.photo.altFr).toBe("Nouveau texte");
+  expect(((await edited.json()) as { imageId: number | null }).imageId).toBe(entry?.imageId);
 
-  const cleared = await fetch(url, {
-    method: "PUT",
-    headers: { ...JSON_HEADERS, ...(await ifMatchFor(url)) },
-    body: JSON.stringify({ ...text, imageId: null, imageAltFr: "ignoré" }),
-  });
-  expect(await cleared.json()).toMatchObject({
-    imageId: null,
-    imageAltFr: null,
-    imageAltDe: null,
-    photo: null,
-  });
+  const cleared = await placePhoto(`${url}/photo`, { imageId: null });
+  expect(await cleared.json()).toEqual({ photo: null });
+  expect(((await (await fetch(url)).json()) as { imageId: number | null }).imageId).toBeNull();
+
+  // Both permissions: images.manage alone is not enough to change an entry.
+  setMockUser("demo.player");
+  expect((await placePhoto(`${url}/photo`, { imageId: 1 })).status).toBe(403);
 });

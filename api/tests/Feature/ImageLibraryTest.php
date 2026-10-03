@@ -584,7 +584,8 @@ class ImageLibraryTest extends TestCase
     public function test_no_read_but_the_file_route_selects_the_bytes(): void
     {
         $image = LibraryImage::create(widths: [800, 480]);
-        Section::query()->where('name', 'Cloches')->update(['image_id' => $image->id]);
+        $cloches = Section::query()->where('name', 'Cloches')->sole();
+        $cloches->update(['image_id' => $image->id]);
         SitePhoto::query()->where('slot', 'band')->update(['image_id' => $image->id]);
         HistoryEntry::factory()->create(['image_id' => $image->id]);
 
@@ -595,7 +596,6 @@ class ImageLibraryTest extends TestCase
             [$this->manager, '/api/v1/images', true],
             [$this->manager, '/api/v1/images/summary', false],
             [$this->manager, "/api/v1/images/{$image->id}", true],
-            [$this->manager, '/api/v1/photo-placements', false],
             [null, '/api/v1/band', true],
             [null, '/api/v1/site-photos', true],
             [null, '/api/v1/history', true],
@@ -628,6 +628,10 @@ class ImageLibraryTest extends TestCase
             'the rename' => fn () => $this->actingAsMember($this->manager)
                 ->patchJson("/api/v1/images/{$image->id}", ['name' => 'Renommée'], $this->ifMatch('image', $image)),
             'the replace' => fn () => $this->replace($image, $this->set()),
+            'placing the band photo' => fn () => $this->actingAsMember($this->manager)
+                ->putJson('/api/v1/site-photos/band', ['imageId' => $image->id]),
+            'placing a register photo' => fn () => $this->actingAsMember($this->manager)
+                ->putJson("/api/v1/sections/{$cloches->id}/photo", ['imageId' => $image->id]),
         ];
 
         foreach ($writes as $what => $write) {
@@ -1254,19 +1258,17 @@ class ImageLibraryTest extends TestCase
 
     // ------------------------------------------------------- the placement
 
-    public function test_a_photo_carries_its_largest_size_its_srcset_and_both_alts(): void
+    public function test_a_photo_carries_its_largest_size_and_its_srcset_and_no_alt_text(): void
     {
         $image = LibraryImage::create(widths: [800, 480]);
         [$large, $small] = [LibraryImage::url($image, 800), LibraryImage::url($image, 480)];
 
-        $this->assertNull(PhotoResource::of(null, 'Texte', 'Text'));
+        $this->assertNull(PhotoResource::of(null));
         $this->assertSame([
             'url' => $large,
             'width' => 800,
             'height' => 600,
             'srcset' => "{$small} 480w, {$large} 800w",
-            'altFr' => 'Texte',
-            'altDe' => null,
-        ], PhotoResource::of($image, 'Texte'));
+        ], PhotoResource::of($image));
     }
 }

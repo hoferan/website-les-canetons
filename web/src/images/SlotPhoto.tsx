@@ -9,8 +9,8 @@ type Props = {
   slot: PhotoSlot;
   /** What the slot holds now; null shows the placeholder. */
   photo: PhotoData | null;
-  /** Used when the photo carries no alt text in either language. */
-  fallbackAlt: string;
+  /** What the photo shows, said by the page: the band's name or the register's. */
+  alt: string;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
   upload?: UploadFn;
   shrinker?: ShrinkFn;
@@ -27,18 +27,12 @@ type Props = {
  * the column width decide the height. Every slot, on /band and on the home
  * page, spans the text column, which is what its `sizes` says.
  */
-export function SlotPhoto({ slot, photo, fallbackAlt, upload, shrinker }: Props) {
+export function SlotPhoto({ slot, photo, alt, upload, shrinker }: Props) {
   const { can } = useSession();
 
   if (can("images.manage")) {
     return (
-      <SlotPhotoControl
-        slot={slot}
-        photo={photo}
-        fallbackAlt={fallbackAlt}
-        upload={upload}
-        shrinker={shrinker}
-      />
+      <SlotPhotoControl slot={slot} photo={photo} alt={alt} upload={upload} shrinker={shrinker} />
     );
   }
   if (!photo) {
@@ -47,7 +41,7 @@ export function SlotPhoto({ slot, photo, fallbackAlt, upload, shrinker }: Props)
   return (
     <Photo
       photo={photo}
-      fallbackAlt={fallbackAlt}
+      alt={alt}
       sizes={PHOTO_SIZES.textColumn}
       className="mt-related h-auto w-full rounded-lg"
     />

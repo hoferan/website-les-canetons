@@ -1,30 +1,18 @@
 import type { HistoryEntryResourcePhoto } from "../api/generated/model";
-import { currentLocale } from "../i18n";
 
 /**
- * The photo the API returns: its largest size, every size as a `srcset`, and
- * an alt text per language.
- * Typed after the history's, the one placement that carries alt text; the page
- * slots send the same shape with both alts null.
+ * The photo the API returns: its largest size and every size as a `srcset`.
+ * Every place sends the same shape; the history's is the one it is named after.
  */
 export type PhotoData = NonNullable<HistoryEntryResourcePhoto>;
 
-type Alts = { altFr?: string | null; altDe?: string | null };
-
-/**
- * The alt text for the page's language, else the other language's, else the
- * fallback (ADR 0026's order). A blank string counts as missing, so a form that
- * saved "" does not hide the text in the other language.
- */
-export function altFor(photo: Alts, fallback: string): string {
-  const own = currentLocale() === "de-CH" ? [photo.altDe, photo.altFr] : [photo.altFr, photo.altDe];
-  return own.find((text) => text != null && text.trim() !== "")?.trim() ?? fallback;
-}
-
 type Props = {
   photo: PhotoData;
-  /** Used when the photo carries no alt text in either language. */
-  fallbackAlt: string;
+  /**
+   * What the photo shows, said by the page: the band's name, the register's,
+   * or the history entry's title. No photo carries alt text of its own.
+   */
+  alt: string;
   /**
    * How wide the photo is drawn, as an HTML `sizes` value, so the browser
    * picks the smallest size in `srcset` that fills it. Each layout states its
@@ -65,7 +53,7 @@ export const PHOTO_SIZES = {
  * the bytes arrive; without them a page of photos jumps as each one lands.
  * `src` is the largest size, for the rare browser that ignores `srcset`.
  */
-export function Photo({ photo, fallbackAlt, sizes, className }: Props) {
+export function Photo({ photo, alt, sizes, className }: Props) {
   return (
     <img
       src={photo.url}
@@ -73,7 +61,7 @@ export function Photo({ photo, fallbackAlt, sizes, className }: Props) {
       sizes={sizes}
       width={photo.width}
       height={photo.height}
-      alt={altFor(photo, fallbackAlt)}
+      alt={alt}
       loading="lazy"
       decoding="async"
       className={className}

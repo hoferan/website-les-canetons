@@ -19,7 +19,6 @@ import type {
   InboxItemResource,
   InboxSummary200Counts,
   MemberResource,
-  PhotoPlacementsResource,
   RecordMemberAttendanceRequest,
   RecordOwnAttendanceRequest,
   RegistrationOptionResource,
@@ -464,8 +463,8 @@ function seededSizes(id: number, width: number, height: number, bytes: number): 
 }
 
 /**
- * One photo slot: what the placements document and the band's registers hold.
- * Just the image, because a page slot carries no alt text of its own.
+ * One photo slot: what a site photo or a register holds. Just the image, since
+ * no placement carries alt text.
  */
 type PhotoSlot = { imageId: number | null };
 
@@ -535,28 +534,11 @@ const srcsetOf = (image: MockImage) =>
   image.sizes.map((size) => `${sizeUrl(size)} ${size.width}w`).join(", ");
 
 /** The photo a placement shows, or null when the slot is empty. Only a history entry passes alt text. */
-function photoOf(imageId: number | null, altFr: string | null = null, altDe: string | null = null) {
+function photoOf(imageId: number | null) {
   const image = images.find((candidate) => candidate.id === imageId);
   return image
-    ? {
-        url: imageUrl(image),
-        width: image.width,
-        height: image.height,
-        srcset: srcsetOf(image),
-        altFr,
-        altDe,
-      }
+    ? { url: imageUrl(image), width: image.width, height: image.height, srcset: srcsetOf(image) }
     : null;
-}
-
-/** The text an alt field stores: trimmed, and blank means none. */
-function altText(value: unknown): string | null {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-}
-
-/** A slot as the controller stores it: the image id, and whatever else was sent dropped. */
-function normaliseSlot(slot: Partial<PhotoSlot>): PhotoSlot {
-  return { imageId: slot.imageId ?? null };
 }
 
 /**
@@ -804,17 +786,6 @@ function refuseWithout(permission: string) {
 }
 
 const refuseWithoutMembersManage = () => refuseWithout("members.manage");
-
-/**
- * Mirrors RequiresImagesManageToPlacePhoto: a history write that carries any of
- * the three photo keys needs images.manage on top of history.manage.
- * The key being present is enough, `null` included, because null changes the
- * photo too.
- */
-function refuseUnlessMayPlacePhoto(body: object) {
-  const placing = ["imageId", "imageAltFr", "imageAltDe"].some((key) => key in body);
-  return placing ? refuseWithout("images.manage") : null;
-}
 
 /** `exists:images,id`, which the real error map leaves on the generic reason. */
 function refuseUnknownImage(imageId: number | null | undefined) {
@@ -1317,8 +1288,6 @@ function initialHistory(): HistoryEntryResource[] {
       titleDe: null,
       bodyDe: null,
       imageId: null,
-      imageAltFr: null,
-      imageAltDe: null,
       photo: null,
       ...stamp,
     },
@@ -1333,8 +1302,6 @@ function initialHistory(): HistoryEntryResource[] {
       titleDe: null,
       bodyDe: null,
       imageId: null,
-      imageAltFr: null,
-      imageAltDe: null,
       photo: null,
       ...stamp,
     },
@@ -1349,8 +1316,6 @@ function initialHistory(): HistoryEntryResource[] {
       titleDe: "Delphine Maillard und Laura Mantel",
       bodyDe: null,
       imageId: null,
-      imageAltFr: null,
-      imageAltDe: null,
       photo: null,
       ...stamp,
     },
@@ -1364,12 +1329,9 @@ function initialHistory(): HistoryEntryResource[] {
       bodyFr: "Elles passent le flambeau à Lilou Keller et Anaïs Meuwly.",
       titleDe: null,
       bodyDe: null,
-      // The one entry with a photograph, French alt text only, so the German
-      // page shows the fallback.
+      // The one entry with a photograph.
       imageId: 2,
-      imageAltFr: "Les nouvelles directrices avec les anciennes",
-      imageAltDe: null,
-      photo: photoOf(2, "Les nouvelles directrices avec les anciennes", null),
+      photo: photoOf(2),
       ...stamp,
     },
   ];
@@ -1404,38 +1366,6 @@ function normaliseHistory(body: StoreHistoryEntryRequest) {
     titleDe: text(body.titleDe),
     bodyDe: text(body.bodyDe),
   };
-}
-
-/**
- * The photo columns of a history write, from HistoryEntryController::columns().
- *
- * The alt texts belong to the photo. A body without `imageId` keeps the photo
- * the entry has, so an editor without images.manage does not drop it; alt text
- * sent alone lands on that photo, or is stored null when there is none; and a
- * null `imageId` clears both alts whatever the body says.
- */
-function historyPhoto(
-  raw: StoreHistoryEntryRequest,
-  current?: HistoryEntryResource,
-): Pick<HistoryEntryResource, "imageId" | "imageAltFr" | "imageAltDe" | "photo"> {
-  let imageId = current?.imageId ?? null;
-  let altFr = current?.imageAltFr ?? null;
-  let altDe = current?.imageAltDe ?? null;
-
-  if ("imageId" in raw) {
-    imageId = raw.imageId ?? null;
-    altFr = imageId === null ? null : altText(raw.imageAltFr);
-    altDe = imageId === null ? null : altText(raw.imageAltDe);
-  } else {
-    if ("imageAltFr" in raw) {
-      altFr = imageId === null ? null : altText(raw.imageAltFr);
-    }
-    if ("imageAltDe" in raw) {
-      altDe = imageId === null ? null : altText(raw.imageAltDe);
-    }
-  }
-
-  return { imageId, imageAltFr: altFr, imageAltDe: altDe, photo: photoOf(imageId, altFr, altDe) };
 }
 
 function hasHistoryText(body: ReturnType<typeof normaliseHistory>): boolean {
@@ -2087,17 +2017,24 @@ function imageResource(image: MockImage): ImageResource {
   };
 }
 
-/** The placements document, as PhotoPlacementsResource::current() reads it. */
-function placementsDocument(): PhotoPlacementsResource {
-  return {
-    band: { ...sitePhotos.band },
-    concert: { ...sitePhotos.concert },
-    registers: SECTIONS.map((section) => ({
-      sectionId: section.id,
-      name: section.name,
-      ...(registerPhotos[section.id] ?? EMPTY_SLOT),
-    })),
-  };
+/**
+ * PlacePhotoRequest: `imageId` must be sent, null empties the place, and a
+ * number must name a library image. Answers the body to store, or the refusal.
+ */
+async function placedImageId(request: Request): Promise<{ imageId: number | null } | Response> {
+  const body = (await request.json()) as { imageId?: unknown };
+  if (!("imageId" in body)) {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "imageId", reason: "required" },
+    ]);
+  }
+  const imageId = body.imageId ?? null;
+  if (imageId !== null && typeof imageId !== "number") {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "imageId", reason: "invalid_format" },
+    ]);
+  }
+  return refuseUnknownImage(imageId) ?? { imageId };
 }
 
 /**
@@ -3256,66 +3193,65 @@ const overrides = [
     return HttpResponse.json({ ok: true });
   }),
 
-  http.get("/api/v1/photo-placements", () => {
+  // One place per write, each a single value and so with no If-Match, as
+  // PhotoPlacementController does it.
+  http.put("/api/v1/site-photos/:slot", async ({ request, params }) => {
     const refusal = refuseWithout("images.manage");
     if (refusal) {
       return refusal;
     }
-    const document = placementsDocument();
-    return HttpResponse.json(document, { headers: { ETag: mockEntityTag(document) } });
+    const slot = String(params.slot);
+    if (slot !== "band" && slot !== "concert") {
+      return notFound();
+    }
+    const placed = await placedImageId(request);
+    if (placed instanceof Response) {
+      return placed;
+    }
+    sitePhotos = { ...sitePhotos, [slot]: placed };
+    return HttpResponse.json({ photo: photoOf(placed.imageId) });
   }),
 
-  // One document, replaced whole, and checked the way
-  // UpdatePhotoPlacementsRequest checks it: `imageId` must be present on every
-  // slot (null empties it), must name a library image, and `registers` must
-  // list every register exactly once.
-  http.put("/api/v1/photo-placements", async ({ request }) => {
+  http.put("/api/v1/sections/:id/photo", async ({ request, params }) => {
     const refusal = refuseWithout("images.manage");
     if (refusal) {
       return refusal;
     }
-    const stale = refuseWithoutIfMatch(request, mockEntityTag(placementsDocument()));
-    if (stale) {
-      return stale;
+    const section = SECTIONS.find((candidate) => candidate.id === Number(params.id));
+    if (!section) {
+      return notFound();
     }
+    const placed = await placedImageId(request);
+    if (placed instanceof Response) {
+      return placed;
+    }
+    registerPhotos = { ...registerPhotos, [section.id]: placed };
+    return HttpResponse.json({ photo: photoOf(placed.imageId) });
+  }),
 
-    const body = (await request.json()) as {
-      band?: Partial<PhotoSlot>;
-      concert?: Partial<PhotoSlot>;
-      registers?: (Partial<PhotoSlot> & { sectionId: number })[];
+  http.put("/api/v1/history/:id/photo", async ({ request, params }) => {
+    const refusal = refuseWithout("history.manage") ?? refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = historyEntries.find((candidate) => candidate.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const placed = await placedImageId(request);
+    if (placed instanceof Response) {
+      return placed;
+    }
+    const updated: HistoryEntryResource = {
+      ...existing,
+      imageId: placed.imageId,
+      photo: photoOf(placed.imageId),
+      updatedAt: new Date().toISOString(),
     };
-    const errors: ApiErrorField[] = [];
-    const checkSlot = (field: string, slot: Partial<PhotoSlot> | undefined) => {
-      if (!slot || !("imageId" in slot)) {
-        errors.push({ field: `${field}.imageId`, reason: "required" });
-      } else if (slot.imageId != null && !images.some((image) => image.id === slot.imageId)) {
-        errors.push({ field: `${field}.imageId`, reason: "invalid_format" });
-      }
-    };
-    checkSlot("band", body.band);
-    checkSlot("concert", body.concert);
-    (body.registers ?? []).forEach((row, index) => checkSlot(`registers.${index}`, row));
-
-    const sent = (body.registers ?? []).map((row) => row.sectionId).sort((a, b) => a - b);
-    const known = SECTIONS.map((section) => section.id).sort((a, b) => a - b);
-    if (JSON.stringify(sent) !== JSON.stringify(known)) {
-      errors.push({ field: "registers", reason: "invalid_value" });
-    }
-    if (errors.length > 0) {
-      return problem(400, "validation_failed", "Invalid form submission", errors);
-    }
-
-    sitePhotos = {
-      band: normaliseSlot(body.band ?? EMPTY_SLOT),
-      concert: normaliseSlot(body.concert ?? EMPTY_SLOT),
-    };
-    registerPhotos = {};
-    for (const row of body.registers ?? []) {
-      registerPhotos[row.sectionId] = normaliseSlot(row);
-    }
-
-    const document = placementsDocument();
-    return HttpResponse.json(document, { headers: { ETag: mockEntityTag(document) } });
+    historyEntries = historyEntries.map((candidate) =>
+      candidate.id === updated.id ? updated : candidate,
+    );
+    return HttpResponse.json({ photo: updated.photo });
   }),
 
   /* ---------------------------------------------------------------------- *
@@ -3347,14 +3283,6 @@ const overrides = [
       return refusal;
     }
     const raw = (await request.json()) as StoreHistoryEntryRequest;
-    const unplaceable = refuseUnlessMayPlacePhoto(raw);
-    if (unplaceable) {
-      return unplaceable;
-    }
-    const unknownImage = refuseUnknownImage(raw.imageId);
-    if (unknownImage) {
-      return unknownImage;
-    }
     const body = normaliseHistory(raw);
     if (!hasHistoryText(body)) {
       return problem(422, "history_entry_empty", "A history entry needs a title or a text");
@@ -3362,7 +3290,8 @@ const overrides = [
     const now = new Date().toISOString();
     const created: HistoryEntryResource = {
       ...body,
-      ...historyPhoto(raw),
+      imageId: null,
+      photo: null,
       id: nextHistoryId++,
       createdAt: now,
       updatedAt: now,
@@ -3385,14 +3314,6 @@ const overrides = [
       return stale;
     }
     const raw = (await request.json()) as StoreHistoryEntryRequest;
-    const unplaceable = refuseUnlessMayPlacePhoto(raw);
-    if (unplaceable) {
-      return unplaceable;
-    }
-    const unknownImage = refuseUnknownImage(raw.imageId);
-    if (unknownImage) {
-      return unknownImage;
-    }
     const body = normaliseHistory(raw);
     if (!hasHistoryText(body)) {
       return problem(422, "history_entry_empty", "A history entry needs a title or a text");
@@ -3400,7 +3321,6 @@ const overrides = [
     const updated: HistoryEntryResource = {
       ...existing,
       ...body,
-      ...historyPhoto(raw, existing),
       updatedAt: new Date().toISOString(),
     };
     historyEntries = historyEntries.map((candidate) =>

@@ -116,8 +116,6 @@ class PublicPagesTest extends TestCase
             'width' => 1200,
             'height' => 800,
             'srcset' => "{$small} 480w, {$mid} 960w, {$large} 1200w",
-            'altFr' => null,
-            'altDe' => null,
         ], $photo);
     }
 

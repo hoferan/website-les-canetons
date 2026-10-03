@@ -3,17 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test, vi } from "vitest";
 
-import { photoPlacementShow } from "../api/generated/endpoints";
-import type { PhotoPlacementsResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
-import { entityTagOf } from "../api/ifMatch";
 import { setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { Band } from "../pages/Band";
 import { Home } from "../pages/Home";
 import { renderWithSession } from "../test/renderWithSession";
 import { SlotPhoto } from "./SlotPhoto";
-import { placementsWith } from "./SlotPhotoControl";
 
 /**
  * The control a page slot carries for whoever holds images.manage (#105).
@@ -22,25 +18,23 @@ import { placementsWith } from "./SlotPhotoControl";
  * Cloches (register 4) and the concert are empty.
  */
 
-/** Records every PUT and lets the mock answer it. */
-function recordPuts(): { ifMatch: string | null; body: unknown }[] {
-  const puts: { ifMatch: string | null; body: unknown }[] = [];
+type Put = { path: string; ifMatch: string | null; body: unknown };
+
+/** Records every placement PUT, then lets the mock answer it. */
+function recordPuts(): Put[] {
+  const puts: Put[] = [];
+  const record = async ({ request }: { request: Request }) => {
+    puts.push({
+      path: new URL(request.url).pathname,
+      ifMatch: request.headers.get("If-Match"),
+      body: await request.clone().json(),
+    });
+  };
   server.use(
-    http.put("/api/v1/photo-placements", async ({ request }) => {
-      puts.push({
-        ifMatch: request.headers.get("If-Match"),
-        body: await request.clone().json(),
-      });
-    }),
+    http.put("/api/v1/site-photos/:slot", record),
+    http.put("/api/v1/sections/:id/photo", record),
   );
   return puts;
-}
-
-/** The placements and their tag as the control will read them. */
-async function currentPlacements(): Promise<{ document: PhotoPlacementsResource; etag: string }> {
-  const response = await photoPlacementShow();
-  if (response.status !== 200) throw new Error("unreachable");
-  return { document: response.data, etag: entityTagOf(response) ?? "" };
 }
 
 test("a visitor and a member without images.manage see no control", async () => {
@@ -56,12 +50,10 @@ test("a visitor and a member without images.manage see no control", async () => 
   expect(screen.queryByRole("button", { name: /^(Changer|Ajouter) une? photo/ })).toBeNull();
 });
 
-/** MUTATION TEST: drop `ifMatch(etag)` from the PUT and the mock answers 428. */
-test("picking a photo for a register writes the read's tag and changes that slot only", async () => {
+test("picking a photo for a register writes that register alone, with no tag to quote", async () => {
   setMockUser("demo.direction");
   const user = userEvent.setup();
   const puts = recordPuts();
-  const before = await currentPlacements();
   await renderWithSession(<Band />, { route: "/band" });
 
   const bells = await screen.findByRole("article", { name: "Cloches" });
@@ -74,35 +66,49 @@ test("picking a photo for a register writes the read's tag and changes that slot
 
   // The page re-reads /band and shows the photo, named after the register.
   expect(await within(bells).findByRole("img", { name: "Cloches" })).toBeInTheDocument();
-  expect(puts).toHaveLength(1);
-  expect(puts[0]?.ifMatch).toBe(before.etag);
-  expect(puts[0]?.body).toEqual(
-    placementsWith(before.document, { kind: "register", sectionId: 4, name: "Cloches" }, 1),
-  );
-  // Only Cloches moved: the band and Trompettes keep what they had.
-  const body = puts[0]?.body as { registers: { sectionId: number; imageId: number | null }[] };
-  expect(puts[0]?.body).toMatchObject({ band: { imageId: 1 }, concert: { imageId: null } });
-  expect(body.registers.filter((row) => row.imageId !== null)).toEqual([
-    { sectionId: 4, imageId: 1 },
-    { sectionId: 5, imageId: 2 },
-  ]);
+  expect(puts).toEqual([{ path: "/api/v1/sections/4/photo", ifMatch: null, body: { imageId: 1 } }]);
+  // Trompettes keeps its photo: no other slot was sent.
+  const trumpets = screen.getByRole("article", { name: "Trompettes" });
+  expect(within(trumpets).getByRole("img", { name: "Trompettes" })).toBeInTheDocument();
 });
 
-test("Retirer la photo empties the slot it is on", async () => {
+/**
+ * MUTATION TEST: drop the refocus effect and focus stays on <body>, because
+ * the add button the dialog returned focus to is gone.
+ */
+test("after a pick, focus is on the slot's pencil and the result is read out", async () => {
+  setMockUser("demo.direction");
+  const user = userEvent.setup();
+  await renderWithSession(<Band />, { route: "/band" });
+
+  const bells = await screen.findByRole("article", { name: "Cloches" });
+  await user.click(within(bells).getByRole("button", { name: "Ajouter une photo — Cloches" }));
+  await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
+
+  const pencil = await within(bells).findByRole("button", {
+    name: "Changer la photo du registre Cloches",
+  });
+  await waitFor(() => expect(pencil).toHaveFocus());
+  expect(within(bells).getByRole("status")).toHaveTextContent("Photo placée.");
+});
+
+test("Retirer la photo empties the slot it is on, and focus moves to its add button", async () => {
   setMockUser("demo.direction");
   const user = userEvent.setup();
   const puts = recordPuts();
-  const before = await currentPlacements();
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
   await user.click(await screen.findByRole("button", { name: "Changer la photo du groupe" }));
   await user.click(await screen.findByRole("button", { name: "Retirer la photo" }));
 
   // The band photo gives way to the empty frame and its add button.
-  await screen.findByRole("button", { name: "Ajouter une photo — photo du groupe" });
+  const add = await screen.findByRole("button", { name: "Ajouter une photo — photo du groupe" });
   expect(container.querySelector('[data-photo-pending="band"]')).not.toBeNull();
-  expect(puts[0]?.body).toEqual(placementsWith(before.document, { kind: "band" }, null));
-  expect(puts[0]?.body).toMatchObject({ band: { imageId: null } });
+  expect(puts).toEqual([
+    { path: "/api/v1/site-photos/band", ifMatch: null, body: { imageId: null } },
+  ]);
+  await waitFor(() => expect(add).toHaveFocus());
+  expect(screen.getByText("Photo retirée.")).toBeInTheDocument();
 });
 
 test("the concert photo is changed on the home page", async () => {
@@ -117,25 +123,27 @@ test("the concert photo is changed on the home page", async () => {
   await user.click(await screen.findByRole("button", { name: "Trompettes en répétition" }));
 
   expect(await screen.findByRole("img", { name: "Les Canetons de Fribourg" })).toBeInTheDocument();
-  expect(puts[0]?.body).toMatchObject({ band: { imageId: 1 }, concert: { imageId: 2 } });
+  expect(puts).toEqual([
+    { path: "/api/v1/site-photos/concert", ifMatch: null, body: { imageId: 2 } },
+  ]);
 });
 
-test("a write against placements changed meanwhile says so and changes nothing", async () => {
+test("a write the server refuses says so under the slot and changes nothing", async () => {
   setMockUser("demo.direction");
   const user = userEvent.setup();
   server.use(
-    http.put("/api/v1/photo-placements", () =>
+    http.put("/api/v1/sections/:id/photo", () =>
       HttpResponse.json(
         {
-          title: "Precondition Failed",
-          status: 412,
-          code: "if_match_failed",
-          instance: "/api/v1/photo-placements",
+          title: "Service Unavailable",
+          status: 503,
+          code: "service_unavailable",
+          instance: "/api/v1/sections/4/photo",
           errors: [],
           requestId: "01JB3K7QW8ZX7VN4S2QK9J0M1P",
-          detail: "stale",
+          detail: "down",
         },
-        { status: 412 },
+        { status: 503 },
       ),
     ),
   );
@@ -145,10 +153,9 @@ test("a write against placements changed meanwhile says so and changes nothing",
   await user.click(within(bells).getByRole("button", { name: "Ajouter une photo — Cloches" }));
   await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
 
-  expect(
-    await within(bells).findByText(/Quelqu'un a modifié cet élément entre-temps/),
-  ).toBeInTheDocument();
+  expect(await within(bells).findByRole("alert")).not.toBeEmptyDOMElement();
   expect(within(bells).queryByRole("img")).toBeNull();
+  expect(within(bells).getByRole("status")).toBeEmptyDOMElement();
 });
 
 test("the control speaks German on the German page", async () => {
@@ -235,19 +242,18 @@ test("a visitor sees the photo and the placeholder without any control", async (
   expect(trumpets.querySelector("[data-photo-frame]")).toBeNull();
 });
 
-test("a visitor's empty slot is a quiet 3:2 frame with an icon and a caption", async () => {
+/** MUTATION TEST: give PhotoPending back its 3:2 frame and this fails. */
+test("a visitor's empty slot is one quiet line, not a photo-sized box", async () => {
   setMockUser(null);
   await renderWithSession(<Band />, { route: "/band" });
 
   const bells = await screen.findByRole("article", { name: "Cloches" });
-  const frame = bells.querySelector<HTMLElement>('[data-photo-pending="register"]');
-  expect(frame).not.toBeNull();
-  expect(frame).toHaveClass("aspect-[3/2]", "w-full", "rounded-lg");
-  // Not a drop zone and not a broken image: no dashed border, no emoji.
-  expect(frame?.className).not.toMatch(/dashed/);
-  expect(frame).not.toHaveTextContent("📷");
-  expect(frame?.querySelector("svg[aria-hidden='true']")).not.toBeNull();
-  expect(within(frame as HTMLElement).getByText("Photo à venir")).toBeInTheDocument();
+  const line = bells.querySelector<HTMLElement>('[data-photo-pending="register"]');
+  expect(line).not.toBeNull();
+  expect(line?.tagName).toBe("P");
+  expect(line?.className).not.toMatch(/aspect-/);
+  expect(line?.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  expect(line).toHaveTextContent("Photo à venir");
   expect(within(bells).queryByRole("button")).toBeNull();
 });
 
@@ -278,16 +284,9 @@ function injected() {
 test("one photo dropped on an empty slot is shrunk, uploaded and placed there", async () => {
   setMockUser("demo.direction");
   const puts = recordPuts();
-  const before = await currentPlacements();
   const { shrunk, shrinker, upload } = injected();
   await renderWithSession(
-    <SlotPhoto
-      slot={cloches}
-      photo={null}
-      fallbackAlt="Cloches"
-      upload={upload}
-      shrinker={shrinker}
-    />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
 
   const add = screen.getByRole("button", { name: "Ajouter une photo — Cloches" });
@@ -296,14 +295,16 @@ test("one photo dropped on an empty slot is shrunk, uploaded and placed there", 
   await waitFor(() => expect(puts).toHaveLength(1));
   expect(shrinker).toHaveBeenCalledTimes(1);
   expect(upload).toHaveBeenCalledWith(shrunk, "photo");
-  expect(puts[0]?.ifMatch).toBe(before.etag);
-  expect(puts[0]?.body).toEqual(placementsWith(before.document, cloches, 1));
+  expect(puts[0]).toEqual({
+    path: "/api/v1/sections/4/photo",
+    ifMatch: null,
+    body: { imageId: 1 },
+  });
 });
 
 test("a photo dropped on a placed photo replaces it", async () => {
   setMockUser("demo.direction");
   const puts = recordPuts();
-  const before = await currentPlacements();
   const { shrinker } = injected();
   const upload = vi.fn(async (_sizes: Blob[]) => ({ status: 200 as const, id: 2 }));
   await renderWithSession(
@@ -315,10 +316,8 @@ test("a photo dropped on a placed photo replaces it", async () => {
         height: 2,
         srcset:
           "/api/v1/images/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.jpg 3w",
-        altFr: null,
-        altDe: null,
       }}
-      fallbackAlt="Les Canetons de Fribourg"
+      alt="Les Canetons de Fribourg"
       upload={upload}
       shrinker={shrinker}
     />,
@@ -327,12 +326,16 @@ test("a photo dropped on a placed photo replaces it", async () => {
   fireEvent.drop(screen.getByRole("img"), dropEvent([jpeg()]));
 
   await waitFor(() => expect(puts).toHaveLength(1));
-  expect(puts[0]?.body).toEqual(placementsWith(before.document, { kind: "band" }, 2));
+  expect(puts[0]).toEqual({
+    path: "/api/v1/site-photos/band",
+    ifMatch: null,
+    body: { imageId: 2 },
+  });
 });
 
 test("dragging a file over the slot says where it goes, and leaving clears it", async () => {
   setMockUser("demo.direction");
-  await renderWithSession(<SlotPhoto slot={cloches} photo={null} fallbackAlt="Cloches" />);
+  await renderWithSession(<SlotPhoto slot={cloches} photo={null} alt="Cloches" />);
 
   const add = screen.getByRole("button", { name: "Ajouter une photo — Cloches" });
   expect(screen.queryByText("Déposer pour ajouter")).toBeNull();
@@ -349,32 +352,20 @@ test("the slot shows progress while the dropped photo is prepared", async () => 
   const { upload } = injected();
   recordPuts();
   await renderWithSession(
-    <SlotPhoto
-      slot={cloches}
-      photo={null}
-      fallbackAlt="Cloches"
-      upload={upload}
-      shrinker={shrinker}
-    />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
 
   fireEvent.drop(screen.getByRole("button"), dropEvent([jpeg()]));
   expect(await screen.findByRole("status")).toHaveTextContent("Préparation…");
   finish([new Blob(["j"])]);
-  await waitFor(() => expect(screen.getByRole("status")).toBeEmptyDOMElement());
+  await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Photo placée."));
 });
 
 test("two files, or a file that is not a photo, are refused with a message", async () => {
   setMockUser("demo.direction");
   const { shrinker, upload } = injected();
   await renderWithSession(
-    <SlotPhoto
-      slot={cloches}
-      photo={null}
-      fallbackAlt="Cloches"
-      upload={upload}
-      shrinker={shrinker}
-    />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
   const add = screen.getByRole("button", { name: "Ajouter une photo — Cloches" });
 
@@ -402,13 +393,7 @@ test("an upload the server refuses says why and places nothing", async () => {
     throw new ApiError(422, "validation_failed", "x");
   });
   await renderWithSession(
-    <SlotPhoto
-      slot={cloches}
-      photo={null}
-      fallbackAlt="Cloches"
-      upload={upload}
-      shrinker={shrinker}
-    />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
 
   fireEvent.drop(screen.getByRole("button"), dropEvent([jpeg()]));
@@ -421,13 +406,7 @@ test("a visitor's slot ignores a drop", async () => {
   setMockUser(null);
   const { shrinker, upload } = injected();
   const { container } = await renderWithSession(
-    <SlotPhoto
-      slot={cloches}
-      photo={null}
-      fallbackAlt="Cloches"
-      upload={upload}
-      shrinker={shrinker}
-    />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" upload={upload} shrinker={shrinker} />,
   );
 
   const frame = container.querySelector<HTMLElement>("[data-photo-pending]");
@@ -443,7 +422,7 @@ test("a visitor's slot ignores a drop", async () => {
 test("while an editor's slot is on the page, a file dropped beside it does not open in the tab", async () => {
   setMockUser("demo.direction");
   const { unmount } = await renderWithSession(
-    <SlotPhoto slot={cloches} photo={null} fallbackAlt="Cloches" />,
+    <SlotPhoto slot={cloches} photo={null} alt="Cloches" />,
   );
 
   // fireEvent answers false when a listener called preventDefault().
@@ -460,7 +439,7 @@ test("while an editor's slot is on the page, a file dropped beside it does not o
 
 test("a visitor's page keeps the browser's own handling of a dropped file", async () => {
   setMockUser(null);
-  await renderWithSession(<SlotPhoto slot={cloches} photo={null} fallbackAlt="Cloches" />);
+  await renderWithSession(<SlotPhoto slot={cloches} photo={null} alt="Cloches" />);
 
   expect(fireEvent.dragOver(document.body, dropEvent([jpeg()]))).toBe(true);
   expect(fireEvent.drop(document.body, dropEvent([jpeg()]))).toBe(true);

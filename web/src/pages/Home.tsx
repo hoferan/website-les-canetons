@@ -122,11 +122,7 @@ export function Home() {
       {sitePhotos.isPending ? (
         <PhotoReserved />
       ) : (
-        <SlotPhoto
-          slot={{ kind: "concert" }}
-          photo={concertPhoto}
-          fallbackAlt="Les Canetons de Fribourg"
-        />
+        <SlotPhoto slot={{ kind: "concert" }} photo={concertPhoto} alt="Les Canetons de Fribourg" />
       )}
 
       <PublicAgenda />

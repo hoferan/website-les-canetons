@@ -45,6 +45,14 @@ use Symfony\Component\HttpFoundation\Response;
  * somebody's behalf while that member answers, which the five-minute undo
  * window and the audit entry already cover.
  *
+ * PLACING A PHOTO IS EXEMPT FOR THE SAME REASON. PUT /site-photos/{slot},
+ * /sections/{section}/photo and /history/{historyEntry}/photo each set one
+ * value, the image id in one place, so there is no half of it to lose. Two
+ * editors placing photos at once either work on different places, which never
+ * touch, or pick for the same one, where the second pick is what the page
+ * shows and both are in the audit log. A tag would buy a read before every
+ * pick and a 412 for an editor who lost a race nobody could see.
+ *
  * NO CONDITIONAL GET. `If-None-Match` is not implemented and no 304 is ever
  * returned: every route here also sends `Cache-Control: no-store`, so there is
  * no cache to serve one. The tag is an optimistic-concurrency token that

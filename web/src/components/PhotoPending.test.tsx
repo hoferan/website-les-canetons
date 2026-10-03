@@ -3,12 +3,7 @@ import { expect, test } from "vitest";
 
 import { PhotoPending, PhotoReserved } from "./PhotoPending";
 
-/**
- * The reserved frame stands in for the placeholder until the page knows which
- * one it needs. jsdom has no layout, so "the same height" is pinned as "the
- * same classes": the box is sized by them alone (3:2, full column width).
- */
-test("the reserved frame is the same box as the placeholder", () => {
+test("a visitor's placeholder is one line, while the frame reserved during loading is photo-shaped", () => {
   const { container } = render(
     <>
       <PhotoPending token="band" />
@@ -19,7 +14,9 @@ test("the reserved frame is the same box as the placeholder", () => {
   const pending = container.querySelector("[data-photo-pending]");
   const reserved = container.querySelector("[data-photo-reserved]");
 
-  expect(pending?.className).toBeTruthy();
-  expect(reserved?.className).toBe(pending?.className);
+  expect(pending?.tagName).toBe("P");
+  expect(pending?.className).not.toContain("aspect-");
+  expect(pending).toHaveTextContent("Photo à venir");
   expect(reserved?.className).toContain("aspect-[3/2]");
+  expect(reserved).toHaveAttribute("aria-hidden", "true");
 });

@@ -7,6 +7,7 @@ use App\Models\Image;
 use App\Models\Section;
 use App\Models\SitePhoto;
 use Illuminate\Database\QueryException;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -19,6 +20,9 @@ use Tests\TestCase;
 class ImageSchemaTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Every table that places a photo with an `image_id`. */
+    private const PLACEMENT_TABLES = ['sections', 'history_entries', 'site_photos'];
 
     private function image(): Image
     {
@@ -121,11 +125,9 @@ class ImageSchemaTest extends TestCase
         $this->assertFalse($this->image()->isUsed());
     }
 
-    public function test_only_a_history_entry_carries_alt_text_and_a_member_has_no_photo(): void
+    public function test_no_placement_carries_alt_text_and_a_member_has_no_photo(): void
     {
-        $this->assertTrue(Schema::hasColumns('history_entries', ['image_id', 'image_alt_fr', 'image_alt_de']));
-
-        foreach (['sections', 'site_photos'] as $table) {
+        foreach (self::PLACEMENT_TABLES as $table) {
             $this->assertTrue(Schema::hasColumn($table, 'image_id'), "{$table} lost its image_id.");
             $this->assertFalse(Schema::hasColumn($table, 'image_alt_fr'), "{$table} carries alt text again.");
             $this->assertFalse(Schema::hasColumn($table, 'image_alt_de'), "{$table} carries alt text again.");
@@ -146,5 +148,86 @@ class ImageSchemaTest extends TestCase
         }
 
         $this->assertSame(2, DB::table('site_photos')->count());
+    }
+
+    public function test_a_run_cut_off_between_a_column_and_its_key_adds_the_key_next_time(): void
+    {
+        // MariaDB commits each DDL statement on its own, so a worker killed
+        // after the column and before the key leaves exactly this behind.
+        foreach (self::PLACEMENT_TABLES as $table) {
+            Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropForeign(['image_id']));
+        }
+        foreach (self::PLACEMENT_TABLES as $table) {
+            $this->assertTrue(Schema::hasColumn($table, 'image_id'));
+            $this->assertNull($this->imageKey($table), "{$table} still has its key; this test would prove nothing.");
+        }
+
+        $this->runPlacementsMigration();
+
+        foreach (self::PLACEMENT_TABLES as $table) {
+            $this->assertRestrictKey($table);
+        }
+    }
+
+    public function test_a_run_cut_off_before_the_column_adds_the_column_and_the_key(): void
+    {
+        Schema::table('history_entries', function (Blueprint $blueprint) {
+            $blueprint->dropForeign(['image_id']);
+        });
+        Schema::table('history_entries', function (Blueprint $blueprint) {
+            $blueprint->dropColumn('image_id');
+        });
+        $this->assertFalse(Schema::hasColumn('history_entries', 'image_id'));
+
+        $this->runPlacementsMigration();
+
+        $this->assertTrue(Schema::hasColumn('history_entries', 'image_id'));
+        $this->assertRestrictKey('history_entries');
+
+        // And the key is a real one: a placed image cannot be deleted.
+        $image = $this->image();
+        $entry = HistoryEntry::factory()->create(['image_id' => $image->id]);
+        $this->assertThrows(fn () => $image->delete(), QueryException::class);
+
+        // Created after the DDL above committed, so no transaction removes it.
+        $entry->delete();
+        $image->delete();
+    }
+
+    protected function tearDown(): void
+    {
+        // DDL implicitly commits on MariaDB, so RefreshDatabase's transaction
+        // cannot put back a key or a column a test dropped. The migration
+        // itself can, and on an intact schema it changes nothing.
+        $this->runPlacementsMigration();
+
+        parent::tearDown();
+    }
+
+    private function runPlacementsMigration(): void
+    {
+        (require database_path('migrations/2026_10_02_000002_add_image_placements.php'))->up();
+    }
+
+    /** @return array<string, mixed>|null */
+    private function imageKey(string $table): ?array
+    {
+        foreach (Schema::getForeignKeys($table) as $key) {
+            if ($key['columns'] === ['image_id']) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    private function assertRestrictKey(string $table): void
+    {
+        $key = $this->imageKey($table);
+
+        $this->assertNotNull($key, "{$table}.image_id has no foreign key.");
+        $this->assertSame('images', $key['foreign_table']);
+        $this->assertSame(['id'], $key['foreign_columns']);
+        $this->assertSame('restrict', strtolower((string) $key['on_delete']));
     }
 }

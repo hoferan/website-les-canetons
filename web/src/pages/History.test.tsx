@@ -312,49 +312,19 @@ test("a delete says so", async () => {
  * A PHOTO ON THE TIMELINE (#105). The alt texts come off the entry, in the
  * page's language first (ADR 0026), and the entry's title is the last resort.
  */
-test("an entry with a photo shows it with its alt text, and the others show no image", async () => {
+test("an entry with a photo shows it named after the entry, and the others show no image", async () => {
   const timeline = await renderHistory();
   expect(within(timeline).getAllByRole("img")).toHaveLength(1);
-  expect(
-    within(timeline).getByRole("img", { name: "Les nouvelles directrices avec les anciennes" }),
-  ).toBeInTheDocument();
+  expect(within(timeline).getByRole("img", { name: "Le flambeau passe" })).toBeInTheDocument();
 });
 
-test("a photo without alt text in either language is named after the entry", async () => {
-  server.use(
-    http.get("/api/v1/history", () =>
-      HttpResponse.json({
-        data: [
-          {
-            id: 9,
-            occurredOn: "2020-01-01",
-            precision: "year",
-            important: false,
-            icon: null,
-            titleFr: "Le concert",
-            bodyFr: null,
-            titleDe: null,
-            bodyDe: null,
-            imageId: 2,
-            imageAltFr: null,
-            imageAltDe: null,
-            photo: {
-              url: "/api/v1/images/2222222222222222222222222222222222222222222222222222222222222222.jpg",
-              width: 1280,
-              height: 960,
-              srcset:
-                "/api/v1/images/1111111111111111111111111111111111111111111111111111111111111111.jpg 480w, /api/v1/images/2222222222222222222222222222222222222222222222222222222222222222.jpg 1280w",
-              altFr: null,
-              altDe: null,
-            },
-            createdAt: "2026-09-26T00:00:00+00:00",
-            updatedAt: "2026-09-26T00:00:00+00:00",
-          },
-        ],
-        meta: { total: 1, limit: 500, offset: 0 },
-      }),
-    ),
+test("an entry saved without its photo says so where the editor lands", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<History />, {
+    route: "/history",
+    state: { historySaved: true, photoFailed: true },
+  });
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "L’entrée est enregistrée, mais pas sa photo.",
   );
-  const timeline = await renderHistory();
-  expect(within(timeline).getByRole("img", { name: "Le concert" })).toBeInTheDocument();
 });

@@ -22,8 +22,6 @@ use Illuminate\Support\Carbon;
  * @property bool $important
  * @property string|null $icon
  * @property int|null $image_id
- * @property string|null $image_alt_fr
- * @property string|null $image_alt_de
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -44,8 +42,6 @@ class HistoryEntry extends Model
         'important',
         'icon',
         'image_id',
-        'image_alt_fr',
-        'image_alt_de',
     ];
 
     /** @return BelongsTo<Image, $this> */

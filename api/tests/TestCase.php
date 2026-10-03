@@ -73,17 +73,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * The `If-Match` header for a facet that is one thing for the whole site,
-     * with no model to name — see EntityTag::computeFacet().
-     *
-     * @return array<string, string>
-     */
-    protected function ifMatchFacet(string $facet): array
-    {
-        return ['If-Match' => EntityTag::computeFacet($facet)];
-    }
-
-    /**
      * A body that satisfies PublicWriteGuard, merged over the caller"s own.
      *
      * The decoy field must be PRESENT and empty. A real form always renders

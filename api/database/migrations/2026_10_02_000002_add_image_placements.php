@@ -13,15 +13,19 @@ use Illuminate\Support\Facades\Schema;
  * would leave a hole in a public page, so the database refuses it and the
  * controller turns that refusal into a readable one.
  *
- * Only a history entry carries alt text, in both languages, because its photo
- * illustrates a story the committee wrote and only they can describe it. The
- * page slots carry none: the register's name, or the band's, describes them
- * well enough, and nobody would keep sixteen more fields up to date.
+ * No placement carries alt text. The page describes each photo by what it
+ * illustrates: the register's name, the band's, or the history entry's title.
  *
  * `site_photos` is a keyed row per slot rather than a column on some settings
  * table, because no such table exists and two slots do not justify one. Both
  * rows are inserted here and never created at runtime, so a slot name that is
  * not one of them cannot reach the table.
+ *
+ * ONE GUARD PER STATEMENT. MariaDB commits every DDL statement on its own, and
+ * this runs on the first request after a deploy, where a worker can be killed
+ * part way through. A column added without its constraint must not make the
+ * re-run skip the constraint, so the column and the key are each checked on
+ * their own.
  */
 return new class extends Migration
 {
@@ -29,27 +33,16 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (! Schema::hasColumn('sections', 'image_id')) {
-            Schema::table('sections', function (Blueprint $table) {
-                $table->foreignId('image_id')->nullable()->constrained('images')->restrictOnDelete();
-            });
-        }
-
-        if (! Schema::hasColumn('history_entries', 'image_id')) {
-            Schema::table('history_entries', function (Blueprint $table) {
-                $table->foreignId('image_id')->nullable()->constrained('images')->restrictOnDelete();
-                $table->string('image_alt_fr', 250)->nullable();
-                $table->string('image_alt_de', 250)->nullable();
-            });
-        }
+        $this->addImageReference('sections');
+        $this->addImageReference('history_entries');
 
         if (! Schema::hasTable('site_photos')) {
             Schema::create('site_photos', function (Blueprint $table) {
                 $table->string('slot', 16)->primary();
-                $table->foreignId('image_id')->nullable()->constrained('images')->restrictOnDelete();
                 $table->timestamps();
             });
         }
+        $this->addImageReference('site_photos');
 
         // insertOrIgnore against the primary key: a re-run, or a slot somebody
         // already filled, is left exactly as it is.
@@ -68,17 +61,49 @@ return new class extends Migration
     {
         Schema::dropIfExists('site_photos');
 
-        foreach (['history_entries' => ['image_alt_de', 'image_alt_fr'], 'sections' => []] as $table => $alts) {
+        foreach (['history_entries', 'sections'] as $table) {
             if (! Schema::hasColumn($table, 'image_id')) {
                 continue;
             }
 
-            Schema::table($table, function (Blueprint $blueprint) use ($alts) {
-                // The constraint before the column: MariaDB will not drop a
-                // column an index still names.
-                $blueprint->dropForeign(['image_id']);
-                $blueprint->dropColumn(['image_id', ...$alts]);
+            // The key before the column: MariaDB will not drop a column an
+            // index still names.
+            if ($this->hasImageForeignKey($table)) {
+                Schema::table($table, function (Blueprint $blueprint) {
+                    $blueprint->dropForeign(['image_id']);
+                });
+            }
+
+            Schema::table($table, function (Blueprint $blueprint) {
+                $blueprint->dropColumn('image_id');
             });
         }
+    }
+
+    /** A nullable `image_id` and its RESTRICT key on the table, each added only when missing. */
+    private function addImageReference(string $table): void
+    {
+        if (! Schema::hasColumn($table, 'image_id')) {
+            Schema::table($table, function (Blueprint $blueprint) {
+                $blueprint->unsignedBigInteger('image_id')->nullable();
+            });
+        }
+
+        if (! $this->hasImageForeignKey($table)) {
+            Schema::table($table, function (Blueprint $blueprint) {
+                $blueprint->foreign('image_id')->references('id')->on('images')->restrictOnDelete();
+            });
+        }
+    }
+
+    private function hasImageForeignKey(string $table): bool
+    {
+        foreach (Schema::getForeignKeys($table) as $key) {
+            if ($key['columns'] === ['image_id']) {
+                return true;
+            }
+        }
+
+        return false;
     }
 };

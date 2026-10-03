@@ -401,19 +401,9 @@ class ConditionalWriteTest extends TestCase
         ];
 
         foreach (EntityTag::facets() as $facet) {
-            // A facet with no route parameter is one thing for the whole site
-            // and has no model to hand over.
-            if (EntityTag::isSingleton($facet)) {
-                $this->assertNotSame('', EntityTag::computeFacet($facet));
-
-                continue;
-            }
-
             $this->assertArrayHasKey($facet, $models, "No fixture here for the facet `{$facet}`.");
             $this->assertIsString(EntityTag::compute($facet, $models[$facet]));
         }
-
-        $this->assertContains('site_photos', EntityTag::facets());
     }
 
     public function test_the_published_document_declares_every_conditional_route(): void

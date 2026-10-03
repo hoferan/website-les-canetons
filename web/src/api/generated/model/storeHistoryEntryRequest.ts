@@ -216,7 +216,6 @@
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
  * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
  * | `POST /images/{image}/file` | `GET /images/{image}` |
- * | `PUT /photo-placements` | `GET /photo-placements` |
  * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
  * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
@@ -236,6 +235,11 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
+ * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
+ * image id in one place. Placements in different places never touch, and in the
+ * same place the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -347,21 +351,4 @@ export interface StoreHistoryEntryRequest {
    * @nullable
    */
   icon?: StoreHistoryEntryRequestIcon;
-  /**
-   * The entry's photo, an id from `GET /api/v1/images`. Leave it out to keep the current one, send `null` to remove it. Sending any of `imageId`, `imageAltFr` and `imageAltDe` needs `images.manage`.
-   * @nullable
-   */
-  imageId?: number | null;
-  /**
-   * The photo's alt text in French. Sent without `imageId`, it replaces the alt text of the entry's current photo, and is stored as null when the entry has no photo. A null `imageId` clears it whatever is sent here.
-   * @maxLength 250
-   * @nullable
-   */
-  imageAltFr?: string | null;
-  /**
-   * The photo's alt text in German. Same rules as `imageAltFr`.
-   * @maxLength 250
-   * @nullable
-   */
-  imageAltDe?: string | null;
 }

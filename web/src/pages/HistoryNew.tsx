@@ -5,7 +5,8 @@ import { getHistoryEntryIndexQueryKey, historyEntryStore } from "../api/generate
 import type { StoreHistoryEntryRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { HistoryForm } from "../history/HistoryForm";
+import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
+import { saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
 import { type HistorySavedState } from "./History";
 
@@ -23,17 +24,27 @@ export function HistoryNew() {
     mutationFn: (data: StoreHistoryEntryRequest) => historyEntryStore(data),
   });
 
-  async function submit(data: StoreHistoryEntryRequest) {
+  async function submit(data: StoreHistoryEntryRequest, photo: PhotoChange) {
     form.clear();
+    let entryId: number;
     try {
-      await create.mutateAsync(data);
-      await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
-      const state: HistorySavedState = { historySaved: true };
-      navigate("/history", { state });
+      const response = await create.mutateAsync(data);
+      // The mutator throws on every non-2xx, so this only narrows the type.
+      if (response.status !== 201) {
+        return;
+      }
+      entryId = response.data.id;
     } catch (thrown) {
       // The form stays open: a refusal is corrected where it was typed.
       form.setFromThrown(thrown);
+      return;
     }
+    // The entry exists from here on, so whatever the photo does, the form
+    // closes: saving it again would add the entry twice.
+    const photoSaved = await saveHistoryPhoto(entryId, photo);
+    await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
+    const state: HistorySavedState = { historySaved: true, photoFailed: !photoSaved };
+    navigate("/history", { state });
   }
 
   return (
@@ -44,7 +55,7 @@ export function HistoryNew() {
         busy={create.isPending}
         error={form.error}
         problemFor={form.messageFor}
-        onSubmit={(data) => void submit(data)}
+        onSubmit={(data, photo) => void submit(data, photo)}
         onCancel={() => navigate("/history")}
       />
     </PageSection>

@@ -2,10 +2,6 @@ import { Camera } from "lucide-react";
 
 import { t } from "../i18n";
 
-/** One class string for both frames, so they are the same box. */
-const FRAME_CLASS =
-  "mt-related flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-lg bg-linear-to-br from-violet/5 to-violet/15 px-4 text-center text-violet";
-
 /**
  * Stands in for a photograph the band has yet to retake.
  *
@@ -24,34 +20,40 @@ const FRAME_CLASS =
  * register's name glued into French grammar. The placeholder sits under the
  * heading it belongs to, so the name added nothing.
  *
- * THE SHAPE OF A PHOTO. The frame is 3:2, as wide as the column and rounded
- * like a placed photo, so empty and filled slots line up and the page does not
- * jump when a photo arrives. It is a soft violet tint with no border: a dashed
- * outline read as a broken image or a drop zone, and /band stacks seven of
- * these. This is what a visitor sees; an editor gets the add button in
- * `SlotPhotoControl`, drawn in the same frame.
+ * ONE LINE, NOT A BOX. A photo-sized frame per empty slot made /band at 390px
+ * about 1,700px of empty boxes, and put a large empty box first on the home
+ * page. A line is enough to tell a visitor a photo is coming. The editor's add
+ * button in `SlotPhotoControl` is the full frame, because for them the frame
+ * is the thing to tap.
  *
  * `token` is a STABLE, ENGLISH identifier for the slot ("band", "concert",
  * "register"), carried on `data-photo-pending` so tests and the e2e specs can
  * tell the slots apart in either locale.
- *
- * `PhotoReserved` is the same frame without the caption, for the moment the
- * page does not yet know whether the slot is empty. The two share one class
- * string, so the box is the same height and nothing below it moves when the
- * answer arrives.
  */
 export function PhotoPending({ token }: { token: string }) {
   return (
-    // Violet on this tint measured 5.8:1 at the darkest corner and 6.8:1 at
-    // the lightest, so the caption and the icon both pass AA.
-    <div className={FRAME_CLASS} data-photo-pending={token}>
-      <Camera aria-hidden="true" className="size-10" strokeWidth={1.5} />
-      <p className="text-sm font-medium">{t("placeholders.photoPending")}</p>
-    </div>
+    <p
+      className="mt-related flex items-center gap-2 text-sm text-ink-muted"
+      data-photo-pending={token}
+    >
+      <Camera aria-hidden="true" className="size-4 shrink-0" />
+      {t("placeholders.photoPending")}
+    </p>
   );
 }
 
-/** The frame while /site-photos is still on its way: no caption, hidden from assistive technology. */
+/**
+ * The frame while /site-photos is still on its way: photo-shaped, uncaptioned
+ * and hidden from assistive technology. Once the committee has placed the
+ * photos, which is the normal case, the space is already there when the photo
+ * arrives and nothing below it moves.
+ */
 export function PhotoReserved() {
-  return <div aria-hidden="true" className={FRAME_CLASS} data-photo-reserved="" />;
+  return (
+    <div
+      aria-hidden="true"
+      className="mt-related aspect-[3/2] w-full rounded-lg bg-linear-to-br from-violet/5 to-violet/15"
+      data-photo-reserved=""
+    />
+  );
 }

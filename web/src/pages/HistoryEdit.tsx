@@ -11,7 +11,8 @@ import type { HistoryEntryResource, StoreHistoryEntryRequest } from "../api/gene
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { HistoryForm } from "../history/HistoryForm";
+import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
+import { saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
 import { type HistorySavedState } from "./History";
 
@@ -69,7 +70,7 @@ export function HistoryEdit() {
     };
   }, [entryId]);
 
-  async function submit(data: StoreHistoryEntryRequest) {
+  async function submit(data: StoreHistoryEntryRequest, photo: PhotoChange) {
     form.clear();
 
     if (opened?.etag == null) {
@@ -81,13 +82,16 @@ export function HistoryEdit() {
 
     try {
       await update.mutateAsync({ data, etag: opened.etag });
-      await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
-      const state: HistorySavedState = { historySaved: true };
-      navigate("/history", { state });
     } catch (thrown) {
       // Open, so a 412 is read next to the values it is about.
       form.setFromThrown(thrown);
+      return;
     }
+    // After the entry, whose tag the photo write would otherwise have moved.
+    const photoSaved = await saveHistoryPhoto(entryId, photo);
+    await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
+    const state: HistorySavedState = { historySaved: true, photoFailed: !photoSaved };
+    navigate("/history", { state });
   }
 
   return (
@@ -110,7 +114,7 @@ export function HistoryEdit() {
           busy={update.isPending}
           error={form.error}
           problemFor={form.messageFor}
-          onSubmit={(data) => void submit(data)}
+          onSubmit={(data, photo) => void submit(data, photo)}
           onCancel={() => navigate("/history")}
         />
       ) : null}

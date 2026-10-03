@@ -714,7 +714,7 @@ translated. The reasoning is in ADR 0014.
 | One's own password | any account holder |
 | Events, attendance | `events.manage` |
 | Photos: the library on `/media`, and the band, concert and register photos, changed on the page that shows them | `images.manage` |
-| A history entry's photo and its alt text | `history.manage` and `images.manage` |
+| A history entry's photo | `history.manage` and `images.manage` |
 
 **Who names a thing decides whether it can be translated.** A developer-defined
 name is a fixed key, so a second language costs one catalogue file; a user-typed

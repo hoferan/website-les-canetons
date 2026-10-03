@@ -155,8 +155,6 @@ test("shows the placed concert photo and drops its placeholder", async () => {
           height: 1067,
           srcset:
             "/api/v1/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg 480w, /api/v1/images/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg 960w, /api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg 1600w",
-          altFr: null,
-          altDe: null,
         },
       }),
     ),

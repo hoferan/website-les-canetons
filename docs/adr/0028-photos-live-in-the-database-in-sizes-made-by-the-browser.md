@@ -153,13 +153,12 @@ What this fixes:
 - The browser queues. One shrink at a time and at most two uploads in flight,
   with a retry for each failed photo, so a selection of sixty photos from a
   phone does not hold sixty decoded bitmaps.
-- Alt text belongs to the placement, and only a history entry has any. An
-  upload carries no text. A history entry's photo illustrates something the
-  committee wrote, so the entry form takes an alt text in each language, which
-  a field on the library photo could not offer (ADR 0026). The band, concert
-  and register slots take none: the page describes the photo by the band's name
-  or the register's, and sixteen more fields would not be kept up to date.
-  Members have no photo at all.
+- No placement carries alt text, and neither does an upload. The page
+  describes each photo by what it illustrates: the band's name, the register's,
+  or the history entry's title. A history entry had an alt text in each
+  language for a while; it was cut, because the committee would not keep two
+  more fields per entry up to date and the title already says what the photo
+  shows. Members have no photo at all.
 - A photo has a name, at most 120 characters: the committee's label for it in
   the library and the picker, one name rather than one per language. The upload
   fills it from the file name without its extension, and
@@ -197,10 +196,20 @@ What this fixes:
   it. That page, and the photo's card in the library, link to each place that
   shows it. On `/band` and on the home page, somebody holding `images.manage`
   finds an add button inside an empty slot and a pencil over a placed photo,
-  and can drop a file on either. The control reads
-  `GET /api/v1/photo-placements`, changes its own slot and writes the whole
-  document back with that read's `ETag`, so a placement somebody made in the
-  meantime answers 412 instead of being undone. Visitors see nothing extra.
+  and can drop a file on either. Visitors see nothing extra.
+- Each place has a write of its own, carrying one image id:
+  `PUT /api/v1/site-photos/{slot}`, `/sections/{section}/photo` and
+  `/history/{historyEntry}/photo`. None takes `If-Match`, for the reason
+  attendance does not: it is one value, so there is nothing half-written to
+  lose, two places never touch, and in one place the last pick is what the
+  page shows. A first design wrote every placement as one document under one
+  tag, which made two editors on different registers refuse each other.
+- A history entry's photo is chosen in the entry's form, which saves the entry
+  and then the photo by its own write. That write needs `history.manage` and
+  `images.manage`, both checked by route middleware, so the entry's own PUT
+  never looks at a permission field by field (ADR 0014). When the photo write
+  fails after the entry saved, the timeline says so rather than the form
+  offering a retry that would save the entry twice.
 - One shared library, and a photo can be placed in several places. Deleting a
   photo that something still shows is refused with `image_in_use`; the foreign
   key from every placement to `images` restricts on delete as the backstop.
@@ -246,7 +255,7 @@ sent again with other smaller sizes, never share a URL. `ImageFileTest` pins
 the headers, that a path serves only the bytes it names, the one query, the
 connection closed before the response leaves, and the `304` with no query at
 all, for the size's own digest and no other. `ImageSchemaTest` reads the
-`MEDIUMBLOB` type back, round-trips 600 KB through it, and fails if a page slot
+`MEDIUMBLOB` type back, round-trips 600 KB through it, and fails if a placement
 gains alt columns or a member gains a photo. `shrink.test.ts` pins the sizes a source gets and the
 segments the browser strips before the server could refuse them, and
 `web/e2e/media.spec.ts` uploads a photo through a real canvas on `/media`,
@@ -297,6 +306,6 @@ difference, the sizes swapped in one transaction and the second tag check.
 
 ## More Information
 
-Issue #105. ADR 0026 explains why alt text, which is user-typed, carries both
-languages. ADR 0008 explains `RunPendingMigrations`, which the file route
-skips.
+Issue #105. ADR 0026 explains why user-typed text needs both languages, which
+is part of what alt text would have cost. ADR 0008 explains
+`RunPendingMigrations`, which the file route skips.

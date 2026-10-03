@@ -35,12 +35,8 @@ class HistoryEntryResource extends JsonResource
             // column as a string, and the client would be generated to match.
             /** The library image attached to the entry, or null. */
             'imageId' => $this->image_id === null ? null : (int) $this->image_id,
-            /** Alt text for the photo in French. Null when there is no photo. */
-            'imageAltFr' => $this->image_alt_fr,
-            /** Alt text for the photo in German. Null when there is no photo. */
-            'imageAltDe' => $this->image_alt_de,
-            /** The photo with its file, size and alt texts, or null. */
-            'photo' => PhotoResource::of($this->image, $this->image_alt_fr, $this->image_alt_de),
+            /** The photo with its file and size, or null. The page describes it by the entry's title. */
+            'photo' => PhotoResource::of($this->image),
             'createdAt' => $this->createdAt(),
             'updatedAt' => $this->updatedAt(),
         ];

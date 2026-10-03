@@ -186,14 +186,8 @@ export const fr = {
     files: "Fichier",
     // The library's label for a photo, on /media.
     name: "Nom",
-    // The photo placements: the band and concert slots, the register list and
-    // what each slot holds.
-    band: "Photo du groupe",
-    concert: "Photo en concert",
-    registers: "Pupitres",
+    // The photo a placement shows.
     imageId: "Photo",
-    imageAltFr: "Texte alternatif de la photo en français",
-    imageAltDe: "Texte alternatif de la photo en allemand",
     // The registration window on an event. Setting the close date is what
     // turns public registration on at all.
     registrationOpensAt: "Ouverture des inscriptions",
@@ -1269,7 +1263,10 @@ export const fr = {
     remove: "Retirer",
     close: "Fermer la bibliothèque",
     pickerTitle: "Choisir une photo",
-    pickerDescription: "Touchez une photo pour la choisir, ou ajoutez-en de nouvelles.",
+    pickerDescription:
+      "Touchez une photo pour la choisir, ou ajoutez-en une depuis votre appareil.",
+    // One photo, chosen as soon as it has uploaded.
+    pickerAdd: "Ajouter depuis l’appareil",
     pickerEmpty: "La bibliothèque est vide. Ajoutez une première photo.",
     loadFailed: "La bibliothèque n’a pas pu être chargée.",
     removeFromSlot: "Retirer la photo",
@@ -1289,6 +1286,9 @@ export const fr = {
     changeConcert: "Changer la photo du concert",
     changeRegister: "Changer la photo du registre {{name}}",
     slotSaveFailed: "La photo n’a pas pu être changée.",
+    // Read out once the slot shows its new state.
+    slotPlaced: "Photo placée.",
+    slotRemoved: "Photo retirée.",
     // A file dragged onto a slot from the desktop.
     dropHere: "Déposer pour ajouter",
     dropOnlyOne: "Une seule photo à la fois.",
@@ -1417,6 +1417,10 @@ export const fr = {
     // leaves no visible trace where focus lands.
     saved: "Entrée enregistrée.",
     deleted: "Entrée supprimée.",
+    // The entry saved and its photo did not. The form has closed, since
+    // saving it again would add the entry twice.
+    photoFailed:
+      "L’entrée est enregistrée, mais pas sa photo. Modifiez l’entrée pour la choisir à nouveau.",
     icons: {
       none: "Aucune",
       flag: "Drapeau",
@@ -1437,8 +1441,6 @@ export const fr = {
     french: "Français",
     german: "Allemand",
     photo: "Photo",
-    photoAltFr: "Texte alternatif de la photo en français",
-    photoAltDe: "Texte alternatif de la photo en allemand",
     atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
     // Worded as what the timeline will show, because "précision" alone did not
     // say that a year entry keeps no day.
