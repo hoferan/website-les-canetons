@@ -234,8 +234,8 @@ test("a window that has not opened yet says when it will, and offers no form", a
         },
         options: [],
         maxGuests: 6,
-        opensAt: "2026-10-03T00:00:00.000Z",
-        closesAt: "2026-11-14T23:00:00.000Z",
+        opensAt: "2099-10-03T00:00:00.000Z",
+        closesAt: "2099-11-14T23:00:00.000Z",
         open: false,
       }),
     ),
@@ -243,7 +243,7 @@ test("a window that has not opened yet says when it will, and offers no form", a
 
   await renderBooking();
 
-  expect(screen.getByText("Les inscriptions ouvrent le 3 octobre 2026.")).toBeInTheDocument();
+  expect(screen.getByText("Les inscriptions ouvrent le 3 octobre 2099.")).toBeInTheDocument();
   expect(screen.queryByLabelText("Prénom")).not.toBeInTheDocument();
 });
 
