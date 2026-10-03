@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Exceptions\ApiError;
 use App\Support\ErrorVocabulary;
+use App\Support\ImageSet;
+use App\Support\JpegInspector;
 use Illuminate\Foundation\Http\FormRequest;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -88,6 +90,11 @@ class ApiErrorVocabularyTest extends TestCase
      *
      * - invalid_format: ApiError::validation()'s fallback for any rule absent
      *   from REASONS, written as `self::REASONS[$rule] ?? 'invalid_format'`.
+     *
+     * App\Support\JpegInspector::PROBLEMS and App\Support\ImageSet::PROBLEMS
+     * are read alongside, in emittableReasons(): StoreImageRequest::after()
+     * adds each of those as a reason through a variable, so no literal scan
+     * can see them.
      */
     private const EXTRA_REASONS = ['invalid_format'];
 
@@ -275,8 +282,8 @@ class ApiErrorVocabularyTest extends TestCase
     /**
      * Reason tokens: every value of ApiError::REASONS (read by reflection, so
      * this cannot drift from the map) plus every `'reason' => '...'` literal in
-     * app/ (the hand-rolled ones in EventController and ResponseController) plus
-     * EXTRA_REASONS.
+     * app/ (the hand-rolled ones in EventController and ResponseController),
+     * plus JpegInspector::PROBLEMS, ImageSet::PROBLEMS and EXTRA_REASONS.
      *
      * @return list<string>
      */
@@ -288,9 +295,14 @@ class ApiErrorVocabularyTest extends TestCase
         self::assertIsArray($map, 'ApiError::REASONS is no longer an array constant — this test reads it by reflection.');
         self::assertNotEmpty($map, 'ApiError::REASONS came back empty; the reflection read is broken.');
 
+        self::assertNotEmpty(JpegInspector::PROBLEMS, 'JpegInspector::PROBLEMS came back empty.');
+        self::assertNotEmpty(ImageSet::PROBLEMS, 'ImageSet::PROBLEMS came back empty.');
+
         return $this->normalise(array_merge(
             array_values($map),
             $this->scanAppFor("/'reason'\s*=>\s*'([a-z_]+)'/"),
+            JpegInspector::PROBLEMS,
+            ImageSet::PROBLEMS,
             self::EXTRA_REASONS,
         ), self::MUST_INCLUDE_REASONS, 'reasons');
     }

@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,12 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `PUT /photo-placements` | `GET /photo-placements` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -302,6 +306,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { PublicMemberResource } from "./publicMemberResource";
+import type { PublicSectionResourcePhoto } from "./publicSectionResourcePhoto";
 
 export interface PublicSectionResource {
   id: number;
@@ -311,4 +316,9 @@ export interface PublicSectionResource {
   members: PublicMemberResource[];
   /** Everyone who teaches it and has consented to appear. May be empty. */
   instructors: PublicMemberResource[];
+  /**
+   * The register's photo, or null when none is placed. It carries no alt text: the page describes it by the register's name.
+   * @nullable
+   */
+  photo: PublicSectionResourcePhoto;
 }

@@ -35,7 +35,7 @@ class BandController extends Controller
         // the pre-rebuild front end hardcoded that order in TSX where it drifted
         // from the table.
         //
-        // Both relations are eager-loaded, so this is three queries whatever the
+        // All three relations are eager-loaded, so this is four queries whatever the
         // band's size rather than one per register. Each carries its own consent
         // filter (see Section) — the controller cannot forget it, which is the
         // point of them being relations.
@@ -43,7 +43,7 @@ class BandController extends Controller
         // The assignment is what keeps this comment out of the published
         // reference: Scramble serves a comment preceding a return as the 200
         // description.
-        $registers = Section::with(['publicMembers', 'publicInstructors'])
+        $registers = Section::with(['publicMembers', 'publicInstructors', 'image'])
             ->orderBy('sort_order')
             ->get();
 

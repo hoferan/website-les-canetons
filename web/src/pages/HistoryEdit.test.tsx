@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
@@ -287,4 +287,125 @@ test("the German form names the months in German", async () => {
   const user = userEvent.setup();
   await user.selectOptions(await screen.findByLabelText("Genauigkeit des Datums"), "month");
   expect(screen.getByRole("option", { name: "Oktober" })).toBeInTheDocument();
+});
+
+/**
+ * The write's body, read by a handler that then lets the mock answer. The photo
+ * keys are gated on images.manage server-side, so which of them are present is
+ * the behaviour under test.
+ */
+function recordHistoryWrites(method: "post" | "put"): Record<string, unknown>[] {
+  const bodies: Record<string, unknown>[] = [];
+  const path = method === "post" ? "/api/v1/history" : "/api/v1/history/:id";
+  server.use(
+    http[method](path, async ({ request }) => {
+      bodies.push((await request.clone().json()) as Record<string, unknown>);
+    }),
+  );
+  return bodies;
+}
+
+test("a new entry with a photo sends its id and both alt texts", async () => {
+  const user = userEvent.setup();
+  const bodies = recordHistoryWrites("post");
+  await renderAt("/history/new");
+  // No photo yet, so no alt fields to fill in.
+  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
+
+  await user.type(await screen.findByLabelText(/^Année/), "2024");
+  await user.type(screen.getByLabelText("Titre en français"), "Le cortège");
+  await user.click(screen.getByRole("button", { name: "Choisir" }));
+  await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
+  await user.type(screen.getByLabelText("Texte alternatif de la photo en français"), "Le cortège");
+  await user.type(screen.getByLabelText("Texte alternatif de la photo en allemand"), "Der Umzug");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  expect(bodies[0]).toMatchObject({
+    imageId: 1,
+    imageAltFr: "Le cortège",
+    imageAltDe: "Der Umzug",
+  });
+});
+
+test("clearing the photo sends a null imageId and hides the alt fields", async () => {
+  const user = userEvent.setup();
+  const bodies = recordHistoryWrites("put");
+  await renderAt("/history/4/edit");
+  expect(await screen.findByLabelText("Texte alternatif de la photo en français")).toHaveValue(
+    "Les nouvelles directrices avec les anciennes",
+  );
+
+  await user.click(screen.getByRole("button", { name: "Retirer" }));
+  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
+  expect(screen.queryByLabelText("Texte alternatif de la photo en allemand")).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  expect(bodies[0]).toHaveProperty("imageId", null);
+});
+
+test("an alt-only change sends the alts and not the image id", async () => {
+  const user = userEvent.setup();
+  const bodies = recordHistoryWrites("put");
+  await renderAt("/history/4/edit");
+  await user.type(
+    await screen.findByLabelText("Texte alternatif de la photo en allemand"),
+    "Die neuen Leiterinnen",
+  );
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  expect(bodies[0]).toMatchObject({ imageAltDe: "Die neuen Leiterinnen" });
+  expect(bodies[0]).not.toHaveProperty("imageId");
+});
+
+test("an untouched photo sends no photo key at all", async () => {
+  const user = userEvent.setup();
+  const bodies = recordHistoryWrites("put");
+  await renderAt("/history/4/edit");
+  await screen.findByLabelText("Texte alternatif de la photo en français");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  for (const key of ["imageId", "imageAltFr", "imageAltDe"]) {
+    expect(bodies[0]).not.toHaveProperty(key);
+  }
+});
+
+test("an editor without images.manage sees the photo, no alt fields, and sends no photo key", async () => {
+  const user = userEvent.setup();
+  const bodies = recordHistoryWrites("put");
+  setMockUser("demo.roster");
+  await renderWithSession(
+    <Routes>
+      <Route path="/history" element={<History />} />
+      <Route path="/history/:id/edit" element={<HistoryEdit />} />
+    </Routes>,
+    { route: "/history/4/edit" },
+  );
+  const field = await screen.findByTestId("photo-field");
+  expect(within(field).queryByRole("button")).toBeNull();
+  expect(screen.queryByLabelText("Texte alternatif de la photo en français")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await waitFor(() => expect(bodies).toHaveLength(1));
+  for (const key of ["imageId", "imageAltFr", "imageAltDe"]) {
+    expect(bodies[0]).not.toHaveProperty(key);
+  }
+});
+
+test("picking a different photo empties the alt texts of the old one", async () => {
+  const user = userEvent.setup();
+  await renderAt("/history/4/edit");
+  const altFr = await screen.findByLabelText("Texte alternatif de la photo en français");
+  expect(altFr).toHaveValue("Les nouvelles directrices avec les anciennes");
+  await user.type(screen.getByLabelText("Texte alternatif de la photo en allemand"), "Alt");
+
+  // Entry 4 shows photo 2, so photo 1 is a different one.
+  await user.click(screen.getByRole("button", { name: "Choisir" }));
+  await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
+
+  expect(screen.getByLabelText("Texte alternatif de la photo en français")).toHaveValue("");
+  expect(screen.getByLabelText("Texte alternatif de la photo en allemand")).toHaveValue("");
 });

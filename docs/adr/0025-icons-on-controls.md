@@ -40,6 +40,16 @@ word, and next to a word it only adds width.
 3. Text only for everything else: the actions in `RowActions` and its menu,
    attendance answers, form submit and cancel, filters and navigation.
 
+A page photo slot uses three icons: `Pencil` changes a placed photo where it is shown
+and adds its word from `sm` up, `ImagePlus` leads "Ajouter une photo" in an empty slot,
+and `Camera` marks a visitor's empty slot, where nothing is clickable.
+
+A photo's own page, `/media/:id`, has six actions and gives each an icon before its
+word: `Pencil` renames, `RotateCcw` and `RotateCw` turn the photo left and right,
+`Upload` replaces it, `Download` saves it and `Trash2` deletes it. They are page
+actions on one photo, like a create action, and the words stay because "turn left" and
+"turn right" differ by a mirrored arrow alone.
+
 Attendance answers stay words on purpose. "Oui" and "Non" are already barely wider than
 a 44px square, so an icon would save almost nothing, and a committee member records
 those answers on somebody else's behalf, where a misread tap is a wrong record.

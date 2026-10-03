@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,12 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `PUT /photo-placements` | `GET /photo-placements` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -399,12 +403,37 @@ export * from "./historyEntryIndex200";
 export * from "./historyEntryIndex200Meta";
 export * from "./historyEntryIndexParams";
 export * from "./historyEntryResource";
+export * from "./historyEntryResourcePhoto";
 export * from "./historyEntryStore422";
 export * from "./historyEntryStore422Code";
 export * from "./historyEntryStore422ErrorsItem";
 export * from "./historyEntryUpdate422";
 export * from "./historyEntryUpdate422Code";
 export * from "./historyEntryUpdate422ErrorsItem";
+export * from "./imageDestroy200";
+export * from "./imageDestroy409";
+export * from "./imageDestroy409Code";
+export * from "./imageDestroy409ErrorsItem";
+export * from "./imageIndex200";
+export * from "./imageIndex200Meta";
+export * from "./imageIndexParams";
+export * from "./imageReplace409";
+export * from "./imageReplace409Code";
+export * from "./imageReplace409ErrorsItem";
+export * from "./imageReplace507";
+export * from "./imageReplace507Code";
+export * from "./imageReplace507ErrorsItem";
+export * from "./imageResource";
+export * from "./imageResourceSizesItem";
+export * from "./imageResourceUsagesItem";
+export * from "./imageResourceUsagesItemKind";
+export * from "./imageStore409";
+export * from "./imageStore409Code";
+export * from "./imageStore409ErrorsItem";
+export * from "./imageStore507";
+export * from "./imageStore507Code";
+export * from "./imageStore507ErrorsItem";
+export * from "./imageSummary200";
 export * from "./inboxIndex200";
 export * from "./inboxIndex200Meta";
 export * from "./inboxIndexParams";
@@ -435,6 +464,10 @@ export * from "./memberRoleReplace409";
 export * from "./memberRoleReplace409Code";
 export * from "./memberRoleReplace409ErrorsItem";
 export * from "./memberStore201";
+export * from "./photoPlacementRegisterResource";
+export * from "./photoPlacementsResource";
+export * from "./photoPlacementsResourceBand";
+export * from "./photoPlacementsResourceConcert";
 export * from "./problem400Response";
 export * from "./problem400ResponseCode";
 export * from "./problem400ResponseErrorsItem";
@@ -470,6 +503,7 @@ export * from "./problem503ResponseErrorsItem";
 export * from "./publicEventResource";
 export * from "./publicMemberResource";
 export * from "./publicSectionResource";
+export * from "./publicSectionResourcePhoto";
 export * from "./recordMemberAttendanceRequest";
 export * from "./recordMemberAttendanceRequestStatus";
 export * from "./recordOwnAttendanceRequest";
@@ -502,6 +536,7 @@ export * from "./registrationStore400ErrorsItemReason";
 export * from "./registrationStore409";
 export * from "./registrationStore409Code";
 export * from "./registrationStore409ErrorsItem";
+export * from "./replaceImageFileRequest";
 export * from "./replaceMemberRolesRequest";
 export * from "./replaceRegistrationOptionsRequest";
 export * from "./replaceRegistrationOptionsRequestOptionsItem";
@@ -513,15 +548,24 @@ export * from "./sectionIndex200";
 export * from "./sectionIndex200Meta";
 export * from "./sectionIndexParams";
 export * from "./sectionResource";
+export * from "./sitePhotoIndex200";
+export * from "./sitePhotoIndex200Band";
+export * from "./sitePhotoIndex200Concert";
 export * from "./storeEventRequest";
 export * from "./storeEventSeriesRequest";
 export * from "./storeEventSeriesRequestTemplate";
 export * from "./storeHistoryEntryRequest";
 export * from "./storeHistoryEntryRequestIcon";
 export * from "./storeHistoryEntryRequestPrecision";
+export * from "./storeImageRequest";
 export * from "./storeMemberRequest";
 export * from "./storeRegistrationRequest";
 export * from "./storeRegistrationRequestChoicesItem";
 export * from "./updateEventRequest";
+export * from "./updateImageRequest";
 export * from "./updateMemberRequest";
+export * from "./updatePhotoPlacementsRequest";
+export * from "./updatePhotoPlacementsRequestBand";
+export * from "./updatePhotoPlacementsRequestConcert";
+export * from "./updatePhotoPlacementsRequestRegistersItem";
 export * from "./updateRegistrationRequest";

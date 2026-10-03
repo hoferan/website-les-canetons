@@ -3,7 +3,7 @@
     "info": {
         "title": "Les Canetons API",
         "version": "1.0.0",
-        "description": "The API behind the members' area and the public forms of the Guggenmusik\n**Les Canetons de Fribourg**.\n\n## Authenticating\n\nA server-side session in a cookie. There is no bearer token, no\n`Authorization` header, and nothing for a client to store.\n\nThe browser and the API are served from one origin, so there is no CORS\neither. From a browser this is close to automatic:\n\n```js\nawait fetch(\"/api/v1/login\", {\n  method: \"POST\",\n  credentials: \"include\",\n  headers: { \"Content-Type\": \"application/json\", \"X-XSRF-TOKEN\": xsrf },\n  body: JSON.stringify({ username, password }),\n});\n```\n\n`credentials: \"include\"` is what sends and stores the cookie. After that,\nreads need nothing at all.\n\nThe one manual step is the `X-XSRF-TOKEN` header on requests that write. Its\nvalue is the `XSRF-TOKEN` cookie, which is readable from JavaScript by\ndesign; `GET /sanctum/csrf-cookie` sets it, once per page load. Axios does\nthis for you and needs no code. A write without the header answers\n`419 invalid_session`, which means \"prime the cookie and retry\", not \"log in\nagain\".\n\nReads that need a session and do not have one answer\n`401 not_authenticated`.\n\n### Why a cookie rather than a token\n\nThe session cookie is `HttpOnly`, `Secure` and `SameSite=Strict`. Being\nunreadable from JavaScript is the point: a token kept in `localStorage` is\nexfiltrable by any script that manages to run on the page, and it cannot be\nrevoked server-side without keeping a list of live tokens, which is a\nsession by another name. Logging out here ends the session on the server.\n\n`SameSite=Strict` is also the real defence against cross-site request\nforgery: a request originating from another site never carries the cookie,\nso it arrives unauthenticated whatever else it sends. The CSRF token is\ndefence in depth on top of that, not the mechanism holding the door shut.\n\n## Errors\n\nEvery failure is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)\nproblem document, served as `application/problem+json`:\n\n```json\n{\n  \"title\": \"Invalid form submission\",\n  \"status\": 400,\n  \"code\": \"validation_failed\",\n  \"instance\": \"/api/v1/events/42\",\n  \"errors\": [{ \"field\": \"endsAt\", \"reason\": \"must_be_after\" }],\n  \"requestId\": \"01JB3K7QW8ZX7VN4S2QK9J0M1P\",\n  \"detail\": \"One or more submitted fields were rejected. `errors` names each one and why\u2026\"\n}\n```\n\n`title`, `status`, `detail` and `instance` are RFC 9457's own members. `code`,\n`errors` and `requestId` are this API's extensions, which the RFC permits.\n\n**Branch on `code`.** `code` and `errors[].reason` are stable machine tokens;\n`title` is English prose meant for a log and may be reworded without notice.\nThe front end maps the tokens to French, and any other client should do the\nsame.\n\n`detail` says what happened and what to do about it, in English, for whoever\nis reading the response. There is no catalogue of error codes elsewhere in\nthis reference and no endpoint to fetch one: a problem description is wanted\nby somebody who has that problem, at the moment they have it, so it travels\nwith the failure.\n\nThere is deliberately **no `type` member** either. RFC 9457 makes it optional,\nand here it could only ever have been a constant prefix in front of `code`,\ncarrying nothing the document did not already have.\n\n`errors` is always present, and empty for a failure with nothing field-level\nto say. A `reason` may carry `params` (for example `{\"max\": 255}`) when the\nsentence needs a number.\n\n`requestId` is a ULID, also returned as the `X-Request-Id` header on every\nresponse. Quote it when reporting a problem; it identifies the request in the\nserver log. Send your own `X-Request-Id` and it is honoured, provided it is a\nwell-formed ULID.\n\n## Status codes\n\n| Code | Means |\n| --- | --- |\n| `400` | The submitted fields are wrong. See `errors`. |\n| `401` | No session. Log in. |\n| `403` | Logged in, but not allowed to do this. |\n| `404` | No such thing, or nothing you may know exists. |\n| `409` | Allowed, but it conflicts with the current state, or with a submission you already made. |\n| `412` | Your `If-Match` names a state this thing is no longer in. |\n| `419` | The session or CSRF token expired. Prime the cookie and retry. |\n| `422` | The submission looks automated. See *Public forms*. |\n| `428` | The write needs an `If-Match`. See *Conditional writes*. |\n| `429` | Rate limited. |\n| `503` | The service is temporarily refusing to serve. |\n\n## Permissions\n\nAuthorisation is by permission, never by role. Roles are editable data that\ngroup permissions; which role granted one is not a question the API answers.\n`GET /api/v1/me` returns the caller's effective permissions.\n\n`events.manage`, `attendance.view_all`, `attendance.record_for_others`,\n`members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,\n`messages.manage`, `history.manage`.\n\nAnswering an event deliberately needs **no** permission: anyone in a register\nanswers for themselves.\n\n## Conventions\n\n- Field names are `camelCase` in both directions.\n- **Timestamps are always UTC**, ISO 8601 with a `+00:00` offset\n  (`2026-09-05T08:00:00+00:00`). The band is in Europe/Zurich, so convert for\n  display \u2014 slicing the hour out of the string shows the wrong time.\n  On the way IN, send any offset you like and it is honoured; a value with no\n  offset at all is read as UTC.\n- Money is an integer number of centimes. `4500` is CHF 45.00.\n- Every collection comes in the same envelope. See *Collections*.\n\n## Collections\n\nEvery endpoint that answers with a list answers with `{data, meta}`, never with\na bare array \u2014 `/roles` and `/sections` included, which are the two nobody will\never page. One shape means one function reads any list:\n\n```json\n{\n  \"data\": [ \u2026 ],\n  \"meta\": { \"total\": 45, \"limit\": 500, \"offset\": 0 }\n}\n```\n\n`total` is the whole collection, not the page you were sent, so a screen can\nsay \"45 membres\" without first reading forty-five of them.\n\nAsk for less with `?limit=` and `?offset=`. **You rarely need to**: the default\nlimit is 500, above every collection this API holds, so omitting both returns\nthe whole thing in one request. The cap is 1000.\n\nNeither parameter can fail. A `limit` above the cap is clamped, a negative\n`offset` reads as zero, and a value that is not a whole number is ignored \u2014\n`meta` always reports what was actually applied.\n\nReads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`\nheader with `first` and `last`, plus `prev` and `next` where they exist:\n\n```\nLink: </api/v1/members?limit=2&offset=2>; rel=\"next\",\n      </api/v1/members?limit=2&offset=44>; rel=\"last\"\n```\n\n**Follow `next` until there is none** rather than doing arithmetic on `meta`.\nYour own query parameters are carried along, so paging `/events?past=1` stays\nin the past.\n\nThe links are relative, as RFC 8288 permits: resolve them against the URL you\nrequested. They carry no scheme or host, so they stay correct behind whatever\nsits in front of the API.\n\n`PUT /api/v1/events/{event}/registration-options` and\n`POST /api/v1/events/series` answer with a collection too, and are enveloped\nthe same way \u2014 with no `Link` header, since a `rel=\"next\"` you would have to\nPUT again is not a link to follow.\n\nThe paging is offset-based rather than cursor-based, deliberately: every\ncollection here is one page for the foreseeable future. A `cursor` parameter\ncan be added later without changing this envelope.\n\n## Conditional writes\n\n**Every write that replaces or removes something must prove it is working from\nthe current state.** Read the thing first, keep the `ETag` the read returns, and\nsend it back as `If-Match`:\n\n```js\nconst read = await fetch(\"/api/v1/events/42\", { credentials: \"include\" });\nconst etag = read.headers.get(\"ETag\");\n\nawait fetch(\"/api/v1/events/42\", {\n  method: \"PATCH\",\n  credentials: \"include\",\n  headers: { \"Content-Type\": \"application/json\", \"X-XSRF-TOKEN\": xsrf, \"If-Match\": etag },\n  body: JSON.stringify({ title: \"Cort\u00e8ge\" }),\n});\n```\n\nNo header answers `428 if_match_required`. A header naming a state the thing is\nno longer in answers `412 if_match_failed`, and **the 412 does not tell you the\ncurrent tag** \u2014 retrying blindly with a fresh one would land exactly the\noverwrite you were stopped from making. Read it again and decide again.\n\nWhich writes, and where their tag comes from:\n\n| Write | Read for its `ETag` |\n| --- | --- |\n| `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |\n| `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |\n| `PUT /members/{member}/roles` | `GET /members/{member}` |\n| `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |\n| `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |\n| `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |\n\nA successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need\nno read in between. A `DELETE` returns none: there is nothing left to tag.\n\n**Collections hand out no tag**, deliberately \u2014 one tag cannot validate\nforty-five members, and a list-wide tag would refuse every write whenever\nanybody changed anything. That is why each conditional write has a\nsingle-thing read beside it.\n\nThe tag is over the thing's own state. An event's tag ignores `myAttendance`,\nwhich is yours alone, so answering an event does not invalidate a pending edit\nof it; an event's options are tagged separately from the event, so correcting a\ndress code does not refuse an options edit and adding an option does.\n\n**Attendance is exempt.** `PUT` and `DELETE` on\n`/events/{event}/attendance` need no `If-Match`: a member is the only ordinary\nwriter of their own answer, the whole answer is one value so there is no half of\nit to lose, and a first answer has no tag to have. Answering stays one request.\n\nTags are strong validators. `If-Match: *` asserts only that the thing still\nexists. There is no conditional `GET` \u2014 `If-None-Match` is not implemented and\nnothing here is cacheable.\n\n## Public forms\n\n`POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to\nanonymous callers and are protected against automated submission. Both\nrequire:\n\n- an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds\n  and at most two hours old, and\n- a `website` field, present and empty.\n\nFailing either answers `422 spam_suspected`. Both endpoints are rate limited\nto 10 requests a minute per IP.\n\nBoth also require an **`Idempotency-Key`** header, so that resending a\nsubmission after a timeout cannot book or send it twice. See *Sending a form\nonly once*.\n\n## Sending a form only once\n\nA guest on a phone at the hall taps Book, the connection stalls, and they tap\nagain. Nothing in the second request distinguishes it from a second guest, so\nthe client has to say, and the `Idempotency-Key` header is how\n([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).\n\n**Generate a key when the form is rendered** and send the same one for every\nattempt at that submission. A fresh submission needs a fresh key.\n\n```js\nconst key = crypto.randomUUID();\n\nawait fetch(\"/api/v1/contact\", {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n    \"X-Form-Token\": formToken,\n    \"Idempotency-Key\": key,\n  },\n  body: JSON.stringify({ ...fields, website: \"\" }),\n});\n```\n\nThe first request runs and its answer is stored under the key. A second request\nwith the same key and the same body gets that answer back, byte for byte and\nwith the same status, creates nothing, and carries\n`Idempotency-Replayed: true` so you can tell an echo from a fresh acceptance.\n\nThe key must be 16 to 255 printable ASCII characters. It is scoped to the\nendpoint, so one key can be used once on `/contact` and once on a booking. It\nis **not** scoped to a caller, because these endpoints are anonymous, which is\nwhy a short key is refused: a collision with somebody else's key answers\n`409 idempotency_key_reuse` rather than handing you their booking.\n\n| Answer | Means |\n| --- | --- |\n| `400 idempotency_key_required` | No header. |\n| `400 idempotency_key_invalid` | Too short, too long, or not printable ASCII. |\n| `409 idempotency_key_reuse` | The key belongs to a different body, or to an attempt still running. |\n\nA request that **fails** releases its key: nothing was written, so nothing is\nbeing retried, and a guest who mistyped their address can correct it and send\nagain with the same key. Stored answers are kept for 24 hours.\n"
+        "description": "The API behind the members' area and the public forms of the Guggenmusik\n**Les Canetons de Fribourg**.\n\n## Authenticating\n\nA server-side session in a cookie. There is no bearer token, no\n`Authorization` header, and nothing for a client to store.\n\nThe browser and the API are served from one origin, so there is no CORS\neither. From a browser this is close to automatic:\n\n```js\nawait fetch(\"/api/v1/login\", {\n  method: \"POST\",\n  credentials: \"include\",\n  headers: { \"Content-Type\": \"application/json\", \"X-XSRF-TOKEN\": xsrf },\n  body: JSON.stringify({ username, password }),\n});\n```\n\n`credentials: \"include\"` is what sends and stores the cookie. After that,\nreads need nothing at all.\n\nThe one manual step is the `X-XSRF-TOKEN` header on requests that write. Its\nvalue is the `XSRF-TOKEN` cookie, which is readable from JavaScript by\ndesign; `GET /sanctum/csrf-cookie` sets it, once per page load. Axios does\nthis for you and needs no code. A write without the header answers\n`419 invalid_session`, which means \"prime the cookie and retry\", not \"log in\nagain\".\n\nReads that need a session and do not have one answer\n`401 not_authenticated`.\n\n### Why a cookie rather than a token\n\nThe session cookie is `HttpOnly`, `Secure` and `SameSite=Strict`. Being\nunreadable from JavaScript is the point: a token kept in `localStorage` is\nexfiltrable by any script that manages to run on the page, and it cannot be\nrevoked server-side without keeping a list of live tokens, which is a\nsession by another name. Logging out here ends the session on the server.\n\n`SameSite=Strict` is also the real defence against cross-site request\nforgery: a request originating from another site never carries the cookie,\nso it arrives unauthenticated whatever else it sends. The CSRF token is\ndefence in depth on top of that, not the mechanism holding the door shut.\n\n## Errors\n\nEvery failure is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)\nproblem document, served as `application/problem+json`:\n\n```json\n{\n  \"title\": \"Invalid form submission\",\n  \"status\": 400,\n  \"code\": \"validation_failed\",\n  \"instance\": \"/api/v1/events/42\",\n  \"errors\": [{ \"field\": \"endsAt\", \"reason\": \"must_be_after\" }],\n  \"requestId\": \"01JB3K7QW8ZX7VN4S2QK9J0M1P\",\n  \"detail\": \"One or more submitted fields were rejected. `errors` names each one and why\u2026\"\n}\n```\n\n`title`, `status`, `detail` and `instance` are RFC 9457's own members. `code`,\n`errors` and `requestId` are this API's extensions, which the RFC permits.\n\n**Branch on `code`.** `code` and `errors[].reason` are stable machine tokens;\n`title` is English prose meant for a log and may be reworded without notice.\nThe front end maps the tokens to French, and any other client should do the\nsame.\n\n`detail` says what happened and what to do about it, in English, for whoever\nis reading the response. There is no catalogue of error codes elsewhere in\nthis reference and no endpoint to fetch one: a problem description is wanted\nby somebody who has that problem, at the moment they have it, so it travels\nwith the failure.\n\nThere is deliberately **no `type` member** either. RFC 9457 makes it optional,\nand here it could only ever have been a constant prefix in front of `code`,\ncarrying nothing the document did not already have.\n\n`errors` is always present, and empty for a failure with nothing field-level\nto say. A `reason` may carry `params` (for example `{\"max\": 255}`) when the\nsentence needs a number.\n\n`requestId` is a ULID, also returned as the `X-Request-Id` header on every\nresponse. Quote it when reporting a problem; it identifies the request in the\nserver log. Send your own `X-Request-Id` and it is honoured, provided it is a\nwell-formed ULID.\n\n## Status codes\n\n| Code | Means |\n| --- | --- |\n| `400` | The submitted fields are wrong. See `errors`. |\n| `401` | No session. Log in. |\n| `403` | Logged in, but not allowed to do this. |\n| `404` | No such thing, or nothing you may know exists. |\n| `409` | Allowed, but it conflicts with the current state, or with a submission you already made. |\n| `412` | Your `If-Match` names a state this thing is no longer in. |\n| `419` | The session or CSRF token expired. Prime the cookie and retry. |\n| `422` | The submission looks automated. See *Public forms*. |\n| `428` | The write needs an `If-Match`. See *Conditional writes*. |\n| `429` | Rate limited. |\n| `503` | The service is temporarily refusing to serve. |\n\n## Permissions\n\nAuthorisation is by permission, never by role. Roles are editable data that\ngroup permissions; which role granted one is not a question the API answers.\n`GET /api/v1/me` returns the caller's effective permissions.\n\n`events.manage`, `attendance.view_all`, `attendance.record_for_others`,\n`members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,\n`messages.manage`, `history.manage`, `images.manage`.\n\nAnswering an event deliberately needs **no** permission: anyone in a register\nanswers for themselves.\n\n## Conventions\n\n- Field names are `camelCase` in both directions.\n- **Timestamps are always UTC**, ISO 8601 with a `+00:00` offset\n  (`2026-09-05T08:00:00+00:00`). The band is in Europe/Zurich, so convert for\n  display \u2014 slicing the hour out of the string shows the wrong time.\n  On the way IN, send any offset you like and it is honoured; a value with no\n  offset at all is read as UTC.\n- Money is an integer number of centimes. `4500` is CHF 45.00.\n- Every collection comes in the same envelope. See *Collections*.\n\n## Collections\n\nEvery endpoint that answers with a list answers with `{data, meta}`, never with\na bare array \u2014 `/roles` and `/sections` included, which are the two nobody will\never page. One shape means one function reads any list:\n\n```json\n{\n  \"data\": [ \u2026 ],\n  \"meta\": { \"total\": 45, \"limit\": 500, \"offset\": 0 }\n}\n```\n\n`total` is the whole collection, not the page you were sent, so a screen can\nsay \"45 membres\" without first reading forty-five of them.\n\nAsk for less with `?limit=` and `?offset=`. **You rarely need to**: the default\nlimit is 500, above every collection this API holds, so omitting both returns\nthe whole thing in one request. The cap is 1000.\n\nNeither parameter can fail. A `limit` above the cap is clamped, a negative\n`offset` reads as zero, and a value that is not a whole number is ignored \u2014\n`meta` always reports what was actually applied.\n\nReads carry an [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) `Link`\nheader with `first` and `last`, plus `prev` and `next` where they exist:\n\n```\nLink: </api/v1/members?limit=2&offset=2>; rel=\"next\",\n      </api/v1/members?limit=2&offset=44>; rel=\"last\"\n```\n\n**Follow `next` until there is none** rather than doing arithmetic on `meta`.\nYour own query parameters are carried along, so paging `/events?past=1` stays\nin the past.\n\nThe links are relative, as RFC 8288 permits: resolve them against the URL you\nrequested. They carry no scheme or host, so they stay correct behind whatever\nsits in front of the API.\n\n`PUT /api/v1/events/{event}/registration-options` and\n`POST /api/v1/events/series` answer with a collection too, and are enveloped\nthe same way \u2014 with no `Link` header, since a `rel=\"next\"` you would have to\nPUT again is not a link to follow.\n\nThe paging is offset-based rather than cursor-based, deliberately: every\ncollection here is one page for the foreseeable future. A `cursor` parameter\ncan be added later without changing this envelope.\n\n## Conditional writes\n\n**Every write that replaces or removes something must prove it is working from\nthe current state.** Read the thing first, keep the `ETag` the read returns, and\nsend it back as `If-Match`:\n\n```js\nconst read = await fetch(\"/api/v1/events/42\", { credentials: \"include\" });\nconst etag = read.headers.get(\"ETag\");\n\nawait fetch(\"/api/v1/events/42\", {\n  method: \"PATCH\",\n  credentials: \"include\",\n  headers: { \"Content-Type\": \"application/json\", \"X-XSRF-TOKEN\": xsrf, \"If-Match\": etag },\n  body: JSON.stringify({ title: \"Cort\u00e8ge\" }),\n});\n```\n\nNo header answers `428 if_match_required`. A header naming a state the thing is\nno longer in answers `412 if_match_failed`, and **the 412 does not tell you the\ncurrent tag** \u2014 retrying blindly with a fresh one would land exactly the\noverwrite you were stopped from making. Read it again and decide again.\n\nWhich writes, and where their tag comes from:\n\n| Write | Read for its `ETag` |\n| --- | --- |\n| `PATCH` / `DELETE /events/{event}` | `GET /events/{event}` |\n| `PATCH` / `DELETE /members/{member}` | `GET /members/{member}` |\n| `PUT /members/{member}/roles` | `GET /members/{member}` |\n| `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |\n| `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |\n| `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |\n| `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |\n| `POST /images/{image}/file` | `GET /images/{image}` |\n| `PUT /photo-placements` | `GET /photo-placements` |\n| `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |\n\nA successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need\nno read in between. A `DELETE` returns none: there is nothing left to tag.\n\n**Collections hand out no tag**, deliberately \u2014 one tag cannot validate\nforty-five members, and a list-wide tag would refuse every write whenever\nanybody changed anything. That is why each conditional write has a\nsingle-thing read beside it.\n\nThe tag is over the thing's own state. An event's tag ignores `myAttendance`,\nwhich is yours alone, so answering an event does not invalidate a pending edit\nof it; an event's options are tagged separately from the event, so correcting a\ndress code does not refuse an options edit and adding an option does.\n\n**Attendance is exempt.** `PUT` and `DELETE` on\n`/events/{event}/attendance` need no `If-Match`: a member is the only ordinary\nwriter of their own answer, the whole answer is one value so there is no half of\nit to lose, and a first answer has no tag to have. Answering stays one request.\n\nTags are strong validators. `If-Match: *` asserts only that the thing still\nexists. There is no conditional `GET` \u2014 `If-None-Match` is not implemented and\nnothing here is cacheable.\n\n## Public forms\n\n`POST /api/v1/contact` and `POST /api/v1/events/{event}/registrations` are open to\nanonymous callers and are protected against automated submission. Both\nrequire:\n\n- an `X-Form-Token` header, from `GET /api/v1/form-token`, at least two seconds\n  and at most two hours old, and\n- a `website` field, present and empty.\n\nFailing either answers `422 spam_suspected`. Both endpoints are rate limited\nto 10 requests a minute per IP.\n\nBoth also require an **`Idempotency-Key`** header, so that resending a\nsubmission after a timeout cannot book or send it twice. See *Sending a form\nonly once*.\n\n## Sending a form only once\n\nA guest on a phone at the hall taps Book, the connection stalls, and they tap\nagain. Nothing in the second request distinguishes it from a second guest, so\nthe client has to say, and the `Idempotency-Key` header is how\n([draft-ietf-httpapi-idempotency-key-header](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)).\n\n**Generate a key when the form is rendered** and send the same one for every\nattempt at that submission. A fresh submission needs a fresh key.\n\n```js\nconst key = crypto.randomUUID();\n\nawait fetch(\"/api/v1/contact\", {\n  method: \"POST\",\n  headers: {\n    \"Content-Type\": \"application/json\",\n    \"X-Form-Token\": formToken,\n    \"Idempotency-Key\": key,\n  },\n  body: JSON.stringify({ ...fields, website: \"\" }),\n});\n```\n\nThe first request runs and its answer is stored under the key. A second request\nwith the same key and the same body gets that answer back, byte for byte and\nwith the same status, creates nothing, and carries\n`Idempotency-Replayed: true` so you can tell an echo from a fresh acceptance.\n\nThe key must be 16 to 255 printable ASCII characters. It is scoped to the\nendpoint, so one key can be used once on `/contact` and once on a booking. It\nis **not** scoped to a caller, because these endpoints are anonymous, which is\nwhy a short key is refused: a collision with somebody else's key answers\n`409 idempotency_key_reuse` rather than handing you their booking.\n\n| Answer | Means |\n| --- | --- |\n| `400 idempotency_key_required` | No header. |\n| `400 idempotency_key_invalid` | Too short, too long, or not printable ASCII. |\n| `409 idempotency_key_reuse` | The key belongs to a different body, or to an attempt still running. |\n\nA request that **fails** releases its key: nothing was written, so nothing is\nbeing retried, and a guest who mistyped their address can correct it and send\nagain with the same key. Stored answers are kept for 24 hours.\n"
     },
     "servers": [
         {
@@ -47,6 +47,10 @@
         {
             "name": "History",
             "description": "The band's history, one dated entry at a time. Reading it is public; changing it needs `history.manage`."
+        },
+        {
+            "name": "Images",
+            "description": "The shared photo library. Every route here needs `images.manage`, except the file itself, which is public."
         },
         {
             "name": "Service",
@@ -276,7 +280,17 @@
                                                             "invalid_value",
                                                             "invalid_number",
                                                             "already_taken",
-                                                            "must_be_after"
+                                                            "must_be_after",
+                                                            "image_not_jpeg",
+                                                            "image_too_large",
+                                                            "image_too_heavy",
+                                                            "image_has_metadata",
+                                                            "image_unexpected_data",
+                                                            "image_trailing_data",
+                                                            "image_set_too_many",
+                                                            "image_set_too_heavy",
+                                                            "image_set_widths_repeated",
+                                                            "image_set_aspect_mismatch"
                                                         ]
                                                     },
                                                     "params": {
@@ -1142,6 +1156,15 @@
                         "schema": {
                             "type": "integer"
                         }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -1175,6 +1198,12 @@
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
@@ -2156,7 +2185,17 @@
                                                             "invalid_value",
                                                             "invalid_number",
                                                             "already_taken",
-                                                            "must_be_after"
+                                                            "must_be_after",
+                                                            "image_not_jpeg",
+                                                            "image_too_large",
+                                                            "image_too_heavy",
+                                                            "image_has_metadata",
+                                                            "image_unexpected_data",
+                                                            "image_trailing_data",
+                                                            "image_set_too_many",
+                                                            "image_set_too_heavy",
+                                                            "image_set_widths_repeated",
+                                                            "image_set_aspect_mismatch"
                                                         ]
                                                     },
                                                     "params": {
@@ -2495,14 +2534,14 @@
                             }
                         }
                     },
-                    "404": {
-                        "$ref": "#/components/responses/Problem404"
-                    },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
                     },
                     "403": {
                         "$ref": "#/components/responses/Problem403"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
                     },
                     "503": {
                         "description": "The service is temporarily refusing to serve. Retry shortly.",
@@ -5391,7 +5430,17 @@
                                                             "invalid_value",
                                                             "invalid_number",
                                                             "already_taken",
-                                                            "must_be_after"
+                                                            "must_be_after",
+                                                            "image_not_jpeg",
+                                                            "image_too_large",
+                                                            "image_too_heavy",
+                                                            "image_has_metadata",
+                                                            "image_unexpected_data",
+                                                            "image_trailing_data",
+                                                            "image_set_too_many",
+                                                            "image_set_too_heavy",
+                                                            "image_set_widths_repeated",
+                                                            "image_set_aspect_mismatch"
                                                         ]
                                                     },
                                                     "params": {
@@ -5489,6 +5538,891 @@
                 "security": []
             }
         },
+        "/images/{sha256}.jpg": {
+            "get": {
+                "operationId": "image.file",
+                "description": "Read the path from an image's `url` or `srcset` rather than building it.\nIt is the SHA-256 of this size's own bytes, so a given URL can only ever\nserve those bytes, and it is cached for a year. The `ETag` is the same\ndigest: send it back as `If-None-Match` and the answer is `304`.",
+                "summary": "One size of a library photo, as a JPEG. Public",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "sha256",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "pattern": "[0-9a-f]{64}"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The JPEG.",
+                        "content": {
+                            "image/jpeg": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "public, max-age=31536000, immutable"
+                                }
+                            },
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-Content-Type-Options": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "nosniff"
+                                }
+                            },
+                            "Content-Security-Policy": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "default-src 'none'; sandbox"
+                                }
+                            },
+                            "Content-Length": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "Content-Disposition": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "inline"
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "The `If-None-Match` names these bytes: the copy you have is current.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Cache-Control": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "public, max-age=31536000, immutable"
+                                }
+                            },
+                            "ETag": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "X-Content-Type-Options": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "nosniff"
+                                }
+                            },
+                            "Content-Security-Policy": {
+                                "schema": {
+                                    "type": "string",
+                                    "const": "default-src 'none'; sandbox"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/images": {
+            "get": {
+                "operationId": "image.index",
+                "summary": "Every image in the library, newest first, each with the places it is shown. Requires `images.manage`",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The whole library, newest first.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/ImageResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "image.store",
+                "description": "The largest size is the photo: its SHA-256 identifies it, and uploading\na photo whose largest size the library already holds adds nothing. The\nexisting image comes back with `200`, under its own name, even when the\nlibrary is full.\n\nUploads are stored one at a time. One that waits too long for the\nupload ahead of it answers `503 service_unavailable`; send it again. One\nthe database has no room for answers `507 image_storage_full`.",
+                "summary": "Adds a photo to the library, sent in one to three sizes with a name.\nRequires `images.manage`",
+                "tags": [
+                    "Images"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The library already held this photo, which is returned unchanged.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResource"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "201": {
+                        "description": "The image was added.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResource"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/Problem429"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "image_library_full"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "507": {
+                        "description": "The request was refused.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "image_storage_full"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/images/summary": {
+            "get": {
+                "operationId": "image.summary",
+                "description": "A separate read rather than `meta` on the list, because the collection\nenvelope is the same on every list and carries paging only.",
+                "summary": "How full the library is. Requires `images.manage`",
+                "tags": [
+                    "Images"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The number of images, how many the library holds at most, and their total size in bytes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "count": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                        },
+                                        "capacity": {
+                                            "type": "integer"
+                                        },
+                                        "bytesTotal": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "count",
+                                        "capacity",
+                                        "bytesTotal"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/images/{image}": {
+            "get": {
+                "operationId": "image.show",
+                "summary": "One image, with the `ETag` its rename, replace and delete must quote. Requires `images.manage`",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "image",
+                        "in": "path",
+                        "required": true,
+                        "description": "The image ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The image and the places it is shown.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "image.update",
+                "description": "The name is the committee's label for the photo, shown in the library\nand the picker. No public page shows it.",
+                "summary": "Renames an image. Requires `images.manage` and the `If-Match` from its\nread",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "image",
+                        "in": "path",
+                        "required": true,
+                        "description": "The image ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdateImageRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The image under its new name, with a new `ETag`.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "image.destroy",
+                "description": "Refused with `image_in_use` while anything still shows the image:\nremove it from there first.",
+                "summary": "Deletes an image with all its sizes. Requires `images.manage` and the\n`If-Match` from its read",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "image",
+                        "in": "path",
+                        "required": true,
+                        "description": "The image ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted, every size included.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "image_in_use"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/images/{image}/file": {
+            "post": {
+                "operationId": "image.replace",
+                "description": "The image keeps its id, its name and every place it is shown, so each of\nthose pages shows the new photo. Its `url`, `srcset` and `sizes` change:\na size's path names the new bytes.\n\nSending the photo the image already holds changes nothing and answers\n`200`. One that another image in the library holds is refused with\n`image_already_in_library`. The byte cap counts what the library would\nhold after the swap, so a replacement only needs room for the\ndifference.\n\nReplacements and uploads are stored one at a time. One that waits too\nlong answers `503 service_unavailable`; send it again. One the database\nhas no room for answers `507 image_storage_full`.",
+                "summary": "Replaces the photo of an image with new sizes, sent exactly as an upload\nsends them. Requires `images.manage` and the `If-Match` from its read",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "image",
+                        "in": "path",
+                        "required": true,
+                        "description": "The image ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReplaceImageFileRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The image with its new sizes and a new `ETag`, or unchanged when it already held this photo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/Problem429"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "image_already_in_library",
+                                                "image_library_full"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "507": {
+                        "description": "The request was refused.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "image_storage_full"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/config": {
             "get": {
                 "operationId": "config.show",
@@ -5518,6 +6452,217 @@
                                     "required": [
                                         "env",
                                         "features"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/photo-placements": {
+            "get": {
+                "operationId": "photoPlacement.show",
+                "description": "The band photo, the concert photo and one slot per register, each the\nid of a library image or null. Read this before replacing the\nplacements, and quote the `ETag` it returns in the `If-Match` header of\nthe PUT.",
+                "summary": "Where each photo is placed. Requires `images.manage`",
+                "tags": [
+                    "Images"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Every slot and what sits in it.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PhotoPlacementsResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "photoPlacement.update",
+                "description": "Send the complete placements, in the shape the read returns. Replaying\nthe same body leaves the same placements, and `imageId` null empties a\nslot. The register list must name every register exactly once, or the\nrequest answers `400 validation_failed` against `registers`, as it does\nfor an `imageId` that is not in the library.\n\nReturns the placements as they now stand.",
+                "summary": "Places photos. Requires `images.manage` and the `If-Match` from the read",
+                "tags": [
+                    "Images"
+                ],
+                "parameters": [
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UpdatePhotoPlacementsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The placements as they now stand.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PhotoPlacementsResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/site-photos": {
+            "get": {
+                "operationId": "sitePhoto.index",
+                "description": "Anonymous. `band` is the photo of the band, shown on the band page, and\n`concert` the one that announces the next concert, shown on the home\npage. Either is null while nothing is placed there, and the page then\nshows its placeholder. Neither carries alt text: the page describes both by\nthe band's name.",
+                "summary": "The two single photographs of the site",
+                "tags": [
+                    "Public pages"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The band photo and the concert photo, each null when nothing is placed there.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "band": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "properties": {
+                                                "url": {
+                                                    "type": "string"
+                                                },
+                                                "width": {
+                                                    "type": "integer"
+                                                },
+                                                "height": {
+                                                    "type": "integer"
+                                                },
+                                                "srcset": {
+                                                    "type": "string"
+                                                },
+                                                "altFr": {
+                                                    "type": "null"
+                                                },
+                                                "altDe": {
+                                                    "type": "null"
+                                                }
+                                            },
+                                            "required": [
+                                                "url",
+                                                "width",
+                                                "height",
+                                                "srcset",
+                                                "altFr",
+                                                "altDe"
+                                            ]
+                                        },
+                                        "concert": {
+                                            "type": [
+                                                "object",
+                                                "null"
+                                            ],
+                                            "properties": {
+                                                "url": {
+                                                    "type": "string"
+                                                },
+                                                "width": {
+                                                    "type": "integer"
+                                                },
+                                                "height": {
+                                                    "type": "integer"
+                                                },
+                                                "srcset": {
+                                                    "type": "string"
+                                                },
+                                                "altFr": {
+                                                    "type": "null"
+                                                },
+                                                "altDe": {
+                                                    "type": "null"
+                                                }
+                                            },
+                                            "required": [
+                                                "url",
+                                                "width",
+                                                "height",
+                                                "srcset",
+                                                "altFr",
+                                                "altDe"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "band",
+                                        "concert"
                                     ]
                                 }
                             }
@@ -6000,6 +7145,68 @@
                         ],
                         "description": "One of the history icon keys, or null for the plain dot."
                     },
+                    "imageId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "The library image attached to the entry, or null."
+                    },
+                    "imageAltFr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Alt text for the photo in French. Null when there is no photo."
+                    },
+                    "imageAltDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Alt text for the photo in German. Null when there is no photo."
+                    },
+                    "photo": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The photo with its file, size and alt texts, or null.",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "srcset": {
+                                "type": "string"
+                            },
+                            "altFr": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "altDe": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "srcset",
+                            "altFr",
+                            "altDe"
+                        ]
+                    },
                     "createdAt": {
                         "type": "string",
                         "format": "date-time"
@@ -6019,10 +7226,123 @@
                     "bodyDe",
                     "important",
                     "icon",
+                    "imageId",
+                    "imageAltFr",
+                    "imageAltDe",
+                    "photo",
                     "createdAt",
                     "updatedAt"
                 ],
                 "title": "HistoryEntryResource"
+            },
+            "ImageResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The committee's label for the photo. Internal: no public page shows it, and it is not alt text."
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "The largest size. Public, and cached for a year: each size's path is the SHA-256 of its own bytes, so new bytes always get a new path."
+                    },
+                    "width": {
+                        "type": "integer"
+                    },
+                    "height": {
+                        "type": "integer"
+                    },
+                    "srcset": {
+                        "type": "string",
+                        "description": "Every size as an HTML `srcset`, smallest first."
+                    },
+                    "bytes": {
+                        "type": "integer",
+                        "description": "The bytes of all sizes together."
+                    },
+                    "sizes": {
+                        "type": "array",
+                        "description": "Each stored size, smallest first. The largest has the photo's own width, height and `url`.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "width": {
+                                    "type": "integer"
+                                },
+                                "height": {
+                                    "type": "integer"
+                                },
+                                "bytes": {
+                                    "type": "integer"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "width",
+                                "height",
+                                "bytes",
+                                "url"
+                            ]
+                        }
+                    },
+                    "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "usages": {
+                        "type": "array",
+                        "description": "Every place the image is shown. An image with any usage cannot be deleted. `id` and `label` are null for the two band-page slots, `band` and `concert`.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                        "band",
+                                        "concert",
+                                        "register",
+                                        "history"
+                                    ]
+                                },
+                                "id": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                },
+                                "label": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "kind",
+                                "id",
+                                "label"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "url",
+                    "width",
+                    "height",
+                    "srcset",
+                    "bytes",
+                    "sizes",
+                    "createdAt",
+                    "usages"
+                ],
+                "title": "ImageResource"
             },
             "InboxItemResource": {
                 "type": "object",
@@ -6143,6 +7463,78 @@
                 ],
                 "title": "MemberResource"
             },
+            "PhotoPlacementRegisterResource": {
+                "type": "object",
+                "properties": {
+                    "sectionId": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The register's name, for display only. Ignored when sent back."
+                    },
+                    "imageId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "sectionId",
+                    "name",
+                    "imageId"
+                ],
+                "title": "PhotoPlacementRegisterResource"
+            },
+            "PhotoPlacementsResource": {
+                "type": "object",
+                "properties": {
+                    "band": {
+                        "type": "object",
+                        "description": "The photo of the band.",
+                        "properties": {
+                            "imageId": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "imageId"
+                        ]
+                    },
+                    "concert": {
+                        "type": "object",
+                        "description": "The photo that announces the next concert.",
+                        "properties": {
+                            "imageId": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "imageId"
+                        ]
+                    },
+                    "registers": {
+                        "type": "array",
+                        "description": "One row per register, in the band's own order. A PUT must list every one.",
+                        "items": {
+                            "$ref": "#/components/schemas/PhotoPlacementRegisterResource"
+                        }
+                    }
+                },
+                "required": [
+                    "band",
+                    "concert",
+                    "registers"
+                ],
+                "title": "PhotoPlacementsResource"
+            },
             "PublicEventResource": {
                 "type": "object",
                 "properties": {
@@ -6224,13 +7616,49 @@
                         "items": {
                             "$ref": "#/components/schemas/PublicMemberResource"
                         }
+                    },
+                    "photo": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The register's photo, or null when none is placed. It carries no alt text: the page describes it by the register's name.",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "srcset": {
+                                "type": "string"
+                            },
+                            "altFr": {
+                                "type": "null"
+                            },
+                            "altDe": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "srcset",
+                            "altFr",
+                            "altDe"
+                        ]
                     }
                 },
                 "required": [
                     "id",
                     "name",
                     "members",
-                    "instructors"
+                    "instructors",
+                    "photo"
                 ],
                 "title": "PublicSectionResource"
             },
@@ -6468,6 +7896,26 @@
                     "createdAt"
                 ],
                 "title": "RegistrationResource"
+            },
+            "ReplaceImageFileRequest": {
+                "type": "object",
+                "description": "New sizes for a photo already in the library, sent exactly as an upload\nsends them: `multipart/form-data`, one `files[]` part per size, one to\nthree of them.\n\nEvery check an upload makes is made here, by the same code, and refuses\nwith the same reasons: `image_not_jpeg`, `image_too_large`,\n`image_too_heavy`, `image_has_metadata`, `image_unexpected_data` or\n`image_trailing_data` against `files.N`, and `image_set_too_many`,\n`image_set_too_heavy`, `image_set_widths_repeated` or\n`image_set_aspect_mismatch` against `files`.",
+                "properties": {
+                    "files": {
+                        "type": "array",
+                        "description": "The new sizes of the photo, in any order: one to three JPEGs, each at most 1920 pixels on its longest edge and 600 KB, with no Exif or XMP metadata. Send each as a part named `files[]`, since PHP keeps only the last of several parts sharing a bare name.",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "files"
+                ],
+                "title": "ReplaceImageFileRequest"
             },
             "ReplaceMemberRolesRequest": {
                 "type": "object",
@@ -6849,6 +8297,29 @@
                             "heart",
                             null
                         ]
+                    },
+                    "imageId": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "The entry's photo, an id from `GET /api/v1/images`. Leave it out to keep the current one, send `null` to remove it. Sending any of `imageId`, `imageAltFr` and `imageAltDe` needs `images.manage`."
+                    },
+                    "imageAltFr": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The photo's alt text in French. Sent without `imageId`, it replaces the alt text of the entry's current photo, and is stored as null when the entry has no photo. A null `imageId` clears it whatever is sent here.",
+                        "maxLength": 250
+                    },
+                    "imageAltDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The photo's alt text in German. Same rules as `imageAltFr`.",
+                        "maxLength": 250
                     }
                 },
                 "required": [
@@ -6857,6 +8328,32 @@
                     "important"
                 ],
                 "title": "StoreHistoryEntryRequest"
+            },
+            "StoreImageRequest": {
+                "type": "object",
+                "description": "One photograph for the library, in one to three sizes, sent as\n`multipart/form-data` with one `files[]` part per size and a `name`.\n\nEach part must already be what the site serves: a JPEG of at most 1920\npixels on its longest edge and 600 KB, holding only the segments a canvas\nencoder writes (no comment, no Exif, XMP or other metadata), and ending at\nits EOI marker. The SPA shrinks and re-encodes a photo in the browser before\nsending it, so a camera original never reaches the server. A part's problem\nis reported against `files.N` with its own reason: `image_not_jpeg`,\n`image_too_large`, `image_too_heavy`, `image_has_metadata`,\n`image_unexpected_data` or `image_trailing_data`.\n\nThe parts must be sizes of one photo: distinct widths and the same aspect\nratio. The largest is the photo. A problem with the set is reported against\n`files`: `image_set_too_many`, `image_set_too_heavy`,\n`image_set_widths_repeated` or `image_set_aspect_mismatch`.",
+                "properties": {
+                    "files": {
+                        "type": "array",
+                        "description": "The sizes of one photo, in any order: one to three JPEGs, each at most 1920 pixels on its longest edge and 600 KB, with no Exif or XMP metadata. Send each as a part named `files[]`, since PHP keeps only the last of several parts sharing a bare name.",
+                        "items": {
+                            "type": "string",
+                            "format": "binary",
+                            "contentMediaType": "application/octet-stream"
+                        },
+                        "minItems": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The committee's label for the photo: at most 120 characters once trimmed, with no control or bidirectional formatting characters. The SPA sends the file name without its extension.",
+                        "maxLength": 120
+                    }
+                },
+                "required": [
+                    "files",
+                    "name"
+                ],
+                "title": "StoreImageRequest"
             },
             "StoreMemberRequest": {
                 "type": "object",
@@ -7080,6 +8577,21 @@
                 },
                 "title": "UpdateEventRequest"
             },
+            "UpdateImageRequest": {
+                "type": "object",
+                "description": "A new name for a library photo. The name is the committee's label for it,\nshown in the library and the picker and on no public page.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "At most 120 characters once trimmed, with no control or bidirectional formatting characters. Leading and trailing spaces are dropped.",
+                        "maxLength": 120
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "UpdateImageRequest"
+            },
             "UpdateMemberRequest": {
                 "type": "object",
                 "description": "Changes to a person already on the roster.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\n`username` is the exception. It may be changed but not cleared, because it\nis the login and every member has one. It keeps the same shape as at\ncreation, and must stay unique across the roster.\n\nRoles are not here: replacing them is `PUT /api/v1/members/{member}/roles`,\nwhich checks the roster's lockout invariants and ends the member's open\nsessions. Neither is the password, which has its own endpoint.",
@@ -7125,6 +8637,68 @@
                     }
                 },
                 "title": "UpdateMemberRequest"
+            },
+            "UpdatePhotoPlacementsRequest": {
+                "type": "object",
+                "description": "Every photo placement, in one body.\n\nIt is a replacement, like the answer of `GET /api/v1/photo-placements`, whose\nshape it repeats: `band` and `concert` are slots, and `registers` lists\nevery register exactly once. A register missing from the list, listed twice\nor not a register at all fails validation against `registers`. `name` on a\nregister row is read-only and ignored here.\n\nA slot is just `imageId`. It must be sent, and null empties the slot. An\n`imageId` that is not in the library fails validation against `imageId`;\nread the ids from `GET /api/v1/images`.",
+                "properties": {
+                    "band": {
+                        "type": "object",
+                        "properties": {
+                            "imageId": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "imageId"
+                        ]
+                    },
+                    "concert": {
+                        "type": "object",
+                        "properties": {
+                            "imageId": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "imageId"
+                        ]
+                    },
+                    "registers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "sectionId": {
+                                    "type": "integer"
+                                },
+                                "imageId": {
+                                    "type": [
+                                        "integer",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "sectionId",
+                                "imageId"
+                            ]
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "band",
+                    "concert",
+                    "registers"
+                ],
+                "title": "UpdatePhotoPlacementsRequest"
             },
             "UpdateRegistrationRequest": {
                 "type": "object",
@@ -7332,7 +8906,17 @@
                                                     "invalid_value",
                                                     "invalid_number",
                                                     "already_taken",
-                                                    "must_be_after"
+                                                    "must_be_after",
+                                                    "image_not_jpeg",
+                                                    "image_too_large",
+                                                    "image_too_heavy",
+                                                    "image_has_metadata",
+                                                    "image_unexpected_data",
+                                                    "image_trailing_data",
+                                                    "image_set_too_many",
+                                                    "image_set_too_heavy",
+                                                    "image_set_widths_repeated",
+                                                    "image_set_aspect_mismatch"
                                                 ]
                                             },
                                             "params": {

@@ -222,6 +222,15 @@ final class ErrorVocabulary
         'option_has_registrations' => [409, 'That option has already been booked, so it cannot be deleted. '
             .'Cancel the bookings that reference it first.'],
 
+        'image_in_use' => [409, 'This image is still shown somewhere on the site, so it cannot be deleted. '
+            .'`usages` on GET /api/v1/images/{image} lists where; remove it from each place first.'],
+
+        'image_already_in_library' => [409, 'Another image in the library already holds this photo, so it cannot '
+            .'replace this one. Use that image instead, or delete it first.'],
+
+        'image_library_full' => [409, 'The image library is full. Delete an image nothing uses, then upload '
+            .'again. GET /api/v1/images/summary reports the count and the capacity.'],
+
         // ----------------------------------------------- the submission itself
 
         // THE ONE THAT MUST STAY VAGUE. An earlier version of this string listed
@@ -239,6 +248,12 @@ final class ErrorVocabulary
 
         'service_unavailable' => [503, 'The service is temporarily refusing requests. Retry shortly; '
             .'nothing on your side needs changing.'],
+
+        // 507 rather than 503: the database refused the bytes for want of
+        // room, which retrying will not change. Somebody has to free space or
+        // raise the host's quota first.
+        'image_storage_full' => [507, 'The database has no room for this photo. Retrying will not help '
+            .'until space is freed: delete photos nothing uses, or ask whoever runs the server.'],
 
         'xlsx_unavailable' => [503, 'This server cannot build spreadsheet exports. Request the csv format '
             .'instead.'],
@@ -264,6 +279,9 @@ final class ErrorVocabulary
         'invalid_number',
         'already_taken',
         'must_be_after',
+        // What ReceivesImageSizes::after() adds against `files.N` and `files`.
+        ...JpegInspector::PROBLEMS,
+        ...ImageSet::PROBLEMS,
     ];
 
     /**

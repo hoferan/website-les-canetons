@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,12 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `PUT /photo-placements` | `GET /photo-placements` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -332,6 +336,10 @@ import type {
   HistoryEntryDestroy200,
   HistoryEntryIndex200,
   HistoryEntryResource,
+  ImageDestroy200,
+  ImageIndex200,
+  ImageResource,
+  ImageSummary200,
   InboxIndex200,
   InboxSummary200,
   MemberAttendanceDestroy200,
@@ -341,6 +349,7 @@ import type {
   MemberResource,
   MemberRoleReplace200,
   MemberStore201,
+  PhotoPlacementsResource,
   RegistrationDestroy200,
   RegistrationExport200Four,
   RegistrationFormResource,
@@ -350,6 +359,7 @@ import type {
   RegistrationResource,
   RoleIndex200,
   SectionIndex200,
+  SitePhotoIndex200,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -1341,6 +1351,20 @@ export const getBandIndexResponseMock = (
         lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
       }),
     ),
+    photo: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          altFr: null,
+          altDe: null,
+        },
+        null,
+      ]),
+      null,
+    ]),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
@@ -1384,6 +1408,35 @@ export const getHistoryEntryIndexResponseMock = (
     ]),
     important: faker.datatype.boolean(),
     icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+    imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+    imageAltFr: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    imageAltDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    photo: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          altFr: faker.helpers.arrayElement([
+            faker.string.alpha({ length: { min: 10, max: 20 } }),
+            null,
+          ]),
+          altDe: faker.helpers.arrayElement([
+            faker.string.alpha({ length: { min: 10, max: 20 } }),
+            null,
+          ]),
+        },
+        null,
+      ]),
+      null,
+    ]),
     createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   })),
@@ -1403,6 +1456,35 @@ export const getHistoryEntryStoreResponseMock = (
   bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+  imageAltFr: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  imageAltDe: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        altFr: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        altDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+      },
+      null,
+    ]),
+    null,
+  ]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
@@ -1420,6 +1502,35 @@ export const getHistoryEntryShowResponseMock = (
   bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+  imageAltFr: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  imageAltDe: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        altFr: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        altDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+      },
+      null,
+    ]),
+    null,
+  ]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
@@ -1437,6 +1548,35 @@ export const getHistoryEntryUpdateResponseMock = (
   bodyDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   important: faker.datatype.boolean(),
   icon: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+  imageAltFr: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  imageAltDe: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  photo: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        altFr: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        altDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+      },
+      null,
+    ]),
+    null,
+  ]),
   createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   updatedAt: faker.date.past().toISOString().slice(0, 19) + "Z",
   ...overrideResponse,
@@ -1457,6 +1597,211 @@ export const getContactStoreResponseMock = (
   overrideResponse: Partial<Extract<ContactStore200, object>> = {},
 ): ContactStore200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
+export const getImageFileResponseMock = (): ArrayBuffer =>
+  new ArrayBuffer(faker.number.int({ min: 1, max: 64 }));
+
+export const getImageIndexResponseMock = (
+  overrideResponse: Partial<Extract<ImageIndex200, object>> = {},
+): ImageIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    width: faker.number.int(),
+    height: faker.number.int(),
+    srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    bytes: faker.number.int(),
+    sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        width: faker.number.int(),
+        height: faker.number.int(),
+        bytes: faker.number.int(),
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      }),
+    ),
+    createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+    usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+        id: faker.helpers.arrayElement([faker.number.int(), null]),
+        label: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+      }),
+    ),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getImageStoreResponseMock = (
+  overrideResponse: Partial<Extract<ImageResource, object>> = {},
+): ImageResource =>
+  faker.helpers.arrayElement([
+    {
+      id: faker.number.int(),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      width: faker.number.int(),
+      height: faker.number.int(),
+      srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      bytes: faker.number.int(),
+      sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          width: faker.number.int(),
+          height: faker.number.int(),
+          bytes: faker.number.int(),
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        }),
+      ),
+      createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+      usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+          id: faker.helpers.arrayElement([faker.number.int(), null]),
+          label: faker.helpers.arrayElement([
+            faker.string.alpha({ length: { min: 10, max: 20 } }),
+            null,
+          ]),
+        }),
+      ),
+      ...overrideResponse,
+    },
+    {
+      id: faker.number.int(),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      width: faker.number.int(),
+      height: faker.number.int(),
+      srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      bytes: faker.number.int(),
+      sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          width: faker.number.int(),
+          height: faker.number.int(),
+          bytes: faker.number.int(),
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        }),
+      ),
+      createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+      usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+        () => ({
+          kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+          id: faker.helpers.arrayElement([faker.number.int(), null]),
+          label: faker.helpers.arrayElement([
+            faker.string.alpha({ length: { min: 10, max: 20 } }),
+            null,
+          ]),
+        }),
+      ),
+      ...overrideResponse,
+    },
+  ]);
+
+export const getImageSummaryResponseMock = (
+  overrideResponse: Partial<Extract<ImageSummary200, object>> = {},
+): ImageSummary200 => ({
+  count: faker.number.int({ min: 0 }),
+  capacity: faker.number.int(),
+  bytesTotal: faker.number.int(),
+  ...overrideResponse,
+});
+
+export const getImageShowResponseMock = (
+  overrideResponse: Partial<Extract<ImageResource, object>> = {},
+): ImageResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  width: faker.number.int(),
+  height: faker.number.int(),
+  srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  bytes: faker.number.int(),
+  sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    width: faker.number.int(),
+    height: faker.number.int(),
+    bytes: faker.number.int(),
+    url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+      id: faker.helpers.arrayElement([faker.number.int(), null]),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getImageUpdateResponseMock = (
+  overrideResponse: Partial<Extract<ImageResource, object>> = {},
+): ImageResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  width: faker.number.int(),
+  height: faker.number.int(),
+  srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  bytes: faker.number.int(),
+  sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    width: faker.number.int(),
+    height: faker.number.int(),
+    bytes: faker.number.int(),
+    url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+      id: faker.helpers.arrayElement([faker.number.int(), null]),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getImageDestroyResponseMock = (
+  overrideResponse: Partial<Extract<ImageDestroy200, object>> = {},
+): ImageDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
+
+export const getImageReplaceResponseMock = (
+  overrideResponse: Partial<Extract<ImageResource, object>> = {},
+): ImageResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  width: faker.number.int(),
+  height: faker.number.int(),
+  srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  bytes: faker.number.int(),
+  sizes: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    width: faker.number.int(),
+    height: faker.number.int(),
+    bytes: faker.number.int(),
+    url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  })),
+  createdAt: faker.date.past().toISOString().slice(0, 19) + "Z",
+  usages: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      kind: faker.helpers.arrayElement(["band", "concert", "register", "history"] as const),
+      id: faker.helpers.arrayElement([faker.number.int(), null]),
+      label: faker.helpers.arrayElement([
+        faker.string.alpha({ length: { min: 10, max: 20 } }),
+        null,
+      ]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
 export const getConfigShowResponseMock = (
   overrideResponse: Partial<Extract<ConfigShow200, object>> = {},
 ): ConfigShow200 => ({
@@ -1464,6 +1809,70 @@ export const getConfigShowResponseMock = (
   features: {
     [faker.string.alphanumeric(5)]: faker.datatype.boolean(),
   },
+  ...overrideResponse,
+});
+
+export const getPhotoPlacementShowResponseMock = (
+  overrideResponse: Partial<Extract<PhotoPlacementsResource, object>> = {},
+): PhotoPlacementsResource => ({
+  band: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
+  concert: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
+  registers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      sectionId: faker.number.int(),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getPhotoPlacementUpdateResponseMock = (
+  overrideResponse: Partial<Extract<PhotoPlacementsResource, object>> = {},
+): PhotoPlacementsResource => ({
+  band: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
+  concert: { imageId: faker.helpers.arrayElement([faker.number.int(), null]) },
+  registers: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+    () => ({
+      sectionId: faker.number.int(),
+      name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      imageId: faker.helpers.arrayElement([faker.number.int(), null]),
+    }),
+  ),
+  ...overrideResponse,
+});
+
+export const getSitePhotoIndexResponseMock = (
+  overrideResponse: Partial<Extract<SitePhotoIndex200, object>> = {},
+): SitePhotoIndex200 => ({
+  band: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        altFr: null,
+        altDe: null,
+      },
+      null,
+    ]),
+    null,
+  ]),
+  concert: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        altFr: null,
+        altDe: null,
+      },
+      null,
+    ]),
+    null,
+  ]),
   ...overrideResponse,
 });
 
@@ -2715,6 +3124,198 @@ export const getContactStoreMockHandler = (
   );
 };
 
+export const getImageFileMockHandler = (
+  overrideResponse?:
+    | ArrayBuffer
+    | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ArrayBuffer> | ArrayBuffer),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/images/:sha256.jpg",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      const binaryBody =
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageFileResponseMock();
+      return HttpResponse.arrayBuffer(
+        binaryBody instanceof ArrayBuffer ? binaryBody : new ArrayBuffer(0),
+        { status: 200, headers: { "Content-Type": "image/jpeg" } },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageIndexMockHandler = (
+  overrideResponse?:
+    | ImageIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ImageIndex200> | ImageIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/images",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageStoreMockHandler = (
+  overrideResponse?:
+    | ImageResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<ImageResource> | ImageResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/images",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageStoreResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageSummaryMockHandler = (
+  overrideResponse?:
+    | ImageSummary200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ImageSummary200> | ImageSummary200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/images/summary",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageSummaryResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageShowMockHandler = (
+  overrideResponse?:
+    | ImageResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<ImageResource> | ImageResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/images/:image",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageUpdateMockHandler = (
+  overrideResponse?:
+    | ImageResource
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<ImageResource> | ImageResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/images/:image",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageDestroyMockHandler = (
+  overrideResponse?:
+    | ImageDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<ImageDestroy200> | ImageDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/images/:image",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getImageReplaceMockHandler = (
+  overrideResponse?:
+    | ImageResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<ImageResource> | ImageResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/images/:image/file",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getImageReplaceResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getConfigShowMockHandler = (
   overrideResponse?:
     | ConfigShow200
@@ -2732,6 +3333,78 @@ export const getConfigShowMockHandler = (
             ? await overrideResponse(info)
             : overrideResponse
           : getConfigShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getPhotoPlacementShowMockHandler = (
+  overrideResponse?:
+    | PhotoPlacementsResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<PhotoPlacementsResource> | PhotoPlacementsResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/photo-placements",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getPhotoPlacementShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getPhotoPlacementUpdateMockHandler = (
+  overrideResponse?:
+    | PhotoPlacementsResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<PhotoPlacementsResource> | PhotoPlacementsResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/photo-placements",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getPhotoPlacementUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSitePhotoIndexMockHandler = (
+  overrideResponse?:
+    | SitePhotoIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<SitePhotoIndex200> | SitePhotoIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/site-photos",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSitePhotoIndexResponseMock(),
         { status: 200 },
       );
     },
@@ -2791,5 +3464,16 @@ export const getLesCanetonsAPIMock = () => [
   getHistoryEntryDestroyMockHandler(),
   getFormTokenShowMockHandler(),
   getContactStoreMockHandler(),
+  getImageFileMockHandler(),
+  getImageIndexMockHandler(),
+  getImageStoreMockHandler(),
+  getImageSummaryMockHandler(),
+  getImageShowMockHandler(),
+  getImageUpdateMockHandler(),
+  getImageDestroyMockHandler(),
+  getImageReplaceMockHandler(),
   getConfigShowMockHandler(),
+  getPhotoPlacementShowMockHandler(),
+  getPhotoPlacementUpdateMockHandler(),
+  getSitePhotoIndexMockHandler(),
 ];

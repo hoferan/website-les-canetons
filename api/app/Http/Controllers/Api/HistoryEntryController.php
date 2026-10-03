@@ -10,6 +10,7 @@ use App\Models\HistoryEntry;
 use App\Support\Audit;
 use App\Support\Emits;
 use App\Support\HistoryPrecision;
+use App\Support\ImageReference;
 use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Group;
@@ -26,7 +27,7 @@ class HistoryEntryController extends Controller
     public function index(): AnonymousResourceCollection
     {
         return HistoryEntryResource::collection(
-            HistoryEntry::query()->orderBy('occurred_on')->orderBy('id')->get(),
+            HistoryEntry::query()->with('image')->orderBy('occurred_on')->orderBy('id')->get(),
         );
     }
 
@@ -46,7 +47,11 @@ class HistoryEntryController extends Controller
             return $this->empty();
         }
 
-        $entry = HistoryEntry::create($this->columns($request));
+        $columns = $this->columns($request);
+        $entry = ImageReference::guard(
+            fn () => HistoryEntry::create($columns),
+            ['imageId' => $columns['image_id'] ?? null],
+        );
         Audit::record($request->user(), 'history.created', 'history_entry', $entry->id, $this->label($entry));
 
         return response()->json(new HistoryEntryResource($entry), 201);
@@ -62,7 +67,11 @@ class HistoryEntryController extends Controller
             return $this->empty();
         }
 
-        $historyEntry->fill($this->columns($request))->save();
+        $columns = $this->columns($request, $historyEntry);
+        ImageReference::guard(
+            fn () => $historyEntry->fill($columns)->save(),
+            ['imageId' => $columns['image_id'] ?? null],
+        );
         Audit::record($request->user(), 'history.updated', 'history_entry', $historyEntry->id, $this->label($historyEntry));
 
         return response()->json(new HistoryEntryResource($historyEntry));
@@ -82,12 +91,12 @@ class HistoryEntryController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function columns(StoreHistoryEntryRequest $request): array
+    private function columns(StoreHistoryEntryRequest $request, ?HistoryEntry $current = null): array
     {
         $data = $request->validated();
         $precision = HistoryPrecision::from($data['precision']);
 
-        return [
+        $columns = [
             'occurred_on' => $precision->truncate(CarbonImmutable::parse($data['occurredOn']))->toDateString(),
             'precision' => $precision->value,
             'title_fr' => $data['titleFr'],
@@ -97,6 +106,30 @@ class HistoryEntryController extends Controller
             'important' => (bool) $data['important'],
             'icon' => $data['icon'] ?? null,
         ];
+
+        // The photo columns are written only when the body carries photo data.
+        // A PUT replaces the entry, but an editor without images.manage cannot
+        // send any of it, and their save must not drop the photo.
+        //
+        // The alt texts belong to the photo, so they never exist without one:
+        // a null `imageId` clears them whatever the body says, and alts sent
+        // alone are applied to the photo the entry already has, or stored null
+        // when it has none.
+        if (array_key_exists('imageId', $data)) {
+            $placed = $data['imageId'] !== null;
+            $columns['image_id'] = $data['imageId'];
+            $columns['image_alt_fr'] = $placed ? ($data['imageAltFr'] ?? null) : null;
+            $columns['image_alt_de'] = $placed ? ($data['imageAltDe'] ?? null) : null;
+        } else {
+            $hasPhoto = $current?->image_id !== null;
+            foreach (['imageAltFr' => 'image_alt_fr', 'imageAltDe' => 'image_alt_de'] as $field => $column) {
+                if (array_key_exists($field, $data)) {
+                    $columns[$column] = $hasPhoto ? $data[$field] : null;
+                }
+            }
+        }
+
+        return $columns;
     }
 
     private function label(HistoryEntry $entry): string
