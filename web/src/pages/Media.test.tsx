@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
@@ -6,8 +5,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
 import type { ImageResource } from "../api/generated/model";
-import { setLocale } from "../i18n";
-import { LibraryGrid } from "../images/LibraryGrid";
+import { UsageLinks } from "../images/usages";
 import type { UploadFn } from "../images/uploadQueue";
 import { addUnusedMockImage, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -83,111 +81,56 @@ test("a selection that fits says nothing about places", async () => {
 });
 
 /**
- * Each place a photo is shown is a link to that page, where the photo is also
- * changed. A register goes to /band without its anchor: ScrollToTop leaves a
- * hashed URL alone, so the anchor would open /band at /media's scroll offset.
+ * A card names the places a photo is shown on one line, as text: its own link
+ * leads to the photo's page, which lists each place as a link (see
+ * MediaDetail.test.tsx and the UsageLinks tests below).
  */
-test("each library card links to where the photo is shown, or says it is unused", async () => {
+test("a library card names where the photo is shown on one line, or says it is unused", async () => {
   const unused = addUnusedMockImage();
   await renderMedia();
   await waitFor(() => expect(card(unused)).toBeInTheDocument());
 
   expect(within(card(unused)).getByText("Non utilisée")).toBeInTheDocument();
-  // Its own page is the only link an unused photo has.
+  expect(within(card(1)).getByText("Photo du groupe")).toBeInTheDocument();
+  // A pattern: the matcher folds the label's no-break space into a plain one.
   expect(
-    within(card(unused))
-      .getAllByRole("link")
-      .map((link) => link.getAttribute("href")),
-  ).toEqual([`/media/${unused}`]);
-  expect(within(card(1)).getByRole("link", { name: "Photo du groupe" })).toHaveAttribute(
-    "href",
-    "/band",
-  );
-  expect(within(card(2)).getByRole("link", { name: "Trompettes" })).toHaveAttribute(
-    "href",
-    "/band",
-  );
-  expect(within(card(2)).getByRole("link", { name: /^Histoire\u00a0: / })).toHaveAttribute(
-    "href",
-    "/history",
-  );
+    within(card(2)).getByText(/^Histoire\s: Le flambeau passe · Trompettes$/),
+  ).toBeInTheDocument();
   expect(within(card(1)).queryByText("Non utilisée")).toBeNull();
+  // Read out with what the line means, which the eye icon says to the eye.
+  expect(within(card(1)).getByText(/^Affichée\s:$/)).toHaveClass("sr-only");
+  // Its own page is the only link on a card, used or not.
+  for (const id of [unused, 1, 2]) {
+    expect(
+      within(card(id))
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual([`/media/${id}`]);
+  }
 });
 
-test("on the German side every usage link carries the /de prefix", async () => {
-  await setLocale("de-CH");
-  const image: ImageResource = {
-    id: 1,
-    name: "Le groupe",
-    url: `/api/v1/images/${"1".repeat(64)}.jpg`,
-    width: 800,
-    height: 600,
-    srcset: `/api/v1/images/${"1".repeat(64)}.jpg 800w`,
-    bytes: 1000,
-    sizes: [{ width: 800, height: 600, bytes: 1000, url: `/api/v1/images/${"1".repeat(64)}.jpg` }],
-    createdAt: "2026-09-30T00:00:00+00:00",
-    usages: [
-      { slot: "band", label: "Photo du groupe", path: "/band" },
-      { slot: "concert", label: "Photo en concert", path: "/" },
-      { slot: "register-5", label: "Trompettes", path: "/band" },
-      { slot: "history-4", label: "Le flambeau passe", path: "/history" },
-    ],
-  };
+const usages: ImageResource["usages"] = [
+  { slot: "band", label: "Photo du groupe", path: "/band" },
+  { slot: "concert", label: "Photo en concert", path: "/" },
+  { slot: "history-4", label: "Le flambeau passe", path: "/history" },
+  { slot: "3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c", label: null, path: null },
+];
+
+test("each usage links to the path its page sent, under /de on the German side", () => {
   // The basename is what App.tsx gives the router under /de.
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter basename="/de" initialEntries={["/de/media"]}>
-        <LibraryGrid images={[image]} />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <MemoryRouter basename="/de" initialEntries={["/de/media/1"]}>
+      <UsageLinks usages={usages} />
+    </MemoryRouter>,
   );
 
-  const hrefs = within(screen.getByTestId("library-card-1"))
-    .getAllByRole("link")
-    .map((link) => link.getAttribute("href"));
-  expect(hrefs).toEqual(["/de/media/1", "/de/band", "/de", "/de/band", "/de/history"]);
-});
-
-test("a usage is named by the label its page sent, links to its path, and falls back to the slot name", async () => {
-  server.use(
-    http.get("/api/v1/images", () =>
-      HttpResponse.json({
-        data: [
-          {
-            id: 7,
-            url: `/api/v1/images/${"7".repeat(64)}.jpg`,
-            width: 800,
-            height: 600,
-            srcset: `/api/v1/images/${"7".repeat(64)}.jpg 800w`,
-            bytes: 1000,
-            sizes: [
-              {
-                width: 800,
-                height: 600,
-                bytes: 1000,
-                url: `/api/v1/images/${"7".repeat(64)}.jpg`,
-              },
-            ],
-            createdAt: "2026-09-30T00:00:00+00:00",
-            usages: [
-              { slot: "concert", label: "Photo en concert", path: "/" },
-              { slot: "3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c", label: null, path: null },
-            ],
-          },
-        ],
-        meta: { total: 1, limit: 500, offset: 0 },
-      }),
-    ),
-  );
-  await renderMedia();
-
-  const seven = await screen.findByTestId("library-card-7");
-  expect(await within(seven).findByRole("link", { name: "Photo en concert" })).toHaveAttribute(
-    "href",
-    "/",
-  );
+  expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+    "/de/band",
+    "/de",
+    "/de/history",
+  ]);
   // Neither label nor path: the slot's own name, and no link to follow.
-  expect(within(seven).getByText("3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c").closest("a")).toBeNull();
+  expect(screen.getByText("3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c").closest("a")).toBeNull();
 });
 
 test("the unused filter hides the photos that are shown somewhere", async () => {

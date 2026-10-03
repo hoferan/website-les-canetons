@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { Eye, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -29,7 +29,7 @@ import { formatDay } from "../lib/date";
 import { kilobytes } from "./kilobytes";
 import { LIBRARY_ORDERS, type LibraryOrder, matchesName, sortImages } from "./librarySearch";
 import { PHOTO_SIZES } from "./Photo";
-import { UsageLinks } from "./usages";
+import { usageLabel } from "./usages";
 
 type Filter = "all" | "used" | "unused";
 const FILTERS: {
@@ -282,11 +282,21 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                 {t("photos.addedOn", { date: formatDay(image.createdAt) })} ·{" "}
                 {kilobytes(image.bytes)}
               </p>
+              {/* ONE LINE, NOT A LIST OF LINKS. Each link on its own 44px row
+                  made a card twice as tall for two places, and the card's own
+                  link leads to the photo's page, which lists every place as a
+                  link anyway. Two lines at most; the title holds the rest. */}
               {image.usages.length > 0 ? (
-                <div className="text-sm">
-                  <p className="font-medium">{t("photos.usedOn")}</p>
-                  <UsageLinks usages={image.usages} />
-                </div>
+                <p
+                  className="flex items-start gap-1.5 text-sm text-ink-muted"
+                  title={image.usages.map(usageLabel).join(" · ")}
+                >
+                  <Eye aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+                  <span className="sr-only">{t("photos.usedOn")}</span>
+                  <span className="line-clamp-2 wrap-anywhere">
+                    {image.usages.map(usageLabel).join(" · ")}
+                  </span>
+                </p>
               ) : (
                 <>
                   <span className="self-start rounded-full border border-line bg-panel px-2 py-0.5 text-sm text-ink-muted">
