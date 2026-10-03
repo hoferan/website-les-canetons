@@ -75,9 +75,9 @@ return [
      * holds them for the photographs committed to the repository, and these
      * hold them for what a member uploads. The browser shrinks a photo to up
      * to three sizes before sending it, so the server only checks the result
-     * (JpegInspector, ImageSet). No image extension is used for that: gd,
-     * imagick and fileinfo are unknown on the shared host, and decoding a
-     * camera photo would blow its memory_limit (ADR 0028).
+     * (JpegInspector, ImageSet). No image extension is used for that: the
+     * host has neither gd nor imagick, fileinfo is unverified, and decoding a
+     * camera photo would blow its memory_limit anyway (ADR 0028).
      *
      * Constants, all of them. Nothing here may reach api/.env.example, for
      * the reason at the top.

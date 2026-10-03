@@ -22,9 +22,11 @@ The host constrains the design in five ways.
   everything the build lacks, except the exact paths in `PROTECTED_PATHS`, so a
   folder of uploads would need its own protection in the deploy tool, and the
   PHP user would need write permission on it on every server.
-- Nobody has recorded which PHP extensions the host loads. Decoding a 24 MP
-  camera original takes about 100 MB, which is at the edge of a shared host's
-  `memory_limit`, and it fails as a 500 rather than a refusal.
+- The host loads neither GD nor Imagick (read from the easy-hebergement
+  control panel on 2026-10-03), so PHP cannot decode a JPEG there at all. Even
+  with an extension, decoding a 24 MP camera original takes about 100 MB, at
+  the edge of a shared host's `memory_limit`, and fails as a 500 rather than a
+  refusal.
 - `.htaccess` is server-owned and placed by hand on each server. Changing it
   means a hand edit on three hosts, and a bad edit takes the whole site down.
 - A phone on a rehearsal-room connection should not download a 1920 px photo
@@ -272,7 +274,9 @@ difference, the sizes swapped in one transaction and the second tag check.
 
 - Good, because the server could accept any photo at any size and make the
   sizes itself.
-- Bad, because the extensions are unconfirmed on this host.
+- Bad, because this host has neither extension, which rules the option out.
+  It would also mean uploading the original from a phone, 3 to 10 MB a photo
+  against about 0.5 MB.
 - Bad, because decoding a camera original needs about 100 MB, at the edge of
   `memory_limit`. The failure is a 500 on the committee's first big upload.
 
