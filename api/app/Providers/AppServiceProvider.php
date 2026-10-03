@@ -70,6 +70,16 @@ class AppServiceProvider extends ServiceProvider
             fn (Request $request) => Limit::perMinute(10)->by($request->ip()),
         );
 
+        // Uploads to the image library (#105). Per account rather than per IP:
+        // the route sits behind auth:sanctum, and a committee sharing one
+        // rehearsal-room connection must not share one allowance. Sixty a
+        // minute leaves room for a whole folder sent at once and still stops a
+        // runaway loop from filling the disk.
+        RateLimiter::for(
+            'image-upload',
+            fn (Request $request) => Limit::perMinute(60)->by($request->user()->id ?? $request->ip()),
+        );
+
         // This API returns BARE payloads: /api/v1/config and /api/v1/me both do, and
         // the problem-document error contract has no envelope either.
         // JsonResource wraps COLLECTIONS in {"data": …} by default, which would

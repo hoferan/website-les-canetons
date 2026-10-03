@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,12 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `PUT /photo-placements` | `GET /photo-placements` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -301,6 +305,7 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { HistoryEntryResourcePhoto } from "./historyEntryResourcePhoto";
 
 export interface HistoryEntryResource {
   id: number;
@@ -323,6 +328,26 @@ export interface HistoryEntryResource {
    * @nullable
    */
   icon: string | null;
+  /**
+   * The library image attached to the entry, or null.
+   * @nullable
+   */
+  imageId: number | null;
+  /**
+   * Alt text for the photo in French. Null when there is no photo.
+   * @nullable
+   */
+  imageAltFr: string | null;
+  /**
+   * Alt text for the photo in German. Null when there is no photo.
+   * @nullable
+   */
+  imageAltDe: string | null;
+  /**
+   * The photo with its file, size and alt texts, or null.
+   * @nullable
+   */
+  photo: HistoryEntryResourcePhoto;
   createdAt: string;
   updatedAt: string;
 }

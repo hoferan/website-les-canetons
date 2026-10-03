@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,12 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `PUT /photo-placements` | `GET /photo-placements` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -343,4 +347,21 @@ export interface StoreHistoryEntryRequest {
    * @nullable
    */
   icon?: StoreHistoryEntryRequestIcon;
+  /**
+   * The entry's photo, an id from `GET /api/v1/images`. Leave it out to keep the current one, send `null` to remove it. Sending any of `imageId`, `imageAltFr` and `imageAltDe` needs `images.manage`.
+   * @nullable
+   */
+  imageId?: number | null;
+  /**
+   * The photo's alt text in French. Sent without `imageId`, it replaces the alt text of the entry's current photo, and is stored as null when the entry has no photo. A null `imageId` clears it whatever is sent here.
+   * @maxLength 250
+   * @nullable
+   */
+  imageAltFr?: string | null;
+  /**
+   * The photo's alt text in German. Same rules as `imageAltFr`.
+   * @maxLength 250
+   * @nullable
+   */
+  imageAltDe?: string | null;
 }

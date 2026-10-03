@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\RequiresImagesManageToPlacePhoto;
 use App\Support\HistoryIcon;
 use App\Support\HistoryPrecision;
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,10 +16,14 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class StoreHistoryEntryRequest extends FormRequest
 {
+    use RequiresImagesManageToPlacePhoto;
+
     public const TEXT_FIELDS = ['titleFr', 'bodyFr', 'titleDe', 'bodyDe'];
 
     protected function prepareForValidation(): void
     {
+        $this->requireImagesManageWhenPlacingPhoto();
+
         // Blank and absent mean the same thing, so the controller's all-empty
         // check and the stored nulls agree.
         $normalised = [];
@@ -48,6 +53,12 @@ class StoreHistoryEntryRequest extends FormRequest
             'important' => ['required', 'boolean'],
             /** One of the history icon keys, or null for the plain dot. */
             'icon' => ['nullable', HistoryIcon::rule()],
+            /** The entry's photo, an id from `GET /api/v1/images`. Leave it out to keep the current one, send `null` to remove it. Sending any of `imageId`, `imageAltFr` and `imageAltDe` needs `images.manage`. */
+            'imageId' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
+            /** The photo's alt text in French. Sent without `imageId`, it replaces the alt text of the entry's current photo, and is stored as null when the entry has no photo. A null `imageId` clears it whatever is sent here. */
+            'imageAltFr' => ['nullable', 'string', 'max:250'],
+            /** The photo's alt text in German. Same rules as `imageAltFr`. */
+            'imageAltDe' => ['nullable', 'string', 'max:250'],
         ];
     }
 

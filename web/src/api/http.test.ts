@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, customFetch, resetCsrfPriming } from "./http";
+import { ApiError, customFetch, parseRetryAfter, resetCsrfPriming } from "./http";
 
 // A Response body can only be read once, ever. Every fetch mock below is
 // built with mockImplementation (never mockResolvedValue) so each call to
@@ -159,5 +159,40 @@ describe("customFetch", () => {
 
     expect(result.status).toBe(204);
     expect(result.data).toBeNull();
+  });
+});
+
+describe("Retry-After", () => {
+  it("reaches the ApiError of a throttled response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ code: "rate_limited", title: "Too many requests" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "30" },
+          }),
+        ),
+      ),
+    );
+    const error = await customFetch("/x", { method: "GET" }).catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 429, code: "rate_limited", retryAfter: 30 });
+  });
+
+  it("is null when the response sends none", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => Promise.resolve(jsonResponse({ code: "nope" }, 422))),
+    );
+    const error = await customFetch("/x", { method: "GET" }).catch((e: unknown) => e);
+    expect((error as ApiError).retryAfter).toBeNull();
+  });
+
+  it("parses delta-seconds and HTTP dates, and rejects the rest", () => {
+    expect(parseRetryAfter("12")).toBe(12);
+    expect(parseRetryAfter(null)).toBeNull();
+    expect(parseRetryAfter("soon")).toBeNull();
+    const now = Date.parse("2026-10-02T10:00:00Z");
+    expect(parseRetryAfter("Fri, 02 Oct 2026 10:00:20 GMT", now)).toBe(20);
   });
 });

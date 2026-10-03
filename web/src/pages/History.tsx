@@ -12,6 +12,7 @@ import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
+import { Photo, PHOTO_SIZES } from "../images/Photo";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
@@ -164,6 +165,17 @@ function TimelineEntry({
           </span>
         ) : null}
       </h2>
+
+      {/* The API sends the file and its size; the alt texts live on the entry
+          itself, so they are put back together here. ADR 0026 orders them. */}
+      {entry.photo ? (
+        <Photo
+          photo={{ ...entry.photo, altFr: entry.imageAltFr, altDe: entry.imageAltDe }}
+          fallbackAlt={rowName}
+          sizes={PHOTO_SIZES.timeline}
+          className="mt-tight h-auto w-full rounded-md"
+        />
+      ) : null}
 
       {shown.body !== null ? (
         <p lang={textLang} className="mt-tight wrap-anywhere whitespace-pre-line text-ink">

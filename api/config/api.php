@@ -70,4 +70,43 @@ return [
 
     ],
 
+    /*
+     * The image library. Same limits, in two places: tools/image-budget.mjs
+     * holds them for the photographs committed to the repository, and these
+     * hold them for what a member uploads. The browser shrinks a photo to up
+     * to three sizes before sending it, so the server only checks the result
+     * (JpegInspector, ImageSet). No image extension is used for that: gd,
+     * imagick and fileinfo are unknown on the shared host, and decoding a
+     * camera photo would blow its memory_limit (ADR 0028).
+     *
+     * Constants, all of them. Nothing here may reach api/.env.example, for
+     * the reason at the top.
+     */
+    'images' => [
+
+        // How many photos the library holds.
+        'capacity' => 100,
+
+        // How many bytes it holds, every size of every photo counted: 150 MB
+        // of the host's 1000 MB database quota. Either cap refuses an upload
+        // with image_library_full.
+        'max_total_bytes' => 150 * 1024 * 1024,
+
+        // 600 KB, and the longest edge in pixels, for each size. Both
+        // tools/image-budget.mjs and web/src/images/shrink.ts repeat these
+        // numbers; change all three together.
+        'max_bytes' => 614400,
+        'max_edge' => 1920,
+
+        // How many sizes one upload carries. shrink.ts encodes 1920, 960 and
+        // 480 px, fewer when the photo is smaller than a target.
+        'max_parts' => 3,
+
+        // Seconds an upload waits for the one before it to finish. Holding
+        // the lock takes milliseconds and the SPA sends two uploads at most,
+        // so running out of time means something is wedged. A test sets 0.
+        'upload_lock_timeout' => 10,
+
+    ],
+
 ];

@@ -25,6 +25,8 @@ import { Home } from "./pages/Home";
 import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
+import { Media } from "./pages/Media";
+import { MediaDetail } from "./pages/MediaDetail";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
 
@@ -160,6 +162,17 @@ export function AppRoutes() {
           <Route element={<RequirePermission permission="messages.view" />}>
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/contact-messages" element={<ContactMessages />} />
+          </Route>
+
+          {/* The media library (#105): uploading, browsing and deleting
+              photos, and one photo's own page to rename, turn, replace,
+              download or delete it. Its own permission, because looking after the site's
+              pictures is not the same job as editing the roster or the
+              history, even though the history form offers the same picker to
+              whoever also holds this one. */}
+          <Route element={<RequirePermission permission="images.manage" />}>
+            <Route path="/media" element={<Media />} />
+            <Route path="/media/:id" element={<MediaDetail />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />

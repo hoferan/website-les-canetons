@@ -15,16 +15,22 @@ use App\Http\Controllers\Api\EventSeriesController;
 use App\Http\Controllers\Api\FormTokenController;
 use App\Http\Controllers\Api\GuestListExportController;
 use App\Http\Controllers\Api\HistoryEntryController;
+use App\Http\Controllers\Api\ImageController;
+use App\Http\Controllers\Api\ImageFileController;
 use App\Http\Controllers\Api\InboxController;
 use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
+use App\Http\Controllers\Api\PhotoPlacementController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
+use App\Http\Controllers\Api\SitePhotoController;
+use App\Http\Middleware\RunPendingMigrations;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 // Public: the SPA fetches this before its first render to learn the
 // environment (ribbon). It carries no secrets — see ConfigController.
@@ -100,6 +106,41 @@ Route::get('/history', [HistoryEntryController::class, 'index']);
 
 Route::get('/band', [BandController::class, 'index']);
 Route::get('/committee', [CommitteeController::class, 'index']);
+
+// The site's two single photographs: the band's on /band, the concert's on
+// the home page. PUBLIC, like /band beside it, and outside the authenticated
+// group for the same reason: nothing here depends on
+// who asks. Registers carry their own photo on /band.
+Route::get('/site-photos', [SitePhotoController::class, 'index']);
+
+// One size of a library photo (#105). PUBLIC, because the public pages show
+// these photos to anybody. Nothing is listed here: the path names the SHA-256
+// of the size's own bytes, so a file is reachable only by somebody who already
+// has its URL from a page or from the library.
+//
+// OUTSIDE THE AUTHENTICATED GROUP, because that group adds `no-store`. The
+// bytes behind a path never change, so this answers `immutable` for a year.
+//
+// STATELESS. A browser loading an <img> sends a same-origin Referer, so
+// Sanctum would start a session for it, and the response would carry the
+// visitor's session cookie under a Cache-Control that lets any cache keep it.
+//
+// WITHOUT RunPendingMigrations, so a photo costs one query and a revalidation
+// none. A page of photos is a burst of parallel requests against a host that
+// allows ten connections, and each would otherwise also read the migrations
+// table. The SPA's own first call, GET /config, still migrates a fresh deploy
+// before any page asks for a photo.
+//
+// NO RATE LIMIT, deliberately. A throttle counts in the `database` cache
+// store, so it would add queries to every photo, against the same ten
+// connections it was meant to protect. What bounds the cost instead: a
+// year of `immutable` caching, a 304 that touches no database, and one
+// indexed read whose connection closes before the bytes are sent.
+// The path is the SHA-256 of the size's own bytes, in lower case only, so a
+// size has one URL, one cache entry and one tag.
+Route::get('/images/{sha256}.jpg', ImageFileController::class)
+    ->where('sha256', '[0-9a-f]{64}')
+    ->withoutMiddleware([EnsureFrontendRequestsAreStateful::class, RunPendingMigrations::class]);
 
 Route::post('/login', [AuthController::class, 'login']);
 
@@ -264,6 +305,51 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:history');
         Route::delete('/history/{historyEntry}', [HistoryEntryController::class, 'destroy'])
             ->middleware('etag:history');
+    });
+
+    // The photo library (#105). One permission for the lot: uploading,
+    // browsing and deleting are the same job, done by whoever looks after the
+    // site's pictures.
+    Route::middleware('permission:images.manage')->group(function () {
+        Route::get('/images', [ImageController::class, 'index']);
+
+        // Before `/images/{image}`. The number constraint already keeps
+        // `summary` from binding as an id; the order keeps it so if the
+        // constraint ever goes.
+        Route::get('/images/summary', [ImageController::class, 'summary']);
+
+        Route::get('/images/{image}', [ImageController::class, 'show'])
+            ->whereNumber('image')
+            ->middleware('etag:image');
+
+        // POST, because PHP parses multipart bodies on POST only. Throttled
+        // per account: every upload writes up to 1.8 MB to the database.
+        Route::post('/images', [ImageController::class, 'store'])
+            ->middleware('throttle:image-upload');
+
+        Route::patch('/images/{image}', [ImageController::class, 'update'])
+            ->whereNumber('image')
+            ->middleware('etag:image');
+
+        // POST for the same reason as the upload, and throttled with it: a
+        // replacement writes as many bytes as an upload does.
+        Route::post('/images/{image}/file', [ImageController::class, 'replace'])
+            ->whereNumber('image')
+            ->middleware(['throttle:image-upload', 'etag:image']);
+
+        Route::delete('/images/{image}', [ImageController::class, 'destroy'])
+            ->whereNumber('image')
+            ->middleware('etag:image');
+
+        // Where the photos sit: the band and concert photos and one per
+        // register, read and written as ONE document. One tag covers the lot
+        // (`etag:site_photos`, a facet with no model), because the PUT
+        // replaces every slot and two people editing different registers
+        // would otherwise overwrite each other's list.
+        Route::get('/photo-placements', [PhotoPlacementController::class, 'show'])
+            ->middleware('etag:site_photos');
+        Route::put('/photo-placements', [PhotoPlacementController::class, 'update'])
+            ->middleware('etag:site_photos');
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a

@@ -5,7 +5,9 @@ namespace App\Support;
 use App\Http\Resources\ContactMessageResource;
 use App\Http\Resources\EventResource;
 use App\Http\Resources\HistoryEntryResource;
+use App\Http\Resources\ImageResource;
 use App\Http\Resources\MemberResource;
+use App\Http\Resources\PhotoPlacementsResource;
 use App\Http\Resources\RegistrationOptionResource;
 use App\Http\Resources\RegistrationResource;
 use App\Models\Event;
@@ -73,7 +75,12 @@ final class EntityTag
      * so a facet added to one and not the other throws rather than tagging the
      * wrong thing — and test_every_facet_can_be_computed walks this list.
      *
-     * @var array<string, string>
+     * A null parameter marks a SINGLETON: a thing there is exactly one of, with
+     * no row to bind. `site_photos` is the placements of the whole site, so no
+     * route carries a model for it and its state is read straight from the
+     * database. See computeFacet().
+     *
+     * @var array<string, string|null>
      */
     private const FACETS = [
         'event' => 'event',
@@ -82,6 +89,8 @@ final class EntityTag
         'registration' => 'registration',
         'contact_message' => 'contactMessage',
         'history' => 'historyEntry',
+        'image' => 'image',
+        'site_photos' => null,
     ];
 
     /**
@@ -101,9 +110,38 @@ final class EntityTag
      */
     public static function of(string $facet, Request $request): ?string
     {
-        $bound = $request->route(self::FACETS[$facet]);
+        if (self::isSingleton($facet)) {
+            return self::computeFacet($facet);
+        }
+
+        $bound = $request->route((string) self::FACETS[$facet]);
 
         return $bound instanceof Model ? self::compute($facet, $bound) : null;
+    }
+
+    /** Whether the facet is one thing for the whole site, with no route parameter to read it from. */
+    public static function isSingleton(string $facet): bool
+    {
+        return array_key_exists($facet, self::FACETS) && self::FACETS[$facet] === null;
+    }
+
+    /**
+     * The tag for a singleton facet, read from the database like compute().
+     *
+     * There is no row that can be gone, so unlike compute() this never
+     * answers null.
+     */
+    public static function computeFacet(string $facet): string
+    {
+        if (! self::isSingleton($facet)) {
+            throw new InvalidArgumentException("The facet `{$facet}` belongs to a model; use compute().");
+        }
+
+        return self::hash(match ($facet) {
+            'site_photos' => PhotoPlacementsResource::current()->toArray(self::bare()),
+
+            default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
+        });
     }
 
     /**
@@ -189,6 +227,7 @@ final class EntityTag
 
             'contact_message' => (new ContactMessageResource($model->load('handledBy')))->toArray(self::bare()),
             'history' => (new HistoryEntryResource($model))->toArray(self::bare()),
+            'image' => (new ImageResource($model))->toArray(self::bare()),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

@@ -38,6 +38,7 @@ class PermissionTest extends TestCase
                 'messages.view',
                 'messages.manage',
                 'history.manage',
+                'images.manage',
                 'events.view',
                 'attendance.respond',
                 'account.manage',

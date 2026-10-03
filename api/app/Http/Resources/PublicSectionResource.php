@@ -35,6 +35,8 @@ class PublicSectionResource extends JsonResource
             'members' => PublicMemberResource::collection($this->publicMembers),
             /** Everyone who teaches it and has consented to appear. May be empty. */
             'instructors' => PublicMemberResource::collection($this->publicInstructors),
+            /** The register's photo, or null when none is placed. It carries no alt text: the page describes it by the register's name. */
+            'photo' => PhotoResource::of($this->image),
         ];
     }
 }

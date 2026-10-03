@@ -1,7 +1,10 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { expect, test } from "vitest";
 
+import { HttpResponse, delay, http } from "msw";
+
 import { setMemberVisibility } from "../mocks/handlers";
+import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Band } from "./Band";
 
@@ -111,11 +114,71 @@ test("renders the heading, the register index and a placeholder gap in German", 
   expect(within(lyre).getByText(/noch zu ergänzen/)).toBeInTheDocument();
 });
 
-test("shows the German photo placeholder for the band and for one register", async () => {
+test("shows the German photo placeholder in every empty slot", async () => {
+  // The mock places a band photo, which would replace the placeholder.
+  server.use(
+    http.get("/api/v1/site-photos", () => HttpResponse.json({ band: null, concert: null })),
+  );
   await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
 
-  expect(screen.getByText(/Neues Foto der ganzen Canetons folgt/)).toBeInTheDocument();
-  // The register's own name is content, and renders verbatim inside the
-  // German sentence.
-  expect(await screen.findByText(/Neues Foto des Registers Cloches folgt/)).toBeInTheDocument();
+  // One sentence for every slot, so the band and each register read the same.
+  expect((await screen.findAllByText(/Foto folgt/)).length).toBeGreaterThan(1);
+});
+
+/**
+ * The mocked roster places a photo on the band and on Trompettes only. A slot
+ * with a photo shows it and gives up its placeholder; every other slot keeps
+ * the placeholder. A page slot carries no alt text, so the band's photo is
+ * named after the band and a register's after the register.
+ */
+test("shows the placed band photo and no band placeholder", async () => {
+  const { container } = await renderWithSession(<Band />, { route: "/band" });
+
+  expect(await screen.findByRole("img", { name: "Les Canetons de Fribourg" })).toBeInTheDocument();
+  expect(container.querySelector('[data-photo-pending="band"]')).toBeNull();
+});
+
+test("shows a register's photo in place of its placeholder, and keeps the placeholder elsewhere", async () => {
+  await renderWithSession(<Band />, { route: "/band" });
+
+  const trumpets = await screen.findByRole("article", { name: "Trompettes" });
+  await within(trumpets).findByRole("img", { name: "Trompettes" });
+  expect(trumpets.querySelector("[data-photo-pending]")).toBeNull();
+
+  const bells = screen.getByRole("article", { name: "Cloches" });
+  expect(within(bells).queryByRole("img")).not.toBeInTheDocument();
+  expect(bells.querySelector('[data-photo-pending="register"]')).not.toBeNull();
+});
+
+test("keeps the band placeholder when no band photo is placed", async () => {
+  server.use(
+    http.get("/api/v1/site-photos", () => HttpResponse.json({ band: null, concert: null })),
+  );
+  const { container } = await renderWithSession(<Band />, { route: "/band" });
+
+  await screen.findByRole("article", { name: "Cloches" });
+  await waitFor(() =>
+    expect(container.querySelector('[data-photo-pending="band"]')).not.toBeNull(),
+  );
+});
+
+test("reserves the band frame, without a caption, while the site photos are still loading", async () => {
+  server.use(http.get("/api/v1/site-photos", () => delay("infinite")));
+  const { container } = await renderWithSession(<Band />, { route: "/band" });
+
+  await screen.findByRole("article", { name: "Cloches" });
+  expect(container.querySelector('[data-photo-pending="band"]')).toBeNull();
+  const reserved = container.querySelector("[data-photo-reserved]");
+  expect(reserved).not.toBeNull();
+  expect(reserved).toHaveAttribute("aria-hidden", "true");
+  expect(reserved).toBeEmptyDOMElement();
+});
+
+test("keeps the band placeholder when the site photos cannot be read", async () => {
+  server.use(http.get("/api/v1/site-photos", () => HttpResponse.error()));
+  const { container } = await renderWithSession(<Band />, { route: "/band" });
+
+  await waitFor(() =>
+    expect(container.querySelector('[data-photo-pending="band"]')).not.toBeNull(),
+  );
 });

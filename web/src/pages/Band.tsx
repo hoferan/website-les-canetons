@@ -1,12 +1,13 @@
 import { PageSection } from "@/components/PageSection";
-import { PhotoPending } from "@/components/PhotoPending";
+import { PhotoReserved } from "@/components/PhotoPending";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
 
 import { rowsOf } from "../api/collection";
-import { useBandIndex } from "../api/generated/endpoints";
+import { useBandIndex, useSitePhotoIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
+import { SlotPhoto } from "../images/SlotPhoto";
 import { t } from "../i18n";
 
 /**
@@ -41,16 +42,10 @@ function Register({ register }: { register: PublicSectionResource }) {
       <h2 id={`${anchorOf(register)}-heading`} className="font-display text-2xl">
         {register.name}
       </h2>
-      {/* "du registre X", not "des x". A REGISTER'S NAME IS CONTENT THE
-          COMMITTEE TYPED, so no article can be inferred from it: the legacy
-          page hardcoded one per register ("des batteurs", "de la lyre") and a
-          generated `des ${name}` writes "Nouvelle photo des lyre", which is
-          wrong French today and would be wrong differently for whatever the
-          committee adds next. Naming the register after a fixed noun is
-          grammatical for every possible name. */}
-      <PhotoPending
-        sentence={t("placeholders.photoRegister", { name: register.name })}
-        token="register"
+      <SlotPhoto
+        slot={{ kind: "register", sectionId: register.id, name: register.name }}
+        photo={register.photo}
+        fallbackAlt={register.name}
       />
 
       <p className="mt-tight text-ink-muted">
@@ -95,11 +90,25 @@ function Register({ register }: { register: PublicSectionResource }) {
 export function Band() {
   const band = useBandIndex();
   const registers = rowsOf<PublicSectionResource>(band.data);
+  const sitePhotos = useSitePhotoIndex();
+  const bandPhoto = sitePhotos.data?.status === 200 ? sitePhotos.data.data.band : null;
 
   return (
     <PageSection width="text">
       <h1 className="font-display text-4xl">{t("band.heading")}</h1>
-      <PhotoPending sentence={t("placeholders.photoBand")} token="band" />
+      {/* The same frame, without its caption, while the answer is on its way:
+          the placeholder text would flash and then give way to the photo, and
+          rendering nothing would push the register index down when it
+          arrives. */}
+      {sitePhotos.isPending ? (
+        <PhotoReserved />
+      ) : (
+        <SlotPhoto
+          slot={{ kind: "band" }}
+          photo={bandPhoto}
+          fallbackAlt="Les Canetons de Fribourg"
+        />
+      )}
 
       <RegisterIndex
         entries={registers.map((register) => ({

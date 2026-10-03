@@ -1,9 +1,17 @@
+import { Camera } from "lucide-react";
+
+import { t } from "../i18n";
+
+/** One class string for both frames, so they are the same box. */
+const FRAME_CLASS =
+  "mt-related flex aspect-[3/2] w-full flex-col items-center justify-center gap-2 rounded-lg bg-linear-to-br from-violet/5 to-violet/15 px-4 text-center text-violet";
+
 /**
  * Stands in for a photograph the band has yet to retake.
  *
  * WHY EVERY PHOTO WENT AT ONCE. The instructors' picture was already missing
  * nine of its seventeen subjects, and on 2026-08-31 the band's instruction was
- * to treat the rest the same way — "because we have to assume that those are
+ * to treat the rest the same way, "because we have to assume that those are
  * out of date". A youth band turns over yearly, so a group photograph is a
  * claim about who is in the band, and a wrong claim is worse than an honest
  * gap.
@@ -11,40 +19,39 @@
  * The header LOGO is deliberately not one of these: it is the band's identity,
  * not a photograph that can go stale.
  *
- * `sentence` IS A WHOLE, ALREADY-TRANSLATED SENTENCE, not a fragment glued onto
- * a hardcoded template. It used to be a `what` fragment interpolated into
- * "Nouvelle photo {what} à venir !" — a French prepositional phrase ("des
- * Canetons au complet", or a generated `` `du registre ${name}` ``). German
- * needs a genitive rather than a preposition, and a preposition glued to a
- * database value cannot be translated at all, so each caller now picks the
- * whole sentence that fits what is missing (`placeholders.photoBand`,
- * `.photoConcert`, `.photoRegister`) and passes the rendered result here. A
- * register's own name stays interpolated inside that sentence — it is content
- * a committee typed, not something a translation layer could reach.
+ * ONE SENTENCE FOR EVERY SLOT. It used to name what was missing ("Nouvelle
+ * photo du registre X à venir !"), which took a sentence per case and a
+ * register's name glued into French grammar. The placeholder sits under the
+ * heading it belongs to, so the name added nothing.
  *
- * `token` is a STABLE, ENGLISH identifier for what is missing — "band",
- * "concert", "register" — carried on `data-photo-pending` so it does not
- * change per locale. It used to be the French fragment itself.
+ * THE SHAPE OF A PHOTO. The frame is 3:2, as wide as the column and rounded
+ * like a placed photo, so empty and filled slots line up and the page does not
+ * jump when a photo arrives. It is a soft violet tint with no border: a dashed
+ * outline read as a broken image or a drop zone, and /band stacks seven of
+ * these. This is what a visitor sees; an editor gets the add button in
+ * `SlotPhotoControl`, drawn in the same frame.
  *
- * `grep -rl "<PhotoPending" web/src/pages` lists what is still awaited.
+ * `token` is a STABLE, ENGLISH identifier for the slot ("band", "concert",
+ * "register"), carried on `data-photo-pending` so tests and the e2e specs can
+ * tell the slots apart in either locale.
+ *
+ * `PhotoReserved` is the same frame without the caption, for the moment the
+ * page does not yet know whether the slot is empty. The two share one class
+ * string, so the box is the same height and nothing below it moves when the
+ * answer arrives.
  */
-export function PhotoPending({ sentence, token }: { sentence: string; token: string }) {
+export function PhotoPending({ token }: { token: string }) {
   return (
-    // ONE LINE, NOT A BOX. This was a 160px-minimum panel, and the band page
-    // shows eight of them: 1280px, 42% of the page, reserved for content that
-    // is not there. The photographed page is LONGER than the placeholder page
-    // — about 3554px against 3034px at 390px — so the height was never
-    // standing in for anything; RegisterIndex is what answers the length.
-    // Dashed and muted so it still reads as a gap rather than as copy.
-    <p
-      className="mt-related rounded-lg border border-dashed border-line bg-panel px-3 py-2 text-sm text-ink-muted"
-      data-photo-pending={token}
-    >
-      {/* The nbsp between the sentence and the camera is structural, not
-          translated content: now that this is one line rather than a centred
-          box, a plain space before the camera let it wrap onto a line of its
-          own under the longer sentences at 390px. */}
-      {sentence}&nbsp;<span aria-hidden="true">📷</span>
-    </p>
+    // Violet on this tint measured 5.8:1 at the darkest corner and 6.8:1 at
+    // the lightest, so the caption and the icon both pass AA.
+    <div className={FRAME_CLASS} data-photo-pending={token}>
+      <Camera aria-hidden="true" className="size-10" strokeWidth={1.5} />
+      <p className="text-sm font-medium">{t("placeholders.photoPending")}</p>
+    </div>
   );
+}
+
+/** The frame while /site-photos is still on its way: no caption, hidden from assistive technology. */
+export function PhotoReserved() {
+  return <div aria-hidden="true" className={FRAME_CLASS} data-photo-reserved="" />;
 }
