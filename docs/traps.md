@@ -375,3 +375,37 @@ It matters before you open a file rather than after, because a test that
 matches an error message on the wrong character fails as **"unable to find the
 text"**, which reads as a message that is not rendered rather than as a quote
 mark. Check the catalogue, not your keyboard.
+
+## Multipart is POST-only in PHP, and a list needs brackets
+
+PHP fills `$_POST` and `$_FILES` only for a `POST`. A multipart `PUT` or `PATCH`
+reaches Laravel with an empty body, so `$request->file('files')` is null and the
+validation answers "required" for files that were plainly sent. The image
+upload is `POST /images` for that reason. Do not "fix" it into a `PUT` to match
+the other writes.
+
+PHP also keeps only the LAST of several parts that share a bare name. The
+upload sends each size of a photo as a part named `files[]`; sent as `files`,
+which is what the generated `imageStore()` does, only the smallest size
+arrives, it passes every check, and the library silently stores a 480 px
+photo. `uploadViaApi()` and `replaceViaApi()` in
+`web/src/images/useUploadQueue.ts` build their bodies themselves for that
+reason. Keep both off the generated functions.
+
+## Laravel's `image`, `mimes` and `dimensions` rules need extensions this host may lack
+
+`image`, `mimes`, `mimetypes` and `dimensions` need `fileinfo`: the first three
+guess the type through Symfony's MIME guesser, and `dimensions` asks it whether
+the file is an SVG. Nobody has recorded which extensions the host loads, and
+without `fileinfo` the rule fails on a valid file or throws.
+`App\Support\JpegInspector` needs only `getimagesize()`, which is core PHP, and
+a marker scan; use it (ADR 0028).
+
+## Scramble types an Eloquent `*_id` attribute as string unless it is cast
+
+A model attribute such as `image_id` reads from the database as a string on
+some drivers, and Scramble infers what the property type says. Published as
+`imageId: string`, the generated client then disagrees with the integer on the
+wire. `openapi-drift` cannot see it, since the document matches what Scramble
+inferred. Cast to `(int)` where the resource publishes the id (and keep the
+null case for nullable ids). This showed up twice in the image library.
