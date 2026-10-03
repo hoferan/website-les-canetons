@@ -236,10 +236,9 @@
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
  *
- * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
- * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
- * image id in one place. Placements in different places never touch, and in the
- * same place the last pick is the one shown.
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -407,7 +406,6 @@ export * from "./historyEntryIndex200";
 export * from "./historyEntryIndex200Meta";
 export * from "./historyEntryIndexParams";
 export * from "./historyEntryResource";
-export * from "./historyEntryResourcePhoto";
 export * from "./historyEntryStore422";
 export * from "./historyEntryStore422Code";
 export * from "./historyEntryStore422ErrorsItem";
@@ -430,7 +428,6 @@ export * from "./imageReplace507ErrorsItem";
 export * from "./imageResource";
 export * from "./imageResourceSizesItem";
 export * from "./imageResourceUsagesItem";
-export * from "./imageResourceUsagesItemKind";
 export * from "./imageStore409";
 export * from "./imageStore409Code";
 export * from "./imageStore409ErrorsItem";
@@ -468,12 +465,12 @@ export * from "./memberRoleReplace409";
 export * from "./memberRoleReplace409Code";
 export * from "./memberRoleReplace409ErrorsItem";
 export * from "./memberStore201";
-export * from "./photoPlacementHistory200";
-export * from "./photoPlacementHistory200Photo";
-export * from "./photoPlacementRegister200";
-export * from "./photoPlacementRegister200Photo";
-export * from "./photoPlacementSite200";
-export * from "./photoPlacementSite200Photo";
+export * from "./photoSlotIndex200";
+export * from "./photoSlotIndex200Meta";
+export * from "./photoSlotIndexParams";
+export * from "./photoSlotResource";
+export * from "./photoSlotUpdate200";
+export * from "./photoSlotUpdate200Photo";
 export * from "./placePhotoRequest";
 export * from "./problem400Response";
 export * from "./problem400ResponseCode";
@@ -510,7 +507,6 @@ export * from "./problem503ResponseErrorsItem";
 export * from "./publicEventResource";
 export * from "./publicMemberResource";
 export * from "./publicSectionResource";
-export * from "./publicSectionResourcePhoto";
 export * from "./recordMemberAttendanceRequest";
 export * from "./recordMemberAttendanceRequestStatus";
 export * from "./recordOwnAttendanceRequest";
@@ -555,9 +551,6 @@ export * from "./sectionIndex200";
 export * from "./sectionIndex200Meta";
 export * from "./sectionIndexParams";
 export * from "./sectionResource";
-export * from "./sitePhotoIndex200";
-export * from "./sitePhotoIndex200Band";
-export * from "./sitePhotoIndex200Concert";
 export * from "./storeEventRequest";
 export * from "./storeEventSeriesRequest";
 export * from "./storeEventSeriesRequestTemplate";

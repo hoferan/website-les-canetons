@@ -291,7 +291,7 @@ test("the German form names the months in German", async () => {
 
 /**
  * Every history write in order, each read by a handler that then lets the mock
- * answer. The entry and its photo are separate writes, and which ones happen,
+ * answer. The entry and its photo slot are separate writes, and which ones happen,
  * in which order, is the behaviour under test.
  */
 function recordHistoryWrites(): { method: string; path: string; body: Record<string, unknown> }[] {
@@ -306,7 +306,7 @@ function recordHistoryWrites(): { method: string; path: string; body: Record<str
   server.use(
     http.post("/api/v1/history", record),
     http.put("/api/v1/history/:id", record),
-    http.put("/api/v1/history/:id/photo", record),
+    http.put("/api/v1/photo-slots/:slot", record),
   );
   return writes;
 }
@@ -330,10 +330,15 @@ test("a new entry with a photo is saved first, then its photo by its own write",
   ).toBeInTheDocument();
   expect(writes.map((write) => `${write.method} ${write.path}`)).toEqual([
     "POST /api/v1/history",
-    "PUT /api/v1/history/5/photo",
+    "PUT /api/v1/photo-slots/history-5",
   ]);
   expect(writes[0]?.body).not.toHaveProperty("imageId");
-  expect(writes[1]?.body).toEqual({ imageId: 1 });
+  // The slot's label and page are how the library lists where the photo is.
+  expect(writes[1]?.body).toEqual({
+    imageId: 1,
+    label: "Histoire\u00a0: Le cortège",
+    path: "/history",
+  });
 });
 
 test("clearing the photo saves the entry, then empties its photo", async () => {
@@ -349,8 +354,8 @@ test("clearing the photo saves the entry, then empties its photo", async () => {
   expect(writes[0]?.body).not.toHaveProperty("imageId");
   expect(writes[1]).toEqual({
     method: "PUT",
-    path: "/api/v1/history/4/photo",
-    body: { imageId: null },
+    path: "/api/v1/photo-slots/history-4",
+    body: { imageId: null, label: "Histoire\u00a0: Le flambeau passe", path: "/history" },
   });
 });
 
@@ -391,7 +396,7 @@ test("an editor without images.manage sees the photo, cannot change it, and writ
 test("a photo that fails to save after its entry did is reported on the timeline", async () => {
   const user = userEvent.setup();
   const writes = recordHistoryWrites();
-  server.use(http.put("/api/v1/history/:id/photo", () => HttpResponse.json({}, { status: 503 })));
+  server.use(http.put("/api/v1/photo-slots/:slot", () => HttpResponse.json({}, { status: 503 })));
   await renderAt("/history/4/edit");
 
   await user.click(await screen.findByRole("button", { name: "Retirer" }));

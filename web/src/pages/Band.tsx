@@ -1,12 +1,12 @@
 import { PageSection } from "@/components/PageSection";
-import { PhotoReserved } from "@/components/PhotoPending";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
 
 import { rowsOf } from "../api/collection";
-import { useBandIndex, useSitePhotoIndex } from "../api/generated/endpoints";
+import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
+import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { t } from "../i18n";
 
@@ -42,11 +42,7 @@ function Register({ register }: { register: PublicSectionResource }) {
       <h2 id={`${anchorOf(register)}-heading`} className="font-display text-2xl">
         {register.name}
       </h2>
-      <SlotPhoto
-        slot={{ kind: "register", sectionId: register.id, name: register.name }}
-        photo={register.photo}
-        alt={register.name}
-      />
+      <SlotPhoto slot={registerSlot(register.id)} label={register.name} alt={register.name} />
 
       <p className="mt-tight text-ink-muted">
         {register.members.length > 0 ? (
@@ -87,24 +83,22 @@ function Register({ register }: { register: PublicSectionResource }) {
  * Leading the band is a role now, and roles are not public; whoever holds it
  * appears on /committee under the title the committee gives them.
  */
+/** The photograph the page has always shown, served from the static assets. */
+const GODPARENTS_ORIGINAL = {
+  url: "/assets/img/parrainmarraine.jpg",
+  width: 1920,
+  height: 1275,
+  srcset: "/assets/img/parrainmarraine.jpg 1920w",
+};
+
 export function Band() {
   const band = useBandIndex();
   const registers = rowsOf<PublicSectionResource>(band.data);
-  const sitePhotos = useSitePhotoIndex();
-  const bandPhoto = sitePhotos.data?.status === 200 ? sitePhotos.data.data.band : null;
 
   return (
     <PageSection width="text">
       <h1 className="font-display text-4xl">{t("band.heading")}</h1>
-      {/* The same frame, without its caption, while the answer is on its way:
-          the placeholder text would flash and then give way to the photo, and
-          rendering nothing would push the register index down when it
-          arrives. */}
-      {sitePhotos.isPending ? (
-        <PhotoReserved />
-      ) : (
-        <SlotPhoto slot={{ kind: "band" }} photo={bandPhoto} alt="Les Canetons de Fribourg" />
-      )}
+      <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
 
       <RegisterIndex
         entries={registers.map((register) => ({
@@ -137,16 +131,18 @@ export function Band() {
           photo went on the assumption it was out of date, but that reasoning
           is about a roster that turns over yearly; two people who are not in
           the band do not go stale the same way, and the band asked for the old
-          image back. */}
+          image back. It stays as the slot's fallback: the committee can place
+          a library photo over it like any other slot, and removing that photo
+          brings the original back rather than a placeholder. */}
       <hr className="mt-section border-line" />
 
       <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
-        <img
-          src="/assets/img/parrainmarraine.jpg"
+        <SlotPhoto
+          slot="godparents"
+          label={t("photos.slot.godparents")}
           alt={t("band.patronsAlt")}
-          loading="lazy"
-          className="mt-related rounded-lg"
+          fallback={GODPARENTS_ORIGINAL}
         />
         <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
       </Card>

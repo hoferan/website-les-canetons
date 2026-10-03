@@ -194,25 +194,41 @@ What this fixes:
   uploads, lists, searches, sorts, filters and deletes, and each photo has a
   page of its own, `/media/:id`, to rename, turn, replace, download or delete
   it. That page, and the photo's card in the library, link to each place that
-  shows it. On `/band` and on the home page, somebody holding `images.manage`
+  shows it. Wherever a page shows a photo, somebody holding `images.manage`
   finds an add button inside an empty slot and a pencil over a placed photo,
   and can drop a file on either. Visitors see nothing extra.
-- Each place has a write of its own, carrying one image id:
-  `PUT /api/v1/site-photos/{slot}`, `/sections/{section}/photo` and
-  `/history/{historyEntry}/photo`. None takes `If-Match`, for the reason
-  attendance does not: it is one value, so there is nothing half-written to
-  lose, two places never touch, and in one place the last pick is what the
-  page shows. A first design wrote every placement as one document under one
-  tag, which made two editors on different registers refuse each other.
-- A history entry's photo is chosen in the entry's form, which saves the entry
-  and then the photo by its own write. That write needs `history.manage` and
-  `images.manage`, both checked by route middleware, so the entry's own PUT
-  never looks at a permission field by field (ADR 0014). When the photo write
-  fails after the entry saved, the timeline says so rather than the form
-  offering a retry that would save the entry twice.
-- One shared library, and a photo can be placed in several places. Deleting a
-  photo that something still shows is refused with `image_in_use`; the foreign
-  key from every placement to `images` restricts on delete as the backstop.
+- Every place that shows a photo is a slot with a name the page chooses:
+  `band`, `concert`, `godparents`, `register-5`, `history-12`, or a GUID. The
+  page puts `<SlotPhoto slot="..." label="..." alt="..." />` where the photo
+  goes, and nothing else changes: the slots live in one table, `photo_slots`,
+  keyed by that name, and a slot's row is made by its first placement. A new
+  place for a photo, on any page, needs no migration and no endpoint. The
+  name is checked against a pattern (letters, digits, `.`, `_`, `-`, at most
+  64 characters) and nothing more.
+- The public `GET /api/v1/photo-slots` lists every slot that shows a photo,
+  and `PUT /api/v1/photo-slots/{slot}` sets one, carrying the image id and
+  the slot's label and page path. The server knows a slot only by its name,
+  so the label and the path are how the library says where a photo is shown
+  and links back to it. The label is stored in the language the editor was
+  using. The PUT takes no `If-Match`, for the reason attendance does not: it
+  is one value, so there is nothing half-written to lose, two slots never
+  touch, and in one slot the last pick is what the page shows.
+- Registers and history entries are slots like any other, named after their
+  id. A history entry's photo is chosen in the entry's form, which saves the
+  entry and then the slot. When the slot write fails after the entry saved,
+  the timeline says so rather than the form offering a retry that would save
+  the entry twice. Deleting the entry deletes its slot in the same
+  transaction, or its image would stay in use by a slot no page shows.
+- A slot can have a fallback the page shows while nothing is placed: the
+  godparents' original photograph, which the band asked to keep. Placing a
+  photo covers it, and removing that photo brings it back.
+- One shared library, and a photo can be in several slots. Deleting a photo
+  that any slot still shows is refused with `image_in_use`, whatever the slot
+  is; the RESTRICT foreign key from `photo_slots` to `images` is the backstop.
+- The first designs gave each place its own column (`sections.image_id`,
+  `history_entries.image_id`) and the single photos a fixed list of slots. A
+  new place then cost a migration, an endpoint and a deploy, which is the
+  opposite of placing photos where the page shows them.
 
 ### Consequences
 
@@ -255,7 +271,7 @@ sent again with other smaller sizes, never share a URL. `ImageFileTest` pins
 the headers, that a path serves only the bytes it names, the one query, the
 connection closed before the response leaves, and the `304` with no query at
 all, for the size's own digest and no other. `ImageSchemaTest` reads the
-`MEDIUMBLOB` type back, round-trips 600 KB through it, and fails if a placement
+`MEDIUMBLOB` type back, round-trips 600 KB through it, and fails if a slot
 gains alt columns or a member gains a photo. `shrink.test.ts` pins the sizes a source gets and the
 segments the browser strips before the server could refuse them, and
 `web/e2e/media.spec.ts` uploads a photo through a real canvas on `/media`,

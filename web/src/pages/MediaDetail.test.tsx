@@ -332,9 +332,7 @@ test("deleting a photo that is shown says where, and offers no delete", async ()
   const dialog = await screen.findByRole("alertdialog");
 
   expect(within(dialog).getByText("Cette photo est encore affichée")).toBeInTheDocument();
-  expect(
-    within(dialog).getByRole("link", { name: "Pupitre\u00a0: Trompettes" }),
-  ).toBeInTheDocument();
+  expect(within(dialog).getByRole("link", { name: "Trompettes" })).toBeInTheDocument();
   expect(within(dialog).queryByRole("button", { name: "Supprimer" })).toBeNull();
   expect(within(dialog).getByRole("button", { name: "Fermer" })).toBeInTheDocument();
 });

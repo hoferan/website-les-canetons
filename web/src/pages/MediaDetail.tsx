@@ -48,7 +48,7 @@ type Props = {
 type Work = "rotating" | "preparing" | "sending";
 
 /** The reads that carry a photo's name or URL, by the path that keys their query. */
-const PHOTO_READS = ["/images", "/band", "/site-photos", "/history"];
+const PHOTO_READS = ["/images", "/photo-slots"];
 type Outcome = { ok: boolean; message: string };
 
 /** A write's answer as the show query holds it: the image and the headers carrying its new tag. */

@@ -45,10 +45,9 @@ use Symfony\Component\HttpFoundation\Response;
  * somebody's behalf while that member answers, which the five-minute undo
  * window and the audit entry already cover.
  *
- * PLACING A PHOTO IS EXEMPT FOR THE SAME REASON. PUT /site-photos/{slot},
- * /sections/{section}/photo and /history/{historyEntry}/photo each set one
- * value, the image id in one place, so there is no half of it to lose. Two
- * editors placing photos at once either work on different places, which never
+ * PLACING A PHOTO IS EXEMPT FOR THE SAME REASON. PUT /photo-slots/{slot} sets
+ * one value, the image id in one slot, so there is no half of it to lose. Two
+ * editors placing photos at once either work on different slots, which never
  * touch, or pick for the same one, where the second pick is what the page
  * shows and both are in the audit log. A tag would buy a read before every
  * pick and a 412 for an editor who lost a race nobody could see.

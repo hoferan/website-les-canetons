@@ -123,8 +123,8 @@ test("keeps the concert placeholder while no concert photo is placed", async () 
   );
 });
 
-test("reserves the concert frame, without a caption, while the site photos are still loading", async () => {
-  server.use(http.get("/api/v1/site-photos", () => delay("infinite")));
+test("reserves the concert frame, without a caption, while the photo slots are still loading", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => delay("infinite")));
   const { container } = await renderWithSession(<Home />, { route: "/" });
 
   await screen.findByRole("heading", { level: 1 });
@@ -135,8 +135,8 @@ test("reserves the concert frame, without a caption, while the site photos are s
   expect(reserved).toBeEmptyDOMElement();
 });
 
-test("keeps the concert placeholder when the site photos cannot be read", async () => {
-  server.use(http.get("/api/v1/site-photos", () => HttpResponse.error()));
+test("keeps the concert placeholder when the photo slots cannot be read", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => HttpResponse.error()));
   const { container } = await renderWithSession(<Home />, { route: "/" });
 
   await waitFor(() =>
@@ -146,16 +146,19 @@ test("keeps the concert placeholder when the site photos cannot be read", async 
 
 test("shows the placed concert photo and drops its placeholder", async () => {
   server.use(
-    http.get("/api/v1/site-photos", () =>
+    http.get("/api/v1/photo-slots", () =>
       HttpResponse.json({
-        band: null,
-        concert: {
-          url: "/api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg",
-          width: 1600,
-          height: 1067,
-          srcset:
-            "/api/v1/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg 480w, /api/v1/images/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg 960w, /api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg 1600w",
-        },
+        meta: { total: 1, limit: 500, offset: 0 },
+        data: [
+          {
+            slot: "concert",
+            url: "/api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg",
+            width: 1600,
+            height: 1067,
+            srcset:
+              "/api/v1/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg 480w, /api/v1/images/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg 960w, /api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg 1600w",
+          },
+        ],
       }),
     ),
   );

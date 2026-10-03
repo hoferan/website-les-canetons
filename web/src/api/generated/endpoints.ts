@@ -236,10 +236,9 @@
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
  *
- * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
- * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
- * image id in one place. Placements in different places never touch, and in the
- * same place the last pick is the one shown.
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -403,9 +402,9 @@ import type {
   MemberRoleReplace200,
   MemberRoleReplace409,
   MemberStore201,
-  PhotoPlacementHistory200,
-  PhotoPlacementRegister200,
-  PhotoPlacementSite200,
+  PhotoSlotIndex200,
+  PhotoSlotIndexParams,
+  PhotoSlotUpdate200,
   PlacePhotoRequest,
   Problem400Response,
   Problem401Response,
@@ -439,7 +438,6 @@ import type {
   RoleIndexParams,
   SectionIndex200,
   SectionIndexParams,
-  SitePhotoIndex200,
   StoreEventRequest,
   StoreEventSeriesRequest,
   StoreHistoryEntryRequest,
@@ -11374,633 +11372,97 @@ export function useConfigShow<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-export type photoPlacementSiteResponse200 = {
-  data: PhotoPlacementSite200;
+export type photoSlotIndexResponse200 = {
+  data: PhotoSlotIndex200;
   status: 200;
 };
 
-export type photoPlacementSiteResponse400 = {
-  data: Problem400Response;
-  status: 400;
-};
-
-export type photoPlacementSiteResponse401 = {
-  data: Problem401Response;
-  status: 401;
-};
-
-export type photoPlacementSiteResponse403 = {
-  data: Problem403Response;
-  status: 403;
-};
-
-export type photoPlacementSiteResponse404 = {
-  data: Problem404Response;
-  status: 404;
-};
-
-export type photoPlacementSiteResponse419 = {
-  data: Problem419Response;
-  status: 419;
-};
-
-export type photoPlacementSiteResponse503 = {
+export type photoSlotIndexResponse503 = {
   data: Problem503Response;
   status: 503;
 };
 
-export type photoPlacementSiteResponseSuccess = photoPlacementSiteResponse200 & {
+export type photoSlotIndexResponseSuccess = photoSlotIndexResponse200 & {
   headers: Headers;
 };
-export type photoPlacementSiteResponseError = (
-  | photoPlacementSiteResponse400
-  | photoPlacementSiteResponse401
-  | photoPlacementSiteResponse403
-  | photoPlacementSiteResponse404
-  | photoPlacementSiteResponse419
-  | photoPlacementSiteResponse503
-) & {
+export type photoSlotIndexResponseError = photoSlotIndexResponse503 & {
   headers: Headers;
 };
 
-export type photoPlacementSiteResponse =
-  photoPlacementSiteResponseSuccess | photoPlacementSiteResponseError;
+export type photoSlotIndexResponse = photoSlotIndexResponseSuccess | photoSlotIndexResponseError;
 
-export const getPhotoPlacementSiteUrl = (slot: "band" | "concert") => {
-  return `/site-photos/${slot}`;
-};
+export const getPhotoSlotIndexUrl = (params?: PhotoSlotIndexParams) => {
+  const normalizedParams = new URLSearchParams();
 
-/**
- * `{slot}` is `band` (the band page) or `concert` (the home page). Send
- * `imageId` null to empty the slot.
- * @summary Places the band photo or the concert photo. Requires `images.manage`
- */
-export const photoPlacementSite = async (
-  slot: "band" | "concert",
-  placePhotoRequest: PlacePhotoRequest,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<photoPlacementSiteResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit["headers"]>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
     }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-  return customFetch<photoPlacementSiteResponse>(getPhotoPlacementSiteUrl(slot), {
-    ...options,
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
-    body: JSON.stringify(placePhotoRequest),
   });
-};
 
-export const getPhotoPlacementSiteMutationKey = () => ["photoPlacementSite"] as const;
+  const stringifiedParams = normalizedParams.toString();
 
-export const getPhotoPlacementSiteMutationOptions = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof photoPlacementSite>>,
-    TError,
-    PhotoPlacementSiteMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof photoPlacementSite>>,
-  TError,
-  PhotoPlacementSiteMutationVariables,
-  TContext
-> => {
-  const mutationKey = getPhotoPlacementSiteMutationKey();
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof photoPlacementSite>>,
-    PhotoPlacementSiteMutationVariables
-  > = (props) => {
-    const { slot, data } = props ?? {};
-
-    return photoPlacementSite(slot, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type PhotoPlacementSiteMutationResult = NonNullable<
-  Awaited<ReturnType<typeof photoPlacementSite>>
->;
-export type PhotoPlacementSiteMutationBody = PlacePhotoRequest;
-export type PhotoPlacementSiteMutationError =
-  | Problem400Response
-  | Problem401Response
-  | Problem403Response
-  | Problem404Response
-  | Problem419Response
-  | Problem503Response;
-export type PhotoPlacementSiteMutationVariables = {
-  slot: "band" | "concert";
-  data: PlacePhotoRequest;
+  return stringifiedParams.length > 0 ? `/photo-slots?${stringifiedParams}` : `/photo-slots`;
 };
 
 /**
- * @summary Places the band photo or the concert photo. Requires `images.manage`
+ * A slot with no photo is absent, and the page shows its placeholder.
+ * No photo carries alt text: the page describes each by what it shows.
+ * @summary Every slot that shows a photo, by name. Public
  */
-export const usePhotoPlacementSite = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof photoPlacementSite>>,
-      TError,
-      PhotoPlacementSiteMutationVariables,
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof photoPlacementSite>>,
-  TError,
-  PhotoPlacementSiteMutationVariables,
-  TContext
-> => {
-  return useMutation(getPhotoPlacementSiteMutationOptions(options), queryClient);
-};
-
-export type photoPlacementRegisterResponse200 = {
-  data: PhotoPlacementRegister200;
-  status: 200;
-};
-
-export type photoPlacementRegisterResponse400 = {
-  data: Problem400Response;
-  status: 400;
-};
-
-export type photoPlacementRegisterResponse401 = {
-  data: Problem401Response;
-  status: 401;
-};
-
-export type photoPlacementRegisterResponse403 = {
-  data: Problem403Response;
-  status: 403;
-};
-
-export type photoPlacementRegisterResponse404 = {
-  data: Problem404Response;
-  status: 404;
-};
-
-export type photoPlacementRegisterResponse419 = {
-  data: Problem419Response;
-  status: 419;
-};
-
-export type photoPlacementRegisterResponse503 = {
-  data: Problem503Response;
-  status: 503;
-};
-
-export type photoPlacementRegisterResponseSuccess = photoPlacementRegisterResponse200 & {
-  headers: Headers;
-};
-export type photoPlacementRegisterResponseError = (
-  | photoPlacementRegisterResponse400
-  | photoPlacementRegisterResponse401
-  | photoPlacementRegisterResponse403
-  | photoPlacementRegisterResponse404
-  | photoPlacementRegisterResponse419
-  | photoPlacementRegisterResponse503
-) & {
-  headers: Headers;
-};
-
-export type photoPlacementRegisterResponse =
-  photoPlacementRegisterResponseSuccess | photoPlacementRegisterResponseError;
-
-export const getPhotoPlacementRegisterUrl = (section: number) => {
-  return `/sections/${section}/photo`;
-};
-
-/**
- * @summary Places a register's photo on the band page. Requires `images.manage`
- */
-export const photoPlacementRegister = async (
-  section: number,
-  placePhotoRequest: PlacePhotoRequest,
+export const photoSlotIndex = async (
+  params?: PhotoSlotIndexParams,
   options?: Parameters<typeof customFetch>[1],
-): Promise<photoPlacementRegisterResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit["headers"]>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-  return customFetch<photoPlacementRegisterResponse>(getPhotoPlacementRegisterUrl(section), {
-    ...options,
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
-    body: JSON.stringify(placePhotoRequest),
-  });
-};
-
-export const getPhotoPlacementRegisterMutationKey = () => ["photoPlacementRegister"] as const;
-
-export const getPhotoPlacementRegisterMutationOptions = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof photoPlacementRegister>>,
-    TError,
-    PhotoPlacementRegisterMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof photoPlacementRegister>>,
-  TError,
-  PhotoPlacementRegisterMutationVariables,
-  TContext
-> => {
-  const mutationKey = getPhotoPlacementRegisterMutationKey();
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof photoPlacementRegister>>,
-    PhotoPlacementRegisterMutationVariables
-  > = (props) => {
-    const { section, data } = props ?? {};
-
-    return photoPlacementRegister(section, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type PhotoPlacementRegisterMutationResult = NonNullable<
-  Awaited<ReturnType<typeof photoPlacementRegister>>
->;
-export type PhotoPlacementRegisterMutationBody = PlacePhotoRequest;
-export type PhotoPlacementRegisterMutationError =
-  | Problem400Response
-  | Problem401Response
-  | Problem403Response
-  | Problem404Response
-  | Problem419Response
-  | Problem503Response;
-export type PhotoPlacementRegisterMutationVariables = { section: number; data: PlacePhotoRequest };
-
-/**
- * @summary Places a register's photo on the band page. Requires `images.manage`
- */
-export const usePhotoPlacementRegister = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof photoPlacementRegister>>,
-      TError,
-      PhotoPlacementRegisterMutationVariables,
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof photoPlacementRegister>>,
-  TError,
-  PhotoPlacementRegisterMutationVariables,
-  TContext
-> => {
-  return useMutation(getPhotoPlacementRegisterMutationOptions(options), queryClient);
-};
-
-export type photoPlacementHistoryResponse200 = {
-  data: PhotoPlacementHistory200;
-  status: 200;
-};
-
-export type photoPlacementHistoryResponse400 = {
-  data: Problem400Response;
-  status: 400;
-};
-
-export type photoPlacementHistoryResponse401 = {
-  data: Problem401Response;
-  status: 401;
-};
-
-export type photoPlacementHistoryResponse403 = {
-  data: Problem403Response;
-  status: 403;
-};
-
-export type photoPlacementHistoryResponse404 = {
-  data: Problem404Response;
-  status: 404;
-};
-
-export type photoPlacementHistoryResponse419 = {
-  data: Problem419Response;
-  status: 419;
-};
-
-export type photoPlacementHistoryResponse503 = {
-  data: Problem503Response;
-  status: 503;
-};
-
-export type photoPlacementHistoryResponseSuccess = photoPlacementHistoryResponse200 & {
-  headers: Headers;
-};
-export type photoPlacementHistoryResponseError = (
-  | photoPlacementHistoryResponse400
-  | photoPlacementHistoryResponse401
-  | photoPlacementHistoryResponse403
-  | photoPlacementHistoryResponse404
-  | photoPlacementHistoryResponse419
-  | photoPlacementHistoryResponse503
-) & {
-  headers: Headers;
-};
-
-export type photoPlacementHistoryResponse =
-  photoPlacementHistoryResponseSuccess | photoPlacementHistoryResponseError;
-
-export const getPhotoPlacementHistoryUrl = (historyEntry: number) => {
-  return `/history/${historyEntry}/photo`;
-};
-
-/**
- * @summary Places a history entry's photo. Requires `history.manage` and `images.manage`
- */
-export const photoPlacementHistory = async (
-  historyEntry: number,
-  placePhotoRequest: PlacePhotoRequest,
-  options?: Parameters<typeof customFetch>[1],
-): Promise<photoPlacementHistoryResponse> => {
-  const getHeaders = (
-    h?: NonNullable<RequestInit["headers"]>,
-  ): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(
-          h as Iterable<Iterable<string>>,
-          (entry) => Array.from(entry) as [string, string],
-        ),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-  return customFetch<photoPlacementHistoryResponse>(getPhotoPlacementHistoryUrl(historyEntry), {
-    ...options,
-    method: "PUT",
-    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
-    body: JSON.stringify(placePhotoRequest),
-  });
-};
-
-export const getPhotoPlacementHistoryMutationKey = () => ["photoPlacementHistory"] as const;
-
-export const getPhotoPlacementHistoryMutationOptions = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof photoPlacementHistory>>,
-    TError,
-    PhotoPlacementHistoryMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof photoPlacementHistory>>,
-  TError,
-  PhotoPlacementHistoryMutationVariables,
-  TContext
-> => {
-  const mutationKey = getPhotoPlacementHistoryMutationKey();
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof photoPlacementHistory>>,
-    PhotoPlacementHistoryMutationVariables
-  > = (props) => {
-    const { historyEntry, data } = props ?? {};
-
-    return photoPlacementHistory(historyEntry, data, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type PhotoPlacementHistoryMutationResult = NonNullable<
-  Awaited<ReturnType<typeof photoPlacementHistory>>
->;
-export type PhotoPlacementHistoryMutationBody = PlacePhotoRequest;
-export type PhotoPlacementHistoryMutationError =
-  | Problem400Response
-  | Problem401Response
-  | Problem403Response
-  | Problem404Response
-  | Problem419Response
-  | Problem503Response;
-export type PhotoPlacementHistoryMutationVariables = {
-  historyEntry: number;
-  data: PlacePhotoRequest;
-};
-
-/**
- * @summary Places a history entry's photo. Requires `history.manage` and `images.manage`
- */
-export const usePhotoPlacementHistory = <
-  TError =
-    | Problem400Response
-    | Problem401Response
-    | Problem403Response
-    | Problem404Response
-    | Problem419Response
-    | Problem503Response,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof photoPlacementHistory>>,
-      TError,
-      PhotoPlacementHistoryMutationVariables,
-      TContext
-    >;
-    request?: SecondParameter<typeof customFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof photoPlacementHistory>>,
-  TError,
-  PhotoPlacementHistoryMutationVariables,
-  TContext
-> => {
-  return useMutation(getPhotoPlacementHistoryMutationOptions(options), queryClient);
-};
-
-export type sitePhotoIndexResponse200 = {
-  data: SitePhotoIndex200;
-  status: 200;
-};
-
-export type sitePhotoIndexResponse503 = {
-  data: Problem503Response;
-  status: 503;
-};
-
-export type sitePhotoIndexResponseSuccess = sitePhotoIndexResponse200 & {
-  headers: Headers;
-};
-export type sitePhotoIndexResponseError = sitePhotoIndexResponse503 & {
-  headers: Headers;
-};
-
-export type sitePhotoIndexResponse = sitePhotoIndexResponseSuccess | sitePhotoIndexResponseError;
-
-export const getSitePhotoIndexUrl = () => {
-  return `/site-photos`;
-};
-
-/**
- * Anonymous. `band` is the photo of the band, shown on the band page, and
- * `concert` the one that announces the next concert, shown on the home
- * page. Either is null while nothing is placed there, and the page then
- * shows its placeholder. Neither carries alt text: the page describes both by
- * the band's name.
- * @summary The two single photographs of the site
- */
-export const sitePhotoIndex = async (
-  options?: Parameters<typeof customFetch>[1],
-): Promise<sitePhotoIndexResponse> => {
-  return customFetch<sitePhotoIndexResponse>(getSitePhotoIndexUrl(), {
+): Promise<photoSlotIndexResponse> => {
+  return customFetch<photoSlotIndexResponse>(getPhotoSlotIndexUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getSitePhotoIndexQueryKey = () => {
-  return [`/site-photos`] as const;
+export const getPhotoSlotIndexQueryKey = (params?: PhotoSlotIndexParams) => {
+  return [`/photo-slots`, ...(params ? [params] : [])] as const;
 };
 
-export const getSitePhotoIndexQueryOptions = <
-  TData = Awaited<ReturnType<typeof sitePhotoIndex>>,
+export const getPhotoSlotIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
   TError = Problem503Response,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sitePhotoIndex>>, TError, TData>>;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: PhotoSlotIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getSitePhotoIndexQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getPhotoSlotIndexQueryKey(params);
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof sitePhotoIndex>>> = ({ signal }) =>
-    sitePhotoIndex({ signal, ...requestOptions });
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof photoSlotIndex>>> = ({ signal }) =>
+    photoSlotIndex(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof sitePhotoIndex>>,
+    Awaited<ReturnType<typeof photoSlotIndex>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type SitePhotoIndexQueryResult = NonNullable<Awaited<ReturnType<typeof sitePhotoIndex>>>;
-export type SitePhotoIndexQueryError = Problem503Response;
+export type PhotoSlotIndexQueryResult = NonNullable<Awaited<ReturnType<typeof photoSlotIndex>>>;
+export type PhotoSlotIndexQueryError = Problem503Response;
 
-export function useSitePhotoIndex<
-  TData = Awaited<ReturnType<typeof sitePhotoIndex>>,
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
   TError = Problem503Response,
 >(
+  params: undefined | PhotoSlotIndexParams,
   options: {
-    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof sitePhotoIndex>>, TError, TData>> &
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>> &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof sitePhotoIndex>>,
+          Awaited<ReturnType<typeof photoSlotIndex>>,
           TError,
-          Awaited<ReturnType<typeof sitePhotoIndex>>
+          Awaited<ReturnType<typeof photoSlotIndex>>
         >,
         "initialData"
       >;
@@ -12008,17 +11470,18 @@ export function useSitePhotoIndex<
   },
   queryClient?: QueryClient,
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSitePhotoIndex<
-  TData = Awaited<ReturnType<typeof sitePhotoIndex>>,
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
   TError = Problem503Response,
 >(
+  params?: PhotoSlotIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sitePhotoIndex>>, TError, TData>> &
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>> &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof sitePhotoIndex>>,
+          Awaited<ReturnType<typeof photoSlotIndex>>,
           TError,
-          Awaited<ReturnType<typeof sitePhotoIndex>>
+          Awaited<ReturnType<typeof photoSlotIndex>>
         >,
         "initialData"
       >;
@@ -12026,31 +11489,33 @@ export function useSitePhotoIndex<
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-export function useSitePhotoIndex<
-  TData = Awaited<ReturnType<typeof sitePhotoIndex>>,
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
   TError = Problem503Response,
 >(
+  params?: PhotoSlotIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sitePhotoIndex>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary The two single photographs of the site
+ * @summary Every slot that shows a photo, by name. Public
  */
 
-export function useSitePhotoIndex<
-  TData = Awaited<ReturnType<typeof sitePhotoIndex>>,
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
   TError = Problem503Response,
 >(
+  params?: PhotoSlotIndexParams,
   options?: {
-    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof sitePhotoIndex>>, TError, TData>>;
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
     request?: SecondParameter<typeof customFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getSitePhotoIndexQueryOptions(options);
+  const queryOptions = getPhotoSlotIndexQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -12058,3 +11523,187 @@ export function useSitePhotoIndex<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type photoSlotUpdateResponse200 = {
+  data: PhotoSlotUpdate200;
+  status: 200;
+};
+
+export type photoSlotUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type photoSlotUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type photoSlotUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type photoSlotUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type photoSlotUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type photoSlotUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type photoSlotUpdateResponseSuccess = photoSlotUpdateResponse200 & {
+  headers: Headers;
+};
+export type photoSlotUpdateResponseError = (
+  | photoSlotUpdateResponse400
+  | photoSlotUpdateResponse401
+  | photoSlotUpdateResponse403
+  | photoSlotUpdateResponse404
+  | photoSlotUpdateResponse419
+  | photoSlotUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type photoSlotUpdateResponse = photoSlotUpdateResponseSuccess | photoSlotUpdateResponseError;
+
+export const getPhotoSlotUpdateUrl = (slot: string) => {
+  return `/photo-slots/${slot}`;
+};
+
+/**
+ * `{slot}` is the page's name for the place: letters, digits, `.`, `_` and
+ * `-`, at most 64 characters. Send `imageId` null to empty the slot.
+ * `label` and `path` are how the library names and links the place. No
+ * `If-Match`: the write sets one value, so there is nothing half-written
+ * to lose.
+ * @summary Puts a photo in a slot, or takes it out. Requires `images.manage`
+ */
+export const photoSlotUpdate = async (
+  slot: string,
+  placePhotoRequest: PlacePhotoRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<photoSlotUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<photoSlotUpdateResponse>(getPhotoSlotUpdateUrl(slot), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(placePhotoRequest),
+  });
+};
+
+export const getPhotoSlotUpdateMutationKey = () => ["photoSlotUpdate"] as const;
+
+export const getPhotoSlotUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof photoSlotUpdate>>,
+    TError,
+    PhotoSlotUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof photoSlotUpdate>>,
+  TError,
+  PhotoSlotUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getPhotoSlotUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof photoSlotUpdate>>,
+    PhotoSlotUpdateMutationVariables
+  > = (props) => {
+    const { slot, data } = props ?? {};
+
+    return photoSlotUpdate(slot, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PhotoSlotUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof photoSlotUpdate>>
+>;
+export type PhotoSlotUpdateMutationBody = PlacePhotoRequest;
+export type PhotoSlotUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type PhotoSlotUpdateMutationVariables = { slot: string; data: PlacePhotoRequest };
+
+/**
+ * @summary Puts a photo in a slot, or takes it out. Requires `images.manage`
+ */
+export const usePhotoSlotUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof photoSlotUpdate>>,
+      TError,
+      PhotoSlotUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof photoSlotUpdate>>,
+  TError,
+  PhotoSlotUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getPhotoSlotUpdateMutationOptions(options), queryClient);
+};

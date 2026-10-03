@@ -5,11 +5,10 @@ namespace Tests\Feature;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\Member;
+use App\Models\PhotoSlot;
 use App\Models\Role;
-use App\Support\EntityTag;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\Support\LibraryImage;
 use Tests\TestCase;
 
@@ -175,104 +174,81 @@ class HistoryEntryTest extends TestCase
         $this->assertSame('Gardé', $entry->refresh()->title_fr);
     }
 
-    private function image(string $seed = 'a'): Image
-    {
-        return LibraryImage::create(str_repeat($seed, 64), 800, 600, [800, 480]);
-    }
+    // An entry's photo lives in the photo slot `history-{id}`, placed through
+    // PUT /photo-slots/{slot} and tested in PhotoSlotTest. The entry itself
+    // knows nothing of it, except that deleting the entry empties the slot.
 
-    // The photo has a write of its own, PUT /history/{historyEntry}/photo,
-    // tested in PhotoPlacementTest. The entry's own writes leave it alone.
-
-    public function test_the_entry_write_ignores_a_photo_in_the_body(): void
-    {
-        $image = $this->image();
-        $entry = HistoryEntry::factory()->create(['image_id' => $image->id]);
-
-        // An id that exists, one that does not and null all change nothing,
-        // and none is refused: the field is simply not read.
-        foreach ([$this->image('b')->id, 999999, null] as $sent) {
-            $entry->refresh();
-            $this->actingAsMember($this->editor)
-                ->withHeaders($this->ifMatch('history', $entry))
-                ->putJson("/api/v1/history/{$entry->id}", $this->payload(['titleFr' => 'Changé', 'imageId' => $sent]))
-                ->assertOk()
-                ->assertJsonPath('titleFr', 'Changé')
-                ->assertJsonPath('imageId', $image->id)
-                ->assertJsonPath('photo.width', 800);
-
-            $this->assertSame($image->id, $entry->fresh()->image_id);
-        }
-
-        $this->actingAsMember($this->editor)
-            ->postJson('/api/v1/history', $this->payload(['imageId' => $image->id]))
-            ->assertStatus(201)
-            ->assertJsonPath('imageId', null)
-            ->assertJsonPath('photo', null);
-    }
-
-    public function test_the_entry_read_carries_its_photo(): void
-    {
-        $image = $this->image();
-        $entry = HistoryEntry::factory()->create(['image_id' => $image->id]);
-
-        $response = $this->actingAsMember($this->editor)
-            ->getJson("/api/v1/history/{$entry->id}")
-            ->assertOk()
-            ->assertJsonPath('imageId', $image->id)
-            ->assertJsonPath('photo', [
-                'url' => LibraryImage::url($image, 800),
-                'width' => 800,
-                'height' => 600,
-                'srcset' => LibraryImage::url($image, 480).' 480w, '.LibraryImage::url($image, 800).' 800w',
-            ]);
-
-        $this->assertIsInt($response->json('imageId'));
-        $this->assertArrayNotHasKey('imageAltFr', $response->json());
-        $this->assertArrayNotHasKey('imageAltDe', $response->json());
-    }
-
-    public function test_the_history_tag_changes_with_the_photo(): void
+    public function test_the_entry_carries_no_photo(): void
     {
         $entry = HistoryEntry::factory()->create();
-        $before = EntityTag::compute('history', $entry);
+        $this->placePhoto(PhotoSlot::forHistory($entry->id), $this->image()->id);
 
-        $entry->update(['image_id' => $this->image()->id]);
-        $this->assertNotSame($before, EntityTag::compute('history', $entry->fresh()));
-    }
-
-    public function test_the_public_history_carries_the_photo(): void
-    {
-        HistoryEntry::query()->delete();
-        $image = $this->image();
-        HistoryEntry::factory()->create(['occurred_on' => '2002-10-01', 'image_id' => $image->id]);
-        HistoryEntry::factory()->create(['occurred_on' => '2019-01-01']);
-
-        $response = $this->getJson('/api/v1/history')
+        $read = $this->actingAsMember($this->editor)
+            ->getJson("/api/v1/history/{$entry->id}")
             ->assertOk()
-            ->assertJsonPath('data.0.photo.width', 800)
-            ->assertJsonPath('data.0.photo.height', 600)
-            ->assertJsonPath('data.1.photo', null);
+            ->json();
+        $listed = collect($this->getJson('/api/v1/history')->json('data'))->firstWhere('id', $entry->id);
 
-        $photo = $response->json('data.0.photo');
-        $this->assertSame(LibraryImage::url($image, 800), $photo['url']);
-        $this->assertSame(['url', 'width', 'height', 'srcset'], array_keys($photo));
+        foreach ([$read, $listed] as $row) {
+            $this->assertArrayNotHasKey('imageId', $row);
+            $this->assertArrayNotHasKey('photo', $row);
+        }
+
+        $schemas = json_decode((string) file_get_contents(__DIR__.'/../../openapi.json'), true)['components']['schemas'];
+        $this->assertArrayNotHasKey('imageId', $schemas['HistoryEntryResource']['properties']);
+        $this->assertArrayNotHasKey('photo', $schemas['HistoryEntryResource']['properties']);
+        $this->assertArrayNotHasKey('imageId', $schemas['StoreHistoryEntryRequest']['properties']);
     }
 
-    public function test_listing_the_history_costs_a_fixed_number_of_queries(): void
+    public function test_deleting_an_entry_empties_its_photo_slot_and_no_other(): void
     {
-        HistoryEntry::query()->delete();
         $image = $this->image();
-        HistoryEntry::factory()->count(6)->create(['image_id' => $image->id]);
+        $entry = HistoryEntry::factory()->create();
+        $other = HistoryEntry::factory()->create();
+        $this->placePhoto(PhotoSlot::forHistory($entry->id), $image->id);
+        $this->placePhoto(PhotoSlot::forHistory($other->id), $image->id);
+        $this->placePhoto('band', $image->id);
 
-        DB::enableQueryLog();
-        $this->getJson('/api/v1/history')->assertOk();
-        $few = count(DB::getQueryLog());
+        $this->actingAsMember($this->editor)
+            ->withHeaders($this->ifMatch('history', $entry))
+            ->deleteJson("/api/v1/history/{$entry->id}")
+            ->assertOk();
 
-        HistoryEntry::factory()->count(6)->create(['image_id' => $this->image('b')->id]);
-        DB::flushQueryLog();
-        $this->getJson('/api/v1/history')->assertOk();
+        $this->assertNull($this->slotImage(PhotoSlot::forHistory($entry->id)));
+        $this->assertSame($image->id, $this->slotImage(PhotoSlot::forHistory($other->id)));
+        $this->assertSame($image->id, $this->slotImage('band'));
+    }
 
-        $this->assertSame($few, count(DB::getQueryLog()));
+    public function test_an_image_shown_only_by_a_deleted_entry_can_be_deleted(): void
+    {
+        $image = $this->image();
+        $entry = HistoryEntry::factory()->create();
+        $this->placePhoto(PhotoSlot::forHistory($entry->id), $image->id);
+        $librarian = Member::factory()
+            ->withRole(Role::factory()->granting(Permission::ImagesManage)->create())
+            ->create();
+
+        $this->actingAsMember($librarian)
+            ->withHeaders($this->ifMatch('image', $image))
+            ->deleteJson("/api/v1/images/{$image->id}")
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'image_in_use');
+
+        $this->actingAsMember($this->editor)
+            ->withHeaders($this->ifMatch('history', $entry))
+            ->deleteJson("/api/v1/history/{$entry->id}")
+            ->assertOk();
+
+        $this->actingAsMember($librarian)
+            ->withHeaders($this->ifMatch('image', $image))
+            ->deleteJson("/api/v1/images/{$image->id}")
+            ->assertOk();
+        $this->assertNull(Image::query()->find($image->id));
+    }
+
+    private function image(): Image
+    {
+        return LibraryImage::create(str_repeat('a', 64), 800, 600, [800, 480]);
     }
 
     public function test_show_hands_out_the_tag_the_writes_want(): void
@@ -289,20 +265,5 @@ class HistoryEntryTest extends TestCase
             ->withHeader('If-Match', $tag)
             ->putJson("/api/v1/history/{$entry->id}", $this->payload())
             ->assertOk();
-    }
-
-    public function test_the_published_document_types_the_entry_image_id_as_an_integer_or_null(): void
-    {
-        $document = json_decode((string) file_get_contents(__DIR__.'/../../openapi.json'), true);
-        $schemas = $document['components']['schemas'];
-
-        $property = $schemas['HistoryEntryResource']['properties']['imageId'];
-        $types = (array) ($property['type'] ?? []);
-        sort($types);
-        $this->assertSame(['integer', 'null'], $types, 'imageId is typed differently in the document: '.json_encode($property));
-
-        // The entry's own write does not take a photo, so a generated client
-        // must not offer to send one.
-        $this->assertArrayNotHasKey('imageId', $schemas['StoreHistoryEntryRequest']['properties']);
     }
 }

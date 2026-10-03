@@ -1,13 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, LoaderCircle, Pencil } from "lucide-react";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useLocation } from "react-router-dom";
 
 import {
-  getBandIndexQueryKey,
   getImageIndexQueryKey,
-  getSitePhotoIndexQueryKey,
-  photoPlacementRegister,
-  photoPlacementSite,
+  getPhotoSlotIndexQueryKey,
+  photoSlotUpdate,
 } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
 import { FormError } from "../components/FormField";
@@ -19,29 +18,6 @@ import { PhotoPicker } from "./PhotoPicker";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
 import { useUploadQueue } from "./useUploadQueue";
 
-/** A page slot a photo can be placed in. */
-export type PhotoSlot =
-  { kind: "band" } | { kind: "concert" } | { kind: "register"; sectionId: number; name: string };
-
-/** Writes the one slot; no other slot is read or sent. */
-function placeIn(slot: PhotoSlot, imageId: number | null) {
-  return slot.kind === "register"
-    ? photoPlacementRegister(slot.sectionId, { imageId })
-    : photoPlacementSite(slot.kind, { imageId });
-}
-
-/** The accessible name, which says which of /band's seven slots the control belongs to. */
-function labelOf(slot: PhotoSlot, add: boolean): string {
-  switch (slot.kind) {
-    case "band":
-      return t(add ? "photos.addBand" : "photos.changeBand");
-    case "concert":
-      return t(add ? "photos.addConcert" : "photos.changeConcert");
-    case "register":
-      return t(add ? "photos.addRegister" : "photos.changeRegister", { name: slot.name });
-  }
-}
-
 /**
  * A browser without a type for the file (some HEIC exports, for one) is given
  * the benefit of the doubt: the shrink step decodes it or says why it cannot.
@@ -51,10 +27,22 @@ function looksLikePhoto(file: File): boolean {
 }
 
 type Props = {
-  slot: PhotoSlot;
+  /** The slot's name, unique across the site. */
+  slot: string;
+  /**
+   * What the slot is, in the page's words: the end of the button's accessible
+   * name, and how the library lists the place under "Utilisée sur".
+   */
+  label: string;
   /** What the slot holds now; null draws the empty frame. */
   photo: PhotoData | null;
-  /** What the photo shows, said by the page: the band's name or the register's. */
+  /**
+   * Shown while nothing is placed, in place of the empty frame. The slot then
+   * has nothing to remove: placing a photo covers the fallback, and removing
+   * that photo brings the fallback back.
+   */
+  fallback?: PhotoData | undefined;
+  /** What the photo shows, said by the page. */
   alt: string;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
   upload?: UploadFn | undefined;
@@ -62,9 +50,8 @@ type Props = {
 };
 
 /**
- * One page slot as an editor sees it (#105): the band photo and each
- * register's on /band, the concert photo on the home page. `SlotPhoto` renders
- * this only for whoever holds `images.manage`.
+ * One photo slot as an editor sees it (#105). `SlotPhoto` renders this only
+ * for whoever holds `images.manage`.
  *
  * An empty slot is a single button the size of the photo it waits for, so the
  * whole frame means "put a photo here". A placed photo carries a pencil in its
@@ -77,7 +64,9 @@ type Props = {
  * placed here by the same write a pick makes.
  *
  * Each slot is written on its own and carries no `If-Match`: it is one value,
- * so a placement somebody makes elsewhere is never touched by this one.
+ * so a placement somebody makes elsewhere is never touched by this one. The
+ * write also sends the slot's label and the page's path, which is how the
+ * library says where a photo is shown: the server knows a slot only by name.
  *
  * FOCUS STAYS ON THE SLOT. The button that opened the picker is replaced when
  * the slot fills or empties (the add frame becomes a pencil, or back), so the
@@ -85,8 +74,9 @@ type Props = {
  * the new state, focus moves to the slot's new button, and the status line
  * says what happened.
  */
-export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) {
+export function SlotPhotoControl({ slot, label, photo, fallback, alt, upload, shrinker }: Props) {
   const { can } = useSession();
+  const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const form = useApiFormError(t("photos.slotSaveFailed"));
   const queue = useUploadQueue({ upload, shrinker });
@@ -161,15 +151,14 @@ export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) 
     if (saving) return;
     setSaving(true);
     try {
-      await placeIn(slot, imageId);
+      await photoSlotUpdate(slot, { imageId, label, path: pathname });
       // Set before the refetch below makes the page re-render the slot, and
       // only when it swaps the button: a new photo over an old one keeps the
       // pencil, which the dialog has already focused.
       refocus.current = (imageId === null) === placed;
       // The page shows the slot, and the library lists where each photo is.
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getSitePhotoIndexQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getBandIndexQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getPhotoSlotIndexQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getImageIndexQueryKey() }),
       ]);
       setOutcome(t(imageId === null ? "photos.slotRemoved" : "photos.slotPlaced"));
@@ -238,19 +227,20 @@ export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) 
     },
   };
 
-  const label = labelOf(slot, photo === null);
+  const shown = photo ?? fallback ?? null;
+  const name = t(shown === null ? "photos.addSlot" : "photos.changeSlot", { label });
 
   return (
     <div className="mt-related">
       <div
         className="group/frame relative"
-        {...(photo ? { "data-photo-frame": "" } : { "data-photo-pending": slot.kind })}
+        {...(shown ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
         {...dropTarget}
       >
-        {photo ? (
+        {shown ? (
           <>
             <Photo
-              photo={photo}
+              photo={shown}
               alt={alt}
               sizes={PHOTO_SIZES.textColumn}
               className="block h-auto w-full rounded-lg"
@@ -263,7 +253,7 @@ export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) 
             <button
               ref={control}
               type="button"
-              aria-label={label}
+              aria-label={name}
               aria-disabled={busy}
               onClick={open}
               className="group/pencil absolute right-2 bottom-2 inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-white/90 px-3 text-ink shadow-md outline-none hover:bg-white focus-visible:ring-[3px] focus-visible:ring-ring aria-disabled:opacity-60"
@@ -280,7 +270,7 @@ export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) 
           <button
             ref={control}
             type="button"
-            aria-label={label}
+            aria-label={name}
             aria-disabled={busy}
             onClick={open}
             className="flex aspect-[3/2] w-full flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-violet/70 bg-violet/5 px-4 text-center text-ink outline-none transition-colors hover:border-violet hover:bg-violet/10 focus-visible:border-violet focus-visible:bg-violet/10 focus-visible:ring-[3px] focus-visible:ring-ring/40"
@@ -299,7 +289,7 @@ export function SlotPhotoControl({ slot, photo, alt, upload, shrinker }: Props) 
             // being replaced.
             className={cn(
               "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-violet px-4 text-center font-medium text-violet",
-              photo
+              shown
                 ? "bg-panel/85 backdrop-blur-sm"
                 : "bg-panel bg-linear-to-b from-violet/10 to-violet/10",
             )}

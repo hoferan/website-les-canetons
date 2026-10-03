@@ -117,12 +117,14 @@ test("renders the heading, the register index and a placeholder gap in German", 
 test("shows the German photo placeholder in every empty slot", async () => {
   // The mock places a band photo, which would replace the placeholder.
   server.use(
-    http.get("/api/v1/site-photos", () => HttpResponse.json({ band: null, concert: null })),
+    http.get("/api/v1/photo-slots", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
   );
   await renderWithSession(<Band />, { route: "/band", locale: "de-CH" });
 
   // One sentence for every slot, so the band and each register read the same.
-  expect((await screen.findAllByText(/Foto folgt/)).length).toBeGreaterThan(1);
+  await waitFor(() => expect(screen.getAllByText(/Foto folgt/).length).toBeGreaterThan(1));
 });
 
 /**
@@ -147,12 +149,14 @@ test("shows a register's photo in place of its placeholder, and keeps the placeh
 
   const bells = screen.getByRole("article", { name: "Cloches" });
   expect(within(bells).queryByRole("img")).not.toBeInTheDocument();
-  expect(bells.querySelector('[data-photo-pending="register"]')).not.toBeNull();
+  expect(bells.querySelector('[data-photo-pending="register-4"]')).not.toBeNull();
 });
 
 test("keeps the band placeholder when no band photo is placed", async () => {
   server.use(
-    http.get("/api/v1/site-photos", () => HttpResponse.json({ band: null, concert: null })),
+    http.get("/api/v1/photo-slots", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
   );
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
@@ -162,8 +166,8 @@ test("keeps the band placeholder when no band photo is placed", async () => {
   );
 });
 
-test("reserves the band frame, without a caption, while the site photos are still loading", async () => {
-  server.use(http.get("/api/v1/site-photos", () => delay("infinite")));
+test("reserves the band frame, without a caption, while the photo slots are still loading", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => delay("infinite")));
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
   await screen.findByRole("article", { name: "Cloches" });
@@ -174,8 +178,8 @@ test("reserves the band frame, without a caption, while the site photos are stil
   expect(reserved).toBeEmptyDOMElement();
 });
 
-test("keeps the band placeholder when the site photos cannot be read", async () => {
-  server.use(http.get("/api/v1/site-photos", () => HttpResponse.error()));
+test("keeps the band placeholder when the photo slots cannot be read", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => HttpResponse.error()));
   const { container } = await renderWithSession(<Band />, { route: "/band" });
 
   await waitFor(() =>

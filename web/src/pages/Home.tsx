@@ -1,9 +1,7 @@
 import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
-import { PhotoReserved } from "@/components/PhotoPending";
 
-import { useSitePhotoIndex } from "../api/generated/endpoints";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
@@ -76,9 +74,6 @@ const DESTINATIONS: {
  * render nothing.
  */
 export function Home() {
-  const sitePhotos = useSitePhotoIndex();
-  const concertPhoto = sitePhotos.data?.status === 200 ? sitePhotos.data.data.concert : null;
-
   return (
     <PageSection width="text">
       {/* The band's badge — the mark people know from the flyers, the costumes
@@ -115,15 +110,9 @@ export function Home() {
           what somebody deciding whether to turn up needs. */}
       <p className="mt-related text-lg text-ink-muted">{t("home.heroSub")}</p>
 
-      {/* The band's name is a proper noun, so it is the same fallback alt in
-          both languages. While the answer is on its way the frame is
-          reserved without its caption, so the agenda does not move when it
-          arrives and the placeholder text does not flash. */}
-      {sitePhotos.isPending ? (
-        <PhotoReserved />
-      ) : (
-        <SlotPhoto slot={{ kind: "concert" }} photo={concertPhoto} alt="Les Canetons de Fribourg" />
-      )}
+      {/* The band's name is a proper noun, so it is the same alt in both
+          languages. */}
+      <SlotPhoto slot="concert" label={t("photos.slot.concert")} alt="Les Canetons de Fribourg" />
 
       <PublicAgenda />
 

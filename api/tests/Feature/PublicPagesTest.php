@@ -6,7 +6,6 @@ use App\Models\CommitteeFunction;
 use App\Models\Member;
 use App\Models\Section;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\LibraryImage;
 use Tests\TestCase;
@@ -103,48 +102,14 @@ class PublicPagesTest extends TestCase
         );
     }
 
-    public function test_a_register_carries_its_photo_without_alt_text(): void
+    public function test_a_register_carries_no_photo(): void
     {
-        $image = LibraryImage::create(str_repeat('c', 64), 1200, 800, [1200, 960, 480]);
-        $this->register('Cloches')->update(['image_id' => $image->id]);
+        // A register's photo is a photo slot like any other, read from
+        // /photo-slots by the page; the band read knows nothing of it.
+        $register = $this->register('Cloches');
+        $this->placePhoto("register-{$register->id}", LibraryImage::create()->id);
 
-        $photo = $this->registerIn($this->getJson('/api/v1/band'), 'Cloches')['photo'];
-
-        [$large, $mid, $small] = array_map(fn (int $width) => LibraryImage::url($image, $width), [1200, 960, 480]);
-        $this->assertSame([
-            'url' => $large,
-            'width' => 1200,
-            'height' => 800,
-            'srcset' => "{$small} 480w, {$mid} 960w, {$large} 1200w",
-        ], $photo);
-    }
-
-    public function test_a_register_without_a_photo_carries_null(): void
-    {
-        $register = $this->registerIn($this->getJson('/api/v1/band'), 'Lyre');
-
-        $this->assertArrayHasKey('photo', $register);
-        $this->assertNull($register['photo']);
-    }
-
-    public function test_the_band_page_costs_the_same_queries_whatever_number_of_photos_are_placed(): void
-    {
-        $image = LibraryImage::create(str_repeat('d', 64), 10, 10);
-
-        // One photo first: with none placed the eager load has no ids to ask
-        // for and runs no query, which would make the baseline one short.
-        Section::query()->orderBy('sort_order')->firstOrFail()->update(['image_id' => $image->id]);
-
-        DB::enableQueryLog();
-        $this->getJson('/api/v1/band')->assertStatus(200);
-        $one = count(DB::getQueryLog());
-
-        Section::query()->update(['image_id' => $image->id]);
-
-        DB::flushQueryLog();
-        $this->getJson('/api/v1/band')->assertStatus(200);
-
-        $this->assertSame($one, count(DB::getQueryLog()));
+        $this->assertArrayNotHasKey('photo', $this->registerIn($this->getJson('/api/v1/band'), 'Cloches'));
     }
 
     public function test_it_orders_registers_the_way_the_band_configured_them(): void
@@ -323,7 +288,7 @@ class PublicPagesTest extends TestCase
      * is about — which is how the first draft of this file passed an assertion
      * about trumpets while reading drummers.
      *
-     * @return array{name: string, members: list<array<string, mixed>>, instructors: list<array<string, mixed>>, photo: array<string, mixed>|null}
+     * @return array{name: string, members: list<array<string, mixed>>, instructors: list<array<string, mixed>>}
      */
     private function registerIn(TestResponse $response, string $name): array
     {

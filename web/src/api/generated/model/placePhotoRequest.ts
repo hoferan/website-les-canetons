@@ -236,10 +236,9 @@
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
  *
- * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
- * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
- * image id in one place. Placements in different places never touch, and in the
- * same place the last pick is the one shown.
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -311,7 +310,8 @@
  */
 
 /**
- * The photo one place shows: a library image's id, or null to show none.
+ * The photo one slot shows: a library image's id, or null to show none, and
+ * how the library should describe the place.
  */
 export interface PlacePhotoRequest {
   /**
@@ -319,4 +319,16 @@ export interface PlacePhotoRequest {
    * @nullable
    */
   imageId: number | null;
+  /**
+   * The page's name for the slot, which the library shows under "Utilisée sur".
+   * @maxLength 120
+   * @nullable
+   */
+  label?: string | null;
+  /**
+   * The path of the page the slot is on, starting with `/`, which the library links to.
+   * @maxLength 255
+   * @nullable
+   */
+  path?: string | null;
 }

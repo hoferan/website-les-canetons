@@ -34,7 +34,7 @@ class ImageResource extends JsonResource
             /** Each stored size, smallest first. The largest has the photo's own width, height and `url`. */
             'sizes' => self::sizesOf($this->resource),
             'createdAt' => $this->createdAt(),
-            /** Every place the image is shown. An image with any usage cannot be deleted. `id` and `label` are null for the two band-page slots, `band` and `concert`. */
+            /** Every slot the image is shown in, with the name (`label`) and page (`path`) its page gave it; either may be null. An image with any usage cannot be deleted. */
             'usages' => $this->resource->usages(),
         ];
     }

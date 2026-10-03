@@ -2,17 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import {
-  getHistoryEntryIndexQueryKey,
-  historyEntryShow,
-  historyEntryUpdate,
-} from "../api/generated/endpoints";
+import { historyEntryShow, historyEntryUpdate } from "../api/generated/endpoints";
 import type { HistoryEntryResource, StoreHistoryEntryRequest } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
-import { saveHistoryPhoto } from "../history/saveHistoryPhoto";
+import { invalidateHistory, saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
 import { type HistorySavedState } from "./History";
 
@@ -80,16 +76,22 @@ export function HistoryEdit() {
       return;
     }
 
+    let saved: HistoryEntryResource;
     try {
-      await update.mutateAsync({ data, etag: opened.etag });
+      const response = await update.mutateAsync({ data, etag: opened.etag });
+      // The mutator throws on every non-2xx, so this only narrows the type.
+      if (response.status !== 200) {
+        return;
+      }
+      saved = response.data;
     } catch (thrown) {
       // Open, so a 412 is read next to the values it is about.
       form.setFromThrown(thrown);
       return;
     }
-    // After the entry, whose tag the photo write would otherwise have moved.
-    const photoSaved = await saveHistoryPhoto(entryId, photo);
-    await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
+    // After the entry, so an entry the server refuses keeps its photo too.
+    const photoSaved = await saveHistoryPhoto(saved, photo);
+    await invalidateHistory(queryClient);
     const state: HistorySavedState = { historySaved: true, photoFailed: !photoSaved };
     navigate("/history", { state });
   }

@@ -713,8 +713,7 @@ translated. The reasoning is in ADR 0014.
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events, attendance | `events.manage` |
-| Photos: the library on `/media`, and the band, concert and register photos, changed on the page that shows them | `images.manage` |
-| A history entry's photo | `history.manage` and `images.manage` |
+| Photos: the library on `/media`, and every photo slot, changed on the page that shows it (a history entry's in its form) | `images.manage` |
 
 **Who names a thing decides whether it can be translated.** A developer-defined
 name is a fixed key, so a second language costs one catalogue file; a user-typed

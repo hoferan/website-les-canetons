@@ -5,6 +5,7 @@ namespace Tests;
 use App\Http\Middleware\IdempotentWrite;
 use App\Http\Middleware\PublicWriteGuard;
 use App\Models\Member;
+use App\Models\PhotoSlot;
 use App\Support\EntityTag;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -70,6 +71,34 @@ abstract class TestCase extends BaseTestCase
     protected function ifMatch(string $facet, Model $model): array
     {
         return ['If-Match' => (string) EntityTag::compute($facet, $model)];
+    }
+
+    /**
+     * Puts an image in a photo slot the way its first placement does, by
+     * making the slot's row, or updates the row that is there.
+     */
+    protected function placePhoto(string $slot, int $imageId, ?string $label = null, ?string $path = null): void
+    {
+        PhotoSlot::query()->upsert(
+            [[
+                'slot' => $slot,
+                'image_id' => $imageId,
+                'label' => $label,
+                'path' => $path,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]],
+            ['slot'],
+            ['image_id', 'label', 'path', 'updated_at'],
+        );
+    }
+
+    /** The image a slot shows, or null when the slot has no row. */
+    protected function slotImage(string $slot): ?int
+    {
+        $id = PhotoSlot::query()->whereKey($slot)->value('image_id');
+
+        return $id === null ? null : (int) $id;
     }
 
     /**

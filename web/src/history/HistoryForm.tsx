@@ -19,6 +19,7 @@ import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import type { PhotoData } from "../images/Photo";
 import { PhotoField } from "../images/PhotoField";
+import { historySlot, usePhotoSlots } from "../images/photoSlots";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
 import { TimelineMarker } from "./TimelineMarker";
 
@@ -56,7 +57,6 @@ type Draft = {
   bodyDe: string;
   important: boolean;
   icon: IconChoice;
-  imageId: number | null;
 };
 
 function draftFrom(entry: HistoryEntryResource | null): Draft {
@@ -79,7 +79,6 @@ function draftFrom(entry: HistoryEntryResource | null): Draft {
     important: entry?.important ?? false,
     // An icon this bundle does not know opens as none, like the timeline's dot.
     icon: entry?.icon && iconFor(entry.icon) ? (entry.icon as HistoryIconKey) : "none",
-    imageId: entry?.imageId ?? null,
   };
 }
 
@@ -100,15 +99,11 @@ const orNull = (value: string) => (value.trim() === "" ? null : value.trim());
 /**
  * The photo to save after the entry, or null to leave it as it is.
  *
- * The photo has a write of its own, which needs images.manage on top of
- * history.manage, so it is sent only when it changed: an editor who corrects
- * a date never touches it.
+ * The photo lives in the entry's photo slot and has a write of its own, which
+ * needs images.manage, so it is sent only when the editor changed it: one who
+ * corrects a date never touches it.
  */
-export type PhotoChange = { imageId: number | null } | null;
-
-function photoChange(draft: Draft, entry: HistoryEntryResource | null): PhotoChange {
-  return draft.imageId === (entry?.imageId ?? null) ? null : { imageId: draft.imageId };
-}
+export type PhotoChange = { imageId: number | null; photo: PhotoData | null } | null;
 
 function monthNames(): string[] {
   const format = new Intl.DateTimeFormat(intlTag(currentLocale()), {
@@ -155,7 +150,11 @@ export function HistoryForm({
   const [empty, setEmpty] = useState(false);
   const [yearProblem, setYearProblem] = useState<string | undefined>(undefined);
   const [monthProblem, setMonthProblem] = useState<string | undefined>(undefined);
-  const [photo, setPhoto] = useState<PhotoData | null>(entry?.photo ?? null);
+  // Null until the editor picks or removes a photo; until then the field
+  // shows what the entry's slot holds.
+  const [change, setChange] = useState<PhotoChange>(null);
+  const slots = usePhotoSlots();
+  const photo = change ? change.photo : entry ? slots.photoOf(historySlot(entry.id)) : null;
   const locale = currentLocale();
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -233,7 +232,7 @@ export function HistoryForm({
         important: draft.important,
         icon: draft.icon === "none" ? null : (draft.icon as StoreHistoryEntryRequestIcon),
       },
-      photoChange(draft, entry),
+      change,
     );
   }
 
@@ -382,10 +381,7 @@ export function HistoryForm({
       <PhotoField
         label={t("historyForm.photo")}
         value={photo}
-        onChange={(imageId, next) => {
-          setPhoto(next);
-          setDraft((current) => ({ ...current, imageId }));
-        }}
+        onChange={(imageId, next) => setChange({ imageId, photo: next })}
       />
 
       <label className="flex min-h-touch items-center gap-2">

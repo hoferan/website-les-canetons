@@ -6,7 +6,6 @@ use Carbon\CarbonImmutable;
 use Database\Factories\HistoryEntryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,7 +20,6 @@ use Illuminate\Support\Carbon;
  * @property string|null $body_de
  * @property bool $important
  * @property string|null $icon
- * @property int|null $image_id
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -41,14 +39,7 @@ class HistoryEntry extends Model
         'body_de',
         'important',
         'icon',
-        'image_id',
     ];
-
-    /** @return BelongsTo<Image, $this> */
-    public function image(): BelongsTo
-    {
-        return $this->belongsTo(Image::class);
-    }
 
     protected function casts(): array
     {

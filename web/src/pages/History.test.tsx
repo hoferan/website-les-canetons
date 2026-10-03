@@ -314,8 +314,11 @@ test("a delete says so", async () => {
  */
 test("an entry with a photo shows it named after the entry, and the others show no image", async () => {
   const timeline = await renderHistory();
+  // The photo is its slot's, which arrives with the photo slots.
+  expect(
+    await within(timeline).findByRole("img", { name: "Le flambeau passe" }),
+  ).toBeInTheDocument();
   expect(within(timeline).getAllByRole("img")).toHaveLength(1);
-  expect(within(timeline).getByRole("img", { name: "Le flambeau passe" })).toBeInTheDocument();
 });
 
 test("an entry saved without its photo says so where the editor lands", async () => {

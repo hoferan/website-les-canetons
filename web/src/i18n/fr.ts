@@ -188,6 +188,8 @@ export const fr = {
     name: "Nom",
     // The photo a placement shows.
     imageId: "Photo",
+    // The page a photo slot is on, sent with a placement.
+    path: "Page",
     // The registration window on an event. Setting the close date is what
     // turns public registration on at all.
     registrationOpensAt: "Ouverture des inscriptions",
@@ -1271,20 +1273,24 @@ export const fr = {
     loadFailed: "La bibliothèque n’a pas pu être chargée.",
     removeFromSlot: "Retirer la photo",
 
-    // The controls of a photo slot on /band and the home page, for whoever
-    // holds images.manage: an empty slot is one big add button, and a placed
-    // photo carries a pencil. The pencil shows its word only from sm up. Both
-    // carry an accessible name that says which slot, since /band has seven of
-    // them, and that name starts with the visible words.
+    // The controls of a photo slot, for whoever holds images.manage: an empty
+    // slot is one big add button, and a placed photo carries a pencil. The
+    // pencil shows its word only from sm up. Both carry an accessible name
+    // that ends with the slot's label, since /band has many of them, and that
+    // name starts with the visible words.
     addOne: "Ajouter une photo",
     addFrom: "Depuis la médiathèque ou votre appareil",
-    addBand: "Ajouter une photo — photo du groupe",
-    addConcert: "Ajouter une photo — photo en concert",
-    addRegister: "Ajouter une photo — {{name}}",
+    addSlot: "Ajouter une photo — {{label}}",
     change: "Changer",
-    changeBand: "Changer la photo du groupe",
-    changeConcert: "Changer la photo du concert",
-    changeRegister: "Changer la photo du registre {{name}}",
+    changeSlot: "Changer la photo — {{label}}",
+    // A slot's label: the end of its controls' names, and what the library
+    // lists under "Affichée". A register's label is its own name.
+    slot: {
+      band: "Photo du groupe",
+      concert: "Photo en concert",
+      godparents: "Parrain et marraine",
+      history: "Histoire\u00a0: {{title}}",
+    },
     slotSaveFailed: "La photo n’a pas pu être changée.",
     // Read out once the slot shows its new state.
     slotPlaced: "Photo placée.",
@@ -1323,12 +1329,6 @@ export const fr = {
     },
     unused: "Non utilisée",
     usedOn: "Affichée\u00a0:",
-    usage: {
-      band: "Photo du groupe",
-      concert: "Photo en concert",
-      register: "Pupitre\u00a0: {{label}}",
-      history: "Histoire\u00a0: {{label}}",
-    },
     addedOn: "Ajoutée le {{date}}",
     // The visible word beside the box; the accessible name says which photo.
     select: "Sélectionner",

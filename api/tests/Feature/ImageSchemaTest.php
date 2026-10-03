@@ -2,10 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\HistoryEntry;
 use App\Models\Image;
-use App\Models\Section;
-use App\Models\SitePhoto;
+use App\Models\PhotoSlot;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,14 +13,11 @@ use Tests\TestCase;
 
 /**
  * The image library's schema (#105): a photo table with its sizes beside it,
- * and three kinds of placement that all point at it with RESTRICT.
+ * and one table of photo slots that points at it with RESTRICT.
  */
 class ImageSchemaTest extends TestCase
 {
     use RefreshDatabase;
-
-    /** Every table that places a photo with an `image_id`. */
-    private const PLACEMENT_TABLES = ['sections', 'history_entries', 'site_photos'];
 
     private function image(): Image
     {
@@ -81,138 +76,141 @@ class ImageSchemaTest extends TestCase
         $this->assertSame(0, DB::table('image_files')->count());
     }
 
-    public function test_both_site_photo_slots_exist(): void
+    public function test_a_photo_slot_is_a_named_row_that_always_shows_an_image(): void
     {
-        $this->assertSame(['band', 'concert'], SitePhoto::query()->orderBy('slot')->pluck('slot')->all());
+        $columns = collect(DB::select(
+            'SELECT COLUMN_NAME AS name, COLUMN_TYPE AS type, IS_NULLABLE AS nullable, COLUMN_KEY AS col_key
+               FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            ['photo_slots'],
+        ))->keyBy('name');
+
+        $this->assertEqualsCanonicalizing(
+            ['slot', 'image_id', 'label', 'path', 'created_at', 'updated_at'],
+            $columns->keys()->all(),
+        );
+
+        $shape = fn (string $name) => [
+            strtolower((string) $columns[$name]->type),
+            $columns[$name]->nullable,
+        ];
+        $this->assertSame(['varchar(64)', 'NO'], $shape('slot'));
+        $this->assertSame('PRI', $columns['slot']->col_key);
+        $this->assertSame(['bigint(20) unsigned', 'NO'], $shape('image_id'));
+        $this->assertSame(['varchar(120)', 'YES'], $shape('label'));
+        $this->assertSame(['varchar(255)', 'YES'], $shape('path'));
+
+        $this->assertRestrictKey();
+    }
+
+    public function test_the_migration_inserts_no_slot(): void
+    {
+        // A slot's row is made by its first placement, so a new slot needs no
+        // migration. PhotoSlotTest pins the placement side.
+        $this->assertSame(0, PhotoSlot::query()->count());
+    }
+
+    public function test_no_other_table_places_a_photo(): void
+    {
+        foreach (['sections', 'history_entries', 'members'] as $table) {
+            $this->assertFalse(Schema::hasColumn($table, 'image_id'), "{$table} places a photo of its own again.");
+        }
+        $this->assertFalse(Schema::hasTable('site_photos'));
+        $this->assertFalse(Schema::hasColumn('photo_slots', 'image_alt_fr'), 'A slot carries alt text again.');
     }
 
     public function test_deleting_a_placed_image_is_refused_by_the_database(): void
     {
-        $placements = [
-            fn (Image $i) => Section::factory()->create(['image_id' => $i->id]),
-            fn (Image $i) => HistoryEntry::factory()->create(['image_id' => $i->id]),
-            fn (Image $i) => SitePhoto::query()->where('slot', 'band')->update(['image_id' => $i->id]),
-        ];
+        $image = $this->image();
+        $this->placePhoto('band', $image->id);
 
-        foreach ($placements as $place) {
-            $image = $this->image();
-            $place($image);
+        $this->assertThrows(fn () => $image->delete(), QueryException::class);
+        $this->assertTrue(Image::query()->whereKey($image->id)->exists());
 
-            $this->assertThrows(fn () => $image->delete(), QueryException::class);
-            $this->assertTrue(Image::query()->whereKey($image->id)->exists());
-        }
+        // A slot cannot name an image that does not exist either.
+        $this->assertThrows(fn () => $this->placePhoto('concert', 424242), QueryException::class);
     }
 
-    public function test_usages_name_every_placement(): void
+    public function test_usages_name_every_slot_by_its_page_s_name(): void
     {
         $image = $this->image();
-        $section = Section::query()->where('name', 'Cloches')->firstOrFail();
-        $section->update(['image_id' => $image->id]);
-        $entry = HistoryEntry::factory()->create([
-            'image_id' => $image->id,
-            'title_fr' => null,
-            'title_de' => 'Gründung',
-        ]);
-        SitePhoto::query()->where('slot', 'band')->update(['image_id' => $image->id]);
+        $this->placePhoto('register-5', $image->id, 'Batteurs', '/band');
+        $this->placePhoto('band', $image->id);
+        $this->placePhoto('history-12', $this->image()->id, 'La fondation', '/history');
 
-        $usages = $image->usages();
-
-        $this->assertCount(3, $usages);
-        $this->assertContains(['kind' => 'band', 'id' => null, 'label' => null], $usages);
-        $this->assertContains(['kind' => 'register', 'id' => $section->id, 'label' => 'Cloches'], $usages);
-        $this->assertContains(['kind' => 'history', 'id' => $entry->id, 'label' => 'Gründung'], $usages);
+        $this->assertSame([
+            ['slot' => 'band', 'label' => null, 'path' => null],
+            ['slot' => 'register-5', 'label' => 'Batteurs', 'path' => '/band'],
+        ], $image->usages());
         $this->assertTrue($image->isUsed());
         $this->assertFalse($this->image()->isUsed());
-    }
-
-    public function test_no_placement_carries_alt_text_and_a_member_has_no_photo(): void
-    {
-        foreach (self::PLACEMENT_TABLES as $table) {
-            $this->assertTrue(Schema::hasColumn($table, 'image_id'), "{$table} lost its image_id.");
-            $this->assertFalse(Schema::hasColumn($table, 'image_alt_fr'), "{$table} carries alt text again.");
-            $this->assertFalse(Schema::hasColumn($table, 'image_alt_de'), "{$table} carries alt text again.");
-        }
-
-        $this->assertFalse(Schema::hasColumn('members', 'image_id'));
     }
 
     public function test_the_migrations_are_safe_to_rerun(): void
     {
         foreach ([
             '2026_10_02_000001_create_images_table',
-            '2026_10_02_000002_add_image_placements',
+            '2026_10_02_000002_create_photo_slots_table',
             '2026_10_02_000003_grant_images_manage',
         ] as $file) {
             (require database_path("migrations/{$file}.php"))->up();
             (require database_path("migrations/{$file}.php"))->up();
         }
 
-        $this->assertSame(2, DB::table('site_photos')->count());
+        $this->assertSame(0, PhotoSlot::query()->count());
+        $this->assertRestrictKey();
     }
 
-    public function test_a_run_cut_off_between_a_column_and_its_key_adds_the_key_next_time(): void
+    public function test_a_run_cut_off_between_the_table_and_its_key_adds_the_key_next_time(): void
     {
         // MariaDB commits each DDL statement on its own, so a worker killed
-        // after the column and before the key leaves exactly this behind.
-        foreach (self::PLACEMENT_TABLES as $table) {
-            Schema::table($table, fn (Blueprint $blueprint) => $blueprint->dropForeign(['image_id']));
-        }
-        foreach (self::PLACEMENT_TABLES as $table) {
-            $this->assertTrue(Schema::hasColumn($table, 'image_id'));
-            $this->assertNull($this->imageKey($table), "{$table} still has its key; this test would prove nothing.");
-        }
+        // after the table and before the key leaves exactly this behind.
+        Schema::table('photo_slots', fn (Blueprint $blueprint) => $blueprint->dropForeign(['image_id']));
+        $this->assertNull($this->imageKey(), 'photo_slots still has its key; this test would prove nothing.');
 
-        $this->runPlacementsMigration();
+        $this->runSlotsMigration();
 
-        foreach (self::PLACEMENT_TABLES as $table) {
-            $this->assertRestrictKey($table);
-        }
+        $this->assertRestrictKey();
     }
 
-    public function test_a_run_cut_off_before_the_column_adds_the_column_and_the_key(): void
+    public function test_a_run_cut_off_before_the_table_makes_the_table_and_its_key(): void
     {
-        Schema::table('history_entries', function (Blueprint $blueprint) {
-            $blueprint->dropForeign(['image_id']);
-        });
-        Schema::table('history_entries', function (Blueprint $blueprint) {
-            $blueprint->dropColumn('image_id');
-        });
-        $this->assertFalse(Schema::hasColumn('history_entries', 'image_id'));
+        Schema::drop('photo_slots');
+        $this->assertFalse(Schema::hasTable('photo_slots'));
 
-        $this->runPlacementsMigration();
+        $this->runSlotsMigration();
 
-        $this->assertTrue(Schema::hasColumn('history_entries', 'image_id'));
-        $this->assertRestrictKey('history_entries');
+        $this->assertTrue(Schema::hasTable('photo_slots'));
+        $this->assertRestrictKey();
 
         // And the key is a real one: a placed image cannot be deleted.
         $image = $this->image();
-        $entry = HistoryEntry::factory()->create(['image_id' => $image->id]);
+        $this->placePhoto('band', $image->id);
         $this->assertThrows(fn () => $image->delete(), QueryException::class);
 
         // Created after the DDL above committed, so no transaction removes it.
-        $entry->delete();
+        PhotoSlot::query()->whereKey('band')->delete();
         $image->delete();
     }
 
     protected function tearDown(): void
     {
         // DDL implicitly commits on MariaDB, so RefreshDatabase's transaction
-        // cannot put back a key or a column a test dropped. The migration
+        // cannot put back a table or a key a test dropped. The migration
         // itself can, and on an intact schema it changes nothing.
-        $this->runPlacementsMigration();
+        $this->runSlotsMigration();
 
         parent::tearDown();
     }
 
-    private function runPlacementsMigration(): void
+    private function runSlotsMigration(): void
     {
-        (require database_path('migrations/2026_10_02_000002_add_image_placements.php'))->up();
+        (require database_path('migrations/2026_10_02_000002_create_photo_slots_table.php'))->up();
     }
 
     /** @return array<string, mixed>|null */
-    private function imageKey(string $table): ?array
+    private function imageKey(): ?array
     {
-        foreach (Schema::getForeignKeys($table) as $key) {
+        foreach (Schema::getForeignKeys('photo_slots') as $key) {
             if ($key['columns'] === ['image_id']) {
                 return $key;
             }
@@ -221,11 +219,11 @@ class ImageSchemaTest extends TestCase
         return null;
     }
 
-    private function assertRestrictKey(string $table): void
+    private function assertRestrictKey(): void
     {
-        $key = $this->imageKey($table);
+        $key = $this->imageKey();
 
-        $this->assertNotNull($key, "{$table}.image_id has no foreign key.");
+        $this->assertNotNull($key, 'photo_slots.image_id has no foreign key.');
         $this->assertSame('images', $key['foreign_table']);
         $this->assertSame(['id'], $key['foreign_columns']);
         $this->assertSame('restrict', strtolower((string) $key['on_delete']));

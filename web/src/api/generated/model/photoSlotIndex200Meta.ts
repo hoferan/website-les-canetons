@@ -236,10 +236,9 @@
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
  *
- * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
- * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
- * image id in one place. Placements in different places never touch, and in the
- * same place the last pick is the one shown.
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -311,11 +310,13 @@
  */
 
 /**
- * @nullable
+ * What you actually got.
  */
-export type SitePhotoIndex200Concert = {
-  url: string;
-  width: number;
-  height: number;
-  srcset: string;
-} | null;
+export type PhotoSlotIndex200Meta = {
+  /** How many rows the whole collection holds, not this page. Count a screen can display without first reading every row. */
+  total: number;
+  /** The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more. */
+  limit: number;
+  /** Where this page starts in the collection. */
+  offset: number;
+};

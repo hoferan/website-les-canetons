@@ -1,10 +1,7 @@
-import type { HistoryEntryResourcePhoto } from "../api/generated/model";
+import type { PhotoSlotResource } from "../api/generated/model";
 
-/**
- * The photo the API returns: its largest size and every size as a `srcset`.
- * Every place sends the same shape; the history's is the one it is named after.
- */
-export type PhotoData = NonNullable<HistoryEntryResourcePhoto>;
+/** A photo as a page draws it: its largest size and every size as a `srcset`. */
+export type PhotoData = Pick<PhotoSlotResource, "url" | "width" | "height" | "srcset">;
 
 type Props = {
   photo: PhotoData;

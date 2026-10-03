@@ -1,44 +1,37 @@
 import { Link } from "react-router-dom";
 
 import type { ImageResourceUsagesItem } from "../api/generated/model";
-import { t } from "../i18n";
 
+/**
+ * The slot's name in its page's words, as the page sent it with the
+ * placement, or the bare slot name when it sent none. It is stored in the
+ * language the editor was using.
+ */
 export function usageLabel(usage: ImageResourceUsagesItem): string {
-  return t(`photos.usage.${usage.kind}`, { label: usage.label ?? "" });
+  return usage.label ?? usage.slot;
 }
 
 /**
- * The page that shows the photo, where it is also changed. A plain path: the
- * router's basename adds `/de` on the German side.
- *
- * A register goes to /band without its anchor. ScrollToTop leaves a URL with a
- * hash alone, so `/band#register-5` would open /band at the scroll offset
- * /media had, which lands somewhere arbitrary on the page.
+ * Every place a photo is shown, each a link to the page that shows it, where
+ * it is also changed. The path is the one the page sent with the placement,
+ * without the `/de` prefix, which the router's basename adds on the German
+ * side. A placement without a path is listed without a link.
  */
-export function usagePath(usage: ImageResourceUsagesItem): string {
-  switch (usage.kind) {
-    case "band":
-    case "register":
-      return "/band";
-    case "concert":
-      return "/";
-    case "history":
-      return "/history";
-  }
-}
-
-/** Every place a photo is shown, each a link to its page. A library card and the photo's own page both list them. */
 export function UsageLinks({ usages }: { usages: ImageResourceUsagesItem[] }) {
   return (
     <ul className="wrap-anywhere">
       {usages.map((usage) => (
-        <li key={`${usage.kind}-${usage.id ?? ""}`}>
-          <Link
-            to={usagePath(usage)}
-            className="flex min-h-touch items-center text-violet underline underline-offset-2"
-          >
-            {usageLabel(usage)}
-          </Link>
+        <li key={usage.slot}>
+          {usage.path ? (
+            <Link
+              to={usage.path}
+              className="flex min-h-touch items-center text-violet underline underline-offset-2"
+            >
+              {usageLabel(usage)}
+            </Link>
+          ) : (
+            <span className="flex min-h-touch items-center">{usageLabel(usage)}</span>
+          )}
         </li>
       ))}
     </ul>

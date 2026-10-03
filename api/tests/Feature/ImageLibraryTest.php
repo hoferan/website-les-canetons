@@ -4,12 +4,9 @@ namespace Tests\Feature;
 
 use App\Http\Resources\PhotoResource;
 use App\Models\AuditEntry;
-use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\Member;
 use App\Models\Role;
-use App\Models\Section;
-use App\Models\SitePhoto;
 use App\Support\Permission;
 use Closure;
 use Illuminate\Database\Connection;
@@ -535,8 +532,8 @@ class ImageLibraryTest extends TestCase
         $old = LibraryImage::create(widths: [800, 480]);
         $old->forceFill(['created_at' => now()->subDay()])->save();
         $new = LibraryImage::create();
-        Section::query()->where('name', 'Cloches')->update(['image_id' => $old->id]);
-        SitePhoto::query()->where('slot', 'concert')->update(['image_id' => $old->id]);
+        $this->placePhoto('register-5', $old->id, 'Cloches', '/band');
+        $this->placePhoto('concert', $old->id);
 
         $response = $this->actingAsMember($this->manager)->getJson('/api/v1/images')
             ->assertOk()
@@ -547,9 +544,10 @@ class ImageLibraryTest extends TestCase
             ->assertJsonPath('data.1.url', LibraryImage::url($old, 800))
             ->assertJsonPath('data.1.sizes.0.width', 480)
             ->assertJsonPath('data.1.sizes.0.bytes', 1000)
-            ->assertJsonPath('data.1.usages.0', ['kind' => 'concert', 'id' => null, 'label' => null])
-            ->assertJsonPath('data.1.usages.1.kind', 'register')
-            ->assertJsonPath('data.1.usages.1.label', 'Cloches');
+            ->assertJsonPath('data.1.usages', [
+                ['slot' => 'concert', 'label' => null, 'path' => null],
+                ['slot' => 'register-5', 'label' => 'Cloches', 'path' => '/band'],
+            ]);
 
         $this->assertMatchesRegularExpression('/\+00:00$/', (string) $response->json('data.0.createdAt'));
     }
@@ -558,7 +556,7 @@ class ImageLibraryTest extends TestCase
     {
         for ($i = 0; $i < 6; $i++) {
             $image = LibraryImage::create(widths: [800, 480]);
-            Section::factory()->create(['image_id' => $image->id]);
+            $this->placePhoto("register-{$i}", $image->id);
         }
 
         // Warm up the session and the permission lookups, then count.
@@ -570,7 +568,7 @@ class ImageLibraryTest extends TestCase
 
         for ($i = 0; $i < 6; $i++) {
             $image = LibraryImage::create(widths: [800, 480]);
-            HistoryEntry::factory()->create(['image_id' => $image->id]);
+            $this->placePhoto("history-{$i}", $image->id, "Entrée {$i}", '/history');
         }
 
         DB::flushQueryLog();
@@ -584,10 +582,8 @@ class ImageLibraryTest extends TestCase
     public function test_no_read_but_the_file_route_selects_the_bytes(): void
     {
         $image = LibraryImage::create(widths: [800, 480]);
-        $cloches = Section::query()->where('name', 'Cloches')->sole();
-        $cloches->update(['image_id' => $image->id]);
-        SitePhoto::query()->where('slot', 'band')->update(['image_id' => $image->id]);
-        HistoryEntry::factory()->create(['image_id' => $image->id]);
+        $this->placePhoto('register-5', $image->id, 'Cloches', '/band');
+        $this->placePhoto('band', $image->id);
 
         // The last column says whether the read lists sizes at all. One that
         // does must be seen reading image_files, or the check below passes
@@ -596,9 +592,7 @@ class ImageLibraryTest extends TestCase
             [$this->manager, '/api/v1/images', true],
             [$this->manager, '/api/v1/images/summary', false],
             [$this->manager, "/api/v1/images/{$image->id}", true],
-            [null, '/api/v1/band', true],
-            [null, '/api/v1/site-photos', true],
-            [null, '/api/v1/history', true],
+            [null, '/api/v1/photo-slots', true],
         ];
 
         foreach ($reads as [$as, $uri, $listsSizes]) {
@@ -628,10 +622,10 @@ class ImageLibraryTest extends TestCase
             'the rename' => fn () => $this->actingAsMember($this->manager)
                 ->patchJson("/api/v1/images/{$image->id}", ['name' => 'Renommée'], $this->ifMatch('image', $image)),
             'the replace' => fn () => $this->replace($image, $this->set()),
-            'placing the band photo' => fn () => $this->actingAsMember($this->manager)
-                ->putJson('/api/v1/site-photos/band', ['imageId' => $image->id]),
-            'placing a register photo' => fn () => $this->actingAsMember($this->manager)
-                ->putJson("/api/v1/sections/{$cloches->id}/photo", ['imageId' => $image->id]),
+            'placing a photo' => fn () => $this->actingAsMember($this->manager)
+                ->putJson('/api/v1/photo-slots/band', ['imageId' => $image->id]),
+            'placing a photo in a new slot' => fn () => $this->actingAsMember($this->manager)
+                ->putJson('/api/v1/photo-slots/history-7', ['imageId' => $image->id, 'label' => 'La fondation', 'path' => '/history']),
         ];
 
         foreach ($writes as $what => $write) {
@@ -690,15 +684,9 @@ class ImageLibraryTest extends TestCase
 
     public function test_deleting_a_placed_image_is_refused(): void
     {
-        $placements = [
-            'register' => fn (Image $i) => Section::query()->where('name', 'Cloches')->update(['image_id' => $i->id]),
-            'history' => fn (Image $i) => HistoryEntry::factory()->create(['image_id' => $i->id]),
-            'band' => fn (Image $i) => SitePhoto::query()->where('slot', 'band')->update(['image_id' => $i->id]),
-        ];
-
-        foreach ($placements as $kind => $place) {
+        foreach (['band', 'register-5', 'history-12'] as $slot) {
             $image = LibraryImage::create();
-            $place($image);
+            $this->placePhoto($slot, $image->id);
 
             $this->actingAsMember($this->manager)
                 ->deleteJson("/api/v1/images/{$image->id}", [], $this->ifMatch('image', $image))
@@ -706,7 +694,7 @@ class ImageLibraryTest extends TestCase
                 ->assertJsonPath('code', 'image_in_use');
 
             $this->assertModelExists($image);
-            $this->assertSame(1, DB::table('image_files')->where('image_id', $image->id)->count(), "The sizes of an image placed as {$kind} were deleted.");
+            $this->assertSame(1, DB::table('image_files')->where('image_id', $image->id)->count(), "The sizes of an image placed in {$slot} were deleted.");
         }
     }
 
@@ -717,7 +705,7 @@ class ImageLibraryTest extends TestCase
         // Placed by another request after the usage check and before the
         // DELETE statement: the foreign key refuses it.
         Image::deleting(function (Image $deleting): void {
-            Section::query()->where('name', 'Cloches')->update(['image_id' => $deleting->id]);
+            $this->placePhoto('band', $deleting->id);
         });
 
         $this->actingAsMember($this->manager)
@@ -753,7 +741,7 @@ class ImageLibraryTest extends TestCase
         $image = LibraryImage::create();
         $before = $this->ifMatch('image', $image);
 
-        HistoryEntry::factory()->create(['image_id' => $image->id]);
+        $this->placePhoto('history-3', $image->id, 'La fondation', '/history');
 
         $this->assertNotSame($before, $this->ifMatch('image', $image));
     }
@@ -891,9 +879,10 @@ class ImageLibraryTest extends TestCase
     {
         $image = $this->uploaded();
         $old = $image->sha256;
-        Section::query()->where('name', 'Cloches')->update(['image_id' => $image->id]);
-        SitePhoto::query()->where('slot', 'band')->update(['image_id' => $image->id]);
-        $entry = HistoryEntry::factory()->create(['image_id' => $image->id]);
+        $slots = ['band', 'register-5', 'history-12'];
+        foreach ($slots as $slot) {
+            $this->placePhoto($slot, $image->id);
+        }
         $before = $this->ifMatch('image', $image);
 
         // The same photo turned a quarter: portrait now, so the height is the
@@ -920,10 +909,10 @@ class ImageLibraryTest extends TestCase
         $this->assertSame(1, Image::query()->count());
         $this->assertSame($sha, $image->fresh()?->sha256);
 
-        // Every placement still names the image, so every page shows the new photo.
-        $this->assertSame($image->id, Section::query()->where('name', 'Cloches')->value('image_id'));
-        $this->assertSame($image->id, SitePhoto::query()->where('slot', 'band')->value('image_id'));
-        $this->assertSame($image->id, $entry->fresh()?->image_id);
+        // Every slot still names the image, so every page shows the new photo.
+        foreach ($slots as $slot) {
+            $this->assertSame($image->id, $this->slotImage($slot));
+        }
 
         $after = $this->ifMatch('image', $image)['If-Match'];
         $this->assertNotSame($before['If-Match'], $after);
@@ -995,8 +984,8 @@ class ImageLibraryTest extends TestCase
     /**
      * Changes the photo once ConditionalWrite has computed its tag and before
      * the controller locks the row: the last query of that computation reads
-     * the history's placements, which route binding never does. Answers
-     * whether the change ran.
+     * the photo's slots, which route binding never does. Answers whether the
+     * change ran.
      *
      * @return Closure(): bool
      */
@@ -1004,7 +993,7 @@ class ImageLibraryTest extends TestCase
     {
         $changed = false;
         DB::listen(function ($query) use ($image, &$changed): void {
-            if (! $changed && str_contains($query->sql, 'history_entries')) {
+            if (! $changed && str_contains($query->sql, 'photo_slots')) {
                 $changed = true;
                 DB::table('images')->where('id', $image->id)->update(['name' => 'Changée entre-temps']);
             }

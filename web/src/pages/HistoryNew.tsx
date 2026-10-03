@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
-import { getHistoryEntryIndexQueryKey, historyEntryStore } from "../api/generated/endpoints";
-import type { StoreHistoryEntryRequest } from "../api/generated/model";
+import { historyEntryStore } from "../api/generated/endpoints";
+import type { HistoryEntryResource, StoreHistoryEntryRequest } from "../api/generated/model";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
-import { saveHistoryPhoto } from "../history/saveHistoryPhoto";
+import { invalidateHistory, saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
 import { type HistorySavedState } from "./History";
 
@@ -26,14 +26,14 @@ export function HistoryNew() {
 
   async function submit(data: StoreHistoryEntryRequest, photo: PhotoChange) {
     form.clear();
-    let entryId: number;
+    let saved: HistoryEntryResource;
     try {
       const response = await create.mutateAsync(data);
       // The mutator throws on every non-2xx, so this only narrows the type.
       if (response.status !== 201) {
         return;
       }
-      entryId = response.data.id;
+      saved = response.data;
     } catch (thrown) {
       // The form stays open: a refusal is corrected where it was typed.
       form.setFromThrown(thrown);
@@ -41,8 +41,8 @@ export function HistoryNew() {
     }
     // The entry exists from here on, so whatever the photo does, the form
     // closes: saving it again would add the entry twice.
-    const photoSaved = await saveHistoryPhoto(entryId, photo);
-    await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
+    const photoSaved = await saveHistoryPhoto(saved, photo);
+    await invalidateHistory(queryClient);
     const state: HistorySavedState = { historySaved: true, photoFailed: !photoSaved };
     navigate("/history", { state });
   }

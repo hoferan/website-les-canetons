@@ -463,18 +463,16 @@ function seededSizes(id: number, width: number, height: number, bytes: number): 
 }
 
 /**
- * One photo slot: what a site photo or a register holds. Just the image, since
- * no placement carries alt text.
+ * One photo slot, as a photo_slots row holds it: the image, and the label and
+ * path the page sent with the placement. An empty slot has no entry.
  */
-type PhotoSlot = { imageId: number | null };
-
-const EMPTY_SLOT: PhotoSlot = { imageId: null };
+type PhotoSlot = { imageId: number; label: string | null; path: string | null };
 
 /**
  * Two images, with fixed digests: the file handler below answers a placeholder
  * for any name it knows, so nothing needs to exist on disk. Image 1 is the band
- * photo, image 2 a register photo and a history entry, so an image with several
- * usages renders in the library too.
+ * photo, image 2 the Trompettes photo and a history entry's, so an image with
+ * several usages renders in the library too.
  */
 function initialImages(): MockImage[] {
   return [
@@ -501,24 +499,18 @@ function initialImages(): MockImage[] {
   ];
 }
 
-function initialSitePhotos(): { band: PhotoSlot; concert: PhotoSlot } {
+/** Keyed by slot name. Every other slot is empty: the concert, the godparents, every other register. */
+function initialPhotoSlots(): Record<string, PhotoSlot> {
   return {
-    band: { imageId: 1 },
-    concert: { ...EMPTY_SLOT },
-  };
-}
-
-/** Keyed by register id. Trompettes (5) has a photo; the rest show none. */
-function initialRegisterPhotos(): Record<number, PhotoSlot> {
-  return {
-    5: { imageId: 2 },
+    band: { imageId: 1, label: "Photo du groupe", path: "/band" },
+    "register-5": { imageId: 2, label: "Trompettes", path: "/band" },
+    "history-4": { imageId: 2, label: "Histoire\u00a0: Le flambeau passe", path: "/history" },
   };
 }
 
 let images: MockImage[] = initialImages();
 let nextImageId = 3;
-let sitePhotos = initialSitePhotos();
-let registerPhotos = initialRegisterPhotos();
+let photoSlots = initialPhotoSlots();
 
 /** ImageResource::url(): one size, named by the digest of its bytes. */
 const sizeUrl = (size: MockSize) => `/api/v1/images/${size.sha256}.jpg`;
@@ -569,8 +561,7 @@ export function addUnusedMockImage(name = `Photo inutilisée ${nextImageId}`): n
 function resetImages(): void {
   images = initialImages();
   nextImageId = 3;
-  sitePhotos = initialSitePhotos();
-  registerPhotos = initialRegisterPhotos();
+  photoSlots = initialPhotoSlots();
 }
 
 /**
@@ -1287,8 +1278,6 @@ function initialHistory(): HistoryEntryResource[] {
         "La guggen d’enfants « Les Canetons » de Fribourg s’est officiellement créée en octobre 2002.",
       titleDe: null,
       bodyDe: null,
-      imageId: null,
-      photo: null,
       ...stamp,
     },
     {
@@ -1301,8 +1290,6 @@ function initialHistory(): HistoryEntryResource[] {
       bodyFr: "Dès la saison 2007/2008, les Directeurs (tous d’anciens Canetons) se sont succédé.",
       titleDe: null,
       bodyDe: null,
-      imageId: null,
-      photo: null,
       ...stamp,
     },
     {
@@ -1315,8 +1302,6 @@ function initialHistory(): HistoryEntryResource[] {
       bodyFr: null,
       titleDe: "Delphine Maillard und Laura Mantel",
       bodyDe: null,
-      imageId: null,
-      photo: null,
       ...stamp,
     },
     {
@@ -1329,9 +1314,6 @@ function initialHistory(): HistoryEntryResource[] {
       bodyFr: "Elles passent le flambeau à Lilou Keller et Anaïs Meuwly.",
       titleDe: null,
       bodyDe: null,
-      // The one entry with a photograph.
-      imageId: 2,
-      photo: photoOf(2),
       ...stamp,
     },
   ];
@@ -1980,21 +1962,10 @@ const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "s
 function imageResource(image: MockImage): ImageResource {
   const usages: ImageResourceUsagesItem[] = [];
 
-  for (const slot of ["band", "concert"] as const) {
-    if (sitePhotos[slot].imageId === image.id) {
-      usages.push({ kind: slot, id: null, label: null });
-    }
-  }
-  for (const section of SECTIONS) {
-    if (registerPhotos[section.id]?.imageId === image.id) {
-      usages.push({ kind: "register", id: section.id, label: section.name });
-    }
-  }
-  for (const entry of [...historyEntries].sort((a, b) =>
-    a.occurredOn.localeCompare(b.occurredOn),
-  )) {
-    if (entry.imageId === image.id) {
-      usages.push({ kind: "history", id: entry.id, label: entry.titleFr ?? entry.titleDe });
+  for (const slot of Object.keys(photoSlots).sort()) {
+    const placed = photoSlots[slot];
+    if (placed?.imageId === image.id) {
+      usages.push({ slot, label: placed.label, path: placed.path });
     }
   }
 
@@ -2261,17 +2232,22 @@ const overrides = [
         instructors: members
           .filter((member) => member.publicVisible && member.instructorOfSectionId === section.id)
           .map(publicly),
-        photo: photoOf(registerPhotos[section.id]?.imageId ?? null),
       })),
       request,
     ),
   ),
 
-  http.get("/api/v1/site-photos", () =>
-    HttpResponse.json({
-      band: photoOf(sitePhotos.band.imageId),
-      concert: photoOf(sitePhotos.concert.imageId),
-    }),
+  // PUBLIC, and a list like every other: each placed slot by name.
+  http.get("/api/v1/photo-slots", ({ request }) =>
+    collection(
+      Object.keys(photoSlots)
+        .sort()
+        .flatMap((slot) => {
+          const photo = photoOf(photoSlots[slot]?.imageId ?? null);
+          return photo ? [{ slot, ...photo }] : [];
+        }),
+      request,
+    ),
   ),
 
   // BY RANK, then by name — mirroring CommitteeController, whose ordering IS
@@ -3193,65 +3169,31 @@ const overrides = [
     return HttpResponse.json({ ok: true });
   }),
 
-  // One place per write, each a single value and so with no If-Match, as
-  // PhotoPlacementController does it.
-  http.put("/api/v1/site-photos/:slot", async ({ request, params }) => {
+  // One slot per write, a single value and so with no If-Match, as
+  // PhotoSlotController does it. The name is free within PhotoSlot::KEY.
+  http.put("/api/v1/photo-slots/:slot", async ({ request, params }) => {
     const refusal = refuseWithout("images.manage");
     if (refusal) {
       return refusal;
     }
     const slot = String(params.slot);
-    if (slot !== "band" && slot !== "concert") {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(slot)) {
       return notFound();
     }
+    const body = (await request.clone().json()) as { label?: string | null; path?: string | null };
     const placed = await placedImageId(request);
     if (placed instanceof Response) {
       return placed;
     }
-    sitePhotos = { ...sitePhotos, [slot]: placed };
+    if (placed.imageId === null) {
+      photoSlots = Object.fromEntries(Object.entries(photoSlots).filter(([name]) => name !== slot));
+    } else {
+      photoSlots = {
+        ...photoSlots,
+        [slot]: { imageId: placed.imageId, label: body.label ?? null, path: body.path ?? null },
+      };
+    }
     return HttpResponse.json({ photo: photoOf(placed.imageId) });
-  }),
-
-  http.put("/api/v1/sections/:id/photo", async ({ request, params }) => {
-    const refusal = refuseWithout("images.manage");
-    if (refusal) {
-      return refusal;
-    }
-    const section = SECTIONS.find((candidate) => candidate.id === Number(params.id));
-    if (!section) {
-      return notFound();
-    }
-    const placed = await placedImageId(request);
-    if (placed instanceof Response) {
-      return placed;
-    }
-    registerPhotos = { ...registerPhotos, [section.id]: placed };
-    return HttpResponse.json({ photo: photoOf(placed.imageId) });
-  }),
-
-  http.put("/api/v1/history/:id/photo", async ({ request, params }) => {
-    const refusal = refuseWithout("history.manage") ?? refuseWithout("images.manage");
-    if (refusal) {
-      return refusal;
-    }
-    const existing = historyEntries.find((candidate) => candidate.id === Number(params.id));
-    if (!existing) {
-      return notFound();
-    }
-    const placed = await placedImageId(request);
-    if (placed instanceof Response) {
-      return placed;
-    }
-    const updated: HistoryEntryResource = {
-      ...existing,
-      imageId: placed.imageId,
-      photo: photoOf(placed.imageId),
-      updatedAt: new Date().toISOString(),
-    };
-    historyEntries = historyEntries.map((candidate) =>
-      candidate.id === updated.id ? updated : candidate,
-    );
-    return HttpResponse.json({ photo: updated.photo });
   }),
 
   /* ---------------------------------------------------------------------- *
@@ -3290,8 +3232,6 @@ const overrides = [
     const now = new Date().toISOString();
     const created: HistoryEntryResource = {
       ...body,
-      imageId: null,
-      photo: null,
       id: nextHistoryId++,
       createdAt: now,
       updatedAt: now,
@@ -3343,6 +3283,10 @@ const overrides = [
       return stale;
     }
     historyEntries = historyEntries.filter((candidate) => candidate.id !== existing.id);
+    // Its photo slot goes with it, as HistoryEntryController::destroy() does.
+    photoSlots = Object.fromEntries(
+      Object.entries(photoSlots).filter(([name]) => name !== `history-${existing.id}`),
+    );
     return HttpResponse.json({ ok: true });
   }),
   /* ---------------------------------------------------------------------- *

@@ -236,10 +236,9 @@
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
  *
- * **Placing a photo is exempt too.** `PUT /site-photos/{slot}`,
- * `/sections/{section}/photo` and `/history/{historyEntry}/photo` each set one
- * image id in one place. Placements in different places never touch, and in the
- * same place the last pick is the one shown.
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -309,9 +308,12 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { PhotoPlacementHistory200Photo } from "./photoPlacementHistory200Photo";
+import type { PhotoSlotIndex200Meta } from "./photoSlotIndex200Meta";
+import type { PhotoSlotResource } from "./photoSlotResource";
 
-export type PhotoPlacementHistory200 = {
-  /** @nullable */
-  photo: PhotoPlacementHistory200Photo;
+export type PhotoSlotIndex200 = {
+  /** This page of the collection, in the collection's own order. */
+  data: PhotoSlotResource[];
+  /** What you actually got. */
+  meta: PhotoSlotIndex200Meta;
 };

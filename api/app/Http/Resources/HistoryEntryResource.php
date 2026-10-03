@@ -31,12 +31,6 @@ class HistoryEntryResource extends JsonResource
             'important' => $this->important,
             /** One of the history icon keys, or null for the plain dot. */
             'icon' => $this->icon,
-            // The cast is for the document: Scramble reads the model's id
-            // column as a string, and the client would be generated to match.
-            /** The library image attached to the entry, or null. */
-            'imageId' => $this->image_id === null ? null : (int) $this->image_id,
-            /** The photo with its file and size, or null. The page describes it by the entry's title. */
-            'photo' => PhotoResource::of($this->image),
             'createdAt' => $this->createdAt(),
             'updatedAt' => $this->updatedAt(),
         ];

@@ -68,7 +68,7 @@ enum Permission: string
 
     /**
      * Uploading pictures to the shared library, deleting them, and placing them
-     * on the band, concert, register and history slots.
+     * in any photo slot of the site.
      *
      * Granted to `direction` by migration. Not to `committee`, whose role is
      * reading what the public sends, not choosing what the public site shows.

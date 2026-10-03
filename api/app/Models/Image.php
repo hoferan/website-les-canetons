@@ -68,20 +68,18 @@ class Image extends Model
     /**
      * Set by loadUsages() for a list of images read together.
      *
-     * @var list<array{kind: 'band'|'concert'|'register'|'history', id: ?int, label: ?string}>|null
+     * @var list<array{slot: string, label: ?string, path: ?string}>|null
      */
     private ?array $loadedUsages = null;
 
     /**
-     * Every place this image is shown.
-     *
-     * `id` and `label` are null for the two band-page slots: they are named by
-     * their kind alone.
+     * Every slot this image is shown in, with the name and the page the slot's
+     * page gave it.
      *
      * Answers what loadUsages() found when it was called on this instance, and
      * queries otherwise.
      *
-     * @return list<array{kind: 'band'|'concert'|'register'|'history', id: ?int, label: ?string}>
+     * @return list<array{slot: string, label: ?string, path: ?string}>
      */
     public function usages(): array
     {
@@ -90,7 +88,7 @@ class Image extends Model
 
     /**
      * Reads the usages of every image in the collection at once, so that
-     * rendering a page of the library costs three queries rather than three per
+     * rendering a page of the library costs one query rather than one per
      * image.
      *
      * @param  iterable<Image>  $images
@@ -110,12 +108,10 @@ class Image extends Model
     }
 
     /**
-     * One query per kind of placement, for any number of images. A join
-     * across three unrelated tables would be harder to read than the three
-     * queries it saves.
+     * One query for any number of images.
      *
      * @param  list<int>  $ids
-     * @return array<int, list<array{kind: 'band'|'concert'|'register'|'history', id: ?int, label: ?string}>>
+     * @return array<int, list<array{slot: string, label: ?string, path: ?string}>>
      */
     private static function usagesOf(array $ids): array
     {
@@ -125,16 +121,8 @@ class Image extends Model
 
         $usages = [];
 
-        foreach (SitePhoto::query()->whereIn('image_id', $ids)->orderBy('slot')->get() as $photo) {
-            $usages[$photo->image_id][] = ['kind' => $photo->slot, 'id' => null, 'label' => null];
-        }
-
-        foreach (Section::query()->whereIn('image_id', $ids)->orderBy('sort_order')->get() as $section) {
-            $usages[$section->image_id][] = ['kind' => 'register', 'id' => $section->id, 'label' => $section->name];
-        }
-
-        foreach (HistoryEntry::query()->whereIn('image_id', $ids)->orderBy('occurred_on')->get() as $entry) {
-            $usages[$entry->image_id][] = ['kind' => 'history', 'id' => $entry->id, 'label' => $entry->title_fr ?? $entry->title_de];
+        foreach (PhotoSlot::query()->whereIn('image_id', $ids)->orderBy('slot')->get() as $slot) {
+            $usages[$slot->image_id][] = ['slot' => $slot->slot, 'label' => $slot->label, 'path' => $slot->path];
         }
 
         return $usages;
@@ -142,8 +130,6 @@ class Image extends Model
 
     public function isUsed(): bool
     {
-        return SitePhoto::query()->where('image_id', $this->id)->exists()
-            || Section::query()->where('image_id', $this->id)->exists()
-            || HistoryEntry::query()->where('image_id', $this->id)->exists();
+        return PhotoSlot::query()->where('image_id', $this->id)->exists();
     }
 }

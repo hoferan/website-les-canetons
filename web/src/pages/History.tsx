@@ -13,6 +13,7 @@ import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
 import { Photo, PHOTO_SIZES } from "../images/Photo";
+import { historySlot, usePhotoSlots } from "../images/photoSlots";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
@@ -143,6 +144,8 @@ function TimelineEntry({
 }) {
   const locale = currentLocale();
   const shown = shownIn(entry, locale);
+  // The entry's photo is its photo slot's; the slots are read once per page.
+  const photo = usePhotoSlots().photoOf(historySlot(entry.id));
   const rowName =
     shown.title ??
     t("history.untitledEntry", {
@@ -181,9 +184,9 @@ function TimelineEntry({
       </h2>
 
       {/* Described by the entry's title: no photo carries alt text. */}
-      {entry.photo ? (
+      {photo ? (
         <Photo
-          photo={entry.photo}
+          photo={photo}
           alt={rowName}
           sizes={PHOTO_SIZES.timeline}
           className="mt-tight h-auto w-full rounded-md"

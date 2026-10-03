@@ -43,7 +43,7 @@ export function PhotoPending({ token }: { token: string }) {
 }
 
 /**
- * The frame while /site-photos is still on its way: photo-shaped, uncaptioned
+ * The frame while the photo slots are on their way: photo-shaped, uncaptioned
  * and hidden from assistive technology. Once the committee has placed the
  * photos, which is the normal case, the space is already there when the photo
  * arrives and nothing below it moves.

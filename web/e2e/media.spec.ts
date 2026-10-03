@@ -70,7 +70,7 @@ test("a photo uploaded on /media can be placed on /band where the page shows it"
 
   // Cloches has no photo in the mock: its empty frame is the add button.
   const bells = page.getByRole("article", { name: "Cloches" });
-  await expect(bells.locator('[data-photo-pending="register"]')).toBeVisible();
+  await expect(bells.locator('[data-photo-pending="register-4"]')).toBeVisible();
   await bells.getByRole("button", { name: "Ajouter une photo — Cloches" }).click();
   // A picker tile is named by the photo's name: the file name, less ".jpg".
   await page.getByRole("dialog").getByRole("button", { name: "parrainmarraine" }).click();
@@ -214,7 +214,7 @@ test("a photo dropped on an empty slot is shrunk, uploaded and placed there", as
   await logIn(page, "demo.direction");
   await page.locator('a[href="/band"]:visible').first().click();
   const bells = page.getByRole("article", { name: "Cloches" });
-  const frame = bells.locator('[data-photo-pending="register"]');
+  const frame = bells.locator('[data-photo-pending="register-4"]');
   await expect(frame).toBeVisible();
 
   // A real DataTransfer carrying a real JPEG, so the canvas shrink and the
@@ -249,7 +249,7 @@ test("a slot's controls are 44px targets and an empty frame is 3:2 on a phone", 
     .getByRole("button", { name: "Ajouter une photo — Cloches" });
   const pencil = page
     .getByRole("article", { name: "Trompettes" })
-    .getByRole("button", { name: "Changer la photo du registre Trompettes" });
+    .getByRole("button", { name: "Changer la photo — Trompettes" });
   await expect(add).toBeVisible();
   await expect(pencil).toBeVisible();
 

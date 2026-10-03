@@ -22,14 +22,13 @@ use App\Http\Controllers\Api\MemberAttendanceController;
 use App\Http\Controllers\Api\MemberController;
 use App\Http\Controllers\Api\MemberPasswordController;
 use App\Http\Controllers\Api\MemberRoleController;
-use App\Http\Controllers\Api\PhotoPlacementController;
+use App\Http\Controllers\Api\PhotoSlotController;
 use App\Http\Controllers\Api\RegistrationController;
 use App\Http\Controllers\Api\RegistrationOptionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SectionController;
-use App\Http\Controllers\Api\SitePhotoController;
 use App\Http\Middleware\RunPendingMigrations;
-use App\Models\SitePhoto;
+use App\Models\PhotoSlot;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
@@ -108,11 +107,10 @@ Route::get('/history', [HistoryEntryController::class, 'index']);
 Route::get('/band', [BandController::class, 'index']);
 Route::get('/committee', [CommitteeController::class, 'index']);
 
-// The site's two single photographs: the band's on /band, the concert's on
-// the home page. PUBLIC, like /band beside it, and outside the authenticated
-// group for the same reason: nothing here depends on
-// who asks. Registers carry their own photo on /band.
-Route::get('/site-photos', [SitePhotoController::class, 'index']);
+// Every photo slot that shows a photo, wherever it is on the site. PUBLIC,
+// like /band beside it, and outside the authenticated group for the same
+// reason: nothing here depends on who asks.
+Route::get('/photo-slots', [PhotoSlotController::class, 'index']);
 
 // One size of a library photo (#105). PUBLIC, because the public pages show
 // these photos to anybody. Nothing is listed here: the path names the SHA-256
@@ -342,17 +340,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->whereNumber('image')
             ->middleware('etag:image');
 
-        // Where the photos sit, one place per write, chosen on the page that
-        // shows it. No `etag:`: each write is one value, so there is no half
-        // of it to lose (see ConditionalWrite).
-        Route::put('/site-photos/{slot}', [PhotoPlacementController::class, 'site'])
-            ->whereIn('slot', SitePhoto::SLOTS);
-        Route::put('/sections/{section}/photo', [PhotoPlacementController::class, 'register']);
-
-        // A history entry's photo is part of the entry and a placement both,
-        // so it takes both permissions. The entry's own PUT leaves it alone.
-        Route::put('/history/{historyEntry}/photo', [PhotoPlacementController::class, 'history'])
-            ->middleware('permission:history.manage');
+        // One slot per write, chosen on the page that shows it. The slot name
+        // is the page's own and free within PhotoSlot::KEY. No `etag:`: each
+        // write is one value, so there is no half of it to lose (see
+        // ConditionalWrite).
+        Route::put('/photo-slots/{slot}', [PhotoSlotController::class, 'update'])
+            ->where('slot', PhotoSlot::KEY);
     });
 
     // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a

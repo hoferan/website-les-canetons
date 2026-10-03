@@ -103,7 +103,7 @@ test("each library card links to where the photo is shown, or says it is unused"
     "href",
     "/band",
   );
-  expect(within(card(2)).getByRole("link", { name: "Pupitre\u00a0: Trompettes" })).toHaveAttribute(
+  expect(within(card(2)).getByRole("link", { name: "Trompettes" })).toHaveAttribute(
     "href",
     "/band",
   );
@@ -127,10 +127,10 @@ test("on the German side every usage link carries the /de prefix", async () => {
     sizes: [{ width: 800, height: 600, bytes: 1000, url: `/api/v1/images/${"1".repeat(64)}.jpg` }],
     createdAt: "2026-09-30T00:00:00+00:00",
     usages: [
-      { kind: "band", id: null, label: null },
-      { kind: "concert", id: null, label: null },
-      { kind: "register", id: 5, label: "Trompettes" },
-      { kind: "history", id: 4, label: "Le flambeau passe" },
+      { slot: "band", label: "Photo du groupe", path: "/band" },
+      { slot: "concert", label: "Photo en concert", path: "/" },
+      { slot: "register-5", label: "Trompettes", path: "/band" },
+      { slot: "history-4", label: "Le flambeau passe", path: "/history" },
     ],
   };
   // The basename is what App.tsx gives the router under /de.
@@ -148,7 +148,7 @@ test("on the German side every usage link carries the /de prefix", async () => {
   expect(hrefs).toEqual(["/de/media/1", "/de/band", "/de", "/de/band", "/de/history"]);
 });
 
-test("the concert photo links to the home page", async () => {
+test("a usage is named by the label its page sent, links to its path, and falls back to the slot name", async () => {
   server.use(
     http.get("/api/v1/images", () =>
       HttpResponse.json({
@@ -169,7 +169,10 @@ test("the concert photo links to the home page", async () => {
               },
             ],
             createdAt: "2026-09-30T00:00:00+00:00",
-            usages: [{ kind: "concert", id: null, label: null }],
+            usages: [
+              { slot: "concert", label: "Photo en concert", path: "/" },
+              { slot: "3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c", label: null, path: null },
+            ],
           },
         ],
         meta: { total: 1, limit: 500, offset: 0 },
@@ -178,11 +181,13 @@ test("the concert photo links to the home page", async () => {
   );
   await renderMedia();
 
-  expect(
-    await within(await screen.findByTestId("library-card-7")).findByRole("link", {
-      name: "Photo en concert",
-    }),
-  ).toHaveAttribute("href", "/");
+  const seven = await screen.findByTestId("library-card-7");
+  expect(await within(seven).findByRole("link", { name: "Photo en concert" })).toHaveAttribute(
+    "href",
+    "/",
+  );
+  // Neither label nor path: the slot's own name, and no link to follow.
+  expect(within(seven).getByText("3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c").closest("a")).toBeNull();
 });
 
 test("the unused filter hides the photos that are shown somewhere", async () => {

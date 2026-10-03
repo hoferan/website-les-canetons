@@ -5,24 +5,14 @@ namespace App\Models;
 use Database\Factories\SectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- * @property int|null $image_id
- */
 class Section extends Model
 {
     /** @use HasFactory<SectionFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'sort_order', 'image_id'];
-
-    /** @return BelongsTo<Image, $this> */
-    public function image(): BelongsTo
-    {
-        return $this->belongsTo(Image::class);
-    }
+    protected $fillable = ['name', 'sort_order'];
 
     /** @return HasMany<Member, $this> */
     public function members(): HasMany
