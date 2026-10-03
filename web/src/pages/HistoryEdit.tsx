@@ -2,16 +2,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import {
-  getHistoryEntryIndexQueryKey,
-  historyEntryShow,
-  historyEntryUpdate,
-} from "../api/generated/endpoints";
+import { historyEntryShow, historyEntryUpdate } from "../api/generated/endpoints";
 import type { HistoryEntryResource, StoreHistoryEntryRequest } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
-import { HistoryForm } from "../history/HistoryForm";
+import { HistoryForm, type PhotoChange } from "../history/HistoryForm";
+import { invalidateHistory, saveHistoryPhoto } from "../history/saveHistoryPhoto";
 import { t } from "../i18n";
 import { type HistorySavedState } from "./History";
 
@@ -69,7 +66,7 @@ export function HistoryEdit() {
     };
   }, [entryId]);
 
-  async function submit(data: StoreHistoryEntryRequest) {
+  async function submit(data: StoreHistoryEntryRequest, photo: PhotoChange) {
     form.clear();
 
     if (opened?.etag == null) {
@@ -79,15 +76,24 @@ export function HistoryEdit() {
       return;
     }
 
+    let saved: HistoryEntryResource;
     try {
-      await update.mutateAsync({ data, etag: opened.etag });
-      await queryClient.invalidateQueries({ queryKey: getHistoryEntryIndexQueryKey() });
-      const state: HistorySavedState = { historySaved: true };
-      navigate("/history", { state });
+      const response = await update.mutateAsync({ data, etag: opened.etag });
+      // The mutator throws on every non-2xx, so this only narrows the type.
+      if (response.status !== 200) {
+        return;
+      }
+      saved = response.data;
     } catch (thrown) {
       // Open, so a 412 is read next to the values it is about.
       form.setFromThrown(thrown);
+      return;
     }
+    // After the entry, so an entry the server refuses keeps its photo too.
+    const photoSaved = await saveHistoryPhoto(saved, photo);
+    await invalidateHistory(queryClient);
+    const state: HistorySavedState = { historySaved: true, photoFailed: !photoSaved };
+    navigate("/history", { state });
   }
 
   return (
@@ -110,7 +116,7 @@ export function HistoryEdit() {
           busy={update.isPending}
           error={form.error}
           problemFor={form.messageFor}
-          onSubmit={(data) => void submit(data)}
+          onSubmit={(data, photo) => void submit(data, photo)}
           onCancel={() => navigate("/history")}
         />
       ) : null}

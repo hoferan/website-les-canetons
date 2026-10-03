@@ -203,7 +203,7 @@ group permissions; which role granted one is not a question the API answers.
 
 `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
 `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
-`messages.manage`, `history.manage`.
+`messages.manage`, `history.manage`, `images.manage`.
 
 Answering an event deliberately needs **no** permission: anyone in a register
 answers for themselves.
@@ -301,8 +301,11 @@ Which writes, and where their tag comes from:
 | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
 | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
 | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+| `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+| `POST /images/{image}/file` | `GET /images/{image}` |
+| `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
 
-A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
 no read in between. A `DELETE` returns none: there is nothing left to tag.
 
 **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -319,6 +322,10 @@ dress code does not refuse an options edit and adding an option does.
 `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
 writer of their own answer, the whole answer is one value so there is no half of
 it to lose, and a first answer has no tag to have. Answering stays one request.
+
+**Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+in one slot. Placements in different slots never touch, and in the same slot
+the last pick is the one shown.
 
 Tags are strong validators. `If-Match: *` asserts only that the thing still
 exists. There is no conditional `GET` — `If-None-Match` is not implemented and

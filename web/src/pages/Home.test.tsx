@@ -1,5 +1,5 @@
-import { screen, within } from "@testing-library/react";
-import { HttpResponse, http } from "msw";
+import { screen, waitFor, within } from "@testing-library/react";
+import { HttpResponse, delay, http } from "msw";
 import { expect, test } from "vitest";
 
 import { server } from "../mocks/node";
@@ -112,5 +112,67 @@ test("points every destination card at a public page, in German", async () => {
 test("shows the concert photo placeholder in German", async () => {
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 
-  expect(screen.getByText(/Neues Foto der Canetons im Konzert folgt/)).toBeInTheDocument();
+  expect(await screen.findByText(/Foto folgt/)).toBeInTheDocument();
+});
+
+test("keeps the concert placeholder while no concert photo is placed", async () => {
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await waitFor(() =>
+    expect(container.querySelector('[data-photo-pending="concert"]')).not.toBeNull(),
+  );
+});
+
+test("reserves the concert frame, without a caption, while the photo slots are still loading", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => delay("infinite")));
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await screen.findByRole("heading", { level: 1 });
+  expect(container.querySelector('[data-photo-pending="concert"]')).toBeNull();
+  const reserved = container.querySelector("[data-photo-reserved]");
+  expect(reserved).not.toBeNull();
+  expect(reserved).toHaveAttribute("aria-hidden", "true");
+  expect(reserved).toBeEmptyDOMElement();
+});
+
+test("keeps the concert placeholder when the photo slots cannot be read", async () => {
+  server.use(http.get("/api/v1/photo-slots", () => HttpResponse.error()));
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  await waitFor(() =>
+    expect(container.querySelector('[data-photo-pending="concert"]')).not.toBeNull(),
+  );
+});
+
+test("shows the placed concert photo and drops its placeholder", async () => {
+  server.use(
+    http.get("/api/v1/photo-slots", () =>
+      HttpResponse.json({
+        meta: { total: 1, limit: 500, offset: 0 },
+        data: [
+          {
+            slot: "concert",
+            url: "/api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg",
+            width: 1600,
+            height: 1067,
+            srcset:
+              "/api/v1/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg 480w, /api/v1/images/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.jpg 960w, /api/v1/images/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc.jpg 1600w",
+          },
+        ],
+      }),
+    ),
+  );
+  const { container } = await renderWithSession(<Home />, { route: "/" });
+
+  // A page slot carries no alt text, so the photo is named after the band.
+  const photo = await screen.findByRole("img", { name: "Les Canetons de Fribourg" });
+  // Every size is offered, and the browser is told the photo spans the text column.
+  expect(photo).toHaveAttribute(
+    "srcset",
+    expect.stringContaining(
+      "/api/v1/images/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg 480w",
+    ),
+  );
+  expect(photo).toHaveAttribute("sizes", "(min-width: 704px) 672px, calc(100vw - 32px)");
+  expect(container.querySelector('[data-photo-pending="concert"]')).toBeNull();
 });

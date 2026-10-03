@@ -2,6 +2,8 @@ import { HttpResponse, http } from "msw";
 
 import type { ApiErrorField } from "../api/http";
 import { getLesCanetonsAPIMock } from "../api/generated/endpoints.msw";
+import { REFUSED } from "../images/photoName";
+import { plannedSizes } from "../images/shrink";
 import type {
   AttendanceResource,
   AuthMe200,
@@ -12,6 +14,8 @@ import type {
   EventResource,
   HandleContactMessageRequest,
   HistoryEntryResource,
+  ImageResource,
+  ImageResourceUsagesItem,
   InboxItemResource,
   InboxSummary200Counts,
   MemberResource,
@@ -82,6 +86,7 @@ const USERS = {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "images.manage",
       "events.view",
       "account.manage",
     ],
@@ -126,6 +131,7 @@ const USERS = {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "images.manage",
       "events.view",
       "account.manage",
       "attendance.respond",
@@ -170,6 +176,21 @@ const USERS = {
     committeeFunctionName: null,
     roleKeys: ["member", "musician"],
     permissions: ["events.view", "account.manage", "attendance.respond"],
+  },
+  // Edits the roster and the history and holds nothing else: no images.manage,
+  // so the history form shows the current photo and sends no photo key. A
+  // session fixture only, like demo.mustchange; no roster row stands behind it.
+  "demo.roster": {
+    id: 7,
+    username: "demo.roster",
+    firstName: "Rosa",
+    lastName: "Roster",
+    isPlayer: false,
+    mustChangePassword: false,
+    sectionName: null,
+    committeeFunctionName: null,
+    roleKeys: ["member"],
+    permissions: ["members.manage", "history.manage", "events.view", "account.manage"],
   },
   // A young member whose parent uses the login on their behalf. Plays and
   // holds no organising permission.
@@ -358,6 +379,7 @@ const ROLES: RoleResource[] = [
       "messages.view",
       "messages.manage",
       "history.manage",
+      "images.manage",
     ],
   },
   { id: 2, key: "committee", permissions: ["registrations.view", "messages.view"] },
@@ -376,6 +398,171 @@ const ACTOR_PASSWORD = "demo";
  * what the UI formats and what an administrator reads down the phone.
  */
 const GENERATED_PASSWORD = "kanu-7rex-mp34";
+
+/* ------------------------------------------------------------------------ *
+ * The image library (#105)
+ *
+ * Declared ahead of the history because a seeded entry carries a photo, and
+ * that fixture is built when this module loads.
+ * ------------------------------------------------------------------------ */
+
+/** App\Models\Image's cap, from api.images.capacity. */
+const IMAGE_CAPACITY = 100;
+
+/** How many sizes one upload carries, from api.images.max_parts. */
+const IMAGE_MAX_PARTS = 3;
+
+/**
+ * One stored size of a photo, as `image_files` holds it. `data` is there for
+ * a size that was uploaded: the file route serves it, so a rotation in the
+ * browser has a real JPEG to decode. A seeded size has none and is served as
+ * a placeholder.
+ */
+type MockSize = {
+  width: number;
+  height: number;
+  bytes: number;
+  /** The digest of the size's bytes, which names its URL, as `image_files.sha256` does. */
+  sha256: string;
+  data?: Uint8Array<ArrayBuffer>;
+};
+
+/**
+ * A library photo: `width`, `height` and `sha256` are its largest size's,
+ * `bytes` the total of every size, and `sizes` runs smallest first, as
+ * ImageResource lists them.
+ */
+type MockImage = {
+  id: number;
+  name: string;
+  sha256: string;
+  width: number;
+  height: number;
+  bytes: number;
+  sizes: MockSize[];
+  createdAt: string;
+};
+
+/**
+ * The sizes the browser would have sent for a photo of this size, smallest
+ * first, sharing `bytes` between them. A seeded photo needs them because every
+ * URL the pages draw names one. A seeded size has no bytes to hash, so its
+ * digest is made up from the photo's id and the width: distinct per size, as a
+ * real digest would be.
+ */
+function seededSizes(id: number, width: number, height: number, bytes: number): MockSize[] {
+  const planned = plannedSizes(width, height);
+  const share = Math.floor(bytes / planned.length);
+  return planned
+    .map((size, index) => ({
+      ...size,
+      bytes: index === 0 ? bytes - share * (planned.length - 1) : share,
+      sha256: `${String(size.width).padStart(8, "0")}${String(id).padStart(56, "0")}`,
+    }))
+    .reverse();
+}
+
+/**
+ * One photo slot, as a photo_slots row holds it: the image, and the label and
+ * path the page sent with the placement. An empty slot has no entry.
+ */
+type PhotoSlot = { imageId: number; label: string | null; path: string | null };
+
+/**
+ * Two images, with fixed digests: the file handler below answers a placeholder
+ * for any name it knows, so nothing needs to exist on disk. Image 1 is the band
+ * photo, image 2 the Trompettes photo and a history entry's, so an image with
+ * several usages renders in the library too.
+ */
+function initialImages(): MockImage[] {
+  return [
+    {
+      id: 1,
+      name: "Le groupe au Carnaval 2026",
+      sha256: "1".repeat(64),
+      width: 1600,
+      height: 1067,
+      bytes: 412_000,
+      sizes: seededSizes(1, 1600, 1067, 412_000),
+      createdAt: "2026-09-26T00:00:00+00:00",
+    },
+    {
+      id: 2,
+      name: "Trompettes en répétition",
+      sha256: "2".repeat(64),
+      width: 1280,
+      height: 960,
+      bytes: 318_000,
+      sizes: seededSizes(2, 1280, 960, 318_000),
+      createdAt: "2026-09-27T00:00:00+00:00",
+    },
+  ];
+}
+
+/** Keyed by slot name. Every other slot is empty: the concert, the godparents, every other register. */
+function initialPhotoSlots(): Record<string, PhotoSlot> {
+  return {
+    band: { imageId: 1, label: "Photo du groupe", path: "/band" },
+    "register-5": { imageId: 2, label: "Trompettes", path: "/band" },
+    "history-4": { imageId: 2, label: "Histoire\u00a0: Le flambeau passe", path: "/history" },
+  };
+}
+
+let images: MockImage[] = initialImages();
+let nextImageId = 3;
+let photoSlots = initialPhotoSlots();
+
+/** ImageResource::url(): one size, named by the digest of its bytes. */
+const sizeUrl = (size: MockSize) => `/api/v1/images/${size.sha256}.jpg`;
+
+/** ImageResource::largestUrl(): the photo's own size, which is its largest. */
+const imageUrl = (image: MockImage) => {
+  const largest = image.sizes.reduce((a, b) => (b.width > a.width ? b : a));
+  return sizeUrl(largest);
+};
+
+/** ImageResource::srcset(): every size, smallest first. */
+const srcsetOf = (image: MockImage) =>
+  image.sizes.map((size) => `${sizeUrl(size)} ${size.width}w`).join(", ");
+
+/** The photo a placement shows, or null when the slot is empty. Only a history entry passes alt text. */
+function photoOf(imageId: number | null) {
+  const image = images.find((candidate) => candidate.id === imageId);
+  return image
+    ? { url: imageUrl(image), width: image.width, height: image.height, srcset: srcsetOf(image) }
+    : null;
+}
+
+/**
+ * Test seam: add a photo that nothing shows, and return its id.
+ *
+ * Both seeded photos are in use, and an upload cannot run in jsdom, so this is
+ * how a test gets a photo the library can delete. Each one is newer than the
+ * last, so the newest-first order is predictable.
+ */
+export function addUnusedMockImage(name = `Photo inutilisée ${nextImageId}`): number {
+  const id = nextImageId++;
+  images = [
+    ...images,
+    {
+      id,
+      name,
+      sha256: id.toString(16).padStart(64, "a"),
+      width: 1200,
+      height: 800,
+      bytes: 250_000,
+      sizes: seededSizes(id, 1200, 800, 250_000),
+      createdAt: new Date(Date.UTC(2026, 8, 27 + id)).toISOString().replace(".000Z", "+00:00"),
+    },
+  ];
+  return id;
+}
+
+function resetImages(): void {
+  images = initialImages();
+  nextImageId = 3;
+  photoSlots = initialPhotoSlots();
+}
 
 /**
  * The seeded roster, mirroring DevSeeder, in ITS insertion order rather than
@@ -590,6 +777,15 @@ function refuseWithout(permission: string) {
 }
 
 const refuseWithoutMembersManage = () => refuseWithout("members.manage");
+
+/** `exists:images,id`, which the real error map leaves on the generic reason. */
+function refuseUnknownImage(imageId: number | null | undefined) {
+  return imageId != null && !images.some((image) => image.id === imageId)
+    ? problem(400, "validation_failed", "Invalid form submission", [
+        { field: "imageId", reason: "invalid_format" },
+      ])
+    : null;
+}
 
 /** Route-model binding's own answer for an id nothing matches. */
 const notFound = () => problem(404, "not_found", "Not found");
@@ -1741,6 +1937,8 @@ function mayReadMessages(): boolean {
 /** Test seam: every mock store is module state, so every test must reset them all. */
 export function resetMockState(): void {
   setCurrentUser(null);
+  // Before the roster and history: their fixtures read the images.
+  resetImages();
   resetRoster();
   // Dropping this line fails tests only when the WHOLE FILE runs, which reads
   // as flakiness and is not — the roster store proved it first.
@@ -1755,6 +1953,227 @@ export function resetMockState(): void {
  * ContactRequest is a compile error here rather than a mock silently rejecting
  * a field the API no longer has. */
 const REQUIRED: (keyof ContactRequest)[] = ["lastName", "firstName", "email", "subject", "message"];
+
+/**
+ * An image as ImageResource renders it, with every place it is shown, in the
+ * order Image::usagesOf() lists them: the band-page slots, registers, history
+ * entries.
+ */
+function imageResource(image: MockImage): ImageResource {
+  const usages: ImageResourceUsagesItem[] = [];
+
+  for (const slot of Object.keys(photoSlots).sort()) {
+    const placed = photoSlots[slot];
+    if (placed?.imageId === image.id) {
+      usages.push({ slot, label: placed.label, path: placed.path });
+    }
+  }
+
+  return {
+    id: image.id,
+    name: image.name,
+    url: imageUrl(image),
+    width: image.width,
+    height: image.height,
+    srcset: srcsetOf(image),
+    bytes: image.bytes,
+    sizes: image.sizes.map((size) => ({
+      width: size.width,
+      height: size.height,
+      bytes: size.bytes,
+      url: sizeUrl(size),
+    })),
+    createdAt: image.createdAt,
+    usages,
+  };
+}
+
+/**
+ * PlacePhotoRequest: `imageId` must be sent, null empties the place, and a
+ * number must name a library image. Answers the body to store, or the refusal.
+ */
+async function placedImageId(request: Request): Promise<{ imageId: number | null } | Response> {
+  const body = (await request.json()) as { imageId?: unknown };
+  if (!("imageId" in body)) {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "imageId", reason: "required" },
+    ]);
+  }
+  const imageId = body.imageId ?? null;
+  if (imageId !== null && typeof imageId !== "number") {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "imageId", reason: "invalid_format" },
+    ]);
+  }
+  return refuseUnknownImage(imageId) ?? { imageId };
+}
+
+/**
+ * The `files[]` parts of a multipart body, in the order sent, and its text
+ * fields by name.
+ *
+ * Read by hand rather than through `request.formData()`: under Vitest the
+ * request is built from jsdom's FormData and parsed by Node's, and the two
+ * realms' `File` classes disagree, so the parser asserts and the handler 500s.
+ * Reading the body as latin-1 keeps one character per byte, so the indexes found
+ * in the text are indexes into the bytes.
+ */
+async function multipartBody(
+  request: Request,
+): Promise<{ files: Uint8Array<ArrayBuffer>[]; fields: Map<string, string> }> {
+  const files: Uint8Array<ArrayBuffer>[] = [];
+  const fields = new Map<string, string>();
+  const boundary = /boundary=(?:"([^"]+)"|([^;]+))/.exec(request.headers.get("Content-Type") ?? "");
+  const delimiter = boundary ? `--${boundary[1] ?? boundary[2]}` : null;
+  if (delimiter === null) {
+    return { files, fields };
+  }
+
+  const raw = new Uint8Array(await request.arrayBuffer());
+  const text = Array.from(raw, (byte) => String.fromCharCode(byte)).join("");
+
+  let offset = 0;
+  for (const part of text.split(delimiter)) {
+    const partStart = offset;
+    offset += part.length + delimiter.length;
+    const headerEnd = part.indexOf("\r\n\r\n");
+    const name = headerEnd === -1 ? null : /name="([^"]*)"/.exec(part.slice(0, headerEnd))?.[1];
+    if (name == null) {
+      continue;
+    }
+    const start = partStart + headerEnd + 4;
+    // The CRLF before the next delimiter belongs to the delimiter, not the part.
+    const bytes = raw.slice(start, partStart + part.length - 2);
+    if (name === "files[]") {
+      files.push(bytes);
+    } else {
+      fields.set(name, new TextDecoder().decode(bytes));
+    }
+  }
+  return { files, fields };
+}
+
+/**
+ * A photo's name as the API stores it: trimmed, as Laravel's TrimStrings
+ * does, and refused when blank, longer than 120 characters, or carrying a
+ * control or bidirectional formatting character.
+ */
+function photoNameOrReason(value: unknown): { name: string } | { reason: string } {
+  const name = typeof value === "string" ? value.trim() : "";
+  if (name === "") {
+    return { reason: "required" };
+  }
+  if (Array.from(name).length > 120) {
+    return { reason: "too_long" };
+  }
+  // App\Support\PhotoName's not_regex, which the API reports as invalid_format.
+  if (new RegExp(REFUSED.source, "u").test(name)) {
+    return { reason: "invalid_format" };
+  }
+  return { name };
+}
+
+const invalidField = (field: string, reason: string) =>
+  problem(400, "validation_failed", "Invalid form submission", [{ field, reason }]);
+
+/**
+ * ReceivesImageSizes, which an upload and a replacement share: the count
+ * before any part is read, then each part, then the set. The sizes come back
+ * largest first, each with its bytes.
+ */
+async function checkedSizes(
+  parts: Uint8Array<ArrayBuffer>[],
+): Promise<(MockSize & { data: Uint8Array<ArrayBuffer> })[] | Response> {
+  if (parts.length > IMAGE_MAX_PARTS) {
+    return invalidField("files", "image_set_too_many");
+  }
+  const sizes: (MockSize & { data: Uint8Array<ArrayBuffer> })[] = [];
+  for (const [index, data] of parts.entries()) {
+    const size = jpegSize(data);
+    if (!size) {
+      return invalidField(`files.${index}`, "image_not_jpeg");
+    }
+    sizes.push({ ...size, bytes: data.length, sha256: await sha256Hex(data), data });
+  }
+  const problemWithSet = setProblem(sizes);
+  if (problemWithSet) {
+    return invalidField("files", problemWithSet);
+  }
+  return sizes.sort((a, b) => b.width - a.width);
+}
+
+/** App\Support\ImageSet::check(): distinct widths, and every size the shape of the largest. */
+function setProblem(sizes: { width: number; height: number }[]): string | null {
+  const widths = sizes.map((size) => size.width);
+  if (new Set(widths).size !== widths.length) {
+    return "image_set_widths_repeated";
+  }
+  const largest = [...sizes].sort((a, b) => b.width - a.width)[0];
+  if (!largest) {
+    return null;
+  }
+  const landscape = largest.width >= largest.height;
+  const off = (size: { width: number; height: number }) =>
+    landscape
+      ? Math.abs(size.height - (size.width * largest.height) / largest.width)
+      : Math.abs(size.width - (size.height * largest.width) / largest.height);
+  return sizes.some((size) => off(size) > 1) ? "image_set_aspect_mismatch" : null;
+}
+
+/**
+ * The pixel size a JPEG declares, read from its first start-of-frame marker, or
+ * null when the bytes are not a JPEG. The mock's whole share of JpegInspector:
+ * the size limits and the metadata checks are the server's, and a screen's own
+ * shrinking step is what keeps a real upload inside them.
+ */
+function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+    return null;
+  }
+  let at = 2;
+  while (at + 8 < bytes.length) {
+    if (bytes[at] !== 0xff) {
+      at++;
+      continue;
+    }
+    const marker = bytes[at + 1] ?? 0;
+    // SOF0-SOF15, except DHT (c4), JPG (c8) and DAC (cc), which are not frames.
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return {
+        height: ((bytes[at + 5] ?? 0) << 8) | (bytes[at + 6] ?? 0),
+        width: ((bytes[at + 7] ?? 0) << 8) | (bytes[at + 8] ?? 0),
+      };
+    }
+    at += 2 + (((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0));
+  }
+  return null;
+}
+
+async function sha256Hex(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * What GET /api/v1/images/{sha256}.jpg answers here: a flat tinted
+ * rectangle of that size's own dimensions, labelled with the image id and width.
+ *
+ * Nothing under web/public/ stands in for a photograph, because that directory
+ * ships in the deployed artifact. The tint differs per image so a screenshot
+ * can tell two apart, and the size is real so that every layout rule (aspect
+ * ratio, crop, `width`/`height` attributes) meets the proportions the library
+ * holds.
+ */
+function placeholderSvg(image: MockImage, size: MockSize): string {
+  const hue = (image.id * 67) % 360;
+  const font = Math.max(12, Math.round(Math.min(size.width, size.height) / 8));
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}" viewBox="0 0 ${size.width} ${size.height}">`,
+    `<rect width="100%" height="100%" fill="hsl(${hue} 45% 62%)"/>`,
+    `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="${font}" fill="#fff">Photo ${image.id} · ${size.width}w</text>`,
+    `</svg>`,
+  ].join("");
+}
 
 /** One fixed stamp, so a test can send a wrong one and watch the guard refuse. */
 const MOCK_FORM_TOKEN = "mock-form-token";
@@ -1814,6 +2233,19 @@ const overrides = [
           .filter((member) => member.publicVisible && member.instructorOfSectionId === section.id)
           .map(publicly),
       })),
+      request,
+    ),
+  ),
+
+  // PUBLIC, and a list like every other: each placed slot by name.
+  http.get("/api/v1/photo-slots", ({ request }) =>
+    collection(
+      Object.keys(photoSlots)
+        .sort()
+        .flatMap((slot) => {
+          const photo = photoOf(photoSlots[slot]?.imageId ?? null);
+          return photo ? [{ slot, ...photo }] : [];
+        }),
       request,
     ),
   ),
@@ -2527,6 +2959,244 @@ const overrides = [
   }),
 
   /* ---------------------------------------------------------------------- *
+   * The image library (#105)
+   * ---------------------------------------------------------------------- */
+
+  // Newest first, like ImageController::index(). Registered before the
+  // single-segment route below so `summary` is not read as an id.
+  http.get("/api/v1/images", ({ request }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    return collection(
+      [...images]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id)
+        .map(imageResource),
+      request,
+    );
+  }),
+
+  http.get("/api/v1/images/summary", () => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    return HttpResponse.json({
+      count: images.length,
+      capacity: IMAGE_CAPACITY,
+      bytesTotal: images.reduce((total, image) => total + image.bytes, 0),
+    });
+  }),
+
+  // One size of a photo, public, as ImageFileController serves it: the path
+  // is the digest of the size's own bytes. Any other segment is left to the
+  // `/images/{id}` route below, which answers 404 for it.
+  http.get("/api/v1/images/:file", ({ params }) => {
+    const file = /^([0-9a-f]{64})\.jpg$/.exec(String(params.file));
+    if (!file) {
+      return undefined;
+    }
+    for (const image of images) {
+      const size = image.sizes.find((candidate) => candidate.sha256 === file[1]);
+      if (!size) {
+        continue;
+      }
+      const headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        ETag: `"${size.sha256}"`,
+      };
+      return size.data
+        ? new HttpResponse(size.data, { headers: { ...headers, "Content-Type": "image/jpeg" } })
+        : new HttpResponse(placeholderSvg(image, size), {
+            headers: { ...headers, "Content-Type": "image/svg+xml" },
+          });
+    }
+    return notFound();
+  }),
+
+  // `/images/{id}`, behind images.manage. `summary` is registered above.
+  http.get("/api/v1/images/:segment", ({ params }) => {
+    const segment = String(params.segment);
+
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const image = /^\d+$/.test(segment)
+      ? images.find((candidate) => candidate.id === Number(segment))
+      : undefined;
+    if (!image) {
+      return notFound();
+    }
+    const resource = imageResource(image);
+    return HttpResponse.json(resource, { headers: { ETag: mockEntityTag(resource) } });
+  }),
+
+  http.post("/api/v1/images", async ({ request }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+
+    const { files: parts, fields } = await multipartBody(request);
+    if (parts.length === 0) {
+      return invalidField("files", "required");
+    }
+    const named = photoNameOrReason(fields.get("name"));
+    if ("reason" in named) {
+      return invalidField("name", named.reason);
+    }
+    const sizes = await checkedSizes(parts);
+    if (sizes instanceof Response) {
+      return sizes;
+    }
+    const largest = sizes[0] as MockSize & { data: Uint8Array<ArrayBuffer> };
+
+    // The duplicate answers before the cap does, as the controller orders it:
+    // a photo the library already holds is returned even when it is full.
+    const sha256 = await sha256Hex(largest.data);
+    const existing = images.find((candidate) => candidate.sha256 === sha256);
+    if (existing) {
+      return HttpResponse.json(imageResource(existing));
+    }
+    if (images.length >= IMAGE_CAPACITY) {
+      return problem(409, "image_library_full", "The image library is full");
+    }
+
+    const created: MockImage = {
+      id: nextImageId++,
+      name: named.name,
+      sha256,
+      width: largest.width,
+      height: largest.height,
+      bytes: sizes.reduce((total, size) => total + size.bytes, 0),
+      sizes: [...sizes].reverse(),
+      createdAt: new Date().toISOString(),
+    };
+    images = [...images, created];
+    return HttpResponse.json(imageResource(created), { status: 201 });
+  }),
+
+  // ImageController::update(): a new name, trimmed, under If-Match.
+  http.patch("/api/v1/images/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const image = images.find((candidate) => candidate.id === Number(params.id));
+    if (!image) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(imageResource(image)));
+    if (stale) {
+      return stale;
+    }
+    const body = (await request.json().catch(() => ({}))) as { name?: unknown };
+    const named = photoNameOrReason(body.name);
+    if ("reason" in named) {
+      return invalidField("name", named.reason);
+    }
+    const renamed = { ...image, name: named.name };
+    images = images.map((candidate) => (candidate.id === image.id ? renamed : candidate));
+    const resource = imageResource(renamed);
+    return HttpResponse.json(resource, { headers: { ETag: mockEntityTag(resource) } });
+  }),
+
+  // ImageController::replace(): new sizes for the same id, checked as an
+  // upload is. Its own photo again changes nothing; another image's photo is
+  // a 409.
+  http.post("/api/v1/images/:id/file", async ({ request, params }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const image = images.find((candidate) => candidate.id === Number(params.id));
+    if (!image) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(imageResource(image)));
+    if (stale) {
+      return stale;
+    }
+    const { files: parts } = await multipartBody(request);
+    if (parts.length === 0) {
+      return invalidField("files", "required");
+    }
+    const sizes = await checkedSizes(parts);
+    if (sizes instanceof Response) {
+      return sizes;
+    }
+    const largest = sizes[0] as MockSize & { data: Uint8Array<ArrayBuffer> };
+    const sha256 = await sha256Hex(largest.data);
+
+    let current = image;
+    if (sha256 !== image.sha256) {
+      if (images.some((candidate) => candidate.sha256 === sha256)) {
+        return conflict("image_already_in_library", "Another image already holds this photo");
+      }
+      current = {
+        ...image,
+        sha256,
+        width: largest.width,
+        height: largest.height,
+        bytes: sizes.reduce((total, size) => total + size.bytes, 0),
+        sizes: [...sizes].reverse(),
+      };
+      images = images.map((candidate) => (candidate.id === image.id ? current : candidate));
+    }
+    const resource = imageResource(current);
+    return HttpResponse.json(resource, { headers: { ETag: mockEntityTag(resource) } });
+  }),
+
+  http.delete("/api/v1/images/:id", ({ request, params }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const image = images.find((candidate) => candidate.id === Number(params.id));
+    if (!image) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(imageResource(image)));
+    if (stale) {
+      return stale;
+    }
+    if (imageResource(image).usages.length > 0) {
+      return conflict("image_in_use", "This image is still shown on the site");
+    }
+    images = images.filter((candidate) => candidate.id !== image.id);
+    return HttpResponse.json({ ok: true });
+  }),
+
+  // One slot per write, a single value and so with no If-Match, as
+  // PhotoSlotController does it. The name is free within PhotoSlot::KEY.
+  http.put("/api/v1/photo-slots/:slot", async ({ request, params }) => {
+    const refusal = refuseWithout("images.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const slot = String(params.slot);
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(slot)) {
+      return notFound();
+    }
+    const body = (await request.clone().json()) as { label?: string | null; path?: string | null };
+    const placed = await placedImageId(request);
+    if (placed instanceof Response) {
+      return placed;
+    }
+    if (placed.imageId === null) {
+      photoSlots = Object.fromEntries(Object.entries(photoSlots).filter(([name]) => name !== slot));
+    } else {
+      photoSlots = {
+        ...photoSlots,
+        [slot]: { imageId: placed.imageId, label: body.label ?? null, path: body.path ?? null },
+      };
+    }
+    return HttpResponse.json({ photo: photoOf(placed.imageId) });
+  }),
+
+  /* ---------------------------------------------------------------------- *
    * History
    * ---------------------------------------------------------------------- */
 
@@ -2554,7 +3224,8 @@ const overrides = [
     if (refusal) {
       return refusal;
     }
-    const body = normaliseHistory((await request.json()) as StoreHistoryEntryRequest);
+    const raw = (await request.json()) as StoreHistoryEntryRequest;
+    const body = normaliseHistory(raw);
     if (!hasHistoryText(body)) {
       return problem(422, "history_entry_empty", "A history entry needs a title or a text");
     }
@@ -2582,7 +3253,8 @@ const overrides = [
     if (stale) {
       return stale;
     }
-    const body = normaliseHistory((await request.json()) as StoreHistoryEntryRequest);
+    const raw = (await request.json()) as StoreHistoryEntryRequest;
+    const body = normaliseHistory(raw);
     if (!hasHistoryText(body)) {
       return problem(422, "history_entry_empty", "A history entry needs a title or a text");
     }
@@ -2611,6 +3283,10 @@ const overrides = [
       return stale;
     }
     historyEntries = historyEntries.filter((candidate) => candidate.id !== existing.id);
+    // Its photo slot goes with it, as HistoryEntryController::destroy() does.
+    photoSlots = Object.fromEntries(
+      Object.entries(photoSlots).filter(([name]) => name !== `history-${existing.id}`),
+    );
     return HttpResponse.json({ ok: true });
   }),
   /* ---------------------------------------------------------------------- *

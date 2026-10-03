@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHistoryEntryRequest;
 use App\Http\Resources\HistoryEntryResource;
 use App\Models\HistoryEntry;
+use App\Models\PhotoSlot;
 use App\Support\Audit;
 use App\Support\Emits;
 use App\Support\HistoryPrecision;
@@ -17,6 +18,7 @@ use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 #[Group('History', 'The band\'s history, one dated entry at a time. Reading it is public; changing it needs `history.manage`.', weight: 60)]
 class HistoryEntryController extends Controller
@@ -75,7 +77,12 @@ class HistoryEntryController extends Controller
     {
         $id = $historyEntry->id;
         $label = $this->label($historyEntry);
-        $historyEntry->delete();
+        // The entry's photo slot goes with it, or its image would stay in use
+        // by a slot no page shows any more.
+        DB::transaction(function () use ($historyEntry): void {
+            PhotoSlot::query()->whereKey(PhotoSlot::forHistory($historyEntry->id))->delete();
+            $historyEntry->delete();
+        });
         Audit::record($request->user(), 'history.deleted', 'history_entry', $id, $label);
 
         return response()->json(['ok' => true]);

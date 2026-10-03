@@ -3,6 +3,7 @@
 namespace App\Support\Scramble;
 
 use App\Exceptions\ApiError;
+use App\Http\Middleware\ConditionalWrite;
 use App\Http\Middleware\IdempotentWrite;
 use App\Http\Middleware\RunPendingMigrations;
 use App\Support\Emits;
@@ -108,8 +109,12 @@ class DocumentsFailureModes extends OperationExtension
         503 => 'The service is temporarily refusing to serve. Retry shortly.',
     ];
 
-    /** The methods App\Http\Middleware\ConditionalWrite makes conditional. */
-    private const CONDITIONED = ['PUT', 'PATCH', 'DELETE'];
+    /**
+     * The methods ConditionalWrite makes conditional, read from it, so a
+     * conditioned POST (publishing an event, replacing a photo) is documented
+     * as needing `If-Match` like any PATCH.
+     */
+    private const CONDITIONED = ConditionalWrite::CONDITIONED;
 
     public function handle(Operation $operation, RouteInfo $routeInfo): void
     {
@@ -403,8 +408,17 @@ class DocumentsFailureModes extends OperationExtension
         $isBaseline = isset(self::BASELINE[$status]) && $codes === [self::BASELINE[$status]];
 
         if ($isBaseline) {
-            if ($existing !== null) {
+            if ($existing instanceof Reference) {
                 return;
+            }
+
+            // An inline response here is Scramble reading an ApiError::json()
+            // the action returns itself, such as ImageController::store()'s
+            // 503: the status is right, but it is published as
+            // application/json with no description. The shared component
+            // describes the same refusal correctly.
+            if ($existing !== null) {
+                $this->drop($operation, $status);
             }
 
             $this->reference($operation, $status);
@@ -413,6 +427,20 @@ class DocumentsFailureModes extends OperationExtension
         }
 
         $this->inline($operation, $status, $codes);
+    }
+
+    /** Removes this operation's response for a status, if it has one. */
+    private function drop(Operation $operation, int $status): void
+    {
+        $kept = [];
+
+        foreach ($operation->responses ?? [] as $response) {
+            if ($this->statusOf($response) !== $status) {
+                $kept[] = $response;
+            }
+        }
+
+        $operation->responses = $kept;
     }
 
     /** Points the operation at the shared component, registering it if new. */
@@ -439,15 +467,7 @@ class DocumentsFailureModes extends OperationExtension
      */
     private function inline(Operation $operation, int $status, array $codes): void
     {
-        $kept = [];
-
-        foreach ($operation->responses ?? [] as $response) {
-            if ($this->statusOf($response) !== $status) {
-                $kept[] = $response;
-            }
-        }
-
-        $operation->responses = $kept;
+        $this->drop($operation, $status);
         $operation->addResponse($this->response($status, $codes));
     }
 

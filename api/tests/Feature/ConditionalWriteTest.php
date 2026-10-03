@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\ConditionalWrite;
 use App\Models\Attendance;
 use App\Models\ContactMessage;
 use App\Models\Event;
 use App\Models\HistoryEntry;
+use App\Models\Image;
 use App\Models\Member;
 use App\Models\Registration;
 use App\Models\Role;
@@ -393,6 +395,9 @@ class ConditionalWriteTest extends TestCase
             'registration' => Registration::factory()->create(),
             'contact_message' => ContactMessage::factory()->create(),
             'history' => HistoryEntry::factory()->create(),
+            'image' => Image::query()->create([
+                'name' => 'Photo', 'sha256' => str_repeat('a', 64), 'width' => 8, 'height' => 8, 'bytes' => 100,
+            ]),
         ];
 
         foreach (EntityTag::facets() as $facet) {
@@ -446,7 +451,9 @@ class ConditionalWriteTest extends TestCase
 
                 $checked++;
 
-                $conditioned = in_array($verb, ['PUT', 'PATCH', 'DELETE'], true);
+                // The middleware's own list: POST is conditioned too, for
+                // publishing an event and replacing a photo.
+                $conditioned = in_array($verb, ConditionalWrite::CONDITIONED, true);
                 $headers = array_column(
                     array_filter($operation['parameters'] ?? [], fn ($p) => ($p['in'] ?? null) === 'header'),
                     'name',
@@ -483,8 +490,9 @@ class ConditionalWriteTest extends TestCase
             }
         }
 
-        // The floor. Twelve operations carry `etag:` today; a scan that stopped
-        // matching would otherwise report a clean document it never read.
+        // The floor, set below the real count so adding a route needs no edit
+        // here. A scan that stopped matching would otherwise report a clean
+        // document it never read.
         $this->assertGreaterThanOrEqual(12, $checked, 'Found almost no conditional routes; this test is reading the wrong thing.');
 
         $this->assertSame([], $wrong, "The document and the routes disagree:\n  - ".implode("\n  - ", $wrong));

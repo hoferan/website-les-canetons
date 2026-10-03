@@ -45,6 +45,13 @@ use Symfony\Component\HttpFoundation\Response;
  * somebody's behalf while that member answers, which the five-minute undo
  * window and the audit entry already cover.
  *
+ * PLACING A PHOTO IS EXEMPT FOR THE SAME REASON. PUT /photo-slots/{slot} sets
+ * one value, the image id in one slot, so there is no half of it to lose. Two
+ * editors placing photos at once either work on different slots, which never
+ * touch, or pick for the same one, where the second pick is what the page
+ * shows and both are in the audit log. A tag would buy a read before every
+ * pick and a 412 for an editor who lost a race nobody could see.
+ *
  * NO CONDITIONAL GET. `If-None-Match` is not implemented and no 304 is ever
  * returned: every route here also sends `Cache-Control: no-store`, so there is
  * no cache to serve one. The tag is an optimistic-concurrency token that
@@ -63,14 +70,18 @@ class ConditionalWrite
     /**
      * The methods that must prove they are working from current state.
      *
-     * POST is here for one route: publishing an event. Every other write
-     * listed above is a PUT, PATCH or DELETE, but publishing also changes a
-     * thing somebody read first. Two people editing a draft, and one
-     * publishing it on the strength of what they saw, is the same lost update
-     * this class exists to stop. A POST that CREATES something must not carry
-     * `etag:`, because there is no entity yet to have a tag for.
+     * POST is here for two routes: publishing an event, and replacing a
+     * library photo, which is a POST only because PHP parses multipart bodies
+     * on POST alone. Every other write listed above is a PUT, PATCH or
+     * DELETE, but both change a thing somebody read first. Two people editing
+     * a draft, and one publishing it on the strength of what they saw, is the
+     * same lost update this class exists to stop. A POST that CREATES
+     * something must not carry `etag:`, because there is no entity yet to
+     * have a tag for.
+     *
+     * Public, so the published document and its test read the same list.
      */
-    private const CONDITIONED = ['POST', 'PUT', 'PATCH', 'DELETE'];
+    public const CONDITIONED = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
     public function handle(Request $request, Closure $next, string $facet): Response
     {
@@ -122,7 +133,7 @@ class ConditionalWrite
 
         $current = EntityTag::of($facet, $request);
 
-        if ($current === null || ! $this->matches($header, $current)) {
+        if ($current === null || ! self::matches($header, $current)) {
             return ApiError::json(
                 412,
                 'if_match_failed',
@@ -142,8 +153,11 @@ class ConditionalWrite
      * NOTHING here, because strong comparison requires both sides to be
      * strong. We never emit one, so the only way a client sends a weak tag is
      * by having invented it.
+     *
+     * Public for ImageController::replace(), which checks the tag a second
+     * time once it holds the upload lock.
      */
-    private function matches(string $header, string $current): bool
+    public static function matches(string $header, string $current): bool
     {
         if (trim($header) === '*') {
             return true;

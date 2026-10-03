@@ -67,6 +67,15 @@ enum Permission: string
     case HistoryManage = 'history.manage';
 
     /**
+     * Uploading pictures to the shared library, deleting them, and placing them
+     * in any photo slot of the site.
+     *
+     * Granted to `direction` by migration. Not to `committee`, whose role is
+     * reading what the public sends, not choosing what the public site shows.
+     */
+    case ImagesManage = 'images.manage';
+
+    /**
      * Reading the planning: the event list and a single event.
      *
      * Held by the baseline `member` role, so every account has it. NOTHING

@@ -114,6 +114,14 @@ export const fr = {
     option_has_registrations:
       "Impossible de supprimer une option déjà réservée. Annulez d'abord les inscriptions concernées.",
     xlsx_unavailable: "L'export Excel n'est pas disponible sur ce serveur. Utilisez le format CSV.",
+    image_in_use:
+      "Cette photo est encore affichée sur le site. Retirez-la d'abord des pages qui l'utilisent.",
+    image_already_in_library:
+      "Cette photo est déjà dans la photothèque. Utilisez celle qui s'y trouve, ou supprimez-la d'abord.",
+    image_library_full:
+      "La photothèque est pleine. Supprimez une photo qui n'est plus utilisée, puis réessayez.",
+    image_storage_full:
+      "Le serveur n'a plus de place pour cette photo. Supprimez des photos inutilisées ou prévenez l'administrateur.",
     not_found: "Introuvable",
   },
   validation: {
@@ -140,6 +148,20 @@ export const fr = {
     // emits `field` and `reason` only — a token whose French interpolated
     // would print a literal {{max}} on a guest's screen.
     too_many_guests: "dépasse le nombre de personnes autorisé par inscription",
+    // The photo checks, on each size and on the set of sizes. Paramless for
+    // the same reason as too_many_guests, and rare on screen: the browser
+    // shrinks and re-encodes a photo before sending it, so only a failed or
+    // bypassed shrink reaches them.
+    image_not_jpeg: "doit être une image JPEG",
+    image_too_large: "est trop grand en pixels",
+    image_too_heavy: "est trop lourd",
+    image_has_metadata: "contient encore des métadonnées ou un commentaire",
+    image_unexpected_data: "contient des données qu'une photo ne contient pas",
+    image_trailing_data: "contient autre chose que l'image, ou est incomplet",
+    image_set_too_many: "contient trop de tailles pour une seule photo",
+    image_set_too_heavy: "est trop lourd dans son ensemble",
+    image_set_widths_repeated: "contient deux fois la même taille",
+    image_set_aspect_mismatch: "mélange des tailles qui n'ont pas les mêmes proportions",
   },
   fields: {
     date: "Date",
@@ -161,6 +183,13 @@ export const fr = {
     bodyDe: "Texte en allemand",
     important: "Étape importante",
     icon: "Icône",
+    files: "Fichier",
+    // The library's label for a photo, on /media.
+    name: "Nom",
+    // The photo a placement shows.
+    imageId: "Photo",
+    // The page a photo slot is on, sent with a placement.
+    path: "Page",
     // The registration window on an event. Setting the close date is what
     // turns public registration on at all.
     registrationOpensAt: "Ouverture des inscriptions",
@@ -336,6 +365,7 @@ export const fr = {
     events: "Événements",
     members: "Membres",
     inbox: "Boîte de réception",
+    media: "Médias",
     gallery: "Galerie",
     login: "Connexion",
     account: "Mon compte",
@@ -1201,6 +1231,150 @@ export const fr = {
   },
 
   /**
+   * The photo library's upload cards: one state per card and a reason when it
+   * failed. The reasons mirror the queue's failure reasons one to one.
+   */
+  photos: {
+    state: {
+      waiting: "En attente",
+      shrinking: "Préparation…",
+      uploading: "Envoi…",
+      done: "Ajoutée",
+      duplicate: "Déjà dans la bibliothèque",
+      failed: "Échec",
+    },
+    reason: {
+      unreadable: "Ce format n’est pas lisible par ce navigateur — exportez la photo en JPEG.",
+      unsupported: "Ce type de fichier n’est pas une photo acceptée.",
+      too_large: "La photo reste trop lourde, même réduite.",
+      blank:
+        "Ce navigateur a rendu la photo entièrement noire, elle n’a donc pas été envoyée. Réessayez avec un autre navigateur.",
+      image_library_full: "La bibliothèque est pleine.",
+      image_storage_full: "Le serveur n’a plus de place pour les photos.",
+      network: "L’envoi a échoué. Réessayez.",
+      rejected: "Le serveur a refusé cette photo.",
+    },
+    retry: "Réessayer",
+    retryAll: "Tout réessayer",
+    queueLabel: "Photos en cours d’ajout",
+    // The name a photo is uploaded under when its file name leaves nothing.
+    defaultName: "Photo",
+    // The picker a form opens to choose a photo from the library.
+    add: "Ajouter des photos",
+    choose: "Choisir",
+    remove: "Retirer",
+    close: "Fermer la bibliothèque",
+    pickerTitle: "Choisir une photo",
+    pickerDescription:
+      "Touchez une photo pour la choisir, ou ajoutez-en une depuis votre appareil.",
+    // One photo, chosen as soon as it has uploaded.
+    pickerAdd: "Ajouter depuis l’appareil",
+    pickerEmpty: "La bibliothèque est vide. Ajoutez une première photo.",
+    loadFailed: "La bibliothèque n’a pas pu être chargée.",
+    removeFromSlot: "Retirer la photo",
+
+    // The controls of a photo slot, for whoever holds images.manage: an empty
+    // slot is one big add button, and a placed photo carries a pencil. The
+    // pencil shows its word only from sm up. Both carry an accessible name
+    // that ends with the slot's label, since /band has many of them, and that
+    // name starts with the visible words.
+    addOne: "Ajouter une photo",
+    addFrom: "Depuis la médiathèque ou votre appareil",
+    addSlot: "Ajouter une photo — {{label}}",
+    change: "Changer",
+    changeSlot: "Changer la photo — {{label}}",
+    // A slot's label: the end of its controls' names, and what the library
+    // lists under "Affichée". A register's label is its own name.
+    slot: {
+      band: "Photo du groupe",
+      concert: "Photo en concert",
+      godparents: "Parrain et marraine",
+      history: "Histoire\u00a0: {{title}}",
+    },
+    slotSaveFailed: "La photo n’a pas pu être changée.",
+    // Read out once the slot shows its new state.
+    slotPlaced: "Photo placée.",
+    slotRemoved: "Photo retirée.",
+    // A file dragged onto a slot from the desktop.
+    dropHere: "Déposer pour ajouter",
+    dropOnlyOne: "Une seule photo à la fois.",
+    dropNotPhoto: "Seule une photo peut être déposée ici.",
+
+    // The library screen, /media. {{n}} rather than {{count}}: i18next reads
+    // a `count` option as a plural selector (see nav.pending).
+    heading: "Médias",
+    summary: "{{n}} / {{capacity}} photos · {{size}}",
+    consent: "Avant de publier la photo d’un enfant, assurez-vous que ses parents sont d’accord.",
+    // French counts zero as singular, so 0 and 1 both take the _one form.
+    placesLeft_one: "{{count}} place restante\u00a0: les photos au-delà ne seront pas ajoutées.",
+    placesLeft_other:
+      "{{count}} places restantes\u00a0: les photos au-delà ne seront pas ajoutées.",
+    leaveWarning:
+      "Des photos sont encore en cours d’envoi. Si vous quittez la page, celles qui restent ne seront pas ajoutées.",
+    libraryHeading: "Bibliothèque",
+    filterLabel: "Filtrer la bibliothèque",
+    filterAll: "Toutes",
+    filterUsed: "Utilisées",
+    filterUnused: "Non utilisées",
+    emptyFiltered: "Aucune photo ne correspond à cette recherche.",
+    // The search box and the order of the library, both on the client.
+    searchLabel: "Chercher une photo par son nom",
+    searchPlaceholder: "Chercher par nom",
+    sortLabel: "Ordre de la bibliothèque",
+    sort: {
+      newest: "Les plus récentes",
+      oldest: "Les plus anciennes",
+      name: "Par nom, de A à Z",
+      largest: "Les plus lourdes",
+    },
+    unused: "Non utilisée",
+    usedOn: "Affichée\u00a0:",
+    addedOn: "Ajoutée le {{date}}",
+    // The visible word beside the box; the accessible name says which photo.
+    select: "Sélectionner",
+    selectPhoto: "Sélectionner {{name}}",
+    deleteSelected: "Supprimer ({{n}})",
+    deleteTitle_one: "Supprimer cette photo\u00a0?",
+    deleteTitle_other: "Supprimer ces {{count}} photos\u00a0?",
+    deleteDescription: "Une photo supprimée ne peut pas être récupérée.",
+    deleteConfirm: "Supprimer",
+    deleted_one: "Photo supprimée.",
+    deleted_other: "{{count}} photos supprimées.",
+    deleteFailedHeading: "Ces photos n’ont pas été supprimées\u00a0:",
+    deleteFailed: "Photo «\u00a0{{name}}\u00a0»\u00a0: {{message}}",
+    deleteFailedFallback: "La suppression a échoué.",
+
+    // One photo of the library, /media/:id: its sizes, where it is shown, and
+    // what can be done with it. The name is the committee's own label.
+    detail: {
+      back: "← Retour aux médias",
+      loadFailed: "La photo n’a pas pu être chargée.",
+      sizesHeading: "Tailles enregistrées",
+      size: "{{width}} × {{height}} px · {{size}}",
+      usedOnHeading: "Utilisée sur",
+      actionsLabel: "Actions sur la photo",
+      rename: "Renommer",
+      nameLabel: "Nom",
+      renamed: "Nom enregistré.",
+      renameFailed: "Le nom n’a pas pu être enregistré.",
+      rotateLeft: "Tourner à gauche",
+      rotateRight: "Tourner à droite",
+      replace: "Remplacer",
+      download: "Télécharger",
+      rotating: "Rotation de la photo…",
+      preparing: "Préparation de la photo…",
+      sending: "Envoi de la photo…",
+      rotated: "Photo tournée.",
+      replaced: "Photo remplacée.",
+      unchanged: "La photo n’a pas changé\u00a0: {{message}}",
+      sendFailed: "l’envoi a échoué. Réessayez.",
+      deleteInUseTitle: "Cette photo est encore affichée",
+      deleteInUse: "Retirez-la d’abord de chacune de ces pages, puis supprimez-la.",
+      close: "Fermer",
+    },
+  },
+
+  /**
    * The band's history, /history. The entries themselves are content typed by
    * the committee and rendered verbatim; these are only the page's own words.
    */
@@ -1243,6 +1417,10 @@ export const fr = {
     // leaves no visible trace where focus lands.
     saved: "Entrée enregistrée.",
     deleted: "Entrée supprimée.",
+    // The entry saved and its photo did not. The form has closed, since
+    // saving it again would add the entry twice.
+    photoFailed:
+      "L’entrée est enregistrée, mais pas sa photo. Modifiez l’entrée pour la choisir à nouveau.",
     icons: {
       none: "Aucune",
       flag: "Drapeau",
@@ -1262,6 +1440,7 @@ export const fr = {
     editHeading: "Modifier l’entrée",
     french: "Français",
     german: "Allemand",
+    photo: "Photo",
     atLeastOne: "Au moins un titre ou un texte, dans l’une des deux langues.",
     // Worded as what the timeline will show, because "précision" alone did not
     // say that a year entry keeps no day.
@@ -1386,12 +1565,8 @@ export const fr = {
   /**
    * The two shared placeholder components, PhotoPending and Tbd.
    *
-   * PhotoPending takes a WHOLE SENTENCE, not a fragment: "Nouvelle photo {what}
-   * à venir" glued a French preposition to a database value, which cannot be
-   * translated once German needs a genitive instead of a preposition. Each
-   * screen picks the sentence that fits what it is missing; `photoRegister`
-   * carries the one dynamic value, a register's own name, which is content and
-   * renders verbatim in both locales.
+   * PhotoPending shows one sentence for every photo slot. It used to name what
+   * was missing, which glued French grammar onto a register's name.
    *
    * Tbd's `what` is the same fix applied to the same trap: a caller passes a
    * translated string, never a fragment glued together outside the catalogue.
@@ -1405,9 +1580,7 @@ export const fr = {
     // German text. Same lesson as formatEventWhen: punctuation is part of
     // the sentence, so it belongs in the catalogue.
     tbdWhat: "••• à compléter : {{what}}",
-    photoBand: "Nouvelle photo des Canetons au complet à venir !",
-    photoConcert: "Nouvelle photo des Canetons en concert à venir !",
-    photoRegister: "Nouvelle photo du registre {{name}} à venir !",
+    photoPending: "Photo à venir",
     registerFirstNames: "prénoms du registre",
     bookingNumber: "numéro pour les prestations",
     committeeSeats: "les fonctions et les noms du comité",

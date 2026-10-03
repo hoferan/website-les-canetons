@@ -252,7 +252,11 @@ applies whatever is pending, under a MySQL advisory lock
 double-apply. A raw `GET_LOCK`, deliberately, not `Cache::lock()` or
 `migrate --isolated`: both go through the `database` cache store, whose `cache`
 table is itself created by a migration. Gated by **`AUTO_MIGRATE`** in each
-server's `.env`, defaulting to `true`.
+server's `.env`, defaulting to `true`. One `/api/*` route is exempt: the public
+photo file, `GET /api/v1/images/{sha256}.jpg` (the digest of that size's own bytes), runs without
+`RunPendingMigrations` (and without Sanctum's stateful middleware), so a photo
+costs one query. It never triggers a migration; the SPA's `GET /api/v1/config`
+does (ADR 0028).
 
 **Still use `npm run dbmigrate:<env>` for any non-trivial migration.** The
 request-path runner has no timeout of its own — a long `ALTER` holds a PHP-FPM
@@ -560,8 +564,9 @@ name instead:
 
 - `demo.direction` (Dominique Direction) — holds the `direction` role
   (`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
-  `members.manage`, `registrations.view`). Has no section, so is not in any
-  register and never appears in an attendance list: organises, does not play.
+  `members.manage`, `registrations.view`, `images.manage`). Has no section, so
+  is not in any register and never appears in an attendance list: organises,
+  does not play.
 - `demo.player` (Perrine Player) — plays in Cloches (in the register, so
   answerable for events) and holds no role: no manage/view permissions at all.
 - `demo.both` (Bastien Both) — plays in Trompettes **and** holds the
@@ -708,6 +713,7 @@ translated. The reasoning is in ADR 0014.
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
 | Events, attendance | `events.manage` |
+| Photos: the library on `/media`, and every photo slot, changed on the page that shows it (a history entry's in its form) | `images.manage` |
 
 **Who names a thing decides whether it can be translated.** A developer-defined
 name is a fixed key, so a second language costs one catalogue file; a user-typed

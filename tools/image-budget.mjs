@@ -16,6 +16,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+// The same limits as api/config/api.php (images.max_edge, images.max_bytes) and
+// web/src/images/shrink.ts. Change all three together.
 export const MAX_EDGE = 1920;
 export const MAX_BYTES = 600 * 1024;
 

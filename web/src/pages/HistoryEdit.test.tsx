@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
@@ -287,4 +287,124 @@ test("the German form names the months in German", async () => {
   const user = userEvent.setup();
   await user.selectOptions(await screen.findByLabelText("Genauigkeit des Datums"), "month");
   expect(screen.getByRole("option", { name: "Oktober" })).toBeInTheDocument();
+});
+
+/**
+ * Every history write in order, each read by a handler that then lets the mock
+ * answer. The entry and its photo slot are separate writes, and which ones happen,
+ * in which order, is the behaviour under test.
+ */
+function recordHistoryWrites(): { method: string; path: string; body: Record<string, unknown> }[] {
+  const writes: { method: string; path: string; body: Record<string, unknown> }[] = [];
+  const record = async ({ request }: { request: Request }) => {
+    writes.push({
+      method: request.method,
+      path: new URL(request.url).pathname,
+      body: (await request.clone().json()) as Record<string, unknown>,
+    });
+  };
+  server.use(
+    http.post("/api/v1/history", record),
+    http.put("/api/v1/history/:id", record),
+    http.put("/api/v1/photo-slots/:slot", record),
+  );
+  return writes;
+}
+
+test("a new entry with a photo is saved first, then its photo by its own write", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt("/history/new");
+
+  await user.type(await screen.findByLabelText(/^Année/), "2024");
+  await user.type(screen.getByLabelText("Titre en français"), "Le cortège");
+  await user.click(screen.getByRole("button", { name: "Choisir" }));
+  await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
+  // No alt text to fill in: the entry's title describes the photo.
+  expect(screen.queryByLabelText(/Texte alternatif/)).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  // The timeline shows the new entry with its photo, named after the title.
+  expect(
+    await within(await timeline()).findByRole("img", { name: "Le cortège" }),
+  ).toBeInTheDocument();
+  expect(writes.map((write) => `${write.method} ${write.path}`)).toEqual([
+    "POST /api/v1/history",
+    "PUT /api/v1/photo-slots/history-5",
+  ]);
+  expect(writes[0]?.body).not.toHaveProperty("imageId");
+  // The slot's label and page are how the library lists where the photo is.
+  expect(writes[1]?.body).toEqual({
+    imageId: 1,
+    label: "Histoire\u00a0: Le cortège",
+    path: "/history",
+  });
+});
+
+test("clearing the photo saves the entry, then empties its photo", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt("/history/4/edit");
+
+  await user.click(await screen.findByRole("button", { name: "Retirer" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await waitFor(() => expect(writes).toHaveLength(2));
+  expect(writes[0]).toMatchObject({ method: "PUT", path: "/api/v1/history/4" });
+  expect(writes[0]?.body).not.toHaveProperty("imageId");
+  expect(writes[1]).toEqual({
+    method: "PUT",
+    path: "/api/v1/photo-slots/history-4",
+    body: { imageId: null, label: "Histoire\u00a0: Le flambeau passe", path: "/history" },
+  });
+});
+
+test("an untouched photo is not written at all", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  await renderAt("/history/4/edit");
+  await screen.findByTestId("photo-field");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  await within(await timeline()).findByRole("img", { name: "Le flambeau passe" });
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/history/4"]);
+});
+
+test("an editor without images.manage sees the photo, cannot change it, and writes only the entry", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  setMockUser("demo.roster");
+  await renderWithSession(
+    <Routes>
+      <Route path="/history" element={<History />} />
+      <Route path="/history/:id/edit" element={<HistoryEdit />} />
+    </Routes>,
+    { route: "/history/4/edit" },
+  );
+  const field = await screen.findByTestId("photo-field");
+  expect(within(field).queryByRole("button")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await within(await timeline()).findByRole("img", { name: "Le flambeau passe" });
+  expect(writes.map((write) => write.path)).toEqual(["/api/v1/history/4"]);
+});
+
+/**
+ * MUTATION TEST: navigate without `photoFailed` and the editor lands on a
+ * timeline that never says the photo is missing.
+ */
+test("a photo that fails to save after its entry did is reported on the timeline", async () => {
+  const user = userEvent.setup();
+  const writes = recordHistoryWrites();
+  server.use(http.put("/api/v1/photo-slots/:slot", () => HttpResponse.json({}, { status: 503 })));
+  await renderAt("/history/4/edit");
+
+  await user.click(await screen.findByRole("button", { name: "Retirer" }));
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "L’entrée est enregistrée, mais pas sa photo.",
+  );
+  await timeline();
+  expect(writes.filter((write) => write.path === "/api/v1/history/4")).toHaveLength(1);
 });

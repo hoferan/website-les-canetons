@@ -307,3 +307,27 @@ test("a delete says so", async () => {
 
   await expect.poll(() => screen.getByRole("status").textContent).toBe("Entrée supprimée.");
 });
+
+/**
+ * A PHOTO ON THE TIMELINE (#105). The alt texts come off the entry, in the
+ * page's language first (ADR 0026), and the entry's title is the last resort.
+ */
+test("an entry with a photo shows it named after the entry, and the others show no image", async () => {
+  const timeline = await renderHistory();
+  // The photo is its slot's, which arrives with the photo slots.
+  expect(
+    await within(timeline).findByRole("img", { name: "Le flambeau passe" }),
+  ).toBeInTheDocument();
+  expect(within(timeline).getAllByRole("img")).toHaveLength(1);
+});
+
+test("an entry saved without its photo says so where the editor lands", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<History />, {
+    route: "/history",
+    state: { historySaved: true, photoFailed: true },
+  });
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "L’entrée est enregistrée, mais pas sa photo.",
+  );
+});

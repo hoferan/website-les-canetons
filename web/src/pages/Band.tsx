@@ -1,5 +1,4 @@
 import { PageSection } from "@/components/PageSection";
-import { PhotoPending } from "@/components/PhotoPending";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
@@ -7,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
+import { registerSlot } from "../images/photoSlots";
+import { SlotPhoto } from "../images/SlotPhoto";
 import { t } from "../i18n";
 
 /**
@@ -41,17 +42,7 @@ function Register({ register }: { register: PublicSectionResource }) {
       <h2 id={`${anchorOf(register)}-heading`} className="font-display text-2xl">
         {register.name}
       </h2>
-      {/* "du registre X", not "des x". A REGISTER'S NAME IS CONTENT THE
-          COMMITTEE TYPED, so no article can be inferred from it: the legacy
-          page hardcoded one per register ("des batteurs", "de la lyre") and a
-          generated `des ${name}` writes "Nouvelle photo des lyre", which is
-          wrong French today and would be wrong differently for whatever the
-          committee adds next. Naming the register after a fixed noun is
-          grammatical for every possible name. */}
-      <PhotoPending
-        sentence={t("placeholders.photoRegister", { name: register.name })}
-        token="register"
-      />
+      <SlotPhoto slot={registerSlot(register.id)} label={register.name} alt={register.name} />
 
       <p className="mt-tight text-ink-muted">
         {register.members.length > 0 ? (
@@ -99,7 +90,7 @@ export function Band() {
   return (
     <PageSection width="text">
       <h1 className="font-display text-4xl">{t("band.heading")}</h1>
-      <PhotoPending sentence={t("placeholders.photoBand")} token="band" />
+      <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
 
       <RegisterIndex
         entries={registers.map((register) => ({
@@ -128,20 +119,16 @@ export function Band() {
           kind of person ever earns a table of their own is a question for
           whenever the band supplies a name the roster cannot hold.
 
-          Their photograph is the ORIGINAL, not a placeholder. Every other
-          photo went on the assumption it was out of date, but that reasoning
-          is about a roster that turns over yearly; two people who are not in
-          the band do not go stale the same way, and the band asked for the old
-          image back. */}
+          Their photograph is a slot like every other, placed from the
+          library. */}
       <hr className="mt-section border-line" />
 
       <Card className="mt-block gap-0 p-5">
         <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
-        <img
-          src="/assets/img/parrainmarraine.jpg"
+        <SlotPhoto
+          slot="godparents"
+          label={t("photos.slot.godparents")}
           alt={t("band.patronsAlt")}
-          loading="lazy"
-          className="mt-related rounded-lg"
         />
         <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
       </Card>

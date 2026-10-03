@@ -62,6 +62,8 @@ export class ApiError extends Error {
   readonly code: string;
   readonly fields: ApiErrorField[];
   readonly requestId?: string;
+  /** Seconds the server asked us to wait (`Retry-After`), or null when it sent none. */
+  readonly retryAfter: number | null;
 
   constructor(
     status: number,
@@ -69,8 +71,10 @@ export class ApiError extends Error {
     message: string,
     fields: ApiErrorField[] = [],
     requestId?: string,
+    retryAfter: number | null = null,
   ) {
     super(message);
+    this.retryAfter = retryAfter;
     this.name = "ApiError";
     this.status = status;
     this.code = code;
@@ -127,12 +131,32 @@ export async function customFetch<T>(url: string, options?: RequestInit): Promis
   return { data, status: response.status, headers: response.headers } as T;
 }
 
+/**
+ * `Retry-After` as whole seconds. The throttle middleware sends delta-seconds;
+ * an HTTP-date is read too, since a proxy may rewrite it. Anything else is null.
+ */
+export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
+  if (value === null) return null;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const at = Date.parse(trimmed);
+  return Number.isNaN(at) ? null : Math.max(0, Math.ceil((at - now) / 1000));
+}
+
 async function toApiError(response: Response): Promise<ApiError> {
+  const retryAfter = parseRetryAfter(response.headers.get("Retry-After"));
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
+    return new ApiError(
+      response.status,
+      "unknown_error",
+      `HTTP ${response.status}`,
+      [],
+      undefined,
+      retryAfter,
+    );
   }
 
   // An RFC 9457 problem document. `title`, `status`, `detail` and `instance`
@@ -154,7 +178,14 @@ async function toApiError(response: Response): Promise<ApiError> {
   };
 
   if (typeof problem?.code !== "string") {
-    return new ApiError(response.status, "unknown_error", `HTTP ${response.status}`);
+    return new ApiError(
+      response.status,
+      "unknown_error",
+      `HTTP ${response.status}`,
+      [],
+      undefined,
+      retryAfter,
+    );
   }
 
   return new ApiError(
@@ -163,5 +194,6 @@ async function toApiError(response: Response): Promise<ApiError> {
     problem.title ?? `HTTP ${response.status}`,
     problem.errors ?? [],
     typeof problem.requestId === "string" ? problem.requestId : undefined,
+    retryAfter,
   );
 }

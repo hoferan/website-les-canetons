@@ -12,6 +12,8 @@ import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
 import { dateWithPreposition, historyDate, shownIn } from "../history/entry";
 import { TimelineMarker } from "../history/TimelineMarker";
 import { currentLocale, t } from "../i18n";
+import { Photo, PHOTO_SIZES } from "../images/Photo";
+import { historySlot, usePhotoSlots } from "../images/photoSlots";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { useSession } from "../session/SessionProvider";
@@ -19,7 +21,12 @@ import { useSession } from "../session/SessionProvider";
 const ADD_ID = "history-add";
 
 /** What the history form hands the page as it navigates back after a save. */
-export type HistorySavedState = { historySaved: true };
+/**
+ * Set by the history form on its way back here. `photoFailed` means the entry
+ * saved and its photo did not, which the form cannot report itself: it has
+ * closed, because saving again would write the entry twice.
+ */
+export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
 
 /**
  * The band's history as a vertical timeline (#104).
@@ -46,6 +53,7 @@ export function History() {
   const mayEdit = can("history.manage");
   const [deleting, setDeleting] = useState<HistoryEntryResource | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [photoFailed, setPhotoFailed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -55,10 +63,12 @@ export function History() {
   // reload or "back" does not announce it again. SeriesCreatedNotice does the
   // same for the planning.
   useEffect(() => {
-    if ((location.state as HistorySavedState | null)?.historySaved !== true) {
+    const saved = location.state as HistorySavedState | null;
+    if (saved?.historySaved !== true) {
       return;
     }
     setAnnouncement(t("history.saved"));
+    setPhotoFailed(saved.photoFailed === true);
     void navigate(
       { pathname: location.pathname, search: location.search },
       { replace: true, state: null },
@@ -79,6 +89,12 @@ export function History() {
           </ButtonLink>
         ) : null}
       </div>
+
+      {photoFailed ? (
+        <p role="alert" className="mt-block text-danger">
+          {t("history.photoFailed")}
+        </p>
+      ) : null}
 
       {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
       {list.isError ? (
@@ -128,6 +144,8 @@ function TimelineEntry({
 }) {
   const locale = currentLocale();
   const shown = shownIn(entry, locale);
+  // The entry's photo is its photo slot's; the slots are read once per page.
+  const photo = usePhotoSlots().photoOf(historySlot(entry.id));
   const rowName =
     shown.title ??
     t("history.untitledEntry", {
@@ -164,6 +182,16 @@ function TimelineEntry({
           </span>
         ) : null}
       </h2>
+
+      {/* Described by the entry's title: no photo carries alt text. */}
+      {photo ? (
+        <Photo
+          photo={photo}
+          alt={rowName}
+          sizes={PHOTO_SIZES.timeline}
+          className="mt-tight h-auto w-full rounded-md"
+        />
+      ) : null}
 
       {shown.body !== null ? (
         <p lang={textLang} className="mt-tight wrap-anywhere whitespace-pre-line text-ink">

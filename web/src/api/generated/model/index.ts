@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,11 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -232,6 +235,10 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -405,6 +412,29 @@ export * from "./historyEntryStore422ErrorsItem";
 export * from "./historyEntryUpdate422";
 export * from "./historyEntryUpdate422Code";
 export * from "./historyEntryUpdate422ErrorsItem";
+export * from "./imageDestroy200";
+export * from "./imageDestroy409";
+export * from "./imageDestroy409Code";
+export * from "./imageDestroy409ErrorsItem";
+export * from "./imageIndex200";
+export * from "./imageIndex200Meta";
+export * from "./imageIndexParams";
+export * from "./imageReplace409";
+export * from "./imageReplace409Code";
+export * from "./imageReplace409ErrorsItem";
+export * from "./imageReplace507";
+export * from "./imageReplace507Code";
+export * from "./imageReplace507ErrorsItem";
+export * from "./imageResource";
+export * from "./imageResourceSizesItem";
+export * from "./imageResourceUsagesItem";
+export * from "./imageStore409";
+export * from "./imageStore409Code";
+export * from "./imageStore409ErrorsItem";
+export * from "./imageStore507";
+export * from "./imageStore507Code";
+export * from "./imageStore507ErrorsItem";
+export * from "./imageSummary200";
 export * from "./inboxIndex200";
 export * from "./inboxIndex200Meta";
 export * from "./inboxIndexParams";
@@ -435,6 +465,13 @@ export * from "./memberRoleReplace409";
 export * from "./memberRoleReplace409Code";
 export * from "./memberRoleReplace409ErrorsItem";
 export * from "./memberStore201";
+export * from "./photoSlotIndex200";
+export * from "./photoSlotIndex200Meta";
+export * from "./photoSlotIndexParams";
+export * from "./photoSlotResource";
+export * from "./photoSlotUpdate200";
+export * from "./photoSlotUpdate200Photo";
+export * from "./placePhotoRequest";
 export * from "./problem400Response";
 export * from "./problem400ResponseCode";
 export * from "./problem400ResponseErrorsItem";
@@ -502,6 +539,7 @@ export * from "./registrationStore400ErrorsItemReason";
 export * from "./registrationStore409";
 export * from "./registrationStore409Code";
 export * from "./registrationStore409ErrorsItem";
+export * from "./replaceImageFileRequest";
 export * from "./replaceMemberRolesRequest";
 export * from "./replaceRegistrationOptionsRequest";
 export * from "./replaceRegistrationOptionsRequestOptionsItem";
@@ -519,9 +557,11 @@ export * from "./storeEventSeriesRequestTemplate";
 export * from "./storeHistoryEntryRequest";
 export * from "./storeHistoryEntryRequestIcon";
 export * from "./storeHistoryEntryRequestPrecision";
+export * from "./storeImageRequest";
 export * from "./storeMemberRequest";
 export * from "./storeRegistrationRequest";
 export * from "./storeRegistrationRequestChoicesItem";
 export * from "./updateEventRequest";
+export * from "./updateImageRequest";
 export * from "./updateMemberRequest";
 export * from "./updateRegistrationRequest";

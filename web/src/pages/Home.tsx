@@ -1,8 +1,8 @@
 import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
-import { PhotoPending } from "@/components/PhotoPending";
 
+import { SlotPhoto } from "../images/SlotPhoto";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
 
@@ -110,7 +110,9 @@ export function Home() {
           what somebody deciding whether to turn up needs. */}
       <p className="mt-related text-lg text-ink-muted">{t("home.heroSub")}</p>
 
-      <PhotoPending sentence={t("placeholders.photoConcert")} token="concert" />
+      {/* The band's name is a proper noun, so it is the same alt in both
+          languages. */}
+      <SlotPhoto slot="concert" label={t("photos.slot.concert")} alt="Les Canetons de Fribourg" />
 
       <PublicAgenda />
 

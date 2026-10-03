@@ -84,6 +84,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
       "messages.view",
       "messages.manage",
       "history.manage",
+      "images.manage",
       "events.view",
       "account.manage",
     ],
@@ -794,4 +795,401 @@ test("a generated season is created as drafts", async () => {
   const created = ((await response.json()) as { data: Row[] }).data;
   expect(created).toHaveLength(2);
   expect(created.every((row) => row.publishedAt === null)).toBe(true);
+});
+
+/* ------------------------------------------------------------------------ *
+ * The image library (#105)
+ */
+
+/** The smallest byte string the mock accepts as a JPEG: SOI, one SOF0 carrying the size, EOI. */
+function jpegFile(width: number, height: number, salt: number): Uint8Array {
+  return new Uint8Array([
+    0xff,
+    0xd8,
+    0xff,
+    0xc0,
+    0x00,
+    0x0b,
+    0x08,
+    height >> 8,
+    height & 0xff,
+    width >> 8,
+    width & 0xff,
+    0x01,
+    0x01,
+    0x11,
+    0x00,
+    salt,
+    0xff,
+    0xd9,
+  ]);
+}
+
+/**
+ * POSTs the sizes of one photo as multipart, one `files[]` part each, with the
+ * body written out by hand.
+ *
+ * Not `new FormData()`: jsdom's FormData and File are not the ones Node's
+ * fetch serialises, so the file part goes out empty and the mock rightly
+ * answers `image_not_jpeg`.
+ */
+function multipart(
+  url: string,
+  parts: Uint8Array[],
+  fields: Record<string, string>,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  const boundary = "----mockboundary";
+  const encoder = new TextEncoder();
+  const head = `--${boundary}\r\nContent-Disposition: form-data; name="files[]"; filename="photo.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`;
+  const bytes: number[] = [];
+  for (const part of parts) {
+    bytes.push(...encoder.encode(head), ...part, ...encoder.encode("\r\n"));
+  }
+  for (const [name, value] of Object.entries(fields)) {
+    bytes.push(
+      ...encoder.encode(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      ),
+    );
+  }
+  bytes.push(...encoder.encode(`--${boundary}--\r\n`));
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": `multipart/form-data; boundary=${boundary}`, ...headers },
+    body: new Uint8Array(bytes),
+  });
+}
+
+function upload(...parts: Uint8Array[]): Promise<Response> {
+  return multipart("/api/v1/images", parts, { name: "Photo de test" });
+}
+
+type ImageRow = {
+  id: number;
+  url: string;
+  width: number;
+  height: number;
+  srcset: string;
+  bytes: number;
+  sizes: { width: number; url: string }[];
+  usages: unknown[];
+};
+
+async function refusal(response: Response): Promise<{ field: string; reason: string }[]> {
+  expect(response.status).toBe(400);
+  const body = (await response.json()) as {
+    code: string;
+    errors: { field: string; reason: string }[];
+  };
+  expect(body.code).toBe("validation_failed");
+  return body.errors;
+}
+
+test("an upload answers 201, and the same photo again answers 200 with the same image", async () => {
+  setMockUser("demo.direction");
+
+  const first = await upload(jpegFile(800, 600, 1));
+  expect(first.status).toBe(201);
+  const created = (await first.json()) as ImageRow;
+  expect(created).toMatchObject({ width: 800, height: 600, usages: [] });
+  expect(created.url).toMatch(/^\/api\/v1\/images\/[0-9a-f]{64}\.jpg$/);
+
+  const again = await upload(jpegFile(800, 600, 1));
+  expect(again.status).toBe(200);
+  expect(((await again.json()) as ImageRow).id).toBe(created.id);
+
+  const other = await upload(jpegFile(800, 600, 2));
+  expect(other.status).toBe(201);
+});
+
+test("an upload stores its trimmed name, and refuses a blank or long one as the API does", async () => {
+  setMockUser("demo.direction");
+
+  const named = await multipart("/api/v1/images", [jpegFile(800, 600, 40)], {
+    name: "  Carnaval 2026  ",
+  });
+  expect(named.status).toBe(201);
+  expect(((await named.json()) as { name: string }).name).toBe("Carnaval 2026");
+
+  for (const [fields, reason] of [
+    [{}, "required"],
+    [{ name: "   " }, "required"],
+    [{ name: "é".repeat(121) }, "too_long"],
+    [{ name: `a${String.fromCodePoint(7)}b` }, "invalid_format"],
+    [{ name: `photo${String.fromCodePoint(0x202e)}gpj.exe` }, "invalid_format"],
+  ] as const) {
+    const refused = await multipart("/api/v1/images", [jpegFile(800, 600, 41)], fields);
+    expect(await refusal(refused)).toEqual([{ field: "name", reason }]);
+  }
+});
+
+test("every size sent is stored, listed smallest first and served, and the largest is the photo", async () => {
+  setMockUser("demo.direction");
+
+  const response = await upload(
+    jpegFile(480, 320, 3),
+    jpegFile(1920, 1280, 3),
+    jpegFile(960, 640, 3),
+  );
+  expect(response.status).toBe(201);
+  const created = (await response.json()) as ImageRow;
+
+  expect(created).toMatchObject({ width: 1920, height: 1280 });
+  expect(created.sizes.map((size) => size.width)).toEqual([480, 960, 1920]);
+  expect(created.srcset).toBe(created.sizes.map((size) => `${size.url} ${size.width}w`).join(", "));
+  for (const size of created.sizes) {
+    expect((await fetch(size.url)).status).toBe(200);
+  }
+  // Each size is served at the digest of its own bytes, so no two share a URL.
+  expect(new Set(created.sizes.map((size) => size.url)).size).toBe(3);
+  for (const size of created.sizes) {
+    const served = await fetch(size.url);
+    expect(served.headers.get("ETag")).toBe(`"${/([0-9a-f]{64})\.jpg$/.exec(size.url)?.[1]}"`);
+  }
+  expect((await fetch(`/api/v1/images/${"f".repeat(64)}.jpg`)).status).toBe(404);
+});
+
+test("a part that is not a JPEG is refused against its own index", async () => {
+  setMockUser("demo.direction");
+  const errors = await refusal(
+    await upload(jpegFile(960, 640, 4), new TextEncoder().encode("not a picture")),
+  );
+  expect(errors).toEqual([{ field: "files.1", reason: "image_not_jpeg" }]);
+});
+
+test("the set is checked as StoreImageRequest checks it", async () => {
+  setMockUser("demo.direction");
+
+  expect(await refusal(await upload())).toEqual([{ field: "files", reason: "required" }]);
+  expect(
+    await refusal(
+      await upload(
+        jpegFile(1920, 1280, 5),
+        jpegFile(960, 640, 5),
+        jpegFile(480, 320, 5),
+        jpegFile(240, 160, 5),
+      ),
+    ),
+  ).toEqual([{ field: "files", reason: "image_set_too_many" }]);
+  expect(await refusal(await upload(jpegFile(960, 640, 6), jpegFile(960, 640, 7)))).toEqual([
+    { field: "files", reason: "image_set_widths_repeated" },
+  ]);
+  expect(await refusal(await upload(jpegFile(1920, 1280, 8), jpegFile(480, 360, 8)))).toEqual([
+    { field: "files", reason: "image_set_aspect_mismatch" },
+  ]);
+});
+
+test("the library holds 100 images: a new file answers 409, a known one still 200", async () => {
+  setMockUser("demo.direction");
+  const summary = (await (await fetch("/api/v1/images/summary")).json()) as { count: number };
+  for (let salt = 0; salt < 100 - summary.count; salt++) {
+    expect((await upload(jpegFile(10, 10, salt))).status).toBe(201);
+  }
+
+  const full = await upload(jpegFile(10, 10, 200));
+  expect(full.status).toBe(409);
+  expect(((await full.json()) as { code: string }).code).toBe("image_library_full");
+
+  expect((await upload(jpegFile(10, 10, 0))).status).toBe(200);
+  expect(await (await fetch("/api/v1/images/summary")).json()).toMatchObject({
+    count: 100,
+    capacity: 100,
+  });
+});
+
+test("the library is for images.manage", async () => {
+  setMockUser("demo.player");
+  expect((await fetch("/api/v1/images")).status).toBe(403);
+  expect((await upload(jpegFile(10, 10, 1))).status).toBe(403);
+  const place = { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ imageId: null }) };
+  expect((await fetch("/api/v1/photo-slots/band", place)).status).toBe(403);
+
+  setMockUser(null);
+  expect((await fetch("/api/v1/images")).status).toBe(401);
+});
+
+test("an image that is placed cannot be deleted, and one that is free can", async () => {
+  setMockUser("demo.direction");
+  const placed = (await rowsOf<ImageRow>("/api/v1/images")).find((row) => row.usages.length > 0);
+  expect(placed).toBeDefined();
+
+  const refused = await fetch(`/api/v1/images/${placed?.id}`, {
+    method: "DELETE",
+    headers: await ifMatchFor(`/api/v1/images/${placed?.id}`),
+  });
+  expect(refused.status).toBe(409);
+  expect(((await refused.json()) as { code: string }).code).toBe("image_in_use");
+
+  const free = (await (await upload(jpegFile(40, 30, 9))).json()) as ImageRow;
+  expect((await fetch(`/api/v1/images/${free.id}`, { method: "DELETE" })).status).toBe(428);
+  const deleted = await fetch(`/api/v1/images/${free.id}`, {
+    method: "DELETE",
+    headers: await ifMatchFor(`/api/v1/images/${free.id}`),
+  });
+  expect(deleted.status).toBe(200);
+  expect((await fetch(`/api/v1/images/${free.id}`)).status).toBe(404);
+  // Its sizes went with it.
+  expect((await fetch(free.url)).status).toBe(404);
+});
+
+test("a rename trims the name under the current tag, and answers the new one", async () => {
+  setMockUser("demo.direction");
+  const url = "/api/v1/images/1";
+  const body = JSON.stringify({ name: "  Le groupe, 2026  " });
+
+  expect((await fetch(url, { method: "PATCH", headers: JSON_HEADERS, body })).status).toBe(428);
+  const stale = await fetch(url, {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, "If-Match": '"00000000"' },
+    body,
+  });
+  expect(stale.status).toBe(412);
+
+  const blank = await fetch(url, {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, ...(await ifMatchFor(url)) },
+    body: JSON.stringify({ name: "  " }),
+  });
+  expect(await refusal(blank)).toEqual([{ field: "name", reason: "required" }]);
+
+  const renamed = await fetch(url, {
+    method: "PATCH",
+    headers: { ...JSON_HEADERS, ...(await ifMatchFor(url)) },
+    body,
+  });
+  expect(renamed.status).toBe(200);
+  expect(((await renamed.json()) as { name: string }).name).toBe("Le groupe, 2026");
+  expect(renamed.headers.get("ETag")).toBe((await ifMatchFor(url))["If-Match"]);
+});
+
+test("a replace swaps the sizes under the same id and refuses another image's photo", async () => {
+  setMockUser("demo.direction");
+  const replace = async (id: number, ...parts: Uint8Array[]) =>
+    multipart(`/api/v1/images/${id}/file`, parts, {}, await ifMatchFor(`/api/v1/images/${id}`));
+
+  const before = (await (await fetch("/api/v1/images/1")).json()) as ImageRow;
+  expect((await multipart("/api/v1/images/1/file", [jpegFile(600, 900, 50)], {})).status).toBe(428);
+  expect(await refusal(await replace(1, new Uint8Array([1, 2, 3])))).toEqual([
+    { field: "files.0", reason: "image_not_jpeg" },
+  ]);
+
+  const swapped = await replace(1, jpegFile(600, 900, 50), jpegFile(300, 450, 50));
+  expect(swapped.status).toBe(200);
+  const after = (await swapped.json()) as ImageRow;
+  expect(after).toMatchObject({ id: 1, width: 600, height: 900 });
+  expect(after.url).not.toBe(before.url);
+  // Still the band photo: the placement names the id.
+  expect(after.usages).toEqual(before.usages);
+  // The stored bytes are served, so a rotation has a JPEG to decode.
+  const served = await fetch(after.url);
+  expect(served.headers.get("Content-Type")).toBe("image/jpeg");
+
+  const same = await replace(1, jpegFile(600, 900, 50), jpegFile(300, 450, 50));
+  expect(same.status).toBe(200);
+  expect(((await same.json()) as ImageRow).url).toBe(after.url);
+
+  const other = (await (await upload(jpegFile(500, 500, 51))).json()) as ImageRow;
+  const duplicate = await replace(1, jpegFile(500, 500, 51));
+  expect(duplicate.status).toBe(409);
+  expect(((await duplicate.json()) as { code: string }).code).toBe("image_already_in_library");
+  expect(other.id).not.toBe(1);
+});
+
+/** PUT one slot's photo, as PhotoSlotController takes it: no If-Match. */
+const placePhoto = (slot: string, body: unknown) =>
+  fetch(`/api/v1/photo-slots/${slot}`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  });
+
+type SlotRow = { slot: string; url: string };
+
+test("placing a photo writes one slot, with no tag, and the public list shows it", async () => {
+  setMockUser("demo.direction");
+  const before = await rowsOf<SlotRow>("/api/v1/photo-slots");
+  expect(before.map((row) => row.slot)).toEqual(["band", "history-4", "register-5"]);
+
+  const concert = await placePhoto("concert", { imageId: 1, label: "Photo en concert", path: "/" });
+  expect(concert.status).toBe(200);
+  const band = before.find((row) => row.slot === "band");
+  expect(((await concert.json()) as { photo: { url: string } }).photo.url).toBe(band?.url);
+  expect((await placePhoto("register-5", { imageId: null })).status).toBe(200);
+
+  setMockUser(null);
+  const after = await rowsOf<SlotRow>("/api/v1/photo-slots");
+  // The band slot was not sent and is unchanged; the emptied one is gone.
+  expect(after.map((row) => row.slot)).toEqual(["band", "concert", "history-4"]);
+  expect(after.find((row) => row.slot === "band")?.url).toBe(band?.url);
+  // No slot carries alt text; the page describes the photo.
+  expect(after[1]).not.toHaveProperty("altFr");
+
+  // The library lists the usage the way the page described it.
+  setMockUser("demo.direction");
+  const image = (await (await fetch("/api/v1/images/1")).json()) as ImageRow;
+  expect(image.usages).toEqual([
+    { slot: "band", label: "Photo du groupe", path: "/band" },
+    { slot: "concert", label: "Photo en concert", path: "/" },
+  ]);
+});
+
+test("any slot name within the pattern is a slot, and nothing else is", async () => {
+  setMockUser("demo.direction");
+  const guid = "3f2a9c1e-7b4d-4e8a-9c2f-5d6e7f8a9b0c";
+  expect((await placePhoto(guid, { imageId: 2 })).status).toBe(200);
+  expect((await rowsOf<SlotRow>("/api/v1/photo-slots")).map((row) => row.slot)).toContain(guid);
+
+  expect((await placePhoto("-leading-dash", { imageId: 1 })).status).toBe(404);
+  expect((await placePhoto("x".repeat(65), { imageId: 1 })).status).toBe(404);
+});
+
+test("a placement refuses a missing or unknown image id", async () => {
+  setMockUser("demo.direction");
+  expect(await refusal(await placePhoto("register-4", {}))).toEqual([
+    { field: "imageId", reason: "required" },
+  ]);
+  expect(await refusal(await placePhoto("register-4", { imageId: 999 }))).toEqual([
+    { field: "imageId", reason: "invalid_format" },
+  ]);
+});
+
+test("neither the band page nor the history carries a photo of its own", async () => {
+  setMockUser(null);
+  const band = await rowsOf<Record<string, unknown>>("/api/v1/band");
+  expect(band.some((section) => "photo" in section)).toBe(false);
+  const history = await rowsOf<Record<string, unknown>>("/api/v1/history");
+  expect(history.some((entry) => "photo" in entry || "imageId" in entry)).toBe(false);
+});
+
+test("deleting a history entry empties its photo slot", async () => {
+  setMockUser("demo.direction");
+  const url = "/api/v1/history/4";
+  const deleted = await fetch(url, { method: "DELETE", headers: await ifMatchFor(url) });
+  expect(deleted.status).toBe(200);
+  expect((await rowsOf<SlotRow>("/api/v1/photo-slots")).map((row) => row.slot)).toEqual([
+    "band",
+    "register-5",
+  ]);
+});
+
+test("an image file is served as a labelled placeholder of its own size", async () => {
+  setMockUser("demo.direction");
+  const first = (await rowsOf<ImageRow>("/api/v1/images"))[0] as ImageRow;
+  setMockUser(null);
+
+  const response = await fetch(first.url);
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Content-Type")).toBe("image/svg+xml");
+  const svg = await response.text();
+  expect(svg).toContain(`width="${first.width}"`);
+  expect(svg).toContain(`height="${first.height}"`);
+  expect(svg).toContain(`Photo ${first.id}`);
+
+  expect((await fetch(`/api/v1/images/${"f".repeat(64)}.jpg`)).status).toBe(404);
+
+  // A smaller size is served at its own dimensions.
+  const smallest = first.sizes[0] as ImageRow["sizes"][number];
+  expect(smallest.width).toBeLessThan(first.width);
+  expect(await (await fetch(smallest.url)).text()).toContain(`width="${smallest.width}"`);
 });

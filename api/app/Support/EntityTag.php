@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Http\Resources\ContactMessageResource;
 use App\Http\Resources\EventResource;
 use App\Http\Resources\HistoryEntryResource;
+use App\Http\Resources\ImageResource;
 use App\Http\Resources\MemberResource;
 use App\Http\Resources\RegistrationOptionResource;
 use App\Http\Resources\RegistrationResource;
@@ -82,6 +83,7 @@ final class EntityTag
         'registration' => 'registration',
         'contact_message' => 'contactMessage',
         'history' => 'historyEntry',
+        'image' => 'image',
     ];
 
     /**
@@ -189,6 +191,7 @@ final class EntityTag
 
             'contact_message' => (new ContactMessageResource($model->load('handledBy')))->toArray(self::bare()),
             'history' => (new HistoryEntryResource($model))->toArray(self::bare()),
+            'image' => (new ImageResource($model))->toArray(self::bare()),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

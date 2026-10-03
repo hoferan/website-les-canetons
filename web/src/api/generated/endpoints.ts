@@ -116,7 +116,7 @@
  *
  * `events.manage`, `attendance.view_all`, `attendance.record_for_others`,
  * `members.manage`, `registrations.view`, `registrations.manage`, `messages.view`,
- * `messages.manage`, `history.manage`.
+ * `messages.manage`, `history.manage`, `images.manage`.
  *
  * Answering an event deliberately needs **no** permission: anyone in a register
  * answers for themselves.
@@ -214,8 +214,11 @@
  * | `PATCH` / `DELETE /registrations/{registration}` | `GET /registrations/{registration}` |
  * | `PUT /events/{event}/registration-options` | `GET /events/{event}/registration-options` |
  * | `PUT` / `DELETE /history/{historyEntry}` | `GET /history/{historyEntry}` |
+ * | `PATCH` / `DELETE /images/{image}` | `GET /images/{image}` |
+ * | `POST /images/{image}/file` | `GET /images/{image}` |
+ * | `POST` / `DELETE /events/{event}/publish` | `GET /events/{event}` |
  *
- * A successful `PATCH` or `PUT` returns the new `ETag`, so consecutive edits need
+ * A successful `PATCH`, `PUT` or replacing `POST` returns the new `ETag`, so consecutive edits need
  * no read in between. A `DELETE` returns none: there is nothing left to tag.
  *
  * **Collections hand out no tag**, deliberately — one tag cannot validate
@@ -232,6 +235,10 @@
  * `/events/{event}/attendance` need no `If-Match`: a member is the only ordinary
  * writer of their own answer, the whole answer is one value so there is no half of
  * it to lose, and a first answer has no tag to have. Answering stays one request.
+ *
+ * **Placing a photo is exempt too.** `PUT /photo-slots/{slot}` sets one image id
+ * in one slot. Placements in different slots never touch, and in the same slot
+ * the last pick is the one shown.
  *
  * Tags are strong validators. `If-Match: *` asserts only that the thing still
  * exists. There is no conditional `GET` — `If-None-Match` is not implemented and
@@ -369,6 +376,16 @@ import type {
   HistoryEntryResource,
   HistoryEntryStore422,
   HistoryEntryUpdate422,
+  ImageDestroy200,
+  ImageDestroy409,
+  ImageIndex200,
+  ImageIndexParams,
+  ImageReplace409,
+  ImageReplace507,
+  ImageResource,
+  ImageStore409,
+  ImageStore507,
+  ImageSummary200,
   InboxIndex200,
   InboxIndexParams,
   InboxSummary200,
@@ -385,6 +402,10 @@ import type {
   MemberRoleReplace200,
   MemberRoleReplace409,
   MemberStore201,
+  PhotoSlotIndex200,
+  PhotoSlotIndexParams,
+  PhotoSlotUpdate200,
+  PlacePhotoRequest,
   Problem400Response,
   Problem401Response,
   Problem403Response,
@@ -410,6 +431,7 @@ import type {
   RegistrationResource,
   RegistrationStore400,
   RegistrationStore409,
+  ReplaceImageFileRequest,
   ReplaceMemberRolesRequest,
   ReplaceRegistrationOptionsRequest,
   RoleIndex200,
@@ -419,9 +441,11 @@ import type {
   StoreEventRequest,
   StoreEventSeriesRequest,
   StoreHistoryEntryRequest,
+  StoreImageRequest,
   StoreMemberRequest,
   StoreRegistrationRequest,
   UpdateEventRequest,
+  UpdateImageRequest,
   UpdateMemberRequest,
   UpdateRegistrationRequest,
 } from "./model";
@@ -2168,6 +2192,11 @@ export type eventPublishResponse404 = {
   status: 404;
 };
 
+export type eventPublishResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
 export type eventPublishResponse419 = {
   data: Problem419Response;
   status: 419;
@@ -2176,6 +2205,11 @@ export type eventPublishResponse419 = {
 export type eventPublishResponse422 = {
   data: EventPublish422;
   status: 422;
+};
+
+export type eventPublishResponse428 = {
+  data: Problem428Response;
+  status: 428;
 };
 
 export type eventPublishResponse503 = {
@@ -2190,8 +2224,10 @@ export type eventPublishResponseError = (
   | eventPublishResponse401
   | eventPublishResponse403
   | eventPublishResponse404
+  | eventPublishResponse412
   | eventPublishResponse419
   | eventPublishResponse422
+  | eventPublishResponse428
   | eventPublishResponse503
 ) & {
   headers: Headers;
@@ -2233,8 +2269,10 @@ export const getEventPublishMutationOptions = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
+    | Problem412Response
     | Problem419Response
     | EventPublish422
+    | Problem428Response
     | Problem503Response,
   TContext = unknown,
 >(options?: {
@@ -2276,8 +2314,10 @@ export type EventPublishMutationError =
   | Problem401Response
   | Problem403Response
   | Problem404Response
+  | Problem412Response
   | Problem419Response
   | EventPublish422
+  | Problem428Response
   | Problem503Response;
 export type EventPublishMutationVariables = { event: number };
 
@@ -2289,8 +2329,10 @@ export const useEventPublish = <
     | Problem401Response
     | Problem403Response
     | Problem404Response
+    | Problem412Response
     | Problem419Response
     | EventPublish422
+    | Problem428Response
     | Problem503Response,
   TContext = unknown,
 >(
@@ -9769,6 +9811,1423 @@ export const useContactStore = <
   return useMutation(getContactStoreMutationOptions(options), queryClient);
 };
 
+export type imageFileResponse200 = {
+  data: Blob;
+  status: 200;
+};
+
+export type imageFileResponse304 = {
+  data: string;
+  status: 304;
+};
+
+export type imageFileResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type imageFileResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageFileResponseSuccess = imageFileResponse200 & {
+  headers: Headers;
+};
+export type imageFileResponseError = (
+  imageFileResponse304 | imageFileResponse404 | imageFileResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageFileResponse = imageFileResponseSuccess | imageFileResponseError;
+
+export const getImageFileUrl = (sha256: string) => {
+  return `/images/${sha256}.jpg`;
+};
+
+/**
+ * Read the path from an image's `url` or `srcset` rather than building it.
+ * It is the SHA-256 of this size's own bytes, so a given URL can only ever
+ * serve those bytes, and it is cached for a year. The `ETag` is the same
+ * digest: send it back as `If-None-Match` and the answer is `304`.
+ * @summary One size of a library photo, as a JPEG. Public
+ */
+export const imageFile = async (
+  sha256: string,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageFileResponse> => {
+  return customFetch<imageFileResponse>(getImageFileUrl(sha256), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getImageFileQueryKey = (sha256: string) => {
+  return [`/images/${sha256}.jpg`] as const;
+};
+
+export const getImageFileQueryOptions = <
+  TData = Awaited<ReturnType<typeof imageFile>>,
+  TError = string | Problem404Response | Problem503Response,
+>(
+  sha256: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getImageFileQueryKey(sha256);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof imageFile>>> = ({ signal }) =>
+    imageFile(sha256, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: sha256 !== null && sha256 !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type ImageFileQueryResult = NonNullable<Awaited<ReturnType<typeof imageFile>>>;
+export type ImageFileQueryError = string | Problem404Response | Problem503Response;
+
+export function useImageFile<
+  TData = Awaited<ReturnType<typeof imageFile>>,
+  TError = string | Problem404Response | Problem503Response,
+>(
+  sha256: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageFile>>,
+          TError,
+          Awaited<ReturnType<typeof imageFile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageFile<
+  TData = Awaited<ReturnType<typeof imageFile>>,
+  TError = string | Problem404Response | Problem503Response,
+>(
+  sha256: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageFile>>,
+          TError,
+          Awaited<ReturnType<typeof imageFile>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageFile<
+  TData = Awaited<ReturnType<typeof imageFile>>,
+  TError = string | Problem404Response | Problem503Response,
+>(
+  sha256: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary One size of a library photo, as a JPEG. Public
+ */
+
+export function useImageFile<
+  TData = Awaited<ReturnType<typeof imageFile>>,
+  TError = string | Problem404Response | Problem503Response,
+>(
+  sha256: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageFile>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getImageFileQueryOptions(sha256, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type imageIndexResponse200 = {
+  data: ImageIndex200;
+  status: 200;
+};
+
+export type imageIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageIndexResponseSuccess = imageIndexResponse200 & {
+  headers: Headers;
+};
+export type imageIndexResponseError = (
+  imageIndexResponse401 | imageIndexResponse403 | imageIndexResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageIndexResponse = imageIndexResponseSuccess | imageIndexResponseError;
+
+export const getImageIndexUrl = (params?: ImageIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/images?${stringifiedParams}` : `/images`;
+};
+
+/**
+ * @summary Every image in the library, newest first, each with the places it is shown. Requires `images.manage`
+ */
+export const imageIndex = async (
+  params?: ImageIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageIndexResponse> => {
+  return customFetch<imageIndexResponse>(getImageIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getImageIndexQueryKey = (params?: ImageIndexParams) => {
+  return [`/images`, ...(params ? [params] : [])] as const;
+};
+
+export const getImageIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof imageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ImageIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getImageIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof imageIndex>>> = ({ signal }) =>
+    imageIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof imageIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ImageIndexQueryResult = NonNullable<Awaited<ReturnType<typeof imageIndex>>>;
+export type ImageIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
+
+export function useImageIndex<
+  TData = Awaited<ReturnType<typeof imageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params: undefined | ImageIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageIndex>>,
+          TError,
+          Awaited<ReturnType<typeof imageIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageIndex<
+  TData = Awaited<ReturnType<typeof imageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ImageIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageIndex>>,
+          TError,
+          Awaited<ReturnType<typeof imageIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageIndex<
+  TData = Awaited<ReturnType<typeof imageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ImageIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Every image in the library, newest first, each with the places it is shown. Requires `images.manage`
+ */
+
+export function useImageIndex<
+  TData = Awaited<ReturnType<typeof imageIndex>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  params?: ImageIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getImageIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type imageStoreResponse200 = {
+  data: ImageResource;
+  status: 200;
+};
+
+export type imageStoreResponse201 = {
+  data: ImageResource;
+  status: 201;
+};
+
+export type imageStoreResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type imageStoreResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageStoreResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageStoreResponse409 = {
+  data: ImageStore409;
+  status: 409;
+};
+
+export type imageStoreResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type imageStoreResponse429 = {
+  data: Problem429Response;
+  status: 429;
+};
+
+export type imageStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageStoreResponse507 = {
+  data: ImageStore507;
+  status: 507;
+};
+
+export type imageStoreResponseSuccess = (imageStoreResponse200 | imageStoreResponse201) & {
+  headers: Headers;
+};
+export type imageStoreResponseError = (
+  | imageStoreResponse400
+  | imageStoreResponse401
+  | imageStoreResponse403
+  | imageStoreResponse409
+  | imageStoreResponse419
+  | imageStoreResponse429
+  | imageStoreResponse503
+  | imageStoreResponse507
+) & {
+  headers: Headers;
+};
+
+export type imageStoreResponse = imageStoreResponseSuccess | imageStoreResponseError;
+
+export const getImageStoreUrl = () => {
+  return `/images`;
+};
+
+/**
+ * The largest size is the photo: its SHA-256 identifies it, and uploading
+ * a photo whose largest size the library already holds adds nothing. The
+ * existing image comes back with `200`, under its own name, even when the
+ * library is full.
+ *
+ * Uploads are stored one at a time. One that waits too long for the
+ * upload ahead of it answers `503 service_unavailable`; send it again. One
+ * the database has no room for answers `507 image_storage_full`.
+ * @summary Adds a photo to the library, sent in one to three sizes with a name.
+Requires `images.manage`
+ */
+export const imageStore = async (
+  storeImageRequest: StoreImageRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageStoreResponse> => {
+  const formData = new FormData();
+  storeImageRequest.files.forEach((value) => formData.append(`files`, value));
+  formData.append(`name`, storeImageRequest.name);
+
+  return customFetch<imageStoreResponse>(getImageStoreUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getImageStoreMutationKey = () => ["imageStore"] as const;
+
+export const getImageStoreMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | ImageStore409
+    | Problem419Response
+    | Problem429Response
+    | Problem503Response
+    | ImageStore507,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof imageStore>>,
+    TError,
+    ImageStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof imageStore>>,
+  TError,
+  ImageStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getImageStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof imageStore>>,
+    ImageStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return imageStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImageStoreMutationResult = NonNullable<Awaited<ReturnType<typeof imageStore>>>;
+export type ImageStoreMutationBody = StoreImageRequest;
+export type ImageStoreMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | ImageStore409
+  | Problem419Response
+  | Problem429Response
+  | Problem503Response
+  | ImageStore507;
+export type ImageStoreMutationVariables = { data: StoreImageRequest };
+
+/**
+ * @summary Adds a photo to the library, sent in one to three sizes with a name.
+Requires `images.manage`
+ */
+export const useImageStore = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | ImageStore409
+    | Problem419Response
+    | Problem429Response
+    | Problem503Response
+    | ImageStore507,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof imageStore>>,
+      TError,
+      ImageStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof imageStore>>,
+  TError,
+  ImageStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getImageStoreMutationOptions(options), queryClient);
+};
+
+export type imageSummaryResponse200 = {
+  data: ImageSummary200;
+  status: 200;
+};
+
+export type imageSummaryResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageSummaryResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageSummaryResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageSummaryResponseSuccess = imageSummaryResponse200 & {
+  headers: Headers;
+};
+export type imageSummaryResponseError = (
+  imageSummaryResponse401 | imageSummaryResponse403 | imageSummaryResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageSummaryResponse = imageSummaryResponseSuccess | imageSummaryResponseError;
+
+export const getImageSummaryUrl = () => {
+  return `/images/summary`;
+};
+
+/**
+ * A separate read rather than `meta` on the list, because the collection
+ * envelope is the same on every list and carries paging only.
+ * @summary How full the library is. Requires `images.manage`
+ */
+export const imageSummary = async (
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageSummaryResponse> => {
+  return customFetch<imageSummaryResponse>(getImageSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getImageSummaryQueryKey = () => {
+  return [`/images/summary`] as const;
+};
+
+export const getImageSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof imageSummary>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageSummary>>, TError, TData>>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getImageSummaryQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof imageSummary>>> = ({ signal }) =>
+    imageSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof imageSummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ImageSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof imageSummary>>>;
+export type ImageSummaryQueryError = Problem401Response | Problem403Response | Problem503Response;
+
+export function useImageSummary<
+  TData = Awaited<ReturnType<typeof imageSummary>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageSummary>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageSummary>>,
+          TError,
+          Awaited<ReturnType<typeof imageSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageSummary<
+  TData = Awaited<ReturnType<typeof imageSummary>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageSummary>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageSummary>>,
+          TError,
+          Awaited<ReturnType<typeof imageSummary>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageSummary<
+  TData = Awaited<ReturnType<typeof imageSummary>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary How full the library is. Requires `images.manage`
+ */
+
+export function useImageSummary<
+  TData = Awaited<ReturnType<typeof imageSummary>>,
+  TError = Problem401Response | Problem403Response | Problem503Response,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageSummary>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getImageSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type imageShowResponse200 = {
+  data: ImageResource;
+  status: 200;
+};
+
+export type imageShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type imageShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageShowResponseSuccess = imageShowResponse200 & {
+  headers: Headers;
+};
+export type imageShowResponseError = (
+  imageShowResponse401 | imageShowResponse403 | imageShowResponse404 | imageShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageShowResponse = imageShowResponseSuccess | imageShowResponseError;
+
+export const getImageShowUrl = (image: number) => {
+  return `/images/${image}`;
+};
+
+/**
+ * @summary One image, with the `ETag` its rename, replace and delete must quote. Requires `images.manage`
+ */
+export const imageShow = async (
+  image: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageShowResponse> => {
+  return customFetch<imageShowResponse>(getImageShowUrl(image), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getImageShowQueryKey = (image: number) => {
+  return [`/images/${image}`] as const;
+};
+
+export const getImageShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof imageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  image: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getImageShowQueryKey(image);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof imageShow>>> = ({ signal }) =>
+    imageShow(image, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: image !== null && image !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type ImageShowQueryResult = NonNullable<Awaited<ReturnType<typeof imageShow>>>;
+export type ImageShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useImageShow<
+  TData = Awaited<ReturnType<typeof imageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  image: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageShow>>,
+          TError,
+          Awaited<ReturnType<typeof imageShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageShow<
+  TData = Awaited<ReturnType<typeof imageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  image: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof imageShow>>,
+          TError,
+          Awaited<ReturnType<typeof imageShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useImageShow<
+  TData = Awaited<ReturnType<typeof imageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  image: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary One image, with the `ETag` its rename, replace and delete must quote. Requires `images.manage`
+ */
+
+export function useImageShow<
+  TData = Awaited<ReturnType<typeof imageShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  image: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof imageShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getImageShowQueryOptions(image, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type imageUpdateResponse200 = {
+  data: ImageResource;
+  status: 200;
+};
+
+export type imageUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type imageUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type imageUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type imageUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type imageUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type imageUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageUpdateResponseSuccess = imageUpdateResponse200 & {
+  headers: Headers;
+};
+export type imageUpdateResponseError = (
+  | imageUpdateResponse400
+  | imageUpdateResponse401
+  | imageUpdateResponse403
+  | imageUpdateResponse404
+  | imageUpdateResponse412
+  | imageUpdateResponse419
+  | imageUpdateResponse428
+  | imageUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageUpdateResponse = imageUpdateResponseSuccess | imageUpdateResponseError;
+
+export const getImageUpdateUrl = (image: number) => {
+  return `/images/${image}`;
+};
+
+/**
+ * The name is the committee's label for the photo, shown in the library
+ * and the picker. No public page shows it.
+ * @summary Renames an image. Requires `images.manage` and the `If-Match` from its
+read
+ */
+export const imageUpdate = async (
+  image: number,
+  updateImageRequest: UpdateImageRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<imageUpdateResponse>(getImageUpdateUrl(image), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateImageRequest),
+  });
+};
+
+export const getImageUpdateMutationKey = () => ["imageUpdate"] as const;
+
+export const getImageUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof imageUpdate>>,
+    TError,
+    ImageUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof imageUpdate>>,
+  TError,
+  ImageUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getImageUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof imageUpdate>>,
+    ImageUpdateMutationVariables
+  > = (props) => {
+    const { image, data } = props ?? {};
+
+    return imageUpdate(image, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImageUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof imageUpdate>>>;
+export type ImageUpdateMutationBody = UpdateImageRequest;
+export type ImageUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ImageUpdateMutationVariables = { image: number; data: UpdateImageRequest };
+
+/**
+ * @summary Renames an image. Requires `images.manage` and the `If-Match` from its
+read
+ */
+export const useImageUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof imageUpdate>>,
+      TError,
+      ImageUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof imageUpdate>>,
+  TError,
+  ImageUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getImageUpdateMutationOptions(options), queryClient);
+};
+
+export type imageDestroyResponse200 = {
+  data: ImageDestroy200;
+  status: 200;
+};
+
+export type imageDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type imageDestroyResponse409 = {
+  data: ImageDestroy409;
+  status: 409;
+};
+
+export type imageDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type imageDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type imageDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type imageDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageDestroyResponseSuccess = imageDestroyResponse200 & {
+  headers: Headers;
+};
+export type imageDestroyResponseError = (
+  | imageDestroyResponse401
+  | imageDestroyResponse403
+  | imageDestroyResponse404
+  | imageDestroyResponse409
+  | imageDestroyResponse412
+  | imageDestroyResponse419
+  | imageDestroyResponse428
+  | imageDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type imageDestroyResponse = imageDestroyResponseSuccess | imageDestroyResponseError;
+
+export const getImageDestroyUrl = (image: number) => {
+  return `/images/${image}`;
+};
+
+/**
+ * Refused with `image_in_use` while anything still shows the image:
+ * remove it from there first.
+ * @summary Deletes an image with all its sizes. Requires `images.manage` and the
+`If-Match` from its read
+ */
+export const imageDestroy = async (
+  image: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageDestroyResponse> => {
+  return customFetch<imageDestroyResponse>(getImageDestroyUrl(image), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getImageDestroyMutationKey = () => ["imageDestroy"] as const;
+
+export const getImageDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | ImageDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof imageDestroy>>,
+    TError,
+    ImageDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof imageDestroy>>,
+  TError,
+  ImageDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getImageDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof imageDestroy>>,
+    ImageDestroyMutationVariables
+  > = (props) => {
+    const { image } = props ?? {};
+
+    return imageDestroy(image, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImageDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof imageDestroy>>>;
+
+export type ImageDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | ImageDestroy409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type ImageDestroyMutationVariables = { image: number };
+
+/**
+ * @summary Deletes an image with all its sizes. Requires `images.manage` and the
+`If-Match` from its read
+ */
+export const useImageDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | ImageDestroy409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof imageDestroy>>,
+      TError,
+      ImageDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof imageDestroy>>,
+  TError,
+  ImageDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getImageDestroyMutationOptions(options), queryClient);
+};
+
+export type imageReplaceResponse200 = {
+  data: ImageResource;
+  status: 200;
+};
+
+export type imageReplaceResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type imageReplaceResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type imageReplaceResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type imageReplaceResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type imageReplaceResponse409 = {
+  data: ImageReplace409;
+  status: 409;
+};
+
+export type imageReplaceResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type imageReplaceResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type imageReplaceResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type imageReplaceResponse429 = {
+  data: Problem429Response;
+  status: 429;
+};
+
+export type imageReplaceResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type imageReplaceResponse507 = {
+  data: ImageReplace507;
+  status: 507;
+};
+
+export type imageReplaceResponseSuccess = imageReplaceResponse200 & {
+  headers: Headers;
+};
+export type imageReplaceResponseError = (
+  | imageReplaceResponse400
+  | imageReplaceResponse401
+  | imageReplaceResponse403
+  | imageReplaceResponse404
+  | imageReplaceResponse409
+  | imageReplaceResponse412
+  | imageReplaceResponse419
+  | imageReplaceResponse428
+  | imageReplaceResponse429
+  | imageReplaceResponse503
+  | imageReplaceResponse507
+) & {
+  headers: Headers;
+};
+
+export type imageReplaceResponse = imageReplaceResponseSuccess | imageReplaceResponseError;
+
+export const getImageReplaceUrl = (image: number) => {
+  return `/images/${image}/file`;
+};
+
+/**
+ * The image keeps its id, its name and every place it is shown, so each of
+ * those pages shows the new photo. Its `url`, `srcset` and `sizes` change:
+ * a size's path names the new bytes.
+ *
+ * Sending the photo the image already holds changes nothing and answers
+ * `200`. One that another image in the library holds is refused with
+ * `image_already_in_library`. The byte cap counts what the library would
+ * hold after the swap, so a replacement only needs room for the
+ * difference.
+ *
+ * Replacements and uploads are stored one at a time. One that waits too
+ * long answers `503 service_unavailable`; send it again. One the database
+ * has no room for answers `507 image_storage_full`.
+ * @summary Replaces the photo of an image with new sizes, sent exactly as an upload
+sends them. Requires `images.manage` and the `If-Match` from its read
+ */
+export const imageReplace = async (
+  image: number,
+  replaceImageFileRequest: ReplaceImageFileRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<imageReplaceResponse> => {
+  const formData = new FormData();
+  replaceImageFileRequest.files.forEach((value) => formData.append(`files`, value));
+
+  return customFetch<imageReplaceResponse>(getImageReplaceUrl(image), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getImageReplaceMutationKey = () => ["imageReplace"] as const;
+
+export const getImageReplaceMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | ImageReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem429Response
+    | Problem503Response
+    | ImageReplace507,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof imageReplace>>,
+    TError,
+    ImageReplaceMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof imageReplace>>,
+  TError,
+  ImageReplaceMutationVariables,
+  TContext
+> => {
+  const mutationKey = getImageReplaceMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof imageReplace>>,
+    ImageReplaceMutationVariables
+  > = (props) => {
+    const { image, data } = props ?? {};
+
+    return imageReplace(image, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImageReplaceMutationResult = NonNullable<Awaited<ReturnType<typeof imageReplace>>>;
+export type ImageReplaceMutationBody = ReplaceImageFileRequest;
+export type ImageReplaceMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | ImageReplace409
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem429Response
+  | Problem503Response
+  | ImageReplace507;
+export type ImageReplaceMutationVariables = { image: number; data: ReplaceImageFileRequest };
+
+/**
+ * @summary Replaces the photo of an image with new sizes, sent exactly as an upload
+sends them. Requires `images.manage` and the `If-Match` from its read
+ */
+export const useImageReplace = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | ImageReplace409
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem429Response
+    | Problem503Response
+    | ImageReplace507,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof imageReplace>>,
+      TError,
+      ImageReplaceMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof imageReplace>>,
+  TError,
+  ImageReplaceMutationVariables,
+  TContext
+> => {
+  return useMutation(getImageReplaceMutationOptions(options), queryClient);
+};
+
 export type configShowResponse200 = {
   data: ConfigShow200;
   status: 200;
@@ -9912,3 +11371,339 @@ export function useConfigShow<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type photoSlotIndexResponse200 = {
+  data: PhotoSlotIndex200;
+  status: 200;
+};
+
+export type photoSlotIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type photoSlotIndexResponseSuccess = photoSlotIndexResponse200 & {
+  headers: Headers;
+};
+export type photoSlotIndexResponseError = photoSlotIndexResponse503 & {
+  headers: Headers;
+};
+
+export type photoSlotIndexResponse = photoSlotIndexResponseSuccess | photoSlotIndexResponseError;
+
+export const getPhotoSlotIndexUrl = (params?: PhotoSlotIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/photo-slots?${stringifiedParams}` : `/photo-slots`;
+};
+
+/**
+ * A slot with no photo is absent, and the page shows its placeholder.
+ * No photo carries alt text: the page describes each by what it shows.
+ * @summary Every slot that shows a photo, by name. Public
+ */
+export const photoSlotIndex = async (
+  params?: PhotoSlotIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<photoSlotIndexResponse> => {
+  return customFetch<photoSlotIndexResponse>(getPhotoSlotIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPhotoSlotIndexQueryKey = (params?: PhotoSlotIndexParams) => {
+  return [`/photo-slots`, ...(params ? [params] : [])] as const;
+};
+
+export const getPhotoSlotIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
+  TError = Problem503Response,
+>(
+  params?: PhotoSlotIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPhotoSlotIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof photoSlotIndex>>> = ({ signal }) =>
+    photoSlotIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof photoSlotIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type PhotoSlotIndexQueryResult = NonNullable<Awaited<ReturnType<typeof photoSlotIndex>>>;
+export type PhotoSlotIndexQueryError = Problem503Response;
+
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
+  TError = Problem503Response,
+>(
+  params: undefined | PhotoSlotIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof photoSlotIndex>>,
+          TError,
+          Awaited<ReturnType<typeof photoSlotIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
+  TError = Problem503Response,
+>(
+  params?: PhotoSlotIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof photoSlotIndex>>,
+          TError,
+          Awaited<ReturnType<typeof photoSlotIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
+  TError = Problem503Response,
+>(
+  params?: PhotoSlotIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Every slot that shows a photo, by name. Public
+ */
+
+export function usePhotoSlotIndex<
+  TData = Awaited<ReturnType<typeof photoSlotIndex>>,
+  TError = Problem503Response,
+>(
+  params?: PhotoSlotIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof photoSlotIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getPhotoSlotIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type photoSlotUpdateResponse200 = {
+  data: PhotoSlotUpdate200;
+  status: 200;
+};
+
+export type photoSlotUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type photoSlotUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type photoSlotUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type photoSlotUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type photoSlotUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type photoSlotUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type photoSlotUpdateResponseSuccess = photoSlotUpdateResponse200 & {
+  headers: Headers;
+};
+export type photoSlotUpdateResponseError = (
+  | photoSlotUpdateResponse400
+  | photoSlotUpdateResponse401
+  | photoSlotUpdateResponse403
+  | photoSlotUpdateResponse404
+  | photoSlotUpdateResponse419
+  | photoSlotUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type photoSlotUpdateResponse = photoSlotUpdateResponseSuccess | photoSlotUpdateResponseError;
+
+export const getPhotoSlotUpdateUrl = (slot: string) => {
+  return `/photo-slots/${slot}`;
+};
+
+/**
+ * `{slot}` is the page's name for the place: letters, digits, `.`, `_` and
+ * `-`, at most 64 characters. Send `imageId` null to empty the slot.
+ * `label` and `path` are how the library names and links the place. No
+ * `If-Match`: the write sets one value, so there is nothing half-written
+ * to lose.
+ * @summary Puts a photo in a slot, or takes it out. Requires `images.manage`
+ */
+export const photoSlotUpdate = async (
+  slot: string,
+  placePhotoRequest: PlacePhotoRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<photoSlotUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<photoSlotUpdateResponse>(getPhotoSlotUpdateUrl(slot), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(placePhotoRequest),
+  });
+};
+
+export const getPhotoSlotUpdateMutationKey = () => ["photoSlotUpdate"] as const;
+
+export const getPhotoSlotUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof photoSlotUpdate>>,
+    TError,
+    PhotoSlotUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof photoSlotUpdate>>,
+  TError,
+  PhotoSlotUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getPhotoSlotUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof photoSlotUpdate>>,
+    PhotoSlotUpdateMutationVariables
+  > = (props) => {
+    const { slot, data } = props ?? {};
+
+    return photoSlotUpdate(slot, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PhotoSlotUpdateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof photoSlotUpdate>>
+>;
+export type PhotoSlotUpdateMutationBody = PlacePhotoRequest;
+export type PhotoSlotUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem419Response
+  | Problem503Response;
+export type PhotoSlotUpdateMutationVariables = { slot: string; data: PlacePhotoRequest };
+
+/**
+ * @summary Puts a photo in a slot, or takes it out. Requires `images.manage`
+ */
+export const usePhotoSlotUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof photoSlotUpdate>>,
+      TError,
+      PhotoSlotUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof photoSlotUpdate>>,
+  TError,
+  PhotoSlotUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getPhotoSlotUpdateMutationOptions(options), queryClient);
+};

@@ -7,6 +7,7 @@ use App\Models\Member;
 use App\Models\Section;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\LibraryImage;
 use Tests\TestCase;
 
 /**
@@ -101,6 +102,16 @@ class PublicPagesTest extends TestCase
         );
     }
 
+    public function test_a_register_carries_no_photo(): void
+    {
+        // A register's photo is a photo slot like any other, read from
+        // /photo-slots by the page; the band read knows nothing of it.
+        $register = $this->register('Cloches');
+        $this->placePhoto("register-{$register->id}", LibraryImage::create()->id);
+
+        $this->assertArrayNotHasKey('photo', $this->registerIn($this->getJson('/api/v1/band'), 'Cloches'));
+    }
+
     public function test_it_orders_registers_the_way_the_band_configured_them(): void
     {
         $response = $this->getJson('/api/v1/band')->assertStatus(200);
@@ -191,6 +202,8 @@ class PublicPagesTest extends TestCase
         // reaches it. What changed is who may type it and when, not what a
         // visitor reads.
         $this->assertSame('Responsable caisse', $response->json('data.0.function'));
+        // A seat shows no portrait: the committee page is names and seats.
+        $this->assertArrayNotHasKey('photo', $response->json('data.0'));
     }
 
     public function test_the_committee_omits_somebody_who_has_not_consented(): void

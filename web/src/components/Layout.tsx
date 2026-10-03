@@ -1,4 +1,4 @@
-import { Calendar, Inbox, type LucideIcon, Users } from "lucide-react";
+import { Calendar, Images, Inbox, type LucideIcon, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 
@@ -59,6 +59,7 @@ const TOOLS: Array<{ to: string; labelKey: TranslationKey; permission: string; i
   [
     { to: "/members", labelKey: "nav.members", permission: "members.manage", icon: Users },
     { to: "/inbox", labelKey: "nav.inbox", permission: "messages.view", icon: Inbox },
+    { to: "/media", labelKey: "nav.media", permission: "images.manage", icon: Images },
   ];
 
 export function Layout() {
