@@ -36,12 +36,6 @@ type Props = {
   label: string;
   /** What the slot holds now; null draws the empty frame. */
   photo: PhotoData | null;
-  /**
-   * Shown while nothing is placed, in place of the empty frame. The slot then
-   * has nothing to remove: placing a photo covers the fallback, and removing
-   * that photo brings the fallback back.
-   */
-  fallback?: PhotoData | undefined;
   /** What the photo shows, said by the page. */
   alt: string;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
@@ -74,7 +68,7 @@ type Props = {
  * the new state, focus moves to the slot's new button, and the status line
  * says what happened.
  */
-export function SlotPhotoControl({ slot, label, photo, fallback, alt, upload, shrinker }: Props) {
+export function SlotPhotoControl({ slot, label, photo, alt, upload, shrinker }: Props) {
   const { can } = useSession();
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
@@ -227,20 +221,19 @@ export function SlotPhotoControl({ slot, label, photo, fallback, alt, upload, sh
     },
   };
 
-  const shown = photo ?? fallback ?? null;
-  const name = t(shown === null ? "photos.addSlot" : "photos.changeSlot", { label });
+  const name = t(photo === null ? "photos.addSlot" : "photos.changeSlot", { label });
 
   return (
     <div className="mt-related">
       <div
         className="group/frame relative"
-        {...(shown ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
+        {...(photo ? { "data-photo-frame": "" } : { "data-photo-pending": slot })}
         {...dropTarget}
       >
-        {shown ? (
+        {photo ? (
           <>
             <Photo
-              photo={shown}
+              photo={photo}
               alt={alt}
               sizes={PHOTO_SIZES.textColumn}
               className="block h-auto w-full rounded-lg"
@@ -289,7 +282,7 @@ export function SlotPhotoControl({ slot, label, photo, fallback, alt, upload, sh
             // being replaced.
             className={cn(
               "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-violet px-4 text-center font-medium text-violet",
-              shown
+              photo
                 ? "bg-panel/85 backdrop-blur-sm"
                 : "bg-panel bg-linear-to-b from-violet/10 to-violet/10",
             )}

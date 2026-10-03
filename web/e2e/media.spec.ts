@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { expect, test, type Page } from "@playwright/test";
 
-/** A photograph the site already ships; the budget check keeps it small. */
-const PHOTO = "web/public/assets/img/parrainmarraine.jpg";
+/** A synthetic 1920 x 1275 JPEG, so the stored sizes below are known. */
+const PHOTO = "web/e2e/fixtures/sample-photo.jpg";
 
 /**
  * The media library's real upload path (#105): a file picked in the browser,
@@ -73,7 +73,7 @@ test("a photo uploaded on /media can be placed on /band where the page shows it"
   await expect(bells.locator('[data-photo-pending="register-4"]')).toBeVisible();
   await bells.getByRole("button", { name: "Ajouter une photo — Cloches" }).click();
   // A picker tile is named by the photo's name: the file name, less ".jpg".
-  await page.getByRole("dialog").getByRole("button", { name: "parrainmarraine" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "sample-photo" }).click();
 
   const placed = bells.locator(`img[src="${src}"]`);
   await expect(placed).toBeVisible();
@@ -104,7 +104,7 @@ test("a photo is renamed, turned and replaced on its own page, and /band shows t
   await page.locator('a[href="/band"]:visible').first().click();
   const bells = page.getByRole("article", { name: "Cloches" });
   await bells.getByRole("button", { name: "Ajouter une photo — Cloches" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "parrainmarraine" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "sample-photo" }).click();
   await expect(bells.locator('img[src^="/api/v1/images/"]')).toBeVisible();
   // The library sits behind the account menu; the router is told directly,
   // which keeps the mock's library in page memory, as a click would.
@@ -114,9 +114,9 @@ test("a photo is renamed, turned and replaced on its own page, and /band shows t
   });
 
   // The card's name opens the photo's page.
-  await page.getByTestId("library-card-3").getByRole("link", { name: "parrainmarraine" }).click();
+  await page.getByTestId("library-card-3").getByRole("link", { name: "sample-photo" }).click();
   await expect(page).toHaveURL(/\/media\/3$/);
-  await expect(page.getByRole("heading", { level: 1, name: "parrainmarraine" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "sample-photo" })).toBeVisible();
   expect(await storedSizes(page)).toEqual(["1920 × 1275", "960 × 638", "480 × 319"]);
 
   // Rename.
@@ -223,7 +223,7 @@ test("a photo dropped on an empty slot is shrunk, uploaded and placed there", as
   const dataTransfer = await page.evaluateHandle((base64) => {
     const binary = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const transfer = new DataTransfer();
-    transfer.items.add(new File([binary], "parrainmarraine.jpg", { type: "image/jpeg" }));
+    transfer.items.add(new File([binary], "sample-photo.jpg", { type: "image/jpeg" }));
     return transfer;
   }, bytes);
   await frame.dispatchEvent("dragenter", { dataTransfer });

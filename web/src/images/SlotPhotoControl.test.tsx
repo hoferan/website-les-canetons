@@ -484,40 +484,36 @@ test("a visitor's page keeps the browser's own handling of a dropped file", asyn
 });
 
 /* ------------------------------------------------------------------------ *
- * The godparents' photo on /band. Unlike the other slots it has a fallback:
- * the original photograph, which the band asked to keep.
+ * The godparents' photo on /band is a slot like any other: no static picture
+ * stands in for it.
  * ------------------------------------------------------------------------ */
 
-const ORIGINAL = "/assets/img/parrainmarraine.jpg";
-const godparentsAlt = "Le parrain et la marraine des Canetons";
-
-test("with nothing placed, a visitor sees the godparents' original photo", async () => {
+test("with nothing placed, the godparents' slot shows the placeholder like any other", async () => {
   setMockUser(null);
   await renderWithSession(<Band />, { route: "/band" });
 
-  const photo = await screen.findByRole("img", { name: godparentsAlt });
-  expect(photo).toHaveAttribute("src", ORIGINAL);
-  expect(document.querySelector('[data-photo-pending="godparents"]')).toBeNull();
+  await waitFor(() =>
+    expect(document.querySelector('[data-photo-pending="godparents"]')).not.toBeNull(),
+  );
+  expect(screen.queryByRole("img", { name: "Le parrain et la marraine des Canetons" })).toBeNull();
+  // Nothing on the band page is served from the static images any more.
+  expect(document.querySelector('img[src^="/assets/img/"]')).toBeNull();
 });
 
-/** MUTATION TEST: drop the fallback from SlotPhotoControl and the editor gets an empty frame. */
-test("an editor changes the godparents' photo like any other, and removing it brings the original back", async () => {
+test("an editor places the godparents' photo like any other", async () => {
   setMockUser("demo.direction");
   const user = userEvent.setup();
   const puts = recordPuts();
   await renderWithSession(<Band />, { route: "/band" });
 
-  // The original carries the pencil, and there is nothing to remove yet.
-  expect(await screen.findByRole("img", { name: godparentsAlt })).toHaveAttribute("src", ORIGINAL);
-  const pencil = { name: "Changer la photo — Parrain et marraine" };
-  await user.click(screen.getByRole("button", pencil));
-  expect(await screen.findByRole("dialog")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Retirer la photo" })).toBeNull();
+  await user.click(
+    await screen.findByRole("button", { name: "Ajouter une photo — Parrain et marraine" }),
+  );
   await user.click(await screen.findByRole("button", { name: "Trompettes en répétition" }));
 
-  await waitFor(() =>
-    expect(screen.getByRole("img", { name: godparentsAlt })).not.toHaveAttribute("src", ORIGINAL),
-  );
+  expect(
+    await screen.findByRole("img", { name: "Le parrain et la marraine des Canetons" }),
+  ).toBeInTheDocument();
   expect(puts).toEqual([
     {
       path: "/api/v1/photo-slots/godparents",
@@ -525,15 +521,4 @@ test("an editor changes the godparents' photo like any other, and removing it br
       body: { imageId: 2, label: "Parrain et marraine", path: "/band" },
     },
   ]);
-
-  await user.click(screen.getByRole("button", pencil));
-  await user.click(await screen.findByRole("button", { name: "Retirer la photo" }));
-  await waitFor(() =>
-    expect(screen.getByRole("img", { name: godparentsAlt })).toHaveAttribute("src", ORIGINAL),
-  );
-  expect(puts[1]).toEqual({
-    path: "/api/v1/photo-slots/godparents",
-    ifMatch: null,
-    body: { imageId: null, label: "Parrain et marraine", path: "/band" },
-  });
 });

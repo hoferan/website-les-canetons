@@ -83,14 +83,6 @@ function Register({ register }: { register: PublicSectionResource }) {
  * Leading the band is a role now, and roles are not public; whoever holds it
  * appears on /committee under the title the committee gives them.
  */
-/** The photograph the page has always shown, served from the static assets. */
-const GODPARENTS_ORIGINAL = {
-  url: "/assets/img/parrainmarraine.jpg",
-  width: 1920,
-  height: 1275,
-  srcset: "/assets/img/parrainmarraine.jpg 1920w",
-};
-
 export function Band() {
   const band = useBandIndex();
   const registers = rowsOf<PublicSectionResource>(band.data);
@@ -127,13 +119,8 @@ export function Band() {
           kind of person ever earns a table of their own is a question for
           whenever the band supplies a name the roster cannot hold.
 
-          Their photograph is the ORIGINAL, not a placeholder. Every other
-          photo went on the assumption it was out of date, but that reasoning
-          is about a roster that turns over yearly; two people who are not in
-          the band do not go stale the same way, and the band asked for the old
-          image back. It stays as the slot's fallback: the committee can place
-          a library photo over it like any other slot, and removing that photo
-          brings the original back rather than a placeholder. */}
+          Their photograph is a slot like every other, placed from the
+          library. */}
       <hr className="mt-section border-line" />
 
       <Card className="mt-block gap-0 p-5">
@@ -142,7 +129,6 @@ export function Band() {
           slot="godparents"
           label={t("photos.slot.godparents")}
           alt={t("band.patronsAlt")}
-          fallback={GODPARENTS_ORIGINAL}
         />
         <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
       </Card>

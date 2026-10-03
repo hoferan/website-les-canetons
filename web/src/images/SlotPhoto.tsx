@@ -1,7 +1,7 @@
 import { PhotoPending, PhotoReserved } from "@/components/PhotoPending";
 
 import { useSession } from "../session/SessionProvider";
-import { Photo, PHOTO_SIZES, type PhotoData } from "./Photo";
+import { Photo, PHOTO_SIZES } from "./Photo";
 import { usePhotoSlots } from "./photoSlots";
 import { SlotPhotoControl } from "./SlotPhotoControl";
 import type { ShrinkFn, UploadFn } from "./uploadQueue";
@@ -16,8 +16,6 @@ type Props = {
   label: string;
   /** What the photo shows, said by the page. No photo carries alt text. */
   alt: string;
-  /** Shown while nothing is placed, instead of the placeholder. */
-  fallback?: PhotoData;
   /** Injected by tests, which cannot send a multipart body through jsdom. */
   upload?: UploadFn;
   shrinker?: ShrinkFn;
@@ -28,7 +26,7 @@ type Props = {
  * placed there, and lets whoever holds `images.manage` change it in place. It
  * reads the slots itself, so a page passes no photo.
  *
- * A visitor gets the photo, the fallback, or the one-line placeholder, with no
+ * A visitor gets the photo or the one-line placeholder, with no
  * control, no drop handling and no wrapper. An editor gets `SlotPhotoControl`,
  * which draws the same photo with a way to change it.
  *
@@ -39,7 +37,7 @@ type Props = {
  * and height, so the box is reserved before the bytes arrive, and `h-auto` lets
  * the column width decide the height.
  */
-export function SlotPhoto({ slot, label, alt, fallback, upload, shrinker }: Props) {
+export function SlotPhoto({ slot, label, alt, upload, shrinker }: Props) {
   const { can } = useSession();
   const slots = usePhotoSlots();
 
@@ -54,20 +52,18 @@ export function SlotPhoto({ slot, label, alt, fallback, upload, shrinker }: Prop
         slot={slot}
         label={label}
         photo={photo}
-        fallback={fallback}
         alt={alt}
         upload={upload}
         shrinker={shrinker}
       />
     );
   }
-  const shown = photo ?? fallback;
-  if (!shown) {
+  if (!photo) {
     return <PhotoPending token={slot} />;
   }
   return (
     <Photo
-      photo={shown}
+      photo={photo}
       alt={alt}
       sizes={PHOTO_SIZES.textColumn}
       className="mt-related h-auto w-full rounded-lg"

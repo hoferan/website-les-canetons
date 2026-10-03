@@ -219,9 +219,9 @@ What this fixes:
   the timeline says so rather than the form offering a retry that would save
   the entry twice. Deleting the entry deletes its slot in the same
   transaction, or its image would stay in use by a slot no page shows.
-- A slot can have a fallback the page shows while nothing is placed: the
-  godparents' original photograph, which the band asked to keep. Placing a
-  photo covers it, and removing that photo brings it back.
+- Every photograph the site shows is in a slot, the godparents' included;
+  only the logo is a static file. An empty slot shows the one-line
+  placeholder to visitors.
 - One shared library, and a photo can be in several slots. Deleting a photo
   that any slot still shows is refused with `image_in_use`, whatever the slot
   is; the RESTRICT foreign key from `photo_slots` to `images` is the backstop.
