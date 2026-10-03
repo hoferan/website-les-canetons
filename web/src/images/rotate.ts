@@ -8,7 +8,7 @@
  * loses a little each time, which a few turns do not make visible.
  */
 
-import { decodePhoto, encodeSizes, ShrinkError, type PhotoSource } from "./shrink";
+import { decodePhoto, encodeSizes, photoContext, ShrinkError, type PhotoSource } from "./shrink";
 
 export type Turn = "left" | "right";
 
@@ -23,8 +23,9 @@ export function drawTurned(
 ): HTMLCanvasElement {
   canvas.width = source.height;
   canvas.height = source.width;
-  const context = canvas.getContext("2d");
-  if (!context) throw new ShrinkError("unreadable");
+  // The same CPU-backed context as every size: the turned canvas is the source
+  // the sizes are drawn from, and an accelerated one can read back black.
+  const context = photoContext(canvas);
   if (turn === "right") {
     context.translate(canvas.width, 0);
     context.rotate(Math.PI / 2);

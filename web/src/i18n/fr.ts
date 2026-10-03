@@ -1251,6 +1251,8 @@ export const fr = {
       unreadable: "Ce format n’est pas lisible par ce navigateur — exportez la photo en JPEG.",
       unsupported: "Ce type de fichier n’est pas une photo acceptée.",
       too_large: "La photo reste trop lourde, même réduite.",
+      blank:
+        "Ce navigateur a rendu la photo entièrement noire, elle n’a donc pas été envoyée. Réessayez avec un autre navigateur.",
       image_library_full: "La bibliothèque est pleine.",
       image_storage_full: "Le serveur n’a plus de place pour les photos.",
       network: "L’envoi a échoué. Réessayez.",

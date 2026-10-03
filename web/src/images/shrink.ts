@@ -22,7 +22,7 @@ export const START_QUALITY = 0.82;
 export const QUALITY_STEP = 0.07;
 export const MIN_QUALITY = 0.6;
 
-export type ShrinkReason = "unreadable" | "unsupported" | "too_large";
+export type ShrinkReason = "unreadable" | "unsupported" | "too_large" | "blank";
 
 export class ShrinkError extends Error {
   constructor(readonly reason: ShrinkReason) {
@@ -226,19 +226,55 @@ export async function shrink(file: File): Promise<Blob[]> {
   }
 }
 
+/**
+ * A 2D context for drawing a photo and reading it back, which is all this code
+ * does with a canvas.
+ *
+ * CPU-BACKED ON PURPOSE. Firefox 156 on Windows, with its default accelerated
+ * canvas, reads an image drawn onto a canvas back as all zeros: every photo
+ * went up as a black JPEG of a few KB, while a plain fill read back correctly.
+ * `willReadFrequently` keeps the canvas in main memory, where the read-back is
+ * right in every browser (measured 2026-10-03: average brightness 0 against 97
+ * on the same photo).
+ */
+export function photoContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new ShrinkError("unreadable");
+  return context;
+}
+
+/**
+ * Whether the drawn size reads back as pure black along its middle row and
+ * middle column: what a browser hands back when it fails to read a drawn image,
+ * as Firefox's accelerated canvas did. No photograph is pure black along both
+ * lines, and two lines cost little even at 1920 px.
+ */
+function readsBackBlack(context: CanvasRenderingContext2D, width: number, height: number): boolean {
+  const lines = [
+    context.getImageData(0, Math.floor(height / 2), width, 1).data,
+    context.getImageData(Math.floor(width / 2), 0, 1, height).data,
+  ];
+  return lines.every((pixels) => {
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] !== 0 || pixels[i + 1] !== 0 || pixels[i + 2] !== 0) return false;
+    }
+    return true;
+  });
+}
+
 /** Draws one size from the source, encodes it, and releases the canvas. */
 async function encodeSize(source: PhotoSource, width: number, height: number): Promise<Blob> {
   const canvas = document.createElement("canvas");
   try {
     canvas.width = width;
     canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new ShrinkError("unreadable");
+    const context = photoContext(canvas);
     context.imageSmoothingQuality = "high";
     // JPEG has no alpha: a transparent PNG would otherwise turn black.
     context.fillStyle = "#fff";
     context.fillRect(0, 0, width, height);
     context.drawImage(source, 0, 0, width, height);
+    if (readsBackBlack(context, width, height)) throw new ShrinkError("blank");
 
     return await encodeWithinBudget(
       (quality) =>

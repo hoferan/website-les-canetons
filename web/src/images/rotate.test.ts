@@ -9,19 +9,23 @@ type Call = [string, ...number[]];
 function recordingCanvas() {
   const calls: Call[] = [];
   const drawn: unknown[] = [];
+  const contextOptions: unknown[] = [];
   const canvas = {
     width: 0,
     height: 0,
-    getContext: () => ({
-      translate: (x: number, y: number) => calls.push(["translate", x, y]),
-      rotate: (angle: number) => calls.push(["rotate", angle]),
-      drawImage: (source: unknown, x: number, y: number) => {
-        drawn.push(source);
-        calls.push(["drawImage", x, y]);
-      },
-    }),
+    getContext: (_type: string, options?: unknown) => {
+      contextOptions.push(options);
+      return {
+        translate: (x: number, y: number) => calls.push(["translate", x, y]),
+        rotate: (angle: number) => calls.push(["rotate", angle]),
+        drawImage: (source: unknown, x: number, y: number) => {
+          drawn.push(source);
+          calls.push(["drawImage", x, y]);
+        },
+      };
+    },
   };
-  return { canvas: canvas as unknown as HTMLCanvasElement, calls, drawn };
+  return { canvas: canvas as unknown as HTMLCanvasElement, calls, drawn, contextOptions };
 }
 
 /** Where the transform the canvas recorded sends a point of the source. */
@@ -59,6 +63,14 @@ describe("drawTurned", () => {
     const transforms = calls.filter(([name]) => name !== "drawImage");
     expect(mapPoint(transforms, 0, 0)).toEqual(topLeft);
     expect(mapPoint(transforms, 1920, 1280)).toEqual(bottomRight);
+  });
+
+  it("turns on a CPU-backed canvas, which every browser reads back correctly", () => {
+    const { canvas, contextOptions } = recordingCanvas();
+
+    drawTurned(source, "right", canvas);
+
+    expect(contextOptions).toEqual([{ willReadFrequently: true }]);
   });
 });
 

@@ -19,6 +19,7 @@ export type FailureReason =
   | "unreadable"
   | "unsupported"
   | "too_large"
+  | "blank"
   | "image_library_full"
   | "image_storage_full"
   | "network"

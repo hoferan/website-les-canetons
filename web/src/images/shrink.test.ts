@@ -112,9 +112,10 @@ describe("shrink", () => {
       height: number;
       encoded: { width: number; height: number } | null;
       drawnFrom: unknown;
-      getContext: () => unknown;
+      getContext: (type: string, options?: unknown) => unknown;
       toBlob: (cb: (b: Blob | null) => void, type: string, q: number) => void;
     };
+    const contextOptions: unknown[] = [];
     const calls: string[] = [];
     const canvases: FakeCanvas[] = [];
     // Whether every earlier canvas had been released when a new one was made.
@@ -126,15 +127,21 @@ describe("shrink", () => {
         height: 0,
         encoded: null,
         drawnFrom: null,
-        getContext: () => ({
-          fillStyle: "",
-          imageSmoothingQuality: "low",
-          fillRect: () => calls.push("fillRect"),
-          drawImage: (source: unknown) => {
-            canvas.drawnFrom = source;
-            calls.push("drawImage");
-          },
-        }),
+        getContext: (_type, options) => {
+          contextOptions.push(options);
+          return {
+            fillStyle: "",
+            imageSmoothingQuality: "low",
+            fillRect: () => calls.push("fillRect"),
+            drawImage: (source: unknown) => {
+              canvas.drawnFrom = source;
+              calls.push("drawImage");
+            },
+            getImageData: (_x: number, _y: number, w: number, h: number) => ({
+              data: new Uint8ClampedArray(w * h * 4).fill(128),
+            }),
+          };
+        },
         toBlob: (cb, type, q) => {
           canvas.encoded = { width: canvas.width, height: canvas.height };
           calls.push(`toBlob:${type}:${q}`);
@@ -166,6 +173,41 @@ describe("shrink", () => {
     expect(blobs.map((blob) => blob.size)).toEqual([1920, 960, 480]);
     expect(close).toHaveBeenCalledOnce();
     expect(canvases.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true);
+    // CPU-backed canvases: Firefox's GPU canvas reads drawn images back black.
+    expect(contextOptions).toEqual(Array(3).fill({ willReadFrequently: true }));
+  });
+
+  it("refuses a photo whose canvas reads back black, before anything is encoded", async () => {
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async () => ({ width: 800, height: 600, close: vi.fn() })),
+    );
+    const toBlob = vi.fn();
+    const original = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation(((tag: string) =>
+      tag === "canvas"
+        ? {
+            width: 0,
+            height: 0,
+            getContext: () => ({
+              fillRect: () => undefined,
+              drawImage: () => undefined,
+              // What Firefox's accelerated canvas hands back: every pixel zero.
+              getImageData: (_x: number, _y: number, w: number, h: number) => ({
+                data: new Uint8ClampedArray(w * h * 4),
+              }),
+            }),
+            toBlob,
+          }
+        : original(tag)) as typeof document.createElement);
+
+    const error = await shrink(new File(["x"], "a.jpg", { type: "image/jpeg" })).catch(
+      (thrown: unknown) => thrown,
+    );
+
+    expect(error).toBeInstanceOf(ShrinkError);
+    expect(error).toMatchObject({ reason: "blank" });
+    expect(toBlob).not.toHaveBeenCalled();
   });
 });
 

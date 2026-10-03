@@ -816,6 +816,8 @@ export const de: typeof fr = {
         "Dieses Format kann dieser Browser nicht lesen — exportieren Sie das Foto als JPEG.",
       unsupported: "Dieser Dateityp ist kein akzeptiertes Foto.",
       too_large: "Das Foto bleibt auch verkleinert zu gross.",
+      blank:
+        "Dieser Browser hat das Foto ganz schwarz dargestellt, deshalb wurde es nicht gesendet. Versuchen Sie es mit einem anderen Browser.",
       image_library_full: "Die Bibliothek ist voll.",
       image_storage_full: "Der Server hat keinen Platz mehr für Fotos.",
       network: "Das Senden ist fehlgeschlagen. Versuchen Sie es erneut.",
