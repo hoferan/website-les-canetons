@@ -593,6 +593,7 @@ npm run fix           # auto-fix: Pint + eslint + stylelint + prettier
 npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e)
 npm run test:js       # node:test over tools/
+npm run lighthouse    # public pages vs. the performance budget (informational)
 npm run lint:api      # Laravel Pint (--test)
 npm run artisan -- route:list   # artisan, from api/
 npm run composer -- outdated    # Composer, from api/
