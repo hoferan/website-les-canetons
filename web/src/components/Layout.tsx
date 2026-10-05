@@ -15,7 +15,16 @@ import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
+import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
+import {
+  FACEBOOK_URL,
+  FacebookMark,
+  FlickrMark,
+  GALLERY_URL,
+  INSTAGRAM_URL,
+  InstagramMark,
+} from "./social";
 import { Toaster } from "./ui/sonner";
 
 /**
@@ -28,7 +37,8 @@ import { Toaster } from "./ui/sonner";
  * band takes players from 7 to 18 and loses them at 18, so the visitor worth
  * optimising for is a parent deciding whether to turn up on Saturday. The
  * people page follows, then the way to write in, and last the pages a parent
- * needs least. The gallery, an external site, comes after all of them.
+ * needs least. The external sites come after all of them: the gallery, then
+ * the band's Instagram and Facebook, which fold first.
  *
  * EVERY ENTRY HERE MUST BE A ROUTE THAT EXISTS — a nav item that 404s is worse
  * than a missing one.
@@ -41,8 +51,6 @@ const PUBLIC_NAV: Array<{ to: string; labelKey: TranslationKey }> = [
   { to: "/committee", labelKey: "nav.committee" },
   { to: "/history", labelKey: "nav.history" },
 ];
-
-const GALLERY_URL = "https://www.flickr.com/photos/201962767@N02/collections";
 
 /**
  * The committee's screens, each gated by the permission that gates the API
@@ -85,7 +93,29 @@ export function Layout() {
   // bar and the phone list cannot disagree about what exists.
   const publicEntries: NavEntry[] = [
     ...PUBLIC_NAV.map((item) => ({ key: item.to, to: item.to, label: t(item.labelKey) })),
-    { key: "gallery", href: GALLERY_URL, label: t("nav.gallery") },
+    {
+      key: "gallery",
+      href: GALLERY_URL,
+      label: t("nav.gallery"),
+      ariaLabel: t("nav.galleryLabel"),
+      icon: FlickrMark,
+    },
+    {
+      key: "instagram",
+      href: INSTAGRAM_URL,
+      label: "Instagram",
+      ariaLabel: t("nav.instagramLabel"),
+      icon: InstagramMark,
+      iconOnly: true,
+    },
+    {
+      key: "facebook",
+      href: FACEBOOK_URL,
+      label: "Facebook",
+      ariaLabel: t("nav.facebookLabel"),
+      icon: FacebookMark,
+      iconOnly: true,
+    },
   ];
   // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
   // everybody in the band does every week, so it is the last thing to fold.
@@ -230,15 +260,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* NO LOGO HERE, DELIBERATELY. The badge was briefly shown above this
-          line and taken out again on 2026-09-03: it is the mark on the flyers
-          and the costumes, so it earns one prominent placement rather than a
-          repeat in the chrome of every page. That placement is /accueil. */}
-      <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
-        <p className="mx-auto max-w-shell px-4">
-          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. {t("nav.rights")}
-        </p>
-      </footer>
+      <Footer />
 
       {/* Mounted once here rather than per page: the layout route survives
           navigation, so a toast raised by a mutation is not unmounted by the

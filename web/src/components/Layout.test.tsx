@@ -30,15 +30,84 @@ test.each([
   expect(container.textContent).toBe(shown ? env.toUpperCase() : "");
 });
 
-test("the Galerie link is external and opens in a new tab", async () => {
+/**
+ * THE BAND'S ACCOUNTS ELSEWHERE (#224): the gallery and the two networks in the
+ * nav, and all three again in the footer. Each opens a new tab and says so in
+ * its name.
+ */
+test.each([
+  ["Galerie sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+  ["Instagram des Canetons (nouvel onglet)", "instagram.com/guggen_lescanetons"],
+  ["Facebook des Canetons (nouvel onglet)", "facebook.com/p/Guggenmusik-Les-Canetons"],
+  ["Flickr, la galerie des Canetons (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+])("%s is external and opens in a new tab", async (name, url) => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  const galerie = screen.getByRole("link", { name: /Galerie/ });
-  expect(galerie).toHaveAttribute("href", expect.stringContaining("flickr.com"));
-  expect(galerie).toHaveAttribute("target", "_blank");
-  // Without rel=noreferrer a target=_blank link hands the opened page a
-  // window.opener reference back into this one.
-  expect(galerie).toHaveAttribute("rel", "noreferrer");
+  // getAll: the networks are in the nav AND the footer, under one name.
+  const links = screen.getAllByRole("link", { name });
+  for (const link of links) {
+    expect(link).toHaveAttribute("href", expect.stringContaining(url));
+    expect(link).toHaveAttribute("target", "_blank");
+    // Without rel=noreferrer a target=_blank link hands the opened page a
+    // window.opener reference back into this one.
+    expect(link).toHaveAttribute("rel", "noreferrer");
+  }
+});
+
+test("the networks are in both the nav and the footer", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+  const footer = screen.getByRole("contentinfo");
+  for (const name of [
+    "Instagram des Canetons (nouvel onglet)",
+    "Facebook des Canetons (nouvel onglet)",
+  ]) {
+    expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name })).toBeInTheDocument();
+  }
+  expect(footer).toHaveTextContent("Suivez-nous");
+});
+
+test("the desktop bar labels Galerie beside its mark, and shows the networks as marks alone", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const bar = within(
+    screen.getByRole("navigation", { name: "Navigation principale" }),
+  ).getAllByRole("list")[0]!;
+  const text = (name: string) => within(bar).getByRole("link", { name }).textContent;
+  expect(text("Galerie sur Flickr (nouvel onglet)")).toBe("Galerie");
+  expect(text("Instagram des Canetons (nouvel onglet)")).toBe("");
+  expect(text("Facebook des Canetons (nouvel onglet)")).toBe("");
+  // Every external entry carries its brand mark, so none gets the arrow.
+  expect(bar.querySelector(".lucide-external-link")).toBeNull();
+});
+
+test("the footer offers joining and writing in, and names each network on screen", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByRole("link", { name: "Nous rejoindre" })).toHaveAttribute(
+    "href",
+    "/join",
+  );
+  expect(within(footer).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+  // Visible names, not icons alone: the Flickr mark is two dots.
+  for (const name of ["Instagram", "Facebook", "Flickr"]) {
+    expect(within(footer).getByRole("link", { name: new RegExp(`^${name}`) })).toHaveTextContent(
+      name,
+    );
+  }
+});
+
+test("the phone menu names the networks beside their marks", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
+
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  expect(within(layer).getByRole("link", { name: /^Instagram/ })).toHaveTextContent("Instagram");
+  expect(within(layer).getByRole("link", { name: /^Facebook/ })).toHaveTextContent("Facebook");
 });
 
 test("the auth link says Connexion when nobody is logged in", async () => {
@@ -346,16 +415,26 @@ test("the account menu reads German under the German locale", async () => {
 test("the nav renders in German under the German locale", async () => {
   await renderWithSession(<Layout />, { locale: "de-CH" });
 
-  expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
+  const nav = screen.getByRole("navigation", { name: "Hauptnavigation" });
+  expect(within(nav).getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
+  expect(within(footer).getByRole("link", { name: "Kontakt" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
+  expect(screen.getByRole("contentinfo")).toHaveTextContent("Folgen Sie uns");
+  expect(screen.getAllByRole("link", { name: "Instagram der Canetons (neuer Tab)" })).toHaveLength(
+    2,
+  );
+  expect(
+    screen.getByRole("link", { name: "Flickr, die Galerie der Canetons (neuer Tab)" }),
+  ).toBeInTheDocument();
 });
 
 test("the nav is still French by default", async () => {
   await renderWithSession(<Layout />);
 
-  expect(screen.getByRole("navigation", { name: "Navigation principale" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
+  const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+  expect(within(nav).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 });

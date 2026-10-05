@@ -367,6 +367,17 @@ export const fr = {
     inbox: "Boîte de réception",
     media: "Médias",
     gallery: "Galerie",
+    // THE EXTERNAL LINKS' WHOLE NAMES. Each says it opens a new tab, and each
+    // begins with the words on screen, so voice control still finds it. The
+    // networks' own names are brands and stay untranslated in the code.
+    galleryLabel: "Galerie sur Flickr (nouvel onglet)",
+    instagramLabel: "Instagram des Canetons (nouvel onglet)",
+    facebookLabel: "Facebook des Canetons (nouvel onglet)",
+    // The footer's Flickr link, which reads "Flickr" on screen.
+    flickrLabel: "Flickr, la galerie des Canetons (nouvel onglet)",
+    followUs: "Suivez-nous",
+    footerPitch:
+      "La guggen d’enfants de Fribourg, depuis 2002. De 7 à 18 ans, pas besoin de connaître la musique.",
     login: "Connexion",
     account: "Mon compte",
     // The desktop trigger shows only initials, so this is its whole name.
