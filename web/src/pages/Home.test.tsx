@@ -22,7 +22,7 @@ test("says what the band is before anything else", async () => {
 test("points every destination card at a public page", async () => {
   await renderWithSession(<Home />, { route: "/" });
 
-  const destinations = screen.getByRole("list", { name: "Découvrir les Canetons" });
+  const destinations = await screen.findByRole("list", { name: "Découvrir les Canetons" });
   const links = within(destinations).getAllByRole("link");
 
   expect(links.map((link) => link.getAttribute("href"))).toEqual([
@@ -87,6 +87,28 @@ test("renders no agenda section when the read is refused", async () => {
   expect(screen.queryByRole("region", { name: "Où nous voir" })).not.toBeInTheDocument();
 });
 
+/**
+ * The destination cards wait for the agenda, because the agenda sits above
+ * them. Rendered while it loads, they were in the first screen of a phone and
+ * were pushed down when the next dates arrived (#236). The hero does not wait.
+ */
+test("holds the destination cards while the agenda is loading", async () => {
+  server.use(http.get("/api/v1/agenda", () => delay("infinite")));
+
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(screen.getByRole("heading", { name: /depuis 2002/ })).toBeInTheDocument();
+  expect(screen.queryByRole("list", { name: "Découvrir les Canetons" })).not.toBeInTheDocument();
+});
+
+test("shows the destination cards when the agenda cannot be read", async () => {
+  server.use(http.get("/api/v1/agenda", () => new HttpResponse(null, { status: 503 })));
+
+  await renderWithSession(<Home />, { route: "/" });
+
+  expect(await screen.findByRole("list", { name: "Découvrir les Canetons" })).toBeInTheDocument();
+});
+
 test("says what the band is before anything else, in German", async () => {
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 
@@ -98,7 +120,7 @@ test("says what the band is before anything else, in German", async () => {
 test("points every destination card at a public page, in German", async () => {
   await renderWithSession(<Home />, { route: "/", locale: "de-CH" });
 
-  const destinations = screen.getByRole("list", { name: "Die Canetons entdecken" });
+  const destinations = await screen.findByRole("list", { name: "Die Canetons entdecken" });
   const links = within(destinations).getAllByRole("link");
 
   expect(links.map((link) => link.getAttribute("href"))).toEqual([

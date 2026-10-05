@@ -13,8 +13,8 @@
 // Lighthouse's default mobile profile throttles the run to a mid-range phone
 // on a slow network, which is the visitor this is for.
 //
-// WHAT IT DOES NOT. The mocked API answers instantly from the same machine,
-// and its content is not the band's. The numbers are a regression signal for
+// WHAT IT DOES NOT. The mocked API answers from the same machine after a fixed
+// delay, and its content is not the band's. The numbers are a regression signal for
 // the bundle, the layout and the images, not a forecast of production timings.
 //
 // INFORMATIONAL. A breach prints a warning and the run still exits 0. Turning
@@ -35,22 +35,27 @@ export const PAGES = ["/", "/band", "/history", "/agenda", "/de/"];
 export const RUNS = 3;
 
 /**
+ * How long every API answer is held back. An instant mock answered before the
+ * first paint on some runs and after it on others, so a page that shifted when
+ * its data arrived measured anywhere from 0.007 to 0.566 (#236). Production's
+ * API is PHP on a shared host and is never instant; 300 ms puts every answer
+ * after the first paint, which is the case worth measuring.
+ */
+export const API_DELAY_MS = 300;
+
+/**
  * The budget, set just outside what the site measured on 2026-10-05, so a
  * warning means something got worse. The targets are Google's "good"
  * thresholds: a score of 90, LCP 2.5 s, CLS 0.1.
  *
- * Measured, worst page, on CI and on a laptop: score 70, LCP 2.92-3.03 s,
- * TBT under 100 ms, 219 KB of gzipped script (one bundle, the same on every
- * page). The score floor is low because CLS counts for a quarter of it; raise
- * it once #236 lands.
- *
- * CLS keeps the target, not a measured limit. It ranged from 0.007 to 0.566
- * between runs of the same page, depending on whether the data arrived before
- * the first paint, so no limit near today's values would mean anything. It
- * will warn until #236 is fixed.
+ * Measured, worst page, on a laptop after #236: score 91, LCP 3.02 s, CLS
+ * 0.021, TBT under 100 ms, 219 KB of gzipped script (one bundle, the same on
+ * every page). CLS keeps Google's 0.1: what is left is a font swap and one
+ * photo, about 0.02, and anything that moves a block when data arrives costs
+ * far more than the gap.
  */
 export const BUDGET = {
-  score: { min: 0.65 },
+  score: { min: 0.85 },
   lcp: { max: 3200 },
   cls: { max: 0.1 },
   tbt: { max: 200 },
@@ -219,7 +224,10 @@ async function main() {
   const { getResponse } = await import("msw");
 
   let origin;
-  const server = serve(OUT, (request) => getResponse(handlers, request, { baseUrl: origin }));
+  const server = serve(OUT, async (request) => {
+    await new Promise((resolve) => setTimeout(resolve, API_DELAY_MS));
+    return getResponse(handlers, request, { baseUrl: origin });
+  });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
 

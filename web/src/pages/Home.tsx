@@ -2,6 +2,7 @@ import { DestinationCards } from "@/components/DestinationCards";
 import { BrandLogo } from "@/components/Logo";
 import { PageSection } from "@/components/PageSection";
 
+import { useAgendaIndex } from "../api/generated/endpoints";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { PublicAgenda } from "../events/PublicAgenda";
 import { type TranslationKey, t } from "../i18n";
@@ -74,6 +75,9 @@ const DESTINATIONS: {
  * render nothing.
  */
 export function Home() {
+  // The same query PublicAgenda reads, so React Query asks for it once.
+  const agenda = useAgendaIndex();
+
   return (
     <PageSection width="text">
       {/* The band's badge — the mark people know from the flyers, the costumes
@@ -116,14 +120,20 @@ export function Home() {
 
       <PublicAgenda />
 
-      <DestinationCards
-        label={t("home.discover")}
-        destinations={DESTINATIONS.map((destination) => ({
-          to: destination.to,
-          title: t(destination.titleKey),
-          description: t(destination.descriptionKey),
-        }))}
-      />
+      {/* Held until the agenda has answered, whatever the answer. The cards
+          start inside a phone's first screen, so rendered while the agenda
+          loads they were pushed down when its dates arrived (#236). They appear
+          together with the agenda instead, in space nothing else occupies. */}
+      {agenda.isPending ? null : (
+        <DestinationCards
+          label={t("home.discover")}
+          destinations={DESTINATIONS.map((destination) => ({
+            to: destination.to,
+            title: t(destination.titleKey),
+            description: t(destination.descriptionKey),
+          }))}
+        />
+      )}
     </PageSection>
   );
 }
