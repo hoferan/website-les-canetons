@@ -30,15 +30,53 @@ test.each([
   expect(container.textContent).toBe(shown ? env.toUpperCase() : "");
 });
 
-test("the Galerie link is external and opens in a new tab", async () => {
+/**
+ * THE BAND'S ACCOUNTS ELSEWHERE (#224): the gallery and the two networks in the
+ * nav, and all three again in the footer. Each opens a new tab and says so in
+ * its name.
+ */
+test.each([
+  ["Galerie sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+  ["Instagram des Canetons (nouvel onglet)", "instagram.com/guggen_lescanetons"],
+  ["Facebook des Canetons (nouvel onglet)", "facebook.com/p/Guggenmusik-Les-Canetons"],
+  ["Galerie des Canetons sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+])("%s is external and opens in a new tab", async (name, url) => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
-  const galerie = screen.getByRole("link", { name: /Galerie/ });
-  expect(galerie).toHaveAttribute("href", expect.stringContaining("flickr.com"));
-  expect(galerie).toHaveAttribute("target", "_blank");
-  // Without rel=noreferrer a target=_blank link hands the opened page a
-  // window.opener reference back into this one.
-  expect(galerie).toHaveAttribute("rel", "noreferrer");
+  // getAll: the networks are in the nav AND the footer, under one name.
+  const links = screen.getAllByRole("link", { name });
+  for (const link of links) {
+    expect(link).toHaveAttribute("href", expect.stringContaining(url));
+    expect(link).toHaveAttribute("target", "_blank");
+    // Without rel=noreferrer a target=_blank link hands the opened page a
+    // window.opener reference back into this one.
+    expect(link).toHaveAttribute("rel", "noreferrer");
+  }
+});
+
+test("the networks are in both the nav and the footer", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+  const footer = screen.getByRole("contentinfo");
+  for (const name of [
+    "Instagram des Canetons (nouvel onglet)",
+    "Facebook des Canetons (nouvel onglet)",
+  ]) {
+    expect(within(nav).getByRole("link", { name })).toBeInTheDocument();
+    expect(within(footer).getByRole("link", { name })).toBeInTheDocument();
+  }
+  expect(footer).toHaveTextContent("Suivez-nous");
+});
+
+test("the phone menu names the networks beside their marks", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+  await openPhoneMenu(user);
+
+  const layer = await screen.findByRole("dialog", { name: "Menu" });
+  expect(within(layer).getByRole("link", { name: /^Instagram/ })).toHaveTextContent("Instagram");
+  expect(within(layer).getByRole("link", { name: /^Facebook/ })).toHaveTextContent("Facebook");
 });
 
 test("the auth link says Connexion when nobody is logged in", async () => {
@@ -351,6 +389,13 @@ test("the nav renders in German under the German locale", async () => {
   expect(screen.getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
+  expect(screen.getByRole("contentinfo")).toHaveTextContent("Folgen Sie uns");
+  expect(screen.getAllByRole("link", { name: "Instagram der Canetons (neuer Tab)" })).toHaveLength(
+    2,
+  );
+  expect(
+    screen.getByRole("link", { name: "Galerie der Canetons auf Flickr (neuer Tab)" }),
+  ).toBeInTheDocument();
 });
 
 test("the nav is still French by default", async () => {

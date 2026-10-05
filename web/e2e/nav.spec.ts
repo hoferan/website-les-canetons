@@ -6,8 +6,8 @@ import { expect, type Page, test } from "@playwright/test";
  *
  * AS demo.direction, whose bar is the longest there is (Événements first,
  * then every public page), and at 768px, the narrowest width that still gets
- * the desktop bar. Measured when this was written: at 860px everything fits
- * in both languages; at 768px Histoire and Galerie fold.
+ * the desktop bar, where the external links at the end of the list fold
+ * first. Facebook is the last of them (#224).
  */
 async function logInAsDirection(page: Page, path: string) {
   await page.goto("/login");
@@ -19,8 +19,8 @@ async function logInAsDirection(page: Page, path: string) {
 }
 
 for (const { path, more, last } of [
-  { path: "/events", more: "Plus", last: "Galerie" },
-  { path: "/de/events", more: "Mehr", last: "Galerie" },
+  { path: "/events", more: "Plus", last: "Facebook" },
+  { path: "/de/events", more: "Mehr", last: "Facebook" },
 ]) {
   test(`at 768px the bar folds into "${more}" and stays on one line (${path})`, async ({
     page,
@@ -62,6 +62,8 @@ test("at 1280px nothing folds", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
 
   const nav = page.getByRole("navigation", { name: "Navigation principale" });
-  await expect(nav.getByRole("link", { name: "Galerie" })).toBeVisible();
+  await expect(
+    nav.getByRole("link", { name: "Facebook des Canetons (nouvel onglet)" }),
+  ).toBeVisible();
   await expect(nav.getByRole("button", { name: "Plus", exact: true })).toHaveCount(0);
 });

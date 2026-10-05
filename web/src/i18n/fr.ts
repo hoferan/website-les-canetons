@@ -367,6 +367,15 @@ export const fr = {
     inbox: "Boîte de réception",
     media: "Médias",
     gallery: "Galerie",
+    // THE EXTERNAL LINKS' WHOLE NAMES. Each says it opens a new tab, and each
+    // begins with the words on screen, so voice control still finds it. The
+    // networks' own names are brands and stay untranslated in the code.
+    galleryLabel: "Galerie sur Flickr (nouvel onglet)",
+    instagramLabel: "Instagram des Canetons (nouvel onglet)",
+    facebookLabel: "Facebook des Canetons (nouvel onglet)",
+    // The footer's Flickr icon, which has no label beside it.
+    flickrLabel: "Galerie des Canetons sur Flickr (nouvel onglet)",
+    followUs: "Suivez-nous",
     login: "Connexion",
     account: "Mon compte",
     // The desktop trigger shows only initials, so this is its whole name.

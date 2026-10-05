@@ -102,6 +102,7 @@ export function DesktopNav({
             <EntryLink
               entry={entry}
               active={entry.to === active}
+              iconOnly
               className={`${DESK_LINK} ${entry.to === active ? DESK_ACTIVE : DESK_IDLE}`}
             />
           </li>
@@ -120,12 +121,18 @@ export function DesktopNav({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            {folded.map((entry) => (
+            {folded.map(({ icon: Icon, ...entry }) => (
               <DropdownMenuItem key={entry.key} asChild>
                 {entry.href !== undefined ? (
-                  <a href={entry.href} target="_blank" rel="noreferrer">
+                  <a
+                    href={entry.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={entry.ariaLabel}
+                  >
+                    {Icon ? <Icon /> : null}
                     {entry.label}
-                    <ExternalLink aria-hidden="true" />
+                    {Icon ? null : <ExternalLink aria-hidden="true" />}
                   </a>
                 ) : (
                   <Link to={entry.to} aria-current={entry.to === active ? "page" : undefined}>
@@ -154,11 +161,11 @@ export function DesktopNav({
         className="pointer-events-none invisible absolute top-0 left-0 size-0 overflow-hidden"
       >
         <ul ref={ruler} className="flex w-max gap-5 font-semibold whitespace-nowrap">
-          {entries.map((entry) => (
+          {entries.map(({ icon: Icon, ...entry }) => (
             <li key={entry.key}>
               <span className={DESK_LINK}>
-                {entry.label}
-                {entry.href !== undefined ? <ExternalLink className="size-4" /> : null}
+                {Icon ? <Icon className="size-5" /> : entry.label}
+                {entry.href !== undefined && !Icon ? <ExternalLink className="size-4" /> : null}
               </span>
             </li>
           ))}
