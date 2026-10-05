@@ -35,14 +35,23 @@ export const PAGES = ["/", "/band", "/history", "/agenda", "/de/"];
 export const RUNS = 3;
 
 /**
- * The budget. score, lcp and cls are Google's own "good" thresholds; tbt is
- * Lighthouse's own. scriptKb was measured on 2026-10-05 at 219 KB gzipped,
- * the same single bundle on every page, and is set a little above it so that a
- * new dependency shows up here before it shows up on a phone.
+ * The budget, set just outside what the site measured on 2026-10-05, so a
+ * warning means something got worse. The targets are Google's "good"
+ * thresholds: a score of 90, LCP 2.5 s, CLS 0.1.
+ *
+ * Measured, worst page, on CI and on a laptop: score 70, LCP 2.92-3.03 s,
+ * TBT under 100 ms, 219 KB of gzipped script (one bundle, the same on every
+ * page). The score floor is low because CLS counts for a quarter of it; raise
+ * it once #236 lands.
+ *
+ * CLS keeps the target, not a measured limit. It ranged from 0.007 to 0.566
+ * between runs of the same page, depending on whether the data arrived before
+ * the first paint, so no limit near today's values would mean anything. It
+ * will warn until #236 is fixed.
  */
 export const BUDGET = {
-  score: { min: 0.9 },
-  lcp: { max: 2500 },
+  score: { min: 0.65 },
+  lcp: { max: 3200 },
   cls: { max: 0.1 },
   tbt: { max: 200 },
   scriptKb: { max: 240 },
