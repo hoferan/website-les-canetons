@@ -69,6 +69,20 @@ test("the networks are in both the nav and the footer", async () => {
   expect(footer).toHaveTextContent("Suivez-nous");
 });
 
+test("the desktop bar labels Galerie beside its mark, and shows the networks as marks alone", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const bar = within(
+    screen.getByRole("navigation", { name: "Navigation principale" }),
+  ).getAllByRole("list")[0]!;
+  const text = (name: string) => within(bar).getByRole("link", { name }).textContent;
+  expect(text("Galerie sur Flickr (nouvel onglet)")).toBe("Galerie");
+  expect(text("Instagram des Canetons (nouvel onglet)")).toBe("");
+  expect(text("Facebook des Canetons (nouvel onglet)")).toBe("");
+  // Every external entry carries its brand mark, so none gets the arrow.
+  expect(bar.querySelector(".lucide-external-link")).toBeNull();
+});
+
 test("the phone menu names the networks beside their marks", async () => {
   const user = userEvent.setup();
   await renderWithSession(<AppRoutes />, { route: "/login" });

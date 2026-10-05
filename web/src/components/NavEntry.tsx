@@ -13,15 +13,17 @@ export type NavEntry = {
   /** Trailing content, e.g. the inbox's unread count. */
   badge?: ReactNode;
 } & (
-  | { to: string; href?: never; icon?: never; ariaLabel?: never }
+  | { to: string; href?: never; icon?: never; iconOnly?: never; ariaLabel?: never }
   | {
       href: string;
       to?: never;
       /**
        * A brand mark, drawn in front of the label in place of the trailing
-       * "external" arrow. The desktop bar shows the mark alone.
+       * "external" arrow.
        */
       icon?: ComponentType<{ className?: string }>;
+      /** On the desktop bar, the mark without its label. */
+      iconOnly?: boolean;
       /** The link's whole name, which says the link opens a new tab. */
       ariaLabel?: string;
     }
@@ -37,14 +39,14 @@ export function EntryLink({
   active,
   className,
   onClick,
-  iconOnly = false,
+  compact = false,
 }: {
   entry: NavEntry;
   active: boolean;
   className: string;
   onClick?: () => void;
-  /** Drop the label of an entry that has a mark. */
-  iconOnly?: boolean;
+  /** The desktop bar, where an `iconOnly` entry drops its label. */
+  compact?: boolean;
 }) {
   if (entry.href !== undefined) {
     const Icon = entry.icon;
@@ -60,7 +62,7 @@ export function EntryLink({
         onClick={onClick}
       >
         {Icon ? <Icon className="size-5 shrink-0" /> : null}
-        {Icon && iconOnly ? null : entry.label}
+        {Icon && compact && entry.iconOnly ? null : entry.label}
         {Icon ? null : <ExternalLink aria-hidden="true" className="size-4 shrink-0" />}
       </a>
     );

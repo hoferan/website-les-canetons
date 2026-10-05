@@ -97,6 +97,7 @@ export function Layout() {
       href: GALLERY_URL,
       label: t("nav.gallery"),
       ariaLabel: t("nav.galleryLabel"),
+      icon: FlickrMark,
     },
     {
       key: "instagram",
@@ -104,6 +105,7 @@ export function Layout() {
       label: "Instagram",
       ariaLabel: t("nav.instagramLabel"),
       icon: InstagramMark,
+      iconOnly: true,
     },
     {
       key: "facebook",
@@ -111,6 +113,7 @@ export function Layout() {
       label: "Facebook",
       ariaLabel: t("nav.facebookLabel"),
       icon: FacebookMark,
+      iconOnly: true,
     },
   ];
   const follow = [

@@ -102,7 +102,7 @@ export function DesktopNav({
             <EntryLink
               entry={entry}
               active={entry.to === active}
-              iconOnly
+              compact
               className={`${DESK_LINK} ${entry.to === active ? DESK_ACTIVE : DESK_IDLE}`}
             />
           </li>
@@ -164,7 +164,8 @@ export function DesktopNav({
           {entries.map(({ icon: Icon, ...entry }) => (
             <li key={entry.key}>
               <span className={DESK_LINK}>
-                {Icon ? <Icon className="size-5" /> : entry.label}
+                {Icon ? <Icon className="size-5" /> : null}
+                {Icon && entry.iconOnly ? null : entry.label}
                 {entry.href !== undefined && !Icon ? <ExternalLink className="size-4" /> : null}
               </span>
             </li>
