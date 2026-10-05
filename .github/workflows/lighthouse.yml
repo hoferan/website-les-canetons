@@ -1,0 +1,52 @@
+name: Lighthouse
+
+# The public pages measured against a performance budget, on a throttled mobile
+# profile. What is measured and why the API is mocked: tools/lighthouse.mjs.
+#
+# INFORMATIONAL, AND A WORKFLOW OF ITS OWN FOR THAT REASON. ci.yml's all-green
+# is the one required check on main and must need every job in that file
+# (tools/all-green.test.mjs), so a job there gates the merge. This one never
+# fails on a breach: it writes a table to the run summary and a warning
+# annotation per metric over budget. Making it a gate means moving it into
+# ci.yml, and is a decision of its own.
+#
+# `paths-ignore` is safe here, unlike in ci.yml: nothing waits on this check,
+# so a docs-only change that never starts it leaves nothing pending.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**"]
+  pull_request:
+    paths-ignore: ["docs/**"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Install Node dev tools
+        run: npm ci
+      # The runner image ships Google Chrome, which chrome-launcher finds on its
+      # own; no browser download.
+      - name: Measure the public pages
+        run: npm run lighthouse
+      # One HTML report per run, so a number in the summary can be opened and
+      # read. Kept as a workflow artifact, never sent to a public report host.
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: dist/lighthouse-reports/
+          retention-days: 14

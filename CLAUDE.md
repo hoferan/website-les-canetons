@@ -378,13 +378,15 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   fails, naming the file, on anything over 1920px or 600 KB. The exemptions are
   by name in that file, each with its reason; an exempt name is still held to a
   4000px / 2 MB ceiling, so a camera original arriving under an exempt name does
-  not sail through. Two names are exempt, the logo and `CD_img.png`, because
-  they are already small and re-encoding a small image only softens it. An
-  exemption covers the file that earned it, not the name: `comite.jpg` and
-  `Flyer.jpeg` were dropped from the list once the photographs themselves were
-  deleted, so whatever arrives under those names next is budgeted like any other
-  new photograph. Re-encoding is also generational: never run an optimisation
-  pass over already-optimised files.
+  not sail through. One name is exempt, the logo, because it is already small
+  and re-encoding a small image only softens it. An exemption covers the file
+  that earned it, not the name: `comite.jpg`, `Flyer.jpeg` and `CD_img.png`
+  were dropped from the list once the files themselves were deleted, so
+  whatever arrives under those names next is budgeted like any other new
+  photograph. Photographs of the band do not live here at all any more; they
+  are in the image library, which serves each one as a `srcset`. Re-encoding
+  is also generational: never run an optimisation pass over already-optimised
+  files.
 - **`web/src/api/generated/` is generated — never hand-edit it.** Change the
   Laravel controller, run `npm run openapi && npm run generate:api`, commit the
   result. CI's `openapi-drift` job fails if either is stale. ESLint ignores the
@@ -591,6 +593,7 @@ npm run fix           # auto-fix: Pint + eslint + stylelint + prettier
 npm run test:web      # Vitest (web/src)
 npm run test:e2e      # Playwright (web/e2e)
 npm run test:js       # node:test over tools/
+npm run lighthouse    # public pages vs. the performance budget (informational)
 npm run lint:api      # Laravel Pint (--test)
 npm run artisan -- route:list   # artisan, from api/
 npm run composer -- outdated    # Composer, from api/

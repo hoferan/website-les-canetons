@@ -46,7 +46,6 @@ const CEILING_BYTES = 2 * 1024 * 1024;
 const EXEMPT = {
   'Les_Canetons_Fribourg_logo_2.jpg':
     'the band identity at 237x174, not a photograph that can go stale',
-  'CD_img.png': 'the CD sleeve, already 536x489',
 };
 
 const IMAGE = /\.(jpe?g|png|gif|webp|avif)$/i;
