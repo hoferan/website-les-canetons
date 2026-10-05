@@ -121,17 +121,25 @@ export function Band() {
 
           Their photograph is a slot like every other, placed from the
           library. */}
-      <hr className="mt-section border-line" />
+      {/* Held until the roster has answered, whatever the answer: the six
+          registers above are far taller than a screen, and rendered while they
+          load this card sat in view and was pushed off it when they arrived
+          (#236). */}
+      {band.isPending ? null : (
+        <>
+          <hr className="mt-section border-line" />
 
-      <Card className="mt-block gap-0 p-5">
-        <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
-        <SlotPhoto
-          slot="godparents"
-          label={t("photos.slot.godparents")}
-          alt={t("band.patronsAlt")}
-        />
-        <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
-      </Card>
+          <Card className="mt-block gap-0 p-5">
+            <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
+            <SlotPhoto
+              slot="godparents"
+              label={t("photos.slot.godparents")}
+              alt={t("band.patronsAlt")}
+            />
+            <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
+          </Card>
+        </>
+      )}
     </PageSection>
   );
 }

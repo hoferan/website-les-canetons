@@ -186,3 +186,29 @@ test("keeps the band placeholder when the photo slots cannot be read", async () 
     expect(container.querySelector('[data-photo-pending="band"]')).not.toBeNull(),
   );
 });
+
+/**
+ * The godparents card waits for the roster, because the registers sit above
+ * it. Rendered while they load, it was in the first screen of a phone and was
+ * pushed off it when the six registers arrived (#236).
+ */
+test("holds the godparents card while the roster is loading", async () => {
+  server.use(http.get("/api/v1/band", () => delay("infinite")));
+
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "Le parrain et la marraine" }),
+  ).not.toBeInTheDocument();
+});
+
+test("shows the godparents card when the roster cannot be read", async () => {
+  server.use(http.get("/api/v1/band", () => new HttpResponse(null, { status: 503 })));
+
+  await renderWithSession(<Band />, { route: "/band" });
+
+  expect(
+    await screen.findByRole("heading", { name: "Le parrain et la marraine" }),
+  ).toBeInTheDocument();
+});

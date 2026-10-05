@@ -255,8 +255,14 @@ export function Layout() {
       {/* Renders nothing; keeps the head's alternates in step with the page. */}
       <Hreflang />
 
-      {/* tabIndex -1 so the skip link can move focus here; it is never a tab stop. */}
-      <main id="main" tabIndex={-1} className="outline-none">
+      {/* tabIndex -1 so the skip link can move focus here; it is never a tab stop.
+
+          min-h-dvh keeps the footer below the first screen. While a page waits
+          for its data it is a heading and a line, and without the minimum the
+          footer sat in view and was pushed down when the list arrived: a
+          layout shift of 0.57 on /history (#236). The cost is a footer one
+          scroll away on a page shorter than the screen. */}
+      <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
         <Outlet />
       </main>
 
