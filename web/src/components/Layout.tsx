@@ -15,6 +15,7 @@ import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { AccountDropdown, type AccountTool } from "../session/AccountMenu";
 import { useSession } from "../session/SessionProvider";
 import { EnvRibbon } from "./EnvRibbon";
+import { Footer } from "./Footer";
 import { ScrollToTop } from "./ScrollToTop";
 import {
   FACEBOOK_URL,
@@ -115,11 +116,6 @@ export function Layout() {
       icon: FacebookMark,
       iconOnly: true,
     },
-  ];
-  const follow = [
-    { href: INSTAGRAM_URL, label: t("nav.instagramLabel"), Mark: InstagramMark },
-    { href: FACEBOOK_URL, label: t("nav.facebookLabel"), Mark: FacebookMark },
-    { href: GALLERY_URL, label: t("nav.flickrLabel"), Mark: FlickrMark },
   ];
   // THE MEMBERS' TOOL, and first when logged in: reading the planning is what
   // everybody in the band does every week, so it is the last thing to fold.
@@ -264,30 +260,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* NO LOGO HERE, DELIBERATELY. The badge was briefly shown above this
-          line and taken out again on 2026-09-03: it is the mark on the flyers
-          and the costumes, so it earns one prominent placement rather than a
-          repeat in the chrome of every page. That placement is /accueil. */}
-      <footer className="mt-16 bg-stage py-8 text-center text-sm text-white/70">
-        <div className="mx-auto mb-4 flex max-w-shell items-center justify-center gap-1 px-4">
-          <span className="mr-2">{t("nav.followUs")}</span>
-          {follow.map(({ href, label, Mark }) => (
-            <a
-              key={href}
-              href={href}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={label}
-              className="focus-ring-stage inline-flex size-11 items-center justify-center rounded text-white hover:opacity-70"
-            >
-              <Mark className="size-6" />
-            </a>
-          ))}
-        </div>
-        <p className="mx-auto max-w-shell px-4">
-          © {new Date().getFullYear()} Guggenmusik les canetons de Fribourg. {t("nav.rights")}
-        </p>
-      </footer>
+      <Footer />
 
       {/* Mounted once here rather than per page: the layout route survives
           navigation, so a toast raised by a mutation is not unmounted by the

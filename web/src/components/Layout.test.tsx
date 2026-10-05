@@ -39,7 +39,7 @@ test.each([
   ["Galerie sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
   ["Instagram des Canetons (nouvel onglet)", "instagram.com/guggen_lescanetons"],
   ["Facebook des Canetons (nouvel onglet)", "facebook.com/p/Guggenmusik-Les-Canetons"],
-  ["Galerie des Canetons sur Flickr (nouvel onglet)", "flickr.com/photos/201962767@N02"],
+  ["Flickr, la galerie des Canetons (nouvel onglet)", "flickr.com/photos/201962767@N02"],
 ])("%s is external and opens in a new tab", async (name, url) => {
   await renderWithSession(<AppRoutes />, { route: "/login" });
 
@@ -81,6 +81,23 @@ test("the desktop bar labels Galerie beside its mark, and shows the networks as 
   expect(text("Facebook des Canetons (nouvel onglet)")).toBe("");
   // Every external entry carries its brand mark, so none gets the arrow.
   expect(bar.querySelector(".lucide-external-link")).toBeNull();
+});
+
+test("the footer offers joining and writing in, and names each network on screen", async () => {
+  await renderWithSession(<AppRoutes />, { route: "/login" });
+
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByRole("link", { name: "Nous rejoindre" })).toHaveAttribute(
+    "href",
+    "/join",
+  );
+  expect(within(footer).getByRole("link", { name: "Contact" })).toHaveAttribute("href", "/contact");
+  // Visible names, not icons alone: the Flickr mark is two dots.
+  for (const name of ["Instagram", "Facebook", "Flickr"]) {
+    expect(within(footer).getByRole("link", { name: new RegExp(`^${name}`) })).toHaveTextContent(
+      name,
+    );
+  }
 });
 
 test("the phone menu names the networks beside their marks", async () => {
@@ -398,23 +415,26 @@ test("the account menu reads German under the German locale", async () => {
 test("the nav renders in German under the German locale", async () => {
   await renderWithSession(<Layout />, { locale: "de-CH" });
 
-  expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
+  const nav = screen.getByRole("navigation", { name: "Hauptnavigation" });
+  expect(within(nav).getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Wo Sie uns sehen" })).toBeInTheDocument();
+  expect(within(nav).getByRole("link", { name: "Anmelden" })).toBeInTheDocument();
+  const footer = screen.getByRole("contentinfo");
+  expect(within(footer).getByRole("link", { name: "Mitmachen" })).toBeInTheDocument();
+  expect(within(footer).getByRole("link", { name: "Kontakt" })).toBeInTheDocument();
   expect(screen.getByText(/Alle Rechte vorbehalten\./)).toBeInTheDocument();
   expect(screen.getByRole("contentinfo")).toHaveTextContent("Folgen Sie uns");
   expect(screen.getAllByRole("link", { name: "Instagram der Canetons (neuer Tab)" })).toHaveLength(
     2,
   );
   expect(
-    screen.getByRole("link", { name: "Galerie der Canetons auf Flickr (neuer Tab)" }),
+    screen.getByRole("link", { name: "Flickr, die Galerie der Canetons (neuer Tab)" }),
   ).toBeInTheDocument();
 });
 
 test("the nav is still French by default", async () => {
   await renderWithSession(<Layout />);
 
-  expect(screen.getByRole("navigation", { name: "Navigation principale" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
+  const nav = screen.getByRole("navigation", { name: "Navigation principale" });
+  expect(within(nav).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 });

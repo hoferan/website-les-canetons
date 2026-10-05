@@ -254,8 +254,10 @@ export const de: typeof fr = {
     galleryLabel: "Galerie auf Flickr (neuer Tab)",
     instagramLabel: "Instagram der Canetons (neuer Tab)",
     facebookLabel: "Facebook der Canetons (neuer Tab)",
-    flickrLabel: "Galerie der Canetons auf Flickr (neuer Tab)",
+    flickrLabel: "Flickr, die Galerie der Canetons (neuer Tab)",
     followUs: "Folgen Sie uns",
+    footerPitch:
+      "Die Kinder-Guggenmusik aus Freiburg, seit 2002. Von 7 bis 18 Jahren, ganz ohne Musikkenntnisse.",
     login: "Anmelden",
     account: "Mein Konto",
     accountMenu: "Konto von {{name}}",
