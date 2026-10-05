@@ -141,25 +141,26 @@ test('it ignores files that are not images', () => {
 });
 
 test('an exempt file is not held to the budget', () => {
-  // CD_img.png is 536x489 and 344 KB today; the exemption is what keeps a
+  // The logo is 237x174 and 39 KB today; the exemption is what keeps a
   // future re-encode of it from being suggested by this guard.
-  const dir = fixture({ 'CD_img.png': png(2400, 2400, MAX_BYTES + 1) });
+  const dir = fixture({ 'Les_Canetons_Fribourg_logo_2.jpg': jpeg(2400, 2400, MAX_BYTES + 1) });
 
   assert.deepEqual(audit(dir).offenders, []);
 });
 
 test('an exempt name does not excuse a camera original arriving under it', () => {
   // The exemption's reason is "already small". A 4 MB 6048x4024 file called
-  // CD_img.png is a different file, and is exactly what the ceiling is for.
+  // the logo's name is a different file, and is exactly what the ceiling is for.
   //
   // It has to be a name that is STILL exempt. This used comite.jpg until that
   // exemption was dropped, at which point the test went on passing while
   // proving nothing: an unexempt name is an offender for the ordinary reason,
-  // so the ceiling could have been deleted without turning this red.
-  const dir = fixture({ 'CD_img.png': png(6048, 4024, 4 * 1024 * 1024) });
+  // so the ceiling could have been deleted without turning this red. It moved
+  // to the logo when CD_img.png and its exemption were deleted.
+  const dir = fixture({ 'Les_Canetons_Fribourg_logo_2.jpg': jpeg(6048, 4024, 4 * 1024 * 1024) });
 
   const [offender] = audit(dir).offenders;
-  assert.equal(offender.file, 'CD_img.png');
+  assert.equal(offender.file, 'Les_Canetons_Fribourg_logo_2.jpg');
 });
 
 test('an exemption matching no file is reported, not failed', () => {
@@ -169,7 +170,7 @@ test('an exemption matching no file is reported, not failed', () => {
   const { offenders, staleExemptions } = audit(fixture({ 'registre.jpg': jpeg(1600, 1067) }));
 
   assert.deepEqual(offenders, []);
-  assert.ok(staleExemptions.includes('CD_img.png'));
+  assert.ok(staleExemptions.includes('Les_Canetons_Fribourg_logo_2.jpg'));
 });
 
 test('the repository tree passes its own guard', () => {
