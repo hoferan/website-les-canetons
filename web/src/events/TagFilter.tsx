@@ -55,7 +55,7 @@ export function TagFilter({
     >
       <Option
         value={ALL}
-        className="border border-line bg-panel text-ink data-[state=checked]:border-ink data-[state=checked]:bg-ink data-[state=checked]:text-white"
+        className="border border-line bg-panel text-ink group-data-[state=checked]:border-ink group-data-[state=checked]:bg-ink group-data-[state=checked]:text-white"
       >
         {t("events.tagAll")}
       </Option>
@@ -63,7 +63,7 @@ export function TagFilter({
         <Option
           key={tag.id}
           value={String(tag.id)}
-          className={`${TAG_COLOURS[tag.colour]} border border-transparent data-[state=checked]:border-current`}
+          className={`${TAG_COLOURS[tag.colour]} border border-transparent group-data-[state=checked]:border-current`}
         >
           {tagLabel(tag)}
         </Option>
@@ -75,6 +75,11 @@ export function TagFilter({
 /**
  * A 44px-tall hit area around a chip-sized pill: the touch floor every control
  * here keeps (ui/button.tsx), without making the pill itself 44px tall.
+ *
+ * Radix sets `data-state` on the item, not on the pill inside it, so the
+ * pill's checked look has to use `group-data-[state=checked]:`. A plain
+ * `data-[state=checked]:` there matches nothing and the chosen chip looks
+ * like every other.
  */
 function Option({
   value,
