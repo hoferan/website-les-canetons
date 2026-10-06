@@ -173,7 +173,8 @@ test("a write the server refuses says so under the slot and changes nothing", as
   );
   await user.click(await screen.findByRole("button", { name: "Le groupe au Carnaval 2026" }));
 
-  expect(await within(bells).findByRole("alert")).not.toBeEmptyDOMElement();
+  // FormError's region is always in the tree, so wait for it to fill.
+  await waitFor(() => expect(within(bells).getByRole("alert")).not.toBeEmptyDOMElement());
   expect(within(bells).queryByRole("img")).toBeNull();
   expect(within(bells).getByRole("status")).toBeEmptyDOMElement();
 });
@@ -432,7 +433,9 @@ test("an upload the server refuses says why and places nothing", async () => {
 
   fireEvent.drop(add, dropEvent([jpeg()]));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("Le serveur a refusé cette photo.");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent("Le serveur a refusé cette photo."),
+  );
   expect(puts).toHaveLength(0);
 });
 
