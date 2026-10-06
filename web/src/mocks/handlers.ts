@@ -31,6 +31,7 @@ import type {
   UpdateRegistrationRequest,
   SectionResource,
   StoreHistoryEntryRequest,
+  StoreEventTagRequest,
 } from "../api/generated/model";
 
 /**
@@ -1055,6 +1056,32 @@ let eventTags: EventTagResource[] = initialEventTags();
 function tagsFromIds(ids: readonly number[] | undefined): EventTagResource[] {
   const wanted = new Set(ids ?? []);
   return eventTags.filter((tag) => wanted.has(tag.id));
+}
+
+/** How many events carry the tag, drafts included, as the API counts. */
+function eventsCarrying(tagId: number): number {
+  return events.filter((event) => event.tags.some((tag) => tag.id === tagId)).length;
+}
+
+/**
+ * The tag request's own refusals: a missing French name, and one another tag
+ * already has under MariaDB's case-insensitive comparison.
+ */
+function refuseTagBody(body: StoreEventTagRequest, self: number | null) {
+  const labelFr = body.labelFr?.trim() ?? "";
+  if (labelFr === "") {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "labelFr", reason: "required" },
+    ]);
+  }
+  const taken = eventTags.some(
+    (tag) => tag.id !== self && tag.labelFr.toLocaleLowerCase() === labelFr.toLocaleLowerCase(),
+  );
+  return taken
+    ? problem(400, "validation_failed", "Invalid form submission", [
+        { field: "labelFr", reason: "already_taken" },
+      ])
+    : null;
 }
 
 /** Which seeded event carries which tags, by title. */
@@ -2742,11 +2769,101 @@ const overrides = [
     return collection(
       eventTags.map((tag) => ({
         ...tag,
-        eventCount: events.filter((event) => event.tags.some((carried) => carried.id === tag.id))
-          .length,
+        eventCount: eventsCarrying(tag.id),
       })),
       request,
     );
+  }),
+
+  // The single read the editor's rename and delete start from. Its tag is
+  // over the tag alone, as EntityTag's is: another event being tagged
+  // meanwhile must not refuse a rename.
+  http.get("/api/v1/event-tags/:id", ({ params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const found = eventTags.find((tag) => tag.id === Number(params.id));
+    return found
+      ? HttpResponse.json(
+          { ...found, eventCount: eventsCarrying(found.id) },
+          { headers: { ETag: mockEntityTag(found) } },
+        )
+      : notFound();
+  }),
+
+  http.post("/api/v1/event-tags", async ({ request }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as StoreEventTagRequest;
+    const invalid = refuseTagBody(body, null);
+    if (invalid) {
+      return invalid;
+    }
+    const tag: EventTagResource = {
+      id: Math.max(0, ...eventTags.map((existing) => existing.id)) + 1,
+      labelFr: body.labelFr.trim(),
+      labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
+      colour: body.colour,
+    };
+    eventTags = [...eventTags, tag];
+    return HttpResponse.json({ ...tag, eventCount: 0 }, { status: 201 });
+  }),
+
+  http.put("/api/v1/event-tags/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = eventTags.find((tag) => tag.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const body = (await request.json()) as StoreEventTagRequest;
+    const invalid = refuseTagBody(body, existing.id);
+    if (invalid) {
+      return invalid;
+    }
+    const updated: EventTagResource = {
+      ...existing,
+      labelFr: body.labelFr.trim(),
+      labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
+      colour: body.colour,
+    };
+    eventTags = eventTags.map((tag) => (tag.id === updated.id ? updated : tag));
+    // The events carry a copy, as the API's eager load would hand back.
+    events = events.map((event) => ({
+      ...event,
+      tags: tagsFromIds(event.tags.map((tag) => tag.id)),
+    }));
+    return HttpResponse.json({ ...updated, eventCount: eventsCarrying(updated.id) });
+  }),
+
+  http.delete("/api/v1/event-tags/:id", ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = eventTags.find((tag) => tag.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    eventTags = eventTags.filter((tag) => tag.id !== existing.id);
+    events = events.map((event) => ({
+      ...event,
+      tags: event.tags.filter((tag) => tag.id !== existing.id),
+    }));
+    return HttpResponse.json({ ok: true });
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches

@@ -1604,4 +1604,36 @@ export const fr = {
     committeeSeats: "les fonctions et les noms du comité",
     joinContact: "nom et numéro",
   },
+  // The tag editor (#107). "Catégorie" on screen: "étiquette" or "tag" would
+  // be the developer's word, and the committee sorts the planning into
+  // categories.
+  eventTags: {
+    heading: "Catégories",
+    intro:
+      "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs.",
+    manageLink: "Gérer les catégories",
+    count_one: "{{count}} événement",
+    count_other: "{{count}} événements",
+    editAria: "Modifier « {{label}} »",
+    deleteAria: "Supprimer « {{label}} »",
+    newHeading: "Nouvelle catégorie",
+    add: "Ajouter",
+    colour: "Couleur",
+    colours: {
+      violet: "Violet",
+      teal: "Vert d'eau",
+      amber: "Ambre",
+      pink: "Rose",
+      blue: "Bleu",
+      green: "Vert",
+      coral: "Corail",
+      gray: "Gris",
+    },
+    deleteTitle: "Supprimer « {{label}} » ?",
+    deleteUsed_one: "Elle sera retirée de {{count}} événement.",
+    deleteUsed_other: "Elle sera retirée de {{count}} événements.",
+    deleteUnused: "Aucun événement ne la porte.",
+    saveFailed: "La catégorie n'a pas pu être enregistrée.",
+    deleteFailed: "La catégorie n'a pas pu être supprimée.",
+  },
 };

@@ -200,6 +200,19 @@ test("choosing a tag narrows the planning to it, and 'Tous' brings the rest back
   await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(before));
 });
 
+test("only somebody who manages events is offered the tag editor", async () => {
+  await renderPlanning("demo.direction");
+  expect(screen.getByRole("link", { name: "Gérer les catégories" })).toHaveAttribute(
+    "href",
+    "/event-tags",
+  );
+});
+
+test("a player is not offered the tag editor", async () => {
+  await renderPlanning("demo.player");
+  expect(screen.queryByRole("link", { name: "Gérer les catégories" })).toBeNull();
+});
+
 test("no tag filter is offered when the band has no tags", async () => {
   server.use(
     http.get("/api/v1/event-tags", () =>

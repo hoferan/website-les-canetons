@@ -577,6 +577,16 @@ export function Events() {
         <TagFilter tags={tagList} value={tag} onChange={setChosenTag} />
       </div>
 
+      {/* Under the filter it edits, and only for whoever may: the list is
+          planning administration, like the "Ajouter" menu above. */}
+      {mayManage ? (
+        <p className="mt-tight text-sm">
+          <Link to="/event-tags" className="text-violet underline underline-offset-2">
+            {t("eventTags.manageLink")}
+          </Link>
+        </p>
+      ) : null}
+
       {calendarEnabled && showingCalendar ? (
         <div className="mt-block hidden md:block">
           <EventCalendar events={allEvents} selected={day} onSelect={setDay} />
