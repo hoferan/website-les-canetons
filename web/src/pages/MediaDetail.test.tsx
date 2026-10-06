@@ -286,8 +286,12 @@ test("a failed replacement leaves the photo as it was and says why", async () =>
   const file = new File(["x"], "autre.jpg", { type: "image/jpeg" });
   await user.upload(screen.getByTestId("photo-replace-input"), file);
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "La photo n’a pas changé : Cette photo est déjà dans la photothèque.",
+  // The page's alert region is always in the tree, empty until the failure
+  // lands, so wait for its text.
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "La photo n’a pas changé : Cette photo est déjà dans la photothèque.",
+    ),
   );
   expect(shrinker).toHaveBeenCalledWith(file);
   expect(screen.getByRole("img", { name: NAMES[1] })).toHaveAttribute("src", LARGEST_OF_1);
@@ -306,7 +310,9 @@ test("a photo that cannot be turned is left as it was", async () => {
 
   await user.click(actions().getByRole("button", { name: "Tourner à droite" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(/^La photo n’a pas changé : /);
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(/^La photo n’a pas changé : /),
+  );
   expect(replacer).not.toHaveBeenCalled();
 });
 
@@ -362,8 +368,10 @@ test("a delete the server refuses is shown in the dialog", async () => {
   const dialog = await screen.findByRole("alertdialog");
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
 
-  expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-    "Cette photo est encore affichée sur le site.",
+  await waitFor(() =>
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Cette photo est encore affichée sur le site.",
+    ),
   );
 });
 

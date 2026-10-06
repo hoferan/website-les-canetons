@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
@@ -96,8 +96,12 @@ test("shows the refusal in French when the guard rejects the submission", async 
   await fillIn(user);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Envoi refusé. Rechargez la page et réessayez.",
+  // FormError's region is always in the tree, empty until the refusal lands,
+  // so wait for its text: findByRole("alert") would resolve on the empty one.
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Envoi refusé. Rechargez la page et réessayez.",
+    ),
   );
   // NOTHING English reaches the screen: `title` is for a log.
   expect(screen.queryByText(/Submission looks automated/)).not.toBeInTheDocument();
@@ -114,7 +118,11 @@ test("keeps what was typed when the send fails", async () => {
   await renderWithSession(<Contact />, { route: "/contact" });
   await fillIn(user);
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
-  await screen.findByRole("alert");
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Envoi refusé. Rechargez la page et réessayez.",
+    ),
+  );
 
   // A rejected message must not make someone retype it.
   expect(screen.getByLabelText("Sujet")).toHaveValue("Mon fils aimerait essayer");
@@ -189,8 +197,10 @@ test("shows the refusal in German when the guard rejects the submission", async 
   await user.type(screen.getByLabelText("Nachricht"), "Bonjour, est-ce possible ?");
   await user.click(screen.getByRole("button", { name: "Senden" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Senden abgelehnt. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Senden abgelehnt. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    ),
   );
 });
 

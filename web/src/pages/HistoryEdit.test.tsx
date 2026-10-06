@@ -402,8 +402,12 @@ test("a photo that fails to save after its entry did is reported on the timeline
   await user.click(await screen.findByRole("button", { name: "Retirer" }));
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "L’entrée est enregistrée, mais pas sa photo.",
+  // Until the save navigates away, the form's FormError is an empty
+  // role="alert" and findByRole would take it, so wait for the text.
+  await waitFor(() =>
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "L’entrée est enregistrée, mais pas sa photo.",
+    ),
   );
   await timeline();
   expect(writes.filter((write) => write.path === "/api/v1/history/4")).toHaveLength(1);
