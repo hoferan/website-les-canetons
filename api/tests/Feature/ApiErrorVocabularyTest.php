@@ -140,6 +140,8 @@ class ApiErrorVocabularyTest extends TestCase
     private const MUST_INCLUDE_REASONS = [
         'required', 'too_long', 'invalid_format', 'invalid_type',
         'invalid_value', 'invalid_number',
+        // The floor for the errors()->add() scan.
+        'too_many_guests',
     ];
 
     private const MUST_INCLUDE_CODES = [
@@ -301,6 +303,10 @@ class ApiErrorVocabularyTest extends TestCase
         return $this->normalise(array_merge(
             array_values($map),
             $this->scanAppFor("/'reason'\s*=>\s*'([a-z_]+)'/"),
+            // Literal reasons a FormRequest's after() hook adds, as
+            // StoreRegistrationRequest does with too_many_guests (#230).
+            // Neither ApiError::REASONS nor the `'reason' =>` scan sees them.
+            $this->scanAppFor("/errors\(\)->add\(\s*['\"][^'\"]*['\"]\s*,\s*'([a-z_]+)'\s*\)/"),
             JpegInspector::PROBLEMS,
             ImageSet::PROBLEMS,
             self::EXTRA_REASONS,
