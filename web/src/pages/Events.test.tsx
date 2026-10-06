@@ -184,6 +184,32 @@ test("a card shows its tags to a player too", async () => {
   expect(within(within(card).getByTestId("event-meta")).getByText("Sortie")).toBeInTheDocument();
 });
 
+test("choosing a tag narrows the planning to it, and 'Tous' brings the rest back", async () => {
+  const user = userEvent.setup();
+  await renderPlanning();
+  const before = screen.getAllByTestId("event-card").length;
+
+  await user.click(screen.getByRole("radio", { name: "Sortie" }));
+  await waitFor(() =>
+    expect(screen.getAllByTestId("event-title").map((title) => title.textContent)).toEqual([
+      "Vendanges Cheyres",
+    ]),
+  );
+
+  await user.click(screen.getByRole("radio", { name: "Tous" }));
+  await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(before));
+});
+
+test("no tag filter is offered when the band has no tags", async () => {
+  server.use(
+    http.get("/api/v1/event-tags", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+  await renderPlanning();
+  expect(screen.queryByRole("radiogroup", { name: "Filtrer par catégorie" })).toBeNull();
+});
+
 test("a player is offered no way to create an event", async () => {
   // ABSENT, not refused: a control that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.

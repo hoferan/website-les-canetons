@@ -254,7 +254,9 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
 
       // AND THE RESULT OF IT, which is the number #182 is closed on. 287 when
       // this was written; the bound leaves room for a font or a heading change
-      // without pinning a pixel.
+      // without pinning a pixel. 343 since #107's tag filter, one 44px row of
+      // chips, approved on a phone mock with that row in it; the bound moved
+      // from 300 to 360 for that row and nothing else.
       //
       // THE FIRST BLOCK, NOT THE FIRST CARD. The committee's list opens with
       // the drafts group, whose heading now sits where the first card used to.
@@ -264,7 +266,7 @@ test("the members' pages carry no horizontal overflow on a phone", async ({ page
         .locator("h2, [data-testid='event-card']")
         .first()
         .evaluate((el) => Math.round(el.getBoundingClientRect().top + window.scrollY));
-      expect(firstBlockTop, "the control block above the first card has grown").toBeLessThan(300);
+      expect(firstBlockTop, "the control block above the first card has grown").toBeLessThan(360);
 
       // THE 44px FLOOR, MEASURED, which is the only place it can be. The jsdom
       // suite can see that `min-h-touch` is in a className and nothing more —

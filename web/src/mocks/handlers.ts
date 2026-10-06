@@ -2713,6 +2713,7 @@ const overrides = [
     // value must never be the one that hides events.
     const past = new URL(request.url).searchParams.get("past") === "1";
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+    const tag = new URL(request.url).searchParams.get("tag");
 
     // EVERY DRAFT BELONGS TO THE DEFAULT HALF, dated or not, and none to the
     // history: a draft cannot ride the start-date split, and one dated last
@@ -2726,9 +2727,26 @@ const overrides = [
       })
       // `?q=` narrows either half, on the title or the place (#97).
       .filter((event) => q === "" || matchesSearch([event.title, event.location ?? ""], q))
+      // `?tag=` narrows to the events carrying it (#107).
+      .filter((event) => tag === null || event.tags.some((carried) => carried.id === Number(tag)))
       .sort((a, b) => (past ? compareStart(b, a) : compareStart(a, b)));
 
     return collection(planning.map(withMyAttendance).map(withCommitteeCounts), request);
+  }),
+
+  // Any member reads the tags; the count includes drafts, as the API's does.
+  http.get("/api/v1/event-tags", ({ request }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    return collection(
+      eventTags.map((tag) => ({
+        ...tag,
+        eventCount: events.filter((event) => event.tags.some((carried) => carried.id === tag.id))
+          .length,
+      })),
+      request,
+    );
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches

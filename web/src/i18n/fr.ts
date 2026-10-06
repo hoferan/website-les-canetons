@@ -646,6 +646,8 @@ export const fr = {
     // type="single" renders role="radiogroup", which without a name announces
     // two radios belonging to nothing.
     viewSwitchAria: "Vue du planning",
+    tagFilterAria: "Filtrer par catégorie",
+    tagAll: "Tous",
     calendar: "Calendrier",
     list: "Liste",
     dayFiltered: "Filtré sur un jour.",

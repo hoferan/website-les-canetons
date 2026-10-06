@@ -407,6 +407,8 @@ export const de: typeof fr = {
     viewPlanning: "Planung",
     viewPast: "Vergangene Anlässe",
     viewSwitchAria: "Ansicht der Planung",
+    tagFilterAria: "Nach Kategorie filtern",
+    tagAll: "Alle",
     calendar: "Kalender",
     list: "Liste",
     dayFiltered: "Nach einem Tag gefiltert.",
