@@ -75,37 +75,32 @@ test("German uses ss, never the German-German eszett", () => {
  * modules for screens.
  */
 test("no screen imports a catalogue directly — t() is the only door", async () => {
-  const { readdir, readFile } = await import("node:fs/promises");
+  // Synchronous reads on purpose. Awaiting about 200 readFile calls in turn
+  // means one event-loop round trip per file, and while the rest of the
+  // suite loads every worker, each round trip waits its turn: this test took
+  // 4.5 s of its 5 s timeout that way, against 20 ms read synchronously.
+  const { readdirSync, readFileSync } = await import("node:fs");
   const { join } = await import("node:path");
 
   // process.cwd() rather than import.meta.url: vitest does not hand this
   // file a real file:// URL, and the resolved path came out as "/web/src".
   const root = join(process.cwd(), "web", "src");
 
-  async function sources(dir: string): Promise<string[]> {
-    const entries = await readdir(dir, { withFileTypes: true });
-    const found = await Promise.all(
-      entries.map(async (entry) => {
-        const path = join(dir, entry.name);
-        // i18n/ is where the catalogues legitimately live, and generated/ is
-        // orval's output, which never renders text.
-        if (entry.isDirectory()) {
-          return entry.name === "i18n" || entry.name === "generated" ? [] : sources(path);
-        }
-        return /\.tsx?$/.test(entry.name) ? [path] : [];
-      }),
-    );
-    return found.flat();
+  function sources(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name);
+      // i18n/ is where the catalogues legitimately live, and generated/ is
+      // orval's output, which never renders text.
+      if (entry.isDirectory()) {
+        return entry.name === "i18n" || entry.name === "generated" ? [] : sources(path);
+      }
+      return /\.tsx?$/.test(entry.name) ? [path] : [];
+    });
   }
 
-  const offenders: string[] = [];
-
-  for (const path of await sources(root)) {
-    const text = await readFile(path, "utf8");
-    if (/from\s+["'][^"']*i18n\/(fr|de)["']/.test(text)) {
-      offenders.push(path.slice(root.length + 1));
-    }
-  }
+  const offenders = sources(root)
+    .filter((path) => /from\s+["'][^"']*i18n\/(fr|de)["']/.test(readFileSync(path, "utf8")))
+    .map((path) => path.slice(root.length + 1));
 
   expect(offenders).toEqual([]);
 });

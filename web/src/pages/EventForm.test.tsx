@@ -107,11 +107,17 @@ async function createdEvent(title: string) {
   return created;
 }
 
+/**
+ * Pastes rather than types: a key at a time re-renders the form per key, and
+ * a whole event took a third of the 5 s test timeout before anything was
+ * sent. The test that is about typing a date types it.
+ */
 async function fillIn(fields: Record<string, string>) {
   for (const [label, value] of Object.entries(fields)) {
     const field = screen.getByLabelText(label);
     await userEvent.clear(field);
-    await userEvent.type(field, value);
+    await userEvent.click(field);
+    await userEvent.paste(value);
   }
 }
 
