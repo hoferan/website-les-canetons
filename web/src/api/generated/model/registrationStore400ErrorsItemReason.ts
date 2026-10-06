@@ -325,6 +325,7 @@ export const RegistrationStore400ErrorsItemReason = {
   invalid_number: "invalid_number",
   already_taken: "already_taken",
   must_be_after: "must_be_after",
+  too_many_guests: "too_many_guests",
   image_not_jpeg: "image_not_jpeg",
   image_too_large: "image_too_large",
   image_too_heavy: "image_too_heavy",

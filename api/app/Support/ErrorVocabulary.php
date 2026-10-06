@@ -279,6 +279,8 @@ final class ErrorVocabulary
         'invalid_number',
         'already_taken',
         'must_be_after',
+        // StoreRegistrationRequest::after(), against `choices`.
+        'too_many_guests',
         // What ReceivesImageSizes::after() adds against `files.N` and `files`.
         ...JpegInspector::PROBLEMS,
         ...ImageSet::PROBLEMS,
