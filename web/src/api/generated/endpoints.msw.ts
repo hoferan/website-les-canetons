@@ -416,6 +416,18 @@ export const getEventIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        labelDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        colour: faker.helpers.arrayElement(Object.values(TagColour)),
+        eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+      }),
+    ),
     startsAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
@@ -470,6 +482,16 @@ export const getEventStoreResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
   startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
@@ -516,6 +538,16 @@ export const getEventShowResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
   startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
@@ -562,6 +594,16 @@ export const getEventUpdateResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
   startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
@@ -618,6 +660,18 @@ export const getEventSeriesResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        labelDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        colour: faker.helpers.arrayElement(Object.values(TagColour)),
+        eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+      }),
+    ),
     startsAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
@@ -672,6 +726,16 @@ export const getEventPublishResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
   startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
@@ -718,6 +782,16 @@ export const getEventUnpublishResponseMock = (
 ): EventResource => ({
   id: faker.number.int(),
   title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
   startsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
@@ -883,6 +957,18 @@ export const getRegistrationFormResponseMock = (
   event: {
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        labelDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        colour: faker.helpers.arrayElement(Object.values(TagColour)),
+        eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+      }),
+    ),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1382,6 +1468,18 @@ export const getAgendaIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     title: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    tags: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
+      () => ({
+        id: faker.number.int(),
+        labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        labelDe: faker.helpers.arrayElement([
+          faker.string.alpha({ length: { min: 10, max: 20 } }),
+          null,
+        ]),
+        colour: faker.helpers.arrayElement(Object.values(TagColour)),
+        eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+      }),
+    ),
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),

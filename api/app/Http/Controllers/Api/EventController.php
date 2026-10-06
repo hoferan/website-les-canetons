@@ -91,6 +91,8 @@ class EventController extends Controller
              * @example concert
              */
             'q' => Search::RULES,
+            /** Only events carrying this tag, by its id from `GET /event-tags`. */
+            'tag' => ['sometimes', 'integer', 'exists:event_tags,id'],
         ]);
 
         // The split is on BandTime::startOfToday(), not now(): a rehearsal
@@ -140,10 +142,14 @@ class EventController extends Controller
         // would be a query per event; and ->additional() writes into the
         // envelope, which PaginatesCollections owns and every EventResource
         // in the collection is rendered beneath rather than inside.
+        $query->when(isset($filters['tag']), function ($query) use ($filters): void {
+            $query->whereHas('tags', fn ($tags) => $tags->whereKey($filters['tag']));
+        });
+
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return EventResource::collection(
-            $query->with(self::myAttendance($request))
+            $query->with([...self::myAttendance($request), 'tags'])
                 ->withCount(self::counts())
                 ->withSum('registrationChoices as guest_count', 'quantity')
                 ->get()
@@ -332,6 +338,7 @@ class EventController extends Controller
             'registration_closes_at' => $data['registrationClosesAt'] ?? null,
             'registration_max_guests' => $data['registrationMaxGuests'] ?? null,
         ]);
+        $event->tags()->sync(array_unique($data['tagIds'] ?? []));
 
         // Audited, like every other privileged mutation, with the title
         // captured as the label — see App\Support\Audit for why the CALLER
@@ -400,6 +407,13 @@ class EventController extends Controller
         }
 
         $event->save();
+
+        // Absent keeps the tags; `[]` clears them, the same distinction the
+        // columns above draw between a missing field and a null one.
+        if (array_key_exists('tagIds', $data)) {
+            $event->tags()->sync(array_unique($data['tagIds']));
+            $event->unsetRelation('tags');
+        }
 
         // Audited with the NEW title: a row still labelled with the old one
         // names an event that no longer exists under that name.

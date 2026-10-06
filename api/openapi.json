@@ -704,6 +704,14 @@
                         "example": "concert"
                     },
                     {
+                        "name": "tag",
+                        "in": "query",
+                        "description": "Only events carrying this tag, by its id from `GET /event-tags`.",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
                         "name": "past",
                         "in": "query",
                         "description": "Set to `1` for the history \u2014 past events, newest first \u2014 instead of the upcoming planning. Omit it for the planning.",
@@ -7277,6 +7285,13 @@
                     "title": {
                         "type": "string"
                     },
+                    "tags": {
+                        "type": "array",
+                        "description": "In the committee's tag order. Empty when the event has none.",
+                        "items": {
+                            "$ref": "#/components/schemas/EventTagResource"
+                        }
+                    },
                     "startsAt": {
                         "type": [
                             "string",
@@ -7386,6 +7401,7 @@
                 "required": [
                     "id",
                     "title",
+                    "tags",
                     "startsAt",
                     "endsAt",
                     "location",
@@ -7815,6 +7831,13 @@
                     "title": {
                         "type": "string"
                     },
+                    "tags": {
+                        "type": "array",
+                        "description": "In the committee's tag order. Empty when the event has none.",
+                        "items": {
+                            "$ref": "#/components/schemas/EventTagResource"
+                        }
+                    },
                     "startsAt": {
                         "type": "string",
                         "format": "date-time",
@@ -7837,6 +7860,7 @@
                 "required": [
                     "id",
                     "title",
+                    "tags",
                     "startsAt",
                     "endsAt",
                     "location",
@@ -8369,6 +8393,14 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "tagIds": {
+                        "type": "array",
+                        "description": "Ids from `GET /event-tags`. A repeated id counts once.",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "maxItems": 8
                     }
                 },
                 "required": [
@@ -8421,6 +8453,14 @@
                                     "string",
                                     "null"
                                 ]
+                            },
+                            "tagIds": {
+                                "type": "array",
+                                "description": "Ids from `GET /event-tags`, put on every generated event. A repeated id counts once.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "maxItems": 8
                             },
                             "startTime": {
                                 "type": "string",
@@ -8837,6 +8877,14 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "tagIds": {
+                        "type": "array",
+                        "description": "Ids from `GET /event-tags`, replacing the event's tags. Leave it out to keep them; send `[]` to clear them.",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "maxItems": 8
                     }
                 },
                 "title": "UpdateEventRequest"

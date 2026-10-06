@@ -12,6 +12,7 @@ import type {
   ContactMessageResource,
   ContactRequest,
   EventResource,
+  EventTagResource,
   HandleContactMessageRequest,
   HistoryEntryResource,
   ImageResource,
@@ -1036,6 +1037,37 @@ function at(dayOffset: number, time: string): string {
 }
 
 /**
+ * The four tags the seed migration writes (#107), without `eventCount`: the
+ * list handler counts it from the event store, as the API does.
+ */
+function initialEventTags(): EventTagResource[] {
+  return [
+    { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" },
+    { id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal" },
+    { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber" },
+    { id: 4, labelFr: "Carnaval", labelDe: "Fasnacht", colour: "pink" },
+  ];
+}
+
+let eventTags: EventTagResource[] = initialEventTags();
+
+/** The compact tags for these ids, in the tag order, as an event carries them. */
+function tagsFromIds(ids: readonly number[] | undefined): EventTagResource[] {
+  const wanted = new Set(ids ?? []);
+  return eventTags.filter((tag) => wanted.has(tag.id));
+}
+
+/** Which seeded event carries which tags, by title. */
+const SEEDED_TAGS: Record<string, number[]> = {
+  Répétition: [1],
+  "Répétition + apéritif de Noël": [1],
+  "Weekend musical": [1],
+  "Vendanges Cheyres": [3],
+  "Concert d'automne": [2],
+  "Sortie de fin de saison": [3, 4],
+};
+
+/**
  * The seeded planning, mirroring the band's real season rather than inventing
  * one: Saturday rehearsals at the Werkhof, the Christmas
  * one that runs an hour long, the two-day musical weekend, a gig, and one
@@ -1046,7 +1078,7 @@ function at(dayOffset: number, time: string): string {
  * being the whole store.
  */
 function initialEvents(): EventResource[] {
-  const published: Omit<EventResource, "publishedAt">[] = [
+  const published: Omit<EventResource, "publishedAt" | "tags">[] = [
     {
       id: 1,
       title: "Répétition",
@@ -1199,7 +1231,7 @@ function initialEvents(): EventResource[] {
   // the committee's list has to place: the dateless one has no start to sort
   // by. The dated one is public on purpose. A draft marked public must still
   // appear nowhere, and a seed that was not public could never show it.
-  const drafts: EventResource[] = [
+  const drafts: Omit<EventResource, "tags">[] = [
     {
       id: 8,
       title: "Concert d'automne",
@@ -1243,7 +1275,7 @@ function initialEvents(): EventResource[] {
   return [
     ...published.map((event) => ({ ...event, publishedAt: "2026-09-01T00:00:00+00:00" })),
     ...drafts,
-  ];
+  ].map((event) => ({ ...event, tags: tagsFromIds(SEEDED_TAGS[event.title]) }));
 }
 
 let events: EventResource[] = initialEvents();
@@ -1252,6 +1284,7 @@ let events: EventResource[] = initialEvents();
 let nextEventId = 10;
 
 function resetEvents(): void {
+  eventTags = initialEventTags();
   events = initialEvents();
   nextEventId = 10;
 }
@@ -1727,6 +1760,7 @@ function publicEvent(event: EventResource) {
   return {
     id: event.id,
     title: event.title,
+    tags: event.tags.map(({ id, labelFr, labelDe, colour }) => ({ id, labelFr, labelDe, colour })),
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     location: event.location,
@@ -2707,9 +2741,10 @@ const overrides = [
     }
 
     const body = (await request.json()) as {
-      template: Omit<EventResource, "id" | "startsAt" | "endsAt" | "publishedAt"> & {
+      template: Omit<EventResource, "id" | "startsAt" | "endsAt" | "publishedAt" | "tags"> & {
         startTime: string;
         endTime: string;
+        tagIds?: number[];
       };
       dates: string[];
     };
@@ -2723,6 +2758,7 @@ const overrides = [
       return {
         id: nextEventId++,
         title: body.template.title,
+        tags: tagsFromIds(body.template.tagIds),
         startsAt: at(offset, body.template.startTime),
         endsAt: at(offset, body.template.endTime),
         location: body.template.location,
@@ -2760,7 +2796,11 @@ const overrides = [
 
     // Only the title is required: "I do not know the venue yet" is the reason
     // a draft gets written, and every create is a draft.
-    const body = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+    const body = (await request.json()) as Partial<
+      Omit<EventResource, "id" | "publishedAt" | "tags">
+    > & {
+      tagIds?: number[];
+    };
     if (!body.title?.trim()) {
       return problem(400, "validation_failed", "Invalid form submission", [
         { field: "title", reason: "required" },
@@ -2774,6 +2814,7 @@ const overrides = [
     const event = withRegistrationFlag({
       id: nextEventId++,
       title: body.title,
+      tags: tagsFromIds(body.tagIds),
       startsAt: body.startsAt ?? null,
       endsAt: body.endsAt ?? null,
       location: body.location ?? null,

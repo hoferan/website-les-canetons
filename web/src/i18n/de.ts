@@ -151,6 +151,7 @@ export const de: typeof fr = {
     labelFr: "Name auf Französisch",
     labelDe: "Name auf Deutsch",
     colour: "Farbe",
+    tagIds: "Kategorien",
     important: "Wichtiger Meilenstein",
     icon: "Symbol",
     files: "Datei",

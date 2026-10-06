@@ -184,6 +184,7 @@ export const fr = {
     labelFr: "Nom en français",
     labelDe: "Nom en allemand",
     colour: "Couleur",
+    tagIds: "Catégories",
     important: "Étape importante",
     icon: "Icône",
     files: "Fichier",

@@ -317,6 +317,10 @@ export type EventIndexParams = {
    */
   q?: string | null;
   /**
+   * Only events carrying this tag, by its id from `GET /event-tags`.
+   */
+  tag?: number;
+  /**
    * Set to `1` for the history — past events, newest first — instead of the upcoming planning. Omit it for the planning.
    */
   past?: "1";

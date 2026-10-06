@@ -47,6 +47,8 @@ class PublicEventResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            /** In the committee's tag order. Empty when the event has none. */
+            'tags' => EventTagResource::collection($this->tags),
             /** When it starts, in UTC. */
             'startsAt' => $this->startsAt(),
             /** When it ends, in UTC. May fall on a later day. */

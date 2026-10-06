@@ -308,10 +308,13 @@
  *
  * OpenAPI spec version: 1.0.0
  */
+import type { EventTagResource } from "./eventTagResource";
 
 export interface PublicEventResource {
   id: number;
   title: string;
+  /** In the committee's tag order. Empty when the event has none. */
+  tags: EventTagResource[];
   /** When it starts, in UTC. */
   startsAt: string;
   /** When it ends, in UTC. May fall on a later day. */

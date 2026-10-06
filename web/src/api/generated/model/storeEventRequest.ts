@@ -377,4 +377,9 @@ export interface StoreEventRequest {
    * @nullable
    */
   registrationMaxGuests?: number | null;
+  /**
+   * Ids from `GET /event-tags`. A repeated id counts once.
+   * @maxItems 8
+   */
+  tagIds?: number[];
 }

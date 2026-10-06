@@ -119,7 +119,8 @@ class MyAttendanceTest extends TestCase
 
         $this->actingAsMember($this->player)->getJson('/api/v1/events')->assertOk();
 
-        $this->assertLessThanOrEqual(3, $queries, 'myAttendance must not query per event');
+        // 4 since #107 added the event tags' eager load, also one query.
+        $this->assertLessThanOrEqual(4, $queries, 'myAttendance must not query per event');
     }
 
     public function test_deleting_an_event_reports_how_many_answers_went_with_it(): void

@@ -330,6 +330,11 @@ export type StoreEventSeriesRequestTemplate = {
   isPublic: boolean;
   /** @nullable */
   notes?: string | null;
+  /**
+   * Ids from `GET /event-tags`, put on every generated event. A repeated id counts once.
+   * @maxItems 8
+   */
+  tagIds?: number[];
   /** Start time as `H:i`, for example `20:00`. Read as a wall-clock time in Europe/Zurich on each date. */
   startTime: string;
   /** End time as `H:i`, strictly after `startTime`. Every generated event begins and ends on its own date. */
