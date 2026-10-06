@@ -8,13 +8,41 @@ import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { Contact } from "./Contact";
 
+type User = ReturnType<typeof userEvent.setup>;
+
+/**
+ * Pastes each value into the field with that label. Typing re-renders the form
+ * once per key, about 80 keys for a whole message, which cost 1.5 s of the
+ * 5 s test timeout on an idle machine and ran out in a loaded full-suite run.
+ * No test here is about keystrokes.
+ */
+async function fill(user: User, values: Record<string, string>) {
+  for (const [label, value] of Object.entries(values)) {
+    await user.click(screen.getByLabelText(label));
+    await user.paste(value);
+  }
+}
+
 /** Fills every visible field with something the API would accept. */
-async function fillIn(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText("Nom"), "Rossier");
-  await user.type(screen.getByLabelText("Prénom"), "Claire");
-  await user.type(screen.getByLabelText("E-mail"), "claire@example.ch");
-  await user.type(screen.getByLabelText("Sujet"), "Mon fils aimerait essayer");
-  await user.type(screen.getByLabelText("Message"), "Bonjour, est-ce possible ?");
+async function fillIn(user: User) {
+  await fill(user, {
+    Nom: "Rossier",
+    Prénom: "Claire",
+    "E-mail": "claire@example.ch",
+    Sujet: "Mon fils aimerait essayer",
+    Message: "Bonjour, est-ce possible ?",
+  });
+}
+
+/** The same values, on the German page. */
+async function fillInGerman(user: User) {
+  await fill(user, {
+    Name: "Rossier",
+    Vorname: "Claire",
+    "E-Mail": "claire@example.ch",
+    Betreff: "Mon fils aimerait essayer",
+    Nachricht: "Bonjour, est-ce possible ?",
+  });
 }
 
 test("sends the message and answers in place, without navigating", async () => {
@@ -163,11 +191,7 @@ test("renders the form in German and sends the message", async () => {
 
   expect(screen.getByRole("heading", { name: "Kontakt" })).toBeInTheDocument();
 
-  await user.type(screen.getByLabelText("Name"), "Rossier");
-  await user.type(screen.getByLabelText("Vorname"), "Claire");
-  await user.type(screen.getByLabelText("E-Mail"), "claire@example.ch");
-  await user.type(screen.getByLabelText("Betreff"), "Mon fils aimerait essayer");
-  await user.type(screen.getByLabelText("Nachricht"), "Bonjour, est-ce possible ?");
+  await fillInGerman(user);
   await user.click(screen.getByRole("button", { name: "Senden" }));
 
   expect(await screen.findByRole("heading", { name: "Nachricht gesendet" })).toBeInTheDocument();
@@ -182,11 +206,7 @@ test("shows the refusal in German when the guard rejects the submission", async 
   );
 
   await renderWithSession(<Contact />, { route: "/contact", locale: "de-CH" });
-  await user.type(screen.getByLabelText("Name"), "Rossier");
-  await user.type(screen.getByLabelText("Vorname"), "Claire");
-  await user.type(screen.getByLabelText("E-Mail"), "claire@example.ch");
-  await user.type(screen.getByLabelText("Betreff"), "Mon fils aimerait essayer");
-  await user.type(screen.getByLabelText("Nachricht"), "Bonjour, est-ce possible ?");
+  await fillInGerman(user);
   await user.click(screen.getByRole("button", { name: "Senden" }));
 
   expect(await screen.findByRole("alert")).toHaveTextContent(
@@ -228,7 +248,7 @@ test("a malformed address is refused before anything is sent", async () => {
   await renderWithSession(<Contact />, { route: "/contact" });
   await fillIn(user);
   await user.clear(screen.getByLabelText("E-mail"));
-  await user.type(screen.getByLabelText("E-mail"), "claire");
+  await fill(user, { "E-mail": "claire" });
   await user.click(screen.getByRole("button", { name: "Envoyer" }));
 
   expect(screen.getByText("E-mail n'est pas dans un format valide")).toBeInTheDocument();
