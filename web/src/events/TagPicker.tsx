@@ -1,3 +1,5 @@
+import { Check } from "lucide-react";
+
 import { rowsOf } from "../api/collection";
 import { useEventTagIndex } from "../api/generated/endpoints";
 import type { EventTagResource } from "../api/generated/model";
@@ -10,8 +12,8 @@ import { TAG_COLOURS } from "./tagColours";
  *
  * Toggle buttons in a fieldset, not checkboxes: a ticked box beside a chip
  * would show the choice twice. `aria-pressed` carries it for a screen reader,
- * and the dark border carries it on screen, the same mark the planning's
- * filter uses for its chosen tag.
+ * and a dark border and a check carry it on screen; the border is the mark
+ * the planning's filter uses for its chosen tag.
  *
  * Renders nothing until the band has a tag, so a form never shows an empty
  * group with a heading over nothing.
@@ -46,11 +48,15 @@ export function TagPicker({
               onClick={() => toggle(tag.id)}
               className="group inline-flex min-h-touch items-center outline-none"
             >
+              {/* No dimming of the unchosen chips: opacity took their text
+                  under 4.5:1 (axe, in both forms). The border and the check
+                  carry the choice instead, and the check says only that. */}
               <span
-                className={`rounded-full border px-3 py-1 text-sm font-medium group-focus-visible:ring-[3px] group-focus-visible:ring-ring/50 ${TAG_COLOURS[tag.colour]} ${
-                  pressed ? "border-current" : "border-transparent opacity-70"
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium group-focus-visible:ring-[3px] group-focus-visible:ring-ring/50 ${TAG_COLOURS[tag.colour]} ${
+                  pressed ? "border-current" : "border-transparent"
                 }`}
               >
+                {pressed ? <Check aria-hidden="true" className="size-3.5" /> : null}
                 {tagLabel(tag)}
               </span>
             </button>
