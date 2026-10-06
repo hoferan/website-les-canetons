@@ -19,6 +19,7 @@ function agendaOf(count: number, registrationOpen = false) {
       endsAt: end.toISOString(),
       location: "Fribourg",
       registrationOpen,
+      tags: [],
     };
   });
 
@@ -29,6 +30,14 @@ test("lists every upcoming public appearance", async () => {
   await renderWithSession(<Agenda />, { route: "/agenda" });
 
   expect(await screen.findByText("Vendanges Cheyres")).toBeInTheDocument();
+});
+
+test("shows an appearance's tags", async () => {
+  await renderWithSession(<Agenda />, { route: "/agenda" });
+
+  const entry = (await screen.findByText("Vendanges Cheyres")).closest("li");
+  expect(entry).not.toBeNull();
+  expect(within(entry as HTMLElement).getByText("Sortie")).toBeInTheDocument();
 });
 
 /** The private planning stays private: five of the six seeded events are not public. */

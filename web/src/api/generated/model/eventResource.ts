@@ -309,10 +309,13 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AttendanceResource } from "./attendanceResource";
+import type { EventTagResource } from "./eventTagResource";
 
 export interface EventResource {
   id: number;
   title: string;
+  /** In the committee's tag order. Empty when the event has none. */
+  tags: EventTagResource[];
   /**
    * ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet.
    * @nullable

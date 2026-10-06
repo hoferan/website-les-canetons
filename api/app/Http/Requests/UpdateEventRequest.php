@@ -84,6 +84,9 @@ class UpdateEventRequest extends FormRequest
             'registrationClosesAt' => ['sometimes', 'nullable', 'date', ...$this->afterTheOpening($event)],
             /** The largest number of people one booking may cover, 1 to 100. Send `null` for no cap. */
             'registrationMaxGuests' => ['sometimes', 'nullable', 'integer', 'gt:0', 'max:100'],
+            /** Ids from `GET /event-tags`, replacing the event's tags. Leave it out to keep them; send `[]` to clear them. */
+            'tagIds' => ['sometimes', 'array', 'max:8'],
+            'tagIds.*' => ['integer', 'exists:event_tags,id'],
         ];
     }
 

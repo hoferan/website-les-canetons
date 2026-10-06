@@ -374,4 +374,9 @@ export interface UpdateEventRequest {
    * @nullable
    */
   registrationMaxGuests?: number | null;
+  /**
+   * Ids from `GET /event-tags`, replacing the event's tags. Leave it out to keep them; send `[]` to clear them.
+   * @maxItems 8
+   */
+  tagIds?: number[];
 }

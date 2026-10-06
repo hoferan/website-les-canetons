@@ -205,6 +205,15 @@ export function roleLabel(key: string): string {
   return i18next.exists(path) ? i18next.t(path) : key;
 }
 
+/**
+ * An event tag's name on the current page. The committee typed it, so it is
+ * data rather than catalogue copy (ADR 0026): German when there is a German
+ * name, the French one otherwise.
+ */
+export function tagLabel(tag: { labelFr: string; labelDe: string | null }): string {
+  return currentLocale() === "fr" ? tag.labelFr : (tag.labelDe ?? tag.labelFr);
+}
+
 /** The one-line explanation of what a role grants. Empty when there is none. */
 export function roleHint(key: string): string {
   const path = `roles.${key}.hint`;

@@ -20,8 +20,9 @@ import {
   eventUnpublish,
   getEventIndexQueryKey,
   useEventIndex,
+  useEventTagIndex,
 } from "../api/generated/endpoints";
-import type { EventResource } from "../api/generated/model";
+import type { EventResource, EventTagResource } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
 import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
@@ -33,6 +34,7 @@ import { EventCalendar } from "../events/EventCalendar";
 import { EventCard } from "../events/EventCard";
 import { EventMeta } from "../events/EventMeta";
 import { SeriesCreatedNotice } from "../events/SeriesCreatedNotice";
+import { TagFilter, shownTag } from "../events/TagFilter";
 import { bandZoneParts } from "../events/bandTime";
 import { isDraft } from "../events/eventDates";
 import { t } from "../i18n";
@@ -113,6 +115,13 @@ export function Events() {
   const [typed, setTyped] = useState("");
   const q = useDebouncedValue(typed.trim());
 
+  // THE TAG (#107), on the server like the search and for the same reason.
+  // `tag` is derived through shownTag() rather than reset in an effect, so a
+  // tag deleted while it was chosen never reaches the request.
+  const tagList = rowsOf<EventTagResource>(useEventTagIndex().data);
+  const [chosenTag, setChosenTag] = useState<number | null>(null);
+  const tag = shownTag(chosenTag, tagList);
+
   const destructive = useApiFormError(t("events.deleteFailed"));
 
   // Publishing and unpublishing share one error, shown above the list. A
@@ -144,7 +153,11 @@ export function Events() {
   //
   // The previous answer STAYS ON SCREEN while a new search loads, so typing
   // narrows the list rather than blanking it into "Chargement" per keystroke.
-  const params = { ...(showingPast ? { past: "1" as const } : {}), ...(q === "" ? {} : { q }) };
+  const params = {
+    ...(showingPast ? { past: "1" as const } : {}),
+    ...(q === "" ? {} : { q }),
+    ...(tag === null ? {} : { tag }),
+  };
   const planning = useEventIndex(Object.keys(params).length > 0 ? params : undefined, {
     query: { placeholderData: keepPreviousData },
   });
@@ -349,6 +362,7 @@ export function Events() {
         // this suppresses an empty strip rather than protecting anything.
         meta={
           <EventMeta
+            tags={event.tags}
             isPublic={mayManage ? event.isPublic : undefined}
             // NOT ON A DRAFT: "0/4 réponses" is a fraction of a question that has
             // not been asked, since nobody can answer an event until it is published.
@@ -559,6 +573,25 @@ export function Events() {
         ) : null}
       </div>
 
+      {/* The editor's link ends the filter's own row rather than taking a
+          line under it: that line put the committee's first card 28px past
+          members.spec's bound at 390px. Short on screen, "Modifier" beside
+          the chips it edits; its accessible name says which. */}
+      <div className="mt-tight flex items-center gap-related">
+        <div className="min-w-0 flex-1">
+          <TagFilter tags={tagList} value={tag} onChange={setChosenTag} />
+        </div>
+        {mayManage ? (
+          <Link
+            to="/event-tags"
+            aria-label={t("eventTags.manageLink")}
+            className="inline-flex min-h-touch shrink-0 items-center text-sm text-violet underline underline-offset-2"
+          >
+            {t("common.edit")}
+          </Link>
+        ) : null}
+      </div>
+
       {calendarEnabled && showingCalendar ? (
         <div className="mt-block hidden md:block">
           <EventCalendar events={allEvents} selected={day} onSelect={setDay} />
@@ -598,11 +631,14 @@ export function Events() {
           <p className="text-ink-muted">
             {q !== ""
               ? t("events.noMatch")
-              : showingPast
-                ? t("events.emptyPast")
-                : t("events.empty")}
+              : tag !== null
+                ? t("events.noTagMatch")
+                : showingPast
+                  ? t("events.emptyPast")
+                  : t("events.empty")}
           </p>
-          {mayManage && !showingPast && q === "" ? (
+          {/* Nor is a tag nothing carries: the planning may be full. */}
+          {mayManage && !showingPast && q === "" && tag === null ? (
             <p className="mt-tight text-sm text-ink-muted">
               {/* THE HINT QUOTES THE BUTTON BESIDE IT, so the label is read
                   from the same key that renders it rather than written out a

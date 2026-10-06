@@ -29,6 +29,10 @@
             "description": "Public bookings for an event that takes them, and the guest list the committee works from."
         },
         {
+            "name": "Event tags",
+            "description": "The labels events carry, such as \"R\u00e9p\u00e9tition\" or \"Carnaval\". Any member reads them; changing them needs `events.manage`."
+        },
+        {
             "name": "Committee inbox",
             "description": "The messages the public has sent, and whether anybody has dealt with them."
         },
@@ -699,6 +703,14 @@
                             "maxLength": 100
                         },
                         "example": "concert"
+                    },
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "description": "Only events carrying this tag, by its id from `GET /event-tags`.",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
                         "name": "past",
@@ -3097,6 +3109,348 @@
                                 }
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/event-tags": {
+            "get": {
+                "operationId": "eventTag.index",
+                "summary": "Every tag, in the committee's order, with how many events carry each. Any member",
+                "tags": [
+                    "Event tags"
+                ],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "How many rows to return, at most 1000. Defaults to 500, which is above every collection this API holds, so omitting it returns the whole thing. A larger number is clamped and a value that is not a whole number is ignored; neither is an error, and `meta.limit` says what was applied.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 500,
+                            "minimum": 1,
+                            "maximum": 1000
+                        }
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "description": "How many rows to skip. Defaults to 0. Prefer following the `Link` header's `next` over computing this yourself.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 0,
+                            "minimum": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `EventTagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/EventTagResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Link": {
+                                "description": "RFC 8288 links to the rest of the collection: `first`, `last`, and `prev` and `next` where they exist. Follow `next` until there is none rather than doing arithmetic on `meta`. Your own query parameters are carried along, so paging `/events?past=1` stays in the past. The URIs are relative \u2014 resolve them against the URL you requested.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "eventTag.store",
+                "summary": "Requires `events.manage`. The new tag goes last. Answers `201` with it",
+                "tags": [
+                    "Event tags"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreEventTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`EventTagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventTagResource"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/event-tags/{eventTag}": {
+            "get": {
+                "operationId": "eventTag.show",
+                "summary": "One tag, with the `ETag` its update and delete must quote. Requires `events.manage`",
+                "tags": [
+                    "Event tags"
+                ],
+                "parameters": [
+                    {
+                        "name": "eventTag",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event tag ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`EventTagResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventTagResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "eventTag.update",
+                "summary": "Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read",
+                "tags": [
+                    "Event tags"
+                ],
+                "parameters": [
+                    {
+                        "name": "eventTag",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event tag ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreEventTagRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The tag as it now stands.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EventTagResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "eventTag.destroy",
+                "summary": "Takes the tag off every event that carries it. Requires `events.manage` and the `If-Match` from its read",
+                "tags": [
+                    "Event tags"
+                ],
+                "parameters": [
+                    {
+                        "name": "eventTag",
+                        "in": "path",
+                        "required": true,
+                        "description": "The event tag ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     }
                 }
             }
@@ -6934,6 +7288,13 @@
                     "title": {
                         "type": "string"
                     },
+                    "tags": {
+                        "type": "array",
+                        "description": "In the committee's tag order. Empty when the event has none.",
+                        "items": {
+                            "$ref": "#/components/schemas/EventTagResource"
+                        }
+                    },
                     "startsAt": {
                         "type": [
                             "string",
@@ -7043,6 +7404,7 @@
                 "required": [
                     "id",
                     "title",
+                    "tags",
                     "startsAt",
                     "endsAt",
                     "location",
@@ -7060,6 +7422,38 @@
                     "myAttendance"
                 ],
                 "title": "EventResource"
+            },
+            "EventTagResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "labelFr": {
+                        "type": "string"
+                    },
+                    "labelDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null when the committee gave no German name; show `labelFr` then."
+                    },
+                    "colour": {
+                        "$ref": "#/components/schemas/TagColour"
+                    },
+                    "eventCount": {
+                        "type": "integer",
+                        "description": "How many events carry the tag, drafts included. Only on the tag list."
+                    }
+                },
+                "required": [
+                    "id",
+                    "labelFr",
+                    "labelDe",
+                    "colour"
+                ],
+                "title": "EventTagResource"
             },
             "HandleContactMessageRequest": {
                 "type": "object",
@@ -7440,6 +7834,13 @@
                     "title": {
                         "type": "string"
                     },
+                    "tags": {
+                        "type": "array",
+                        "description": "In the committee's tag order. Empty when the event has none.",
+                        "items": {
+                            "$ref": "#/components/schemas/EventTagResource"
+                        }
+                    },
                     "startsAt": {
                         "type": "string",
                         "format": "date-time",
@@ -7462,6 +7863,7 @@
                 "required": [
                     "id",
                     "title",
+                    "tags",
                     "startsAt",
                     "endsAt",
                     "location",
@@ -7994,6 +8396,14 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Null means no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "tagIds": {
+                        "type": "array",
+                        "description": "Ids from `GET /event-tags`. A repeated id counts once.",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "maxItems": 8
                     }
                 },
                 "required": [
@@ -8047,6 +8457,14 @@
                                     "null"
                                 ]
                             },
+                            "tagIds": {
+                                "type": "array",
+                                "description": "Ids from `GET /event-tags`, put on every generated event. A repeated id counts once.",
+                                "items": {
+                                    "type": "integer"
+                                },
+                                "maxItems": 8
+                            },
                             "startTime": {
                                 "type": "string",
                                 "description": "Start time as `H:i`, for example `20:00`. Read as a wall-clock time in Europe/Zurich on each date."
@@ -8089,6 +8507,43 @@
                     "dates"
                 ],
                 "title": "StoreEventSeriesRequest"
+            },
+            "StoreEventTagRequest": {
+                "type": "object",
+                "description": "One event tag, created or replaced whole. A blank German label is stored as\nnull and the SPA falls back to the French one (ADR 0026).",
+                "properties": {
+                    "labelFr": {
+                        "type": "string",
+                        "description": "Unique under the column's case-insensitive collation, so\n\"concert\" is refused beside \"Concert\" as a taken name rather\nthan reaching the unique index as a 500.",
+                        "maxLength": 40
+                    },
+                    "labelDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 40
+                    },
+                    "colour": {
+                        "type": "string",
+                        "description": "One of `violet`, `teal`, `amber`, `pink`, `blue`, `green`, `coral`, `gray`.",
+                        "enum": [
+                            "violet",
+                            "teal",
+                            "amber",
+                            "pink",
+                            "blue",
+                            "green",
+                            "coral",
+                            "gray"
+                        ]
+                    }
+                },
+                "required": [
+                    "labelFr",
+                    "colour"
+                ],
+                "title": "StoreEventTagRequest"
             },
             "StoreHistoryEntryRequest": {
                 "type": "object",
@@ -8334,6 +8789,21 @@
                 ],
                 "title": "StoreRegistrationRequest"
             },
+            "TagColour": {
+                "type": "string",
+                "description": "The colours an event tag may take (#107). A closed set of names rather than a free hex value, because the SPA pairs each one with a tint and an ink that were checked together for 4.5:1 at the chip's 12px. A hex the committee typed could not be. The pairs live in web/src/styles.css; a name added here needs its pair there.\n",
+                "enum": [
+                    "violet",
+                    "teal",
+                    "amber",
+                    "pink",
+                    "blue",
+                    "green",
+                    "coral",
+                    "gray"
+                ],
+                "title": "TagColour"
+            },
             "UpdateEventRequest": {
                 "type": "object",
                 "description": "Changes to one entry on the planning.\n\nA PATCH: send only the fields that change. An omitted field is left as it\nis, and an explicit `null` clears one of the optional fields.\n\nThe two date comparisons still hold when only one half is sent. A request\ncarrying `endsAt` but not `startsAt` is compared against the start already\nstored, so an end cannot be moved before a beginning it did not send; the\nsame goes for `registrationClosesAt` against a stored\n`registrationOpensAt`.\n\nClearing `registrationClosesAt` with an explicit `null` is how public\nregistration is switched off again; the bookings already taken are kept.",
@@ -8410,6 +8880,14 @@
                         "description": "The largest number of people one booking may cover, 1 to 100. Send `null` for no cap.",
                         "minimum": 1,
                         "maximum": 100
+                    },
+                    "tagIds": {
+                        "type": "array",
+                        "description": "Ids from `GET /event-tags`, replacing the event's tags. Leave it out to keep them; send `[]` to clear them.",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "maxItems": 8
                     }
                 },
                 "title": "UpdateEventRequest"

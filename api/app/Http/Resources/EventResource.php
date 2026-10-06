@@ -83,6 +83,8 @@ class EventResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            /** In the committee's tag order. Empty when the event has none. */
+            'tags' => EventTagResource::collection($this->tags),
             /** ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet. */
             'startsAt' => $this->starts_at === null ? null : Iso8601::utc($this->starts_at),
             /** ISO 8601 in UTC. After `startsAt` when both are set, and may fall on a later day. Null only on a draft that has no date yet. */

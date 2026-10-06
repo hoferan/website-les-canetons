@@ -79,6 +79,9 @@ class StoreEventSeriesRequest extends FormRequest
             /** Whether the generated events appear on the public agenda. Applies to all of them. */
             'template.isPublic' => ['required', 'boolean'],
             'template.notes' => ['nullable', 'string'],
+            /** Ids from `GET /event-tags`, put on every generated event. A repeated id counts once. */
+            'template.tagIds' => ['sometimes', 'array', 'max:8'],
+            'template.tagIds.*' => ['integer', 'exists:event_tags,id'],
 
             // H:i, because these are wall-clock times and not instants — see
             // the class docblock. date_format rather than a regex so '25:00'

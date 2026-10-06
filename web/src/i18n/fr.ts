@@ -181,6 +181,10 @@ export const fr = {
     bodyFr: "Texte en français",
     titleDe: "Titre en allemand",
     bodyDe: "Texte en allemand",
+    labelFr: "Nom en français",
+    labelDe: "Nom en allemand",
+    colour: "Couleur",
+    tagIds: "Catégories",
     important: "Étape importante",
     icon: "Icône",
     files: "Fichier",
@@ -642,6 +646,8 @@ export const fr = {
     // type="single" renders role="radiogroup", which without a name announces
     // two radios belonging to nothing.
     viewSwitchAria: "Vue du planning",
+    tagFilterAria: "Filtrer par catégorie",
+    tagAll: "Tous",
     calendar: "Calendrier",
     list: "Liste",
     dayFiltered: "Filtré sur un jour.",
@@ -654,6 +660,7 @@ export const fr = {
     // The visible placeholder only, beside the switch on a phone (#97).
     searchPlaceholder: "Rechercher",
     noMatch: "Aucun événement ne correspond à cette recherche.",
+    noTagMatch: "Aucun événement dans cette catégorie.",
     emptyPast: "Aucun événement passé.",
     // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.
     // The hint quotes the button beside it, so spelling the label out twice
@@ -777,6 +784,7 @@ export const fr = {
     attireHint:
       "Laissez vide si la tenue n’est pas encore décidée\u00a0: la carte affichera «\u00a0{{unset}}\u00a0».",
     isPublic: "Visible sur le site public",
+    tags: "Catégories",
     notes: "Remarques",
 
     registrationsLegend: "Inscriptions du public",
@@ -1596,5 +1604,39 @@ export const fr = {
     bookingNumber: "numéro pour les prestations",
     committeeSeats: "les fonctions et les noms du comité",
     joinContact: "nom et numéro",
+  },
+  // The tag editor (#107). "Catégorie" on screen: "étiquette" or "tag" would
+  // be the developer's word, and the committee sorts the planning into
+  // categories.
+  eventTags: {
+    heading: "Catégories",
+    intro:
+      "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs.",
+    // The link's accessible name. It shows only "Modifier", and a name has
+    // to contain the visible word for voice control to reach it (WCAG 2.5.3).
+    manageLink: "Modifier les catégories",
+    count_one: "{{count}} événement",
+    count_other: "{{count}} événements",
+    editAria: "Modifier « {{label}} »",
+    deleteAria: "Supprimer « {{label}} »",
+    newHeading: "Nouvelle catégorie",
+    add: "Ajouter",
+    colour: "Couleur",
+    colours: {
+      violet: "Violet",
+      teal: "Vert d'eau",
+      amber: "Ambre",
+      pink: "Rose",
+      blue: "Bleu",
+      green: "Vert",
+      coral: "Corail",
+      gray: "Gris",
+    },
+    deleteTitle: "Supprimer « {{label}} » ?",
+    deleteUsed_one: "Elle sera retirée de {{count}} événement.",
+    deleteUsed_other: "Elle sera retirée de {{count}} événements.",
+    deleteUnused: "Aucun événement ne la porte.",
+    saveFailed: "La catégorie n'a pas pu être enregistrée.",
+    deleteFailed: "La catégorie n'a pas pu être supprimée.",
   },
 };

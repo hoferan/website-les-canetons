@@ -82,6 +82,9 @@ class StoreEventRequest extends FormRequest
             'registrationClosesAt' => ['nullable', 'date', 'after:registrationOpensAt'],
             /** The largest number of people one booking may cover, 1 to 100. Null means no cap. */
             'registrationMaxGuests' => ['nullable', 'integer', 'gt:0', 'max:100'],
+            /** Ids from `GET /event-tags`. A repeated id counts once. */
+            'tagIds' => ['sometimes', 'array', 'max:8'],
+            'tagIds.*' => ['integer', 'exists:event_tags,id'],
         ];
     }
 }

@@ -13,6 +13,24 @@ test("renders nothing when it is given nothing", () => {
   expect(container).toBeEmptyDOMElement();
 });
 
+test("shows an event's tags, before the public chip", () => {
+  render(
+    <EventMeta
+      isPublic
+      tags={[{ id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal" }]}
+    />,
+  );
+  const strip = screen.getByTestId("event-meta");
+  expect(strip.textContent).toBe("ConcertPublic");
+});
+
+test("renders the strip for tags alone", () => {
+  render(
+    <EventMeta tags={[{ id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" }]} />,
+  );
+  expect(screen.getByTestId("event-meta")).toBeInTheDocument();
+});
+
 test("shows the public chip only for a public event", () => {
   const { rerender } = render(<EventMeta isPublic />);
   expect(screen.getByText("Public")).toBeInTheDocument();

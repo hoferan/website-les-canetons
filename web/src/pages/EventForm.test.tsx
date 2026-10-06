@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, delay, http } from "msw";
 import { expect, test } from "vitest";
@@ -346,6 +346,43 @@ test("editing a draft offers both actions and lets the date go", async () => {
 
   await screen.findByText("planning");
   await waitFor(async () => expect((await createdEvent("Concert d'automne")).startsAt).toBeNull());
+});
+
+test("a new event is saved with the tags picked for it", async () => {
+  await renderCreateAndEdit();
+  await userEvent.type(screen.getByLabelText("Titre"), "Répétition générale");
+  const picker = await screen.findByRole("group", { name: "Catégories" });
+  await userEvent.click(within(picker).getByRole("button", { name: "Répétition" }));
+  expect(within(picker).getByRole("button", { name: "Répétition" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  await screen.findByText("planning");
+  const created = await createdEvent("Répétition générale");
+  expect(created.tags.map((tag) => tag.labelFr)).toEqual(["Répétition"]);
+});
+
+test("editing an event adds one tag and takes another off", async () => {
+  // Event 8, "Concert d'automne", carries Concert in the seed.
+  await renderEdit(8);
+  const picker = await screen.findByRole("group", { name: "Catégories" });
+  expect(within(picker).getByRole("button", { name: "Concert" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await userEvent.click(within(picker).getByRole("button", { name: "Concert" }));
+  await userEvent.click(within(picker).getByRole("button", { name: "Sortie" }));
+  await userEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+
+  await screen.findByText("planning");
+  await waitFor(async () =>
+    expect((await createdEvent("Concert d'automne")).tags.map((tag) => tag.labelFr)).toEqual([
+      "Sortie",
+    ]),
+  );
 });
 
 test("a published event's form still requires its date and place", async () => {

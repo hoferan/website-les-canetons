@@ -119,6 +119,25 @@ test("creating a season goes to the planning and says how many were created", as
   await expect.poll(() => screen.getByTestId("history-state").textContent).toBe("null");
 });
 
+test("a season carries the tags picked for it on every date", async () => {
+  let sent: unknown = null;
+  server.events.on("request:start", async ({ request }) => {
+    if (request.method === "POST" && new URL(request.url).pathname === "/api/v1/events/series") {
+      sent = await request.clone().json();
+    }
+  });
+
+  await renderGenerator();
+  await fillSeptember();
+  const picker = await screen.findByRole("group", { name: "Catégories" });
+  await userEvent.click(within(picker).getByRole("button", { name: "Répétition" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Créer 4 événements" }));
+
+  await screen.findByRole("status");
+  server.events.removeAllListeners();
+  expect((sent as { template: { tagIds: number[] } }).template.tagIds).toEqual([1]);
+});
+
 test("the count on the planning goes away when dismissed", async () => {
   await renderGenerator();
   await fillSeptember();

@@ -6,6 +6,7 @@ import type { EventResource, StoreEventRequest } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
 import { bandZoneParts, composeInBandZone } from "./bandTime";
+import { TagPicker } from "./TagPicker";
 
 export type EventDraft = {
   title: string;
@@ -16,6 +17,7 @@ export type EventDraft = {
   location: string;
   attire: string;
   isPublic: boolean;
+  tagIds: number[];
   notes: string;
   registrationOpensDate: string;
   registrationOpensTime: string;
@@ -58,6 +60,7 @@ export function draftFromEvent(event: EventResource | null): EventDraft {
     location: event?.location ?? "",
     attire: event?.attire ?? "",
     isPublic: event?.isPublic ?? false,
+    tagIds: event?.tags.map((tag) => tag.id) ?? [],
     notes: event?.notes ?? "",
     registrationOpensDate: opens?.date ?? "",
     registrationOpensTime: opens?.time ?? OPENS_AT_DEFAULT,
@@ -98,6 +101,10 @@ export function eventBodyFrom(draft: EventDraft): StoreEventRequest {
     location: draft.location.trim() === "" ? null : draft.location,
     attire: draft.attire.trim() === "" ? null : draft.attire,
     isPublic: draft.isPublic,
+    // Always sent, the whole set: the API replaces an event's tags with what
+    // arrives, so leaving one out here would be indistinguishable from
+    // "unchanged" only by accident.
+    tagIds: draft.tagIds,
     notes: draft.notes.trim() === "" ? null : draft.notes,
     // THE DATE IS THE SWITCH, and the time beside it is never consulted on
     // its own. An empty closing date sends null, which is what turns public
@@ -312,6 +319,8 @@ export function EventForm({
         />
         {t("eventForm.isPublic")}
       </label>
+
+      <TagPicker value={draft.tagIds} onChange={(tagIds) => set("tagIds", tagIds)} />
 
       <FormField
         id="notes"

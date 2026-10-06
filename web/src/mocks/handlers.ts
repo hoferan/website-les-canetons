@@ -12,6 +12,7 @@ import type {
   ContactMessageResource,
   ContactRequest,
   EventResource,
+  EventTagResource,
   HandleContactMessageRequest,
   HistoryEntryResource,
   ImageResource,
@@ -30,6 +31,7 @@ import type {
   UpdateRegistrationRequest,
   SectionResource,
   StoreHistoryEntryRequest,
+  StoreEventTagRequest,
 } from "../api/generated/model";
 
 /**
@@ -1036,6 +1038,63 @@ function at(dayOffset: number, time: string): string {
 }
 
 /**
+ * The four tags the seed migration writes (#107), without `eventCount`: the
+ * list handler counts it from the event store, as the API does.
+ */
+function initialEventTags(): EventTagResource[] {
+  return [
+    { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" },
+    { id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal" },
+    { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber" },
+    { id: 4, labelFr: "Carnaval", labelDe: "Fasnacht", colour: "pink" },
+  ];
+}
+
+let eventTags: EventTagResource[] = initialEventTags();
+
+/** The compact tags for these ids, in the tag order, as an event carries them. */
+function tagsFromIds(ids: readonly number[] | undefined): EventTagResource[] {
+  const wanted = new Set(ids ?? []);
+  return eventTags.filter((tag) => wanted.has(tag.id));
+}
+
+/** How many events carry the tag, drafts included, as the API counts. */
+function eventsCarrying(tagId: number): number {
+  return events.filter((event) => event.tags.some((tag) => tag.id === tagId)).length;
+}
+
+/**
+ * The tag request's own refusals: a missing French name, and one another tag
+ * already has under MariaDB's case-insensitive comparison.
+ */
+function refuseTagBody(body: StoreEventTagRequest, self: number | null) {
+  const labelFr = body.labelFr?.trim() ?? "";
+  if (labelFr === "") {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "labelFr", reason: "required" },
+    ]);
+  }
+  const taken = eventTags.some(
+    (tag) => tag.id !== self && tag.labelFr.toLocaleLowerCase() === labelFr.toLocaleLowerCase(),
+  );
+  return taken
+    ? problem(400, "validation_failed", "Invalid form submission", [
+        { field: "labelFr", reason: "already_taken" },
+      ])
+    : null;
+}
+
+/** Which seeded event carries which tags, by title. */
+const SEEDED_TAGS: Record<string, number[]> = {
+  Répétition: [1],
+  "Répétition + apéritif de Noël": [1],
+  "Weekend musical": [1],
+  "Vendanges Cheyres": [3],
+  "Concert d'automne": [2],
+  "Sortie de fin de saison": [3, 4],
+};
+
+/**
  * The seeded planning, mirroring the band's real season rather than inventing
  * one: Saturday rehearsals at the Werkhof, the Christmas
  * one that runs an hour long, the two-day musical weekend, a gig, and one
@@ -1046,7 +1105,7 @@ function at(dayOffset: number, time: string): string {
  * being the whole store.
  */
 function initialEvents(): EventResource[] {
-  const published: Omit<EventResource, "publishedAt">[] = [
+  const published: Omit<EventResource, "publishedAt" | "tags">[] = [
     {
       id: 1,
       title: "Répétition",
@@ -1199,7 +1258,7 @@ function initialEvents(): EventResource[] {
   // the committee's list has to place: the dateless one has no start to sort
   // by. The dated one is public on purpose. A draft marked public must still
   // appear nowhere, and a seed that was not public could never show it.
-  const drafts: EventResource[] = [
+  const drafts: Omit<EventResource, "tags">[] = [
     {
       id: 8,
       title: "Concert d'automne",
@@ -1243,7 +1302,7 @@ function initialEvents(): EventResource[] {
   return [
     ...published.map((event) => ({ ...event, publishedAt: "2026-09-01T00:00:00+00:00" })),
     ...drafts,
-  ];
+  ].map((event) => ({ ...event, tags: tagsFromIds(SEEDED_TAGS[event.title]) }));
 }
 
 let events: EventResource[] = initialEvents();
@@ -1252,6 +1311,7 @@ let events: EventResource[] = initialEvents();
 let nextEventId = 10;
 
 function resetEvents(): void {
+  eventTags = initialEventTags();
   events = initialEvents();
   nextEventId = 10;
 }
@@ -1727,6 +1787,7 @@ function publicEvent(event: EventResource) {
   return {
     id: event.id,
     title: event.title,
+    tags: event.tags.map(({ id, labelFr, labelDe, colour }) => ({ id, labelFr, labelDe, colour })),
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     location: event.location,
@@ -2679,6 +2740,7 @@ const overrides = [
     // value must never be the one that hides events.
     const past = new URL(request.url).searchParams.get("past") === "1";
     const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+    const tag = new URL(request.url).searchParams.get("tag");
 
     // EVERY DRAFT BELONGS TO THE DEFAULT HALF, dated or not, and none to the
     // history: a draft cannot ride the start-date split, and one dated last
@@ -2692,9 +2754,116 @@ const overrides = [
       })
       // `?q=` narrows either half, on the title or the place (#97).
       .filter((event) => q === "" || matchesSearch([event.title, event.location ?? ""], q))
+      // `?tag=` narrows to the events carrying it (#107).
+      .filter((event) => tag === null || event.tags.some((carried) => carried.id === Number(tag)))
       .sort((a, b) => (past ? compareStart(b, a) : compareStart(a, b)));
 
     return collection(planning.map(withMyAttendance).map(withCommitteeCounts), request);
+  }),
+
+  // Any member reads the tags; the count includes drafts, as the API's does.
+  http.get("/api/v1/event-tags", ({ request }) => {
+    if (!currentUser) {
+      return unauthenticated();
+    }
+    return collection(
+      eventTags.map((tag) => ({
+        ...tag,
+        eventCount: eventsCarrying(tag.id),
+      })),
+      request,
+    );
+  }),
+
+  // The single read the editor's rename and delete start from. Its tag is
+  // over the tag alone, as EntityTag's is: another event being tagged
+  // meanwhile must not refuse a rename.
+  http.get("/api/v1/event-tags/:id", ({ params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const found = eventTags.find((tag) => tag.id === Number(params.id));
+    return found
+      ? HttpResponse.json(
+          { ...found, eventCount: eventsCarrying(found.id) },
+          { headers: { ETag: mockEntityTag(found) } },
+        )
+      : notFound();
+  }),
+
+  http.post("/api/v1/event-tags", async ({ request }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as StoreEventTagRequest;
+    const invalid = refuseTagBody(body, null);
+    if (invalid) {
+      return invalid;
+    }
+    const tag: EventTagResource = {
+      id: Math.max(0, ...eventTags.map((existing) => existing.id)) + 1,
+      labelFr: body.labelFr.trim(),
+      labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
+      colour: body.colour,
+    };
+    eventTags = [...eventTags, tag];
+    return HttpResponse.json({ ...tag, eventCount: 0 }, { status: 201 });
+  }),
+
+  http.put("/api/v1/event-tags/:id", async ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = eventTags.find((tag) => tag.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const body = (await request.json()) as StoreEventTagRequest;
+    const invalid = refuseTagBody(body, existing.id);
+    if (invalid) {
+      return invalid;
+    }
+    const updated: EventTagResource = {
+      ...existing,
+      labelFr: body.labelFr.trim(),
+      labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
+      colour: body.colour,
+    };
+    eventTags = eventTags.map((tag) => (tag.id === updated.id ? updated : tag));
+    // The events carry a copy, as the API's eager load would hand back.
+    events = events.map((event) => ({
+      ...event,
+      tags: tagsFromIds(event.tags.map((tag) => tag.id)),
+    }));
+    return HttpResponse.json({ ...updated, eventCount: eventsCarrying(updated.id) });
+  }),
+
+  http.delete("/api/v1/event-tags/:id", ({ request, params }) => {
+    const refusal = refuseWithout("events.manage");
+    if (refusal) {
+      return refusal;
+    }
+    const existing = eventTags.find((tag) => tag.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(existing));
+    if (stale) {
+      return stale;
+    }
+    eventTags = eventTags.filter((tag) => tag.id !== existing.id);
+    events = events.map((event) => ({
+      ...event,
+      tags: event.tags.filter((tag) => tag.id !== existing.id),
+    }));
+    return HttpResponse.json({ ok: true });
   }),
 
   // BEFORE /api/v1/events/:id, so `series` is never read as an id. MSW matches
@@ -2707,9 +2876,10 @@ const overrides = [
     }
 
     const body = (await request.json()) as {
-      template: Omit<EventResource, "id" | "startsAt" | "endsAt" | "publishedAt"> & {
+      template: Omit<EventResource, "id" | "startsAt" | "endsAt" | "publishedAt" | "tags"> & {
         startTime: string;
         endTime: string;
+        tagIds?: number[];
       };
       dates: string[];
     };
@@ -2723,6 +2893,7 @@ const overrides = [
       return {
         id: nextEventId++,
         title: body.template.title,
+        tags: tagsFromIds(body.template.tagIds),
         startsAt: at(offset, body.template.startTime),
         endsAt: at(offset, body.template.endTime),
         location: body.template.location,
@@ -2760,7 +2931,11 @@ const overrides = [
 
     // Only the title is required: "I do not know the venue yet" is the reason
     // a draft gets written, and every create is a draft.
-    const body = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+    const body = (await request.json()) as Partial<
+      Omit<EventResource, "id" | "publishedAt" | "tags">
+    > & {
+      tagIds?: number[];
+    };
     if (!body.title?.trim()) {
       return problem(400, "validation_failed", "Invalid form submission", [
         { field: "title", reason: "required" },
@@ -2774,6 +2949,7 @@ const overrides = [
     const event = withRegistrationFlag({
       id: nextEventId++,
       title: body.title,
+      tags: tagsFromIds(body.tagIds),
       startsAt: body.startsAt ?? null,
       endsAt: body.endsAt ?? null,
       location: body.location ?? null,
@@ -2829,7 +3005,11 @@ const overrides = [
       return stale;
     }
 
-    const patch = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+    // `tagIds` is taken off before the spread below: it names tags, it is not
+    // a field of the event, and absent means "keep them" as on the API.
+    const { tagIds, ...patch } = (await request.json()) as Partial<
+      Omit<EventResource, "id" | "publishedAt" | "tags">
+    > & { tagIds?: number[] };
 
     // A DRAFT may lose its dates and location, a published event may not; the
     // stored row decides, not the request.
@@ -2847,7 +3027,11 @@ const overrides = [
       }
     }
 
-    const updated = withRegistrationFlag({ ...existing, ...patch });
+    const updated = withRegistrationFlag({
+      ...existing,
+      ...patch,
+      tags: tagIds === undefined ? existing.tags : tagsFromIds(tagIds),
+    });
 
     // The comparison reaches for the STORED start when the patch does not
     // carry one — the real Form Request's whole subtlety, mirrored so the

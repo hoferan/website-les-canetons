@@ -17,6 +17,7 @@ import { EventNew } from "./pages/EventNew";
 import { EventRegistrationOptions } from "./pages/EventRegistrationOptions";
 import { EventRegistrations } from "./pages/EventRegistrations";
 import { EventSeriesNew } from "./pages/EventSeriesNew";
+import { EventTags } from "./pages/EventTags";
 import { Events } from "./pages/Events";
 import { History } from "./pages/History";
 import { HistoryEdit } from "./pages/HistoryEdit";
@@ -126,6 +127,10 @@ export function AppRoutes() {
                 dress code cannot refuse a pending options edit and changing an
                 option cannot slip past one. */}
             <Route path="/events/:id/registration-options" element={<EventRegistrationOptions />} />
+
+            {/* The tag list (#107), planning administration like the rest of
+                this group. Picking an event's tags is in the event's form. */}
+            <Route path="/event-tags" element={<EventTags />} />
           </Route>
 
           {/* The chase list. A SEPARATE PERMISSION from managing events:

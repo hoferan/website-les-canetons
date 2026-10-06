@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ContactMessageController;
 use App\Http\Controllers\Api\EventController;
 use App\Http\Controllers\Api\EventSeriesController;
+use App\Http\Controllers\Api\EventTagController;
 use App\Http\Controllers\Api\FormTokenController;
 use App\Http\Controllers\Api\GuestListExportController;
 use App\Http\Controllers\Api\HistoryEntryController;
@@ -292,6 +293,20 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         // mis-aimed tap is the confirmation in the UI.
         Route::delete('/events/{event}', [EventController::class, 'destroy'])
             ->middleware('etag:event');
+    });
+
+    // The event tags (#107). Reading them is open to every member, like the
+    // planning they label: the filter on it needs the list. Changing them is
+    // planning administration, so it takes the same permission as the events.
+    Route::get('/event-tags', [EventTagController::class, 'index']);
+    Route::middleware('permission:events.manage')->group(function () {
+        Route::get('/event-tags/{eventTag}', [EventTagController::class, 'show'])
+            ->middleware('etag:event_tag');
+        Route::post('/event-tags', [EventTagController::class, 'store']);
+        Route::put('/event-tags/{eventTag}', [EventTagController::class, 'update'])
+            ->middleware('etag:event_tag');
+        Route::delete('/event-tags/{eventTag}', [EventTagController::class, 'destroy'])
+            ->middleware('etag:event_tag');
     });
 
     // Changing the history, and the single-entry read its edit form starts

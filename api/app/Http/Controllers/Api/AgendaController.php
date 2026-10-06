@@ -49,6 +49,7 @@ class AgendaController extends Controller
             ->where('is_public', true)
             ->where('starts_at', '>=', BandTime::startOfToday())
             ->orderBy('starts_at')
+            ->with('tags')
             ->get();
 
         return PublicEventResource::collection($upcoming);

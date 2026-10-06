@@ -367,6 +367,10 @@ import type {
   EventPublish422,
   EventResource,
   EventSeries201,
+  EventTagDestroy200,
+  EventTagIndex200,
+  EventTagIndexParams,
+  EventTagResource,
   EventUnpublish409,
   FormTokenShow200,
   HandleContactMessageRequest,
@@ -440,6 +444,7 @@ import type {
   SectionIndexParams,
   StoreEventRequest,
   StoreEventSeriesRequest,
+  StoreEventTagRequest,
   StoreHistoryEntryRequest,
   StoreImageRequest,
   StoreMemberRequest,
@@ -5245,6 +5250,853 @@ export const useRegistrationOptionReplace = <
   TContext
 > => {
   return useMutation(getRegistrationOptionReplaceMutationOptions(options), queryClient);
+};
+
+export type eventTagIndexResponse200 = {
+  data: EventTagIndex200;
+  status: 200;
+};
+
+export type eventTagIndexResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventTagIndexResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventTagIndexResponseSuccess = eventTagIndexResponse200 & {
+  headers: Headers;
+};
+export type eventTagIndexResponseError = (eventTagIndexResponse401 | eventTagIndexResponse503) & {
+  headers: Headers;
+};
+
+export type eventTagIndexResponse = eventTagIndexResponseSuccess | eventTagIndexResponseError;
+
+export const getEventTagIndexUrl = (params?: EventTagIndexParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/event-tags?${stringifiedParams}` : `/event-tags`;
+};
+
+/**
+ * @summary Every tag, in the committee's order, with how many events carry each. Any member
+ */
+export const eventTagIndex = async (
+  params?: EventTagIndexParams,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventTagIndexResponse> => {
+  return customFetch<eventTagIndexResponse>(getEventTagIndexUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getEventTagIndexQueryKey = (params?: EventTagIndexParams) => {
+  return [`/event-tags`, ...(params ? [params] : [])] as const;
+};
+
+export const getEventTagIndexQueryOptions = <
+  TData = Awaited<ReturnType<typeof eventTagIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: EventTagIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getEventTagIndexQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof eventTagIndex>>> = ({ signal }) =>
+    eventTagIndex(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof eventTagIndex>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type EventTagIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventTagIndex>>>;
+export type EventTagIndexQueryError = Problem401Response | Problem503Response;
+
+export function useEventTagIndex<
+  TData = Awaited<ReturnType<typeof eventTagIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params: undefined | EventTagIndexParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagIndex>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventTagIndex>>,
+          TError,
+          Awaited<ReturnType<typeof eventTagIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventTagIndex<
+  TData = Awaited<ReturnType<typeof eventTagIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: EventTagIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagIndex>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventTagIndex>>,
+          TError,
+          Awaited<ReturnType<typeof eventTagIndex>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventTagIndex<
+  TData = Awaited<ReturnType<typeof eventTagIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: EventTagIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary Every tag, in the committee's order, with how many events carry each. Any member
+ */
+
+export function useEventTagIndex<
+  TData = Awaited<ReturnType<typeof eventTagIndex>>,
+  TError = Problem401Response | Problem503Response,
+>(
+  params?: EventTagIndexParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagIndex>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getEventTagIndexQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type eventTagStoreResponse201 = {
+  data: EventTagResource;
+  status: 201;
+};
+
+export type eventTagStoreResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type eventTagStoreResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventTagStoreResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventTagStoreResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type eventTagStoreResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventTagStoreResponseSuccess = eventTagStoreResponse201 & {
+  headers: Headers;
+};
+export type eventTagStoreResponseError = (
+  | eventTagStoreResponse400
+  | eventTagStoreResponse401
+  | eventTagStoreResponse403
+  | eventTagStoreResponse419
+  | eventTagStoreResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventTagStoreResponse = eventTagStoreResponseSuccess | eventTagStoreResponseError;
+
+export const getEventTagStoreUrl = () => {
+  return `/event-tags`;
+};
+
+/**
+ * @summary Requires `events.manage`. The new tag goes last. Answers `201` with it
+ */
+export const eventTagStore = async (
+  storeEventTagRequest: StoreEventTagRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventTagStoreResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<eventTagStoreResponse>(getEventTagStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeEventTagRequest),
+  });
+};
+
+export const getEventTagStoreMutationKey = () => ["eventTagStore"] as const;
+
+export const getEventTagStoreMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventTagStore>>,
+    TError,
+    EventTagStoreMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventTagStore>>,
+  TError,
+  EventTagStoreMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventTagStoreMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventTagStore>>,
+    EventTagStoreMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return eventTagStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventTagStoreMutationResult = NonNullable<Awaited<ReturnType<typeof eventTagStore>>>;
+export type EventTagStoreMutationBody = StoreEventTagRequest;
+export type EventTagStoreMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem419Response
+  | Problem503Response;
+export type EventTagStoreMutationVariables = { data: StoreEventTagRequest };
+
+/**
+ * @summary Requires `events.manage`. The new tag goes last. Answers `201` with it
+ */
+export const useEventTagStore = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem419Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventTagStore>>,
+      TError,
+      EventTagStoreMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventTagStore>>,
+  TError,
+  EventTagStoreMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventTagStoreMutationOptions(options), queryClient);
+};
+
+export type eventTagShowResponse200 = {
+  data: EventTagResource;
+  status: 200;
+};
+
+export type eventTagShowResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventTagShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventTagShowResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type eventTagShowResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventTagShowResponseSuccess = eventTagShowResponse200 & {
+  headers: Headers;
+};
+export type eventTagShowResponseError = (
+  | eventTagShowResponse401
+  | eventTagShowResponse403
+  | eventTagShowResponse404
+  | eventTagShowResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventTagShowResponse = eventTagShowResponseSuccess | eventTagShowResponseError;
+
+export const getEventTagShowUrl = (eventTag: number) => {
+  return `/event-tags/${eventTag}`;
+};
+
+/**
+ * @summary One tag, with the `ETag` its update and delete must quote. Requires `events.manage`
+ */
+export const eventTagShow = async (
+  eventTag: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventTagShowResponse> => {
+  return customFetch<eventTagShowResponse>(getEventTagShowUrl(eventTag), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getEventTagShowQueryKey = (eventTag: number) => {
+  return [`/event-tags/${eventTag}`] as const;
+};
+
+export const getEventTagShowQueryOptions = <
+  TData = Awaited<ReturnType<typeof eventTagShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  eventTag: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getEventTagShowQueryKey(eventTag);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof eventTagShow>>> = ({ signal }) =>
+    eventTagShow(eventTag, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: eventTag !== null && eventTag !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type EventTagShowQueryResult = NonNullable<Awaited<ReturnType<typeof eventTagShow>>>;
+export type EventTagShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
+
+export function useEventTagShow<
+  TData = Awaited<ReturnType<typeof eventTagShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  eventTag: number,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventTagShow>>,
+          TError,
+          Awaited<ReturnType<typeof eventTagShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventTagShow<
+  TData = Awaited<ReturnType<typeof eventTagShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  eventTag: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof eventTagShow>>,
+          TError,
+          Awaited<ReturnType<typeof eventTagShow>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useEventTagShow<
+  TData = Awaited<ReturnType<typeof eventTagShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  eventTag: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary One tag, with the `ETag` its update and delete must quote. Requires `events.manage`
+ */
+
+export function useEventTagShow<
+  TData = Awaited<ReturnType<typeof eventTagShow>>,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
+>(
+  eventTag: number,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof eventTagShow>>, TError, TData>>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getEventTagShowQueryOptions(eventTag, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type eventTagUpdateResponse200 = {
+  data: EventTagResource;
+  status: 200;
+};
+
+export type eventTagUpdateResponse400 = {
+  data: Problem400Response;
+  status: 400;
+};
+
+export type eventTagUpdateResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventTagUpdateResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventTagUpdateResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type eventTagUpdateResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type eventTagUpdateResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type eventTagUpdateResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type eventTagUpdateResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventTagUpdateResponseSuccess = eventTagUpdateResponse200 & {
+  headers: Headers;
+};
+export type eventTagUpdateResponseError = (
+  | eventTagUpdateResponse400
+  | eventTagUpdateResponse401
+  | eventTagUpdateResponse403
+  | eventTagUpdateResponse404
+  | eventTagUpdateResponse412
+  | eventTagUpdateResponse419
+  | eventTagUpdateResponse428
+  | eventTagUpdateResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventTagUpdateResponse = eventTagUpdateResponseSuccess | eventTagUpdateResponseError;
+
+export const getEventTagUpdateUrl = (eventTag: number) => {
+  return `/event-tags/${eventTag}`;
+};
+
+/**
+ * @summary Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read
+ */
+export const eventTagUpdate = async (
+  eventTag: number,
+  storeEventTagRequest: StoreEventTagRequest,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventTagUpdateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit["headers"]>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return customFetch<eventTagUpdateResponse>(getEventTagUpdateUrl(eventTag), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeEventTagRequest),
+  });
+};
+
+export const getEventTagUpdateMutationKey = () => ["eventTagUpdate"] as const;
+
+export const getEventTagUpdateMutationOptions = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventTagUpdate>>,
+    TError,
+    EventTagUpdateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventTagUpdate>>,
+  TError,
+  EventTagUpdateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventTagUpdateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventTagUpdate>>,
+    EventTagUpdateMutationVariables
+  > = (props) => {
+    const { eventTag, data } = props ?? {};
+
+    return eventTagUpdate(eventTag, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventTagUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof eventTagUpdate>>>;
+export type EventTagUpdateMutationBody = StoreEventTagRequest;
+export type EventTagUpdateMutationError =
+  | Problem400Response
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type EventTagUpdateMutationVariables = { eventTag: number; data: StoreEventTagRequest };
+
+/**
+ * @summary Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read
+ */
+export const useEventTagUpdate = <
+  TError =
+    | Problem400Response
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventTagUpdate>>,
+      TError,
+      EventTagUpdateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventTagUpdate>>,
+  TError,
+  EventTagUpdateMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventTagUpdateMutationOptions(options), queryClient);
+};
+
+export type eventTagDestroyResponse200 = {
+  data: EventTagDestroy200;
+  status: 200;
+};
+
+export type eventTagDestroyResponse401 = {
+  data: Problem401Response;
+  status: 401;
+};
+
+export type eventTagDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
+export type eventTagDestroyResponse404 = {
+  data: Problem404Response;
+  status: 404;
+};
+
+export type eventTagDestroyResponse412 = {
+  data: Problem412Response;
+  status: 412;
+};
+
+export type eventTagDestroyResponse419 = {
+  data: Problem419Response;
+  status: 419;
+};
+
+export type eventTagDestroyResponse428 = {
+  data: Problem428Response;
+  status: 428;
+};
+
+export type eventTagDestroyResponse503 = {
+  data: Problem503Response;
+  status: 503;
+};
+
+export type eventTagDestroyResponseSuccess = eventTagDestroyResponse200 & {
+  headers: Headers;
+};
+export type eventTagDestroyResponseError = (
+  | eventTagDestroyResponse401
+  | eventTagDestroyResponse403
+  | eventTagDestroyResponse404
+  | eventTagDestroyResponse412
+  | eventTagDestroyResponse419
+  | eventTagDestroyResponse428
+  | eventTagDestroyResponse503
+) & {
+  headers: Headers;
+};
+
+export type eventTagDestroyResponse = eventTagDestroyResponseSuccess | eventTagDestroyResponseError;
+
+export const getEventTagDestroyUrl = (eventTag: number) => {
+  return `/event-tags/${eventTag}`;
+};
+
+/**
+ * @summary Takes the tag off every event that carries it. Requires `events.manage` and the `If-Match` from its read
+ */
+export const eventTagDestroy = async (
+  eventTag: number,
+  options?: Parameters<typeof customFetch>[1],
+): Promise<eventTagDestroyResponse> => {
+  return customFetch<eventTagDestroyResponse>(getEventTagDestroyUrl(eventTag), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getEventTagDestroyMutationKey = () => ["eventTagDestroy"] as const;
+
+export const getEventTagDestroyMutationOptions = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof eventTagDestroy>>,
+    TError,
+    EventTagDestroyMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof eventTagDestroy>>,
+  TError,
+  EventTagDestroyMutationVariables,
+  TContext
+> => {
+  const mutationKey = getEventTagDestroyMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof eventTagDestroy>>,
+    EventTagDestroyMutationVariables
+  > = (props) => {
+    const { eventTag } = props ?? {};
+
+    return eventTagDestroy(eventTag, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type EventTagDestroyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof eventTagDestroy>>
+>;
+
+export type EventTagDestroyMutationError =
+  | Problem401Response
+  | Problem403Response
+  | Problem404Response
+  | Problem412Response
+  | Problem419Response
+  | Problem428Response
+  | Problem503Response;
+export type EventTagDestroyMutationVariables = { eventTag: number };
+
+/**
+ * @summary Takes the tag off every event that carries it. Requires `events.manage` and the `If-Match` from its read
+ */
+export const useEventTagDestroy = <
+  TError =
+    | Problem401Response
+    | Problem403Response
+    | Problem404Response
+    | Problem412Response
+    | Problem419Response
+    | Problem428Response
+    | Problem503Response,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof eventTagDestroy>>,
+      TError,
+      EventTagDestroyMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof eventTagDestroy>>,
+  TError,
+  EventTagDestroyMutationVariables,
+  TContext
+> => {
+  return useMutation(getEventTagDestroyMutationOptions(options), queryClient);
 };
 
 export type inboxSummaryResponse200 = {

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventSeriesRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Models\EventTag;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
@@ -114,6 +115,19 @@ class EventSeriesController extends Controller
                 Audit::record($actor, 'event.created', 'event', $event->id, $event->title);
             }
 
+            // One insert for the whole season rather than an attach() per
+            // event, which would be a query per date.
+            $tagIds = EventTag::distinctIds($template['tagIds'] ?? []);
+            $pivot = [];
+            foreach ($created as $event) {
+                foreach ($tagIds as $tagId) {
+                    $pivot[] = ['event_id' => $event->id, 'event_tag_id' => $tagId];
+                }
+            }
+            if ($pivot !== []) {
+                DB::table('event_event_tag')->insert($pivot);
+            }
+
             return $created;
         });
 
@@ -128,6 +142,7 @@ class EventSeriesController extends Controller
         // date and blow test_a_season_does_not_cost_a_query_per_row_beyond_its_writes'
         // budget the moment a season has more than a couple of rows.
         $events = Collection::make($events);
+        $events->load('tags');
         $events->loadCount(EventController::counts());
         $events->loadSum('registrationChoices as guest_count', 'quantity');
 

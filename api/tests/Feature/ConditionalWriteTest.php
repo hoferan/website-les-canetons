@@ -6,6 +6,7 @@ use App\Http\Middleware\ConditionalWrite;
 use App\Models\Attendance;
 use App\Models\ContactMessage;
 use App\Models\Event;
+use App\Models\EventTag;
 use App\Models\HistoryEntry;
 use App\Models\Image;
 use App\Models\Member;
@@ -398,6 +399,7 @@ class ConditionalWriteTest extends TestCase
             'image' => Image::query()->create([
                 'name' => 'Photo', 'sha256' => str_repeat('a', 64), 'width' => 8, 'height' => 8, 'bytes' => 100,
             ]),
+            'event_tag' => EventTag::query()->firstOrFail(),
         ];
 
         foreach (EntityTag::facets() as $facet) {

@@ -178,6 +178,70 @@ test("lists the planning for an ordinary player", async () => {
   expect(screen.getAllByTestId("event-card").length).toBeGreaterThan(0);
 });
 
+test("a card shows its tags to a player too", async () => {
+  await renderPlanning();
+  const card = cardFor("Vendanges Cheyres");
+  expect(within(within(card).getByTestId("event-meta")).getByText("Sortie")).toBeInTheDocument();
+});
+
+test("choosing a tag narrows the planning to it, and 'Tous' brings the rest back", async () => {
+  const user = userEvent.setup();
+  await renderPlanning();
+  const before = screen.getAllByTestId("event-card").length;
+
+  await user.click(screen.getByRole("radio", { name: "Sortie" }));
+  await waitFor(() =>
+    expect(screen.getAllByTestId("event-title").map((title) => title.textContent)).toEqual([
+      "Vendanges Cheyres",
+    ]),
+  );
+
+  await user.click(screen.getByRole("radio", { name: "Tous" }));
+  await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(before));
+});
+
+test("a tag nothing carries says so, and is not an empty planning", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.get("/api/v1/event-tags", () =>
+      HttpResponse.json({
+        data: [{ id: 9, labelFr: "Souper", labelDe: null, colour: "coral", eventCount: 0 }],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  await renderPlanning("demo.direction");
+
+  await user.click(screen.getByRole("radio", { name: "Souper" }));
+
+  expect(await screen.findByText("Aucun événement dans cette catégorie.")).toBeInTheDocument();
+  expect(screen.queryByText("Aucun événement au planning.")).toBeNull();
+  expect(screen.queryByText(/générez toute une saison/)).toBeNull();
+});
+
+test("only somebody who manages events is offered the tag editor", async () => {
+  await renderPlanning("demo.direction");
+  expect(screen.getByRole("link", { name: "Modifier les catégories" })).toHaveAttribute(
+    "href",
+    "/event-tags",
+  );
+});
+
+test("a player is not offered the tag editor", async () => {
+  await renderPlanning("demo.player");
+  expect(screen.queryByRole("link", { name: "Modifier les catégories" })).toBeNull();
+});
+
+test("no tag filter is offered when the band has no tags", async () => {
+  server.use(
+    http.get("/api/v1/event-tags", () =>
+      HttpResponse.json({ data: [], meta: { total: 0, limit: 500, offset: 0 } }),
+    ),
+  );
+  await renderPlanning();
+  expect(screen.queryByRole("radiogroup", { name: "Filtrer par catégorie" })).toBeNull();
+});
+
 test("a player is offered no way to create an event", async () => {
   // ABSENT, not refused: a control that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.
@@ -916,7 +980,11 @@ test("a player is told nothing about answers or bookings", async () => {
   // the UI layer. The API has already withheld the numbers; this asserts the
   // screen does not invent them.
   await renderPlanning("demo.player");
-  expect(screen.queryAllByTestId("event-meta")).toHaveLength(0);
+  // The strip itself may show, for the tags everybody sees (#107); what it
+  // must not carry is a count.
+  for (const strip of screen.queryAllByTestId("event-meta")) {
+    expect(strip.textContent).not.toMatch(/réponse|personne|inscription|Public/);
+  }
 });
 
 test("an organiser sees the public chip and the answer fraction", async () => {
@@ -946,12 +1014,9 @@ test("the booking count appears only on an event that takes bookings", async () 
   // Pinned to specific cards for the same reason as the public chip above:
   // a count can pass while sat on the wrong card, so this checks the mapping
   // rather than the total.
-  const souper = screen
-    .getAllByTestId("event-card")
-    .find((card) => within(card).queryByText("Souper de soutien")) as HTMLElement;
-  const rehearsal = screen
-    .getAllByTestId("event-card")
-    .find((card) => within(card).queryByText("Répétition")) as HTMLElement;
+  // By title, since a rehearsal's "Répétition" tag chip carries the same text.
+  const souper = cardFor("Souper de soutien");
+  const rehearsal = cardFor("Répétition");
 
   expect(within(souper).getByText(/personnes?$|^Aucune inscription$/)).toBeInTheDocument();
   expect(within(rehearsal).queryByText(/personnes?$|^Aucune inscription$/)).toBeNull();
