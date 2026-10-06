@@ -783,6 +783,7 @@ export const fr = {
     attireHint:
       "Laissez vide si la tenue n’est pas encore décidée\u00a0: la carte affichera «\u00a0{{unset}}\u00a0».",
     isPublic: "Visible sur le site public",
+    tags: "Catégories",
     notes: "Remarques",
 
     registrationsLegend: "Inscriptions du public",

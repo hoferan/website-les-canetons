@@ -500,6 +500,7 @@ export const de: typeof fr = {
     attireHint:
       "Leer lassen, wenn die Kleidung noch nicht festgelegt ist: Die Karte zeigt dann «{{unset}}».",
     isPublic: "Auf der öffentlichen Website sichtbar",
+    tags: "Kategorien",
     notes: "Bemerkungen",
 
     registrationsLegend: "Anmeldungen des Publikums",

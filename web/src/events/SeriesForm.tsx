@@ -7,6 +7,7 @@ import { FormError, FormField, RequiredLegend, formIsValid } from "../components
 import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { weekdayDatesBetween } from "./eventDates";
+import { TagPicker } from "./TagPicker";
 
 /**
  * The most dates one request may generate. The SERVER is the enforcement
@@ -72,6 +73,7 @@ type SeriesDraft = {
   location: string;
   attire: string;
   isPublic: boolean;
+  tagIds: number[];
   notes: string;
   startTime: string;
   endTime: string;
@@ -90,6 +92,7 @@ const EMPTY: SeriesDraft = {
   location: "",
   attire: "",
   isPublic: false,
+  tagIds: [],
   notes: "",
   startTime: "10:00",
   endTime: "12:00",
@@ -184,6 +187,7 @@ export function SeriesForm({
             location: draft.location,
             attire: draft.attire.trim() === "" ? null : draft.attire,
             isPublic: draft.isPublic,
+            tagIds: draft.tagIds,
             notes: draft.notes.trim() === "" ? null : draft.notes,
             startTime: draft.startTime,
             endTime: draft.endTime,
@@ -288,6 +292,8 @@ export function SeriesForm({
         />
         {t("eventForm.isPublic")}
       </label>
+
+      <TagPicker value={draft.tagIds} onChange={(tagIds) => set("tagIds", tagIds)} />
 
       <FormField
         id="notes"

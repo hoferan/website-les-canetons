@@ -2888,7 +2888,11 @@ const overrides = [
       return stale;
     }
 
-    const patch = (await request.json()) as Partial<Omit<EventResource, "id" | "publishedAt">>;
+    // `tagIds` is taken off before the spread below: it names tags, it is not
+    // a field of the event, and absent means "keep them" as on the API.
+    const { tagIds, ...patch } = (await request.json()) as Partial<
+      Omit<EventResource, "id" | "publishedAt" | "tags">
+    > & { tagIds?: number[] };
 
     // A DRAFT may lose its dates and location, a published event may not; the
     // stored row decides, not the request.
@@ -2906,7 +2910,11 @@ const overrides = [
       }
     }
 
-    const updated = withRegistrationFlag({ ...existing, ...patch });
+    const updated = withRegistrationFlag({
+      ...existing,
+      ...patch,
+      tags: tagIds === undefined ? existing.tags : tagsFromIds(tagIds),
+    });
 
     // The comparison reaches for the STORED start when the patch does not
     // carry one — the real Form Request's whole subtlety, mirrored so the
