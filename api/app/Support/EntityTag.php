@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Http\Resources\ContactMessageResource;
 use App\Http\Resources\EventResource;
+use App\Http\Resources\EventTagResource;
 use App\Http\Resources\HistoryEntryResource;
 use App\Http\Resources\ImageResource;
 use App\Http\Resources\MemberResource;
@@ -84,6 +85,7 @@ final class EntityTag
         'contact_message' => 'contactMessage',
         'history' => 'historyEntry',
         'image' => 'image',
+        'event_tag' => 'eventTag',
     ];
 
     /**
@@ -192,6 +194,12 @@ final class EntityTag
             'contact_message' => (new ContactMessageResource($model->load('handledBy')))->toArray(self::bare()),
             'history' => (new HistoryEntryResource($model))->toArray(self::bare()),
             'image' => (new ImageResource($model))->toArray(self::bare()),
+            // Without the count, which other events change: renaming one
+            // tag must not 412 because somebody tagged an event meanwhile.
+            'event_tag' => array_diff_key(
+                (new EventTagResource($model))->toArray(self::bare()),
+                ['eventCount' => true],
+            ),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

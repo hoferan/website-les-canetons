@@ -313,7 +313,7 @@ import { faker } from "@faker-js/faker";
 import { HttpResponse, http } from "msw";
 import type { RequestHandlerOptions } from "msw";
 
-import { AttendanceStatus, Environment } from "./model";
+import { AttendanceStatus, Environment, TagColour } from "./model";
 import type {
   AccountPassword200,
   AgendaIndex200,
@@ -335,6 +335,9 @@ import type {
   EventIndex200,
   EventResource,
   EventSeries201,
+  EventTagDestroy200,
+  EventTagIndex200,
+  EventTagResource,
   FormTokenShow200,
   HistoryEntryDestroy200,
   HistoryEntryIndex200,
@@ -1020,6 +1023,60 @@ export const getRegistrationOptionReplaceResponseMock = (
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
 });
+
+export const getEventTagIndexResponseMock = (
+  overrideResponse: Partial<Extract<EventTagIndex200, object>> = {},
+): EventTagIndex200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    labelDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    colour: faker.helpers.arrayElement(Object.values(TagColour)),
+    eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getEventTagStoreResponseMock = (
+  overrideResponse: Partial<Extract<EventTagResource, object>> = {},
+): EventTagResource => ({
+  id: faker.number.int(),
+  labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  labelDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  colour: faker.helpers.arrayElement(Object.values(TagColour)),
+  eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getEventTagShowResponseMock = (
+  overrideResponse: Partial<Extract<EventTagResource, object>> = {},
+): EventTagResource => ({
+  id: faker.number.int(),
+  labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  labelDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  colour: faker.helpers.arrayElement(Object.values(TagColour)),
+  eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getEventTagUpdateResponseMock = (
+  overrideResponse: Partial<Extract<EventTagResource, object>> = {},
+): EventTagResource => ({
+  id: faker.number.int(),
+  labelFr: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  labelDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  colour: faker.helpers.arrayElement(Object.values(TagColour)),
+  eventCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getEventTagDestroyResponseMock = (
+  overrideResponse: Partial<Extract<EventTagDestroy200, object>> = {},
+): EventTagDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
 export const getInboxSummaryResponseMock = (
   overrideResponse: Partial<Extract<InboxSummary200, object>> = {},
@@ -2365,6 +2422,126 @@ export const getRegistrationOptionReplaceMockHandler = (
   );
 };
 
+export const getEventTagIndexMockHandler = (
+  overrideResponse?:
+    | EventTagIndex200
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<EventTagIndex200> | EventTagIndex200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/event-tags",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventTagIndexResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventTagStoreMockHandler = (
+  overrideResponse?:
+    | EventTagResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<EventTagResource> | EventTagResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/event-tags",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventTagStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventTagShowMockHandler = (
+  overrideResponse?:
+    | EventTagResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<EventTagResource> | EventTagResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/event-tags/:eventTag",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventTagShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventTagUpdateMockHandler = (
+  overrideResponse?:
+    | EventTagResource
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<EventTagResource> | EventTagResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/event-tags/:eventTag",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventTagUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getEventTagDestroyMockHandler = (
+  overrideResponse?:
+    | EventTagDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<EventTagDestroy200> | EventTagDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/event-tags/:eventTag",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getEventTagDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getInboxSummaryMockHandler = (
   overrideResponse?:
     | InboxSummary200
@@ -3273,6 +3450,11 @@ export const getLesCanetonsAPIMock = () => [
   getRegistrationDestroyMockHandler(),
   getRegistrationOptionIndexMockHandler(),
   getRegistrationOptionReplaceMockHandler(),
+  getEventTagIndexMockHandler(),
+  getEventTagStoreMockHandler(),
+  getEventTagShowMockHandler(),
+  getEventTagUpdateMockHandler(),
+  getEventTagDestroyMockHandler(),
   getInboxSummaryMockHandler(),
   getInboxIndexMockHandler(),
   getContactMessageIndexMockHandler(),
