@@ -178,6 +178,12 @@ test("lists the planning for an ordinary player", async () => {
   expect(screen.getAllByTestId("event-card").length).toBeGreaterThan(0);
 });
 
+test("a card shows its tags to a player too", async () => {
+  await renderPlanning();
+  const card = cardFor("Vendanges Cheyres");
+  expect(within(within(card).getByTestId("event-meta")).getByText("Sortie")).toBeInTheDocument();
+});
+
 test("a player is offered no way to create an event", async () => {
   // ABSENT, not refused: a control that leads to "Accès refusé" teaches people
   // that parts of the site are broken for them.
@@ -916,7 +922,11 @@ test("a player is told nothing about answers or bookings", async () => {
   // the UI layer. The API has already withheld the numbers; this asserts the
   // screen does not invent them.
   await renderPlanning("demo.player");
-  expect(screen.queryAllByTestId("event-meta")).toHaveLength(0);
+  // The strip itself may show, for the tags everybody sees (#107); what it
+  // must not carry is a count.
+  for (const strip of screen.queryAllByTestId("event-meta")) {
+    expect(strip.textContent).not.toMatch(/réponse|personne|inscription|Public/);
+  }
 });
 
 test("an organiser sees the public chip and the answer fraction", async () => {
@@ -946,12 +956,9 @@ test("the booking count appears only on an event that takes bookings", async () 
   // Pinned to specific cards for the same reason as the public chip above:
   // a count can pass while sat on the wrong card, so this checks the mapping
   // rather than the total.
-  const souper = screen
-    .getAllByTestId("event-card")
-    .find((card) => within(card).queryByText("Souper de soutien")) as HTMLElement;
-  const rehearsal = screen
-    .getAllByTestId("event-card")
-    .find((card) => within(card).queryByText("Répétition")) as HTMLElement;
+  // By title, since a rehearsal's "Répétition" tag chip carries the same text.
+  const souper = cardFor("Souper de soutien");
+  const rehearsal = cardFor("Répétition");
 
   expect(within(souper).getByText(/personnes?$|^Aucune inscription$/)).toBeInTheDocument();
   expect(within(rehearsal).queryByText(/personnes?$|^Aucune inscription$/)).toBeNull();

@@ -349,6 +349,7 @@ export function Events() {
         // this suppresses an empty strip rather than protecting anything.
         meta={
           <EventMeta
+            tags={event.tags}
             isPublic={mayManage ? event.isPublic : undefined}
             // NOT ON A DRAFT: "0/4 réponses" is a fraction of a question that has
             // not been asked, since nobody can answer an event until it is published.

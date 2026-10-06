@@ -1,4 +1,6 @@
+import type { EventTagResource } from "../api/generated/model";
 import { t } from "../i18n";
+import { TagChip } from "./TagChip";
 
 /**
  * The metadata strip under an event's title (#93).
@@ -10,18 +12,20 @@ import { t } from "../i18n";
  * IT RENDERS NOTHING WHEN GIVEN NOTHING, so a player's card grows no empty row.
  */
 export function EventMeta({
+  tags,
   isPublic,
   answered,
   answerable,
   guests,
 }: {
+  tags?: EventTagResource[];
   isPublic?: boolean;
   answered?: number;
   answerable?: number;
   guests?: number;
 }) {
   const showsAnswers = answered !== undefined && answerable !== undefined;
-  const chips = [isPublic === true, showsAnswers, guests !== undefined];
+  const chips = [(tags ?? []).length > 0, isPublic === true, showsAnswers, guests !== undefined];
 
   if (!chips.some(Boolean)) {
     return null;
@@ -29,6 +33,12 @@ export function EventMeta({
 
   return (
     <div data-testid="event-meta" className="mt-tight flex flex-wrap gap-tight text-sm">
+      {/* First, because they say what the event IS; everything after them is
+          a fact about it. Everybody sees them, unlike the chips that follow. */}
+      {(tags ?? []).map((tag) => (
+        <TagChip key={tag.id} tag={tag} />
+      ))}
+
       {isPublic === true ? (
         <span className="rounded-full border border-line bg-panel px-2 py-0.5 text-ink-muted">
           {t("events.meta.public")}

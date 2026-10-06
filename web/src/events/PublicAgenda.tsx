@@ -5,6 +5,7 @@ import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { formatEventWhen } from "./formatEventWhen";
+import { TagChip } from "./TagChip";
 
 /** How many appearances the front page shows before it sends people to /agenda. */
 const SHOWN = 3;
@@ -31,6 +32,13 @@ export function AgendaEntry({ event }: { event: PublicEventResource }) {
   return (
     <li className="rounded-lg border border-line bg-panel p-4">
       <h3 className="font-display text-xl text-ink">{event.title}</h3>
+      {event.tags.length > 0 ? (
+        <div className="mt-tight flex flex-wrap gap-tight text-sm">
+          {event.tags.map((tag) => (
+            <TagChip key={tag.id} tag={tag} />
+          ))}
+        </div>
+      ) : null}
       <p className="mt-tight text-sm text-ink-muted">
         {formatEventWhen(event.startsAt, event.endsAt)}
       </p>

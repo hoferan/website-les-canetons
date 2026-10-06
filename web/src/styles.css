@@ -47,6 +47,28 @@
      exactly one thing. */
   --color-danger: #e0201a;
 
+  /* Event tag chips (#107): a tint and an ink per name in
+     App\Support\TagColour. Each ink is at least 7:1 on its tint, well past
+     the 4.5:1 the 12px chip text needs. None of them is the brand violet or
+     the error red at full strength, so a tag never reads as a link or a
+     fault. */
+  --color-tag-violet: #eeedfe;
+  --color-tag-violet-ink: #3c3489;
+  --color-tag-teal: #e1f5ee;
+  --color-tag-teal-ink: #085041;
+  --color-tag-amber: #faeeda;
+  --color-tag-amber-ink: #633806;
+  --color-tag-pink: #fbeaf0;
+  --color-tag-pink-ink: #72243e;
+  --color-tag-blue: #e6f1fb;
+  --color-tag-blue-ink: #0c447c;
+  --color-tag-green: #eaf3de;
+  --color-tag-green-ink: #27500a;
+  --color-tag-coral: #faece7;
+  --color-tag-coral-ink: #712b13;
+  --color-tag-gray: #f1efe8;
+  --color-tag-gray-ink: #444441;
+
   /* The floor for every interactive control: 44px. Applied through Button and
      Input's base variants rather than by hand, so it is a rule rather than a
      convention that lasts until the next page is written. */
