@@ -576,7 +576,7 @@ export function Events() {
       {/* The editor's link ends the filter's own row rather than taking a
           line under it: that line put the committee's first card 28px past
           members.spec's bound at 390px. Short on screen, "Modifier" beside
-          the chips it edits; the full "Gérer les catégories" is its name. */}
+          the chips it edits; its accessible name says which. */}
       <div className="mt-tight flex items-center gap-related">
         <div className="min-w-0 flex-1">
           <TagFilter tags={tagList} value={tag} onChange={setChosenTag} />
@@ -631,11 +631,14 @@ export function Events() {
           <p className="text-ink-muted">
             {q !== ""
               ? t("events.noMatch")
-              : showingPast
-                ? t("events.emptyPast")
-                : t("events.empty")}
+              : tag !== null
+                ? t("events.noTagMatch")
+                : showingPast
+                  ? t("events.emptyPast")
+                  : t("events.empty")}
           </p>
-          {mayManage && !showingPast && q === "" ? (
+          {/* Nor is a tag nothing carries: the planning may be full. */}
+          {mayManage && !showingPast && q === "" && tag === null ? (
             <p className="mt-tight text-sm text-ink-muted">
               {/* THE HINT QUOTES THE BUTTON BESIDE IT, so the label is read
                   from the same key that renders it rather than written out a

@@ -660,6 +660,7 @@ export const fr = {
     // The visible placeholder only, beside the switch on a phone (#97).
     searchPlaceholder: "Rechercher",
     noMatch: "Aucun événement ne correspond à cette recherche.",
+    noTagMatch: "Aucun événement dans cette catégorie.",
     emptyPast: "Aucun événement passé.",
     // {{action}} IS ANOTHER KEY'S VALUE, not this sentence's own copy of it.
     // The hint quotes the button beside it, so spelling the label out twice
@@ -1611,7 +1612,9 @@ export const fr = {
     heading: "Catégories",
     intro:
       "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs.",
-    manageLink: "Gérer les catégories",
+    // The link's accessible name. It shows only "Modifier", and a name has
+    // to contain the visible word for voice control to reach it (WCAG 2.5.3).
+    manageLink: "Modifier les catégories",
     count_one: "{{count}} événement",
     count_other: "{{count}} événements",
     editAria: "Modifier « {{label}} »",

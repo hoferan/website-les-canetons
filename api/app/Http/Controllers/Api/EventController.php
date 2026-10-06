@@ -8,6 +8,7 @@ use App\Http\Requests\StoreEventRequest;
 use App\Http\Requests\UpdateEventRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Models\EventTag;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
@@ -338,7 +339,7 @@ class EventController extends Controller
             'registration_closes_at' => $data['registrationClosesAt'] ?? null,
             'registration_max_guests' => $data['registrationMaxGuests'] ?? null,
         ]);
-        $event->tags()->sync(array_unique($data['tagIds'] ?? []));
+        $event->tags()->sync(EventTag::distinctIds($data['tagIds'] ?? []));
 
         // Audited, like every other privileged mutation, with the title
         // captured as the label — see App\Support\Audit for why the CALLER
@@ -411,7 +412,7 @@ class EventController extends Controller
         // Absent keeps the tags; `[]` clears them, the same distinction the
         // columns above draw between a missing field and a null one.
         if (array_key_exists('tagIds', $data)) {
-            $event->tags()->sync(array_unique($data['tagIds']));
+            $event->tags()->sync(EventTag::distinctIds($data['tagIds']));
             $event->unsetRelation('tags');
         }
 

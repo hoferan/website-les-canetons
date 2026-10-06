@@ -22,6 +22,21 @@ class EventTag extends Model
 {
     protected $fillable = ['label_fr', 'label_de', 'colour', 'sort_order'];
 
+    /**
+     * Validated `tagIds` as distinct integers, ready for the pivot.
+     *
+     * Cast before comparing: the `integer` rule lets "+2" through and
+     * `exists` finds it, so array_unique() over the raw strings would keep
+     * both spellings and the second insert would break the primary key.
+     *
+     * @param  array<int, int|string>  $raw
+     * @return list<int>
+     */
+    public static function distinctIds(array $raw): array
+    {
+        return array_values(array_unique(array_map('intval', $raw)));
+    }
+
     /** @return BelongsToMany<Event, $this> */
     public function events(): BelongsToMany
     {

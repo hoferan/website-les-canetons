@@ -25,11 +25,11 @@ import {
 import type { EventTagResource, TagColour } from "../api/generated/model";
 import { entityTagOf, ifMatch } from "../api/ifMatch";
 import { useApiFormError } from "../api/useApiFormError";
-import { FormError, FormField } from "../components/FormField";
+import { FormError, FormField, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { TagChip } from "../events/TagChip";
 import { TAG_COLOURS } from "../events/tagColours";
-import { t } from "../i18n";
+import { t, tagLabel } from "../i18n";
 
 const COLOURS = Object.keys(TAG_COLOURS) as TagColour[];
 
@@ -175,7 +175,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <Button
               type="button"
               variant="outline"
-              aria-label={t("eventTags.editAria", { label: tag.labelFr })}
+              aria-label={t("eventTags.editAria", { label: tagLabel(tag) })}
               disabled={busy}
               onClick={() => void open("edit")}
             >
@@ -184,7 +184,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <Button
               type="button"
               variant="outline"
-              aria-label={t("eventTags.deleteAria", { label: tag.labelFr })}
+              aria-label={t("eventTags.deleteAria", { label: tagLabel(tag) })}
               disabled={busy}
               onClick={() => void open("delete")}
             >
@@ -199,9 +199,13 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
         </div>
       ) : (
         <form
+          noValidate
           className="grid gap-related"
           onSubmit={(submitted) => {
             submitted.preventDefault();
+            if (!formIsValid(submitted.currentTarget)) {
+              return;
+            }
             void save();
           }}
         >
@@ -236,7 +240,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("eventTags.deleteTitle", { label: tag.labelFr })}
+              {t("eventTags.deleteTitle", { label: tagLabel(tag) })}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleting !== null && deleting.count > 0
@@ -273,10 +277,14 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
 
   return (
     <form
+      noValidate
       aria-labelledby="new-tag-heading"
       className="mt-block grid gap-related rounded-lg border border-dashed border-line p-4"
       onSubmit={(submitted) => {
         submitted.preventDefault();
+        if (!formIsValid(submitted.currentTarget)) {
+          return;
+        }
         setBusy(true);
         void eventTagStore(bodyOf(draft))
           .then(async () => {

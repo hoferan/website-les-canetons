@@ -200,9 +200,28 @@ test("choosing a tag narrows the planning to it, and 'Tous' brings the rest back
   await waitFor(() => expect(screen.getAllByTestId("event-card")).toHaveLength(before));
 });
 
+test("a tag nothing carries says so, and is not an empty planning", async () => {
+  const user = userEvent.setup();
+  server.use(
+    http.get("/api/v1/event-tags", () =>
+      HttpResponse.json({
+        data: [{ id: 9, labelFr: "Souper", labelDe: null, colour: "coral", eventCount: 0 }],
+        meta: { total: 1, limit: 500, offset: 0 },
+      }),
+    ),
+  );
+  await renderPlanning("demo.direction");
+
+  await user.click(screen.getByRole("radio", { name: "Souper" }));
+
+  expect(await screen.findByText("Aucun événement dans cette catégorie.")).toBeInTheDocument();
+  expect(screen.queryByText("Aucun événement au planning.")).toBeNull();
+  expect(screen.queryByText(/générez toute une saison/)).toBeNull();
+});
+
 test("only somebody who manages events is offered the tag editor", async () => {
   await renderPlanning("demo.direction");
-  expect(screen.getByRole("link", { name: "Gérer les catégories" })).toHaveAttribute(
+  expect(screen.getByRole("link", { name: "Modifier les catégories" })).toHaveAttribute(
     "href",
     "/event-tags",
   );
@@ -210,7 +229,7 @@ test("only somebody who manages events is offered the tag editor", async () => {
 
 test("a player is not offered the tag editor", async () => {
   await renderPlanning("demo.player");
-  expect(screen.queryByRole("link", { name: "Gérer les catégories" })).toBeNull();
+  expect(screen.queryByRole("link", { name: "Modifier les catégories" })).toBeNull();
 });
 
 test("no tag filter is offered when the band has no tags", async () => {

@@ -106,6 +106,17 @@ test("a rename refused because somebody else changed the tag says so", async () 
   );
 });
 
+test("a German page names the tag in German in its controls and its dialog", async () => {
+  const user = userEvent.setup();
+  setMockUser("demo.direction");
+  await renderWithSession(<EventTags />, { route: "/de/event-tags", locale: "de-CH" });
+  await screen.findAllByTestId("event-tag-row");
+
+  expect(screen.getByRole("button", { name: "«Konzert» bearbeiten" })).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "«Konzert» löschen" }));
+  expect(await screen.findByRole("alertdialog")).toHaveTextContent("«Konzert» löschen?");
+});
+
 test("deleting a tag says how many events lose it, then removes it", async () => {
   const user = userEvent.setup();
   await renderEditor();

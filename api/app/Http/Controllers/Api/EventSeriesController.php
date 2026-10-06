@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEventSeriesRequest;
 use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Models\EventTag;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
@@ -116,7 +117,7 @@ class EventSeriesController extends Controller
 
             // One insert for the whole season rather than an attach() per
             // event, which would be a query per date.
-            $tagIds = array_values(array_unique($template['tagIds'] ?? []));
+            $tagIds = EventTag::distinctIds($template['tagIds'] ?? []);
             $pivot = [];
             foreach ($created as $event) {
                 foreach ($tagIds as $tagId) {

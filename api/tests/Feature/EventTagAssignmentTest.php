@@ -67,6 +67,28 @@ class EventTagAssignmentTest extends TestCase
         $this->assertSame(1, Event::findOrFail($id)->tags()->count());
     }
 
+    public function test_the_same_tag_written_two_ways_is_stored_once(): void
+    {
+        // Laravel's `integer` rule passes "+2" and `exists` matches it, so a
+        // string comparison would keep both and the second insert would hit
+        // the pivot's primary key.
+        $concert = $this->tag('Concert');
+
+        $this->actingAsMember($this->organiser)
+            ->postJson('/api/v1/events', ['title' => 'Cortège', 'tagIds' => [$concert->id, '+'.$concert->id]])
+            ->assertStatus(201)
+            ->assertJsonCount(1, 'tags');
+
+        $this->actingAsMember($this->organiser)->postJson('/api/v1/events/series', [
+            'template' => [
+                'title' => 'Répétition', 'location' => 'Werkhof', 'attire' => null, 'isPublic' => false,
+                'notes' => null, 'startTime' => '19:30', 'endTime' => '22:00',
+                'tagIds' => [$concert->id, $concert->id, '+'.$concert->id],
+            ],
+            'dates' => ['2026-11-05'],
+        ])->assertStatus(201)->assertJsonCount(1, 'data.0.tags');
+    }
+
     public function test_an_unknown_tag_is_refused_on_its_own_index(): void
     {
         $this->actingAsMember($this->organiser)

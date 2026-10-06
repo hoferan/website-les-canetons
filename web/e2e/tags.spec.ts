@@ -41,6 +41,20 @@ test("a tag put on an event shows on its card and narrows the planning", async (
   ]);
 });
 
+// #102 for the tag editor, as public.spec.ts does it for the contact form:
+// only a real browser has interactive validation, and without `noValidate`
+// Chromium never fires the submit, so nothing moves focus to the field.
+test("a new tag without a French name is refused in the page's language", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.goto("/event-tags");
+
+  const form = page.getByRole("form", { name: "Nouvelle catégorie" });
+  await form.getByRole("button", { name: "Ajouter" }).click();
+
+  await expect(form.getByText("Nom en français est obligatoire", { exact: true })).toBeVisible();
+  await expect(form.getByLabel("Nom en français")).toBeFocused();
+});
+
 /**
  * A name at the forty-character cap stays on a 320px screen.
  *
@@ -57,7 +71,7 @@ test("a tag at the forty-character cap stays on a small phone's screen", async (
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto("/events");
 
-  await page.getByRole("link", { name: "Gérer les catégories" }).click();
+  await page.getByRole("link", { name: "Modifier les catégories" }).click();
   await page.getByRole("button", { name: "Modifier « Sortie »" }).click();
   // Scoped to the rows: the new-tag form below has a field of the same name.
   const rows = page.getByTestId("event-tag-row");

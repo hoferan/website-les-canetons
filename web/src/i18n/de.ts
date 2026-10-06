@@ -418,6 +418,7 @@ export const de: typeof fr = {
     searchLabel: "Anlass suchen",
     searchPlaceholder: "Suchen",
     noMatch: "Kein Anlass entspricht dieser Suche.",
+    noTagMatch: "Kein Anlass in dieser Kategorie.",
     emptyPast: "Keine vergangenen Anlässe.",
     // ENGE GUILLEMETS, und {{action}} ist der Wert eines anderen Schlüssels:
     // Der Hinweis zitiert die Schaltfläche daneben.
@@ -1109,7 +1110,7 @@ export const de: typeof fr = {
   eventTags: {
     heading: "Kategorien",
     intro: "Die Kategorien der Anlässe in der Planung. Ein Anlass kann mehrere haben.",
-    manageLink: "Kategorien verwalten",
+    manageLink: "Kategorien bearbeiten",
     count_one: "{{count}} Anlass",
     count_other: "{{count}} Anlässe",
     editAria: "«{{label}}» bearbeiten",
