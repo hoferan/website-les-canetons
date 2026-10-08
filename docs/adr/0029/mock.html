@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<!-- The mock-up agreed on 2026-10-08, kept as it was. Open it from a checkout; add #menu to the URL to see the phone menu. Once the code exists, the code is what is true. -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mock-up C, the carnival look (ADR 0029)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Karla:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --stage: #0b0a12; --ink: #14121c; --ink-muted: #4a4658; --cream: #fff7ec; --panel: #fff;
+    --violet: #4b2ed6; --pink: #ff3d9a; --yellow: #ffd23f; --cyan: #2ee6d6; --lime: #b6f23a; --lilac: #b9a8ff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font: 16px/1.55 Karla, system-ui, sans-serif; }
+  a { color: inherit; text-decoration: none; }
+  .shell { max-width: 72rem; margin: 0 auto; padding: 0 16px; }
+  .display { font-family: Bungee, sans-serif; text-transform: uppercase; line-height: 1.08; }
+  /* one highlight, used for "you are here" and for the word that matters */
+  .hl { background: var(--yellow); color: var(--ink); padding: 0 .14em; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+  /* one button language: ink outline + offset shadow; the shadow turns pink on dark */
+  .btn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; padding: 0 20px; border-radius: 14px; font-weight: 700;
+    border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); color: var(--ink); }
+  .btn.y { background: var(--yellow); } .btn.w { background: #fff; } .btn.v { background: var(--violet); color: #fff; }
+  .on-dark .btn { box-shadow: 4px 4px 0 var(--pink); }
+
+  header { background: var(--stage); color: #fff; }
+  .bar { display: flex; align-items: center; gap: 12px; height: 64px; }
+  .bar img { height: 40px; }
+  .word { font-family: Bungee; font-size: 17px; line-height: 1; }
+  .word small { display: block; font: 700 10px Karla; letter-spacing: .3em; color: rgba(255,255,255,.7); margin-top: 4px; }
+  .burger { margin-left: auto; display: flex; gap: 8px; align-items: center; font-weight: 700; }
+  .burger svg { width: 26px; height: 26px; }
+  nav.desk { display: none; }
+  @media (min-width: 900px) {
+    .burger { display: none; }
+    nav.desk { display: flex; gap: 18px; margin-left: auto; align-items: center; font-family: Bungee; font-size: 13px; }
+    nav.desk .btn { min-height: 40px; font: 700 14px Karla; padding: 0 14px; border-width: 2px; box-shadow: 3px 3px 0 var(--pink); }
+  }
+
+  .hero { position: relative; overflow: hidden; color: #fff; padding: 32px 0 64px;
+    background: linear-gradient(135deg, #4b2ed6 0%, #7a2fd0 45%, #ff3d9a 100%); }
+  .hero svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .shell { position: relative; display: grid; gap: 26px; }
+  .badge { width: 180px; justify-self: center; transform: rotate(4deg); border-radius: 12px; border: 4px solid #fff; box-shadow: 8px 8px 0 var(--ink); }
+  h1 { font-size: 34px; margin: 0; }
+  .lead { font-size: 18px; margin: 14px 0 0; max-width: 34rem; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+  @media (min-width: 900px) {
+    .hero { padding: 64px 0 96px; }
+    .hero .shell { grid-template-columns: 1.4fr 1fr; align-items: center; }
+    .badge { width: 290px; order: 2; }
+    h1 { font-size: 54px; }
+  }
+  /* B's scalloped edge, drawn as a fixed-size pattern so the bumps stay round at any width */
+  .scallop { display: block; width: 100%; height: 22px; margin-top: -22px; position: relative; }
+
+  section { position: relative; padding: 36px 0 44px; }
+  section svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  section .shell { position: relative; }
+  h2 { font-size: 26px; margin: 0 0 24px; display: inline-block; position: relative; }
+  h2::after { content: ""; position: absolute; left: 0; right: 0; bottom: -10px; height: 10px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 10'%3E%3Cpath d='M0 5q7-6 14 0t14 0' fill='none' stroke='%23ff3d9a' stroke-width='3'/%3E%3C/svg%3E") repeat-x 0 0 / 28px 10px; }
+  @media (min-width: 900px) { h2 { font-size: 34px; } section { padding: 56px 0 64px; } }
+
+  .events { display: grid; gap: 16px; }
+  @media (min-width: 900px) { .events { grid-template-columns: 1fr 1fr; } }
+  .event { display: flex; gap: 16px; background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; padding: 16px; box-shadow: 5px 5px 0 var(--ink); }
+  .date { flex: none; width: 72px; border: 3px solid var(--ink); border-radius: 12px; text-align: center; padding: 8px 0; }
+  .date b { display: block; font: 30px/1 Bungee; }
+  .date span { font: 700 12px Karla; letter-spacing: .12em; text-transform: uppercase; }
+  .event h3 { font: 18px/1.15 Bungee; margin: 2px 0 6px; text-transform: uppercase; }
+  .meta { color: var(--ink-muted); font-size: 14px; }
+  .chip { display: inline-block; font: 700 12px Karla; padding: 2px 10px; border-radius: 99px; background: #faeeda; color: #633806; margin-bottom: 6px; }
+  .event .btn { min-height: 44px; margin-top: 10px; padding: 0 16px; border-width: 2px; box-shadow: 3px 3px 0 var(--ink); }
+
+  .band2 { background: var(--yellow); }
+  .tiles { display: grid; gap: 18px; }
+  @media (min-width: 640px) { .tiles { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 1000px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+  .tile:nth-child(odd) { transform: rotate(-1.2deg); } .tile:nth-child(even) { transform: rotate(1deg); }
+  .tile { display: flex; gap: 14px; align-items: flex-start; background: #fff; border: 3px solid var(--ink); border-radius: 20px; padding: 16px; box-shadow: 5px 5px 0 var(--ink); }
+  @media (min-width: 1000px) { .tile { flex-direction: column; } }
+  .tile .ic { flex: none; width: 52px; height: 52px; border-radius: 14px; border: 3px solid var(--ink); display: grid; place-items: center; }
+  .tile .ic svg { width: 34px; height: 34px; }
+  .tile h3 { font: 19px/1.1 Bungee; margin: 2px 0 6px; text-transform: uppercase; }
+  .tile p { margin: 0; font-size: 15px; color: var(--ink-muted); }
+
+  footer { position: relative; background: var(--stage); color: rgba(255,255,255,.75); padding: 36px 0 40px; font-size: 14px; }
+  footer .display { color: #fff; font-size: 18px; }
+  footer .ctas { margin-top: 18px; }
+  footer .btn { min-height: 44px; }
+
+  /* the phone menu, now in the same language as the pages */
+  .menu { position: fixed; inset: 0; z-index: 10; background: var(--stage); color: #fff; display: none; flex-direction: column; overflow: hidden; }
+  .menu.open { display: flex; }
+  .menu svg.deco { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .menu .top { position: relative; display: flex; align-items: center; gap: 10px; height: 64px; padding: 0 12px 0 16px; }
+  .menu .top img { height: 40px; }
+  .lang { margin-left: auto; display: flex; gap: 6px; font: 700 13px Karla; }
+  .lang b { background: #fff; color: var(--ink); border-radius: 6px; padding: 2px 8px; } .lang span { padding: 2px 8px; color: rgba(255,255,255,.7); }
+  .menu ul { position: relative; list-style: none; margin: 8px 0 0; padding: 0 16px; }
+  .menu li a { display: flex; align-items: center; gap: 12px; min-height: 52px; font: 22px/1 Bungee; text-transform: uppercase; }
+  .menu li .dot { width: 12px; height: 12px; border-radius: 4px; transform: rotate(20deg); flex: none; }
+  .menu .foot { position: relative; margin-top: auto; padding: 16px; }
+  .menu .foot .btn { width: 100%; }
+</style>
+</head>
+<body>
+<header>
+  <div class="shell bar">
+    <img src="../../../web/public/assets/img/duck-white.png" alt="" />
+    <div class="word">Les Canetons de Fribourg<small>GUGGENMUSIK</small></div>
+    <div class="burger"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Menu</div>
+    <nav class="desk on-dark"><a><span class="hl">Nous rejoindre</span></a><a>Où nous voir</a><a>Les canetons</a><a>Histoire</a><a>Galerie</a><a>Contact</a><a class="btn y">Connexion</a></nav>
+  </div>
+</header>
+
+<div class="hero">
+  <svg class="deco" id="heroDeco" aria-hidden="true"></svg>
+  <div class="shell">
+    <img class="badge" src="../../../web/public/assets/img/Les_Canetons_Fribourg_logo_2.jpg" alt="Les Canetons de Fribourg" />
+    <div>
+      <h1 class="display">La guggen <span class="hl">d’enfants</span> de Fribourg, depuis 2002.</h1>
+      <p class="lead">De 7 à 18 ans, et pas besoin de connaître la musique : les moniteurs apprennent les morceaux registre par registre, aux répétitions du samedi matin.</p>
+      <div class="ctas"><a class="btn y">Nous rejoindre</a><a class="btn w">Où nous voir</a></div>
+    </div>
+  </div>
+</div>
+<!-- the hero bulges down into the cream body -->
+<svg class="scallop" aria-hidden="true"><defs><pattern id="sc1" width="40" height="22" patternUnits="userSpaceOnUse"><path d="M0 22V0q20 22 40 0V22z" fill="#fff7ec"/></pattern></defs><rect width="100%" height="22" fill="url(#sc1)"/></svg>
+
+<section>
+  <div class="shell">
+    <h2 class="display">Où nous voir</h2>
+    <div class="events">
+      <div class="event">
+        <div class="date" style="background:var(--yellow)"><b>12</b><span>nov.</span></div>
+        <div><span class="chip">Sortie</span><h3>Vendanges Cheyres</h3><div class="meta">Jeudi · 11:00 – 16:30<br />Cheyres</div></div>
+      </div>
+      <div class="event">
+        <div class="date" style="background:var(--cyan)"><b>19</b><span>nov.</span></div>
+        <div><h3>Souper de soutien</h3><div class="meta">Jeudi · 18:30 – 23:30<br />Salle de la Grenette, Fribourg</div><a class="btn v">S’inscrire</a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band2">
+  <svg class="deco" id="d2" aria-hidden="true"></svg>
+  <div class="shell">
+    <h2 class="display">Découvrir les Canetons</h2>
+    <div class="tiles">
+      <a class="tile"><div class="ic" style="background:var(--pink)"><svg viewBox="-12 -12 24 24" data-k="note"></svg></div><div><h3>Nous rejoindre</h3><p>Les instruments recherchés, les horaires et les critères d’âge.</p></div></a>
+      <a class="tile"><div class="ic" style="background:var(--cyan)"><svg viewBox="-12 -12 24 24" data-k="drum"></svg></div><div><h3>Les Canetons</h3><p>Les musiciens du groupe, registre par registre.</p></div></a>
+      <a class="tile"><div class="ic" style="background:var(--lime)"><svg viewBox="-12 -12 24 24" data-k="star"></svg></div><div><h3>Notre histoire</h3><p>Comment la guggen est née en 2002, et qui l’a dirigée depuis.</p></div></a>
+      <a class="tile"><div class="ic" style="background:var(--lilac)"><svg viewBox="-12 -12 24 24" data-k="bubble"></svg></div><div><h3>Le comité</h3><p>Nous écrire, réserver les Canetons, et qui fait quoi.</p></div></a>
+    </div>
+  </div>
+</section>
+
+<!-- the yellow band bulges down into the footer the same way -->
+<svg class="scallop" style="margin:0;background:#0b0a12" aria-hidden="true"><defs><pattern id="sc2" width="40" height="22" patternUnits="userSpaceOnUse"><path d="M0 0H40q-20 22-40 0z" fill="#ffd23f"/></pattern></defs><rect width="100%" height="22" fill="url(#sc2)"/></svg>
+<footer class="on-dark">
+  <div class="shell">
+    <div class="display">Les Canetons de Fribourg</div>
+    <p>La guggen d’enfants de Fribourg, depuis 2002. De 7 à 18 ans, pas besoin de connaître la musique.</p>
+    <div class="ctas"><a class="btn y">Nous rejoindre</a><a class="btn w">Contact</a></div>
+    <p style="margin-top:28px">© 2026 Guggenmusik les canetons de Fribourg</p>
+  </div>
+</footer>
+
+<div class="menu on-dark" id="menu">
+  <svg class="deco" id="md" aria-hidden="true"></svg>
+  <div class="top"><img src="../../../web/public/assets/img/duck-white.png" alt="" /><div class="lang"><b>FR</b><span>DE</span></div>
+    <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" style="padding:10px"><path d="M6 6l12 12M18 6 6 18"/></svg></div>
+  <ul>
+    <li><a><span class="dot" style="background:var(--pink)"></span><span class="hl">Nous rejoindre</span></a></li>
+    <li><a><span class="dot" style="background:var(--yellow)"></span>Où nous voir</a></li>
+    <li><a><span class="dot" style="background:var(--cyan)"></span>Les canetons</a></li>
+    <li><a><span class="dot" style="background:var(--lime)"></span>Contact</a></li>
+    <li><a><span class="dot" style="background:var(--lilac)"></span>Comité</a></li>
+    <li><a><span class="dot" style="background:var(--pink)"></span>Histoire</a></li>
+    <li><a><span class="dot" style="background:var(--yellow)"></span>Galerie</a></li>
+  </ul>
+  <div class="foot"><a class="btn y">Connexion</a></div>
+</div>
+
+<script>
+// Carnival decoration, drawn here: confetti, serpentins, stars, notes.
+// Every shape is a few SVG primitives, so it scales and has no licence.
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+}
+
+const SHAPES = {
+  rect: (c) => `<rect x="-6" y="-2.5" width="12" height="5" rx="1" fill="${c}"/>`,
+  dot: (c) => `<circle r="3.5" fill="${c}"/>`,
+  ring: (c) => `<circle r="4.5" fill="none" stroke="${c}" stroke-width="2"/>`,
+  tri: (c) => `<path d="M0-5 5 4-5 4z" fill="${c}"/>`,
+  squiggle: (c) =>
+    `<path d="M-14 0q3.5-6 7 0t7 0 7 0 7 0" fill="none" stroke="${c}" stroke-width="2.6" stroke-linecap="round"/>`,
+  star: (c) =>
+    `<path d="M0-8 2.2-2.6 8-2.4 3.4 1.2 5 7 0 3.6-5 7-3.4 1.2-8-2.4-2.2-2.6z" fill="${c}"/>`,
+  note: (c) =>
+    `<g fill="${c}"><ellipse cx="-3" cy="6" rx="4.2" ry="3.2" transform="rotate(-20 -3 6)"/><rect x="0.2" y="-10" width="1.8" height="16"/><path d="M2-10q6 2 6 8-2-4-6-4z"/></g>`,
+};
+
+/** Scatter shapes over an <svg> sized by viewBox w x h. */
+function sprinkle(svg, { seed = 1, count = 40, colors, kinds, scale = [0.8, 1.6], keepOut }) {
+  const [w, h] = svg.getAttribute("viewBox").split(" ").slice(2).map(Number);
+  const r = rng(seed);
+  const pick = (a) => a[Math.floor(r() * a.length)];
+  let out = "";
+  let placed = 0;
+  let tries = 0;
+  while (placed < count && tries++ < count * 20) {
+    const x = r() * w;
+    const y = r() * h;
+    if (keepOut && keepOut(x / w, y / h)) continue;
+    const k = pick(kinds);
+    const s = scale[0] + r() * (scale[1] - scale[0]);
+    out += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${Math.floor(r() * 360)}) scale(${s.toFixed(2)})">${SHAPES[k](pick(colors))}</g>`;
+    placed++;
+  }
+  svg.insertAdjacentHTML("beforeend", out);
+}
+
+/** A row of hanging serpentins across the top of a band. */
+function serpentins(svg, { seed = 3, colors }) {
+  const [w] = svg.getAttribute("viewBox").split(" ").slice(2).map(Number);
+  const r = rng(seed);
+  let out = "";
+  for (let i = 0; i < colors.length; i++) {
+    const y0 = 6 + i * 7;
+    const amp = 10 + r() * 8;
+    const len = 60 + r() * 40;
+    let d = `M-20 ${y0}`;
+    for (let x = -20; x < w + 40; x += len) d += ` q${len / 2} ${amp * 2} ${len} 0`;
+    out += `<path d="${d}" fill="none" stroke="${colors[i]}" stroke-width="3" stroke-linecap="round" opacity="0.95"/>`;
+  }
+  svg.insertAdjacentHTML("beforeend", out);
+}
+
+SHAPES.drum = (c) =>
+  `<g fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><ellipse cy="-2" rx="8" ry="3"/><path d="M-8-2v8a8 3 0 0 0 16 0v-8"/><path d="M-8 2l4 4 4-4 4 4 4-4"/><path d="M-7-11l5 6M7-11l-5 6"/></g>`;
+SHAPES.bubble = (c) =>
+  `<path d="M-8-7h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-9l-5 4v-4h-2a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z" fill="none" stroke="${c}" stroke-width="1.8" stroke-linejoin="round"/>`;
+
+/** Fit an svg's viewBox to its box in pixels and keep confetti off the given elements. */
+function sprinkleAround(svg, avoid, opts) {
+  const box = svg.getBoundingClientRect();
+  svg.setAttribute("viewBox", `0 0 ${Math.round(box.width)} ${Math.round(box.height)}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  const rects = avoid.map((el) => {
+    const r = el.getBoundingClientRect();
+    return [r.left - box.left - 14, r.top - box.top - 14, r.right - box.left + 14, r.bottom - box.top + 14];
+  });
+  sprinkle(svg, {
+    ...opts,
+    keepOut: (fx, fy) => {
+      const x = fx * box.width, y = fy * box.height;
+      return rects.some(([l, t, r, b]) => x > l && x < r && y > t && y < b);
+    },
+  });
+}
+</script>
+<script>
+  const BRIGHT = ["#ffd23f", "#2ee6d6", "#b6f23a", "#ffffff"];
+  const KINDS = ["rect", "rect", "dot", "squiggle", "star", "note", "tri"];
+  document.querySelectorAll("[data-k]").forEach((s) => (s.innerHTML = `<g transform="scale(1.25)">${SHAPES[s.dataset.k]("#14121c")}</g>`));
+  if (location.hash === "#menu") document.getElementById("menu").classList.add("open");
+  document.fonts.ready.then(() => {
+    const per = (el, k) => { const r = el.getBoundingClientRect(); return Math.round((r.width * r.height) / k); };
+    const hero = document.getElementById("heroDeco");
+    sprinkleAround(hero, [...document.querySelectorAll(".hero h1, .hero .lead, .hero .ctas, .hero .badge")], { seed: 11, count: per(hero, 11000), colors: BRIGHT, kinds: KINDS, scale: [1, 2.1] });
+    const d2 = document.getElementById("d2");
+    sprinkleAround(d2, [...document.querySelectorAll("#d2 ~ .shell h2, #d2 ~ .shell .tile")], { seed: 9, count: per(d2, 40000), colors: ["#ff3d9a", "#4b2ed6", "#ffffff"], kinds: ["rect", "dot", "star", "squiggle"], scale: [0.9, 1.5] });
+    const md = document.getElementById("md");
+    if (md.getBoundingClientRect().width) sprinkleAround(md, [...document.querySelectorAll(".menu li, .menu .top, .menu .foot")], { seed: 2, count: 26, colors: ["#ff3d9a", "#ffd23f", "#2ee6d6", "#b6f23a"], kinds: KINDS, scale: [1, 1.8] });
+  });
+</script>
+</body>
+</html>
