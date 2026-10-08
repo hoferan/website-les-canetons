@@ -8,6 +8,7 @@ import { PageSection } from "@/components/PageSection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import { Confetti } from "../carnival/Confetti";
 import { Highlighted } from "../carnival/Highlighted";
+import { POSTER_CONFETTI } from "../carnival/PageHero";
 import { Scallop } from "../carnival/Scallop";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { PublicAgenda } from "../events/PublicAgenda";
@@ -63,9 +64,6 @@ const DESTINATIONS: {
   },
 ];
 
-/** Bright on the violet-to-pink poster; white reads there, ink would not. */
-const HERO_CONFETTI = ["var(--color-yellow)", "var(--color-cyan)", "var(--color-lime)", "#fff"];
-
 /** On yellow, the colours that are not yellow. */
 const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 
@@ -106,7 +104,7 @@ export function Home() {
           with the shell width inside it. `pb-14` and up leave the Scallop room
           to draw over the bottom edge. */}
       <div className="relative overflow-hidden bg-poster text-white">
-        <Confetti seed={11} colours={HERO_CONFETTI} />
+        <Confetti seed={11} colours={POSTER_CONFETTI} />
         <div className="relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24">
           {/* The band's badge — the mark people know from the flyers, the
               costumes and the instruments — as the hero's mark, stuck on like

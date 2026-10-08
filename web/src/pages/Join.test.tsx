@@ -7,8 +7,11 @@ import { Join } from "./Join";
 test("says how to join, in French by default", async () => {
   await renderWithSession(<Join />, { route: "/join" });
 
+  // A pattern, because the highlight splits the heading into text nodes and
+  // the accessible name then carries an ordinary space where the catalogue
+  // has a non-breaking one before the "?".
   expect(
-    screen.getByRole("heading", { name: "Tu veux commencer la guggen ?" }),
+    screen.getByRole("heading", { name: /^Tu veux commencer la guggen\s\?$/ }),
   ).toBeInTheDocument();
   expect(screen.getByText("Instruments recherchés")).toBeInTheDocument();
   expect(screen.getByText("Trompette")).toBeInTheDocument();

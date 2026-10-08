@@ -1496,6 +1496,8 @@ export const fr = {
    */
   agenda: {
     heading: "Où nous voir",
+    // The words of `heading` set on the yellow highlight. Must be part of it.
+    headingHighlight: "nous voir",
     intro: "Les prochaines sorties des Canetons. Venez nous écouter !",
     emptyNotice:
       "Les prochaines dates ne sont pas encore publiées. Revenez bientôt, ou écrivez au comité pour nous réserver.",
@@ -1509,6 +1511,7 @@ export const fr = {
   /** /band, register by register. */
   band: {
     heading: "Nos Canetons",
+    headingHighlight: "Canetons",
     instructors: "Moniteurs :",
     registersNav: "Registres",
     patronsHeading: "Le parrain et la marraine",
@@ -1530,6 +1533,7 @@ export const fr = {
   /** /join — how to join, for a parent or a curious child. */
   join: {
     heading: "Tu veux commencer la guggen ?",
+    headingHighlight: "la guggen",
     intro:
       "Nous sommes constamment à la recherche de quelques souffleurs pour s’époumonner et faire « concurrence » à nos percussions !",
     facts: {

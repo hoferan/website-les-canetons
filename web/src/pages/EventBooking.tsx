@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 import {
   registrationStore,
@@ -19,6 +20,8 @@ import type {
 import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { PageSection } from "../components/PageSection";
 import {
   FormError,
@@ -205,166 +208,187 @@ export function EventBooking() {
 
   if (!offer) {
     return (
-      <PageSection width="text">
-        <h1 className="font-display text-3xl">{t("events.registrations")}</h1>
-        <p className="mt-related text-ink-muted">
-          {form.error instanceof ApiError && form.error.status === 404
-            ? t("booking.notOpen")
-            : t("booking.loadFailed")}
-        </p>
-      </PageSection>
+      <>
+        <PageHero title={t("events.registrations")} seed={13} width="text" />
+        <PageSection width="text">
+          <p className="text-ink-muted">
+            {form.error instanceof ApiError && form.error.status === 404
+              ? t("booking.notOpen")
+              : t("booking.loadFailed")}
+          </p>
+        </PageSection>
+      </>
     );
   }
 
   if (booked) {
     return (
-      <PageSection width="text">
-        <h1 className="font-display text-3xl">{t("booking.bookedHeading")}</h1>
-        <p className="mt-related text-ink-muted">
-          {t("booking.bookedBody", { email: booked.email, phone: booked.phone })}
-        </p>
-
-        <Card className="mt-related gap-tight p-5">
-          <p className="font-display text-xl">{offer.event.title}</p>
+      <>
+        <PageHero title={t("booking.bookedHeading")} seed={13} width="text" />
+        <PageSection width="text">
           <p className="text-ink-muted">
-            {formatEventWhen(offer.event.startsAt, offer.event.endsAt)}
+            {t("booking.bookedBody", { email: booked.email, phone: booked.phone })}
           </p>
-          <ul className="mt-tight grid gap-1" data-testid="booking-summary">
-            {booked.choices.map((choice) => (
-              <li key={choice.optionId}>
-                {choice.quantity} × {choice.label}
-              </li>
-            ))}
-          </ul>
-          <p className="mt-tight">
-            {booked.guestCount} personne{booked.guestCount > 1 ? "s" : ""}
-            {/* Null is not zero: a booking of unpriced options owes an unknown
+
+          <Card className={cn(RAISED_CARD, "mt-related gap-tight p-5")}>
+            <p className="font-display text-xl">{offer.event.title}</p>
+            <p className="text-ink-muted">
+              {formatEventWhen(offer.event.startsAt, offer.event.endsAt)}
+            </p>
+            <ul className="mt-tight grid gap-1" data-testid="booking-summary">
+              {booked.choices.map((choice) => (
+                <li key={choice.optionId}>
+                  {choice.quantity} × {choice.label}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-tight">
+              {booked.guestCount} personne{booked.guestCount > 1 ? "s" : ""}
+              {/* Null is not zero: a booking of unpriced options owes an unknown
                 amount, and "CHF 0.00" would assert the first about the
                 second. */}
-            {booked.totalCents === null ? null : <> — {formatCents(booked.totalCents)}</>}
-          </p>
-        </Card>
-      </PageSection>
+              {booked.totalCents === null ? null : <> — {formatCents(booked.totalCents)}</>}
+            </p>
+          </Card>
+        </PageSection>
+      </>
     );
   }
 
   return (
-    <PageSection width="text">
-      <h1 className="font-display text-3xl">{offer.event.title}</h1>
-      <p className="mt-tight text-ink-muted">
-        {formatEventWhen(offer.event.startsAt, offer.event.endsAt)} — {offer.event.location}
-      </p>
-
-      {!offer.open ? (
-        <p className="mt-related rounded-md border border-line bg-panel p-4" role="status">
-          {offer.opensAt !== null && Date.parse(offer.opensAt) > Date.now()
-            ? t("booking.opensOn", { date: formatDay(offer.opensAt) })
-            : t("booking.closed")}
+    <>
+      {/* The event's own title, so no highlight: its words are content, and
+          nothing here knows which of them matters. */}
+      <PageHero title={offer.event.title} seed={13} width="text">
+        <p>
+          {formatEventWhen(offer.event.startsAt, offer.event.endsAt)} — {offer.event.location}
         </p>
-      ) : null}
+      </PageHero>
 
-      {offer.open ? (
-        <>
-          <p className="mt-related text-ink-muted">
-            {offer.closesAt === null
-              ? null
-              : `${t("booking.closesOn", { date: formatDay(offer.closesAt) })} `}
-            {offer.maxGuests === null ? null : t("booking.maxGuests", { count: offer.maxGuests })}
+      <PageSection width="text">
+        {!offer.open ? (
+          <p className={cn(RAISED_CARD, "bg-yellow p-4")} role="status">
+            {offer.opensAt !== null && Date.parse(offer.opensAt) > Date.now()
+              ? t("booking.opensOn", { date: formatDay(offer.opensAt) })
+              : t("booking.closed")}
           </p>
+        ) : null}
 
-          <FormError error={error} />
+        {offer.open ? (
+          <>
+            <p className="text-ink-muted">
+              {offer.closesAt === null
+                ? null
+                : `${t("booking.closesOn", { date: formatDay(offer.closesAt) })} `}
+              {offer.maxGuests === null ? null : t("booking.maxGuests", { count: offer.maxGuests })}
+            </p>
 
-          <Card asChild className="mt-related gap-0 p-5">
-            <form onSubmit={submit} noValidate className="space-y-related">
-              <fieldset className="flex flex-col gap-related">
-                <legend className="font-display text-xl">{t("booking.contactLegend")}</legend>
-                <RequiredLegend />
-                {FIELDS.map((field) => (
-                  <FormField
-                    key={field.name}
-                    id={`booking-${field.name}`}
-                    label={t(field.labelKey)}
-                    type={field.type}
-                    required={field.required}
-                    hint={field.hintKey ? t(field.hintKey) : undefined}
-                    autoComplete={field.autoComplete}
-                    problem={messageFor(field.name)}
-                    value={contact[field.name]}
-                    onChange={(value) =>
-                      setContact((current) => ({ ...current, [field.name]: value }))
-                    }
-                  />
-                ))}
-              </fieldset>
+            <FormError error={error} />
 
-              <fieldset className="flex flex-col gap-related">
-                <legend className="font-display text-xl">{t("booking.choiceLegend")}</legend>
+            {/* Raised like every card on cream, but the fields inside stay the
+              plain vendored inputs: decoration stays out of anything a person
+              types into (ADR 0029). */}
+            <Card asChild className={cn(RAISED_CARD, "mt-related gap-0 p-5")}>
+              <form onSubmit={submit} noValidate className="space-y-related">
+                <fieldset className="flex flex-col gap-related">
+                  <legend className="mb-tight heading-wave w-fit font-display text-xl">
+                    {t("booking.contactLegend")}
+                  </legend>
+                  <RequiredLegend />
+                  {FIELDS.map((field) => (
+                    <FormField
+                      key={field.name}
+                      id={`booking-${field.name}`}
+                      label={t(field.labelKey)}
+                      type={field.type}
+                      required={field.required}
+                      hint={field.hintKey ? t(field.hintKey) : undefined}
+                      autoComplete={field.autoComplete}
+                      problem={messageFor(field.name)}
+                      value={contact[field.name]}
+                      onChange={(value) =>
+                        setContact((current) => ({ ...current, [field.name]: value }))
+                      }
+                    />
+                  ))}
+                </fieldset>
 
-                {offer.options.length === 0 ? (
-                  <p className="text-ink-muted">{t("booking.nothingOffered")}</p>
-                ) : null}
+                <fieldset className="flex flex-col gap-related">
+                  <legend className="mb-tight heading-wave w-fit font-display text-xl">
+                    {t("booking.choiceLegend")}
+                  </legend>
 
-                {offer.options.map((option) => (
-                  <QuantityField
-                    key={option.id}
-                    option={option}
-                    value={quantities[option.id] ?? ""}
-                    onChange={(value) =>
-                      setQuantities((current) => ({ ...current, [option.id]: value }))
-                    }
-                  />
-                ))}
+                  {offer.options.length === 0 ? (
+                    <p className="text-ink-muted">{t("booking.nothingOffered")}</p>
+                  ) : null}
 
-                {/* The refusal for the whole list lands on `choices`, which is
+                  {offer.options.map((option) => (
+                    <QuantityField
+                      key={option.id}
+                      option={option}
+                      value={quantities[option.id] ?? ""}
+                      onChange={(value) =>
+                        setQuantities((current) => ({ ...current, [option.id]: value }))
+                      }
+                    />
+                  ))}
+
+                  {/* The refusal for the whole list lands on `choices`, which is
                     where the server puts it too: no single quantity is wrong
                     when the sum is. */}
-                {messageFor("choices") ? (
-                  <span className="text-sm text-danger" role="alert">
-                    {messageFor("choices")}
-                  </span>
-                ) : null}
+                  {messageFor("choices") ? (
+                    <span className="text-sm text-danger" role="alert">
+                      {messageFor("choices")}
+                    </span>
+                  ) : null}
 
-                {/* THE RUNNING TOTAL, and it is the reason the prices are on
+                  {/* THE RUNNING TOTAL, and it is the reason the prices are on
                     the wire as integers. A guest deciding between two adult
                     meals and three should be able to read what each costs
                     before submitting, not after. */}
-                <p className="text-ink" data-testid="booking-total">
-                  {/* THE COUNT IS THE CATALOGUE'S. `guests > 1` is the FRENCH
+                  <p className="text-ink" data-testid="booking-total">
+                    {/* THE COUNT IS THE CATALOGUE'S. `guests > 1` is the FRENCH
                       plural rule, which puts "0 personne" on a French page
                       correctly and "0 Person" on a German one wrongly. */}
-                  {guests === 0
-                    ? t("booking.chooseSomeone")
-                    : priced.length === 0
-                      ? t("common.guests", { count: guests })
-                      : t("booking.guestsWithTotal", {
-                          guests: t("common.guests", { count: guests }),
-                          total: formatCents(total),
-                        })}
-                </p>
-              </fieldset>
+                    {guests === 0
+                      ? t("booking.chooseSomeone")
+                      : priced.length === 0
+                        ? t("common.guests", { count: guests })
+                        : t("booking.guestsWithTotal", {
+                            guests: t("common.guests", { count: guests }),
+                            total: formatCents(total),
+                          })}
+                  </p>
+                </fieldset>
 
-              {/* The honeypot, written out exactly as the contact form's:
+                {/* The honeypot, written out exactly as the contact form's:
                   hidden from people and from assistive technology, a real
                   control whose value is submitted, and refused when absent as
                   firmly as when filled. */}
-              <input
-                type="text"
-                name="website"
-                hidden
-                tabIndex={-1}
-                autoComplete="off"
-                value={website}
-                onChange={(changed) => setWebsite(changed.target.value)}
-              />
+                <input
+                  type="text"
+                  name="website"
+                  hidden
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(changed) => setWebsite(changed.target.value)}
+                />
 
-              <Button type="submit" aria-disabled={send.isPending}>
-                {send.isPending ? t("booking.sending") : t("booking.submit")}
-              </Button>
-            </form>
-          </Card>
-        </>
-      ) : null}
-    </PageSection>
+                <Button
+                  type="submit"
+                  variant="raised-violet"
+                  className="h-12 px-5 text-base"
+                  aria-disabled={send.isPending}
+                >
+                  {send.isPending ? t("booking.sending") : t("booking.submit")}
+                </Button>
+              </form>
+            </Card>
+          </>
+        ) : null}
+      </PageSection>
+    </>
   );
 }
 

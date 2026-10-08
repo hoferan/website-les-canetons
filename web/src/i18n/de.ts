@@ -1009,6 +1009,7 @@ export const de: typeof fr = {
 
   agenda: {
     heading: "Wo Sie uns sehen",
+    headingHighlight: "uns sehen",
     intro: "Die nächsten Auftritte der Canetons. Kommen Sie uns zuhören!",
     emptyNotice:
       "Die nächsten Termine sind noch nicht veröffentlicht. Schauen Sie bald wieder vorbei, oder schreiben Sie dem Vorstand, um uns zu buchen.",
@@ -1025,6 +1026,7 @@ export const de: typeof fr = {
 
   band: {
     heading: "Unsere Canetons",
+    headingHighlight: "Canetons",
     instructors: "Leiter:",
     registersNav: "Register",
     patronsHeading: "Der Götti und die Gotte",
@@ -1047,6 +1049,7 @@ export const de: typeof fr = {
     // page stays impersonal rather than following suit. It is the only
     // informal address in either catalogue; do not "fix" it.
     heading: "Willst du mit der Gugge anfangen?",
+    headingHighlight: "Gugge",
     intro:
       "Wir suchen laufend ein paar Bläser, die sich die Lunge aus dem Leib blasen und unseren Perkussionen «Konkurrenz» machen!",
     facts: {
