@@ -133,8 +133,14 @@ export function Home() {
                 It wraps to four lines at 390px at either text-3xl or text-4xl;
                 the smaller size saves 4px of line-height per line, not a line.
                 A sentence-case heading is not available while this face is in
-                use; that is the look, not a bug. */}
-            <h1 data-confetti-avoid className="font-display text-3xl sm:text-4xl md:text-5xl">
+                use; that is the look, not a bug.
+
+                leading-[1.18] at every size, for the highlight's sake: see
+                Highlighted.tsx. */}
+            <h1
+              data-confetti-avoid
+              className="font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
+            >
               <Highlighted text={t("home.hero")} mark={t("home.heroHighlight")} />
             </h1>
 
