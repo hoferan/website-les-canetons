@@ -316,6 +316,14 @@ h2 {
     repeat-x left bottom / 28px 10px;
 }
 
+/* The yellow highlight on a heading's words, trimmed to the capitals. A plain
+   background fills the font's whole content area, about 1.33em in Bungee, so
+   a phrase that wraps at 390px became one solid block and the box sat on the
+   line below. Trimmed, each line gets its own bar at leading 1.18. */
+@utility bg-highlight {
+  background: linear-gradient(transparent 12%, var(--color-yellow) 12% 86%, transparent 86%);
+}
+
 /* Every duration to near-zero under reduced motion. This covers the
    Button press transition, the reveal animation, and sonner's own toast
    animation, in one place — a per-site motion-reduce: variant would be a

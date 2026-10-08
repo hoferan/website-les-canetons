@@ -13,7 +13,7 @@ test("marks the chosen words and keeps the sentence whole", () => {
   expect(
     screen.getByRole("heading", { name: "La guggen d’enfants de Fribourg." }),
   ).toBeInTheDocument();
-  expect(screen.getByText("d’enfants")).toHaveClass("bg-yellow");
+  expect(screen.getByText("d’enfants")).toHaveClass("bg-highlight");
 });
 
 /** A translation that drops the word must still render, just without the mark. */
@@ -21,5 +21,5 @@ test("renders the plain text when the words are not in it", () => {
   const { container } = render(<Highlighted text="Die Kinder-Guggenmusik." mark="d’enfants" />);
 
   expect(container.textContent).toBe("Die Kinder-Guggenmusik.");
-  expect(container.querySelector(".bg-yellow")).toBeNull();
+  expect(container.querySelector(".bg-highlight")).toBeNull();
 });
