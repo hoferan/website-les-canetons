@@ -3,7 +3,8 @@ import { PageSection } from "@/components/PageSection";
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
-import { AgendaEntry } from "../events/PublicAgenda";
+import { PageHero } from "../carnival/PageHero";
+import { AgendaEntry, BADGE_TINTS } from "../events/PublicAgenda";
 import { t } from "../i18n";
 
 /**
@@ -34,21 +35,33 @@ export function Agenda() {
   const upcoming = rowsOf<PublicEventResource>(agenda.data);
 
   return (
-    <PageSection width="text">
-      <h1 className="font-display text-4xl">{t("agenda.heading")}</h1>
-      <p className="mt-related text-ink-muted">{t("agenda.intro")}</p>
+    <>
+      <PageHero
+        title={t("agenda.heading")}
+        mark={t("agenda.headingHighlight")}
+        seed={3}
+        width="text"
+      >
+        <p>{t("agenda.intro")}</p>
+      </PageHero>
 
-      {upcoming.length > 0 ? (
-        <ul className="mt-block grid gap-3">
-          {upcoming.map((event) => (
-            <AgendaEntry key={event.id} event={event} />
-          ))}
-        </ul>
-      ) : (
-        <p className="mt-block rounded-lg border border-dashed border-line bg-panel px-3 py-4 text-ink-muted">
-          {t("agenda.emptyNotice")}
-        </p>
-      )}
-    </PageSection>
+      <PageSection width="text">
+        {upcoming.length > 0 ? (
+          <ul className="grid gap-5">
+            {upcoming.map((event, index) => (
+              <AgendaEntry
+                key={event.id}
+                event={event}
+                tint={BADGE_TINTS[index % BADGE_TINTS.length]}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="rounded-[18px] border-3 border-dashed border-ink bg-panel px-4 py-5 text-ink-muted">
+            {t("agenda.emptyNotice")}
+          </p>
+        )}
+      </PageSection>
+    </>
   );
 }

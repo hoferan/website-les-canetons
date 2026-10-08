@@ -1,9 +1,13 @@
+import { Cake, Clock, type LucideIcon, MapPin, Music, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { PageSection } from "@/components/PageSection";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { type TranslationKey, t } from "../i18n";
 
 /**
@@ -13,9 +17,16 @@ import { type TranslationKey, t } from "../i18n";
  * at render time — see Layout.tsx's NAV for why a module-level array cannot
  * carry the translated string itself.
  */
-const FACTS: { headingKey: TranslationKey; lineKeys: TranslationKey[] }[] = [
+const FACTS: {
+  headingKey: TranslationKey;
+  lineKeys: TranslationKey[];
+  icon: LucideIcon;
+  tint: string;
+}[] = [
   {
     headingKey: "join.facts.instruments.heading",
+    icon: Music,
+    tint: "bg-pink",
     lineKeys: [
       "join.facts.instruments.trumpet",
       "join.facts.instruments.trombone",
@@ -25,10 +36,14 @@ const FACTS: { headingKey: TranslationKey; lineKeys: TranslationKey[] }[] = [
   },
   {
     headingKey: "join.facts.schedule.heading",
+    icon: Clock,
+    tint: "bg-cyan",
     lineKeys: ["join.facts.schedule.day", "join.facts.schedule.time"],
   },
   {
     headingKey: "join.facts.age.heading",
+    icon: Cake,
+    tint: "bg-lime",
     lineKeys: ["join.facts.age.range"],
   },
 ];
@@ -75,53 +90,87 @@ const WERKHOF_MAP =
  */
 export function Join() {
   return (
-    <PageSection>
-      <h1 className="font-display text-4xl">{t("join.heading")}</h1>
-      <p className="mt-related max-w-prose">{t("join.intro")}</p>
+    <>
+      <PageHero title={t("join.heading")} mark={t("join.headingHighlight")} seed={5}>
+        <p>{t("join.intro")}</p>
+      </PageHero>
 
-      <div className="mt-block grid gap-4 sm:grid-cols-2">
-        {FACTS.map((fact) => (
-          <Card key={fact.headingKey} className="gap-0 p-5">
-            <h2 className="font-display text-xl">{t(fact.headingKey)}</h2>
-            {fact.lineKeys.map((lineKey) => (
-              <p key={lineKey} className="mt-tight">
-                {t(lineKey)}
+      <PageSection>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {FACTS.map((fact) => (
+            <Card key={fact.headingKey} className={cn(RAISED_CARD, "gap-0 p-5")}>
+              <FactHeading icon={fact.icon} tint={fact.tint}>
+                {t(fact.headingKey)}
+              </FactHeading>
+              {fact.lineKeys.map((lineKey) => (
+                <p key={lineKey} className="mt-tight">
+                  {t(lineKey)}
+                </p>
+              ))}
+            </Card>
+          ))}
+
+          <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
+            <FactHeading icon={MapPin} tint="bg-yellow">
+              {t("join.location")}
+            </FactHeading>
+            <p className="mt-tight">
+              <a
+                href={WERKHOF_MAP}
+                target="_blank"
+                rel="noreferrer"
+                className="text-violet hover:underline"
+              >
+                Werkhof
+              </a>
+            </p>
+            <p>{t("join.locationArea")}</p>
+          </Card>
+
+          <Card className={cn(RAISED_CARD, "gap-0 p-5")}>
+            <FactHeading icon={Phone} tint="bg-lilac">
+              {t("join.contacts")}
+            </FactHeading>
+            {Array.from({ length: JOINING_CONTACTS }, (_, index) => (
+              <p key={index} className="mt-tight">
+                <Tbd what={t("placeholders.joinContact")} token="join-contact" />
               </p>
             ))}
-          </Card>
-        ))}
-
-        <Card className="gap-0 p-5">
-          <h2 className="font-display text-xl">{t("join.location")}</h2>
-          <p className="mt-tight">
-            <a
-              href={WERKHOF_MAP}
-              target="_blank"
-              rel="noreferrer"
-              className="text-violet hover:underline"
-            >
-              Werkhof
-            </a>
-          </p>
-          <p>{t("join.locationArea")}</p>
-        </Card>
-
-        <Card className="gap-0 p-5">
-          <h2 className="font-display text-xl">{t("join.contacts")}</h2>
-          {Array.from({ length: JOINING_CONTACTS }, (_, index) => (
-            <p key={index} className="mt-tight">
-              <Tbd what={t("placeholders.joinContact")} token="join-contact" />
+            <p className="mt-related text-sm text-ink-muted">
+              {t("join.contactMeanwhile")}{" "}
+              <Link to="/contact" className="text-violet underline">
+                {t("join.contactPageLink")}
+              </Link>
+              .
             </p>
-          ))}
-          <p className="mt-related text-sm text-ink-muted">
-            {t("join.contactMeanwhile")}{" "}
-            <Link to="/contact" className="text-violet underline">
-              {t("join.contactPageLink")}
-            </Link>
-            .
-          </p>
-        </Card>
-      </div>
-    </PageSection>
+          </Card>
+        </div>
+      </PageSection>
+    </>
+  );
+}
+
+/**
+ * A fact card's heading, with a picture of what it is about on a carnival
+ * colour. The icon is decoration: the heading already says it.
+ */
+function FactHeading({
+  icon: Icon,
+  tint,
+  children,
+}: {
+  icon: LucideIcon;
+  tint: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className={`grid size-11 shrink-0 place-items-center rounded-xl border-3 border-ink ${tint}`}
+      >
+        <Icon aria-hidden="true" className="size-6" strokeWidth={2.25} />
+      </span>
+      <h2 className="font-display text-xl">{children}</h2>
+    </div>
   );
 }

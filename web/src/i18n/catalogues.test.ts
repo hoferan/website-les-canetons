@@ -58,6 +58,19 @@ test.each([
   expect(home.hero).toContain(home.heroHighlight);
 });
 
+/** The same pairing on the pages that open with a PageHero. */
+test.each([
+  ["fr", "agenda", fr.agenda],
+  ["fr", "band", fr.band],
+  ["fr", "join", fr.join],
+  ["de", "agenda", de.agenda],
+  ["de", "band", de.band],
+  ["de", "join", de.join],
+])("the %s %s heading highlights words that are in the heading", (_, __, page) => {
+  expect(page.headingHighlight).not.toBe("");
+  expect(page.heading).toContain(page.headingHighlight);
+});
+
 test("German uses ss, never the German-German eszett", () => {
   const offenders = keyPaths(de).filter((path) => {
     const value = path

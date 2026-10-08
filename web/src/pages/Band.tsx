@@ -2,10 +2,13 @@ import { PageSection } from "@/components/PageSection";
 import { RegisterIndex } from "@/components/RegisterIndex";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useBandIndex } from "../api/generated/endpoints";
 import type { PublicSectionResource } from "../api/generated/model";
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
 import { t } from "../i18n";
@@ -39,7 +42,7 @@ function Register({ register }: { register: PublicSectionResource }) {
       aria-labelledby={`${anchorOf(register)}-heading`}
       className="scroll-mt-6"
     >
-      <h2 id={`${anchorOf(register)}-heading`} className="font-display text-2xl">
+      <h2 id={`${anchorOf(register)}-heading`} className="heading-wave w-fit font-display text-2xl">
         {register.name}
       </h2>
       <SlotPhoto slot={registerSlot(register.id)} label={register.name} alt={register.name} />
@@ -88,58 +91,61 @@ export function Band() {
   const registers = rowsOf<PublicSectionResource>(band.data);
 
   return (
-    <PageSection width="text">
-      <h1 className="font-display text-4xl">{t("band.heading")}</h1>
-      <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
+    <>
+      <PageHero title={t("band.heading")} mark={t("band.headingHighlight")} seed={7} width="text" />
 
-      <RegisterIndex
-        entries={registers.map((register) => ({
-          id: anchorOf(register),
-          label: register.name,
-        }))}
-      />
+      <PageSection width="text">
+        <SlotPhoto slot="band" label={t("photos.slot.band")} alt="Les Canetons de Fribourg" />
 
-      <div className="mt-block space-y-block">
-        {registers.map((register) => (
-          <Register key={register.id} register={register} />
-        ))}
-      </div>
+        <RegisterIndex
+          entries={registers.map((register) => ({
+            id: anchorOf(register),
+            label: register.name,
+          }))}
+        />
 
-      {/* SET APART FROM THE REGISTERS ON PURPOSE.
-          Moved here from the old committee page on 2026-08-31, then separated
-          from the register list the same day: the band pointed out that a
-          parrain and a marraine are not an active part of the Canetons.
-          Listing them in the same flow as the batteurs and the trompettes
-          implies they play, which they do not.
+        <div className="mt-block space-y-block">
+          {registers.map((register) => (
+            <Register key={register.id} register={register} />
+          ))}
+        </div>
 
-          IT IS AUTHORED, NOT GENERATED, and it is the one thing on this page
-          that is. These two are people the band DISPLAYS rather than tracks
-          for events, so there is no row for them: `members` is the roster, and
-          every row in it has an account and answers for events. Whether that
-          kind of person ever earns a table of their own is a question for
-          whenever the band supplies a name the roster cannot hold.
+        {/* SET APART FROM THE REGISTERS ON PURPOSE.
+            Moved here from the old committee page on 2026-08-31, then separated
+            from the register list the same day: the band pointed out that a
+            parrain and a marraine are not an active part of the Canetons.
+            Listing them in the same flow as the batteurs and the trompettes
+            implies they play, which they do not.
 
-          Their photograph is a slot like every other, placed from the
-          library. */}
-      {/* Held until the roster has answered, whatever the answer: the six
-          registers above are far taller than a screen, and rendered while they
-          load this card sat in view and was pushed off it when they arrived
-          (#236). */}
-      {band.isPending ? null : (
-        <>
-          <hr className="mt-section border-line" />
+            IT IS AUTHORED, NOT GENERATED, and it is the one thing on this page
+            that is. These two are people the band DISPLAYS rather than tracks
+            for events, so there is no row for them: `members` is the roster, and
+            every row in it has an account and answers for events. Whether that
+            kind of person ever earns a table of their own is a question for
+            whenever the band supplies a name the roster cannot hold.
 
-          <Card className="mt-block gap-0 p-5">
-            <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
-            <SlotPhoto
-              slot="godparents"
-              label={t("photos.slot.godparents")}
-              alt={t("band.patronsAlt")}
-            />
-            <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
-          </Card>
-        </>
-      )}
-    </PageSection>
+            Their photograph is a slot like every other, placed from the
+            library. */}
+        {/* Held until the roster has answered, whatever the answer: the six
+            registers above are far taller than a screen, and rendered while they
+            load this card sat in view and was pushed off it when they arrived
+            (#236). */}
+        {band.isPending ? null : (
+          <>
+            <hr className="mt-section border-line" />
+
+            <Card className={cn(RAISED_CARD, "mt-block gap-0 p-5")}>
+              <h2 className="font-display text-2xl">{t("band.patronsHeading")}</h2>
+              <SlotPhoto
+                slot="godparents"
+                label={t("photos.slot.godparents")}
+                alt={t("band.patronsAlt")}
+              />
+              <p className="mt-tight text-ink-muted">{t("band.patrons")}</p>
+            </Card>
+          </>
+        )}
+      </PageSection>
+    </>
   );
 }

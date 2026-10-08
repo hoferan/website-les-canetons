@@ -1,7 +1,9 @@
 import { ButtonLink } from "@/components/ButtonLink";
+import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
+import { RAISED_CARD } from "../carnival/raised";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { formatEventDay, formatEventWhen } from "./formatEventWhen";
@@ -11,7 +13,7 @@ import { TagChip } from "./TagChip";
 const SHOWN = 3;
 
 /** The date badges take turns, so neighbouring cards do not look alike. */
-const BADGE_TINTS = ["bg-yellow", "bg-cyan", "bg-lime"];
+export const BADGE_TINTS = ["bg-yellow", "bg-cyan", "bg-lime"];
 
 /**
  * One appearance, as a stranger reads it.
@@ -42,7 +44,7 @@ export function AgendaEntry({
   const { day, month } = formatEventDay(event.startsAt);
 
   return (
-    <li className="flex gap-4 rounded-[18px] border-3 border-ink bg-panel p-4 shadow-raised">
+    <li className={cn(RAISED_CARD, "flex gap-4 p-4")}>
       {/* A picture of the date. The line under the title says the same thing
           in words, so a screen reader skips this. */}
       <div

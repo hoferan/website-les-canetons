@@ -17,8 +17,22 @@ const KINDS: ConfettiKind[] = ["strip", "strip", "dot", "squiggle", "star", "not
 /** One piece per this many square pixels, measured on the mock-ups at 390 and 1280. */
 const AREA_PER_PIECE = 11_000;
 
-/** How far a piece's centre stays from anything it avoids. */
-const MARGIN = 14;
+/**
+ * How far each shape in Confetti.tsx reaches from its centre at scale 1, in
+ * its own units, rounded up. A squiggle is 28 wide, so at the largest scale it
+ * reaches 31px from the point it is placed at.
+ */
+export const REACH: Record<ConfettiKind, number> = {
+  strip: 7,
+  dot: 4,
+  triangle: 7,
+  squiggle: 15,
+  star: 9,
+  note: 12,
+};
+
+/** The clear gap left between the edge of a piece and anything it avoids. */
+const GAP = 6;
 
 /**
  * A seeded generator, so a page scatters the same confetti on every visit and
@@ -35,9 +49,9 @@ function generator(seed: number): () => number {
 /**
  * Where the confetti goes inside a box of the given size.
  *
- * A piece that lands within MARGIN of an avoided box is dropped rather than
- * moved, so the gaps around text stay clean and nothing piles up at their
- * edges. That makes the count an upper bound: a box that is mostly text gets
+ * A piece whose drawn shape would come within GAP of an avoided box is
+ * dropped rather than moved, so the gaps around text stay clean and nothing
+ * piles up at their edges. That makes the count an upper bound: a box that is mostly text gets
  * fewer pieces, which is the right answer for it.
  */
 export function scatter({
@@ -75,12 +89,15 @@ export function scatter({
       kind: KINDS[Math.floor(random() * KINDS.length)] ?? "dot",
       colour: Math.floor(random() * palette),
     };
+    // Measured from the shape's reach, not its centre: a centre-only margin
+    // let a full-size squiggle lie across a heading's first letters.
+    const clearance = REACH[piece.kind] * piece.scale + GAP;
     const covered = avoid.some(
       (box) =>
-        x > box.left - MARGIN &&
-        x < box.right + MARGIN &&
-        y > box.top - MARGIN &&
-        y < box.bottom + MARGIN,
+        x > box.left - clearance &&
+        x < box.right + clearance &&
+        y > box.top - clearance &&
+        y < box.bottom + clearance,
     );
     if (!covered) {
       pieces.push(piece);
