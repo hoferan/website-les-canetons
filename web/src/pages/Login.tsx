@@ -3,9 +3,13 @@ import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import { getAuthMeQueryKey, useAuthLogin } from "../api/generated/endpoints";
 import { useApiFormError } from "../api/useApiFormError";
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
@@ -81,38 +85,49 @@ export function Login() {
   }
 
   return (
-    <PageSection width="form">
-      <h1 className="font-display text-4xl">{t("nav.login")}</h1>
+    <>
+      <PageHero title={t("nav.login")} seed={29} width="form" />
 
-      <form onSubmit={submit} noValidate className="mt-block flex flex-col gap-related">
-        <RequiredLegend />
-        <FormField
-          id="username"
-          label={t("auth.username")}
-          value={username}
-          onChange={setUsername}
-          problem={messageFor("username")}
-          required
-          autoComplete="username"
-        />
+      <PageSection width="form">
+        {/* The fields stay the plain vendored inputs; only the card around them
+            and the button are raised (ADR 0029). */}
+        <Card asChild className={cn(RAISED_CARD, "gap-related p-5")}>
+          <form onSubmit={submit} noValidate>
+            <RequiredLegend />
+            <FormField
+              id="username"
+              label={t("auth.username")}
+              value={username}
+              onChange={setUsername}
+              problem={messageFor("username")}
+              required
+              autoComplete="username"
+            />
 
-        <FormField
-          id="password"
-          label={t("auth.password")}
-          type="password"
-          value={password}
-          onChange={setPassword}
-          problem={messageFor("password")}
-          required
-          autoComplete="current-password"
-        />
+            <FormField
+              id="password"
+              label={t("auth.password")}
+              type="password"
+              value={password}
+              onChange={setPassword}
+              problem={messageFor("password")}
+              required
+              autoComplete="current-password"
+            />
 
-        <FormError error={error} />
+            <FormError error={error} />
 
-        <Button type="submit" aria-disabled={login.isPending}>
-          {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
-        </Button>
-      </form>
-    </PageSection>
+            <Button
+              type="submit"
+              variant="raised-violet"
+              className="h-12 px-5 text-base"
+              aria-disabled={login.isPending}
+            >
+              {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
+            </Button>
+          </form>
+        </Card>
+      </PageSection>
+    </>
   );
 }

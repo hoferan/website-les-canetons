@@ -3,10 +3,13 @@ import { Link } from "react-router-dom";
 import { PageSection } from "@/components/PageSection";
 import { Tbd } from "@/components/Tbd";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import { rowsOf } from "../api/collection";
 import { useCommitteeIndex } from "../api/generated/endpoints";
 import type { CommitteeMemberResource } from "../api/generated/model";
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { t } from "../i18n";
 
 /**
@@ -36,50 +39,55 @@ export function Committee() {
   const seats = rowsOf<CommitteeMemberResource>(committee.data);
 
   return (
-    <PageSection>
-      <h1 className="font-display text-4xl">{t("committee.heading")}</h1>
+    <>
+      <PageHero title={t("committee.heading")} mark={t("committee.headingHighlight")} seed={19} />
 
-      <Card className="mt-block gap-0 p-5">
-        <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
-        <p className="mt-tight">
-          <Link to="/contact" className="text-violet underline">
-            {t("committee.writeToCommittee")}
-          </Link>
-        </p>
-        <p className="mt-tight">
-          {t("committee.booking")}{" "}
-          <Tbd what={t("placeholders.bookingNumber")} token="booking-number" />
-        </p>
-      </Card>
+      <PageSection>
+        {/* On yellow, because it is what most visitors came for: how to reach
+            the committee. On it the violet link is 5.5:1 and the muted
+            placeholder 4.9:1. */}
+        <Card className={cn(RAISED_CARD, "gap-0 bg-yellow p-5")}>
+          <h2 className="font-display text-xl">{t("committee.contactHeading")}</h2>
+          <p className="mt-tight">
+            <Link to="/contact" className="text-violet underline">
+              {t("committee.writeToCommittee")}
+            </Link>
+          </p>
+          <p className="mt-tight">
+            {t("committee.booking")}{" "}
+            <Tbd what={t("placeholders.bookingNumber")} token="booking-number" />
+          </p>
+        </Card>
 
-      {seats.length > 0 ? (
-        <ul className="mt-block grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {seats.map((seat) => (
-            <Card key={seat.id} asChild className="gap-0 p-4">
-              <li>
-                {/* The seat, then the person. That order is the legacy page's
-                    and it is the one a visitor reads: they arrive looking for
-                    "the person who handles costumes", not for a name they
-                    already know. */}
-                <p className="text-xs font-semibold tracking-wide text-violet uppercase">
-                  {seat.function}
-                </p>
-                <p className="mt-tight">
-                  {seat.firstName} {seat.lastName}
-                </p>
-              </li>
-            </Card>
-          ))}
-        </ul>
-      ) : (
-        // NOT "aucun membre du comité", which would be a claim about the band.
-        // The committee exists; nobody has been entered with a seat and a
-        // consent to appear yet, and this page says so in the same voice as
-        // every other gap on the public site.
-        <p className="mt-block">
-          <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
-        </p>
-      )}
-    </PageSection>
+        {seats.length > 0 ? (
+          <ul className="mt-block grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {seats.map((seat) => (
+              <Card key={seat.id} asChild className={cn(RAISED_CARD, "gap-0 p-4")}>
+                <li>
+                  {/* The seat, then the person. That order is the legacy page's
+                      and it is the one a visitor reads: they arrive looking for
+                      "the person who handles costumes", not for a name they
+                      already know. */}
+                  <p className="text-xs font-semibold tracking-wide text-violet uppercase">
+                    {seat.function}
+                  </p>
+                  <p className="mt-tight">
+                    {seat.firstName} {seat.lastName}
+                  </p>
+                </li>
+              </Card>
+            ))}
+          </ul>
+        ) : (
+          // NOT "aucun membre du comité", which would be a claim about the band.
+          // The committee exists; nobody has been entered with a seat and a
+          // consent to appear yet, and this page says so in the same voice as
+          // every other gap on the public site.
+          <p className="mt-block">
+            <Tbd what={t("placeholders.committeeSeats")} token="committee-seats" />
+          </p>
+        )}
+      </PageSection>
+    </>
   );
 }
