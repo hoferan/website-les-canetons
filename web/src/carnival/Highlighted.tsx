@@ -2,8 +2,8 @@
  * A sentence with a few of its words on the yellow highlight.
  *
  * The words come from their own catalogue key, so each language picks its own:
- * "d’enfants" in French, "Kinder-Guggenmusik" in German, where the word order
- * differs. If a translation stops containing them, the sentence renders plain.
+ * "guggen d’enfants" in French, "Kinder-Guggenmusik" in German, where the word
+ * order differs. If a translation stops containing them, the sentence renders plain.
  */
 export function Highlighted({ text, mark }: { text: string; mark: string }) {
   const at = mark === "" ? -1 : text.indexOf(mark);

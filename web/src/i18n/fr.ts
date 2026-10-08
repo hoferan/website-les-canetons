@@ -1227,7 +1227,8 @@ export const fr = {
   home: {
     hero: "La guggen d’enfants de Fribourg, depuis 2002.",
     // The words of `hero` set on the yellow highlight. Must be part of `hero`.
-    heroHighlight: "d’enfants",
+    // The whole "children's guggen", as German highlights Kinder-Guggenmusik.
+    heroHighlight: "guggen d’enfants",
     heroSub:
       "De 7 à 18 ans — et pas besoin de connaître la musique : les moniteurs apprennent les morceaux registre par registre, aux répétitions du samedi matin.",
     discover: "Découvrir les Canetons",
