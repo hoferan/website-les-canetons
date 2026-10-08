@@ -52,7 +52,7 @@ export function switchDestination(
  * the hamburger as the last row. It is now visible on every screen size
  * without opening anything, which matters most to the German-speaking parent
  * who lands on the French front page: in the black header band on desktop,
- * and on a phone at the right of the white "Menu" bar. In the band on a phone
+ * and on a phone at the right of the "Menu" bar. In the band on a phone
  * it took 88px from the wordmark, which then wrapped to two lines at 390px and
  * three at 320px.
  *
@@ -74,13 +74,8 @@ export function switchDestination(
  * TWO LOCALES, SO A PAIR RATHER THAN A MENU. A third language is when this
  * becomes a menu, and not before.
  */
-export function LanguageSwitch({ surface }: { surface: "dark" | "light" }) {
+export function LanguageSwitch() {
   const current = currentLocale();
-  const pill = surface === "dark" ? "bg-white text-stage" : "bg-violet text-white";
-  const other =
-    surface === "dark"
-      ? "focus-ring-stage text-white/70 hover:text-white"
-      : "focus-ring text-ink-muted hover:text-ink";
 
   return (
     <div role="group" aria-label={t("nav.language")} className="flex items-center text-sm">
@@ -93,7 +88,7 @@ export function LanguageSwitch({ surface }: { surface: "dark" | "light" }) {
           >
             <span
               aria-hidden="true"
-              className={`${pill} rounded px-2 py-1 leading-none font-semibold`}
+              className="rounded bg-white px-2 py-1 leading-none font-semibold text-stage"
             >
               {CODE[locale]}
             </span>
@@ -111,7 +106,7 @@ export function LanguageSwitch({ surface }: { surface: "dark" | "light" }) {
             title={ENDONYM[locale]}
             aria-label={t(locale === "de-CH" ? "nav.switchToGerman" : "nav.switchToFrench")}
             onClick={() => rememberLocale(locale)}
-            className={`${other} inline-flex min-h-touch min-w-touch items-center justify-center rounded`}
+            className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded text-white/70 hover:text-white"
           >
             <span className="px-2 py-1 leading-none font-semibold">{CODE[locale]}</span>
           </a>

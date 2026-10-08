@@ -3,11 +3,15 @@ import { Dialog } from "radix-ui";
 import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
+import { Confetti } from "../carnival/Confetti";
 import { t } from "../i18n";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { useLogout } from "../session/logout";
 import { Avatar } from "./Avatar";
 import { type NavEntry, EntryLink } from "./NavEntry";
+import { NAV_HERE } from "./navStyles";
+import { buttonVariants } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 type Member = { username: string; firstName: string; lastName: string };
 
@@ -19,6 +23,17 @@ export type MemberEntry = {
   icon: LucideIcon;
   badge?: ReactNode;
 };
+
+/** The page markers, in order down the list; the mock-up's sequence. */
+const MARKERS = ["bg-pink", "bg-yellow", "bg-cyan", "bg-lime", "bg-lilac"];
+
+/** The carnival colours that show on the stage. Lilac is too pale beside them. */
+const MENU_CONFETTI = [
+  "var(--color-pink)",
+  "var(--color-yellow)",
+  "var(--color-cyan)",
+  "var(--color-lime)",
+];
 
 /**
  * The phone's Menu bar and the menu it opens: "Scène" (#99).
@@ -35,14 +50,17 @@ export type MemberEntry = {
  * - the member's own screens first, in a card, because that is what a member
  *   opens the menu for: Événements every week, and the committee's screens;
  * - then the public pages in the display face, "Nous rejoindre" underlined in
- *   pink, the one emphasis the palette allows, because it is what the site is
- *   for;
+ *   pink because it is what the site is for;
  * - the account last, in a footer. It was the first and heaviest row, and it
  *   is the least used.
  *
- * THE CURRENT PAGE IS A VIOLET PILL, not violet text. Violet text on the stage
- * is about 2.5:1, which is why the dark panel was once given up; white text on
- * a violet fill is about 7.9:1.
+ * THE PAGES AND THE MENU ARE ONE DESIGN (ADR 0029). The committee member who
+ * liked this menu also noticed it looked like nothing else on the site, so the
+ * pages came towards it and it took their marks in return: the current page
+ * is the site's one highlight, yellow under ink, where it was a violet pill; a
+ * coloured marker stands before each page; Connexion is the raised yellow
+ * button; and confetti fills the empty stage below the list, kept off every
+ * row by `data-confetti-avoid`.
  *
  * RENDERED INSIDE THE NAV, NOT IN A PORTAL, so the links stay inside the
  * "Navigation principale" landmark.
@@ -71,12 +89,12 @@ export function PhoneNav({
       <div className="flex items-center justify-between pr-2 md:hidden">
         <Dialog.Trigger
           aria-label={t("nav.menuLabel")}
-          className="focus-ring flex min-h-touch items-center gap-2 px-4 font-semibold text-ink"
+          className="focus-ring-stage flex min-h-touch items-center gap-2 px-4 font-semibold"
         >
           <Menu aria-hidden="true" className="size-6" />
           {t("nav.menu")}
         </Dialog.Trigger>
-        <LanguageSwitch surface="light" />
+        <LanguageSwitch />
       </div>
 
       <Dialog.Content
@@ -86,7 +104,14 @@ export function PhoneNav({
       >
         <Dialog.Title className="sr-only">{t("nav.menu")}</Dialog.Title>
 
-        <div className="flex items-center justify-between py-2 pr-2 pl-4">
+        {/* Behind everything below, which is why each of those is
+            `relative`: a positioned element paints over in-flow ones. */}
+        <Confetti seed={5} colours={MENU_CONFETTI} density={4} />
+
+        <div
+          data-confetti-avoid
+          className="relative flex items-center justify-between py-2 pr-2 pl-4"
+        >
           <Link
             to="/"
             onClick={close}
@@ -102,7 +127,7 @@ export function PhoneNav({
             />
           </Link>
           <div className="flex items-center">
-            <LanguageSwitch surface="dark" />
+            <LanguageSwitch />
             <Dialog.Close
               aria-label={t("nav.close")}
               className="focus-ring-stage inline-flex min-h-touch min-w-touch items-center justify-center rounded"
@@ -115,7 +140,8 @@ export function PhoneNav({
         {mine.length > 0 ? (
           <ul
             aria-label={t("nav.groupMine")}
-            className="mx-4 mt-2 rounded-2xl bg-white/[0.07] p-1.5"
+            data-confetti-avoid
+            className="relative mx-4 mt-2 rounded-2xl bg-white/[0.07] p-1.5"
           >
             {mine.map((entry) => {
               const here = entry.to === active;
@@ -126,7 +152,7 @@ export function PhoneNav({
                     to={entry.to}
                     onClick={close}
                     aria-current={here ? "page" : undefined}
-                    className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-xl px-3 text-base font-semibold ${here ? "bg-violet" : ""}`}
+                    className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-xl px-3 text-base font-semibold ${here ? "bg-yellow text-ink" : ""}`}
                   >
                     <Icon aria-hidden="true" className={`size-5 ${here ? "" : "text-white/70"}`} />
                     {entry.label}
@@ -138,17 +164,27 @@ export function PhoneNav({
           </ul>
         ) : null}
 
-        <ul aria-label={t("nav.groupBand")} className="mt-4 px-3 pb-6">
-          {band.map((entry) => {
+        <ul aria-label={t("nav.groupBand")} className="relative mt-4 px-3 pb-6">
+          {band.map((entry, index) => {
             const here = entry.to === active;
             const recruit = entry.key === "/join";
             return (
-              <li key={entry.key}>
+              <li key={entry.key} data-confetti-avoid>
+                {/* The marker sits in a box as wide as the brand marks of the
+                    external entries, so every label starts at one edge. */}
                 <EntryLink
                   entry={entry}
                   active={here}
                   onClick={close}
-                  className={`focus-ring-stage flex min-h-12 items-center gap-2 rounded-xl px-3 font-display text-xl uppercase ${here ? "bg-violet" : ""} ${recruit && !here ? "underline decoration-pink decoration-2 underline-offset-[6px]" : ""}`}
+                  leading={
+                    <span aria-hidden="true" className="flex w-5 shrink-0 justify-center">
+                      <span
+                        className={`size-3 rotate-[20deg] rounded-[4px] ${MARKERS[index % MARKERS.length]}`}
+                      />
+                    </span>
+                  }
+                  labelClassName={here ? NAV_HERE : undefined}
+                  className={`focus-ring-stage flex min-h-13 items-center gap-3 rounded-xl px-2 font-display text-[22px] uppercase ${recruit && !here ? "underline decoration-pink decoration-2 underline-offset-[6px]" : ""}`}
                 />
               </li>
             );
@@ -158,12 +194,15 @@ export function PhoneNav({
         {member ? (
           <AccountFooter member={member} active={active} close={close} />
         ) : (
-          <div className="mt-auto px-4 pb-6">
+          <div data-confetti-avoid className="relative mt-auto px-4 pb-6">
             <Link
               to="/login"
               onClick={close}
               aria-current={active === "/login" ? "page" : undefined}
-              className="focus-ring-stage flex min-h-12 items-center justify-center rounded-xl bg-violet font-semibold"
+              className={cn(
+                buttonVariants({ variant: "raised" }),
+                "focus-ring-stage flex h-12 w-full text-base shadow-raised-stage",
+              )}
             >
               {t("nav.login")}
             </Link>
@@ -195,7 +234,10 @@ function AccountFooter({
     "focus-ring-stage inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-white/[0.07] px-3 text-sm font-semibold";
 
   return (
-    <div className="sticky bottom-0 mt-auto border-t border-white/10 bg-stage px-4 pt-3 pb-4">
+    <div
+      data-confetti-avoid
+      className="sticky bottom-0 mt-auto border-t border-white/10 bg-stage px-4 pt-3 pb-4"
+    >
       {/* WHO IS LOGGED IN, on a line of its own: squeezed in beside the two
           actions the username truncated to "demo.di…" at 390px. */}
       <p className="flex items-center gap-3">
@@ -212,7 +254,7 @@ function AccountFooter({
           to="/account"
           onClick={close}
           aria-current={active === "/account" ? "page" : undefined}
-          className={`${action} ${active.startsWith("/account") ? "bg-violet" : ""}`}
+          className={cn(action, active.startsWith("/account") && "bg-yellow text-ink")}
         >
           <User aria-hidden="true" className="size-4" />
           {t("nav.account")}

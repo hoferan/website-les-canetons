@@ -60,7 +60,7 @@ function DesktopDropdown({
   const { logOut, isPending } = useLogout(onDone);
   const fullName = `${member.firstName} ${member.lastName}`.trim();
   const pending = tools.reduce((sum, tool) => sum + (tool.count ?? 0), 0);
-  // The avatar's "you are here", the job the underline does for the text
+  // The avatar's "you are here", the job the yellow highlight does for the text
   // entries beside it: anywhere under /account, or on any screen the menu
   // leads to.
   const here = active.startsWith("/account") || tools.some((tool) => tool.to === active);
@@ -72,16 +72,18 @@ function DesktopDropdown({
           knows to click. */}
       <DropdownMenuTrigger
         aria-label={pending > 0 ? `${name}, ${t("nav.pending", { n: pending })}` : name}
-        className="focus-ring relative flex min-h-touch min-w-touch items-center justify-center rounded-full"
+        className="focus-ring-stage relative flex min-h-touch min-w-touch items-center justify-center rounded-full"
       >
-        <span className={`rounded-full ${here ? "ring-2 ring-violet ring-offset-2" : ""}`}>
+        <span
+          className={`rounded-full ${here ? "ring-2 ring-yellow ring-offset-2 ring-offset-stage" : ""}`}
+        >
           <Avatar firstName={member.firstName} lastName={member.lastName} />
         </span>
         {pending > 0 ? (
           <span
             data-testid="inbox-badge"
             aria-hidden="true"
-            className="absolute -top-0.5 -right-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-panel bg-pink px-1 text-xs leading-4 font-semibold text-ink"
+            className="absolute -top-0.5 -right-1 inline-flex min-w-5 items-center justify-center rounded-full border-2 border-stage bg-pink px-1 text-xs leading-4 font-semibold text-ink"
           >
             {pending}
           </span>

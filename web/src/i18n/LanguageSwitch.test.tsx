@@ -53,14 +53,14 @@ test("A PATH THAT MERELY STARTS WITH THOSE LETTERS IS NOT THE GERMAN MOUNT", () 
 // the code. Two tests rather than two renders in one, because render() does
 // not unmount the previous tree mid-test and both would then be on the page.
 test("a French page offers German, named in German", async () => {
-  await renderWithSession(<LanguageSwitch surface="dark" />);
+  await renderWithSession(<LanguageSwitch />);
   const link = screen.getByRole("link", { name: "Auf Deutsch wechseln" });
   expect(link).toHaveTextContent("DE");
   expect(link).toHaveAttribute("title", "Deutsch");
 });
 
 test("a German page offers French, named in French", async () => {
-  await renderWithSession(<LanguageSwitch surface="dark" />, { locale: "de-CH" });
+  await renderWithSession(<LanguageSwitch />, { locale: "de-CH" });
   const link = screen.getByRole("link", { name: "Passer en français" });
   expect(link).toHaveTextContent("FR");
   expect(link).toHaveAttribute("title", "Français");
@@ -72,7 +72,7 @@ test("a German page offers French, named in French", async () => {
  * the page you are on; exactly one link remains.
  */
 test("marks the current language, and does not link to it", async () => {
-  await renderWithSession(<LanguageSwitch surface="dark" />);
+  await renderWithSession(<LanguageSwitch />);
 
   const group = screen.getByRole("group", { name: "Langue" });
   expect(within(group).getAllByRole("link")).toHaveLength(1);
@@ -82,7 +82,7 @@ test("marks the current language, and does not link to it", async () => {
 });
 
 test("the link declares the target's language, not the page's", async () => {
-  await renderWithSession(<LanguageSwitch surface="dark" />);
+  await renderWithSession(<LanguageSwitch />);
 
   const link = screen.getByRole("link", { name: "Auf Deutsch wechseln" });
   // hreflang tells a crawler what is on the other end; lang stops a screen
@@ -103,7 +103,7 @@ test("THE PREFERENCE IS WRITTEN BEFORE THE NAVIGATION, or the switch bounces", a
   //
   // MUTATION TEST: drop rememberLocale from the handler and this fails with
   // null — and the app gets a switcher that cannot leave German.
-  await renderWithSession(<LanguageSwitch surface="dark" />, { locale: "de-CH" });
+  await renderWithSession(<LanguageSwitch />, { locale: "de-CH" });
 
   await userEvent.click(screen.getByRole("link", { name: "Passer en français" }));
 

@@ -66,7 +66,16 @@ function boxOf(element: Element, origin: DOMRect): Box {
  * so it is recomputed when the parent resizes; until the first measurement,
  * and in a test environment without layout, it draws nothing.
  */
-export function Confetti({ seed, colours }: { seed: number; colours: string[] }) {
+export function Confetti({
+  seed,
+  colours,
+  density,
+}: {
+  seed: number;
+  colours: string[];
+  /** See scatter(). */
+  density?: number;
+}) {
   const svg = useRef<SVGSVGElement>(null);
   const [layout, setLayout] = useState<{ width: number; height: number; pieces: Piece[] }>({
     width: 0,
@@ -94,6 +103,7 @@ export function Confetti({ seed, colours }: { seed: number; colours: string[] })
           seed,
           avoid,
           palette: colours.length,
+          density,
         }),
       });
     };
@@ -107,7 +117,7 @@ export function Confetti({ seed, colours }: { seed: number; colours: string[] })
     // Fonts arrive after the first layout and change how tall a heading is.
     void document.fonts?.ready.then(measure);
     return () => observer.disconnect();
-  }, [seed, colours.length]);
+  }, [seed, colours.length, density]);
 
   return (
     <svg
