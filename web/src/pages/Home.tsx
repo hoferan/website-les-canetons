@@ -7,6 +7,7 @@ import { PageSection } from "@/components/PageSection";
 
 import { useAgendaIndex } from "../api/generated/endpoints";
 import { Confetti } from "../carnival/Confetti";
+import { useFooterEdge } from "../carnival/footerEdge";
 import { Highlighted } from "../carnival/Highlighted";
 import { Scallop } from "../carnival/Scallop";
 import { SlotPhoto } from "../images/SlotPhoto";
@@ -99,6 +100,9 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 export function Home() {
   // The same query PublicAgenda reads, so React Query asks for it once.
   const agenda = useAgendaIndex();
+  // The yellow band is the page's last surface once it renders, and the
+  // footer's scalloped edge is drawn in its colour.
+  useFooterEdge(agenda.isPending ? null : "var(--color-yellow)");
 
   return (
     <>

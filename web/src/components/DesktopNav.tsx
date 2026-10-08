@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 import { t } from "../i18n";
 import { type NavEntry, EntryLink } from "./NavEntry";
-import { DESK_ACTIVE, DESK_IDLE, DESK_LINK } from "./navStyles";
+import { DESK_IDLE, DESK_LINK, NAV_HERE } from "./navStyles";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,8 +27,8 @@ const GAP = 20;
  * breakpoint could say how many fit. A hidden copy of every entry, plus the
  * "Plus" trigger, is measured instead, and re-measured whenever the bar or
  * that copy changes size; the copy's size changes when the web font arrives.
- * The copy measures every label at the active weight, so the item that
- * becomes current cannot push the bar onto a second line.
+ * The copy pads every label as the highlight does, so the item that becomes
+ * current cannot push the bar onto a second line.
  *
  * Where ResizeObserver does not exist (jsdom) every entry stays visible,
  * which is also what a first paint shows before anything is measured.
@@ -103,7 +103,8 @@ export function DesktopNav({
               entry={entry}
               active={entry.to === active}
               compact
-              className={`${DESK_LINK} ${entry.to === active ? DESK_ACTIVE : DESK_IDLE}`}
+              className={`${DESK_LINK} ${DESK_IDLE}`}
+              labelClassName={entry.to === active ? NAV_HERE : undefined}
             />
           </li>
         ))}
@@ -111,10 +112,8 @@ export function DesktopNav({
 
       {folded.length > 0 ? (
         <DropdownMenu>
-          <DropdownMenuTrigger
-            className={`${DESK_LINK} group ${foldedActive ? DESK_ACTIVE : DESK_IDLE}`}
-          >
-            {t("nav.more")}
+          <DropdownMenuTrigger className={`${DESK_LINK} group ${DESK_IDLE}`}>
+            <span className={foldedActive ? NAV_HERE : undefined}>{t("nav.more")}</span>
             <ChevronDown
               aria-hidden="true"
               className="size-4 transition-transform group-data-[state=open]:rotate-180"
@@ -155,24 +154,26 @@ export function DesktopNav({
           order. Clipped inside a zero-size box: `invisible` still takes up
           room, and at 768px the unclipped ruler, wider than the window,
           scrolled the whole page sideways. `w-max` keeps each entry at its
-          one-line width inside it. */}
+          one-line width inside it. Each label is padded as the highlight
+          pads it, so the entry that becomes current cannot push the bar onto
+          a second line. */}
       <div
         aria-hidden="true"
         className="pointer-events-none invisible absolute top-0 left-0 size-0 overflow-hidden"
       >
-        <ul ref={ruler} className="flex w-max gap-5 font-semibold whitespace-nowrap">
+        <ul ref={ruler} className="flex w-max gap-5 whitespace-nowrap">
           {entries.map(({ icon: Icon, ...entry }) => (
             <li key={entry.key}>
               <span className={DESK_LINK}>
                 {Icon ? <Icon className="size-5" /> : null}
-                {Icon && entry.iconOnly ? null : entry.label}
+                {Icon && entry.iconOnly ? null : <span className="px-[0.14em]">{entry.label}</span>}
                 {entry.href !== undefined && !Icon ? <ExternalLink className="size-4" /> : null}
               </span>
             </li>
           ))}
           <li>
             <span className={DESK_LINK}>
-              {t("nav.more")}
+              <span className="px-[0.14em]">{t("nav.more")}</span>
               <ChevronDown className="size-4" />
             </span>
           </li>

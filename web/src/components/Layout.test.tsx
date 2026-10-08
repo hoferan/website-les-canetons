@@ -438,3 +438,25 @@ test("the nav is still French by default", async () => {
   const nav = screen.getByRole("navigation", { name: "Navigation principale" });
   expect(within(nav).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 });
+
+/**
+ * THE FOOTER'S SCALLOPED EDGE is drawn in the colour the page ends on (ADR
+ * 0029). The home page ends on its yellow band once the agenda has answered,
+ * and leaving the page has to put the cream back, or every page after it
+ * shows yellow bumps under a cream body.
+ */
+test("the footer's edge takes the colour the page ends on, and drops it on leaving", async () => {
+  const user = userEvent.setup();
+  await renderWithSession(<AppRoutes />, { route: "/" });
+
+  const footer = screen.getByRole("contentinfo");
+  const edge = () => footer.querySelector("pattern path")?.getAttribute("style");
+
+  await screen.findByRole("heading", { name: "Découvrir les Canetons" });
+  expect(edge()).toContain("var(--color-yellow)");
+  expect(footer).not.toHaveClass("mt-16");
+
+  await user.click(within(footer).getByRole("link", { name: "Contact" }));
+  await waitFor(() => expect(edge()).toContain("var(--color-ground)"));
+  expect(footer).toHaveClass("mt-16");
+});

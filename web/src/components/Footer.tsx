@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 
+import { Scallop } from "../carnival/Scallop";
 import { t } from "../i18n";
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "./ui/button";
 import {
   FACEBOOK_URL,
   FacebookMark,
@@ -10,8 +13,8 @@ import {
   InstagramMark,
 } from "./social";
 
-const ACTION =
-  "focus-ring-stage inline-flex min-h-touch items-center justify-center rounded-md px-5 text-sm font-bold";
+/** Raised, as everything a visitor can press is, with the stage's pink shadow. */
+const ACTION = "focus-ring-stage px-5 shadow-raised-stage";
 
 /**
  * The foot of every page: who the band is, the two things a parent who has
@@ -29,8 +32,13 @@ const ACTION =
  *
  * THE NETWORKS ARE NAMED beside their marks, because few people recognise
  * Flickr's two dots without the word.
+ *
+ * THE TOP EDGE IS SCALLOPED in the colour of whatever sits above (ADR 0029),
+ * which only the page knows: `above` comes from carnival/footerEdge.ts, and
+ * null is the cream. On the cream the footer keeps its gap; under a coloured
+ * band it sits flush, so the band's bumps hang straight into it.
  */
-export function Footer() {
+export function Footer({ above }: { above: string | null }) {
   const follow = [
     { href: INSTAGRAM_URL, name: "Instagram", label: t("nav.instagramLabel"), Mark: InstagramMark },
     { href: FACEBOOK_URL, name: "Facebook", label: t("nav.facebookLabel"), Mark: FacebookMark },
@@ -38,17 +46,21 @@ export function Footer() {
   ];
 
   return (
-    <footer className="mt-16 bg-stage text-white">
-      <div className="mx-auto max-w-shell px-4 pt-12">
+    <footer className={cn("relative bg-stage text-white", above === null && "mt-16")}>
+      <Scallop from={above ?? "var(--color-ground)"} />
+      <div className="mx-auto max-w-shell px-4 pt-14">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-start">
           <div>
             <p className="font-display text-lg">Les Canetons de Fribourg</p>
             <p className="mt-2 max-w-md text-white/70">{t("nav.footerPitch")}</p>
             <div className="mt-5 grid grid-cols-2 gap-3 sm:flex">
-              <Link to="/join" className={`${ACTION} bg-violet hover:bg-violet/85`}>
+              <Link to="/join" className={cn(buttonVariants({ variant: "raised" }), ACTION)}>
                 {t("nav.join")}
               </Link>
-              <Link to="/contact" className={`${ACTION} border border-white/25 hover:bg-white/10`}>
+              <Link
+                to="/contact"
+                className={cn(buttonVariants({ variant: "raised-light" }), ACTION)}
+              >
                 {t("nav.contact")}
               </Link>
             </div>
