@@ -40,6 +40,8 @@ export function EntryLink({
   className,
   onClick,
   compact = false,
+  labelClassName,
+  leading,
 }: {
   entry: NavEntry;
   active: boolean;
@@ -47,7 +49,19 @@ export function EntryLink({
   onClick?: () => void;
   /** The desktop bar, where an `iconOnly` entry drops its label. */
   compact?: boolean;
+  /** Wraps the label in a span with these classes: the "you are here"
+   *  highlight, which hugs the word rather than filling the row. */
+  labelClassName?: string;
+  /** Drawn before an internal link's label: the phone menu's marker. An
+   *  external link has its brand mark there instead. */
+  leading?: ReactNode;
 }) {
+  const label = labelClassName ? (
+    <span className={labelClassName}>{entry.label}</span>
+  ) : (
+    entry.label
+  );
+
   if (entry.href !== undefined) {
     const Icon = entry.icon;
     // rel=noreferrer: without it a target=_blank link hands the opened page a
@@ -62,7 +76,7 @@ export function EntryLink({
         onClick={onClick}
       >
         {Icon ? <Icon className="size-5 shrink-0" /> : null}
-        {Icon && compact && entry.iconOnly ? null : entry.label}
+        {Icon && compact && entry.iconOnly ? null : label}
         {Icon ? null : <ExternalLink aria-hidden="true" className="size-4 shrink-0" />}
       </a>
     );
@@ -75,7 +89,8 @@ export function EntryLink({
       aria-current={active ? "page" : undefined}
       className={className}
     >
-      {entry.label}
+      {leading}
+      {label}
       {entry.badge}
     </Link>
   );

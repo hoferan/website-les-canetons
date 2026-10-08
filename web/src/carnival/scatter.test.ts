@@ -56,6 +56,14 @@ test("scales the number of pieces with the area", () => {
   expect(desktop.length).toBeGreaterThan(phone.length * 2);
 });
 
+/** The phone menu asks for more, because its list leaves little free space. */
+test("multiplies the number of pieces by the density", () => {
+  const usual = scatter({ width: 390, height: 600, seed: 1, avoid: [] });
+  const dense = scatter({ width: 390, height: 600, seed: 1, avoid: [], density: 2.5 });
+
+  expect(dense.length).toBe(Math.round(usual.length * 2.5));
+});
+
 test("scatters nothing into a box with no size", () => {
   expect(scatter({ width: 0, height: 0, seed: 1, avoid: [] })).toEqual([]);
 });

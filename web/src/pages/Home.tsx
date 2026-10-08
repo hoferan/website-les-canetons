@@ -7,6 +7,7 @@ import { PageSection } from "@/components/PageSection";
 
 import { useAgendaIndex } from "../api/generated/endpoints";
 import { Confetti } from "../carnival/Confetti";
+import { useFooterEdge } from "../carnival/footerEdge";
 import { Highlighted } from "../carnival/Highlighted";
 import { POSTER_CONFETTI } from "../carnival/PageHero";
 import { Scallop } from "../carnival/Scallop";
@@ -97,6 +98,9 @@ const BAND_CONFETTI = ["var(--color-pink)", "var(--color-violet)", "#fff"];
 export function Home() {
   // The same query PublicAgenda reads, so React Query asks for it once.
   const agenda = useAgendaIndex();
+  // The yellow band is the page's last surface once it renders, and the
+  // footer's scalloped edge is drawn in its colour.
+  useFooterEdge(agenda.isPending ? null : "var(--color-yellow)");
 
   return (
     <>
@@ -131,8 +135,14 @@ export function Home() {
                 It wraps to four lines at 390px at either text-3xl or text-4xl;
                 the smaller size saves 4px of line-height per line, not a line.
                 A sentence-case heading is not available while this face is in
-                use; that is the look, not a bug. */}
-            <h1 data-confetti-avoid className="font-display text-3xl sm:text-4xl md:text-5xl">
+                use; that is the look, not a bug.
+
+                leading-[1.18] at every size, for the highlight's sake: see
+                Highlighted.tsx. */}
+            <h1
+              data-confetti-avoid
+              className="font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
+            >
               <Highlighted text={t("home.hero")} mark={t("home.heroHighlight")} />
             </h1>
 

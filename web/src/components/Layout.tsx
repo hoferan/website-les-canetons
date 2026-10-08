@@ -5,10 +5,10 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 import { DesktopNav } from "./DesktopNav";
 import { type NavEntry } from "./NavEntry";
-import { DESK_ACTIVE, DESK_IDLE, DESK_LINK } from "./navStyles";
 import { type MemberEntry, PhoneNav } from "./PhoneNav";
 
 import { useInboxSummary } from "../api/generated/endpoints";
+import { FooterEdgeContext } from "../carnival/footerEdge";
 import { type TranslationKey, t } from "../i18n";
 import { Hreflang } from "../i18n/Hreflang";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
@@ -25,7 +25,9 @@ import {
   INSTAGRAM_URL,
   InstagramMark,
 } from "./social";
+import { buttonVariants } from "./ui/button";
 import { Toaster } from "./ui/sonner";
+import { cn } from "@/lib/utils";
 
 /**
  * The public nav, IN ORDER OF IMPORTANCE, left to right — what a stranger
@@ -74,6 +76,9 @@ export function Layout() {
   const { config, user, can } = useSession();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  // The colour the page ends on, for the footer's scalloped edge. Null is the
+  // cream; see carnival/footerEdge.ts.
+  const [footerEdge, setFooterEdge] = useState<string | null>(null);
   // Every link in the phone layer closes it on click, but a route change can
   // also come from Back or from a redirect, and the layer covers the whole
   // screen, so it must never outlive the page it was opened on.
@@ -196,14 +201,14 @@ export function Layout() {
       <EnvRibbon env={config.env} />
 
       <header className="bg-stage text-white">
-        <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-shell items-center justify-between gap-3 px-4 py-3 md:pb-0">
           {/* The lockup, and the reasoning for splitting the mark from the
               wordmark, both live in Logo.tsx. */}
           <Logo />
           {/* Desktop only. The phone's copy sits in the Menu bar below; see
               LanguageSwitch for why the two differ. */}
           <div className="hidden md:block">
-            <LanguageSwitch surface="dark" />
+            <LanguageSwitch />
           </div>
         </div>
       </header>
@@ -219,10 +224,18 @@ export function Layout() {
           sticky element only sticks within its parent, and inside the header
           it would scroll away with it. On a phone the Menu bar stays at the
           top, so the menu opens from anywhere on a long page; the desktop bar
-          scrolls away as before. */}
+          scrolls away as before.
+
+          ON THE STAGE, like the header above it (ADR 0029). It was a white
+          bar, which split the chrome in two and made the phone menu the one
+          screen that looked like the band. The mock-up puts the desktop
+          entries in the header's own row; they stay a row of their own
+          because beside the full lockup and the language switch only three
+          fit before "Plus" at 1280px, and nav.spec.ts pins that nothing folds
+          there. */}
       <nav
         aria-label={t("nav.primary")}
-        className="sticky top-0 z-30 border-b border-line bg-panel text-ink md:static md:border-b-0"
+        className="sticky top-0 z-30 bg-stage text-white md:static"
       >
         <PhoneNav
           open={open}
@@ -240,10 +253,15 @@ export function Layout() {
             user ? (
               <AccountDropdown member={user} active={active} tools={accountTools} />
             ) : (
+              // The raised yellow button, its shadow pink because ink vanishes
+              // on the stage.
               <Link
                 to="/login"
                 aria-current={active === "/login" ? "page" : undefined}
-                className={`${DESK_LINK} font-semibold ${active === "/login" ? DESK_ACTIVE : DESK_IDLE}`}
+                className={cn(
+                  buttonVariants({ variant: "raised" }),
+                  "focus-ring-stage border-2 px-3.5 shadow-raised-stage",
+                )}
               >
                 {t("nav.login")}
               </Link>
@@ -263,10 +281,12 @@ export function Layout() {
           layout shift of 0.57 on /history (#236). The cost is a footer one
           scroll away on a page shorter than the screen. */}
       <main id="main" tabIndex={-1} className="min-h-dvh outline-none">
-        <Outlet />
+        <FooterEdgeContext.Provider value={setFooterEdge}>
+          <Outlet />
+        </FooterEdgeContext.Provider>
       </main>
 
-      <Footer />
+      <Footer above={footerEdge} />
 
       {/* Mounted once here rather than per page: the layout route survives
           navigation, so a toast raised by a mutation is not unmounted by the

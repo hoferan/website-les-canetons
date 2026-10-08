@@ -60,15 +60,22 @@ export function scatter({
   seed,
   avoid,
   palette = 4,
+  density = 1,
 }: {
   width: number;
   height: number;
   seed: number;
   avoid: Box[];
   palette?: number;
+  /**
+   * A multiple of the mock-ups' density, for a surface whose free space is a
+   * small part of it: the phone menu's list covers most of the screen, and at
+   * the usual density its empty lower half got four pieces.
+   */
+  density?: number;
 }): Piece[] {
   const random = generator(seed);
-  const wanted = Math.round((width * height) / AREA_PER_PIECE);
+  const wanted = Math.round((width * height * density) / AREA_PER_PIECE);
   const pieces: Piece[] = [];
 
   for (let i = 0; i < wanted; i++) {
