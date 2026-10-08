@@ -19,14 +19,23 @@ test("the German mount renders German and says so in the document", async ({ pag
 
   // What a screen reader picks its voice from, corrected at boot by main.tsx.
   await expect(page.locator("html")).toHaveAttribute("lang", "de-CH");
-  await expect(page.getByRole("link", { name: "Wo Sie uns sehen" })).toBeVisible();
+  // In the navigation: the home page hero links to the agenda by the same name.
+  await expect(
+    page
+      .getByRole("navigation", { name: "Hauptnavigation" })
+      .getByRole("link", { name: "Wo Sie uns sehen" }),
+  ).toBeVisible();
 });
 
 test("French stays French, which is the regression a basename can cause", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.locator("html")).toHaveAttribute("lang", "fr-CH");
-  await expect(page.getByRole("link", { name: "Où nous voir" })).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Navigation principale" })
+      .getByRole("link", { name: "Où nous voir" }),
+  ).toBeVisible();
 });
 
 test("THE SWITCH ROUND-TRIPS, AND KEEPS THE PAGE", async ({ page }) => {

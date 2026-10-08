@@ -12,19 +12,21 @@
  * public pages are read once by a stranger, while the members' area is read
  * every week, on a phone, outdoors, by someone checking whether they play on
  * Saturday. So the CHROME is black and neon — the header is the stage — and the
- * page body is light.
+ * page body is light: cream, which the carnival colours below sit well on.
  *
- * The band is a youth Guggenmusik that performs in UV costumes at night, and
- * the old site's background was a neon splatter on black. Neon on black IS the
- * identity; anyone tempted to neutralise this palette should open
- * web/public/assets/img/canetons.jpg first.
+ * The public pages add a carnival layer on top (ADR 0029): a violet-to-pink
+ * poster hero, yellow, cyan, lime and lilac surfaces, raised buttons and cards,
+ * and confetti on the coloured surfaces only. The members' area takes the
+ * colours and the raised controls and leaves the confetti out.
  *
  * --color-* is Tailwind 4's theme namespace, so --color-violet gives you
  * bg-violet, text-violet, border-violet and so on. There is no
  * tailwind.config.ts in this project and there should not be one.
  */
 @theme {
-  --color-ground: #f7f8fa;
+  /* Cream rather than the grey it replaced: the carnival colours below look
+     muddy on a cool grey (ADR 0029). Ink-muted on it is 6.4:1. */
+  --color-ground: #fff7ec;
   --color-panel: #fff;
   --color-ink: #14121c;
   --color-ink-muted: #5a5768;
@@ -46,6 +48,21 @@
      palette red is not a brand colour — violet is — so red is free to mean
      exactly one thing. */
   --color-danger: #e0201a;
+
+  /* The carnival colours (ADR 0029). Surfaces and confetti, never text on
+     cream: each carries ink, at 8.9:1 (lilac) or better, and none of them
+     takes white. */
+  --color-yellow: #ffd23f;
+  --color-cyan: #2ee6d6;
+  --color-lime: #b6f23a;
+  --color-lilac: #b9a8ff;
+
+  /* The raised look: a hard offset shadow under a 3px ink outline, on the
+     things a visitor can press. Ink on light surfaces; on the stage, where ink
+     would vanish, the -stage shadow is pink. */
+  --shadow-raised: 5px 5px 0 var(--color-ink);
+  --shadow-raised-sm: 3px 3px 0 var(--color-ink);
+  --shadow-raised-stage: 4px 4px 0 var(--color-pink);
 
   /* Event tag chips (#107): a tint and an ink per name in
      App\Support\TagColour. Each ink is at least 7:1 on its tint, well past
@@ -275,6 +292,28 @@ h2 {
     outline: 2px solid #fff;
     outline-offset: 2px;
   }
+}
+
+/* The poster surface behind a hero (ADR 0029). Violet at the bottom left,
+   where the text sits at every width, and pink only at the top right: white
+   on the pink end is 3.3:1, too little for body text, so the gradient runs
+   away from it. */
+@utility bg-poster {
+  background-image: linear-gradient(
+    to top right,
+    var(--color-violet) 0%,
+    #7a2fd0 50%,
+    var(--color-pink) 100%
+  );
+}
+
+/* The wavy pink line under a section heading. A repeating 28px tile rather
+   than one stretched SVG, so the waves keep their shape at any heading
+   length. Pair it with `w-fit`, or the line runs the width of the page. */
+@utility heading-wave {
+  padding-bottom: 0.75rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 10'%3E%3Cpath d='M0 5q7-6 14 0t14 0' fill='none' stroke='%23ff3d9a' stroke-width='3'/%3E%3C/svg%3E")
+    repeat-x left bottom / 28px 10px;
 }
 
 /* Every duration to near-zero under reduced motion. This covers the

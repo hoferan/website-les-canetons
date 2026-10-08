@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "vitest";
 
 import { setLocale } from "../i18n";
-import { formatEventWhen } from "./formatEventWhen";
+import { formatEventDay, formatEventWhen } from "./formatEventWhen";
 
 // THIN SPACE, EN DASH, THIN SPACE -- what Intl's formatRange actually emits,
 // and therefore what the hand-composed one-day form matches. Spelled out here
@@ -69,4 +69,13 @@ test("a night event ending after midnight is a date RANGE, judged in Fribourg", 
   // "23:00 – 01:00", which describes an event that ran backwards.
   const when = formatEventWhen("2026-09-05T23:00:00+02:00", "2026-09-06T01:00:00+02:00");
   expect(when).toBe(`sam., 05.09.2026 23:00${SEP}dim., 06.09.2026 01:00`);
+});
+
+test("the date badge reads the day and the short month in Fribourg", async () => {
+  // 23:30 UTC on 30 November is already 1 December in Fribourg, so a badge
+  // built from the browser's zone on a UTC runner would show the wrong day.
+  expect(formatEventDay("2026-11-30T23:30:00Z")).toEqual({ day: "1", month: "déc." });
+
+  await setLocale("de-CH");
+  expect(formatEventDay("2026-11-30T23:30:00Z")).toEqual({ day: "1", month: "Dez." });
 });

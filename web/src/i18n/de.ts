@@ -790,6 +790,7 @@ export const de: typeof fr = {
 
   home: {
     hero: "Die Kinder-Guggenmusik aus Freiburg, seit 2002.",
+    heroHighlight: "Kinder-Guggenmusik",
     heroSub:
       "Von 7 bis 18 Jahren — und ganz ohne Musikkenntnisse: Die Leiter bringen die Stücke Register für Register bei, an den Proben am Samstagvormittag.",
     discover: "Die Canetons entdecken",

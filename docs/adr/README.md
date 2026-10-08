@@ -52,3 +52,4 @@ decides. Copy [`adr-template.md`](adr-template.md), name the file
 | [0026](0026-user-typed-content-carries-its-own-translations.md)     | Store user-typed content in both languages, and fall back per entry           |
 | [0027](0027-draft-events.md)                                        | Write events as drafts and publish them as a separate act                     |
 | [0028](0028-photos-live-in-the-database-in-sizes-made-by-the-browser.md) | Keep photos in the database, in three sizes the browser makes |
+| [0029](0029-the-carnival-look.md) | Give the public pages a carnival look: poster heroes, scalloped edges and raised cards |

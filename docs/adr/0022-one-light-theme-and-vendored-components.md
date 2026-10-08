@@ -6,6 +6,9 @@ decision-makers: André Hofer
 
 # Use one light theme, "Scène", with vendored components that alias it
 
+The light grey and white page body decided here was replaced by the carnival look of
+[ADR 0029](0029-the-carnival-look.md) on 2026-10-08. The rest of this record stands.
+
 ## Context and Problem Statement
 
 Les Canetons is a youth Guggenmusik that performs at night in UV costumes. The old

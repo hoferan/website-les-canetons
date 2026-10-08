@@ -1,5 +1,16 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * tailwind-merge knows Tailwind's own shadow sizes and nothing of this theme's.
+ * The raised shadows in styles.css are listed here so that one of them REPLACES
+ * a vendored component's shadow-sm instead of landing beside it, where
+ * whichever rule Tailwind emitted last would win. A new --shadow-* token in
+ * styles.css belongs in this list too.
+ */
+const twMerge = extendTailwindMerge({
+  extend: { theme: { shadow: ["raised", "raised-sm", "raised-stage"] } },
+});
 
 /**
  * shadcn/ui's class helper, as its CLI writes it.
