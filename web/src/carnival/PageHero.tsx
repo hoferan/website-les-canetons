@@ -51,7 +51,12 @@ export function PageHero({
           width === "shell" ? "max-w-shell" : "max-w-text",
         )}
       >
-        <h1 data-confetti-avoid className="w-fit font-display text-3xl sm:text-4xl md:text-5xl">
+        {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
+            bar per line: see Highlighted.tsx. */}
+        <h1
+          data-confetti-avoid
+          className="w-fit font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
+        >
           <Highlighted text={title} mark={mark} />
         </h1>
         {children ? (
