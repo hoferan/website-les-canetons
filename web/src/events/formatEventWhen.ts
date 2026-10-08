@@ -114,6 +114,24 @@ function dayIn(zone: string, value: string): string {
   }).format(new Date(value));
 }
 
+/**
+ * The day and short month for a date badge, in Fribourg like everything else
+ * here. A badge is a picture of the date, so it repeats what formatEventWhen
+ * says and its caller hides it from screen readers.
+ */
+export function formatEventDay(startsAt: string): { day: string; month: string } {
+  const parts = new Intl.DateTimeFormat(intlTag(currentLocale()), {
+    timeZone: ZONE,
+    day: "numeric",
+    month: "short",
+  }).formatToParts(new Date(startsAt));
+
+  return {
+    day: parts.find((part) => part.type === "day")?.value ?? "",
+    month: parts.find((part) => part.type === "month")?.value ?? "",
+  };
+}
+
 export function formatEventWhen(startsAt: string | null, endsAt: string | null): string {
   // A DRAFT MAY HAVE NEITHER, or only a start. Saying so beats an "Invalid
   // Date" the committee has to interpret, and a start with no end is still

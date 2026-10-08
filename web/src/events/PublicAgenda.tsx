@@ -4,11 +4,14 @@ import { rowsOf } from "../api/collection";
 import { useAgendaIndex } from "../api/generated/endpoints";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
-import { formatEventWhen } from "./formatEventWhen";
+import { formatEventDay, formatEventWhen } from "./formatEventWhen";
 import { TagChip } from "./TagChip";
 
 /** How many appearances the front page shows before it sends people to /agenda. */
 const SHOWN = 3;
+
+/** The date badges take turns, so neighbouring cards do not look alike. */
+const BADGE_TINTS = ["bg-yellow", "bg-cyan", "bg-lime"];
 
 /**
  * One appearance, as a stranger reads it.
@@ -28,32 +31,52 @@ const SHOWN = 3;
  * "S'inscrire" on it would send a reader to a form that refuses them, which is
  * the same promise broken either way round.
  */
-export function AgendaEntry({ event }: { event: PublicEventResource }) {
-  return (
-    <li className="rounded-lg border border-line bg-panel p-4">
-      <h3 className="font-display text-xl text-ink">{event.title}</h3>
-      {event.tags.length > 0 ? (
-        <div className="mt-tight flex flex-wrap gap-tight text-sm">
-          {event.tags.map((tag) => (
-            <TagChip key={tag.id} tag={tag} />
-          ))}
-        </div>
-      ) : null}
-      <p className="mt-tight text-sm text-ink-muted">
-        {formatEventWhen(event.startsAt, event.endsAt)}
-      </p>
-      <p className="mt-tight text-sm text-ink-muted">{event.location}</p>
+export function AgendaEntry({
+  event,
+  tint = "bg-yellow",
+}: {
+  event: PublicEventResource;
+  /** The date badge's carnival colour, as a `bg-*` class. */
+  tint?: string;
+}) {
+  const { day, month } = formatEventDay(event.startsAt);
 
-      {event.registrationOpen ? (
-        <ButtonLink
-          to={`/events/${event.id}/book`}
-          variant="outline"
-          className="mt-related"
-          ariaLabel={t("agenda.registerFor", { title: event.title })}
-        >
-          {t("agenda.register")}
-        </ButtonLink>
-      ) : null}
+  return (
+    <li className="flex gap-4 rounded-[18px] border-3 border-ink bg-panel p-4 shadow-raised">
+      {/* A picture of the date. The line under the title says the same thing
+          in words, so a screen reader skips this. */}
+      <div
+        aria-hidden="true"
+        className={`flex w-18 shrink-0 flex-col items-center self-start rounded-xl border-3 border-ink py-2 ${tint}`}
+      >
+        <span className="font-display text-3xl leading-none">{day}</span>
+        <span className="mt-1 text-xs font-bold tracking-widest uppercase">{month}</span>
+      </div>
+      <div className="min-w-0">
+        <h3 className="font-display text-xl text-ink">{event.title}</h3>
+        {event.tags.length > 0 ? (
+          <div className="mt-tight flex flex-wrap gap-tight text-sm">
+            {event.tags.map((tag) => (
+              <TagChip key={tag.id} tag={tag} />
+            ))}
+          </div>
+        ) : null}
+        <p className="mt-tight text-sm text-ink-muted">
+          {formatEventWhen(event.startsAt, event.endsAt)}
+        </p>
+        <p className="mt-tight text-sm text-ink-muted">{event.location}</p>
+
+        {event.registrationOpen ? (
+          <ButtonLink
+            to={`/events/${event.id}/book`}
+            variant="raised-violet"
+            className="mt-related"
+            ariaLabel={t("agenda.registerFor", { title: event.title })}
+          >
+            {t("agenda.register")}
+          </ButtonLink>
+        ) : null}
+      </div>
     </li>
   );
 }
@@ -91,13 +114,17 @@ export function PublicAgenda() {
 
   return (
     <section className="mt-block" aria-labelledby="agenda-heading">
-      <h2 id="agenda-heading" className="font-display text-2xl">
+      <h2 id="agenda-heading" className="heading-wave w-fit font-display text-2xl md:text-3xl">
         {t("agenda.heading")}
       </h2>
 
-      <ul className="mt-related grid gap-3">
-        {upcoming.map((event) => (
-          <AgendaEntry key={event.id} event={event} />
+      <ul className="mt-block grid gap-5 md:grid-cols-2">
+        {upcoming.map((event, index) => (
+          <AgendaEntry
+            key={event.id}
+            event={event}
+            tint={BADGE_TINTS[index % BADGE_TINTS.length]}
+          />
         ))}
       </ul>
 
@@ -105,7 +132,7 @@ export function PublicAgenda() {
           list that already IS all the dates sends somebody to a page they have
           just finished reading. */}
       {all.length > SHOWN ? (
-        <ButtonLink to="/agenda" variant="outline" className="mt-related">
+        <ButtonLink to="/agenda" variant="raised-light" className="mt-block">
           {t("agenda.seeAll")}
         </ButtonLink>
       ) : null}

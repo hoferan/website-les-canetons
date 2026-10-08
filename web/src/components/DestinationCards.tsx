@@ -1,9 +1,18 @@
+import type { LucideIcon } from "lucide-react";
 import { useId } from "react";
 import { Link } from "react-router-dom";
 
 import { Card } from "@/components/ui/card";
 
-export type Destination = { to: string; title: string; description: string };
+export type Destination = {
+  to: string;
+  title: string;
+  description: string;
+  /** Decoration only: the label already says where the card goes. */
+  icon: LucideIcon;
+  /** A carnival colour behind the icon, as a `bg-*` class. */
+  tint: string;
+};
 
 /**
  * A short grid of link cards pointing somewhere else on the site.
@@ -45,6 +54,12 @@ export type Destination = { to: string; title: string; description: string };
  * twice the gap between them. A sighted visitor saw one heading over five
  * cards; a screen-reader user heard a properly named second list. The two
  * trees disagreed, and the accessibility tree was the only one that was right.
+ *
+ * THE RAISED, TILTED LOOK IS ADR 0029's, and it is for a coloured band: the
+ * caller puts this on yellow. The tilt alternates per card, and it is on the
+ * <li> rather than the card so the focus ring tilts with what it outlines.
+ * `rounded-[20px]` and `border-3` override the Card base through tailwind-merge,
+ * which `cn()` in Card applies to its own className prop.
  */
 export function DestinationCards({
   label,
@@ -56,18 +71,30 @@ export function DestinationCards({
   const headingId = useId();
 
   return (
-    <section className="mt-block">
-      <h2 id={headingId} className="font-display text-2xl">
+    <section>
+      <h2
+        id={headingId}
+        data-confetti-avoid
+        className="heading-wave w-fit font-display text-2xl md:text-3xl"
+      >
         {label}
       </h2>
 
-      <ul aria-labelledby={headingId} className="mt-related grid gap-3 sm:grid-cols-2">
-        {destinations.map((destination) => (
-          <li key={destination.to}>
-            <Card asChild className="h-full gap-0 p-5 transition-colors hover:border-violet">
-              <Link to={destination.to} className="focus-ring">
-                <span className="font-display text-xl text-violet">{destination.title}</span>
-                <span className="mt-tight block text-ink-muted">{destination.description}</span>
+      <ul aria-labelledby={headingId} className="mt-block grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {destinations.map(({ to, title, description, icon: Icon, tint }) => (
+          <li key={to} className="odd:-rotate-[1.2deg] even:rotate-1" data-confetti-avoid>
+            <Card
+              asChild
+              className="h-full gap-3 rounded-[20px] border-3 border-ink p-4 shadow-raised transition-transform hover:-translate-y-0.5"
+            >
+              <Link to={to} className="focus-ring">
+                <span
+                  className={`grid size-13 place-items-center rounded-[14px] border-3 border-ink ${tint}`}
+                >
+                  <Icon aria-hidden="true" className="size-7" strokeWidth={2.25} />
+                </span>
+                <span className="font-display text-xl text-ink uppercase">{title}</span>
+                <span className="block text-ink-muted">{description}</span>
               </Link>
             </Card>
           </li>

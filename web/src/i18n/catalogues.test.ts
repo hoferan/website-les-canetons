@@ -44,6 +44,20 @@ test("the two catalogues carry exactly the same keys", () => {
  * French ones, which is where a human is already reading the copy.
  */
 
+/**
+ * Each language picks the words its home page hero highlights, and a
+ * highlight that is not in the sentence renders nothing without complaint.
+ * So the pair is checked for both catalogues rather than trusted to whoever
+ * edits one of them.
+ */
+test.each([
+  ["fr", fr.home],
+  ["de", de.home],
+])("the %s hero highlights words that are in the hero", (_, home) => {
+  expect(home.heroHighlight).not.toBe("");
+  expect(home.hero).toContain(home.heroHighlight);
+});
+
 test("German uses ss, never the German-German eszett", () => {
   const offenders = keyPaths(de).filter((path) => {
     const value = path

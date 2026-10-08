@@ -5,7 +5,7 @@ import { Slot } from "radix-ui";
 import { cn } from "@/lib/utils";
 
 /**
- * VENDORED from shadcn/ui and then edited. Four deliberate local changes:
+ * VENDORED from shadcn/ui and then edited. Five deliberate local changes:
  *
  * 1. `min-h-touch` (44px, from --spacing-touch in styles.css) on the base
  *    variant. Every interactive control in this app has a floor, and putting it
@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
  * 4. `active:scale-[0.98]` on the base variant -- the press feedback. The
  *    existing `transition-all` animates it and the global reduced-motion
  *    block in styles.css zeroes it; do not add a duration here.
+ * 5. The `raised` variants, marked where they are defined.
  *
  * Which controls carry an icon, and which carry only one, is decided in
  * docs/adr/0025-icons-on-controls.md. Read it before adding either.
@@ -47,6 +48,15 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // 5. THE RAISED VARIANTS ARE LOCAL, from ADR 0029: an ink outline and a
+        // hard offset shadow, for the public pages. On the stage the caller
+        // swaps the shadow for shadow-raised-stage, since ink on black vanishes.
+        raised:
+          "rounded-xl border-3 border-ink bg-yellow font-bold text-ink shadow-raised-sm hover:bg-yellow/85",
+        "raised-light":
+          "rounded-xl border-3 border-ink bg-white font-bold text-ink shadow-raised-sm hover:bg-ground",
+        "raised-violet":
+          "rounded-xl border-3 border-ink bg-violet font-bold text-white shadow-raised-sm hover:bg-violet/90",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
