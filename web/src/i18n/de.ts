@@ -942,6 +942,7 @@ export const de: typeof fr = {
 
   history: {
     heading: "Die Geschichte der Canetons",
+    headingHighlight: "Geschichte",
     empty: "Die Geschichte wurde noch nicht geschrieben.",
     loadFailed: "Die Geschichte konnte nicht geladen werden.",
     inFrench: "Auf Französisch",
@@ -1036,6 +1037,7 @@ export const de: typeof fr = {
 
   committee: {
     heading: "Der Vorstand",
+    headingHighlight: "Vorstand",
     contactHeading: "Kontakt der Canetons",
     writeToCommittee: "Dem Vorstand schreiben",
     booking: "Um die Canetons zu buchen:",

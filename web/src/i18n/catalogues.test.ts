@@ -62,9 +62,13 @@ test.each([
 test.each([
   ["fr", "agenda", fr.agenda],
   ["fr", "band", fr.band],
+  ["fr", "committee", fr.committee],
+  ["fr", "history", fr.history],
   ["fr", "join", fr.join],
   ["de", "agenda", de.agenda],
   ["de", "band", de.band],
+  ["de", "committee", de.committee],
+  ["de", "history", de.history],
   ["de", "join", de.join],
 ])("the %s %s heading highlights words that are in the heading", (_, __, page) => {
   expect(page.headingHighlight).not.toBe("");

@@ -1402,6 +1402,8 @@ export const fr = {
    */
   history: {
     heading: "L’Histoire des Canetons",
+    // With its article: "L’" and "Histoire" are one word in speech.
+    headingHighlight: "L’Histoire",
     empty: "L’histoire n’a pas encore été écrite.",
     loadFailed: "L’histoire n’a pas pu être chargée.",
     // Under an entry shown in the other language. Which one is shown depends
@@ -1525,6 +1527,7 @@ export const fr = {
   /** /committee — who to write to, and who holds which seat. */
   committee: {
     heading: "Le comité",
+    headingHighlight: "comité",
     contactHeading: "Contact des Canetons",
     writeToCommittee: "Écrire au comité",
     booking: "Pour réserver les Canetons :",

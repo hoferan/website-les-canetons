@@ -37,7 +37,7 @@ export function PageHero({
   /** The words of `title` to set on the yellow highlight, if any. */
   mark?: string;
   seed: number;
-  width?: "shell" | "text";
+  width?: "shell" | "text" | "form";
   /** A line or two under the heading, already translated. */
   children?: React.ReactNode;
 }) {
@@ -48,7 +48,9 @@ export function PageHero({
       <div
         className={cn(
           "relative mx-auto px-4 pt-8 pb-14 md:pt-12 md:pb-20",
-          width === "shell" ? "max-w-shell" : "max-w-text",
+          width === "shell" && "max-w-shell",
+          width === "text" && "max-w-text",
+          width === "form" && "max-w-md",
         )}
       >
         {/* leading-[1.18] as on the home page, so a highlight that wraps gets a

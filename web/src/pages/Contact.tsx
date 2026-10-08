@@ -4,11 +4,14 @@ import { useRef, useState, type FormEvent } from "react";
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 import { contactStore, useFormTokenShow } from "../api/generated/endpoints";
 import type { ContactRequest } from "../api/generated/model";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
+import { PageHero } from "../carnival/PageHero";
+import { RAISED_CARD } from "../carnival/raised";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { Notice } from "../components/Notice";
 import { type TranslationKey, t } from "../i18n";
@@ -119,86 +122,100 @@ export function Contact() {
 
   if (sent) {
     return (
-      <PageSection width="text">
-        <h1 className="font-display text-3xl">{t("contact.sentHeading")}</h1>
-        <p className="mt-related text-ink-muted">{t("contact.sentBody")}</p>
-      </PageSection>
+      <>
+        <PageHero title={t("contact.sentHeading")} seed={23} width="text" />
+        <PageSection width="text">
+          <p className="text-ink-muted">{t("contact.sentBody")}</p>
+        </PageSection>
+      </>
     );
   }
 
   return (
-    <PageSection width="text">
-      <h1 className="font-display text-3xl">{t("contact.heading")}</h1>
-      <p className="mt-related text-ink-muted">{t("contact.intro")}</p>
+    <>
+      <PageHero title={t("contact.heading")} seed={23} width="text">
+        <p>{t("contact.intro")}</p>
+      </PageHero>
 
-      {/* A MEMBER IS TOLD, NOT STOPPED. They would retype a name the session is
-          already holding and go through three protections meant for strangers
-          — honeypot, form token, idempotency key — to reach a committee most of
-          them can reach faster on WhatsApp. But the site publishes no direct
-          contact detail anywhere (comite@lescanetons.org was pulled from
-          /committee in the 2026-08-31 audit; /join's contacts are
-          placeholders, see Join.tsx:26), so a member who has not got the
-          number has only this form. Hiding it behind a reveal was built and
-          rejected on 2026-09-18 for exactly that reason: it charges a click of
-          everybody it does not help, and does not spare the one it does a
-          single keystroke, since /api/v1/me carries no e-mail address to
-          prefill with. Attributing a member's message to their account is a
-          real fix and belongs with the committee inbox (#88). */}
-      {user ? <Notice className="mt-related">{t("contact.memberNotice")}</Notice> : null}
+      <PageSection width="text">
+        {/* A MEMBER IS TOLD, NOT STOPPED. They would retype a name the session is
+            already holding and go through three protections meant for strangers
+            — honeypot, form token, idempotency key — to reach a committee most of
+            them can reach faster on WhatsApp. But the site publishes no direct
+            contact detail anywhere (comite@lescanetons.org was pulled from
+            /committee in the 2026-08-31 audit; /join's contacts are
+            placeholders, see Join.tsx:26), so a member who has not got the
+            number has only this form. Hiding it behind a reveal was built and
+            rejected on 2026-09-18 for exactly that reason: it charges a click of
+            everybody it does not help, and does not spare the one it does a
+            single keystroke, since /api/v1/me carries no e-mail address to
+            prefill with. Attributing a member's message to their account is a
+            real fix and belongs with the committee inbox (#88). */}
+        {user ? <Notice className="mb-related">{t("contact.memberNotice")}</Notice> : null}
 
-      <FormError error={error} />
+        <FormError error={error} />
 
-      {/* The values are NOT cleared on failure: a rejected message must not
-          make someone retype it. Same rule as the event form. */}
-      <Card asChild className="mt-related gap-0 p-5">
-        <form onSubmit={submit} noValidate className="space-y-related">
-          <RequiredLegend />
-          {FIELDS.map((field) => (
-            <FormField
-              key={field.name}
-              id={`contact-${field.name}`}
-              label={t(field.labelKey)}
-              type={field.type}
-              as={field.as}
-              /* Every field is required, `subject` included — which the legacy
+        {/* The values are NOT cleared on failure: a rejected message must not
+            make someone retype it. Same rule as the event form.
+
+            Raised like every card on cream, while the fields inside stay the
+            plain vendored inputs: decoration stays out of anything a person
+            types into (ADR 0029). */}
+        <Card asChild className={cn(RAISED_CARD, "gap-0 p-5", error && "mt-related")}>
+          <form onSubmit={submit} noValidate className="space-y-related">
+            <RequiredLegend />
+            {FIELDS.map((field) => (
+              <FormField
+                key={field.name}
+                id={`contact-${field.name}`}
+                label={t(field.labelKey)}
+                type={field.type}
+                as={field.as}
+                /* Every field is required, `subject` included — which the legacy
                  markup was NOT, even though ContactRequest has always required
                  it. A blank subject used to pass the browser, make a round
                  trip, be rejected, and surface as a generic failure that named
                  no field. Deliberate fix, pinned by a test. */
-              required
-              autoComplete={field.autoComplete}
-              problem={messageFor(field.name)}
-              value={values[field.name]}
-              onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+                required
+                autoComplete={field.autoComplete}
+                problem={messageFor(field.name)}
+                value={values[field.name]}
+                onChange={(next) => setValues((previous) => ({ ...previous, [field.name]: next }))}
+              />
+            ))}
+
+            {/* THE HONEYPOT. Hidden from people and from assistive technology
+                both — `hidden` keeps it out of the accessibility tree, so a
+                screen-reader user is never asked to fill in a field that must
+                stay empty — while remaining a real control whose value is
+                submitted. tabIndex -1 and autoComplete "off" stop a keyboard
+                user and a password manager reaching it by accident, which is the
+                other way a real person trips this. */}
+            <input
+              type="text"
+              name="website"
+              hidden
+              tabIndex={-1}
+              autoComplete="off"
+              value={values.website}
+              onChange={(event) =>
+                setValues((previous) => ({ ...previous, website: event.target.value }))
+              }
             />
-          ))}
 
-          {/* THE HONEYPOT. Hidden from people and from assistive technology
-              both — `hidden` keeps it out of the accessibility tree, so a
-              screen-reader user is never asked to fill in a field that must
-              stay empty — while remaining a real control whose value is
-              submitted. tabIndex -1 and autoComplete "off" stop a keyboard
-              user and a password manager reaching it by accident, which is the
-              other way a real person trips this. */}
-          <input
-            type="text"
-            name="website"
-            hidden
-            tabIndex={-1}
-            autoComplete="off"
-            value={values.website}
-            onChange={(event) =>
-              setValues((previous) => ({ ...previous, website: event.target.value }))
-            }
-          />
-
-          {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
-              early return is the real guard. */}
-          <Button type="submit" aria-disabled={send.isPending}>
-            {t("contact.submit")}
-          </Button>
-        </form>
-      </Card>
-    </PageSection>
+            {/* aria-disabled, not disabled — see Login.tsx. The submit handler's
+                early return is the real guard. */}
+            <Button
+              type="submit"
+              variant="raised-violet"
+              className="h-12 px-5 text-base"
+              aria-disabled={send.isPending}
+            >
+              {t("contact.submit")}
+            </Button>
+          </form>
+        </Card>
+      </PageSection>
+    </>
   );
 }

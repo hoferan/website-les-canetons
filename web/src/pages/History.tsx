@@ -6,6 +6,7 @@ import { PageSection } from "@/components/PageSection";
 import { rowsOf } from "../api/collection";
 import { useHistoryEntryIndex } from "../api/generated/endpoints";
 import type { HistoryEntryResource } from "../api/generated/model";
+import { PageHero } from "../carnival/PageHero";
 import { ButtonLink } from "../components/ButtonLink";
 import { RowActions } from "../components/RowActions";
 import { DeleteHistoryEntry } from "../history/DeleteHistoryEntry";
@@ -45,6 +46,10 @@ export type HistorySavedState = { historySaved: true; photoFailed?: boolean };
  * The controls are ABSENT without the permission rather than refused, like
  * the planning's: a link that leads to "Accès refusé" teaches people that
  * parts of the site are broken for them.
+ *
+ * THE LONGEST PAGE ON THE SITE, so the carnival look stops at the hero (ADR
+ * 0029): the entries stay on plain cream, and the only colour below it is the
+ * timeline's own markers.
  */
 export function History() {
   const { can } = useSession();
@@ -76,60 +81,70 @@ export function History() {
   }, [location, navigate]);
 
   return (
-    <PageSection width="text">
-      <p role="status" className="sr-only">
-        {announcement}
-      </p>
-      <div className="flex flex-wrap items-center justify-between gap-related">
-        <h1 className="font-display text-4xl">{t("history.heading")}</h1>
-        {mayEdit ? (
-          <ButtonLink to="/history/new" ariaLabel={t("history.addAria")} id={ADD_ID}>
-            <Plus aria-hidden="true" />
-            {t("history.add")}
-          </ButtonLink>
-        ) : null}
-      </div>
-
-      {photoFailed ? (
-        <p role="alert" className="mt-block text-danger">
-          {t("history.photoFailed")}
-        </p>
-      ) : null}
-
-      {list.isPending ? <p className="mt-block text-ink-muted">{t("common.loading")}</p> : null}
-      {list.isError ? (
-        <p role="alert" className="mt-block text-danger">
-          {t("history.loadFailed")}
-        </p>
-      ) : null}
-      {list.isSuccess && entries.length === 0 ? (
-        <p className="mt-block text-ink-muted">{t("history.empty")}</p>
-      ) : null}
-
-      {entries.length > 0 ? (
-        <ol data-testid="history-timeline" className="mt-block ml-5 border-l-2 border-line">
-          {entries.map((entry) => (
-            <TimelineEntry
-              key={entry.id}
-              entry={entry}
-              mayEdit={mayEdit}
-              onDelete={() => setDeleting(entry)}
-            />
-          ))}
-        </ol>
-      ) : null}
-
-      <DeleteHistoryEntry
-        entry={deleting}
-        onClose={() => setDeleting(null)}
-        // The entry and its button are gone, so focus goes to the one
-        // control that is always there for an editor.
-        afterDelete={() => {
-          document.getElementById(ADD_ID)?.focus();
-          setAnnouncement(t("history.deleted"));
-        }}
+    <>
+      <PageHero
+        title={t("history.heading")}
+        mark={t("history.headingHighlight")}
+        seed={17}
+        width="text"
       />
-    </PageSection>
+
+      <PageSection width="text">
+        <p role="status" className="sr-only">
+          {announcement}
+        </p>
+        {/* The committee's tool, so it sits on the cream under the hero rather
+            than on the poster with the heading a visitor reads. */}
+        {mayEdit ? (
+          <div className="mb-block flex justify-end">
+            <ButtonLink to="/history/new" ariaLabel={t("history.addAria")} id={ADD_ID}>
+              <Plus aria-hidden="true" />
+              {t("history.add")}
+            </ButtonLink>
+          </div>
+        ) : null}
+
+        {photoFailed ? (
+          <p role="alert" className="mb-block text-danger">
+            {t("history.photoFailed")}
+          </p>
+        ) : null}
+
+        {list.isPending ? <p className="text-ink-muted">{t("common.loading")}</p> : null}
+        {list.isError ? (
+          <p role="alert" className="text-danger">
+            {t("history.loadFailed")}
+          </p>
+        ) : null}
+        {list.isSuccess && entries.length === 0 ? (
+          <p className="text-ink-muted">{t("history.empty")}</p>
+        ) : null}
+
+        {entries.length > 0 ? (
+          <ol data-testid="history-timeline" className="ml-5 border-l-2 border-line">
+            {entries.map((entry) => (
+              <TimelineEntry
+                key={entry.id}
+                entry={entry}
+                mayEdit={mayEdit}
+                onDelete={() => setDeleting(entry)}
+              />
+            ))}
+          </ol>
+        ) : null}
+
+        <DeleteHistoryEntry
+          entry={deleting}
+          onClose={() => setDeleting(null)}
+          // The entry and its button are gone, so focus goes to the one
+          // control that is always there for an editor.
+          afterDelete={() => {
+            document.getElementById(ADD_ID)?.focus();
+            setAnnouncement(t("history.deleted"));
+          }}
+        />
+      </PageSection>
+    </>
   );
 }
 
