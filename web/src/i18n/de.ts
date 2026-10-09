@@ -291,8 +291,7 @@ export const de: typeof fr = {
     handledStatus: "Erledigt",
     read: "Lesen",
     close: "Schliessen",
-    handle: "Als erledigt markieren",
-    reopen: "Wieder öffnen",
+    handledSwitch: "Erledigt",
     delete: "Löschen",
     deleteConfirmTitle: "Diese Nachricht löschen?",
     deleteConfirmDescription:
@@ -709,10 +708,7 @@ export const de: typeof fr = {
 
     paid: "Bezahlt",
     unpaid: "Nicht bezahlt",
-    markPaid: "Als bezahlt markieren",
-    markUnpaid: "Als nicht bezahlt markieren",
-    markPaidAria: "Anmeldung von {{name}} als bezahlt markieren",
-    markUnpaidAria: "Anmeldung von {{name}} als nicht bezahlt markieren",
+    paidAria: "Bezahlt: Anmeldung von {{name}}",
     payFailed: "Die Zahlung konnte nicht gespeichert werden.",
     paidCount_one: "{{paid}}\u00a0von\u00a0{{count}}\u00a0bezahlt",
     paidCount_other: "{{paid}}\u00a0von\u00a0{{count}}\u00a0bezahlt",

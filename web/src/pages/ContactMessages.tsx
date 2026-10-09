@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 
 import {
   contactMessageDestroy,
@@ -321,8 +322,7 @@ export function ContactMessages() {
           busy={handle.isPending || destroy.isPending}
           error={action.error}
           mayManage={mayManage}
-          onHandle={() => void toggleHandled(true)}
-          onReopen={() => void toggleHandled(false)}
+          onToggleHandled={toggleHandled}
           onDelete={openDeleteDialog}
           onClose={closePanel}
         />
@@ -475,14 +475,18 @@ function MessageSummary({
  * The expanded message: everything the row's summary leaves out, plus the
  * controls a `messages.manage` holder gets and a `messages.view`-only reader
  * does not.
+ *
+ * "Traité" is a switch because it saves as it is flipped, and flipping it
+ * back reopens the message. aria-disabled and an early return while a write
+ * is in flight, never `disabled`: Radix renders the switch as a button, and
+ * the docblock in ui/button.tsx says what `disabled` does to its focus.
  */
 function MessagePanel({
   message,
   busy,
   error,
   mayManage,
-  onHandle,
-  onReopen,
+  onToggleHandled,
   onDelete,
   onClose,
 }: {
@@ -490,11 +494,27 @@ function MessagePanel({
   busy: boolean;
   error: ReturnType<typeof useApiFormError>["error"];
   mayManage: boolean;
-  onHandle: () => void;
-  onReopen: () => void;
+  onToggleHandled: (handled: boolean) => Promise<void>;
   onDelete: () => void;
   onClose: () => void;
 }) {
+  // The switch shows the new value while its write is in flight, and falls
+  // back to the stored one once the panel holds the saved message or the
+  // server refused.
+  const [flipped, setFlipped] = useState<boolean | null>(null);
+  const locked = busy || flipped !== null;
+
+  const flip = async (handled: boolean) => {
+    setFlipped(handled);
+    try {
+      await onToggleHandled(handled);
+    } finally {
+      setFlipped(null);
+    }
+  };
+
+  const switchId = `message-${message.id}-handled`;
+
   return (
     <div
       data-testid="message-panel"
@@ -544,22 +564,21 @@ function MessagePanel({
       ) : null}
 
       {mayManage ? (
-        <div className="flex flex-wrap gap-tight">
-          {message.handledAt === null ? (
-            <Button type="button" size="sm" aria-disabled={busy} onClick={onHandle}>
-              {t("contactMessages.handle")}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="raised-light"
-              size="sm"
-              aria-disabled={busy}
-              onClick={onReopen}
-            >
-              {t("contactMessages.reopen")}
-            </Button>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-related">
+          <div className="flex min-h-touch items-center gap-2">
+            <Switch
+              id={switchId}
+              checked={flipped ?? message.handledAt !== null}
+              aria-disabled={locked}
+              onCheckedChange={(handled) => {
+                if (locked) {
+                  return;
+                }
+                void flip(handled);
+              }}
+            />
+            <label htmlFor={switchId}>{t("contactMessages.handledSwitch")}</label>
+          </div>
           <Button
             type="button"
             variant="raised-danger"

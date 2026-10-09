@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, test } from "vitest";
 
 import { type Locale } from "../i18n/locale";
-import { setMockUser } from "../mocks/handlers";
+import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { ContactMessages } from "./ContactMessages";
@@ -101,23 +101,82 @@ test("hides the handle and delete controls from someone with only messages.view"
   await screen.findByTestId("message-panel");
 
   expect(panel().getByText("Prestation pour un mariage")).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Marquer comme traité" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: "Rouvrir" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("switch")).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Supprimer" })).not.toBeInTheDocument();
 });
 
-test("marks a message handled and shows who did it", async () => {
+/** The opened message's switch, by its visible label. */
+function handledSwitch() {
+  return panel().getByRole("switch", { name: "Traité" });
+}
+
+test("switching Traité on marks the message handled and shows who did it", async () => {
   await renderArchive();
 
   // Open message 3 (Dupasquier), the top row, which starts out open.
   await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
-  await screen.findByRole("button", { name: "Marquer comme traité" });
+  await screen.findByTestId("message-panel");
+  expect(handledSwitch()).not.toBeChecked();
 
-  await userEvent.click(screen.getByRole("button", { name: "Marquer comme traité" }));
+  await userEvent.click(handledSwitch());
 
   // The mock hands back the acting member's own display name.
   expect(await screen.findByText(/Traité par Dominique Direction, le/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Rouvrir" })).toBeInTheDocument();
+  expect(handledSwitch()).toBeChecked();
+  expect(cards().getAllByText("Traité")).toHaveLength(2);
+});
+
+test("switching Traité off reopens a handled message", async () => {
+  await renderArchive();
+
+  // Message 1 (Chappuis), the bottom row, is the one the mock seeds handled.
+  await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[2]!);
+  await screen.findByText(/Traité par/);
+  expect(handledSwitch()).toBeChecked();
+
+  await userEvent.click(handledSwitch());
+
+  await expect.poll(() => screen.queryByText(/Traité par/)).toBeNull();
+  expect(handledSwitch()).not.toBeChecked();
+});
+
+/**
+ * MUTATION TEST, three guards. Drop the `finally` that clears the optimistic
+ * value and the switch stays on after the refusal; drop the panel's alert and
+ * the refusal is never read; drop the early return while busy and the second
+ * click turns the switch off mid-save.
+ */
+test("a refused flip puts the switch back and says why in the panel", async () => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.patch("/api/v1/contact-messages/:id", async () => {
+      await held;
+      return problem(412, "if_match_failed", "The If-Match header does not match");
+    }),
+  );
+  await renderArchive();
+
+  await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
+  await screen.findByTestId("message-panel");
+
+  await userEvent.click(handledSwitch());
+
+  // On while the write is in flight, and deaf to a second flip.
+  expect(handledSwitch()).toBeChecked();
+  expect(handledSwitch()).toHaveAttribute("aria-disabled", "true");
+  expect(handledSwitch()).toBeEnabled();
+  await userEvent.click(handledSwitch());
+  expect(handledSwitch()).toBeChecked();
+
+  release();
+
+  expect(await panel().findByRole("alert")).toHaveTextContent(/modifié cet élément entre-temps/);
+  expect(handledSwitch()).not.toBeChecked();
+  expect(handledSwitch()).toHaveAttribute("aria-disabled", "false");
+  expect(screen.queryByText(/Traité par/)).not.toBeInTheDocument();
 });
 
 test("the heading count agrees with the filtered rows, not the whole archive", async () => {
@@ -182,7 +241,7 @@ test("filtering to a status with nothing in it explains itself, not as an error"
  * then move the SERVER's stored tag to B by driving a second write through
  * the same mock store directly — exactly as if another committee member
  * acted first, and the same technique Members.test.tsx uses for the
- * equivalent roster guard. Clicking "Marquer comme traité" must still send
+ * equivalent roster guard. Switching "Traité" on must still send
  * the PATCH with tag A: never a tag re-read at write time, which is the
  * whole point of a conditional write (web/src/api/ifMatch.ts).
  *
@@ -195,7 +254,7 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
 
   // Open message 3 (Dupasquier) — the component's own read, tag A.
   await userEvent.click(cards().getAllByRole("button", { name: /Lire/ })[0]!);
-  await screen.findByRole("button", { name: "Marquer comme traité" });
+  await screen.findByTestId("message-panel");
 
   // Move the server's stored tag for message 3, through the mock store
   // directly rather than through the component under test. `tagA` is read
@@ -223,7 +282,7 @@ test("writes the handled PATCH with the tag from the read the user saw, not a fr
   server.events.on("request:start", captureHeader);
 
   try {
-    await userEvent.click(screen.getByRole("button", { name: "Marquer comme traité" }));
+    await userEvent.click(handledSwitch());
 
     // THE LOAD-BEARING ASSERTION: the outgoing header is tag A, the read the
     // component itself performed — never tag B, the one a re-read just

@@ -210,9 +210,16 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <Switch
               id={`tag-${tag.id}-celebrate`}
               checked={flipped ?? tag.celebrate}
-              disabled={busy}
+              // aria-disabled and an early return, never `disabled`: see the
+              // docblock in ui/switch.tsx.
+              aria-disabled={busy}
               aria-label={t("eventTags.celebrateAria", { label: tagLabel(tag) })}
-              onCheckedChange={(next) => void flip(next)}
+              onCheckedChange={(next) => {
+                if (busy) {
+                  return;
+                }
+                void flip(next);
+              }}
             />
             <label htmlFor={`tag-${tag.id}-celebrate`} className="text-sm">
               {t("eventTags.celebrate")}

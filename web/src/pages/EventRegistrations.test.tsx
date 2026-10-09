@@ -5,7 +5,7 @@ import { Route, Routes } from "react-router-dom";
 import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
 import { type Locale } from "../i18n/locale";
-import { setMockUser } from "../mocks/handlers";
+import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventRegistrations } from "./EventRegistrations";
@@ -357,7 +357,14 @@ test("says how many of the bookings that owe something have paid", async () => {
   expect(screen.getByTestId("guest-counts")).toHaveTextContent("0 sur 1 payée");
 });
 
-test("marks a booking paid, quoting a tag, and the list shows it", async () => {
+/** Jeanne's payment switch, by the name a screen reader and voice control use. */
+function jeannePaid() {
+  return within(cardFor("Aebischer Jeanne")).getByRole("switch", {
+    name: "Payé : inscription de Jeanne Aebischer",
+  });
+}
+
+test("flipping Payé records the payment, quoting a tag, and the list shows it", async () => {
   const user = userEvent.setup();
   const sent: { body: unknown; ifMatch: string | null }[] = [];
   const record = ({ request }: { request: Request }) => {
@@ -373,23 +380,99 @@ test("marks a booking paid, quoting a tag, and the list shows it", async () => {
 
   await renderGuestList();
 
-  const jeanne = cardFor("Aebischer Jeanne");
-  expect(within(jeanne).getByTestId("payment")).toHaveTextContent("Non payé");
+  expect(jeannePaid()).not.toBeChecked();
 
-  await user.click(
-    within(jeanne).getByRole("button", {
-      name: "Marquer l’inscription de Jeanne Aebischer comme payée",
+  await user.click(jeannePaid());
+
+  await expect.poll(() => screen.getByTestId("guest-counts")).toHaveTextContent("1 sur 1 payée");
+  expect(jeannePaid()).toBeChecked();
+  expect(sent).toEqual([{ body: { paid: true }, ifMatch: expect.stringMatching(/^"[0-9a-f]+"$/) }]);
+
+  // And back: the same switch takes the payment back, with no dialog.
+  await user.click(jeannePaid());
+
+  await expect.poll(() => screen.getByTestId("guest-counts")).toHaveTextContent("0 sur 1 payée");
+  expect(jeannePaid()).not.toBeChecked();
+  expect(sent[1]).toEqual({ body: { paid: false }, ifMatch: expect.stringMatching(/^"/) });
+});
+
+/**
+ * MUTATION TEST: send the opposite of the fresh read instead of what the
+ * switch says, and this fails. Somebody else recorded the payment after this
+ * list loaded; flipping the stale switch on must keep it paid, not take it
+ * back.
+ */
+test("flipping Payé on sends paid, even when somebody recorded it meanwhile", async () => {
+  const user = userEvent.setup();
+  await renderGuestList();
+
+  const jeanneId = 1;
+  const read = await fetch(`/api/v1/registrations/${jeanneId}`);
+  expect(((await read.json()) as { lastName: string }).lastName).toBe("Aebischer");
+  await fetch(`/api/v1/registrations/${jeanneId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "If-Match": read.headers.get("ETag") ?? "" },
+    body: JSON.stringify({ paid: true }),
+  });
+
+  const sent: unknown[] = [];
+  const record = ({ request }: { request: Request }) => {
+    if (request.method === "PATCH") {
+      void request
+        .clone()
+        .json()
+        .then((body: unknown) => sent.push(body));
+    }
+  };
+  server.events.on("request:start", record);
+  onTestFinished(() => server.events.removeListener("request:start", record));
+
+  expect(jeannePaid()).not.toBeChecked();
+  await user.click(jeannePaid());
+
+  await expect.poll(() => screen.getByTestId("guest-counts")).toHaveTextContent("1 sur 1 payée");
+  expect(sent).toEqual([{ paid: true }]);
+  expect(jeannePaid()).toBeChecked();
+});
+
+/**
+ * MUTATION TEST, three guards. Drop the `finally` that clears the optimistic
+ * value and the switch stays on after the refusal; drop the card's alert and
+ * the refusal is never read; drop the early return while busy and the second
+ * click turns the switch off mid-save.
+ */
+test("a refused payment puts the switch back and says why on the card", async () => {
+  const user = userEvent.setup();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.patch("/api/v1/registrations/:id", async () => {
+      await held;
+      return problem(412, "if_match_failed", "The If-Match header does not match");
     }),
   );
 
-  await expect
-    .poll(() => within(cardFor("Aebischer Jeanne")).getByTestId("payment").textContent)
-    .toContain("Payé");
-  expect(within(cardFor("Aebischer Jeanne")).getByTestId("payment")).not.toHaveTextContent(
-    "Non payé",
+  await renderGuestList();
+
+  await user.click(jeannePaid());
+
+  // On while the write is in flight, and deaf to a second flip.
+  expect(jeannePaid()).toBeChecked();
+  expect(jeannePaid()).toHaveAttribute("aria-disabled", "true");
+  expect(jeannePaid()).toBeEnabled();
+  await user.click(jeannePaid());
+  expect(jeannePaid()).toBeChecked();
+
+  release();
+
+  expect(await within(cardFor("Aebischer Jeanne")).findByRole("alert")).toHaveTextContent(
+    /modifié cet élément entre-temps/,
   );
-  expect(screen.getByTestId("guest-counts")).toHaveTextContent("1 sur 1 payée");
-  expect(sent).toEqual([{ body: { paid: true }, ifMatch: expect.stringMatching(/^"[0-9a-f]+"$/) }]);
+  expect(jeannePaid()).not.toBeChecked();
+  expect(jeannePaid()).toHaveAttribute("aria-disabled", "false");
+  expect(screen.getByTestId("guest-counts")).toHaveTextContent("0 sur 1 payée");
 });
 
 test("a booking with no price has no payment to record", async () => {
@@ -398,11 +481,25 @@ test("a booking with no price has no payment to record", async () => {
   expect(within(cardFor("1 × Sans repas")).queryByTestId("payment")).toBeNull();
 });
 
-test("a viewer sees who has paid and cannot change it", async () => {
+/**
+ * MUTATION TEST: render the switch for a viewer as well and this fails. A
+ * switch somebody cannot move reads as broken, so a viewer gets the pill.
+ */
+test("a viewer reads who has paid from a pill, with no switch", async () => {
   await renderGuestList("demo.committee");
 
   expect(within(cardFor("Aebischer Jeanne")).getByTestId("payment")).toHaveTextContent("Non payé");
-  expect(screen.queryAllByRole("button", { name: /comme payée$/ })).toHaveLength(0);
+  expect(screen.queryAllByRole("switch")).toHaveLength(0);
+});
+
+test("the payment switch is named in German too", async () => {
+  await renderGuestList("demo.direction", SOUPER, "de-CH");
+
+  expect(
+    within(cardFor("Aebischer Jeanne")).getByRole("switch", {
+      name: "Bezahlt: Anmeldung von Jeanne Aebischer",
+    }),
+  ).not.toBeChecked();
 });
 
 test("the cancel dialog's way out does not also say Annuler", async () => {
