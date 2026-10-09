@@ -1,3 +1,5 @@
+import type { Ref } from "react";
+
 import { cn } from "@/lib/utils";
 
 import { Confetti } from "./Confetti";
@@ -31,6 +33,7 @@ export function PageHero({
   mark = "",
   seed,
   width = "shell",
+  headingRef,
   children,
 }: {
   title: string;
@@ -38,6 +41,12 @@ export function PageHero({
   mark?: string;
   seed: number;
   width?: "shell" | "text" | "form";
+  /**
+   * For a page that swaps its content in place and has to move focus to the
+   * new heading, as a form's success state does. Passing it also makes the h1
+   * focusable from script, never by Tab.
+   */
+  headingRef?: Ref<HTMLHeadingElement>;
   /** A line or two under the heading, already translated. */
   children?: React.ReactNode;
 }) {
@@ -56,8 +65,10 @@ export function PageHero({
         {/* leading-[1.18] as on the home page, so a highlight that wraps gets a
             bar per line: see Highlighted.tsx. */}
         <h1
+          ref={headingRef}
+          tabIndex={headingRef ? -1 : undefined}
           data-confetti-avoid
-          className="w-fit font-display text-3xl leading-[1.18] sm:text-4xl md:text-5xl"
+          className="w-fit font-display text-3xl leading-[1.18] outline-none sm:text-4xl md:text-5xl"
         >
           <Highlighted text={title} mark={mark} />
         </h1>
