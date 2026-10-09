@@ -108,7 +108,7 @@ export function Home() {
           with the shell width inside it. `pb-14` and up leave the Scallop room
           to draw over the bottom edge. */}
       <div className="relative overflow-hidden bg-poster text-white">
-        <Confetti seed={11} colours={POSTER_CONFETTI} />
+        <Confetti seed={11} colours={POSTER_CONFETTI} wobble />
         <div className="relative mx-auto grid max-w-shell gap-block px-4 pt-8 pb-14 md:grid-cols-[1.4fr_1fr] md:items-center md:pt-16 md:pb-24">
           {/* The band's badge — the mark people know from the flyers, the
               costumes and the instruments — as the hero's mark, stuck on like
