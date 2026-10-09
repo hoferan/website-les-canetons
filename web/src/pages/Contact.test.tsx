@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { expect, test } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
 
 import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
@@ -56,6 +56,25 @@ test("sends the message and answers in place, without navigating", async () => {
   // The form is GONE, not merely covered: a success panel above a live form
   // invites a second send of the same message.
   expect(screen.queryByLabelText("Nom")).not.toBeInTheDocument();
+});
+
+/**
+ * The sent panel replaces the form in place, and the window kept the submit
+ * button's offset: at 390px the sender was left looking at the footer with
+ * the heading 318px above the screen and focus on <body>.
+ */
+test("brings the sent panel into view and moves focus to its heading", async () => {
+  const user = userEvent.setup();
+  const scrollTo = vi.spyOn(window, "scrollTo");
+  onTestFinished(() => scrollTo.mockRestore());
+  await renderWithSession(<Contact />, { route: "/contact" });
+
+  await fillIn(user);
+  await user.click(screen.getByRole("button", { name: "Envoyer" }));
+
+  const heading = await screen.findByRole("heading", { name: "Message envoyé" });
+  expect(heading).toHaveFocus();
+  expect(scrollTo).toHaveBeenCalledWith(0, 0);
 });
 
 /**
