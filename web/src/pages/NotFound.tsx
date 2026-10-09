@@ -31,7 +31,7 @@ export function NotFound() {
 
   return (
     <div className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-poster">
-      <Confetti seed={31} colours={POSTER_CONFETTI} density={3} />
+      <Confetti seed={31} colours={POSTER_CONFETTI} density={3} wobble />
       {/* `pb-20` and up leave the Scallop its 22px over the bottom edge. */}
       <div className="relative mx-auto flex max-w-text flex-col items-center px-4 pt-10 pb-20 text-center md:pt-16 md:pb-28">
         {/* Decoration: the heading says the same in words. Yellow on the

@@ -20,6 +20,7 @@ import type {
 import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
+import { celebrate } from "../carnival/celebrate";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { PageSection } from "../components/PageSection";
@@ -175,6 +176,7 @@ export function EventBooking() {
     onSuccess: (result) => {
       if (result.status === 201) {
         setBooked(result.data);
+        celebrate();
       }
     },
     onError: setFromThrown,

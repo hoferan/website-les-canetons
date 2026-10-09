@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 
-import { REACH, scatter } from "./scatter";
+import { REACH } from "./piece";
+import { scatter } from "./scatter";
 
 const BOX = { width: 1280, height: 600 };
 
