@@ -25,6 +25,15 @@ function rowFor(labelFr: string): HTMLElement {
   return row;
 }
 
+/**
+ * The confetti switch on a tag's row, by its exact accessible name. The name's
+ * guillemets carry no-break spaces, and a role query's `name` is compared
+ * without normalising them.
+ */
+function confettiSwitch(labelFr: string): HTMLElement {
+  return screen.getByRole("switch", { name: `Confettis pour «\u00a0${labelFr}\u00a0»` });
+}
+
 test("lists every tag with how many events carry it", async () => {
   await renderEditor();
 
@@ -75,29 +84,58 @@ test("renaming a tag saves it", async () => {
   );
 });
 
-test("the confetti flag opens as stored and saves when ticked", async () => {
+test("the confetti switch shows the stored flag and saves as it is flipped", async () => {
   const user = userEvent.setup();
   await renderEditor();
 
   // Seeded on Carnaval only.
-  expect(within(rowFor("Carnaval")).getByTestId("tag-celebrates")).toHaveTextContent(
-    "avec confettis",
-  );
-  expect(within(rowFor("Sortie")).queryByTestId("tag-celebrates")).toBeNull();
+  expect(confettiSwitch("Carnaval")).toBeChecked();
+  const sortie = confettiSwitch("Sortie");
+  expect(sortie).not.toBeChecked();
 
-  await user.click(within(rowFor("Carnaval")).getByRole("button", { name: /^Modifier/ }));
-  expect(
-    await within(rowFor("Carnaval")).findByRole("checkbox", { name: /^Confettis/ }),
-  ).toBeChecked();
-  await user.click(within(rowFor("Carnaval")).getByRole("button", { name: "Annuler" }));
-
+  // No "Enregistrer": the flip is the save. The fresh list read afterwards is
+  // what proves the server has it.
+  await user.click(sortie);
+  await waitFor(() => expect(confettiSwitch("Sortie")).toBeChecked());
+  await waitFor(() => expect(confettiSwitch("Sortie")).toBeEnabled());
+  expect(confettiSwitch("Sortie")).toBeChecked();
+  // The edit form has no copy of it.
   await user.click(within(rowFor("Sortie")).getByRole("button", { name: /^Modifier/ }));
-  const box = await within(rowFor("Sortie")).findByRole("checkbox", { name: /^Confettis/ });
-  expect(box).not.toBeChecked();
-  await user.click(box);
-  await user.click(within(rowFor("Sortie")).getByRole("button", { name: "Enregistrer" }));
+  await within(rowFor("Sortie")).findByLabelText("Nom en français");
+  expect(within(rowFor("Sortie")).queryByRole("switch")).toBeNull();
+  expect(within(rowFor("Sortie")).queryByRole("checkbox")).toBeNull();
+});
 
-  expect(await within(rowFor("Sortie")).findByTestId("tag-celebrates")).toBeInTheDocument();
+test("a refused flip puts the switch back and says why", async () => {
+  // MUTATION TEST: drop the reset in flip()'s finally and the switch stays on
+  // over a refusal, showing a flag the server never stored.
+  const user = userEvent.setup();
+  server.use(
+    http.put("/api/v1/event-tags/:id", () =>
+      HttpResponse.json(
+        {
+          title: "Precondition Failed",
+          status: 412,
+          code: "if_match_failed",
+          instance: "/api/v1/event-tags/3",
+          errors: [],
+          requestId: "test",
+          detail: null,
+        },
+        { status: 412, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    ),
+  );
+  await renderEditor();
+
+  await user.click(confettiSwitch("Sortie"));
+
+  await waitFor(() =>
+    expect(within(rowFor("Sortie")).getByRole("alert")).toHaveTextContent(
+      "Quelqu'un a modifié cet élément entre-temps.",
+    ),
+  );
+  expect(confettiSwitch("Sortie")).not.toBeChecked();
 });
 
 test("a rename refused because somebody else changed the tag says so", async () => {
