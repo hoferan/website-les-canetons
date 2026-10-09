@@ -21,13 +21,19 @@ import { cn } from "@/lib/utils";
  *
  * THE CALLER NAMES IT, and the name contains the visible label (WCAG 2.5.3),
  * so voice control can reach it by the word on screen.
+ *
+ * BUSY IS `aria-disabled`, NEVER `disabled`. Radix renders a button, and
+ * disabling the focused control blurs it to <body> (rule 2 in ui/button.tsx),
+ * so a keyboard user who flips it with Space would lose their place mid-save.
+ * The caller passes `aria-disabled` and returns early from `onCheckedChange`;
+ * the `aria-disabled:` variants below style that.
  */
 function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimitive.Root>) {
   return (
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-violet data-[state=unchecked]:bg-ink-muted",
+        "inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 data-[state=checked]:bg-violet data-[state=unchecked]:bg-ink-muted",
         className,
       )}
       {...props}

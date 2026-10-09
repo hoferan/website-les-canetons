@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { rowsOf, totalOf } from "../api/collection";
 import { downloadGuestList, type ExportFormat } from "../api/download";
@@ -151,8 +152,6 @@ export function EventRegistrations() {
       registrationDestroy(booking, ifMatch(etag)),
   });
 
-  const [paying, setPaying] = useState<number | null>(null);
-
   const bookings = rowsOf<RegistrationResource>(list.data);
   const bookingCount = totalOf(list.data);
   const mayManage = can("registrations.manage");
@@ -252,41 +251,29 @@ export function EventRegistrations() {
   }
 
   /**
-   * Records the payment, or takes it back. No dialog: the same button undoes
-   * it, and at the door there is a queue.
+   * Records the payment, or takes it back, the moment the switch is flipped.
+   * No dialog: flipping it back undoes it, and at the door there is a queue.
    *
    * Read-then-write like the amend form, because the PATCH is conditional.
-   * The concurrency window is only as wide as the button press, which is
-   * enough for a toggle. It SENDS WHAT THE BUTTON SAID. Flipping the fresh
-   * read instead would mean that if somebody else recorded the payment a
-   * second ago, "Marquer payé" would take it back. The server keeps the first
+   * The concurrency window is only as wide as the flip, which is enough for a
+   * switch. It SENDS WHAT THE SWITCH SAYS. Flipping the fresh read instead
+   * would mean that if somebody else recorded the payment a second ago,
+   * turning the switch on would take it back. The server keeps the first
    * stamp.
+   *
+   * It throws, and the card shows the refusal: with one switch per card, the
+   * message belongs beside the switch that was flipped.
    */
-  async function togglePaid(row: RegistrationResource) {
-    if (paying !== null) {
-      return;
+  async function savePaid(row: RegistrationResource, paid: boolean) {
+    const loaded = await registrationShow(row.id);
+    const etag = loaded.status === 200 ? entityTagOf(loaded) : null;
+    if (etag === null) {
+      // No tag means the write would be refused 428. The card says the save
+      // failed rather than sending it.
+      throw new Error("The booking was read without an ETag.");
     }
-    setPaying(row.id);
-    try {
-      const loaded = await read(row);
-      if (!loaded) {
-        return;
-      }
-      if (loaded.etag === null) {
-        setReadError(t("registrations.loadFailedReload"));
-        return;
-      }
-      await registrationUpdate(row.id, { paid: row.paidAt === null }, ifMatch(loaded.etag));
-      await refresh();
-    } catch (thrown) {
-      setReadError(
-        thrown instanceof ApiError
-          ? translateApiError(thrown).message
-          : t("registrations.payFailed"),
-      );
-    } finally {
-      setPaying(null);
-    }
+    await registrationUpdate(row.id, { paid }, ifMatch(etag));
+    await refresh();
   }
 
   async function download(format: ExportFormat) {
@@ -494,8 +481,7 @@ export function EventRegistrations() {
                   <PaymentLine
                     booking={booking}
                     mayManage={mayManage}
-                    busy={paying === booking.id}
-                    onToggle={() => void togglePaid(booking)}
+                    onSave={(paid) => savePaid(booking, paid)}
                   />
                 )}
                 {mayManage ? (
@@ -584,57 +570,87 @@ function DownloadButton({
 }
 
 /**
- * Paid or not, and for a manager the button that flips it.
+ * Paid or not. A manager flips a switch that saves as it moves; a viewer reads
+ * the same state as a pill, because a switch they cannot move would look
+ * broken rather than read-only.
  *
- * THE STATE IS WRITTEN OUT as well as coloured, so it survives a greyscale
- * printout and a screen reader. The button carries the guest's name in its accessible
- * name, because there is one per card.
+ * THE PILL WRITES THE STATE OUT as well as colouring it, so it survives a
+ * greyscale printout and a screen reader. The switch carries the guest's name
+ * in its accessible name, because there is one per card, and that name starts
+ * with the visible "Payé" so voice control reaches it by the word on screen.
+ *
+ * aria-disabled and an early return while the write is in flight, never
+ * `disabled`: Radix renders the switch as a button, and the docblock in
+ * ui/button.tsx says what `disabled` does to its focus.
  */
 function PaymentLine({
   booking,
   mayManage,
-  busy,
-  onToggle,
+  onSave,
 }: {
   booking: RegistrationResource;
   mayManage: boolean;
-  busy: boolean;
-  onToggle: () => void;
+  onSave: (paid: boolean) => Promise<void>;
 }) {
   const paid = booking.paidAt !== null;
   const who = `${booking.firstName} ${booking.lastName}`;
+  const saving = useApiFormError(t("registrations.payFailed"));
+  // The switch shows the new value while its write is in flight, and falls
+  // back to the stored one once the list has it or the server refused.
+  const [flipped, setFlipped] = useState<boolean | null>(null);
+  const busy = flipped !== null;
+
+  if (!mayManage) {
+    return (
+      <div data-testid="payment" className="mt-tight">
+        <span
+          className={
+            paid
+              ? "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
+              : "rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
+          }
+        >
+          {paid ? t("registrations.paid") : t("registrations.unpaid")}
+        </span>
+      </div>
+    );
+  }
+
+  const flip = async (next: boolean) => {
+    setFlipped(next);
+    saving.clear();
+    try {
+      await onSave(next);
+    } catch (thrown) {
+      saving.setFromThrown(thrown);
+    } finally {
+      setFlipped(null);
+    }
+  };
+
+  const id = `booking-${booking.id}-paid`;
 
   return (
-    <div data-testid="payment" className="mt-tight flex flex-wrap items-center gap-tight">
-      <span
-        className={
-          paid
-            ? "rounded-full bg-accent px-2 py-0.5 text-xs font-semibold text-accent-foreground"
-            : "rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted"
-        }
-      >
-        {paid ? t("registrations.paid") : t("registrations.unpaid")}
-      </span>
-      {mayManage ? (
-        <Button
-          type="button"
-          variant="raised-light"
-          size="sm"
+    <div data-testid="payment" className="mt-tight">
+      <div className="flex min-h-touch items-center gap-2">
+        <Switch
+          id={id}
+          checked={flipped ?? paid}
           aria-disabled={busy}
-          aria-label={
-            paid
-              ? t("registrations.markUnpaidAria", { name: who })
-              : t("registrations.markPaidAria", { name: who })
-          }
-          onClick={() => {
+          aria-label={t("registrations.paidAria", { name: who })}
+          onCheckedChange={(next) => {
             if (busy) {
               return;
             }
-            onToggle();
+            void flip(next);
           }}
-        >
-          {paid ? t("registrations.markUnpaid") : t("registrations.markPaid")}
-        </Button>
+        />
+        <label htmlFor={id}>{t("registrations.paid")}</label>
+      </div>
+      {saving.error !== null ? (
+        <p role="alert" className="text-danger">
+          {saving.error.message}
+        </p>
       ) : null}
     </div>
   );

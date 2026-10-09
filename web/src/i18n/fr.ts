@@ -442,8 +442,8 @@ export const fr = {
     handledStatus: "Traité",
     read: "Lire",
     close: "Fermer",
-    handle: "Marquer comme traité",
-    reopen: "Rouvrir",
+    // The switch in an opened message, saved as it is flipped. Off reopens it.
+    handledSwitch: "Traité",
     delete: "Supprimer",
     deleteConfirmTitle: "Supprimer ce message ?",
     deleteConfirmDescription:
@@ -1086,13 +1086,12 @@ export const fr = {
     optionTotal: "{{count}} × {{label}}",
 
     // Paying. Only a booking with a price shows any of this: a free evening
-    // has nothing to collect.
+    // has nothing to collect. `paid` labels a manager's switch and fills a
+    // viewer's pill. `paidAria` names the switch, one per card, and starts
+    // with the visible word so voice control reaches it (WCAG 2.5.3).
     paid: "Payé",
     unpaid: "Non payé",
-    markPaid: "Marquer payé",
-    markUnpaid: "Marquer non payé",
-    markPaidAria: "Marquer l’inscription de {{name}} comme payée",
-    markUnpaidAria: "Marquer l’inscription de {{name}} comme non payée",
+    paidAria: "Payé : inscription de {{name}}",
     payFailed: "Le paiement n’a pas pu être enregistré.",
     // {{count}} is the number of bookings that owe something; it picks the
     // plural, and {{paid}} rides along. Non-breaking spaces, because on a phone
