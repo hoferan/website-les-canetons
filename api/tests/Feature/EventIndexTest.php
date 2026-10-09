@@ -199,6 +199,7 @@ class EventIndexTest extends TestCase
         $this->actingAsMember($this->member)->getJson('/api/v1/events')->assertOk();
 
         // 4 since #107: the event tags are one eager load for the whole list.
-        $this->assertLessThanOrEqual(4, $queries, 'GET /api/v1/events should not scale queries with events');
+        // 5 since #228: so are the posters, one query while no event has one.
+        $this->assertLessThanOrEqual(5, $queries, 'GET /api/v1/events should not scale queries with events');
     }
 }

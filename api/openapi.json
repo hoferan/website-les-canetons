@@ -6824,7 +6824,7 @@
         "/photo-slots": {
             "get": {
                 "operationId": "photoSlot.index",
-                "description": "A slot with no photo is absent, and the page shows its placeholder.\nNo photo carries alt text: the page describes each by what it shows.",
+                "description": "A slot with no photo is absent, and the page shows its placeholder.\nNo photo carries alt text: the page describes each by what it shows.\nAn event's poster (`event-{id}`) is not listed: it comes with the event.",
                 "summary": "Every slot that shows a photo, by name. Public",
                 "tags": [
                     "Images"
@@ -7318,6 +7318,33 @@
                         ],
                         "description": "Where it happens. Null only on a draft that has no location yet."
                     },
+                    "poster": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The event's poster, or null when it has none. Placed through\n`PUT /photo-slots/event-{id}`, and not part of the event's ETag.",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "srcset": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "srcset"
+                        ]
+                    },
                     "publishedAt": {
                         "type": [
                             "string",
@@ -7408,6 +7435,7 @@
                     "startsAt",
                     "endsAt",
                     "location",
+                    "poster",
                     "publishedAt",
                     "attire",
                     "isPublic",
@@ -7860,6 +7888,33 @@
                         "type": "string",
                         "description": "Where it happens, as free text."
                     },
+                    "poster": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The event's poster, or null when it has none.",
+                        "properties": {
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "srcset": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "url",
+                            "width",
+                            "height",
+                            "srcset"
+                        ]
+                    },
                     "registrationOpen": {
                         "type": "boolean",
                         "description": "Whether this event is taking public bookings right now. Link to the booking form only when it is true."
@@ -7872,6 +7927,7 @@
                     "startsAt",
                     "endsAt",
                     "location",
+                    "poster",
                     "registrationOpen"
                 ],
                 "title": "PublicEventResource"

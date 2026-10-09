@@ -32,6 +32,10 @@ use LogicException;
  * answers 404 for an event that takes no bookings, whether or not it exists —
  * and this list is already filtered to what the committee chose to publish.
  *
+ * `poster` IS SAFE HERE FOR THE SAME REASON: it is the flyer the committee
+ * made to hand out, and it reaches a stranger only on an event this list
+ * already shows.
+ *
  * `registrationOpen` REPEATS RegistrationFormResource's top-level `open`
  * when this resource is nested inside it. The two are always equal and
  * computed from the same method; the top-level one is the form's own answer
@@ -55,6 +59,8 @@ class PublicEventResource extends JsonResource
             'endsAt' => $this->endsAt(),
             /** Where it happens, as free text. */
             'location' => $this->location(),
+            /** The event's poster, or null when it has none. */
+            'poster' => PhotoResource::of($this->poster?->image),
             /** Whether this event is taking public bookings right now. Link to the booking form only when it is true. */
             'registrationOpen' => $this->registrationIsOpen(),
         ];

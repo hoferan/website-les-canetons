@@ -485,6 +485,11 @@ export const de: typeof fr = {
       "Ein Entwurf darf unvollständig bleiben: Nur die Leitung sieht ihn, bis er veröffentlicht wird.",
     loadFailed: "Dieser Anlass konnte nicht geladen werden.",
     loadFailedReload: "Dieser Anlass konnte nicht geladen werden. Laden Sie die Seite neu.",
+    poster: "Plakat",
+    // Der Anlass ist gespeichert, sein Plakat nicht: Das Formular bleibt auf
+    // dem gespeicherten Anlass offen, damit es erneut gewählt werden kann.
+    posterFailed:
+      "Der Anlass ist gespeichert, sein Plakat aber nicht. Wählen Sie es erneut und speichern Sie.",
 
     addTitle: "Anlass hinzufügen",
     editTitle: "{{title}} bearbeiten",
@@ -859,6 +864,8 @@ export const de: typeof fr = {
       concert: "Konzertfoto",
       godparents: "Götti und Gotte",
       history: "Geschichte: {{title}}",
+      // Zugleich der Alternativtext des Plakats, wo immer der Anlass es zeigt.
+      event: "Plakat: {{title}}",
     },
     slotSaveFailed: "Das Foto konnte nicht geändert werden.",
     slotPlaced: "Foto platziert.",

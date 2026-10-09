@@ -30,12 +30,15 @@ class PhotoSlotController extends Controller
      *
      * A slot with no photo is absent, and the page shows its placeholder.
      * No photo carries alt text: the page describes each by what it shows.
+     * An event's poster (`event-{id}`) is not listed: it comes with the event.
      */
     #[Endpoint(operationId: 'photoSlot.index')]
     public function index(): AnonymousResourceCollection
     {
         return PhotoSlotResource::collection(
-            PhotoSlot::query()->with('image')->orderBy('slot')->get(),
+            PhotoSlot::query()->with('image')->orderBy('slot')->get()
+                ->reject(fn (PhotoSlot $slot): bool => PhotoSlot::isEventPoster($slot->slot))
+                ->values(),
         );
     }
 

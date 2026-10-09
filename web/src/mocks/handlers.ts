@@ -528,6 +528,12 @@ const srcsetOf = (image: MockImage) =>
   image.sizes.map((size) => `${sizeUrl(size)} ${size.width}w`).join(", ");
 
 /** The photo a placement shows, or null when the slot is empty. Only a history entry passes alt text. */
+/** The event whose poster a slot is, mirroring PhotoSlot::isEventPoster(); null for any other slot. */
+function posterEventId(slot: string): number | null {
+  const match = /^event-(\d+)$/.exec(slot);
+  return match ? Number(match[1]) : null;
+}
+
 function photoOf(imageId: number | null) {
   const image = images.find((candidate) => candidate.id === imageId);
   return image
@@ -954,17 +960,22 @@ export function mockEntityTag(state: unknown): string {
  * matching anything that exists.
  */
 /**
- * An event's state with the caller's own answer taken out.
+ * An event's state as its tag sees it: without the caller's own answer and
+ * without the poster.
  *
  * `myAttendance` is the CALLER's answer and nobody else's, so a tag computed
  * over it would differ between two committee members looking at the same event
  * — and a member answering an event would invalidate their own pending edit of
  * it. The real API gets this for free by rendering the Resource with no
  * relations loaded; here it has to be said.
+ *
+ * The poster has a write of its own with no If-Match, and App\Support\EntityTag
+ * leaves it out so that picking one in the form does not 412 the publish after.
  */
-function withoutMyAttendance(event: EventResource): Omit<EventResource, "myAttendance"> {
+function eventTagState(event: EventResource): Omit<EventResource, "myAttendance" | "poster"> {
   const state = { ...event };
   delete (state as Partial<EventResource>).myAttendance;
+  delete (state as Partial<EventResource>).poster;
   return state;
 }
 
@@ -1136,6 +1147,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       id: 2,
@@ -1154,6 +1166,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       id: 3,
@@ -1172,6 +1185,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       // The two-day case, which is the whole reason `ends_at` is a datetime
@@ -1192,6 +1206,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       // The missing-attire case: the card has to render without one.
@@ -1217,6 +1232,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       // The only past one.
@@ -1236,6 +1252,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
     {
       // THE ONLY EVENT THAT TAKES BOOKINGS, and the one the four registration
@@ -1264,6 +1281,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
     },
   ];
 
@@ -1289,6 +1307,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
       publishedAt: null,
     },
     {
@@ -1308,6 +1327,7 @@ function initialEvents(): EventResource[] {
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
       publishedAt: null,
     },
   ];
@@ -1704,7 +1724,7 @@ function resetRegistrations(): void {
  * A stored row as the API publishes it: without the event id it is keyed on.
  *
  * `delete` on a copy rather than a rest destructure, matching
- * `withoutMyAttendance` above — the destructure leaves a bound name nothing
+ * `eventTagState` above — the destructure leaves a bound name nothing
  * reads, which this project's eslint rules refuse, and a cast would be a lie
  * the compiler stops checking.
  */
@@ -1810,6 +1830,7 @@ function publicEvent(event: EventResource) {
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     location: event.location,
+    poster: event.poster,
     registrationOpen: registrationIsOpen(event),
   };
 }
@@ -2317,10 +2338,12 @@ const overrides = [
     ),
   ),
 
-  // PUBLIC, and a list like every other: each placed slot by name.
+  // PUBLIC, and a list like every other: each placed slot by name. An
+  // event's poster is not listed, as on the server: it comes with the event.
   http.get("/api/v1/photo-slots", ({ request }) =>
     collection(
       Object.keys(photoSlots)
+        .filter((slot) => posterEventId(slot) === null)
         .sort()
         .flatMap((slot) => {
           const photo = photoOf(photoSlots[slot]?.imageId ?? null);
@@ -2929,6 +2952,7 @@ const overrides = [
         answeredCount: null,
         answerableCount: null,
         guestCount: null,
+        poster: null,
         // A generated season is written as drafts: a wrong recurrence rule
         // must not land every date on everybody's planning at once.
         publishedAt: null,
@@ -2985,6 +3009,7 @@ const overrides = [
       answeredCount: null,
       answerableCount: null,
       guestCount: null,
+      poster: null,
       publishedAt: null,
     });
     events = [...events, event];
@@ -3001,7 +3026,7 @@ const overrides = [
     // answering an event does not invalidate a pending edit of it.
     return event
       ? HttpResponse.json(withCommitteeCounts(withMyAttendance(event)), {
-          headers: { ETag: mockEntityTag(withoutMyAttendance(event)) },
+          headers: { ETag: mockEntityTag(eventTagState(event)) },
         })
       : notFound();
   }),
@@ -3021,7 +3046,7 @@ const overrides = [
       return notFound();
     }
 
-    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(eventTagState(existing)));
     if (stale) {
       return stale;
     }
@@ -3064,7 +3089,7 @@ const overrides = [
 
     events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
     return HttpResponse.json(withCommitteeCounts(updated), {
-      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+      headers: { ETag: mockEntityTag(eventTagState(updated)) },
     });
   }),
 
@@ -3080,12 +3105,16 @@ const overrides = [
       return notFound();
     }
 
-    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(eventTagState(existing)));
     if (stale) {
       return stale;
     }
 
     events = events.filter((candidate) => candidate.id !== id);
+    // The poster's slot goes with the event, as Event::booted() does it.
+    photoSlots = Object.fromEntries(
+      Object.entries(photoSlots).filter(([slot]) => posterEventId(slot) !== id),
+    );
     return HttpResponse.json({ ok: true });
   }),
 
@@ -3102,7 +3131,7 @@ const overrides = [
       return notFound();
     }
 
-    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(eventTagState(existing)));
     if (stale) {
       return stale;
     }
@@ -3128,7 +3157,7 @@ const overrides = [
     };
     events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
     return HttpResponse.json(withCommitteeCounts(withMyAttendance(updated)), {
-      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+      headers: { ETag: mockEntityTag(eventTagState(updated)) },
     });
   }),
 
@@ -3143,7 +3172,7 @@ const overrides = [
       return notFound();
     }
 
-    const stale = refuseWithoutIfMatch(request, mockEntityTag(withoutMyAttendance(existing)));
+    const stale = refuseWithoutIfMatch(request, mockEntityTag(eventTagState(existing)));
     if (stale) {
       return stale;
     }
@@ -3159,7 +3188,7 @@ const overrides = [
     const updated = { ...existing, publishedAt: null };
     events = events.map((candidate) => (candidate.id === updated.id ? updated : candidate));
     return HttpResponse.json(withCommitteeCounts(withMyAttendance(updated)), {
-      headers: { ETag: mockEntityTag(withoutMyAttendance(updated)) },
+      headers: { ETag: mockEntityTag(eventTagState(updated)) },
     });
   }),
 
@@ -3397,6 +3426,13 @@ const overrides = [
         ...photoSlots,
         [slot]: { imageId: placed.imageId, label: body.label ?? null, path: body.path ?? null },
       };
+    }
+    // Written through to the event, which is where the server reads it from.
+    const posterOf = posterEventId(slot);
+    if (posterOf !== null) {
+      events = events.map((event) =>
+        event.id === posterOf ? { ...event, poster: photoOf(placed.imageId) } : event,
+      );
     }
     return HttpResponse.json({ photo: photoOf(placed.imageId) });
   }),

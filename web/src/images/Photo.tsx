@@ -35,6 +35,12 @@ export const PHOTO_SIZES = {
   timeline: "(min-width: 704px) 618px, calc(100vw - 86px)",
   /** The history form's 160 px thumbnail. */
   formThumbnail: "160px",
+  /**
+   * An event's poster on its card: the card's width below 768 px, less the
+   * text column's padding and the card's border and padding (70 px in all),
+   * and a 96 px thumbnail from 768 px up.
+   */
+  eventPoster: "(min-width: 768px) 96px, calc(100vw - 70px)",
   /** A card of the /media grid: four columns from 1024 px, three from 640, two below. */
   libraryCard:
     "(min-width: 1152px) 250px, (min-width: 1024px) calc((100vw - 80px) / 4 - 18px), " +

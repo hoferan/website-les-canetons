@@ -150,7 +150,7 @@ class EventController extends Controller
         $request->attributes->set(EventResource::ANSWERABLE_COUNT, self::answerable($request));
 
         return EventResource::collection(
-            $query->with([...self::myAttendance($request), 'tags'])
+            $query->with([...self::myAttendance($request), 'tags', Event::POSTER])
                 ->withCount(self::counts())
                 ->withSum('registrationChoices as guest_count', 'quantity')
                 ->get()

@@ -9,6 +9,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
 import { publishEvent } from "../events/publishEvent";
+import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, type TranslatedError } from "../i18n";
 
 /**
@@ -56,6 +57,10 @@ export function EventEdit() {
       eventUpdate(eventId, data, ifMatch(etag)),
   });
 
+  // BUSY FROM THE SAVE THROUGH THE POSTER AND THE PUBLISH, as on the create
+  // screen: `update.isPending` alone left the form open between the writes.
+  const [working, setWorking] = useState(false);
+
   useEffect(() => {
     // Guards a StrictMode double-invoke and a fast back-navigation alike: a
     // response arriving after this effect is torn down must not set state on a
@@ -89,7 +94,7 @@ export function EventEdit() {
     };
   }, [eventId]);
 
-  async function submit(draft: EventDraft, intent: "save" | "publish") {
+  async function submit(draft: EventDraft, intent: "save" | "publish", poster: PosterChange) {
     form.clear();
     setCarried(null);
 
@@ -100,18 +105,28 @@ export function EventEdit() {
       return;
     }
 
+    setWorking(true);
     try {
       const saved = await update.mutateAsync({ data: eventBodyFrom(draft), etag: opened.etag });
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
 
+      // The save handed out the tag of what it wrote. Keep it as the form's
+      // own tag first: if the poster or the publish fails, the next save must
+      // not be refused as stale.
+      const fresh = saved.status === 200 ? entityTagOf(saved) : null;
+      if (saved.status === 200) {
+        setOpened({ event: saved.data, etag: fresh });
+      }
+
+      // The poster before the publish, so the band never sees the event
+      // without it. The poster is not in the tag, so its write leaves `fresh`
+      // current.
+      if (!(await saveEventPoster(eventId, draft.title, poster, queryClient))) {
+        setCarried({ message: t("eventForm.posterFailed"), fields: [] });
+        return;
+      }
+
       if (intent === "publish") {
-        // The save handed out the tag of what it wrote, which is the state
-        // being published. Keep it as the form's own tag first: if publishing
-        // is refused, the next save must not be refused as stale.
-        const fresh = saved.status === 200 ? entityTagOf(saved) : null;
-        if (saved.status === 200) {
-          setOpened({ event: saved.data, etag: fresh });
-        }
         await publishEvent(eventId, fresh);
         await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
       }
@@ -122,6 +137,8 @@ export function EventEdit() {
       // matters for the 412: "quelqu'un a modifié cet élément entre-temps" is
       // only useful next to the values it is about.
       form.setFromThrown(thrown);
+    } finally {
+      setWorking(false);
     }
   }
 
@@ -143,7 +160,7 @@ export function EventEdit() {
         <EventForm
           event={opened.event}
           mode={opened.event.publishedAt === null ? "draft" : "published"}
-          busy={update.isPending}
+          busy={update.isPending || working}
           error={form.error ?? carried}
           problemFor={(field) =>
             form.messageFor(field) ??

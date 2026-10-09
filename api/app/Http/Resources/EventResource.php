@@ -92,6 +92,11 @@ class EventResource extends JsonResource
             /** Where it happens. Null only on a draft that has no location yet. */
             'location' => $this->location,
             /**
+             * The event's poster, or null when it has none. Placed through
+             * `PUT /photo-slots/event-{id}`, and not part of the event's ETag.
+             */
+            'poster' => PhotoResource::of($this->poster?->image),
+            /**
              * When the event was published, in UTC. Null means it is still a
              * draft: only people who can manage events see it, and it is not
              * on anybody's planning yet.

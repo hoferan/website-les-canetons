@@ -438,6 +438,18 @@ export const getEventIndexResponseMock = (
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    poster: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        },
+        null,
+      ]),
+      null,
+    ]),
     publishedAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
@@ -500,6 +512,18 @@ export const getEventStoreResponseMock = (
     faker.string.alpha({ length: { min: 10, max: 20 } }),
     null,
   ]),
+  poster: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
   publishedAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
@@ -557,6 +581,18 @@ export const getEventShowResponseMock = (
     faker.string.alpha({ length: { min: 10, max: 20 } }),
     null,
   ]),
+  poster: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
   publishedAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
@@ -612,6 +648,18 @@ export const getEventUpdateResponseMock = (
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  poster: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
     null,
   ]),
   publishedAt: faker.helpers.arrayElement([
@@ -686,6 +734,18 @@ export const getEventSeriesResponseMock = (
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
+    poster: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        },
+        null,
+      ]),
+      null,
+    ]),
     publishedAt: faker.helpers.arrayElement([
       faker.date.past().toISOString().slice(0, 19) + "Z",
       null,
@@ -748,6 +808,18 @@ export const getEventPublishResponseMock = (
     faker.string.alpha({ length: { min: 10, max: 20 } }),
     null,
   ]),
+  poster: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
+    null,
+  ]),
   publishedAt: faker.helpers.arrayElement([
     faker.date.past().toISOString().slice(0, 19) + "Z",
     null,
@@ -803,6 +875,18 @@ export const getEventUnpublishResponseMock = (
   endsAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + "Z", null]),
   location: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  poster: faker.helpers.arrayElement([
+    faker.helpers.arrayElement([
+      {
+        url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        width: faker.number.int(),
+        height: faker.number.int(),
+        srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+      },
+      null,
+    ]),
     null,
   ]),
   publishedAt: faker.helpers.arrayElement([
@@ -980,6 +1064,18 @@ export const getRegistrationFormResponseMock = (
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    poster: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        },
+        null,
+      ]),
+      null,
+    ]),
     registrationOpen: faker.datatype.boolean(),
   },
   options: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
@@ -1496,6 +1592,18 @@ export const getAgendaIndexResponseMock = (
     startsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     endsAt: faker.date.past().toISOString().slice(0, 19) + "Z",
     location: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    poster: faker.helpers.arrayElement([
+      faker.helpers.arrayElement([
+        {
+          url: faker.string.alpha({ length: { min: 10, max: 20 } }),
+          width: faker.number.int(),
+          height: faker.number.int(),
+          srcset: faker.string.alpha({ length: { min: 10, max: 20 } }),
+        },
+        null,
+      ]),
+      null,
+    ]),
     registrationOpen: faker.datatype.boolean(),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },

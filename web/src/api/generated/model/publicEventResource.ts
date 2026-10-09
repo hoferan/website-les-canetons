@@ -309,6 +309,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { EventTagResource } from "./eventTagResource";
+import type { PublicEventResourcePoster } from "./publicEventResourcePoster";
 
 export interface PublicEventResource {
   id: number;
@@ -321,6 +322,11 @@ export interface PublicEventResource {
   endsAt: string;
   /** Where it happens, as free text. */
   location: string;
+  /**
+   * The event's poster, or null when it has none.
+   * @nullable
+   */
+  poster: PublicEventResourcePoster;
   /** Whether this event is taking public bookings right now. Link to the booking form only when it is true. */
   registrationOpen: boolean;
 }

@@ -6,6 +6,7 @@ import { useAgendaIndex } from "../api/generated/endpoints";
 import { RAISED_CARD } from "../carnival/raised";
 import type { PublicEventResource } from "../api/generated/model";
 import { t } from "../i18n";
+import { EventPoster } from "./EventPoster";
 import { formatEventDay, formatEventWhen } from "./formatEventWhen";
 import { TagChip } from "./TagChip";
 
@@ -44,7 +45,13 @@ export function AgendaEntry({
   const { day, month } = formatEventDay(event.startsAt);
 
   return (
-    <li className={cn(RAISED_CARD, "flex gap-4 p-4")}>
+    <li
+      className={cn(
+        RAISED_CARD,
+        "grid grid-cols-[auto_minmax(0,1fr)] gap-4 p-4",
+        event.poster && "md:grid-cols-[auto_minmax(0,1fr)_auto]",
+      )}
+    >
       {/* A picture of the date. The line under the title says the same thing
           in words, so a screen reader skips this. */}
       <div
@@ -79,6 +86,14 @@ export function AgendaEntry({
           </ButtonLink>
         ) : null}
       </div>
+
+      {event.poster ? (
+        <EventPoster
+          poster={event.poster}
+          title={event.title}
+          className="col-span-2 row-start-1 md:col-span-1 md:col-start-3"
+        />
+      ) : null}
     </li>
   );
 }

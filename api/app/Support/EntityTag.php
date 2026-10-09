@@ -181,7 +181,13 @@ final class EntityTag
     private static function state(string $facet, Model $model): array
     {
         return match ($facet) {
-            'event' => (new EventResource($model))->toArray(self::bare()),
+            // Without the poster, which has a write of its own with no If-Match.
+            // The form writes it between the event's save and the publish, and
+            // the publish carries the tag that save handed out.
+            'event' => array_diff_key(
+                (new EventResource($model))->toArray(self::bare()),
+                ['poster' => true],
+            ),
 
             'event.options' => RegistrationOptionResource::collection(
                 self::event($model)->registrationOptions()->orderBy('sort_order')->orderBy('id')->get()

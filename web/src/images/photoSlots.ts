@@ -7,11 +7,14 @@ import type { PhotoData } from "./Photo";
 
 /**
  * The slot names that follow a record rather than a page. The API deletes a
- * history entry's slot with the entry (PhotoSlot::forHistory), so that name
- * must match it exactly.
+ * history entry's slot with the entry (PhotoSlot::forHistory), and an event's
+ * with the event (PhotoSlot::forEvent), so those names must match it exactly.
+ * An event's poster is read from the event, never from usePhotoSlots(): the
+ * public list leaves it out.
  */
 export const registerSlot = (sectionId: number) => `register-${sectionId}`;
 export const historySlot = (entryId: number) => `history-${entryId}`;
+export const eventSlot = (eventId: number) => `event-${eventId}`;
 
 /**
  * Every placed photo slot, read once however many slots a page shows: each
