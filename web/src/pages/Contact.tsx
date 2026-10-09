@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 
 import { PageSection } from "@/components/PageSection";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function Contact() {
   const { user } = useSession();
   const [values, setValues] = useState<ContactRequest>(EMPTY);
   const [sent, setSent] = useState(false);
+  const sentHeading = useRef<HTMLHeadingElement>(null);
   const idempotencyKey = useRef(newIdempotencyKey());
 
   const formToken = useFormTokenShow({
@@ -94,7 +96,16 @@ export function Contact() {
   const send = useMutation({
     mutationFn: (token: string) =>
       contactStore(values, publicWriteHeaders(token, idempotencyKey.current)),
-    onSuccess: () => setSent(true),
+    onSuccess: () => {
+      // Same as the booking confirmation: the panel replaces the form in
+      // place, and the window would keep the submit button's offset, leaving
+      // the sender on the footer at 390px with focus on <body>. flushSync
+      // renders the heading now so it can be scrolled to and focused before
+      // the browser paints.
+      flushSync(() => setSent(true));
+      window.scrollTo(0, 0);
+      sentHeading.current?.focus({ preventScroll: true });
+    },
     onError: setFromThrown,
   });
 
@@ -123,7 +134,12 @@ export function Contact() {
   if (sent) {
     return (
       <>
-        <PageHero title={t("contact.sentHeading")} seed={23} width="text" />
+        <PageHero
+          title={t("contact.sentHeading")}
+          seed={23}
+          width="text"
+          headingRef={sentHeading}
+        />
         <PageSection width="text">
           <p className="text-ink-muted">{t("contact.sentBody")}</p>
         </PageSection>
