@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
-import { expect, test } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
 
 import { type Locale } from "../i18n/locale";
 import { server } from "../mocks/node";
@@ -115,6 +115,27 @@ test("books a place and answers in place, without navigating", async () => {
   // The form is GONE rather than covered: a success panel above a live form
   // invites a second booking of the same five people.
   expect(screen.queryByLabelText("Prénom")).not.toBeInTheDocument();
+});
+
+/**
+ * The confirmation replaces a form several screens long, and the window keeps
+ * the offset the submit button had: on a phone the guest landed on the footer,
+ * 477px below the heading, with focus on <body>. Focus on the h1 is what a
+ * screen reader announces; the scroll is what everyone else sees.
+ */
+test("brings the confirmation into view and moves focus to its heading", async () => {
+  const user = userEvent.setup();
+  const scrollTo = vi.spyOn(window, "scrollTo");
+  onTestFinished(() => scrollTo.mockRestore());
+  await renderBooking();
+
+  await fillInContact(user);
+  await order(user, /Repas adulte/, 2);
+  await user.click(screen.getByRole("button", { name: "M’inscrire" }));
+
+  const heading = await screen.findByRole("heading", { name: "Inscription enregistrée" });
+  expect(heading).toHaveFocus();
+  expect(scrollTo).toHaveBeenCalledWith(0, 0);
 });
 
 /**

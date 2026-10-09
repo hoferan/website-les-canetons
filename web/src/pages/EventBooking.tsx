@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useMemo, useRef, useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export function EventBooking() {
   // makes an untouched form send nothing rather than a row of zeroes.
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [booked, setBooked] = useState<RegistrationResource | null>(null);
+  const bookedHeading = useRef<HTMLHeadingElement>(null);
 
   const idempotencyKey = useRef(newIdempotencyKey());
 
@@ -174,7 +176,15 @@ export function EventBooking() {
       ),
     onSuccess: (result) => {
       if (result.status === 201) {
-        setBooked(result.data);
+        // The confirmation replaces a form several screens long in place, and
+        // the window keeps the submit button's offset. Left alone, a guest at
+        // 390px lands on the footer with the heading 477px above the screen
+        // and focus on <body>. flushSync renders the heading now, so it can be
+        // scrolled to and focused before the browser paints. The scroll is
+        // instant, like ScrollToTop's, so reduced motion has nothing to undo.
+        flushSync(() => setBooked(result.data));
+        window.scrollTo(0, 0);
+        bookedHeading.current?.focus({ preventScroll: true });
       }
     },
     onError: setFromThrown,
@@ -224,7 +234,12 @@ export function EventBooking() {
   if (booked) {
     return (
       <>
-        <PageHero title={t("booking.bookedHeading")} seed={13} width="text" />
+        <PageHero
+          title={t("booking.bookedHeading")}
+          seed={13}
+          width="text"
+          headingRef={bookedHeading}
+        />
         <PageSection width="text">
           <p className="text-ink-muted">
             {t("booking.bookedBody", { email: booked.email, phone: booked.phone })}
