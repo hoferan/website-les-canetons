@@ -167,6 +167,7 @@ test("a refused flip puts the switch back and says why in the panel", async () =
   // On while the write is in flight, and deaf to a second flip.
   expect(handledSwitch()).toBeChecked();
   expect(handledSwitch()).toHaveAttribute("aria-disabled", "true");
+  expect(handledSwitch()).toBeEnabled();
   await userEvent.click(handledSwitch());
   expect(handledSwitch()).toBeChecked();
 

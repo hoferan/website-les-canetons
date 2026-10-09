@@ -56,6 +56,30 @@ test("a new tag without a French name is refused in the page's language", async 
 });
 
 /**
+ * Rule 2 of ui/button.tsx, for the switch. Only a real browser shows it:
+ * jsdom keeps the focus on a button that turns disabled, and Chromium moves it
+ * to <body>. A keyboard user who flips the confetti switch with Space must
+ * still be on it once the save is through.
+ *
+ * MUTATION TEST: pass `disabled={busy}` to the switch in EventTags.tsx and
+ * this fails.
+ */
+test("a tag's confetti switch keeps the focus through a Space flip", async ({ page }) => {
+  await logIn(page, "demo.direction");
+  await page.goto("/event-tags");
+
+  const sortie = page.getByRole("switch", { name: /Sortie/ });
+  await expect(sortie).not.toBeChecked();
+  await sortie.focus();
+  await page.keyboard.press("Space");
+
+  await expect(sortie).toBeChecked();
+  // Playwright counts aria-disabled as disabled, so this waits for the save.
+  await expect(sortie).toBeEnabled();
+  await expect(sortie).toBeFocused();
+});
+
+/**
  * A name at the forty-character cap stays on a 320px screen.
  *
  * It does not even need to wrap: measured 2026-10-06, such a chip is 246px

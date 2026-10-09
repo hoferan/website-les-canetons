@@ -461,6 +461,7 @@ test("a refused payment puts the switch back and says why on the card", async ()
   // On while the write is in flight, and deaf to a second flip.
   expect(jeannePaid()).toBeChecked();
   expect(jeannePaid()).toHaveAttribute("aria-disabled", "true");
+  expect(jeannePaid()).toBeEnabled();
   await user.click(jeannePaid());
   expect(jeannePaid()).toBeChecked();
 

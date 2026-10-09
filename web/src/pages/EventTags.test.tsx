@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { expect, test } from "vitest";
 
-import { setMockUser } from "../mocks/handlers";
+import { problem, setMockUser } from "../mocks/handlers";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
 import { EventTags } from "./EventTags";
@@ -97,13 +97,52 @@ test("the confetti switch shows the stored flag and saves as it is flipped", asy
   // what proves the server has it.
   await user.click(sortie);
   await waitFor(() => expect(confettiSwitch("Sortie")).toBeChecked());
-  await waitFor(() => expect(confettiSwitch("Sortie")).toBeEnabled());
+  await waitFor(() => expect(confettiSwitch("Sortie")).toHaveAttribute("aria-disabled", "false"));
   expect(confettiSwitch("Sortie")).toBeChecked();
   // The edit form has no copy of it.
   await user.click(within(rowFor("Sortie")).getByRole("button", { name: /^Modifier/ }));
   await within(rowFor("Sortie")).findByLabelText("Nom en français");
   expect(within(rowFor("Sortie")).queryByRole("switch")).toBeNull();
   expect(within(rowFor("Sortie")).queryByRole("checkbox")).toBeNull();
+});
+
+/**
+ * MUTATION TEST: pass `disabled={busy}` again, alone or beside aria-disabled,
+ * and `toBeEnabled()` fails. In a browser that attribute throws a keyboard
+ * user's focus to <body> mid-save (rule 2 in ui/button.tsx), but jsdom keeps
+ * the focus where it was, so the focus assertions here cannot see it;
+ * tags.spec.ts shows it in Chromium. Drop the early return and the second
+ * Space turns the switch off mid-save.
+ */
+test("a Space flip saves without disabling the switch, and ignores a second one", async () => {
+  const user = userEvent.setup();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  server.use(
+    http.put("/api/v1/event-tags/:id", async () => {
+      await held;
+      return problem(412, "if_match_failed", "The If-Match header does not match");
+    }),
+  );
+  await renderEditor();
+
+  confettiSwitch("Sortie").focus();
+  await user.keyboard(" ");
+
+  expect(confettiSwitch("Sortie")).toBeChecked();
+  expect(confettiSwitch("Sortie")).toHaveAttribute("aria-disabled", "true");
+  expect(confettiSwitch("Sortie")).toBeEnabled();
+  expect(confettiSwitch("Sortie")).toHaveFocus();
+  await user.keyboard(" ");
+  expect(confettiSwitch("Sortie")).toBeChecked();
+
+  release();
+
+  await within(rowFor("Sortie")).findByRole("alert");
+  expect(confettiSwitch("Sortie")).not.toBeChecked();
+  expect(confettiSwitch("Sortie")).toHaveFocus();
 });
 
 test("a refused flip puts the switch back and says why", async () => {
