@@ -98,7 +98,7 @@ export function CorrectAnswerDialog({
         <div className="flex flex-wrap gap-tight">
           <Button
             type="button"
-            variant={status === "yes" ? "default" : "outline"}
+            variant={status === "yes" ? "raised-violet" : "raised-light"}
             aria-pressed={status === "yes"}
             onClick={() => choose("yes")}
           >
@@ -106,7 +106,7 @@ export function CorrectAnswerDialog({
           </Button>
           <Button
             type="button"
-            variant={status === "no" ? "destructive" : "outline"}
+            variant={status === "no" ? "raised-danger" : "raised-light"}
             aria-pressed={status === "no"}
             onClick={() => choose("no")}
           >

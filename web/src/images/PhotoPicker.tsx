@@ -107,14 +107,14 @@ export function PhotoPicker({ open, onOpenChange, onPick, onRemove, upload, shri
               event.target.value = "";
             }}
           />
-          <Button type="button" variant="outline" onClick={() => input.current?.click()}>
+          <Button type="button" variant="raised-light" onClick={() => input.current?.click()}>
             <Plus aria-hidden="true" />
             {t("photos.pickerAdd")}
           </Button>
           {onRemove ? (
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               onClick={() => {
                 onRemove();
                 close(false);

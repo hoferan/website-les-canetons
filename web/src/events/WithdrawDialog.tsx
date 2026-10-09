@@ -103,7 +103,7 @@ export function WithdrawDialog({
           <AlertDialogCancel onClick={close}>{t("common.cancel")}</AlertDialogCancel>
           <Button
             type="button"
-            variant="destructive"
+            variant="raised-danger"
             aria-disabled={busy || !armed}
             onClick={() => {
               if (busy || !armed) {

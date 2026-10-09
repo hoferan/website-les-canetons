@@ -31,7 +31,8 @@ import { cn } from "@/lib/utils";
  * 4. `active:scale-[0.98]` on the base variant -- the press feedback. The
  *    existing `transition-all` animates it and the global reduced-motion
  *    block in styles.css zeroes it; do not add a duration here.
- * 5. The `raised` variants, marked where they are defined.
+ * 5. The `raised` variants in place of shadcn's own, marked where they are
+ *    defined, and sizes that set no radius of their own.
  *
  * Which controls carry an icon, and which carry only one, is decided in
  * docs/adr/0025-icons-on-controls.md. Read it before adding either.
@@ -41,28 +42,31 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20",
-        outline: "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
         // 5. THE RAISED VARIANTS ARE LOCAL, from ADR 0029: an ink outline and a
-        // hard offset shadow, for the public pages. On the stage the caller
-        // swaps the shadow for shadow-raised-stage, since ink on black vanishes.
+        // hard offset shadow, on every page, the members' area included. They
+        // take the place of shadcn's default, outline, secondary and
+        // destructive. On the stage the caller swaps the shadow for
+        // shadow-raised-stage, since ink on black vanishes.
         raised:
           "rounded-xl border-3 border-ink bg-yellow font-bold text-ink shadow-raised-sm hover:bg-yellow/85",
         "raised-light":
           "rounded-xl border-3 border-ink bg-white font-bold text-ink shadow-raised-sm hover:bg-ground",
         "raised-violet":
           "rounded-xl border-3 border-ink bg-violet font-bold text-white shadow-raised-sm hover:bg-violet/90",
+        "raised-danger":
+          "rounded-xl border-3 border-ink bg-danger font-bold text-white shadow-raised-sm hover:bg-danger/90",
+        // Ghost and link stay flat: an icon inside a field, a link in a sentence.
+        ghost: "hover:bg-accent hover:text-accent-foreground",
+        link: "text-primary underline-offset-4 hover:underline",
       },
+      // No size sets a radius. tailwind-merge lets the size's class win over
+      // the variant's, so a radius here would square off the small raised
+      // buttons.
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        xs: "h-6 gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1.5 px-3 has-[>svg]:px-2.5",
+        lg: "h-10 px-6 has-[>svg]:px-4",
         // THE ICON SIZES CARRY `min-w-touch` BECAUSE THE BASE ONLY SETS A
         // MINIMUM HEIGHT. A text button reaches a usable width through its
         // padding; an icon-only one does not, so `size-8` here would render
@@ -70,13 +74,13 @@ const buttonVariants = cva(
         // actually uses. The `size-*` still sets the resting square; the
         // minimum is what a thumb gets.
         icon: "size-9 min-w-touch",
-        "icon-xs": "size-6 min-w-touch rounded-md [&_svg:not([class*='size-'])]:size-3",
+        "icon-xs": "size-6 min-w-touch [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8 min-w-touch",
         "icon-lg": "size-10 min-w-touch",
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "raised-violet",
       size: "default",
     },
   },
@@ -84,7 +88,7 @@ const buttonVariants = cva(
 
 function Button({
   className,
-  variant = "default",
+  variant = "raised-violet",
   size = "default",
   asChild = false,
   ...props

@@ -7,6 +7,7 @@ import { FormError, FormField, RequiredLegend, formIsValid } from "../components
 import { t, type TranslatedError } from "../i18n";
 import { bandZoneParts, composeInBandZone } from "./bandTime";
 import { TagPicker } from "./TagPicker";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 export type EventDraft = {
   title: string;
@@ -210,7 +211,7 @@ export function EventForm({
   return (
     <form
       noValidate
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
       onSubmit={(submitted) => {
         submitted.preventDefault();
         // aria-disabled, not disabled — so this early return is what actually
@@ -401,7 +402,7 @@ export function EventForm({
                 outlined: Enter never reaches for it. */}
             <Button
               type="submit"
-              variant="outline"
+              variant="raised-light"
               aria-disabled={busy}
               onClick={() => (intent.current = "publish")}
             >
@@ -413,7 +414,7 @@ export function EventForm({
             {busy ? t("eventForm.saving") : t("common.save")}
           </Button>
         )}
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="raised-light" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

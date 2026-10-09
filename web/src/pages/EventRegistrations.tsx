@@ -28,6 +28,7 @@ import { translateApiError } from "../i18n";
 import { t, type TranslationKey } from "../i18n";
 import { formatCents } from "../money";
 import { useSession } from "../session/SessionProvider";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The four downloads, in the order the committee reaches for them. Markdown
@@ -455,10 +456,7 @@ export function EventRegistrations() {
             className="mt-block grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
           >
             {bookings.map((booking) => (
-              <li
-                key={booking.id}
-                className="rounded-lg border border-gray-200 bg-white p-3 text-sm"
-              >
+              <li key={booking.id} className={`${OUTLINED_CARD} p-3 text-sm`}>
                 <p className="text-ink">
                   {booking.lastName} {booking.firstName}
                 </p>
@@ -579,7 +577,7 @@ function DownloadButton({
   onClick: () => void;
 }) {
   return (
-    <Button type="button" variant="outline" size="sm" aria-disabled={busy} onClick={onClick}>
+    <Button type="button" variant="raised-light" size="sm" aria-disabled={busy} onClick={onClick}>
       {busy ? "…" : label}
     </Button>
   );
@@ -620,7 +618,7 @@ function PaymentLine({
       {mayManage ? (
         <Button
           type="button"
-          variant="outline"
+          variant="raised-light"
           size="sm"
           aria-disabled={busy}
           aria-label={
@@ -737,7 +735,7 @@ function AmendForm({
   return (
     <form
       noValidate
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
       onSubmit={(submitted) => {
         submitted.preventDefault();
         if (busy || !formIsValid(submitted.currentTarget)) {
@@ -783,7 +781,7 @@ function AmendForm({
         <Button type="submit" aria-disabled={busy}>
           {busy ? t("registrations.saving") : t("common.save")}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="raised-light" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

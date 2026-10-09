@@ -5,6 +5,7 @@ import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
 import { roleLabel, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * Who I am, at /account. The account menu links here.
@@ -30,7 +31,7 @@ export function Account() {
 
       <section
         aria-label={t("account.password")}
-        className="mt-related flex flex-wrap items-center justify-between gap-related rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+        className={`${OUTLINED_CARD} mt-related flex flex-wrap items-center justify-between gap-related p-4`}
       >
         <div>
           <p className="text-sm text-ink-muted">{t("account.password")}</p>
@@ -40,7 +41,7 @@ export function Account() {
             ••••••••
           </p>
         </div>
-        <ButtonLink to="/account/password" variant="outline">
+        <ButtonLink to="/account/password" variant="raised-light">
           <KeyRound aria-hidden="true" />
           {t("account.change")}
         </ButtonLink>
@@ -74,10 +75,7 @@ function Identity({ user }: { user: AuthMe200 }) {
   ];
 
   return (
-    <section
-      aria-label={t("account.identity")}
-      className="mt-block rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-    >
+    <section aria-label={t("account.identity")} className={`${OUTLINED_CARD} mt-block p-4`}>
       <h2 className="font-display text-2xl">
         {user.firstName} {user.lastName}
       </h2>

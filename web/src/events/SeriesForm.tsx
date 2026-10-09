@@ -8,6 +8,7 @@ import { currentLocale, t, type TranslatedError } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { weekdayDatesBetween } from "./eventDates";
 import { TagPicker } from "./TagPicker";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The most dates one request may generate. The SERVER is the enforcement
@@ -175,7 +176,7 @@ export function SeriesForm({
   return (
     <form
       noValidate
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
       onSubmit={(submitted) => {
         submitted.preventDefault();
         if (busy || tooMany || chosen.length === 0 || !formIsValid(submitted.currentTarget)) {
@@ -363,7 +364,7 @@ export function SeriesForm({
               ? t("seriesForm.create", { count: chosen.length })
               : t("seriesForm.createNone")}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="raised-light" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

@@ -11,6 +11,7 @@ import type {
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
 import { roleHint, roleLabel, t } from "../i18n";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 export type MemberDraft = {
   firstName: string;
@@ -101,7 +102,7 @@ export function MemberForm({
   return (
     <form
       noValidate
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
       onSubmit={(event) => {
         event.preventDefault();
         // aria-disabled, not disabled — so this early return is what actually
@@ -294,7 +295,7 @@ export function MemberForm({
         <Button type="submit" aria-disabled={busy}>
           {busy ? t("memberForm.saving") : t("common.save")}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="raised-light" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

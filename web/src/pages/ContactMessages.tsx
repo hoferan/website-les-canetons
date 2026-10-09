@@ -30,6 +30,7 @@ import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
 import { useSession } from "../session/SessionProvider";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 type Filter = "all" | "open" | "handled";
 
@@ -282,7 +283,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "all" ? "default" : "outline"}
+          variant={filter === "all" ? "raised-violet" : "raised-light"}
           aria-pressed={filter === "all"}
           onClick={() => setFilter("all")}
         >
@@ -291,7 +292,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "open" ? "default" : "outline"}
+          variant={filter === "open" ? "raised-violet" : "raised-light"}
           aria-pressed={filter === "open"}
           onClick={() => setFilter("open")}
         >
@@ -300,7 +301,7 @@ export function ContactMessages() {
         <Button
           type="button"
           size="sm"
-          variant={filter === "handled" ? "default" : "outline"}
+          variant={filter === "handled" ? "raised-violet" : "raised-light"}
           aria-pressed={filter === "handled"}
           onClick={() => setFilter("handled")}
         >
@@ -351,11 +352,7 @@ export function ContactMessages() {
             className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
           >
             {visible.map((message) => (
-              <li
-                key={message.id}
-                data-message={message.id}
-                className="rounded-md border border-line bg-panel p-4"
-              >
+              <li key={message.id} data-message={message.id} className={`${OUTLINED_CARD} p-4`}>
                 <MessageSummary
                   message={message}
                   busy={openingId === message.id}
@@ -407,7 +404,7 @@ export function ContactMessages() {
                 has to be readable where it happened. */}
             <Button
               type="button"
-              variant="destructive"
+              variant="raised-danger"
               aria-disabled={destroy.isPending}
               onClick={() => {
                 if (destroy.isPending) return;
@@ -456,7 +453,7 @@ function MessageSummary({
       <div className="mt-related">
         <Button
           type="button"
-          variant="outline"
+          variant="raised-light"
           size="sm"
           aria-disabled={busy}
           onClick={() => {
@@ -501,7 +498,7 @@ function MessagePanel({
   return (
     <div
       data-testid="message-panel"
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
     >
       <div className="flex flex-wrap items-start justify-between gap-tight">
         <div>
@@ -555,7 +552,7 @@ function MessagePanel({
           ) : (
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               size="sm"
               aria-disabled={busy}
               onClick={onReopen}
@@ -565,7 +562,7 @@ function MessagePanel({
           )}
           <Button
             type="button"
-            variant="destructive"
+            variant="raised-danger"
             size="sm"
             aria-disabled={busy}
             onClick={onDelete}

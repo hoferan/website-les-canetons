@@ -22,6 +22,7 @@ import { PhotoField } from "../images/PhotoField";
 import { historySlot, usePhotoSlots } from "../images/photoSlots";
 import { HISTORY_ICONS, type HistoryIconKey, historyDate, iconFor } from "./entry";
 import { TimelineMarker } from "./TimelineMarker";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 const PRECISIONS = ["year", "month", "day"] as const;
 type Precision = (typeof PRECISIONS)[number];
@@ -243,7 +244,7 @@ export function HistoryForm({
     <form
       noValidate
       onSubmit={submit}
-      className="mt-block flex flex-col gap-related rounded-md border border-line bg-panel p-4"
+      className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
     >
       <RequiredLegend />
       <div className="flex flex-col gap-1">
@@ -444,7 +445,7 @@ export function HistoryForm({
         <Button type="submit" aria-disabled={busy}>
           {t("common.save")}
         </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="raised-light" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
       </div>

@@ -108,7 +108,7 @@ export function RowActions({
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               size="icon"
               aria-label={t("common.moreActionsAria", { name: rowName })}
             >
@@ -129,7 +129,7 @@ export function RowActions({
 function InlineAction({ action }: { action: RowAction }) {
   if (action.to !== undefined) {
     return (
-      <ButtonLink to={action.to} variant="outline" ariaLabel={action.ariaLabel}>
+      <ButtonLink to={action.to} variant="raised-light" ariaLabel={action.ariaLabel}>
         {action.label}
       </ButtonLink>
     );
@@ -140,7 +140,7 @@ function InlineAction({ action }: { action: RowAction }) {
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="raised-light"
       aria-label={action.ariaLabel}
       aria-disabled={action.disabled}
       onClick={() => {

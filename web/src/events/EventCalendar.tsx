@@ -6,6 +6,7 @@ import type { EventResource } from "../api/generated/model";
 import { currentLocale, t } from "../i18n";
 import { intlTag } from "../i18n/locale";
 import { bandZoneParts } from "./bandTime";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * THE THREE DISPLAY FORMATTERS, BUILT PER CALL AND CACHED BY SHAPE.
@@ -128,11 +129,11 @@ export function EventCalendar({
   const leading = (firstOfMonth.getUTCDay() + 6) % 7;
 
   return (
-    <div data-testid="event-calendar" className="rounded-lg border border-gray-200 bg-white p-4">
+    <div data-testid="event-calendar" className={`${OUTLINED_CARD} p-4`}>
       <div className="flex items-center justify-between gap-related">
         <Button
           type="button"
-          variant="outline"
+          variant="raised-light"
           size="sm"
           aria-label={t("events.calendarGrid.previousMonth")}
           onClick={() => setMonth(shiftMonth(month, -1))}
@@ -146,7 +147,7 @@ export function EventCalendar({
 
         <Button
           type="button"
-          variant="outline"
+          variant="raised-light"
           size="sm"
           aria-label={t("events.calendarGrid.nextMonth")}
           onClick={() => setMonth(shiftMonth(month, 1))}

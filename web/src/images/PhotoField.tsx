@@ -50,11 +50,11 @@ export function PhotoField({ label, value, onChange }: Props) {
       ) : null}
       {manage ? (
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => setPicking(true)}>
+          <Button type="button" variant="raised-light" onClick={() => setPicking(true)}>
             {t("photos.choose")}
           </Button>
           {value ? (
-            <Button type="button" variant="outline" onClick={() => onChange(null, null)}>
+            <Button type="button" variant="raised-light" onClick={() => onChange(null, null)}>
               {t("photos.remove")}
             </Button>
           ) : null}
