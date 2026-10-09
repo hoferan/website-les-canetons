@@ -149,15 +149,20 @@ Route::post('/login', [AuthController::class, 'login']);
 // view to another (ADR 0010). A middleware rather than nine ->header() calls,
 // so the tenth endpoint cannot forget.
 Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
+    // SESSION ONLY. These two and the inbox further down are the only routes
+    // in this group without a `permission:` gate. Logging out has to work for
+    // whoever is logged in, whatever they hold. /me is how a client learns
+    // what the caller holds in the first place, so gating it on a permission
+    // would leave nothing to read the answer from.
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    // Any account holder may change their OWN password — no permission,
-    // because this is the screen every member needs and nobody administers,
-    // and it is where every first login lands. It re-verifies the current
-    // password itself, through the same throttled Reauthentication the
-    // destructive endpoints use.
-    Route::post('/me/password', AccountPasswordController::class);
+    // Changing one's OWN password: `account.manage`, which the baseline role
+    // grants to every account. This is where every first login lands. It
+    // re-verifies the current password itself, through the same throttled
+    // Reauthentication the destructive endpoints use.
+    Route::post('/me/password', AccountPasswordController::class)
+        ->middleware('permission:account.manage');
 
     // Member administration. `permission:` never sees a role name: roles merely
     // group permissions, and which role granted this one is not a question the
@@ -236,12 +241,11 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
         Route::post('/members/{member}/password', MemberPasswordController::class);
     });
 
-    // The planning. NO PERMISSION: reading it is something everybody in the
-    // band does, not something the committee administers — gating it would
-    // be the same mistake as gating the ability to answer for an event.
-    // auth:sanctum alone (inherited from the group) is enough to keep it
-    // members-only.
-    Route::get('/events', [EventController::class, 'index']);
+    // The planning: `events.view`. Everybody in the band reads it, and
+    // everybody holds it through the baseline role, the same way any other
+    // ability is held (ADR 0014).
+    Route::get('/events', [EventController::class, 'index'])
+        ->middleware('permission:events.view');
 
     // CARRIES `etag:event`, and that is what makes the two conditional writes
     // below usable at all: this is where a client gets the tag it has to quote
@@ -250,9 +254,10 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     // is also the correct concurrency window: "while this form was open".
     //
     // `event.published`: a draft is a 404 for anybody without events.manage,
-    // here and on every other route below that takes an {event}.
+    // here and on every other route below that takes an {event}. It comes
+    // before `permission:` for the reason given at the group below.
     Route::get('/events/{event}', [EventController::class, 'show'])
-        ->middleware(['etag:event', 'event.published']);
+        ->middleware(['etag:event', 'event.published', 'permission:events.view']);
 
     // Writing the planning IS administration, unlike reading it. Nested
     // inside the auth:sanctum group above so an anonymous caller gets 401
@@ -295,10 +300,12 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:event');
     });
 
-    // The event tags (#107). Reading them is open to every member, like the
-    // planning they label: the filter on it needs the list. Changing them is
-    // planning administration, so it takes the same permission as the events.
-    Route::get('/event-tags', [EventTagController::class, 'index']);
+    // The event tags (#107). Reading them takes the same permission as
+    // reading the planning they label: the filter on it needs the list.
+    // Changing them is planning administration, so it takes the same
+    // permission as changing the events.
+    Route::get('/event-tags', [EventTagController::class, 'index'])
+        ->middleware('permission:events.view');
     Route::middleware('permission:events.manage')->group(function () {
         Route::get('/event-tags/{eventTag}', [EventTagController::class, 'show'])
             ->middleware('etag:event_tag');
@@ -363,24 +370,23 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->where('slot', PhotoSlot::KEY);
     });
 
-    // ANSWERING FOR YOURSELF NEEDS NO PERMISSION, and that absence is a
-    // decision rather than an oversight (ADR 0014). Making it a grant is
-    // what produced the old bug where an admin could not say whether they
-    // were coming, and left the "Pas de réponse" counts meaningless. What
-    // gates it instead is Member::isPlayer() — being in a register — checked
-    // in App\Support\AttendanceIntegrity, because it is a fact about the
-    // person rather than something anybody granted them.
+    // Answering for yourself: `attendance.respond`, held through `musician`.
+    // The register only groups and displays. An organiser who plays holds
+    // `musician` beside their other roles, which keeps the old bug fixed
+    // where an admin could not say whether they were coming (ADR 0014).
+    // Holding this permission is also what puts somebody on the chase list
+    // and into the planning's counts.
     //
     // PUT so the answer is an idempotent upsert; DELETE is undo, and it
     // expires after five minutes so the rule that withdrawing a yes costs a
     // reason is not decorative (ADR 0018).
-    Route::put('/events/{event}/attendance', [AttendanceController::class, 'update'])
-        ->middleware('event.published');
-    Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy'])
-        ->middleware('event.published');
+    Route::middleware(['event.published', 'permission:attendance.respond'])->group(function () {
+        Route::put('/events/{event}/attendance', [AttendanceController::class, 'update']);
+        Route::delete('/events/{event}/attendance', [AttendanceController::class, 'destroy']);
+    });
 
-    // The chase list. Answering is everybody's; reading who has NOT answered
-    // is the committee's, so unlike answering this one is gated.
+    // The chase list. Answering is every musician's; reading who has NOT
+    // answered is the committee's, so it takes a permission of its own.
     Route::middleware(['event.published', 'permission:attendance.view_all'])->group(function () {
         Route::get('/events/{event}/attendance', [AttendanceController::class, 'index']);
     });
@@ -429,9 +435,11 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
             ->middleware('etag:registration');
     });
 
-    // THE INBOX NEEDS A SESSION AND NOTHING MORE. It filters by permission
-    // rather than refusing, so the nav can ask for the count without first
-    // working out whether it is allowed to — see InboxRegistry.
+    // THE INBOX NEEDS A SESSION AND NOTHING MORE, the third exception after
+    // /logout and /me. Each of its sources still requires a permission, and
+    // the inbox filters by those instead of refusing, so the nav can ask for
+    // the count without first working out whether it is allowed to — see
+    // InboxRegistry.
     //
     // `/inbox/summary` is written before `/inbox/{anything}` would be, if one
     // ever exists; there is no dynamic segment here today and adding one must

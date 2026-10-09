@@ -316,7 +316,7 @@ export interface ChaseListEntryResource {
   firstName: string;
   lastName: string;
   /**
-   * The register they play in. Everyone on this list has one; that is what makes them answerable.
+   * The register they play in, or null for a member who answers without one. For grouping only: holding `attendance.respond` is what puts somebody on this list.
    * @nullable
    */
   sectionName: string | null;

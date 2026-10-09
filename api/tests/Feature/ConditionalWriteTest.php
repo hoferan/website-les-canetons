@@ -183,7 +183,7 @@ class ConditionalWriteTest extends TestCase
         // answering an event would invalidate their own pending edit of it.
         $event = Event::factory()->create();
 
-        $answering = Member::factory()->administrator()->inSection('Cloches')->create();
+        $answering = Member::factory()->administrator()->inSection('Cloches')->musician()->create();
 
         $before = $this->actingAsMember($answering)
             ->getJson("/api/v1/events/{$event->id}")
@@ -263,14 +263,15 @@ class ConditionalWriteTest extends TestCase
             ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => [$committee->id]])
             ->assertStatus(428);
 
-        $this->assertSame(0, $target->fresh()->roles()->count());
+        // Untouched: still the baseline role every factory member starts with.
+        $this->assertSame([Role::baseline()->id], $target->fresh()->roles()->pluck('roles.id')->all());
 
         $this->actingAsMember($this->organiser)
             ->withHeaders($this->ifMatch('member', $target))
             ->putJson("/api/v1/members/{$target->id}/roles", ['roleIds' => [$committee->id]])
             ->assertOk();
 
-        $this->assertSame(1, $target->fresh()->roles()->count());
+        $this->assertSame([$committee->id], $target->fresh()->roles()->pluck('roles.id')->all());
     }
 
     public function test_an_events_options_are_tagged_apart_from_the_event(): void

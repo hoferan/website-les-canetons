@@ -46,12 +46,15 @@ destroy: `registrations.view` and `registrations.manage`, `messages.view` and
 
 Answering an event is a permission, `attendance.respond`, held through the
 `musician` role. It was not one until 2026-09-29: it was derived from having a
-register, and the register could therefore decide who is counted. A register
-only groups and displays (from #191). Every account also holds the baseline `member`
-role (`events.view`, `account.manage`), marked by `roles.is_baseline` and fixed:
-its grants cannot be edited and it cannot be deleted (enforced by #193). The seeded `demo.both`,
-who plays and manages, is still the case that breaks if anyone brings an
-either/or back.
+register, and the register could therefore decide who is counted. Since #191 a
+register only groups and displays, and holding `attendance.respond` is also what
+puts somebody on the chase list and into the planning's counts. The planning and
+one's own password are permissions too, so `/logout`, `/me` and the inbox are the
+only routes that need a session and nothing else. Every account also holds the
+baseline `member` role (`events.view`, `account.manage`), marked by
+`roles.is_baseline` and fixed: its grants cannot be edited and it cannot be
+deleted (enforced by #193). The seeded `demo.both`, who plays and manages, is
+still the case that breaks if anyone brings an either/or back.
 
 Adding a permission before its middleware exists is forbidden. `system.manage` waits
 for the editor.
@@ -70,9 +73,13 @@ for the editor.
   `members.manage` from `direction` and lock the band out, with no shell to repair it.
 - Bad, because a new permission needs its own additive grant migration, or every
   screen behind it answers 403 on existing servers.
-- Bad, because `events.view`, `attendance.respond` and `account.manage` exist before any
-  middleware checks them (#190 ships first; #191 enforces), an exception to "a
-  permission exists only if middleware checks it" that lasts one release.
+- Bad, because `events.view`, `attendance.respond` and `account.manage` existed for
+  one release before any middleware checked them (#190 shipped the data, #191 the
+  checks), an exception to "a permission exists only if middleware checks it".
+- Bad, because a register without `musician` is now a real state, and a player
+  added without the role is silently never asked to answer. The roster form
+  pre-ticks the role when a register is chosen and warns when one is set without
+  it (#192).
 
 Registers and roles are reference data seeded by migrations, since there is no shell to
 run a seeder. Registers and roles have an immutable `key`, and the SPA translates the

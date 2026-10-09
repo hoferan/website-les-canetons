@@ -38,7 +38,7 @@ class DevSeederTest extends TestCase
 
         $this->assertTrue($member->hasPermission(Permission::MembersManage));
         $this->assertTrue($member->hasPermission(Permission::EventsManage));
-        $this->assertFalse($member->isPlayer());
+        $this->assertFalse($member->hasPermission(Permission::AttendanceRespond));
     }
 
     public function test_the_player_holds_the_baseline_and_musician_permissions_and_nothing_organising(): void
@@ -49,7 +49,6 @@ class DevSeederTest extends TestCase
             [Permission::EventsView, Permission::AccountManage, Permission::AttendanceRespond],
             $member->permissions()->all(),
         );
-        $this->assertTrue($member->isPlayer());
     }
 
     public function test_one_member_both_organises_and_plays(): void
@@ -58,7 +57,7 @@ class DevSeederTest extends TestCase
         $member = Member::where('username', 'demo.both')->sole();
 
         $this->assertTrue($member->hasPermission(Permission::EventsManage));
-        $this->assertTrue($member->isPlayer());
+        $this->assertTrue($member->hasPermission(Permission::AttendanceRespond));
     }
 
     public function test_every_persona_keeps_exactly_the_abilities_it_had(): void

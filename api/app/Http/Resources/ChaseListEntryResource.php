@@ -8,8 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One row of the chase list: a member who is answerable, and what they said
- * if anything.
+ * One row of the chase list: a member who holds attendance.respond, and what
+ * they said if anything.
  *
  * `attendance` is NULL for somebody who has not replied, and that null is the
  * whole point of the screen — the list exists to be scanned for it.
@@ -30,7 +30,7 @@ class ChaseListEntryResource extends JsonResource
             'memberId' => $this->id,
             'firstName' => $this->first_name,
             'lastName' => $this->last_name,
-            /** The register they play in. Everyone on this list has one; that is what makes them answerable. */
+            /** The register they play in, or null for a member who answers without one. For grouping only: holding `attendance.respond` is what puts somebody on this list. */
             'sectionName' => $this->sectionName(),
             /** Their answer, or null if they have not replied. The nulls are what this list is read for. */
             'attendance' => $this->answer(),

@@ -314,6 +314,7 @@ export type AuthMe200 = {
   username: string;
   firstName: string;
   lastName: string;
+  /** Whether `permissions` contains `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it. */
   isPlayer: boolean;
   mustChangePassword: boolean;
   permissions: string[];

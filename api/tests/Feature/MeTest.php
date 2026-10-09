@@ -24,7 +24,7 @@ class MeTest extends TestCase
     public function test_it_returns_identity_and_effective_permissions(): void
     {
         $section = Section::create(['name' => 'Clarinettes', 'sort_order' => 1]);
-        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->inSection($section)->create();
+        $member = Member::factory()->named('Léa', 'Keller', 'lea.keller')->inSection($section)->musician()->create();
         $role = Role::factory()->create();
         $role->syncPermissions([Permission::EventsManage, Permission::AttendanceViewAll]);
         $member->roles()->attach($role);
@@ -74,8 +74,9 @@ class MeTest extends TestCase
         $this->assertSame(true, $response->json('isPlayer'));
         $this->assertSame(false, $response->json('mustChangePassword'));
 
+        // The role made here, plus the baseline and musician the factory gave.
         $this->assertEqualsCanonicalizing(
-            ['events.manage', 'attendance.view_all'],
+            ['events.manage', 'attendance.view_all', 'events.view', 'account.manage', 'attendance.respond'],
             $response->json('permissions'),
         );
     }
@@ -93,10 +94,10 @@ class MeTest extends TestCase
 
         $this->assertSame('Clarinettes', $response->json('sectionName'));
         $this->assertSame('Présidente', $response->json('committeeFunctionName'));
-        $this->assertSame(['direction'], $response->json('roleKeys'));
+        $this->assertSame(['direction', 'member'], $response->json('roleKeys'));
     }
 
-    public function test_a_member_with_no_place_gets_nulls_and_an_empty_list(): void
+    public function test_a_member_with_no_place_gets_nulls_and_only_the_baseline_role(): void
     {
         $member = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->create();
 
@@ -111,7 +112,7 @@ class MeTest extends TestCase
         $this->assertNull($body['sectionName']);
         $this->assertArrayHasKey('committeeFunctionName', $body);
         $this->assertNull($body['committeeFunctionName']);
-        $this->assertSame([], $body['roleKeys']);
+        $this->assertSame(['member'], $body['roleKeys']);
     }
 
     public function test_it_never_leaks_the_password_hash(): void
@@ -125,17 +126,19 @@ class MeTest extends TestCase
         $this->assertStringNotContainsString('argon2', json_encode($body));
     }
 
-    public function test_a_member_with_no_register_is_not_a_player(): void
+    public function test_is_player_follows_attendance_respond_and_not_the_register(): void
     {
-        $member = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->create();
-
-        $response = $this->actingAsMember($member->fresh())
-            ->getJson('/api/v1/me')->assertOk();
+        // The SPA shows the answer buttons on isPlayer until #192, so it has
+        // to agree with what the API lets through: the permission, whatever
+        // the register says.
+        $registerOnly = Member::factory()->named('Marc', 'Rossier', 'marc.rossier')->inSection('Cloches')->create();
+        $unplaced = Member::factory()->named('Nora', 'Bulliard', 'nora.bulliard')->musician()->create();
 
         // Not assertJson(): its loose (`==`) comparison would let 'isPlayer'
         // regress to null and still satisfy an expectation of false. assertSame()
         // is the identity comparison that actually pins the boolean contract.
-        $this->assertSame(false, $response->json('isPlayer'));
+        $this->assertSame(false, $this->actingAsMember($registerOnly->fresh())->getJson('/api/v1/me')->json('isPlayer'));
+        $this->assertSame(true, $this->actingAsMember($unplaced->fresh())->getJson('/api/v1/me')->json('isPlayer'));
     }
 
     public function test_the_response_is_never_cached(): void

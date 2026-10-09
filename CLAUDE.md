@@ -432,9 +432,12 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   **permission, never a role**: the permissions are the cases of
   `App\Support\Permission`, roles are data that group them, and the
   `permission:<name>` route middleware (`App\Http\Middleware\RequirePermission`)
-  is the only thing that enforces anything. Answering an event is not a
-  permission at all: a member may answer if they play in a register. The SPA's
-  guards mirror the permissions for UX only. See ADR 0014.
+  is the only thing that enforces anything. Answering an event is
+  `attendance.respond`, held through the `musician` role; a register groups and
+  displays and grants nothing. Every account holds the fixed baseline role
+  `member` (`events.view`, `account.manage`), so only `/logout`, `/me` and the
+  inbox need a session alone. The SPA's guards mirror the permissions for UX
+  only. See ADR 0014.
 - **The contract is versioned: everything lives under `/api/v1/*`.** The prefix
   comes from `withRouting(apiPrefix: ApiVersion::PREFIX)` in
   `api/bootstrap/app.php`, and `App\Http\Middleware\ApiVersion` owns that
@@ -566,11 +569,11 @@ name instead:
 
 - `demo.direction` (Dominique Direction) — holds the `direction` role
   (`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
-  `members.manage`, `registrations.view`, `images.manage`). Has no section, so
-  is not in any register and never appears in an attendance list: organises,
-  does not play.
-- `demo.player` (Perrine Player) — plays in Cloches (in the register, so
-  answerable for events) and holds no role: no manage/view permissions at all.
+  `members.manage`, `registrations.view`, `images.manage`). Holds no
+  `musician` and has no register, so never appears in an attendance list:
+  organises, does not play.
+- `demo.player` (Perrine Player) — plays in Cloches and holds `musician`, so
+  answers for events, and nothing else: no manage/view permissions at all.
 - `demo.both` (Bastien Both) — plays in Trompettes **and** holds the
   `direction` role, so answers for events for themselves *and* manages them.
   This is the case the old either/or role matrix could not express; if

@@ -11,9 +11,9 @@ use App\Models\Member;
  * The state checks around answering, kept together and out of the
  * controllers, the same way AccessIntegrity holds member administration's.
  *
- * All three are about the state of the system rather than about permissions —
- * which is the whole reason they exist as code at all, since answering is
- * deliberately not gated by any permission.
+ * They are about the state of the system rather than the caller's
+ * permissions, which the route middleware has already checked by the time any
+ * of these runs. assertAnswerable() looks at the member an answer is FOR.
  */
 final class AttendanceIntegrity
 {
@@ -54,24 +54,30 @@ final class AttendanceIntegrity
     }
 
     /**
-     * Only somebody in a register is answerable — Member::isPlayer().
+     * Only a holder of `attendance.respond` is answerable, and this checks
+     * the member an answer is FOR, on the on-behalf route.
      *
-     * Dominique Direction organises, plays in nothing, and never appears in
-     * an attendance list. 403 with its own code rather than the generic
-     * access_denied: telling an organiser "accès refusé" when the truth is
-     * "you are not in a register" sends them hunting for a permission that
-     * does not exist.
+     * Answering for yourself never reaches it: that route carries
+     * `permission:attendance.respond`, so a caller without it is refused
+     * `403 access_denied` before the controller runs. Here the caller does
+     * hold a permission, attendance.record_for_others, and the refusal is
+     * about somebody else. Its own code says so, where access_denied would
+     * send the committee hunting for a grant of their own that is not
+     * missing.
+     *
+     * Dominique Direction organises, holds no `musician`, and never appears
+     * on the chase list, so nobody answers for her either.
      */
     public static function assertAnswerable(Member $member): void
     {
-        if ($member->isPlayer()) {
+        if ($member->hasPermission(Permission::AttendanceRespond)) {
             return;
         }
 
         throw new AttendanceRefused(
             403,
             'not_answerable',
-            'This member is not in a register and is not answerable for events',
+            'This member does not hold attendance.respond and is not answerable for events',
         );
     }
 

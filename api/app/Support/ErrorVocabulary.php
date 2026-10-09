@@ -119,11 +119,12 @@ final class ErrorVocabulary
         'access_denied' => [403, 'Your account holds no role granting the permission this route requires. '
             .'GET /api/v1/me lists the permissions you do have.'],
 
-        // Worth spelling out that no permission would help: the natural reading
-        // of a 403 is "ask somebody for access", and here there is nothing to
-        // ask for.
-        'not_answerable' => [403, 'Only members who play in a register are asked to answer for events, and '
-            .'this account is in none. No permission changes that.'],
+        // Worth spelling out WHOSE permission is missing. The natural reading
+        // of a 403 is "ask somebody for access", but the caller already holds
+        // what the on-behalf route requires; it is the member they answer for
+        // who is not asked to answer at all.
+        'not_answerable' => [403, 'The member this answer is for holds no role granting attendance.respond, '
+            .'so no answer is expected from them and none can be recorded on their behalf.'],
 
         // -------------------------------------------------------- what exists
 

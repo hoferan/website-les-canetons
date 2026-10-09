@@ -12,6 +12,7 @@ use App\Models\EventTag;
 use App\Models\Member;
 use App\Support\Audit;
 use App\Support\BandTime;
+use App\Support\EffectivePermissions;
 use App\Support\Emits;
 use App\Support\Permission;
 use App\Support\Search;
@@ -30,9 +31,10 @@ class EventController extends Controller
     /**
      * List the planning.
      *
-     * Any logged-in member; no permission is needed. Returns the events still
-     * to come, soonest first, each carrying `myAttendance`: the caller's own
-     * answer, or `null` where they have not given one.
+     * Requires `events.view`, which every account holds through the baseline
+     * role. Returns the events still to come, soonest first, each carrying
+     * `myAttendance`: the caller's own answer, or `null` where they have not
+     * given one.
      *
      * `?past=1` returns the history instead, the events that have already
      * happened, newest first. Any other value, or none, gives the upcoming
@@ -114,7 +116,7 @@ class EventController extends Controller
         // week is still unfinished business, and burying it in the history is
         // how it gets forgotten. Undated ones sort first, since they have
         // nowhere else to sort to.
-        $mayManage = EventResource::permissionsFor($request)->contains(Permission::EventsManage);
+        $mayManage = EffectivePermissions::ofRequest($request)->contains(Permission::EventsManage);
 
         $query = $past
             ? Event::published()->where('starts_at', '<', $startOfToday)->orderBy('starts_at', 'desc')
@@ -187,7 +189,7 @@ class EventController extends Controller
      * memoized per gate — that shape looked fixed-cost but was not: it
      * throws away the rest of the permission set after reading one entry, so
      * the bookings gate paid for a second query for data this one had already
-     * fetched. EventResource::permissionsFor() memoizes the SET once instead,
+     * fetched. EffectivePermissions::ofRequest() memoizes the SET once instead,
      * and every gate reads it — here and in the Resource — which is what
      * EventCountsTest::test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries
      * and EventIndexTest::test_listing_the_planning_costs_a_fixed_number_of_queries
@@ -199,7 +201,7 @@ class EventController extends Controller
      */
     private static function maySeeAnswers(Request $request): bool
     {
-        return EventResource::permissionsFor($request)->contains(Permission::AttendanceViewAll);
+        return EffectivePermissions::ofRequest($request)->contains(Permission::AttendanceViewAll);
     }
 
     /**
@@ -226,10 +228,10 @@ class EventController extends Controller
      * stored: a cached total would have to be invalidated by every answer,
      * every booking, and every member who joins or leaves a register.
      *
-     * The answer count is constrained to members who are CURRENTLY in a
-     * register, so the fraction cannot read 19/18 when somebody who answered
-     * has since left theirs, and so this and the chase list it links to count
-     * the same population.
+     * The answer count is constrained to members who CURRENTLY hold
+     * attendance.respond, so the fraction cannot read 19/18 when somebody
+     * who answered has since lost it, and so this and the chase list it links
+     * to count the same population.
      *
      * PUBLIC because EventSeriesController returns EventResource too, and the
      * shape has to be the same there. A second copy of this map is a second
@@ -240,9 +242,9 @@ class EventController extends Controller
     public static function counts(): array
     {
         return [
-            'attendance as answered_count' => fn ($query) => $query->whereHas(
-                'member',
-                fn ($member) => $member->whereNotNull('section_id'),
+            'attendance as answered_count' => fn ($query) => $query->whereIn(
+                'member_id',
+                EffectivePermissions::holders(Permission::AttendanceRespond),
             ),
         ];
     }
@@ -261,14 +263,14 @@ class EventController extends Controller
     public static function answerable(Request $request): ?int
     {
         return self::maySeeAnswers($request)
-            ? Member::query()->whereNotNull('section_id')->count()
+            ? Member::query()->whereIn('id', EffectivePermissions::holders(Permission::AttendanceRespond))->count()
             : null;
     }
 
     /**
      * Read one event.
      *
-     * Any logged-in member; no permission is needed. Returns the event with
+     * Requires `events.view`, like the list. Returns the event with
      * `myAttendance`, the caller's own answer or `null`.
      *
      * Works for a past event as well as an upcoming one, unlike the default

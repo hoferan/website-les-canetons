@@ -316,5 +316,6 @@ export type AccountPassword403Code =
   (typeof AccountPassword403Code)[keyof typeof AccountPassword403Code];
 
 export const AccountPassword403Code = {
+  access_denied: "access_denied",
   reauth_failed: "reauth_failed",
 } as const;

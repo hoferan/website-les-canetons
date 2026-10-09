@@ -22,7 +22,7 @@
         },
         {
             "name": "Attendance",
-            "description": "Who is coming. Anyone in a register answers for themselves; seeing the whole list and answering for somebody else are separate permissions."
+            "description": "Who is coming. Holders of `attendance.respond` answer for themselves; seeing the whole list and answering for somebody else are separate permissions."
         },
         {
             "name": "Registration",
@@ -377,7 +377,7 @@
         "/me": {
             "get": {
                 "operationId": "auth.me",
-                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they play in a register (`isPlayer`, the single fact that\ndecides who is answerable for an event), whether they must change their\npassword before anything else (`mustChangePassword`), and `permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
+                "description": "Any logged-in member. Returns the caller's id, username, first and last\nname, whether they answer for events (`isPlayer`, which is true exactly\nwhen `permissions` contains `attendance.respond`), whether they must\nchange their password before anything else (`mustChangePassword`), and\n`permissions`.\n\n`permissions` is the flat list of permission tokens the caller's roles\nadd up to, and it is what a client shows or hides a screen on.\n\n`sectionName`, `committeeFunctionName` and `roleKeys` say where the\ncaller sits in the band, for their own account page. They are for\ndisplay only. Nothing in this API is authorised by role, so a client\ndecides what to show from `permissions` and ignores `roleKeys` for that.\n\nThe response is never cacheable. An anonymous caller answers\n`401 not_authenticated`.",
                 "summary": "Read the current member and what they may do",
                 "tags": [
                     "Session"
@@ -403,7 +403,8 @@
                                             "type": "string"
                                         },
                                         "isPlayer": {
-                                            "type": "boolean"
+                                            "type": "boolean",
+                                            "description": "Whether `permissions` contains `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it."
                                         },
                                         "mustChangePassword": {
                                             "type": "boolean"
@@ -464,7 +465,7 @@
         "/me/password": {
             "post": {
                 "operationId": "account.password",
-                "description": "Any logged-in account holder, for their own account. No permission is\nneeded: this is the screen every member has and nobody administers, and\nit is where a member sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`. A\n`newPassword` equal to the current one answers `409 password_unchanged`\nand changes nothing, the forced-change flag included.",
+                "description": "Requires `account.manage`, which every account holds through the\nbaseline role, and acts on the caller's own account only. It is where a\nmember sent by `mustChangePassword` lands.\n\nSend `currentPassword` and `newPassword`. The new one must be at least\neight characters.\n\nOn success the password is replaced, the forced-change flag is cleared,\nand every other session the member has open is ended. Answers\n`{\"ok\": true, \"sessionsEnded\": n}`, where `sessionsEnded` counts those\nother sessions; the calling session stays valid.\n\nA wrong `currentPassword` answers `403 reauth_failed`. After five wrong\nones the account answers `429 too_many_attempts` for fifteen minutes,\nand a correct password during that window is still refused. A\n`newPassword` shorter than eight characters answers\n`400 validation_failed` with `too_short` against `newPassword`. A\n`newPassword` equal to the current one answers `409 password_unchanged`\nand changes nothing, the forced-change flag included.",
                 "summary": "Change your own password",
                 "tags": [
                     "Session"
@@ -508,12 +509,6 @@
                     "400": {
                         "$ref": "#/components/responses/Problem400"
                     },
-                    "419": {
-                        "$ref": "#/components/responses/Problem419"
-                    },
-                    "503": {
-                        "$ref": "#/components/responses/Problem503"
-                    },
                     "403": {
                         "description": "Authenticated, but not permitted to do this.",
                         "content": {
@@ -537,6 +532,7 @@
                                             "type": "string",
                                             "description": "Stable machine token the front end maps to French.",
                                             "enum": [
+                                                "access_denied",
                                                 "reauth_failed"
                                             ]
                                         },
@@ -568,6 +564,12 @@
                                 }
                             }
                         }
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
                     },
                     "429": {
                         "description": "Too many requests. Retry-After says how long to wait.",
@@ -685,7 +687,7 @@
         "/events": {
             "get": {
                 "operationId": "event.index",
-                "description": "Any logged-in member; no permission is needed. Returns the events still\nto come, soonest first, each carrying `myAttendance`: the caller's own\nanswer, or `null` where they have not given one.\n\n`?past=1` returns the history instead, the events that have already\nhappened, newest first. Any other value, or none, gives the upcoming\nplanning. The two are halves of the list rather than a list and a\nsuperset of it.\n\nAn event taking place today stays in the planning for the whole of that\nday; it does not move to the history the moment it starts.\n\n`?q=` narrows either half to the events whose title or location contains\nit, ignoring case and accents. `meta.total` counts the matches.",
+                "description": "Requires `events.view`, which every account holds through the baseline\nrole. Returns the events still to come, soonest first, each carrying\n`myAttendance`: the caller's own answer, or `null` where they have not\ngiven one.\n\n`?past=1` returns the history instead, the events that have already\nhappened, newest first. Any other value, or none, gives the upcoming\nplanning. The two are halves of the list rather than a list and a\nsuperset of it.\n\nAn event taking place today stays in the planning for the whole of that\nday; it does not move to the history the moment it starts.\n\n`?q=` narrows either half to the events whose title or location contains\nit, ignoring case and accents. `meta.total` counts the matches.",
                 "summary": "List the planning",
                 "tags": [
                     "Events"
@@ -806,6 +808,9 @@
                     "401": {
                         "$ref": "#/components/responses/Problem401"
                     },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
                     }
@@ -860,7 +865,7 @@
         "/events/{event}": {
             "get": {
                 "operationId": "event.show",
-                "description": "Any logged-in member; no permission is needed. Returns the event with\n`myAttendance`, the caller's own answer or `null`.\n\nWorks for a past event as well as an upcoming one, unlike the default\nlist. An unknown id answers `404`.",
+                "description": "Requires `events.view`, like the list. Returns the event with\n`myAttendance`, the caller's own answer or `null`.\n\nWorks for a past event as well as an upcoming one, unlike the default\nlist. An unknown id answers `404`.",
                 "summary": "Read one event",
                 "tags": [
                     "Events"
@@ -901,6 +906,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
@@ -1399,7 +1407,7 @@
         "/events/{event}/attendance": {
             "put": {
                 "operationId": "attendance.update",
-                "description": "Any logged-in member who is in a register; no permission is needed.\nAnswering is idempotent: sending an answer again replaces the previous\none rather than adding a second, and the response is always `200` with\nthe answer as it now stands, including its `recordedAt`.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`, which lists what is accepted.\n\nTaking back a `yes` costs a reason: if the stored answer is `yes` and\nthe incoming one is `no`, `note` is required, and a blank one fails\nvalidation against `note` with `required`. A first answer of `no`, and\na change from `no` to `yes`, cost nothing. Recording on somebody else's\nbehalf is exempt from this rule.\n\nA member who is in no register is refused with `403 not_answerable`:\nnothing is being asked of them, and no permission would change that.\n\nAnswering for yourself clears any mark saying the direction entered the\nanswer.",
+                "description": "Requires `attendance.respond`, whatever the caller's register.\nAnswering is idempotent: sending an answer again replaces the previous\none rather than adding a second, and the response is always `200` with\nthe answer as it now stands, including its `recordedAt`.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`, which lists what is accepted.\n\nTaking back a `yes` costs a reason: if the stored answer is `yes` and\nthe incoming one is `no`, `note` is required, and a blank one fails\nvalidation against `note` with `required`. A first answer of `no`, and\na change from `no` to `yes`, cost nothing. Recording on somebody else's\nbehalf is exempt from this rule.\n\nAnswering for yourself clears any mark saying the direction entered the\nanswer.",
                 "summary": "Record your own answer for an event",
                 "tags": [
                     "Attendance"
@@ -1445,66 +1453,14 @@
                     "400": {
                         "$ref": "#/components/responses/Problem400"
                     },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
-                    },
-                    "403": {
-                        "description": "Authenticated, but not permitted to do this.",
-                        "content": {
-                            "application/problem+json": {
-                                "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "title": {
-                                            "type": "string",
-                                            "description": "English message. Never displayed: the front end renders `code`."
-                                        },
-                                        "status": {
-                                            "type": "integer",
-                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
-                                        },
-                                        "instance": {
-                                            "type": "string",
-                                            "description": "The path that was requested. Never the query string."
-                                        },
-                                        "code": {
-                                            "type": "string",
-                                            "description": "Stable machine token the front end maps to French.",
-                                            "enum": [
-                                                "not_answerable"
-                                            ]
-                                        },
-                                        "errors": {
-                                            "type": "array",
-                                            "description": "Always empty for this status; present so every problem has the same shape.",
-                                            "items": {
-                                                "type": "object"
-                                            }
-                                        },
-                                        "requestId": {
-                                            "type": "string",
-                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
-                                        },
-                                        "detail": {
-                                            "type": "string",
-                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
-                                        }
-                                    },
-                                    "required": [
-                                        "title",
-                                        "status",
-                                        "code",
-                                        "instance",
-                                        "errors",
-                                        "requestId",
-                                        "detail"
-                                    ]
-                                }
-                            }
-                        }
                     },
                     "409": {
                         "description": "Allowed, but it conflicts with the current state of things.",
@@ -1565,7 +1521,7 @@
             },
             "delete": {
                 "operationId": "attendance.destroy",
-                "description": "Any logged-in member; no permission is needed. Removes the answer\nentirely and returns the event to unanswered, which is a state a second\n`PUT` cannot express. Answers `{\"ok\": true}`, and taking back an answer\nthat is not there is not an error.\n\nThe window closes five minutes after the answer was last recorded;\nafter that it answers `409 answer_already_settled`. `recordedAt` on the\nanswer is what tells a client whether the window is still open, so it\ncan offer the undo or not rather than finding out from a refusal.",
+                "description": "Requires `attendance.respond`, like giving one. Removes the answer\nentirely and returns the event to unanswered, which is a state a second\n`PUT` cannot express. Answers `{\"ok\": true}`, and taking back an answer\nthat is not there is not an error.\n\nThe window closes five minutes after the answer was last recorded;\nafter that it answers `409 answer_already_settled`. `recordedAt` on the\nanswer is what tells a client whether the window is still open, so it\ncan offer the undo or not rather than finding out from a refusal.",
                 "summary": "Take back your own answer",
                 "tags": [
                     "Attendance"
@@ -1605,6 +1561,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     },
                     "419": {
                         "$ref": "#/components/responses/Problem419"
@@ -1672,7 +1631,7 @@
             },
             "get": {
                 "operationId": "attendance.index",
-                "description": "Requires `attendance.view_all`. Returns every member who is answerable\nfor the event, ordered by name, whether or not they have replied: an\nentry's `attendance` is `null` for somebody who has not, which is what\nthis list is read for.\n\nAnswerable means being in a register. A member who is in none, such as\nsomebody who only organises, never appears here.\n\nEach entry carries the member's name and register alongside their\nanswer, and an answer says whether the direction entered it rather than\nthe member giving it themselves.",
+                "description": "Requires `attendance.view_all`. Returns every member who is answerable\nfor the event, ordered by name, whether or not they have replied: an\nentry's `attendance` is `null` for somebody who has not, which is what\nthis list is read for.\n\nAnswerable means holding `attendance.respond`, whatever the member's\nregister. A member without it, such as somebody who only organises,\nnever appears here.\n\nEach entry carries the member's name and register alongside their\nanswer, and an answer says whether the direction entered it rather than\nthe member giving it themselves.",
                 "summary": "List who is coming to an event",
                 "tags": [
                     "Attendance"
@@ -1783,7 +1742,7 @@
         "/events/{event}/attendance/{member}": {
             "put": {
                 "operationId": "memberAttendance.update",
-                "description": "Requires `attendance.record_for_others`, for the member who telephones\nthe committee instead of answering themselves. Idempotent: sending an\nanswer again replaces the previous one, and the response is always\n`200` with the answer as it now stands. It is marked as recorded by the\ndirection, so a list does not imply the member replied.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`. `note` is free text for whatever the member\nsaid, and stays optional even when the answer takes back a `yes`. A\nmember answering for themselves owes a reason for that; inventing one\non somebody else's behalf would put words in their mouth.\n\nRefuses `409 cannot_record_for_self` when the member named is the\ncaller, whose own answer has its own endpoint, and `403 not_answerable`\nwhen that member is in no register.",
+                "description": "Requires `attendance.record_for_others`, for the member who telephones\nthe committee instead of answering themselves. Idempotent: sending an\nanswer again replaces the previous one, and the response is always\n`200` with the answer as it now stands. It is marked as recorded by the\ndirection, so a list does not imply the member replied.\n\n`status` is `yes` or `no`; anything else fails validation against that\nfield with `invalid_value`. `note` is free text for whatever the member\nsaid, and stays optional even when the answer takes back a `yes`. A\nmember answering for themselves owes a reason for that; inventing one\non somebody else's behalf would put words in their mouth.\n\nRefuses `409 cannot_record_for_self` when the member named is the\ncaller, whose own answer has its own endpoint, and `403 not_answerable`\nwhen that member does not hold `attendance.respond`, whatever their\nregister.",
                 "summary": "Record an answer on a member's behalf",
                 "tags": [
                     "Attendance"
@@ -3116,7 +3075,7 @@
         "/event-tags": {
             "get": {
                 "operationId": "eventTag.index",
-                "summary": "Every tag, in the committee's order, with how many events carry each. Any member",
+                "summary": "Every tag, in the committee's order, with how many events carry each. Requires `events.view`",
                 "tags": [
                     "Event tags"
                 ],
@@ -3201,6 +3160,9 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
@@ -4227,7 +4189,7 @@
         "/members": {
             "get": {
                 "operationId": "member.index",
-                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they play (`isPlayer`), their\ncommittee title, whether they may be shown on the public site, and\n`roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions: a role is what grants them, so read `GET /api/v1/roles` and\njoin on `roleIds`.\n\nThree optional filters narrow the roster, and combine when given\ntogether. `q` matches a first name, a last name, a username, or the\nwhole name in either order, ignoring case and accents. `section` takes a\nregister id, or `none` for the members in no register. `role` takes a\nrole id. An id that names nothing matches nobody rather than failing,\nand `meta.total` counts the matches, not the whole roster.",
+                "description": "Requires `members.manage`. Returns everyone the band tracks, ordered by\nlast name then first name. Each entry carries the person's register\n(`sectionId` and `sectionName`), whether they answer for events\n(`isPlayer`, from their roles), their committee title, whether they may\nbe shown on the public site, and `roleIds`, the roles they hold.\n\nNo password and no hash is ever included, and neither are effective\npermissions beyond `isPlayer`: a role is what grants them, so read\n`GET /api/v1/roles` and join on `roleIds`.\n\nThree optional filters narrow the roster, and combine when given\ntogether. `q` matches a first name, a last name, a username, or the\nwhole name in either order, ignoring case and accents. `section` takes a\nregister id, or `none` for the members in no register. `role` takes a\nrole id. An id that names nothing matches nobody rather than failing,\nand `meta.total` counts the matches, not the whole roster.",
                 "summary": "List the roster",
                 "tags": [
                     "Members"
@@ -7098,7 +7060,7 @@
                             "string",
                             "null"
                         ],
-                        "description": "The register they play in. Everyone on this list has one; that is what makes them answerable."
+                        "description": "The register they play in, or null for a member who answers without one. For grouping only: holding `attendance.respond` is what puts somebody on this list."
                     },
                     "attendance": {
                         "anyOf": [
@@ -7753,7 +7715,7 @@
                     },
                     "isPlayer": {
                         "type": "boolean",
-                        "description": "Whether they play in a register. Only players are answerable for events."
+                        "description": "Whether one of their roles grants `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it."
                     },
                     "committeeFunctionId": {
                         "type": [

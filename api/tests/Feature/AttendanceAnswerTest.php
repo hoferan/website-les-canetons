@@ -24,7 +24,7 @@ class AttendanceAnswerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->player = Member::factory()->inSection('Cloches')->create();
+        $this->player = Member::factory()->inSection('Cloches')->musician()->create();
         $this->event = Event::factory()->create();
     }
 
@@ -68,28 +68,15 @@ class AttendanceAnswerTest extends TestCase
         $this->assertSame(AttendanceStatus::No, Attendance::query()->sole()->status);
     }
 
-    public function test_a_member_with_no_register_is_not_answerable(): void
-    {
-        // Dominique Direction organises and plays in nothing. 403 with its
-        // own code, NOT access_denied: there is no permission for answering,
-        // so a generic refusal would send them hunting for a grant that does
-        // not exist.
-        $organiser = Member::factory()->administrator()->create();
-
-        $this->actingAsMember($organiser)
-            ->putJson($this->url(), ['status' => 'yes'])
-            ->assertStatus(403)
-            ->assertJson(['code' => 'not_answerable']);
-
-        $this->assertSame(0, Attendance::query()->count());
-    }
+    // Who may answer at all, attendance.respond against the register, is
+    // PermissionOnlyAccessTest's. This file is about what an answer does.
 
     public function test_a_player_who_also_manages_may_still_answer(): void
     {
-        // demo.both: plays in a register AND runs the planning. The case the
-        // old either/or role matrix could not express, and the bug that
-        // motivated having no permission for answering at all.
-        $both = Member::factory()->inSection('Trompettes')->administrator()->create();
+        // demo.both: holds musician AND runs the planning. The case the old
+        // either/or role matrix could not express: an admin who could not
+        // say whether they were coming.
+        $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
 
         $this->actingAsMember($both)
             ->putJson($this->url(), ['status' => 'yes'])

@@ -74,7 +74,8 @@ export const de: typeof fr = {
     if_match_failed:
       "Jemand hat diesen Eintrag inzwischen geändert. Laden Sie neu, um die Änderungen zu sehen, und versuchen Sie es dann erneut.",
 
-    not_answerable: "Sie gehören keinem Register an: Von Ihnen wird keine Rückmeldung erwartet.",
+    not_answerable:
+      "Von diesem Mitglied wird keine Rückmeldung erwartet: Sie können keine an seiner Stelle erfassen.",
     cannot_record_for_self:
       "Für sich selbst antworten Sie über die Planung: Eine zurückgezogene Zusage benötigt eine Begründung.",
     answer_already_settled:

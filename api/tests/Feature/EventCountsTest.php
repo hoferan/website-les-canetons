@@ -50,7 +50,7 @@ class EventCountsTest extends TestCase
         // EventResource and this must go red.
         Attendance::factory()->create(['event_id' => $this->event->id]);
 
-        $response = $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
+        $response = $this->actingAsMember(Member::factory()->inSection('Cloches')->musician()->create())
             ->getJson('/api/v1/events')
             ->assertOk();
 
@@ -61,29 +61,29 @@ class EventCountsTest extends TestCase
     public function test_attendance_view_all_sees_the_fraction(): void
     {
         Attendance::factory()->create(['event_id' => $this->event->id]);
-        Member::factory()->inSection('Trompettes')->create();
+        Member::factory()->inSection('Trompettes')->musician()->create();
 
         $response = $this->actingAsMember($this->answerViewer())
             ->getJson('/api/v1/events')
             ->assertOk();
 
-        // One answer; three members in a register — the answering player, the
-        // one just created, and nobody else. The viewer holds a role but no
-        // register, so they are not answerable and not counted.
+        // One answer; two holders of attendance.respond — the answering
+        // player and the one just created. The viewer holds a role but not
+        // musician, so they are not answerable and not counted.
         $this->assertSame(1, $response->json('data.0.answeredCount'));
         $this->assertSame(2, $response->json('data.0.answerableCount'));
     }
 
-    public function test_an_answer_from_somebody_who_left_their_register_is_not_counted(): void
+    public function test_an_answer_from_somebody_who_lost_attendance_respond_is_not_counted(): void
     {
         // Otherwise the fraction reads 1/0, and the strip disagrees with the
-        // chase list it links to — which lists players only.
-        $departed = Member::factory()->inSection('Cloches')->create();
+        // chase list it links to — which lists holders of the permission only.
+        $departed = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->create([
             'event_id' => $this->event->id,
             'member_id' => $departed->id,
         ]);
-        $departed->update(['section_id' => null]);
+        $departed->roles()->detach(Role::where('key', 'musician')->sole()->id);
 
         $response = $this->actingAsMember($this->answerViewer())
             ->getJson('/api/v1/events')
@@ -91,6 +91,30 @@ class EventCountsTest extends TestCase
 
         $this->assertSame(0, $response->json('data.0.answeredCount'));
         $this->assertSame(0, $response->json('data.0.answerableCount'));
+    }
+
+    public function test_the_register_does_not_decide_who_is_counted(): void
+    {
+        // Both halves at once, against the rule this replaced: a musician
+        // with no register counts, and a register with no musician does not.
+        // Two of the first and one of the second, all of them answered, so
+        // counting by register reads 1/1 where the right answer is 2/2. With
+        // one of each, both rules read 1/1 and this test could not fail.
+        $answered = [
+            Member::factory()->musician()->create(),
+            Member::factory()->musician()->create(),
+            Member::factory()->inSection('Cloches')->create(),
+        ];
+        foreach ($answered as $member) {
+            Attendance::factory()->create(['event_id' => $this->event->id, 'member_id' => $member->id]);
+        }
+
+        $response = $this->actingAsMember($this->answerViewer())
+            ->getJson('/api/v1/events')
+            ->assertOk();
+
+        $this->assertSame(2, $response->json('data.0.answeredCount'));
+        $this->assertSame(2, $response->json('data.0.answerableCount'));
     }
 
     public function test_listing_the_planning_for_the_committee_costs_a_fixed_number_of_queries(): void
@@ -176,7 +200,7 @@ class EventCountsTest extends TestCase
         // One Resource, one shape. A client reading a single event should not
         // have to fetch a list to learn the denominator.
         Attendance::factory()->create(['event_id' => $this->event->id]);
-        Member::factory()->inSection('Trompettes')->create();
+        Member::factory()->inSection('Trompettes')->musician()->create();
 
         $response = $this->actingAsMember($this->answerViewer())
             ->getJson("/api/v1/events/{$this->event->id}")
@@ -234,7 +258,7 @@ class EventCountsTest extends TestCase
     }
 
     /**
-     * GUARD B IN ISOLATION — the no-caller guard (`permissionsFor()`
+     * GUARD B IN ISOLATION — the no-caller guard (`EffectivePermissions::ofRequest()`
      * resolving an unauthenticated request's permission set to empty).
      *
      * A bare, unauthenticated `Request::create('/')` — exactly what
@@ -246,7 +270,7 @@ class EventCountsTest extends TestCase
      * the aggregates inside EntityTag::state() defeats Guard A, and nothing
      * but Guard B stops the counts reaching the tag.
      *
-     * Goes red if `permissionsFor()` ever resolves a bare request's
+     * Goes red if `EffectivePermissions::ofRequest()` ever resolves a bare request's
      * permission set to anything but empty.
      *
      * As in the test above, `answerableCount` is null here for its own reason

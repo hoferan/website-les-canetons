@@ -3,9 +3,13 @@
 namespace App\Http\Resources;
 
 use App\Models\Member;
+use App\Models\Role;
+use App\Support\EffectivePermissions;
 use App\Support\Iso8601;
+use App\Support\Permission;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * One person on the roster.
@@ -34,6 +38,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class MemberResource extends JsonResource
 {
+    /** Request-attribute key for the roles granting attendance.respond. See answersEvents(). */
+    private const ANSWERING_ROLES = 'answeringRoleIds';
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -49,11 +56,10 @@ class MemberResource extends JsonResource
 
             'sectionId' => $this->section_id,
             'sectionName' => $this->section?->name,
-            // Whether they PLAY, which is the single fact that decides who is
-            // answerable for an event. Derived from section_id rather than
-            // stored, so the two can never disagree.
-            /** Whether they play in a register. Only players are answerable for events. */
-            'isPlayer' => $this->isPlayer(),
+            // attendance.respond under its old name, as on GET /me, until the
+            // field goes (#192). The register beside it no longer decides it.
+            /** Whether one of their roles grants `attendance.respond`, which is what makes a member answerable for events. Their register does not decide it. */
+            'isPlayer' => $this->answersEvents($request),
 
             // THE ID, NOT THE NAME, unlike sectionName above. The roster
             // screen renders the register in its table and so needs the name
@@ -82,6 +88,34 @@ class MemberResource extends JsonResource
     private function roleIds(): array
     {
         return $this->roles->pluck('id')->map(fn ($id): int => (int) $id)->values()->all();
+    }
+
+    /**
+     * Whether any role this member holds grants attendance.respond.
+     *
+     * From the roles already loaded for roleIds, against the roles granting
+     * the permission, which are read ONCE per request and kept in its
+     * attributes. Member::hasPermission() would be a query per row, and this
+     * Resource renders the whole roster at the fixed query budget
+     * MemberIndexTest pins.
+     *
+     * A bare request is fine here, unlike EventResource's gates. The answer
+     * depends on the member alone, so EntityTag::state(), which renders
+     * through a fresh Request, still hashes the right value.
+     */
+    private function answersEvents(Request $request): bool
+    {
+        if (! $request->attributes->has(self::ANSWERING_ROLES)) {
+            $request->attributes->set(
+                self::ANSWERING_ROLES,
+                EffectivePermissions::roleIdsGranting(Permission::AttendanceRespond),
+            );
+        }
+
+        /** @var Collection<int, int> $answering */
+        $answering = $request->attributes->get(self::ANSWERING_ROLES);
+
+        return $this->roles->contains(fn (Role $role): bool => $answering->contains((int) $role->id));
     }
 
     /**
