@@ -21,6 +21,7 @@ import type {
 import { ApiError } from "../api/http";
 import { newIdempotencyKey, publicWriteHeaders } from "../api/publicWrite";
 import { useApiFormError } from "../api/useApiFormError";
+import { celebrate } from "../carnival/celebrate";
 import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { PageSection } from "../components/PageSection";
@@ -185,6 +186,7 @@ export function EventBooking() {
         flushSync(() => setBooked(result.data));
         window.scrollTo(0, 0);
         bookedHeading.current?.focus({ preventScroll: true });
+        celebrate();
       }
     },
     onError: setFromThrown,
