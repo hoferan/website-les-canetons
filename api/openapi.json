@@ -8545,7 +8545,7 @@
                     },
                     "celebrate": {
                         "type": "boolean",
-                        "description": "Required, not defaulted: the tag is replaced whole, and a save\nthat left it out would quietly turn the confetti off."
+                        "description": "Whether answering \"Oui\" to an event with this tag throws\nconfetti. Required, because the tag is replaced whole and a\nsave without it would switch the confetti off."
                     }
                 },
                 "required": [
