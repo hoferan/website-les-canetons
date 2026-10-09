@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { rowsOf } from "../api/collection";
 import {
@@ -93,6 +94,34 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
   const [busy, setBusy] = useState(false);
   const saving = useApiFormError(t("eventTags.saveFailed"));
   const removing = useApiFormError(t("eventTags.deleteFailed"));
+  const flipping = useApiFormError(t("eventTags.saveFailed"));
+  // The switch shows the new value while its write is in flight, and falls
+  // back to the stored one once the list has it or the server refused.
+  const [flipped, setFlipped] = useState<boolean | null>(null);
+
+  // Saved on the flip, so it reads the tag for the If-Match and sends the
+  // names and colour of that read back unchanged: the body replaces the tag
+  // whole, and a rename made meanwhile must survive.
+  const flip = async (celebrate: boolean) => {
+    setFlipped(celebrate);
+    setBusy(true);
+    flipping.clear();
+    try {
+      const read = await eventTagShow(tag.id);
+      const etag = read.status === 200 ? entityTagOf(read) : null;
+      if (read.status !== 200 || etag === null) {
+        return;
+      }
+      const { labelFr, labelDe, colour } = read.data;
+      await eventTagUpdate(tag.id, { labelFr, labelDe, colour, celebrate }, ifMatch(etag));
+      await onChanged();
+    } catch (thrown) {
+      flipping.setFromThrown(thrown);
+    } finally {
+      setFlipped(null);
+      setBusy(false);
+    }
+  };
 
   // The read is also where "while this form was open" starts, so it happens
   // when the row opens, not when it saves.
@@ -162,7 +191,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
     <li data-testid="event-tag-row" className={`${OUTLINED_CARD} p-4`}>
       {editing === null ? (
         <div className="flex flex-wrap items-center justify-between gap-related">
-          <div className="flex flex-wrap items-center gap-tight text-sm">
+          <div className="flex w-full flex-wrap items-center gap-tight text-sm">
             <TagChip tag={tag} />
             {/* Both names, so a German page and a French one can be checked
                 from either. The chip shows the current page's. */}
@@ -173,13 +202,23 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <span className="text-ink-muted">
               {t("eventTags.count", { count: tag.eventCount ?? 0 })}
             </span>
-            {tag.celebrate ? (
-              <span data-testid="tag-celebrates" className="text-ink-muted">
-                {t("eventTags.celebrating")}
-              </span>
-            ) : null}
           </div>
-          <div className="flex flex-wrap gap-tight">
+          {/* Apart from the buttons: it is a setting, and they are actions.
+              On a phone the buttons wrap under it rather than leaving
+              "Supprimer" on a line of its own. */}
+          <div className="flex min-h-touch items-center gap-2">
+            <Switch
+              id={`tag-${tag.id}-celebrate`}
+              checked={flipped ?? tag.celebrate}
+              disabled={busy}
+              aria-label={t("eventTags.celebrateAria", { label: tagLabel(tag) })}
+              onCheckedChange={(next) => void flip(next)}
+            />
+            <label htmlFor={`tag-${tag.id}-celebrate`} className="text-sm">
+              {t("eventTags.celebrate")}
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"
               variant="raised-light"
@@ -199,6 +238,11 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
               {t("common.delete")}
             </Button>
           </div>
+          {flipping.error !== null ? (
+            <p role="alert" className="w-full text-sm text-danger">
+              {flipping.error.message}
+            </p>
+          ) : null}
           {removing.error !== null && deleting === null ? (
             <p role="alert" className="w-full text-sm text-danger">
               {removing.error.message}
@@ -323,7 +367,11 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
   );
 }
 
-/** The two names, the colour and the confetti flag, shared by the new-tag form and a row being edited. */
+/**
+ * The two names and the colour, shared by the new-tag form and a row being
+ * edited. Not the confetti flag: that is the row's switch, saved as it is
+ * flipped, and a new tag starts without it.
+ */
 function TagFields({
   idPrefix,
   draft,
@@ -378,15 +426,6 @@ function TagFields({
           ))}
         </div>
       </fieldset>
-      <label className="flex min-h-touch items-center gap-2">
-        <input
-          type="checkbox"
-          className="size-5"
-          checked={draft.celebrate}
-          onChange={(changed) => onChange({ ...draft, celebrate: changed.target.checked })}
-        />
-        {t("eventTags.celebrate")}
-      </label>
     </>
   );
 }

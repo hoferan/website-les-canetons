@@ -1622,7 +1622,7 @@ export const fr = {
   eventTags: {
     heading: "Catégories",
     intro:
-      "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs.",
+      "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs. Avec «\u00a0Confettis\u00a0», un membre qui répond «\u00a0Oui\u00a0» à un événement de la catégorie reçoit une pluie de confettis.",
     // The link's accessible name. It shows only "Modifier", and a name has
     // to contain the visible word for voice control to reach it (WCAG 2.5.3).
     manageLink: "Modifier les catégories",
@@ -1633,9 +1633,9 @@ export const fr = {
     newHeading: "Nouvelle catégorie",
     add: "Ajouter",
     colour: "Couleur",
-    // The checkbox in the tag form, and the note on a tag that has it.
-    celebrate: "Confettis quand un membre répond «\u00a0Oui\u00a0»",
-    celebrating: "avec confettis",
+    // The switch on each tag's row, saved as it is flipped.
+    celebrate: "Confettis",
+    celebrateAria: "Confettis pour «\u00a0{{label}}\u00a0»",
     colours: {
       violet: "Violet",
       teal: "Vert d'eau",
