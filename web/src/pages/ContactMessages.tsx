@@ -500,8 +500,14 @@ function MessagePanel({
       data-testid="message-panel"
       className={`${OUTLINED_CARD} mt-block flex flex-col gap-related p-4`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-tight">
-        <div>
+      {/* The row does not wrap, so a long name wraps inside its block and the
+          close button keeps the top right. At 390px "Isabelle Dupasquier"
+          takes 304px of the 322px row, and a wrapping row put the button on a
+          line of its own under the e-mail (#265). min-w-0 lets the name block
+          shrink below its longest word, and break-words then breaks a long
+          name or e-mail inside it. */}
+      <div className="flex items-start justify-between gap-tight">
+        <div className="min-w-0 break-words">
           <h2 className="font-display text-2xl">
             {message.firstName} {message.lastName}
           </h2>
