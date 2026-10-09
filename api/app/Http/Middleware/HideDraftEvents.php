@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Http\Resources\EventResource;
 use App\Models\Event;
+use App\Support\EffectivePermissions;
 use App\Support\Permission;
 use Closure;
 use Illuminate\Http\Request;
@@ -25,8 +25,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  *
  * IT RUNS AFTER ROUTE-MODEL BINDING, which is why it reads a bound Event off
  * the route. It needs no query of its own and no permission query either: the
- * caller's permission set is the one EventResource already memoizes on the
- * request.
+ * caller's permission set is the one EffectivePermissions::ofRequest()
+ * memoizes on the request, which a `permission:` gate on the same route has
+ * usually resolved already.
  *
  * Attendance is the one place a manager passes this and is refused anyway:
  * being allowed to see a draft is not being allowed to answer it, and that
@@ -52,6 +53,6 @@ class HideDraftEvents
             return false;
         }
 
-        return EventResource::permissionsFor($request)->contains(Permission::EventsManage);
+        return EffectivePermissions::ofRequest($request)->contains(Permission::EventsManage);
     }
 }

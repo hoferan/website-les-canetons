@@ -87,12 +87,15 @@ class SeedMemberAndMusicianRolesTest extends TestCase
     {
         $organiser = Member::factory()->administrator()->create();
         $committee = Member::factory()->committee()->create();
+
+        // Read after the strip: the factory gives every member the baseline,
+        // and "before" means what the database held before this migration.
+        $this->stripTheNewData();
         $before = [
             $organiser->id => EffectivePermissions::for($organiser->id)->map->value->sort()->values()->all(),
             $committee->id => EffectivePermissions::for($committee->id)->map->value->sort()->values()->all(),
         ];
 
-        $this->stripTheNewData();
         $this->migration()->up();
 
         foreach ([$organiser, $committee] as $person) {

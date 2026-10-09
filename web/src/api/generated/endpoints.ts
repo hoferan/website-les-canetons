@@ -337,7 +337,6 @@ import type {
   AttendanceIndex200,
   AttendanceIndexParams,
   AttendanceResource,
-  AttendanceUpdate403,
   AttendanceUpdate409,
   AuthLogin200,
   AuthLogin400,
@@ -765,9 +764,10 @@ export const getAuthMeUrl = () => {
 
 /**
  * Any logged-in member. Returns the caller's id, username, first and last
- * name, whether they play in a register (`isPlayer`, the single fact that
- * decides who is answerable for an event), whether they must change their
- * password before anything else (`mustChangePassword`), and `permissions`.
+ * name, whether they answer for events (`isPlayer`, which is true exactly
+ * when `permissions` contains `attendance.respond`), whether they must
+ * change their password before anything else (`mustChangePassword`), and
+ * `permissions`.
  *
  * `permissions` is the flat list of permission tokens the caller's roles
  * add up to, and it is what a client shows or hides a screen on.
@@ -949,9 +949,9 @@ export const getAccountPasswordUrl = () => {
 };
 
 /**
- * Any logged-in account holder, for their own account. No permission is
- * needed: this is the screen every member has and nobody administers, and
- * it is where a member sent by `mustChangePassword` lands.
+ * Requires `account.manage`, which every account holds through the
+ * baseline role, and acts on the caller's own account only. It is where a
+ * member sent by `mustChangePassword` lands.
  *
  * Send `currentPassword` and `newPassword`. The new one must be at least
  * eight characters.
@@ -1108,6 +1108,11 @@ export type eventIndexResponse401 = {
   status: 401;
 };
 
+export type eventIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
 export type eventIndexResponse503 = {
   data: Problem503Response;
   status: 503;
@@ -1117,7 +1122,7 @@ export type eventIndexResponseSuccess = eventIndexResponse200 & {
   headers: Headers;
 };
 export type eventIndexResponseError = (
-  eventIndexResponse400 | eventIndexResponse401 | eventIndexResponse503
+  eventIndexResponse400 | eventIndexResponse401 | eventIndexResponse403 | eventIndexResponse503
 ) & {
   headers: Headers;
 };
@@ -1139,9 +1144,10 @@ export const getEventIndexUrl = (params?: EventIndexParams) => {
 };
 
 /**
- * Any logged-in member; no permission is needed. Returns the events still
- * to come, soonest first, each carrying `myAttendance`: the caller's own
- * answer, or `null` where they have not given one.
+ * Requires `events.view`, which every account holds through the baseline
+ * role. Returns the events still to come, soonest first, each carrying
+ * `myAttendance`: the caller's own answer, or `null` where they have not
+ * given one.
  *
  * `?past=1` returns the history instead, the events that have already
  * happened, newest first. Any other value, or none, gives the upcoming
@@ -1171,7 +1177,7 @@ export const getEventIndexQueryKey = (params?: EventIndexParams) => {
 
 export const getEventIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem400Response | Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1194,11 +1200,12 @@ export const getEventIndexQueryOptions = <
 };
 
 export type EventIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventIndex>>>;
-export type EventIndexQueryError = Problem400Response | Problem401Response | Problem503Response;
+export type EventIndexQueryError =
+  Problem400Response | Problem401Response | Problem403Response | Problem503Response;
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem400Response | Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params: undefined | EventIndexParams,
   options: {
@@ -1217,7 +1224,7 @@ export function useEventIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem400Response | Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1236,7 +1243,7 @@ export function useEventIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem400Response | Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1251,7 +1258,7 @@ export function useEventIndex<
 
 export function useEventIndex<
   TData = Awaited<ReturnType<typeof eventIndex>>,
-  TError = Problem400Response | Problem401Response | Problem503Response,
+  TError = Problem400Response | Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventIndexParams,
   options?: {
@@ -1461,6 +1468,11 @@ export type eventShowResponse401 = {
   status: 401;
 };
 
+export type eventShowResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
 export type eventShowResponse404 = {
   data: Problem404Response;
   status: 404;
@@ -1475,7 +1487,7 @@ export type eventShowResponseSuccess = eventShowResponse200 & {
   headers: Headers;
 };
 export type eventShowResponseError = (
-  eventShowResponse401 | eventShowResponse404 | eventShowResponse503
+  eventShowResponse401 | eventShowResponse403 | eventShowResponse404 | eventShowResponse503
 ) & {
   headers: Headers;
 };
@@ -1487,7 +1499,7 @@ export const getEventShowUrl = (event: number) => {
 };
 
 /**
- * Any logged-in member; no permission is needed. Returns the event with
+ * Requires `events.view`, like the list. Returns the event with
  * `myAttendance`, the caller's own answer or `null`.
  *
  * Works for a past event as well as an upcoming one, unlike the default
@@ -1510,7 +1522,7 @@ export const getEventShowQueryKey = (event: number) => {
 
 export const getEventShowQueryOptions = <
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1536,11 +1548,12 @@ export const getEventShowQueryOptions = <
 };
 
 export type EventShowQueryResult = NonNullable<Awaited<ReturnType<typeof eventShow>>>;
-export type EventShowQueryError = Problem401Response | Problem404Response | Problem503Response;
+export type EventShowQueryError =
+  Problem401Response | Problem403Response | Problem404Response | Problem503Response;
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options: {
@@ -1559,7 +1572,7 @@ export function useEventShow<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1578,7 +1591,7 @@ export function useEventShow<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -1593,7 +1606,7 @@ export function useEventShow<
 
 export function useEventShow<
   TData = Awaited<ReturnType<typeof eventShow>>,
-  TError = Problem401Response | Problem404Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem404Response | Problem503Response,
 >(
   event: number,
   options?: {
@@ -2553,7 +2566,7 @@ export type attendanceUpdateResponse401 = {
 };
 
 export type attendanceUpdateResponse403 = {
-  data: AttendanceUpdate403;
+  data: Problem403Response;
   status: 403;
 };
 
@@ -2600,7 +2613,7 @@ export const getAttendanceUpdateUrl = (event: number) => {
 };
 
 /**
- * Any logged-in member who is in a register; no permission is needed.
+ * Requires `attendance.respond`, whatever the caller's register.
  * Answering is idempotent: sending an answer again replaces the previous
  * one rather than adding a second, and the response is always `200` with
  * the answer as it now stands, including its `recordedAt`.
@@ -2613,9 +2626,6 @@ export const getAttendanceUpdateUrl = (event: number) => {
  * validation against `note` with `required`. A first answer of `no`, and
  * a change from `no` to `yes`, cost nothing. Recording on somebody else's
  * behalf is exempt from this rule.
- *
- * A member who is in no register is refused with `403 not_answerable`:
- * nothing is being asked of them, and no permission would change that.
  *
  * Answering for yourself clears any mark saying the direction entered the
  * answer.
@@ -2659,7 +2669,7 @@ export const getAttendanceUpdateMutationOptions = <
   TError =
     | Problem400Response
     | Problem401Response
-    | AttendanceUpdate403
+    | Problem403Response
     | Problem404Response
     | AttendanceUpdate409
     | Problem419Response
@@ -2705,7 +2715,7 @@ export type AttendanceUpdateMutationBody = RecordOwnAttendanceRequest;
 export type AttendanceUpdateMutationError =
   | Problem400Response
   | Problem401Response
-  | AttendanceUpdate403
+  | Problem403Response
   | Problem404Response
   | AttendanceUpdate409
   | Problem419Response
@@ -2719,7 +2729,7 @@ export const useAttendanceUpdate = <
   TError =
     | Problem400Response
     | Problem401Response
-    | AttendanceUpdate403
+    | Problem403Response
     | Problem404Response
     | AttendanceUpdate409
     | Problem419Response
@@ -2755,6 +2765,11 @@ export type attendanceDestroyResponse401 = {
   status: 401;
 };
 
+export type attendanceDestroyResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
 export type attendanceDestroyResponse404 = {
   data: Problem404Response;
   status: 404;
@@ -2780,6 +2795,7 @@ export type attendanceDestroyResponseSuccess = attendanceDestroyResponse200 & {
 };
 export type attendanceDestroyResponseError = (
   | attendanceDestroyResponse401
+  | attendanceDestroyResponse403
   | attendanceDestroyResponse404
   | attendanceDestroyResponse409
   | attendanceDestroyResponse419
@@ -2796,7 +2812,7 @@ export const getAttendanceDestroyUrl = (event: number) => {
 };
 
 /**
- * Any logged-in member; no permission is needed. Removes the answer
+ * Requires `attendance.respond`, like giving one. Removes the answer
  * entirely and returns the event to unanswered, which is a state a second
  * `PUT` cannot express. Answers `{"ok": true}`, and taking back an answer
  * that is not there is not an error.
@@ -2822,6 +2838,7 @@ export const getAttendanceDestroyMutationKey = () => ["attendanceDestroy"] as co
 export const getAttendanceDestroyMutationOptions = <
   TError =
     | Problem401Response
+    | Problem403Response
     | Problem404Response
     | AttendanceDestroy409
     | Problem419Response
@@ -2866,6 +2883,7 @@ export type AttendanceDestroyMutationResult = NonNullable<
 
 export type AttendanceDestroyMutationError =
   | Problem401Response
+  | Problem403Response
   | Problem404Response
   | AttendanceDestroy409
   | Problem419Response
@@ -2878,6 +2896,7 @@ export type AttendanceDestroyMutationVariables = { event: number };
 export const useAttendanceDestroy = <
   TError =
     | Problem401Response
+    | Problem403Response
     | Problem404Response
     | AttendanceDestroy409
     | Problem419Response
@@ -2964,8 +2983,9 @@ export const getAttendanceIndexUrl = (event: number, params?: AttendanceIndexPar
  * entry's `attendance` is `null` for somebody who has not, which is what
  * this list is read for.
  *
- * Answerable means being in a register. A member who is in none, such as
- * somebody who only organises, never appears here.
+ * Answerable means holding `attendance.respond`, whatever the member's
+ * register. A member without it, such as somebody who only organises,
+ * never appears here.
  *
  * Each entry carries the member's name and register alongside their
  * answer, and an answer says whether the direction entered it rather than
@@ -3173,7 +3193,8 @@ export const getMemberAttendanceUpdateUrl = (event: number, member: number) => {
  *
  * Refuses `409 cannot_record_for_self` when the member named is the
  * caller, whose own answer has its own endpoint, and `403 not_answerable`
- * when that member is in no register.
+ * when that member does not hold `attendance.respond`, whatever their
+ * register.
  * @summary Record an answer on a member's behalf
  */
 export const memberAttendanceUpdate = async (
@@ -5262,6 +5283,11 @@ export type eventTagIndexResponse401 = {
   status: 401;
 };
 
+export type eventTagIndexResponse403 = {
+  data: Problem403Response;
+  status: 403;
+};
+
 export type eventTagIndexResponse503 = {
   data: Problem503Response;
   status: 503;
@@ -5270,7 +5296,9 @@ export type eventTagIndexResponse503 = {
 export type eventTagIndexResponseSuccess = eventTagIndexResponse200 & {
   headers: Headers;
 };
-export type eventTagIndexResponseError = (eventTagIndexResponse401 | eventTagIndexResponse503) & {
+export type eventTagIndexResponseError = (
+  eventTagIndexResponse401 | eventTagIndexResponse403 | eventTagIndexResponse503
+) & {
   headers: Headers;
 };
 
@@ -5291,7 +5319,7 @@ export const getEventTagIndexUrl = (params?: EventTagIndexParams) => {
 };
 
 /**
- * @summary Every tag, in the committee's order, with how many events carry each. Any member
+ * @summary Every tag, in the committee's order, with how many events carry each. Requires `events.view`
  */
 export const eventTagIndex = async (
   params?: EventTagIndexParams,
@@ -5309,7 +5337,7 @@ export const getEventTagIndexQueryKey = (params?: EventTagIndexParams) => {
 
 export const getEventTagIndexQueryOptions = <
   TData = Awaited<ReturnType<typeof eventTagIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventTagIndexParams,
   options?: {
@@ -5332,11 +5360,11 @@ export const getEventTagIndexQueryOptions = <
 };
 
 export type EventTagIndexQueryResult = NonNullable<Awaited<ReturnType<typeof eventTagIndex>>>;
-export type EventTagIndexQueryError = Problem401Response | Problem503Response;
+export type EventTagIndexQueryError = Problem401Response | Problem403Response | Problem503Response;
 
 export function useEventTagIndex<
   TData = Awaited<ReturnType<typeof eventTagIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   params: undefined | EventTagIndexParams,
   options: {
@@ -5355,7 +5383,7 @@ export function useEventTagIndex<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventTagIndex<
   TData = Awaited<ReturnType<typeof eventTagIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventTagIndexParams,
   options?: {
@@ -5374,7 +5402,7 @@ export function useEventTagIndex<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useEventTagIndex<
   TData = Awaited<ReturnType<typeof eventTagIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventTagIndexParams,
   options?: {
@@ -5384,12 +5412,12 @@ export function useEventTagIndex<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 /**
- * @summary Every tag, in the committee's order, with how many events carry each. Any member
+ * @summary Every tag, in the committee's order, with how many events carry each. Requires `events.view`
  */
 
 export function useEventTagIndex<
   TData = Awaited<ReturnType<typeof eventTagIndex>>,
-  TError = Problem401Response | Problem503Response,
+  TError = Problem401Response | Problem403Response | Problem503Response,
 >(
   params?: EventTagIndexParams,
   options?: {
@@ -7703,13 +7731,13 @@ export const getMemberIndexUrl = (params?: MemberIndexParams) => {
 /**
  * Requires `members.manage`. Returns everyone the band tracks, ordered by
  * last name then first name. Each entry carries the person's register
- * (`sectionId` and `sectionName`), whether they play (`isPlayer`), their
- * committee title, whether they may be shown on the public site, and
- * `roleIds`, the roles they hold.
+ * (`sectionId` and `sectionName`), whether they answer for events
+ * (`isPlayer`, from their roles), their committee title, whether they may
+ * be shown on the public site, and `roleIds`, the roles they hold.
  *
  * No password and no hash is ever included, and neither are effective
- * permissions: a role is what grants them, so read `GET /api/v1/roles` and
- * join on `roleIds`.
+ * permissions beyond `isPlayer`: a role is what grants them, so read
+ * `GET /api/v1/roles` and join on `roleIds`.
  *
  * Three optional filters narrow the roster, and combine when given
  * together. `q` matches a first name, a last name, a username, or the

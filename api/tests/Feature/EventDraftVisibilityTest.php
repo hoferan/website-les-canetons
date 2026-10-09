@@ -28,7 +28,7 @@ class EventDraftVisibilityTest extends TestCase
     {
         parent::setUp();
         $this->organiser = Member::factory()->administrator()->create();
-        $this->player = Member::factory()->inSection('Cloches')->create();
+        $this->player = Member::factory()->inSection('Cloches')->musician()->create();
     }
 
     /** @return list<int> */
@@ -125,7 +125,7 @@ class EventDraftVisibilityTest extends TestCase
     {
         // Being able to SEE a draft is not being able to answer it: the answer
         // would sit on an event the rest of the band cannot see.
-        $both = Member::factory()->administrator()->inSection('Trompettes')->create();
+        $both = Member::factory()->administrator()->inSection('Trompettes')->musician()->create();
         $draft = Event::factory()->draft()->create();
 
         $this->actingAsMember($both)

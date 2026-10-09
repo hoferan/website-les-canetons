@@ -8,11 +8,13 @@ use RuntimeException;
  * An answer was refused for a reason that is about the STATE of things, not
  * about a missing grant.
  *
- * There is deliberately no permission for answering an event (ADR 0014), so
- * none of these can be expressed as a 403 from `permission:` middleware:
+ * The route middleware has already checked the caller's permission, so none of
+ * these can be expressed as a 403 from `permission:`; what is wrong is never
+ * the caller's grant:
  *
- *   403 not_answerable          the member is in no register, so nothing is
- *                               being asked of them
+ *   403 not_answerable          the member an on-behalf answer is for holds no
+ *                               attendance.respond, so nothing is being asked
+ *                               of them
  *   409 cannot_record_for_self  the on-behalf route refusing its own caller,
  *                               which is what stops the reason a withdrawn
  *                               yes costs being one request away from

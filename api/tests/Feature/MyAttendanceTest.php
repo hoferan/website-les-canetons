@@ -22,7 +22,7 @@ class MyAttendanceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->player = Member::factory()->inSection('Cloches')->create();
+        $this->player = Member::factory()->inSection('Cloches')->musician()->create();
     }
 
     public function test_the_planning_carries_my_own_answer(): void
@@ -57,7 +57,7 @@ class MyAttendanceTest extends TestCase
         // THE LEAK THIS GUARDS. The relation is constrained to the caller in
         // the QUERY, so another member's answer is never even loaded.
         $event = Event::factory()->create(['starts_at' => now()->addWeek(), 'ends_at' => now()->addWeek()->addHours(2)]);
-        $other = Member::factory()->inSection('Cloches')->create();
+        $other = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->no()->create([
             'event_id' => $event->id,
             'member_id' => $other->id,
@@ -88,7 +88,7 @@ class MyAttendanceTest extends TestCase
     {
         // An organiser who ALSO plays. Without the explicit load in update()
         // this answers null and resets the buttons on their own screen.
-        $both = Member::factory()->inSection('Trompettes')->administrator()->create();
+        $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
         $event = Event::factory()->create();
         Attendance::factory()->create(['event_id' => $event->id, 'member_id' => $both->id]);
 
@@ -131,7 +131,7 @@ class MyAttendanceTest extends TestCase
         $organiser = Member::factory()->administrator()->create();
         $event = Event::factory()->create();
 
-        Member::factory()->count(3)->inSection('Cloches')->create()
+        Member::factory()->count(3)->inSection('Cloches')->musician()->create()
             ->each(fn (Member $m) => Attendance::factory()->create([
                 'event_id' => $event->id,
                 'member_id' => $m->id,

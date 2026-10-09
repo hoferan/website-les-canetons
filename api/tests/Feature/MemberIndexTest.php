@@ -80,6 +80,7 @@ class MemberIndexTest extends TestCase
             ->named('Camille', 'Committee')
             ->inSection($section)
             ->publiclyVisible()
+            ->musician()
             ->committee()
             ->create(['committee_function_id' => CommitteeFunction::where('name', 'Présidente')->sole()->id]);
 
@@ -105,7 +106,10 @@ class MemberIndexTest extends TestCase
         );
         $this->assertTrue($camille['publicVisible']);
         $this->assertFalse($camille['mustChangePassword']);
-        $this->assertSame([$role->id], $camille['roleIds']);
+        $this->assertEqualsCanonicalizing(
+            [Role::baseline()->id, Role::where('key', 'musician')->sole()->id, $role->id],
+            $camille['roleIds'],
+        );
         $this->assertNull($camille['lastLoginAt']);
     }
 
@@ -121,19 +125,24 @@ class MemberIndexTest extends TestCase
         $this->assertStringNotContainsString('bcrypt', $raw);
     }
 
-    public function test_a_person_without_a_register_is_not_a_player(): void
+    public function test_is_player_follows_attendance_respond_and_not_the_register(): void
     {
-        // The single fact that decides who is answerable for events. An
-        // organiser with no register must not appear in an attendance list, or
-        // every count carries a permanent phantom "sans réponse". Note this is
-        // a separate question from having an account — everybody has one of
-        // those.
-        $body = $this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data');
-        $dominique = collect($body)->firstWhere('lastName', 'Direction');
+        // An organiser without musician must not appear in an attendance
+        // list, or every count carries a permanent phantom "sans réponse".
+        // Note this is a separate question from having an account —
+        // everybody has one of those. And the register does not decide it
+        // either way: one without the role is not a player, and the role
+        // without one is.
+        Member::factory()->named('Rita', 'Registeronly')->inSection('Cloches')->create();
+        Member::factory()->named('Ulysse', 'Unplaced')->musician()->create();
+
+        $body = collect($this->actingAsAdministrator()->getJson('/api/v1/members')->assertOk()->json('data'));
+        $dominique = $body->firstWhere('lastName', 'Direction');
 
         $this->assertNull($dominique['sectionId']);
-        $this->assertNull($dominique['sectionName']);
         $this->assertFalse($dominique['isPlayer']);
+        $this->assertFalse($body->firstWhere('lastName', 'Registeronly')['isPlayer']);
+        $this->assertTrue($body->firstWhere('lastName', 'Unplaced')['isPlayer']);
     }
 
     public function test_it_answers_401_anonymously_and_403_without_the_permission(): void

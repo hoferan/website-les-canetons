@@ -21,9 +21,9 @@ class AccountPasswordController extends Controller
     /**
      * Change your own password.
      *
-     * Any logged-in account holder, for their own account. No permission is
-     * needed: this is the screen every member has and nobody administers, and
-     * it is where a member sent by `mustChangePassword` lands.
+     * Requires `account.manage`, which every account holds through the
+     * baseline role, and acts on the caller's own account only. It is where a
+     * member sent by `mustChangePassword` lands.
      *
      * Send `currentPassword` and `newPassword`. The new one must be at least
      * eight characters.
@@ -51,10 +51,10 @@ class AccountPasswordController extends Controller
     #[Emits('reauth_failed', 'too_many_attempts', 'password_unchanged')]
     public function __invoke(AccountPasswordRequest $request): JsonResponse
     {
-        // GATED ON AUTHENTICATION ALONE — no permission. This is the one screen
-        // every account holder needs and nobody administers, and it is where
-        // every first login lands, because a committee-issued password arrives
-        // with must_change_password set.
+        // GATED ON account.manage, which the baseline role grants to every
+        // account. This is the one screen every account holder needs and
+        // nobody administers, and it is where every first login lands, because
+        // a committee-issued password arrives with must_change_password set.
         //
         // Re-authentication here is not ceremony bolted on: knowing the current
         // password is the only thing standing between a borrowed, unlocked

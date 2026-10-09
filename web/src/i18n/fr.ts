@@ -93,10 +93,12 @@ export const fr = {
     if_match_failed:
       "Quelqu'un a modifié cet élément entre-temps. Rechargez pour voir les changements, puis réessayez.",
 
-    // Attendance. `not_answerable` is a 403 that is NOT about a missing
-    // permission — there is none for answering — so it must not read like
-    // one, or the reader goes looking for a right nobody can grant them.
-    not_answerable: "Vous ne faites partie d'aucun pupitre : aucune réponse ne vous est demandée.",
+    // Attendance. `not_answerable` refuses an answer entered FOR somebody who
+    // is not asked to answer. The reader holds the right they used, so it
+    // must not read like a missing one, or they go looking for a grant of
+    // their own.
+    not_answerable:
+      "Aucune réponse n'est attendue de ce membre : on ne peut pas en saisir une à sa place.",
     cannot_record_for_self:
       "Pour vous-même, répondez depuis le planning : une réponse retirée demande une raison.",
     answer_already_settled: "Ce délai est passé. Modifiez votre réponse plutôt que de l'annuler.",

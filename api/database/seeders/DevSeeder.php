@@ -116,7 +116,8 @@ class DevSeeder extends Seeder
             ],
         );
 
-        // Every account holds the baseline; the register decides who plays.
+        // Every account holds the baseline. A persona with a register is also
+        // given `musician` here, by this seeder: the register grants nothing.
         $member->roles()->syncWithoutDetaching(array_filter([
             Role::baseline()->id,
             $sectionId !== null ? Role::where('key', 'musician')->value('id') : null,

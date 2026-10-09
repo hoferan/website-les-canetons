@@ -40,9 +40,9 @@ class ChaseListTest extends TestCase
 
     public function test_a_player_cannot_see_who_has_not_replied(): void
     {
-        // Answering is everybody's; reading who has NOT answered is the
+        // Answering is every musician's; reading who has NOT answered is the
         // committee's.
-        $this->actingAsMember(Member::factory()->inSection('Cloches')->create())
+        $this->actingAsMember(Member::factory()->inSection('Cloches')->musician()->create())
             ->getJson($this->url())
             ->assertStatus(403)
             ->assertJson(['code' => 'access_denied']);
@@ -65,8 +65,8 @@ class ChaseListTest extends TestCase
         // THE POINT OF THE SCREEN. Returning only the answers would push
         // "who has not replied?" into a client-side diff against a
         // separately-fetched roster — two requests that can disagree.
-        $answered = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->create();
-        $silent = Member::factory()->named('Nadia', 'Sansconnexion')->inSection('Batteurs')->create();
+        $answered = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->musician()->create();
+        $silent = Member::factory()->named('Nadia', 'Sansconnexion')->inSection('Batteurs')->musician()->create();
 
         Attendance::factory()->create([
             'event_id' => $this->event->id,
@@ -81,17 +81,35 @@ class ChaseListTest extends TestCase
         $this->assertNull($byId[$silent->id]['attendance']);
     }
 
-    public function test_a_member_with_no_register_never_appears(): void
+    public function test_a_member_without_attendance_respond_never_appears(): void
     {
-        // Dominique Direction organises, plays in nothing, and is not
+        // Dominique Direction organises, holds no musician, and is not
         // answerable — so listing her would put a permanent "pas de réponse"
-        // on a screen whose whole job is to be emptied.
-        $response = $this->actingAsMember($this->organiser)->getJson($this->url())->assertOk();
+        // on a screen whose whole job is to be emptied. A register without
+        // the role does not put anybody on it either: it only labels a row.
+        $registerOnly = Member::factory()->inSection('Cloches')->create();
 
-        $this->assertNotContains(
-            $this->organiser->id,
-            array_column($response->json('data'), 'memberId')
-        );
+        $response = $this->actingAsMember($this->organiser)->getJson($this->url())->assertOk();
+        $listed = array_column($response->json('data'), 'memberId');
+
+        $this->assertNotContains($this->organiser->id, $listed);
+        $this->assertNotContains($registerOnly->id, $listed);
+    }
+
+    public function test_a_musician_without_a_register_is_chased_all_the_same(): void
+    {
+        // The other half of "the register does not decide": holding the
+        // permission is what puts somebody on the list, so a musician whose
+        // register was never set is still somebody to chase.
+        $unplaced = Member::factory()->musician()->create();
+
+        $entry = collect(
+            $this->actingAsMember($this->organiser)->getJson($this->url())->json('data')
+        )->firstWhere('memberId', $unplaced->id);
+
+        $this->assertNotNull($entry, 'a holder of attendance.respond must be on the chase list');
+        $this->assertNull($entry['sectionName']);
+        $this->assertNull($entry['attendance']);
     }
 
     public function test_each_entry_carries_what_the_chase_list_renders(): void
@@ -99,7 +117,7 @@ class ChaseListTest extends TestCase
         // assertSame on VALUES, not assertJsonStructure: key presence alone
         // stayed green through a field swap once and had to be
         // strengthened afterwards.
-        $player = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->create();
+        $player = Member::factory()->named('Perrine', 'Player')->inSection('Cloches')->musician()->create();
         Attendance::factory()->no()->recordedBy($this->organiser)->create([
             'event_id' => $this->event->id,
             'member_id' => $player->id,
@@ -122,7 +140,7 @@ class ChaseListTest extends TestCase
     {
         // An answer to last week's rehearsal must not appear against this
         // one — the failure that would make the whole list quietly wrong.
-        $player = Member::factory()->inSection('Cloches')->create();
+        $player = Member::factory()->inSection('Cloches')->musician()->create();
         Attendance::factory()->create(['member_id' => $player->id]);
 
         $entry = collect(
@@ -134,8 +152,8 @@ class ChaseListTest extends TestCase
 
     public function test_it_is_ordered_by_name(): void
     {
-        Member::factory()->named('Zoé', 'Zwahlen')->inSection('Cloches')->create();
-        Member::factory()->named('Alain', 'Aebischer')->inSection('Cloches')->create();
+        Member::factory()->named('Zoé', 'Zwahlen')->inSection('Cloches')->musician()->create();
+        Member::factory()->named('Alain', 'Aebischer')->inSection('Cloches')->musician()->create();
 
         $names = array_column(
             $this->actingAsMember($this->organiser)->getJson($this->url())->json(),
@@ -153,7 +171,7 @@ class ChaseListTest extends TestCase
         // register, and this event's answers. The roster is ~45 people and
         // this screen is read on a phone at a rehearsal; a hasMany per row
         // is the N+1 it would otherwise grow.
-        Member::factory()->count(15)->inSection('Cloches')->create()
+        Member::factory()->count(15)->inSection('Cloches')->musician()->create()
             ->each(fn (Member $m) => Attendance::factory()->create([
                 'event_id' => $this->event->id,
                 'member_id' => $m->id,

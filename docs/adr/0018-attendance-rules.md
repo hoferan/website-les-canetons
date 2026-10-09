@@ -41,9 +41,13 @@ The rules live in `App\Support\AttendanceIntegrity`:
   five-minute clock from the direction's write.
 - The on-behalf route refuses its own caller with `409 cannot_record_for_self`, so the
   withdrawal rule cannot be bypassed by answering for yourself through it.
-- A member who does not play in a register is refused with `403 not_answerable`
+- Answering for yourself needs `attendance.respond`, and a member without it is
+  refused with `403 access_denied`, whatever their register. An answer recorded
+  on behalf of such a member is refused with `403 not_answerable`, because there
+  the caller's own permission is not what is missing
   ([ADR-0014](0014-authorize-by-permission-never-by-role.md)).
-- The chase list returns every answerable member, including those who never answered.
+- The chase list returns every member who holds `attendance.respond`, including
+  those who never answered.
 
 Attendance writes are exempt from `If-Match`
 ([ADR-0013](0013-hold-the-api-to-public-standards.md)).

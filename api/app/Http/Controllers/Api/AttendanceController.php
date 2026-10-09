@@ -10,14 +10,16 @@ use App\Models\Attendance;
 use App\Models\Event;
 use App\Models\Member;
 use App\Support\AttendanceIntegrity;
+use App\Support\EffectivePermissions;
 use App\Support\Emits;
+use App\Support\Permission;
 use Dedoc\Scramble\Attributes\Group;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-#[Group('Attendance', 'Who is coming. Anyone in a register answers for themselves; seeing the whole list and answering for somebody else are separate permissions.', weight: 30)]
+#[Group('Attendance', 'Who is coming. Holders of `attendance.respond` answer for themselves; seeing the whole list and answering for somebody else are separate permissions.', weight: 30)]
 class AttendanceController extends Controller
 {
     /**
@@ -28,8 +30,9 @@ class AttendanceController extends Controller
      * entry's `attendance` is `null` for somebody who has not, which is what
      * this list is read for.
      *
-     * Answerable means being in a register. A member who is in none, such as
-     * somebody who only organises, never appears here.
+     * Answerable means holding `attendance.respond`, whatever the member's
+     * register. A member without it, such as somebody who only organises,
+     * never appears here.
      *
      * Each entry carries the member's name and register alongside their
      * answer, and an answer says whether the direction entered it rather than
@@ -43,18 +46,20 @@ class AttendanceController extends Controller
         // diff against a separately-fetched roster, which is two requests
         // that can disagree.
         //
-        // Answerable means Member::isPlayer(): having a register. There is
-        // deliberately no permission for being answerable — making it a grant
-        // is what produced the old bug where an admin could not say whether
-        // they were coming, and left the "Pas de réponse" counts meaningless.
+        // Answerable means holding attendance.respond, the same permission
+        // the member's own answer route requires, so the people this screen
+        // chases are exactly the people able to answer. The register only
+        // labels each row.
         //
         // TWO QUERIES WHATEVER THE ROSTER SIZE: the players with their
-        // register, and this event's answers keyed by member. Pinned by
-        // test_the_chase_list_costs_a_fixed_number_of_queries — the roster is
-        // ~45 people and this screen is read on a phone at a rehearsal.
+        // register, and this event's answers keyed by member. The permission
+        // filter is a subquery inside the first, so it adds no round trip.
+        // Pinned by test_the_chase_list_costs_a_fixed_number_of_queries — the
+        // roster is ~45 people and this screen is read on a phone at a
+        // rehearsal.
         $players = Member::query()
             ->with('section')
-            ->whereNotNull('section_id')
+            ->whereIn('id', EffectivePermissions::holders(Permission::AttendanceRespond))
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
@@ -78,7 +83,7 @@ class AttendanceController extends Controller
     /**
      * Record your own answer for an event.
      *
-     * Any logged-in member who is in a register; no permission is needed.
+     * Requires `attendance.respond`, whatever the caller's register.
      * Answering is idempotent: sending an answer again replaces the previous
      * one rather than adding a second, and the response is always `200` with
      * the answer as it now stands, including its `recordedAt`.
@@ -92,20 +97,16 @@ class AttendanceController extends Controller
      * a change from `no` to `yes`, cost nothing. Recording on somebody else's
      * behalf is exempt from this rule.
      *
-     * A member who is in no register is refused with `403 not_answerable`:
-     * nothing is being asked of them, and no permission would change that.
-     *
      * Answering for yourself clears any mark saying the direction entered the
      * answer.
      */
-    #[Emits('not_answerable', 'event_not_published')]
+    #[Emits('event_not_published')]
     public function update(RecordOwnAttendanceRequest $request, Event $event): AttendanceResource
     {
         /** @var Member $member */
         $member = $request->user();
 
         AttendanceIntegrity::assertPublished($event);
-        AttendanceIntegrity::assertAnswerable($member);
 
         $data = $request->validated();
 
@@ -137,7 +138,7 @@ class AttendanceController extends Controller
     /**
      * Take back your own answer.
      *
-     * Any logged-in member; no permission is needed. Removes the answer
+     * Requires `attendance.respond`, like giving one. Removes the answer
      * entirely and returns the event to unanswered, which is a state a second
      * `PUT` cannot express. Answers `{"ok": true}`, and taking back an answer
      * that is not there is not an error.

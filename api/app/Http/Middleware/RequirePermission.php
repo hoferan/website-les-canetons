@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\EffectivePermissions;
 use App\Support\Permission;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -42,7 +43,10 @@ class RequirePermission
             );
         }
 
-        if (! $request->user()?->hasPermission($required)) {
+        // The request's memoized set rather than hasPermission(), so the
+        // gates that run after this one on the same request read the same
+        // set without a second query. See EffectivePermissions::ofRequest().
+        if (! EffectivePermissions::ofRequest($request)->contains($required)) {
             throw new AuthorizationException;
         }
 

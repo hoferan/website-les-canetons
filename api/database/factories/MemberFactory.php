@@ -60,6 +60,27 @@ class MemberFactory extends Factory
         ];
     }
 
+    /**
+     * EVERY FACTORY MEMBER HOLDS THE BASELINE ROLE, as every real account does:
+     * POST /members attaches it and nothing else, and the 2026_09_29 migration
+     * gave it to everybody already there. A member without it cannot read the
+     * planning or change their own password, which is a state the API never
+     * produces, so a test has to ask for it by name with withoutBaseline().
+     *
+     * Skipped when no baseline role exists, which only happens in a test that
+     * has deliberately put the database back to before that migration.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Member $member): void {
+            $baseline = Role::where('is_baseline', true)->value('id');
+
+            if ($baseline !== null) {
+                $member->roles()->syncWithoutDetaching([$baseline]);
+            }
+        });
+    }
+
     /** A readable identity, for tests that assert on names or usernames. */
     public function named(string $first, string $last, ?string $username = null): static
     {
@@ -88,11 +109,16 @@ class MemberFactory extends Factory
         return $this->withRole('committee');
     }
 
-    /** Holds the seeded baseline role: the planning and one's own password. */
-    public function member(): static
+    /**
+     * Without the baseline role, and so without events.view and
+     * account.manage: for the tests proving those routes check a permission
+     * rather than a session. Runs after configure()'s callback, so it removes
+     * what that one attached.
+     */
+    public function withoutBaseline(): static
     {
         return $this->afterCreating(function (Member $member): void {
-            $member->roles()->syncWithoutDetaching([Role::baseline()->id]);
+            $member->roles()->detach(Role::baseline()->id);
         });
     }
 
@@ -112,9 +138,8 @@ class MemberFactory extends Factory
     }
 
     /**
-     * Sets the register only: it groups and displays. Today it alone still
-     * makes a member answerable (Member::isPlayer()); from #191 musician() is
-     * what grants that.
+     * Sets the register only: it groups and displays, and grants nothing. A
+     * member who should answer for events needs musician() as well.
      */
     public function inSection(Section|string $section): static
     {

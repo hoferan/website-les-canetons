@@ -84,12 +84,6 @@ class Member extends Authenticatable
         return $this->first_name.' '.$this->last_name;
     }
 
-    /** Whether this person plays, and is therefore answerable for events. */
-    public function isPlayer(): bool
-    {
-        return $this->section_id !== null;
-    }
-
     /**
      * This member's answers, across every event.
      *

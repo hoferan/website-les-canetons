@@ -17,7 +17,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 #[Group('Event tags', 'The labels events carry, such as "Répétition" or "Carnaval". Any member reads them; changing them needs `events.manage`.', weight: 41)]
 class EventTagController extends Controller
 {
-    /** Every tag, in the committee's order, with how many events carry each. Any member. */
+    /** Every tag, in the committee's order, with how many events carry each. Requires `events.view`. */
     #[Endpoint(operationId: 'eventTag.index')]
     public function index(): AnonymousResourceCollection
     {

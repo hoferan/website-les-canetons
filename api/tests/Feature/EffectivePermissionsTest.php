@@ -13,9 +13,10 @@ class EffectivePermissionsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Without even the baseline role, so each test starts from nothing. */
     private function member(string $username = 'demo'): Member
     {
-        return Member::factory()->named('Demo', 'Person', $username)->create();
+        return Member::factory()->named('Demo', 'Person', $username)->withoutBaseline()->create();
     }
 
     public function test_a_member_with_no_roles_has_no_permissions(): void

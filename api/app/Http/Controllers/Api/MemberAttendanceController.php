@@ -109,7 +109,8 @@ class MemberAttendanceController extends Controller
      *
      * Refuses `409 cannot_record_for_self` when the member named is the
      * caller, whose own answer has its own endpoint, and `403 not_answerable`
-     * when that member is in no register.
+     * when that member does not hold `attendance.respond`, whatever their
+     * register.
      */
     #[Emits('cannot_record_for_self', 'not_answerable', 'event_not_published')]
     public function update(

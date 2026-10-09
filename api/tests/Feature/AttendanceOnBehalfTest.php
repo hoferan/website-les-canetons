@@ -29,7 +29,7 @@ class AttendanceOnBehalfTest extends TestCase
     {
         parent::setUp();
         $this->organiser = Member::factory()->administrator()->create();
-        $this->player = Member::factory()->inSection('Cloches')->create();
+        $this->player = Member::factory()->inSection('Cloches')->musician()->create();
         $this->event = Event::factory()->create();
     }
 
@@ -46,7 +46,7 @@ class AttendanceOnBehalfTest extends TestCase
 
     public function test_a_player_cannot_answer_for_somebody_else(): void
     {
-        $other = Member::factory()->inSection('Cloches')->create();
+        $other = Member::factory()->inSection('Cloches')->musician()->create();
 
         $this->actingAsMember($other)
             ->putJson($this->url(), ['status' => 'no'])
@@ -110,12 +110,16 @@ class AttendanceOnBehalfTest extends TestCase
         ]);
     }
 
-    public function test_recording_for_a_member_with_no_register_is_refused(): void
+    public function test_recording_for_a_member_without_attendance_respond_is_refused(): void
     {
-        $organiserOnly = Member::factory()->administrator()->create();
+        // A register and no musician: the register used to make this member
+        // answerable, and must no longer. not_answerable, not access_denied:
+        // the organiser holds the permission this route needs, and what is
+        // missing is the target's.
+        $registerOnly = Member::factory()->inSection('Cloches')->create();
 
         $this->actingAsMember($this->organiser)
-            ->putJson($this->url($organiserOnly), ['status' => 'yes'])
+            ->putJson($this->url($registerOnly), ['status' => 'yes'])
             ->assertStatus(403)
             ->assertJson(['code' => 'not_answerable']);
 
@@ -151,7 +155,7 @@ class AttendanceOnBehalfTest extends TestCase
         // own yes through the exempt endpoint and never supply the reason
         // a withdrawn yes must carry. 409, not 403: he HAS the permission — the
         // request conflicts with the state of things.
-        $both = Member::factory()->inSection('Trompettes')->administrator()->create();
+        $both = Member::factory()->inSection('Trompettes')->musician()->administrator()->create();
 
         Attendance::factory()->create([
             'event_id' => $this->event->id,
