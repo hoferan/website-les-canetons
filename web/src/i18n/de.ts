@@ -1116,7 +1116,8 @@ export const de: typeof fr = {
   },
   eventTags: {
     heading: "Kategorien",
-    intro: "Die Kategorien der Anlässe in der Planung. Ein Anlass kann mehrere haben.",
+    intro:
+      "Die Kategorien der Anlässe in der Planung. Ein Anlass kann mehrere haben. Mit «Konfetti» regnet es Konfetti, wenn ein Mitglied bei einem Anlass der Kategorie zusagt.",
     manageLink: "Kategorien bearbeiten",
     count_one: "{{count}} Anlass",
     count_other: "{{count}} Anlässe",
@@ -1125,8 +1126,8 @@ export const de: typeof fr = {
     newHeading: "Neue Kategorie",
     add: "Hinzufügen",
     colour: "Farbe",
-    celebrate: "Konfetti, wenn ein Mitglied zusagt",
-    celebrating: "mit Konfetti",
+    celebrate: "Konfetti",
+    celebrateAria: "Konfetti für «{{label}}»",
     colours: {
       violet: "Violett",
       teal: "Türkis",
