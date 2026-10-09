@@ -52,7 +52,7 @@ export function PageHero({
 }) {
   return (
     <div className="relative overflow-hidden bg-poster text-white">
-      <Confetti seed={seed} colours={POSTER_CONFETTI} />
+      <Confetti seed={seed} colours={POSTER_CONFETTI} wobble />
       {/* `pb-14` and up leave the Scallop its 22px over the bottom edge. */}
       <div
         className={cn(

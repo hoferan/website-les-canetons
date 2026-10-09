@@ -124,6 +124,23 @@
     }
   }
 
+  /* A confetto rocking in place (ConfettiPiece). It goes on an inner SVG
+     group with no transform attribute of its own, since a CSS transform
+     replaces the attribute rather than adding to it; the group's origin is
+     the piece's centre, so it turns on the spot. Each piece sets its own
+     duration and delay. */
+  --animate-wobble: wobble 5s ease-in-out infinite alternate;
+
+  @keyframes wobble {
+    from {
+      transform: rotate(-8deg);
+    }
+
+    to {
+      transform: rotate(8deg);
+    }
+  }
+
   /* ONE width for the chrome and for page shells, with prose constrained
      INSIDE it by --container-text.
 

@@ -1,48 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { type Box, type ConfettiKind, type Piece, scatter } from "./scatter";
-
-/**
- * Each shape is a few SVG primitives drawn for this site, centred on 0,0, so
- * there is no licence to track and they stay sharp at any size (ADR 0029).
- * They paint in currentColor, which the caller sets through CSS, because a
- * `var(--color-…)` is reliable there and not in an SVG presentation attribute.
- */
-function Shape({ kind }: { kind: ConfettiKind }) {
-  switch (kind) {
-    case "strip":
-      return <rect x={-6} y={-2.5} width={12} height={5} rx={1} fill="currentColor" />;
-    case "dot":
-      return <circle r={3.5} fill="currentColor" />;
-    case "triangle":
-      return <path d="M0-5 5 4-5 4z" fill="currentColor" />;
-    case "squiggle":
-      return (
-        <path
-          d="M-14 0q3.5-6 7 0t7 0 7 0 7 0"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2.6}
-          strokeLinecap="round"
-        />
-      );
-    case "star":
-      return (
-        <path
-          d="M0-8 2.2-2.6 8-2.4 3.4 1.2 5 7 0 3.6-5 7-3.4 1.2-8-2.4-2.2-2.6z"
-          fill="currentColor"
-        />
-      );
-    case "note":
-      return (
-        <g fill="currentColor">
-          <ellipse cx={-3} cy={6} rx={4.2} ry={3.2} transform="rotate(-20 -3 6)" />
-          <rect x={0.2} y={-10} width={1.8} height={16} />
-          <path d="M2-10q6 2 6 8-2-4-6-4z" />
-        </g>
-      );
-  }
-}
+import { ConfettiPiece } from "./ConfettiPiece";
+import { type Box, type Piece, scatter } from "./scatter";
 
 function boxOf(element: Element, origin: DOMRect): Box {
   const rect = element.getBoundingClientRect();
@@ -70,11 +29,14 @@ export function Confetti({
   seed,
   colours,
   density,
+  wobble = false,
 }: {
   seed: number;
   colours: string[];
   /** See scatter(). */
   density?: number;
+  /** Rocks each piece gently in place; see ConfettiPiece. */
+  wobble?: boolean;
 }) {
   const svg = useRef<SVGSVGElement>(null);
   const [layout, setLayout] = useState<{ width: number; height: number; pieces: Piece[] }>({
@@ -128,13 +90,14 @@ export function Confetti({
       preserveAspectRatio="none"
     >
       {layout.pieces.map((piece, index) => (
-        <g
+        <ConfettiPiece
           key={index}
-          transform={`translate(${piece.x.toFixed(1)} ${piece.y.toFixed(1)}) rotate(${piece.rotate}) scale(${piece.scale.toFixed(2)})`}
-          style={{ color: colours[piece.colour] }}
-        >
-          <Shape kind={piece.kind} />
-        </g>
+          piece={piece}
+          x={piece.x}
+          y={piece.y}
+          colour={colours[piece.colour] ?? "currentColor"}
+          wobble={wobble}
+        />
       ))}
     </svg>
   );

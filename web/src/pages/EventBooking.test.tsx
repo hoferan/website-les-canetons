@@ -2,12 +2,19 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { Route, Routes } from "react-router-dom";
-import { expect, onTestFinished, test, vi } from "vitest";
+import { beforeEach, expect, onTestFinished, test, vi } from "vitest";
 
 import { type Locale } from "../i18n/locale";
 import { server } from "../mocks/node";
 import { renderWithSession } from "../test/renderWithSession";
+import { celebrate } from "../carnival/celebrate";
 import { EventBooking } from "./EventBooking";
+
+vi.mock("../carnival/celebrate", () => ({ celebrate: vi.fn() }));
+
+beforeEach(() => {
+  vi.mocked(celebrate).mockClear();
+});
 
 /** The seeded souper — the only event in the mocked planning that takes bookings. */
 const SOUPER = 7;
@@ -115,6 +122,9 @@ test("books a place and answers in place, without navigating", async () => {
   // The form is GONE rather than covered: a success panel above a live form
   // invites a second booking of the same five people.
   expect(screen.queryByLabelText("Prénom")).not.toBeInTheDocument();
+
+  // Confetti for the guest who has just booked, once (#108).
+  expect(celebrate).toHaveBeenCalledTimes(1);
 });
 
 /**
@@ -218,6 +228,7 @@ test("a booking over the cap is refused in French, against the choice list", asy
   // The form stays OPEN and keeps what was typed: a rejected booking must not
   // make somebody fill it in again.
   expect(screen.getByLabelText("Prénom")).toHaveValue("Aline");
+  expect(celebrate).not.toHaveBeenCalled();
 });
 
 /**
