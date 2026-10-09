@@ -26,6 +26,8 @@ class EventTagResource extends JsonResource
             /** Null when the committee gave no German name; show `labelFr` then. */
             'labelDe' => $this->label_de,
             'colour' => $this->colour,
+            /** Whether answering "Oui" to an event carrying this tag throws confetti. */
+            'celebrate' => $this->celebrate,
             /** How many events carry the tag, drafts included. Only on the tag list. */
             'eventCount' => $this->whenCounted('events'),
         ];

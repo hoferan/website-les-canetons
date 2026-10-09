@@ -3306,7 +3306,7 @@
             },
             "put": {
                 "operationId": "eventTag.update",
-                "summary": "Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read",
+                "summary": "Replaces the tag's names, colour and confetti flag. Requires `events.manage` and the `If-Match` from its read",
                 "tags": [
                     "Event tags"
                 ],
@@ -7442,6 +7442,10 @@
                     "colour": {
                         "$ref": "#/components/schemas/TagColour"
                     },
+                    "celebrate": {
+                        "type": "boolean",
+                        "description": "Whether answering \"Oui\" to an event carrying this tag throws confetti."
+                    },
                     "eventCount": {
                         "type": "integer",
                         "description": "How many events carry the tag, drafts included. Only on the tag list."
@@ -7451,7 +7455,8 @@
                     "id",
                     "labelFr",
                     "labelDe",
-                    "colour"
+                    "colour",
+                    "celebrate"
                 ],
                 "title": "EventTagResource"
             },
@@ -8537,11 +8542,16 @@
                             "coral",
                             "gray"
                         ]
+                    },
+                    "celebrate": {
+                        "type": "boolean",
+                        "description": "Whether answering \"Oui\" to an event with this tag throws\nconfetti. Required, because the tag is replaced whole and a\nsave without it would switch the confetti off."
                     }
                 },
                 "required": [
                     "labelFr",
-                    "colour"
+                    "colour",
+                    "celebrate"
                 ],
                 "title": "StoreEventTagRequest"
             },

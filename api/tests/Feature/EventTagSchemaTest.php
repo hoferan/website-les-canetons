@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\EventTag;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -50,6 +52,34 @@ class EventTagSchemaTest extends TestCase
         $this->assertSame('blue', EventTag::query()->where('label_fr', 'Concert')->firstOrFail()->colour->value);
     }
 
+    public function test_only_carnaval_starts_out_celebrating(): void
+    {
+        $this->assertSame(
+            ['Carnaval'],
+            EventTag::query()->where('celebrate', true)->pluck('label_fr')->all(),
+        );
+    }
+
+    public function test_the_celebrate_flag_is_set_once_and_never_put_back(): void
+    {
+        // The committee turned it off: a re-run must not turn it back on.
+        EventTag::query()->where('label_fr', 'Carnaval')->update(['celebrate' => false]);
+
+        $this->runCelebrateMigration();
+
+        $this->assertSame(0, EventTag::query()->where('celebrate', true)->count());
+    }
+
+    public function test_the_celebrate_flag_survives_a_missing_carnaval(): void
+    {
+        Schema::table('event_tags', fn (Blueprint $table) => $table->dropColumn('celebrate'));
+        EventTag::query()->where('label_fr', 'Carnaval')->update(['label_fr' => 'Fasnacht']);
+
+        $this->runCelebrateMigration();
+
+        $this->assertSame(0, EventTag::query()->where('celebrate', true)->count());
+    }
+
     public function test_deleting_a_tag_detaches_it_from_events(): void
     {
         $event = Event::factory()->create();
@@ -82,6 +112,11 @@ class EventTagSchemaTest extends TestCase
             ['Répétition', 'Concert', 'Sortie', 'Carnaval'],
             $event->tags->pluck('label_fr')->all(),
         );
+    }
+
+    private function runCelebrateMigration(): void
+    {
+        (require database_path('migrations/2026_10_09_000001_add_celebrate_to_event_tags.php'))->up();
     }
 
     private function runSeed(): void

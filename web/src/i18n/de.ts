@@ -151,6 +151,7 @@ export const de: typeof fr = {
     labelFr: "Name auf Französisch",
     labelDe: "Name auf Deutsch",
     colour: "Farbe",
+    celebrate: "Konfetti",
     tagIds: "Kategorien",
     important: "Wichtiger Meilenstein",
     icon: "Symbol",
@@ -1124,6 +1125,8 @@ export const de: typeof fr = {
     newHeading: "Neue Kategorie",
     add: "Hinzufügen",
     colour: "Farbe",
+    celebrate: "Konfetti, wenn ein Mitglied zusagt",
+    celebrating: "mit Konfetti",
     colours: {
       violet: "Violett",
       teal: "Türkis",

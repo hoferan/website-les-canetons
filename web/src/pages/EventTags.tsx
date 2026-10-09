@@ -34,15 +34,16 @@ import { OUTLINED_CARD } from "../carnival/raised";
 
 const COLOURS = Object.keys(TAG_COLOURS) as TagColour[];
 
-type TagDraft = { labelFr: string; labelDe: string; colour: TagColour };
+type TagDraft = { labelFr: string; labelDe: string; colour: TagColour; celebrate: boolean };
 
-const EMPTY: TagDraft = { labelFr: "", labelDe: "", colour: "violet" };
+const EMPTY: TagDraft = { labelFr: "", labelDe: "", colour: "violet", celebrate: false };
 
 function bodyOf(draft: TagDraft) {
   return {
     labelFr: draft.labelFr,
     labelDe: draft.labelDe.trim() === "" ? null : draft.labelDe,
     colour: draft.colour,
+    celebrate: draft.celebrate,
   };
 }
 
@@ -110,6 +111,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             labelFr: read.data.labelFr,
             labelDe: read.data.labelDe ?? "",
             colour: read.data.colour,
+            celebrate: read.data.celebrate,
           },
           etag,
         });
@@ -171,6 +173,11 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <span className="text-ink-muted">
               {t("eventTags.count", { count: tag.eventCount ?? 0 })}
             </span>
+            {tag.celebrate ? (
+              <span data-testid="tag-celebrates" className="text-ink-muted">
+                {t("eventTags.celebrating")}
+              </span>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-tight">
             <Button
@@ -316,7 +323,7 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
   );
 }
 
-/** The two names and the colour, shared by the new-tag form and a row being edited. */
+/** The two names, the colour and the confetti flag, shared by the new-tag form and a row being edited. */
 function TagFields({
   idPrefix,
   draft,
@@ -371,6 +378,15 @@ function TagFields({
           ))}
         </div>
       </fieldset>
+      <label className="flex min-h-touch items-center gap-2">
+        <input
+          type="checkbox"
+          className="size-5"
+          checked={draft.celebrate}
+          onChange={(changed) => onChange({ ...draft, celebrate: changed.target.checked })}
+        />
+        {t("eventTags.celebrate")}
+      </label>
     </>
   );
 }

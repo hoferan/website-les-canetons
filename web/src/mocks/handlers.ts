@@ -1043,10 +1043,10 @@ function at(dayOffset: number, time: string): string {
  */
 function initialEventTags(): EventTagResource[] {
   return [
-    { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" },
-    { id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal" },
-    { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber" },
-    { id: 4, labelFr: "Carnaval", labelDe: "Fasnacht", colour: "pink" },
+    { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet", celebrate: false },
+    { id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal", celebrate: false },
+    { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber", celebrate: false },
+    { id: 4, labelFr: "Carnaval", labelDe: "Fasnacht", colour: "pink", celebrate: true },
   ];
 }
 
@@ -1056,6 +1056,19 @@ let eventTags: EventTagResource[] = initialEventTags();
 function tagsFromIds(ids: readonly number[] | undefined): EventTagResource[] {
   const wanted = new Set(ids ?? []);
   return eventTags.filter((tag) => wanted.has(tag.id));
+}
+
+/**
+ * Test seam: turn one tag's confetti on or off, on the tag and on every event
+ * carrying a copy of it. The only seeded tag that has it, Carnaval, is on a
+ * draft no player can see.
+ */
+export function setMockTagCelebrates(tagId: number, celebrate: boolean): void {
+  eventTags = eventTags.map((tag) => (tag.id === tagId ? { ...tag, celebrate } : tag));
+  events = events.map((event) => ({
+    ...event,
+    tags: tagsFromIds(event.tags.map((tag) => tag.id)),
+  }));
 }
 
 /** How many events carry the tag, drafts included, as the API counts. */
@@ -1787,7 +1800,13 @@ function publicEvent(event: EventResource) {
   return {
     id: event.id,
     title: event.title,
-    tags: event.tags.map(({ id, labelFr, labelDe, colour }) => ({ id, labelFr, labelDe, colour })),
+    tags: event.tags.map(({ id, labelFr, labelDe, colour, celebrate }) => ({
+      id,
+      labelFr,
+      labelDe,
+      colour,
+      celebrate,
+    })),
     startsAt: event.startsAt,
     endsAt: event.endsAt,
     location: event.location,
@@ -2807,6 +2826,7 @@ const overrides = [
       labelFr: body.labelFr.trim(),
       labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
       colour: body.colour,
+      celebrate: body.celebrate,
     };
     eventTags = [...eventTags, tag];
     return HttpResponse.json({ ...tag, eventCount: 0 }, { status: 201 });
@@ -2835,6 +2855,7 @@ const overrides = [
       labelFr: body.labelFr.trim(),
       labelDe: body.labelDe?.trim() ? body.labelDe.trim() : null,
       colour: body.colour,
+      celebrate: body.celebrate,
     };
     eventTags = eventTags.map((tag) => (tag.id === updated.id ? updated : tag));
     // The events carry a copy, as the API's eager load would hand back.

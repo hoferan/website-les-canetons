@@ -11,6 +11,7 @@ import {
 } from "../api/generated/endpoints";
 import type { AttendanceResource, EventResource } from "../api/generated/model";
 import { ApiError } from "../api/http";
+import { celebrate } from "../carnival/celebrate";
 import { useApiFormError } from "../api/useApiFormError";
 import { t, translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
@@ -172,6 +173,17 @@ export function AttendanceControls({
       patchMyAttendance(queryClient, event.id, recorded);
       setWithdrawing(false);
       refusal.clear();
+
+      // Confetti for a new "Oui" to an event the committee marked as worth
+      // it (#108). After the server took it, so a refusal throws nothing, and
+      // not for an "Oui" that was already the answer.
+      if (
+        status === "yes" &&
+        previous?.status !== "yes" &&
+        event.tags.some((tag) => tag.celebrate)
+      ) {
+        celebrate();
+      }
 
       // THE UNDO IS OFFERED ON A FIRST ANSWER ONLY, because DELETE is the only
       // thing behind it and DELETE returns the event to UNANSWERED. On a first

@@ -16,11 +16,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $label_fr
  * @property string|null $label_de
  * @property TagColour $colour
+ * @property bool $celebrate
  * @property int $sort_order
  */
 class EventTag extends Model
 {
-    protected $fillable = ['label_fr', 'label_de', 'colour', 'sort_order'];
+    protected $fillable = ['label_fr', 'label_de', 'colour', 'celebrate', 'sort_order'];
 
     /**
      * Validated `tagIds` as distinct integers, ready for the pivot.
@@ -47,6 +48,7 @@ class EventTag extends Model
     {
         return [
             'colour' => TagColour::class,
+            'celebrate' => 'boolean',
             'sort_order' => 'integer',
         ];
     }

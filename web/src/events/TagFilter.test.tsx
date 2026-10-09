@@ -5,8 +5,8 @@ import { expect, test, vi } from "vitest";
 import { TagFilter, shownTag } from "./TagFilter";
 
 const tags = [
-  { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" },
-  { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber" },
+  { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet", celebrate: false },
+  { id: 3, labelFr: "Sortie", labelDe: "Auftritt", colour: "amber", celebrate: false },
 ] as const;
 
 test("offers every tag and 'Tous', with 'Tous' chosen by default", () => {

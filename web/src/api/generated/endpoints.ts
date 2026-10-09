@@ -5806,7 +5806,7 @@ export const getEventTagUpdateUrl = (eventTag: number) => {
 };
 
 /**
- * @summary Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read
+ * @summary Replaces the tag's names, colour and confetti flag. Requires `events.manage` and the `If-Match` from its read
  */
 export const eventTagUpdate = async (
   eventTag: number,
@@ -5900,7 +5900,7 @@ export type EventTagUpdateMutationError =
 export type EventTagUpdateMutationVariables = { eventTag: number; data: StoreEventTagRequest };
 
 /**
- * @summary Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read
+ * @summary Replaces the tag's names, colour and confetti flag. Requires `events.manage` and the `If-Match` from its read
  */
 export const useEventTagUpdate = <
   TError =

@@ -101,7 +101,8 @@ function Burst({ onDone }: { onDone: () => void }) {
 
 /**
  * Throws confetti over the whole page, for a moment worth celebrating: a guest
- * has just booked a place (#108).
+ * has just booked a place, or a member has just said "Oui" to an event whose
+ * tag the committee marked for it (#108).
  *
  * The pieces are the same ones the page decoration is drawn with
  * (ConfettiPiece), so nothing here has a licence to track. It mounts its own
