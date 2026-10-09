@@ -225,13 +225,19 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
               {t("eventTags.celebrate")}
             </label>
           </div>
+          {/* Every button on this page takes aria-disabled and an early
+              return while a write runs, never `disabled`: see rule 2 in
+              ui/button.tsx. */}
           <div className="flex flex-wrap items-center gap-tight">
             <Button
               type="button"
               variant="raised-light"
               aria-label={t("eventTags.editAria", { label: tagLabel(tag) })}
-              disabled={busy}
-              onClick={() => void open("edit")}
+              aria-disabled={busy}
+              onClick={() => {
+                if (busy) return;
+                void open("edit");
+              }}
             >
               {t("common.edit")}
             </Button>
@@ -239,8 +245,11 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
               type="button"
               variant="raised-light"
               aria-label={t("eventTags.deleteAria", { label: tagLabel(tag) })}
-              disabled={busy}
-              onClick={() => void open("delete")}
+              aria-disabled={busy}
+              onClick={() => {
+                if (busy) return;
+                void open("delete");
+              }}
             >
               {t("common.delete")}
             </Button>
@@ -262,7 +271,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           className="grid gap-related"
           onSubmit={(submitted) => {
             submitted.preventDefault();
-            if (!formIsValid(submitted.currentTarget)) {
+            if (busy || !formIsValid(submitted.currentTarget)) {
               return;
             }
             void save();
@@ -280,7 +289,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           />
           <FormError error={saving.error} />
           <div className="flex flex-wrap gap-tight">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" aria-disabled={busy}>
               {t("common.save")}
             </Button>
             <Button type="button" variant="raised-light" onClick={() => setEditing(null)}>
@@ -292,6 +301,9 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
 
       <AlertDialog
         open={deleting !== null}
+        // Annuler gets no handler of its own: Radix's Cancel calls this on
+        // every click, whatever aria-disabled says, and so does Escape. This
+        // check is what keeps the dialog open while the delete runs.
         onOpenChange={(next) => {
           if (!next && !busy) setDeleting(null);
         }}
@@ -313,12 +325,15 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             ) : null}
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogCancel aria-disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
               variant="raised-danger"
-              disabled={busy}
-              onClick={() => void destroy()}
+              aria-disabled={busy}
+              onClick={() => {
+                if (busy) return;
+                void destroy();
+              }}
             >
               {t("common.delete")}
             </Button>
@@ -341,7 +356,7 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
       className="mt-block grid gap-related rounded-lg border border-dashed border-line p-4"
       onSubmit={(submitted) => {
         submitted.preventDefault();
-        if (!formIsValid(submitted.currentTarget)) {
+        if (busy || !formIsValid(submitted.currentTarget)) {
           return;
         }
         setBusy(true);
@@ -366,7 +381,7 @@ function NewTag({ onCreated }: { onCreated: () => Promise<void> }) {
       />
       <FormError error={creating.error} />
       <div>
-        <Button type="submit" disabled={busy}>
+        <Button type="submit" aria-disabled={busy}>
           {t("eventTags.add")}
         </Button>
       </div>

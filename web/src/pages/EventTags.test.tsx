@@ -34,6 +34,27 @@ function confettiSwitch(labelFr: string): HTMLElement {
   return screen.getByRole("switch", { name: `Confettis pour «\u00a0${labelFr}\u00a0»` });
 }
 
+/**
+ * Holds every request of this method to this path until `release()`, then
+ * lets it through to the mocked backend. `sent()` counts the requests that
+ * arrived, held or not.
+ */
+function hold(method: "post" | "put" | "delete", path: string) {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let sent = 0;
+  server.use(
+    http[method](path, async () => {
+      sent += 1;
+      await held;
+      // Nothing returned, so MSW goes on to the mocked backend's handler.
+    }),
+  );
+  return { release, sent: () => sent };
+}
+
 test("lists every tag with how many events carry it", async () => {
   await renderEditor();
 
@@ -230,4 +251,124 @@ test("deleting a tag says how many events lose it, then removes it", async () =>
   await user.click(within(dialog).getByRole("button", { name: "Supprimer" }));
   await waitFor(() => expect(screen.getAllByTestId("event-tag-row")).toHaveLength(3));
   expect(screen.queryByText("Concert")).toBeNull();
+});
+
+/**
+ * MUTATION TEST: put `disabled={busy}` back on either button and
+ * `toBeEnabled()` fails. Drop the early return from either and its press
+ * opens the edit form or the delete dialog over a flip still saving.
+ */
+test("while a flip saves, Modifier and Supprimer stay enabled and do nothing", async () => {
+  const user = userEvent.setup();
+  const put = hold("put", "/api/v1/event-tags/:id");
+  await renderEditor();
+
+  await user.click(confettiSwitch("Sortie"));
+  const row = within(rowFor("Sortie"));
+  for (const button of [
+    row.getByRole("button", { name: /^Modifier/ }),
+    row.getByRole("button", { name: /^Supprimer/ }),
+  ]) {
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+    button.focus();
+    await user.keyboard("{Enter}");
+  }
+
+  put.release();
+
+  await waitFor(() => expect(confettiSwitch("Sortie")).toHaveAttribute("aria-disabled", "false"));
+  expect(within(rowFor("Sortie")).queryByLabelText("Nom en français")).toBeNull();
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
+/**
+ * MUTATION TEST: put `disabled={busy}` back and `toBeEnabled()` fails. Drop
+ * the early return from the form's onSubmit and the second press sends a
+ * second PUT.
+ */
+test("Enregistrer stays enabled while the rename saves, and a second press sends nothing", async () => {
+  const user = userEvent.setup();
+  const put = hold("put", "/api/v1/event-tags/:id");
+  await renderEditor();
+
+  await user.click(within(rowFor("Concert")).getByRole("button", { name: /^Modifier/ }));
+  const field = await within(rowFor("Concert")).findByLabelText("Nom en français");
+  await user.clear(field);
+  await user.type(field, "Concerts");
+  const save = within(rowFor("Concerts")).getByRole("button", { name: "Enregistrer" });
+  save.focus();
+  await user.keyboard("{Enter}");
+
+  expect(save).toHaveAttribute("aria-disabled", "true");
+  expect(save).toBeEnabled();
+  await user.keyboard("{Enter}");
+
+  put.release();
+
+  await waitFor(() =>
+    expect(within(rowFor("Concerts")).queryByLabelText("Nom en français")).toBeNull(),
+  );
+  expect(put.sent()).toBe(1);
+});
+
+/**
+ * MUTATION TEST: put `disabled={busy}` back and `toBeEnabled()` fails. Drop
+ * the early return from the form's onSubmit and the second press sends a
+ * second POST.
+ */
+test("Ajouter stays enabled while the tag is created, and a second press sends nothing", async () => {
+  const user = userEvent.setup();
+  const post = hold("post", "/api/v1/event-tags");
+  await renderEditor();
+
+  const form = screen.getByRole("form", { name: "Nouvelle catégorie" });
+  await user.type(within(form).getByLabelText("Nom en français"), "Souper");
+  const add = within(form).getByRole("button", { name: "Ajouter" });
+  add.focus();
+  await user.keyboard("{Enter}");
+
+  expect(add).toHaveAttribute("aria-disabled", "true");
+  expect(add).toBeEnabled();
+  await user.keyboard("{Enter}");
+
+  post.release();
+
+  await waitFor(() => expect(screen.getAllByTestId("event-tag-row")).toHaveLength(5));
+  expect(post.sent()).toBe(1);
+});
+
+/**
+ * MUTATION TEST: put `disabled={busy}` back on either button and
+ * `toBeEnabled()` fails. Drop the confirm's early return and a second DELETE
+ * goes out. Drop `!busy` from the dialog's onOpenChange and Annuler closes it
+ * mid-delete: Radix's Cancel calls onOpenChange(false) on every click,
+ * whatever aria-disabled says, so that check is the only thing holding it.
+ */
+test("the delete dialog stays open and sends one DELETE whatever is pressed while it runs", async () => {
+  const user = userEvent.setup();
+  const remove = hold("delete", "/api/v1/event-tags/:id");
+  await renderEditor();
+
+  await user.click(within(rowFor("Concert")).getByRole("button", { name: /^Supprimer/ }));
+  const dialog = await screen.findByRole("alertdialog");
+  const confirm = within(dialog).getByRole("button", { name: "Supprimer" });
+  const cancel = within(dialog).getByRole("button", { name: "Annuler" });
+  confirm.focus();
+  await user.keyboard("{Enter}");
+
+  for (const button of [confirm, cancel]) {
+    expect(button).toHaveAttribute("aria-disabled", "true");
+    expect(button).toBeEnabled();
+  }
+  await user.keyboard("{Enter}");
+  cancel.focus();
+  await user.keyboard("{Enter}");
+  await user.keyboard("{Escape}");
+  expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+
+  remove.release();
+
+  await waitFor(() => expect(screen.getAllByTestId("event-tag-row")).toHaveLength(3));
+  expect(remove.sent()).toBe(1);
 });
