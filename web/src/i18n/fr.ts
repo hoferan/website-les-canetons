@@ -184,6 +184,7 @@ export const fr = {
     labelFr: "Nom en français",
     labelDe: "Nom en allemand",
     colour: "Couleur",
+    celebrate: "Confettis",
     tagIds: "Catégories",
     important: "Étape importante",
     icon: "Icône",
@@ -1632,6 +1633,9 @@ export const fr = {
     newHeading: "Nouvelle catégorie",
     add: "Ajouter",
     colour: "Couleur",
+    // The checkbox in the tag form, and the note on a tag that has it.
+    celebrate: "Confettis quand un membre répond «\u00a0Oui\u00a0»",
+    celebrating: "avec confettis",
     colours: {
       violet: "Violet",
       teal: "Vert d'eau",

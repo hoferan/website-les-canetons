@@ -75,6 +75,31 @@ test("renaming a tag saves it", async () => {
   );
 });
 
+test("the confetti flag opens as stored and saves when ticked", async () => {
+  const user = userEvent.setup();
+  await renderEditor();
+
+  // Seeded on Carnaval only.
+  expect(within(rowFor("Carnaval")).getByTestId("tag-celebrates")).toHaveTextContent(
+    "avec confettis",
+  );
+  expect(within(rowFor("Sortie")).queryByTestId("tag-celebrates")).toBeNull();
+
+  await user.click(within(rowFor("Carnaval")).getByRole("button", { name: /^Modifier/ }));
+  expect(
+    await within(rowFor("Carnaval")).findByRole("checkbox", { name: /^Confettis/ }),
+  ).toBeChecked();
+  await user.click(within(rowFor("Carnaval")).getByRole("button", { name: "Annuler" }));
+
+  await user.click(within(rowFor("Sortie")).getByRole("button", { name: /^Modifier/ }));
+  const box = await within(rowFor("Sortie")).findByRole("checkbox", { name: /^Confettis/ });
+  expect(box).not.toBeChecked();
+  await user.click(box);
+  await user.click(within(rowFor("Sortie")).getByRole("button", { name: "Enregistrer" }));
+
+  expect(await within(rowFor("Sortie")).findByTestId("tag-celebrates")).toBeInTheDocument();
+});
+
 test("a rename refused because somebody else changed the tag says so", async () => {
   const user = userEvent.setup();
   server.use(

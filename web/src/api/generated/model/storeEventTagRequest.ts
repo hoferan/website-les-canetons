@@ -329,4 +329,9 @@ export interface StoreEventTagRequest {
   labelDe?: string | null;
   /** One of `violet`, `teal`, `amber`, `pink`, `blue`, `green`, `coral`, `gray`. */
   colour: StoreEventTagRequestColour;
+  /**
+   * Required, not defaulted: the tag is replaced whole, and a save
+   * that left it out would quietly turn the confetti off.
+   */
+  celebrate: boolean;
 }

@@ -319,6 +319,8 @@ export interface EventTagResource {
    */
   labelDe: string | null;
   colour: TagColour;
+  /** Whether answering "Oui" to an event carrying this tag throws confetti. */
+  celebrate: boolean;
   /** How many events carry the tag, drafts included. Only on the tag list. */
   eventCount?: number;
 }

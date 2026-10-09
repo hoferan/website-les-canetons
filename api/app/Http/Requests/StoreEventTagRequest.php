@@ -35,6 +35,9 @@ class StoreEventTagRequest extends FormRequest
             'labelDe' => ['nullable', 'string', 'max:40'],
             /** One of `violet`, `teal`, `amber`, `pink`, `blue`, `green`, `coral`, `gray`. */
             'colour' => ['required', 'in:'.implode(',', array_column(TagColour::cases(), 'value'))],
+            // Required: the tag is replaced whole, so a save that left the
+            // flag out would switch the confetti off.
+            'celebrate' => ['required', 'boolean'],
         ];
     }
 

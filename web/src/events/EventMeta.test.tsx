@@ -17,7 +17,7 @@ test("shows an event's tags, before the public chip", () => {
   render(
     <EventMeta
       isPublic
-      tags={[{ id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal" }]}
+      tags={[{ id: 2, labelFr: "Concert", labelDe: "Konzert", colour: "teal", celebrate: false }]}
     />,
   );
   const strip = screen.getByTestId("event-meta");
@@ -26,7 +26,11 @@ test("shows an event's tags, before the public chip", () => {
 
 test("renders the strip for tags alone", () => {
   render(
-    <EventMeta tags={[{ id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet" }]} />,
+    <EventMeta
+      tags={[
+        { id: 1, labelFr: "Répétition", labelDe: "Probe", colour: "violet", celebrate: false },
+      ]}
+    />,
   );
   expect(screen.getByTestId("event-meta")).toBeInTheDocument();
 });

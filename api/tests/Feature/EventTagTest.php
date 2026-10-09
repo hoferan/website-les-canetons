@@ -36,7 +36,7 @@ class EventTagTest extends TestCase
      */
     private function payload(array $overrides = []): array
     {
-        return array_merge(['labelFr' => 'Souper', 'labelDe' => 'Abendessen', 'colour' => 'coral'], $overrides);
+        return array_merge(['labelFr' => 'Souper', 'labelDe' => 'Abendessen', 'colour' => 'coral', 'celebrate' => false], $overrides);
     }
 
     private function tag(string $labelFr): EventTag
@@ -171,5 +171,51 @@ class EventTagTest extends TestCase
             ->assertStatus(400)
             ->assertJsonPath('errors.0.field', 'labelFr')
             ->assertJsonPath('errors.0.reason', 'required');
+    }
+
+    public function test_the_celebrate_flag_is_stored_and_read_back(): void
+    {
+        $this->actingAsMember($this->manager)
+            ->postJson('/api/v1/event-tags', $this->payload(['celebrate' => true]))
+            ->assertStatus(201)
+            ->assertJsonPath('celebrate', true);
+        $this->assertTrue($this->tag('Souper')->celebrate);
+
+        $tag = $this->tag('Souper');
+        $this->actingAsMember($this->manager)
+            ->withHeaders($this->ifMatch('event_tag', $tag))
+            ->putJson("/api/v1/event-tags/{$tag->id}", $this->payload(['celebrate' => false]))
+            ->assertOk()
+            ->assertJsonPath('celebrate', false);
+
+        $this->actingAsMember($this->player)->getJson('/api/v1/event-tags')
+            ->assertJsonPath('data.0.celebrate', false)
+            ->assertJsonPath('data.3.celebrate', true);
+    }
+
+    public function test_a_tag_written_without_the_flag_is_refused(): void
+    {
+        // A tag is replaced whole, so leaving the flag out would switch the
+        // confetti off on every save from a client that forgot it.
+        $payload = $this->payload();
+        unset($payload['celebrate']);
+
+        $this->actingAsMember($this->manager)
+            ->postJson('/api/v1/event-tags', $payload)
+            ->assertStatus(400)
+            ->assertJsonPath('errors.0.field', 'celebrate')
+            ->assertJsonPath('errors.0.reason', 'required');
+    }
+
+    public function test_a_change_to_the_flag_alone_moves_the_etag(): void
+    {
+        $tag = $this->tag('Concert');
+        $before = $this->ifMatch('event_tag', $tag);
+        $tag->update(['celebrate' => true]);
+
+        $this->actingAsMember($this->manager)
+            ->withHeaders($before)
+            ->putJson("/api/v1/event-tags/{$tag->id}", $this->payload(['labelFr' => 'Concert', 'colour' => 'teal']))
+            ->assertStatus(412);
     }
 }

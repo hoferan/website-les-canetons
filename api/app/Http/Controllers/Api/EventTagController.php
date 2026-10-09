@@ -45,7 +45,7 @@ class EventTagController extends Controller
         return response()->json(new EventTagResource($tag->loadCount('events')), 201);
     }
 
-    /** Replaces the tag's names and colour. Requires `events.manage` and the `If-Match` from its read. */
+    /** Replaces the tag's names, colour and confetti flag. Requires `events.manage` and the `If-Match` from its read. */
     #[Endpoint(operationId: 'eventTag.update')]
     #[Response(200, 'The tag as it now stands.')]
     public function update(StoreEventTagRequest $request, EventTag $eventTag): JsonResponse
@@ -78,6 +78,7 @@ class EventTagController extends Controller
             'label_fr' => $data['labelFr'],
             'label_de' => $data['labelDe'],
             'colour' => $data['colour'],
+            'celebrate' => $data['celebrate'],
         ];
     }
 }
