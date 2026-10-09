@@ -6,6 +6,7 @@ import type { InboxItemResource } from "../api/generated/model";
 import { PageSection } from "../components/PageSection";
 import { t } from "../i18n";
 import { formatInstant } from "../lib/date";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The `kind` tokens this screen knows how to name.
@@ -78,7 +79,7 @@ export function Inbox() {
             <li key={`${item.kind}-${item.id}`} data-testid="inbox-item">
               <Link
                 to={item.path}
-                className="focus-ring block rounded-md border border-line bg-panel p-4 hover:border-violet"
+                className={`${OUTLINED_CARD} focus-ring block p-4 hover:border-violet`}
               >
                 <p className="text-sm text-ink-muted">{kindLabel(item.kind)}</p>
                 <p data-testid="inbox-item-title" className="font-semibold">

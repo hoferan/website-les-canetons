@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { t } from "../i18n";
 import type { Card } from "./useUploadQueue";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The cards still worth showing. A photo that landed, new or duplicate, and
@@ -47,7 +48,7 @@ export function UploadCards({
     <div className="flex flex-col gap-2">
       {failed > 1 ? (
         <div>
-          <Button type="button" variant="outline" onClick={onRetryAll}>
+          <Button type="button" variant="raised-light" onClick={onRetryAll}>
             {t("photos.retryAll")}
           </Button>
         </div>
@@ -60,7 +61,7 @@ export function UploadCards({
         data-testid={testId}
       >
         {cards.map((card) => (
-          <li key={card.id} className="min-w-0 rounded-md border border-line bg-panel p-2 text-sm">
+          <li key={card.id} className={`${OUTLINED_CARD} min-w-0 p-2 text-sm`}>
             <p className="truncate font-medium">{card.file.name}</p>
             <p className={card.state === "failed" ? "text-danger" : "text-ink-muted"}>
               {card.state === "failed" && card.reason
@@ -70,7 +71,7 @@ export function UploadCards({
             {card.state === "failed" ? (
               <Button
                 type="button"
-                variant="outline"
+                variant="raised-light"
                 size="sm"
                 className="mt-1"
                 onClick={() => onRetry(card.id)}

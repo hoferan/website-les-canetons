@@ -36,6 +36,7 @@ import { ConfirmByTypingName } from "../components/ConfirmByTypingName";
 import { GeneratedPasswordDialog } from "../members/GeneratedPasswordDialog";
 import { LoginState } from "../members/LoginState";
 import { MemberForm, type MemberDraft } from "../members/MemberForm";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * The roster: everybody in the band.
@@ -466,7 +467,7 @@ export function Members() {
       {filtering && !roster.isPending && !roster.isError && members.length === 0 ? (
         <div className="mt-block" data-testid="roster-no-match">
           <p className="text-ink-muted">{t("members.noMatch")}</p>
-          <Button type="button" variant="outline" className="mt-tight" onClick={clearFilters}>
+          <Button type="button" variant="raised-light" className="mt-tight" onClick={clearFilters}>
             {t("members.clearFilters")}
           </Button>
         </div>
@@ -477,11 +478,7 @@ export function Members() {
         className="mt-block grid gap-related sm:grid-cols-2 xl:grid-cols-3"
       >
         {members.map((member) => (
-          <li
-            key={member.id}
-            data-member={member.id}
-            className="rounded-md border border-line bg-panel p-4"
-          >
+          <li key={member.id} data-member={member.id} className={`${OUTLINED_CARD} p-4`}>
             <p className="font-semibold">
               {member.firstName} <span data-testid="member-last-name">{member.lastName}</span>
             </p>
@@ -651,7 +648,7 @@ function MemberActions({
       label: t("common.delete"),
       ariaLabel: t("members.deleteTitle", { name }),
       disabled: busy,
-      // NOT variant="destructive" any more. A filled red block was the most
+      // NOT variant="raised-danger" any more. A filled red block was the most
       // prominent thing on the card, above the person's own name, for an
       // action taken a handful of times a season — and the planning rendered
       // the same action as an outline button, so one action had two answers

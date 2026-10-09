@@ -517,7 +517,7 @@ export function Events() {
 
       <div className="mt-related flex flex-wrap items-center gap-tight">
         {/* WHICH HALF OF THE LIST, as a switch rather than as a button. It was
-            a 213px imperative sentence in the same `variant="outline"` as the
+            a 213px imperative sentence in the same `variant="raised-light"` as the
             calendar toggle beside it, so it read as a third thing to DO; and it
             carried no state at all, unlike that neighbour, so nothing announced
             which view was on screen. #182.
@@ -560,7 +560,7 @@ export function Events() {
         {calendarEnabled ? (
           <Button
             type="button"
-            variant="outline"
+            variant="raised-light"
             className="hidden md:inline-flex"
             aria-pressed={showingCalendar}
             onClick={() => {
@@ -606,7 +606,7 @@ export function Events() {
           <span data-testid="day-filter" className="text-ink-muted">
             {t("events.dayFiltered")}
           </span>
-          <Button type="button" variant="outline" size="sm" onClick={() => setDay(null)}>
+          <Button type="button" variant="raised-light" size="sm" onClick={() => setDay(null)}>
             {t("events.showAll")}
           </Button>
         </p>

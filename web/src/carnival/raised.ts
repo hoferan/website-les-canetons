@@ -10,6 +10,14 @@
 export const RAISED_CARD = "rounded-[18px] border-3 border-ink bg-panel shadow-raised";
 
 /**
+ * The members' area's card (ADR 0029): the same ink outline, thinner, with no
+ * shadow. Most of these cards hold raised buttons, and a raised button on a
+ * raised card no longer stands out, so here the shadow stays a sign that
+ * something can be pressed.
+ */
+export const OUTLINED_CARD = "rounded-[18px] border-2 border-ink bg-panel";
+
+/**
  * The carnival colours a row of cards takes turns with, so neighbours do not
  * look alike. Each carries ink, never white.
  */

@@ -129,7 +129,7 @@ export function ConfirmByTypingName({
           */}
           <Button
             type="button"
-            variant="destructive"
+            variant="raised-danger"
             aria-disabled={busy || !armed}
             onClick={() => {
               if (busy || !armed) {

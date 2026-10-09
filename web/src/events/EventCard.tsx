@@ -4,6 +4,7 @@ import type { EventResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { isDraft } from "./eventDates";
 import { formatEventWhen } from "./formatEventWhen";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * One event on the planning.
@@ -44,9 +45,7 @@ export function EventCard({
       data-testid="event-card"
       // A dashed edge on a draft, so it reads as unfinished even where the
       // group heading is out of view.
-      className={`rounded-lg border bg-white p-4 shadow-sm ${
-        isDraft(event) ? "border-dashed border-gray-400" : "border-gray-200"
-      }`}
+      className={`${OUTLINED_CARD} p-4 ${isDraft(event) ? "border-dashed" : ""}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-related">
         <div className="min-w-0">

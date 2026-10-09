@@ -30,6 +30,7 @@ import { kilobytes } from "./kilobytes";
 import { LIBRARY_ORDERS, type LibraryOrder, matchesName, sortImages } from "./librarySearch";
 import { PHOTO_SIZES } from "./Photo";
 import { usageLabel } from "./usages";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 type Filter = "all" | "used" | "unused";
 const FILTERS: {
@@ -191,7 +192,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
               key={key}
               type="button"
               size="sm"
-              variant={filter === key ? "default" : "outline"}
+              variant={filter === key ? "raised-violet" : "raised-light"}
               aria-pressed={filter === key}
               onClick={() => setFilter(key)}
             >
@@ -202,7 +203,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
         {filter === "used" ? null : (
           <Button
             type="button"
-            variant="outline"
+            variant="raised-light"
             className="ml-auto"
             disabled={chosen.length === 0}
             onClick={() => void openConfirm()}
@@ -255,7 +256,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
             <li
               key={image.id}
               data-testid={`library-card-${image.id}`}
-              className="flex min-w-0 flex-col gap-tight rounded-md border border-line bg-panel p-2"
+              className={`${OUTLINED_CARD} flex min-w-0 flex-col gap-tight p-2`}
             >
               {/* One link for the photo and its name, so the card is not two
                   stops for a keyboard on the way to the same page. */}
@@ -357,7 +358,7 @@ export function LibraryGrid({ images }: { images: ImageResource[] }) {
                 dialog before the deletes have run. */}
             <Button
               type="button"
-              variant="destructive"
+              variant="raised-danger"
               aria-disabled={tags === null || deleting}
               onClick={() => void confirmDelete()}
             >

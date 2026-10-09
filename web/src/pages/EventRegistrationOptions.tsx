@@ -22,6 +22,7 @@ import { PageSection } from "../components/PageSection";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t } from "../i18n";
 import { francsInput, parseFrancs } from "../money";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /** One row of the editor: an existing option, or one being invented. */
 type Draft = {
@@ -251,10 +252,7 @@ export function EventRegistrationOptions() {
 
           <ul className="mt-block grid gap-related">
             {drafts.map((row, index) => (
-              <li
-                key={row.key}
-                className="flex flex-col gap-related rounded-md border border-line bg-panel p-4"
-              >
+              <li key={row.key} className={`${OUTLINED_CARD} flex flex-col gap-related p-4`}>
                 {/* THE ROW IS NUMBERED, and it earns its place on a screen
                     that repeats "Intitulé / Description / Prix" once per
                     option: without it the third block is reachable only by
@@ -305,7 +303,7 @@ export function EventRegistrationOptions() {
                 <div className="flex gap-tight">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="raised-light"
                     size="icon"
                     aria-label={t("registrationOptions.moveUp", {
                       option: row.label || t("registrationOptions.thisOption"),
@@ -316,7 +314,7 @@ export function EventRegistrationOptions() {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="raised-light"
                     size="icon"
                     aria-label={t("registrationOptions.moveDown", {
                       option: row.label || t("registrationOptions.thisOption"),
@@ -332,7 +330,7 @@ export function EventRegistrationOptions() {
                       not keep a second copy of the rule to drift from it. */}
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="raised-light"
                     size="icon"
                     className="ml-auto"
                     aria-label={t("registrationOptions.remove", {
@@ -354,7 +352,7 @@ export function EventRegistrationOptions() {
           <div className="mt-block flex flex-wrap gap-related">
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               onClick={() => setDrafts((current) => [...current, blankDraft()])}
             >
               <Plus aria-hidden="true" />

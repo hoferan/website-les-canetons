@@ -30,6 +30,7 @@ import { PageSection } from "../components/PageSection";
 import { TagChip } from "../events/TagChip";
 import { TAG_COLOURS } from "../events/tagColours";
 import { t, tagLabel } from "../i18n";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 const COLOURS = Object.keys(TAG_COLOURS) as TagColour[];
 
@@ -156,7 +157,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
   };
 
   return (
-    <li data-testid="event-tag-row" className="rounded-lg border border-line bg-panel p-4">
+    <li data-testid="event-tag-row" className={`${OUTLINED_CARD} p-4`}>
       {editing === null ? (
         <div className="flex flex-wrap items-center justify-between gap-related">
           <div className="flex flex-wrap items-center gap-tight text-sm">
@@ -174,7 +175,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
           <div className="flex flex-wrap gap-tight">
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               aria-label={t("eventTags.editAria", { label: tagLabel(tag) })}
               disabled={busy}
               onClick={() => void open("edit")}
@@ -183,7 +184,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="raised-light"
               aria-label={t("eventTags.deleteAria", { label: tagLabel(tag) })}
               disabled={busy}
               onClick={() => void open("delete")}
@@ -224,7 +225,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <Button type="submit" disabled={busy}>
               {t("common.save")}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+            <Button type="button" variant="raised-light" onClick={() => setEditing(null)}>
               {t("common.cancel")}
             </Button>
           </div>
@@ -257,7 +258,7 @@ function TagRow({ tag, onChanged }: { tag: EventTagResource; onChanged: () => Pr
             <AlertDialogCancel disabled={busy}>{t("common.cancel")}</AlertDialogCancel>
             <Button
               type="button"
-              variant="destructive"
+              variant="raised-danger"
               disabled={busy}
               onClick={() => void destroy()}
             >

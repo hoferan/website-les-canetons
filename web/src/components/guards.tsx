@@ -97,7 +97,7 @@ function AccessDenied() {
       <p role="alert" className="mt-related text-gray-600">
         {t("guards.deniedBody")}
       </p>
-      <ButtonLink to="/" variant="outline" className="mt-block">
+      <ButtonLink to="/" variant="raised-light" className="mt-block">
         {t("common.backHome")}
       </ButtonLink>
     </PageSection>

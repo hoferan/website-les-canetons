@@ -22,6 +22,7 @@ import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
 import { t, translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
+import { OUTLINED_CARD } from "../carnival/raised";
 
 /**
  * Who still has to be chased about an event.
@@ -174,7 +175,7 @@ export function EventAttendance() {
             <h2 id="silent-heading" className="font-display text-xl">
               {t("attendance.silentHeading")}
             </h2>
-            <Button type="button" variant="outline" onClick={() => void copySilent()}>
+            <Button type="button" variant="raised-light" onClick={() => void copySilent()}>
               <Copy aria-hidden="true" />
               {t("attendance.copyForWhatsApp")}
             </Button>
@@ -184,7 +185,7 @@ export function EventAttendance() {
             {silent.map((entry) => (
               <li
                 key={entry.memberId}
-                className="flex flex-wrap items-center justify-between gap-tight rounded-lg border border-gray-200 bg-white p-3"
+                className={`${OUTLINED_CARD} flex flex-wrap items-center justify-between gap-tight p-3`}
               >
                 <span>
                   {nameOf(entry)}
@@ -208,7 +209,7 @@ export function EventAttendance() {
                   <span className="flex gap-tight">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="raised-light"
                       size="sm"
                       aria-label={t("attendance.comingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
@@ -223,7 +224,7 @@ export function EventAttendance() {
                     </Button>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="raised-light"
                       size="sm"
                       aria-label={t("attendance.notComingAria", { name: nameOf(entry) })}
                       aria-disabled={recording === entry.memberId}
@@ -262,10 +263,7 @@ export function EventAttendance() {
             className="mt-related grid gap-tight sm:grid-cols-2 xl:grid-cols-3"
           >
             {[...no, ...yes].map((entry) => (
-              <li
-                key={entry.memberId}
-                className="rounded-lg border border-gray-200 bg-white p-3 text-sm"
-              >
+              <li key={entry.memberId} className={`${OUTLINED_CARD} p-3 text-sm`}>
                 <p className="text-ink">{answerLine(entry)}</p>
                 {/* LABELLED, because the column head that used to say what this
                     is went with the table. A bare "Trompettes" under a name is
@@ -363,7 +361,7 @@ function CorrectionAction({
   }
 
   return (
-    <Button type="button" variant="outline" size="sm" onClick={() => onCorrect(entry)}>
+    <Button type="button" variant="raised-light" size="sm" onClick={() => onCorrect(entry)}>
       <span aria-hidden="true">{t("attendance.correct")}</span>
       <span className="sr-only">{t("attendance.correctFor", { name: nameOf(entry) })}</span>
     </Button>
