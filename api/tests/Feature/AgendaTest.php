@@ -133,7 +133,8 @@ class AgendaTest extends TestCase
 
         $this->assertSame(
             // `tags` is on the poster too: "Carnaval" is what a visitor scans for (#107).
-            ['id', 'title', 'tags', 'startsAt', 'endsAt', 'location', 'registrationOpen'],
+            // `poster` is the poster itself (#228).
+            ['id', 'title', 'tags', 'startsAt', 'endsAt', 'location', 'poster', 'registrationOpen'],
             array_keys($response->json('data.0')),
         );
         $response->assertDontSee('parapluies');

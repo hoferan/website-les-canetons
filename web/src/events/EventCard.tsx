@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { EventResource } from "../api/generated/model";
 import { t } from "../i18n";
 import { isDraft } from "./eventDates";
+import { EventPoster } from "./EventPoster";
 import { formatEventWhen } from "./formatEventWhen";
 import { OUTLINED_CARD } from "../carnival/raised";
 
@@ -47,84 +48,104 @@ export function EventCard({
       // group heading is out of view.
       className={`${OUTLINED_CARD} p-4 ${isDraft(event) ? "border-dashed" : ""}`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-related">
+      {/* The poster takes the first row on a phone and the right-hand column
+          from `md` up, beside everything but the answer, which stays full
+          width under the detail it answers. See EventPoster. */}
+      <div
+        className={event.poster ? "grid gap-related md:grid-cols-[minmax(0,1fr)_auto]" : undefined}
+      >
         <div className="min-w-0">
-          <h2 data-testid="event-title" className="font-display text-xl text-ink">
-            {event.title}
-          </h2>
+          <div className="flex flex-wrap items-start justify-between gap-related">
+            <div className="min-w-0">
+              <h2 data-testid="event-title" className="font-display text-xl text-ink">
+                {event.title}
+              </h2>
 
-          {/* The badge states the draft outright. A search or a chosen day can
-              show this card without the group heading in view. */}
-          {isDraft(event) ? (
-            <div className="mt-tight flex">
-              {/* A flex child like the "Public" chip, not inline-block: an
-                  inline-block badge collapsed to 32px here and its text ran
-                  out of the pill. */}
-              <span
-                data-testid="draft-badge"
-                className="rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
-              >
-                {t("events.draftBadge")}
-              </span>
+              {/* The badge states the draft outright. A search or a chosen day can
+                  show this card without the group heading in view. */}
+              {isDraft(event) ? (
+                <div className="mt-tight flex">
+                  {/* A flex child like the "Public" chip, not inline-block: an
+                      inline-block badge collapsed to 32px here and its text ran
+                      out of the pill. */}
+                  <span
+                    data-testid="draft-badge"
+                    className="rounded-full border border-line bg-panel px-2 py-0.5 text-sm font-medium text-ink"
+                  >
+                    {t("events.draftBadge")}
+                  </span>
+                </div>
+              ) : null}
+
+              <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
+                {formatEventWhen(event.startsAt, event.endsAt)}
+              </p>
+
+              {/* INSIDE THE min-w-0 COLUMN, not beside it. The strip wraps on its
+                  own at 390px rather than widening the card — #89's failure was a
+                  box that could not shrink dragging the document 223px sideways,
+                  and the action row directly above this one is still open as
+                  #118. */}
+              {meta}
             </div>
+
+            {/* Only rendered when the screen passed some, so a player's card has
+                no empty control row taking up space.
+
+                NO `shrink-0` HERE, and that is the fix for #89 rather than a
+                tidy-up. It pinned this box at its own unwrapped width — 459px on
+                four buttons, 580px on the souper's five — so the `flex-wrap` beside
+                it could never fire and the row ran 223px past a 390px phone,
+                dragging the whole document with it. Without it the box may shrink
+                to its min-content, which for a wrapping flex container is its
+                widest single button, and the wrap happens. The buttons keep their
+                own `shrink-0` from the base class in components/ui/button.tsx:
+                individual buttons should not squash, the ROW should wrap. */}
+            {actions ? <div className="flex flex-wrap gap-tight">{actions}</div> : null}
+          </div>
+
+          <dl className="mt-related grid gap-tight text-sm">
+            <div className="flex gap-tight">
+              {/* THE COLON AND ITS NO-BREAK SPACE ARE IN THE STRING. French
+                  sets a space before a colon and German sets none, so a label
+                  plus ": " composed here is French typography on a German
+                  page -- the Tbd bug of #152, exactly. */}
+              <dt className="text-ink-muted">{t("events.card.location")}</dt>
+              <dd data-testid="event-location" className="text-ink">
+                {event.location ?? (
+                  <span className="text-ink-muted">{t("events.card.locationMissing")}</span>
+                )}
+              </dd>
+            </div>
+
+            {/* Attire is nullable — "Vendanges Cheyres" in the real planning has
+                none. Saying so beats an empty row that reads as a missing value. */}
+            <div className="flex gap-tight">
+              <dt className="text-ink-muted">{t("events.card.attire")}</dt>
+              <dd data-testid="event-attire" className="text-ink">
+                {event.attire ?? t("events.card.attireUnset")}
+              </dd>
+            </div>
+          </dl>
+
+          {event.notes ? (
+            <p
+              data-testid="event-notes"
+              className="mt-related text-sm whitespace-pre-line text-ink"
+            >
+              {event.notes}
+            </p>
           ) : null}
-
-          <p data-testid="event-when" className="mt-tight text-sm text-ink-muted">
-            {formatEventWhen(event.startsAt, event.endsAt)}
-          </p>
-
-          {/* INSIDE THE min-w-0 COLUMN, not beside it. The strip wraps on its
-              own at 390px rather than widening the card — #89's failure was a
-              box that could not shrink dragging the document 223px sideways,
-              and the action row directly above this one is still open as
-              #118. */}
-          {meta}
         </div>
 
-        {/* Only rendered when the screen passed some, so a player's card has
-            no empty control row taking up space.
-
-            NO `shrink-0` HERE, and that is the fix for #89 rather than a
-            tidy-up. It pinned this box at its own unwrapped width — 459px on
-            four buttons, 580px on the souper's five — so the `flex-wrap` beside
-            it could never fire and the row ran 223px past a 390px phone,
-            dragging the whole document with it. Without it the box may shrink
-            to its min-content, which for a wrapping flex container is its
-            widest single button, and the wrap happens. The buttons keep their
-            own `shrink-0` from the base class in components/ui/button.tsx:
-            individual buttons should not squash, the ROW should wrap. */}
-        {actions ? <div className="flex flex-wrap gap-tight">{actions}</div> : null}
+        {event.poster ? (
+          <EventPoster
+            poster={event.poster}
+            title={event.title}
+            className="row-start-1 md:col-start-2"
+          />
+        ) : null}
       </div>
-
-      <dl className="mt-related grid gap-tight text-sm">
-        <div className="flex gap-tight">
-          {/* THE COLON AND ITS NO-BREAK SPACE ARE IN THE STRING. French
-              sets a space before a colon and German sets none, so a label
-              plus ": " composed here is French typography on a German
-              page -- the Tbd bug of #152, exactly. */}
-          <dt className="text-ink-muted">{t("events.card.location")}</dt>
-          <dd data-testid="event-location" className="text-ink">
-            {event.location ?? (
-              <span className="text-ink-muted">{t("events.card.locationMissing")}</span>
-            )}
-          </dd>
-        </div>
-
-        {/* Attire is nullable — "Vendanges Cheyres" in the real planning has
-            none. Saying so beats an empty row that reads as a missing value. */}
-        <div className="flex gap-tight">
-          <dt className="text-ink-muted">{t("events.card.attire")}</dt>
-          <dd data-testid="event-attire" className="text-ink">
-            {event.attire ?? t("events.card.attireUnset")}
-          </dd>
-        </div>
-      </dl>
-
-      {event.notes ? (
-        <p data-testid="event-notes" className="mt-related text-sm whitespace-pre-line text-ink">
-          {event.notes}
-        </p>
-      ) : null}
 
       {answer}
     </article>

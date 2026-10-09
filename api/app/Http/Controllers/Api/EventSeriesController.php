@@ -142,7 +142,7 @@ class EventSeriesController extends Controller
         // date and blow test_a_season_does_not_cost_a_query_per_row_beyond_its_writes'
         // budget the moment a season has more than a couple of rows.
         $events = Collection::make($events);
-        $events->load('tags');
+        $events->load(['tags', Event::POSTER]);
         $events->loadCount(EventController::counts());
         $events->loadSum('registrationChoices as guest_count', 'quantity');
 

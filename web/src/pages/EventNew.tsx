@@ -8,6 +8,7 @@ import { useApiFormError } from "../api/useApiFormError";
 import { PageSection } from "../components/PageSection";
 import { EventForm, eventBodyFrom, type EventDraft } from "../events/EventForm";
 import { publishEvent } from "../events/publishEvent";
+import { saveEventPoster, type PosterChange } from "../events/saveEventPoster";
 import { t, translateApiError } from "../i18n";
 
 /**
@@ -42,12 +43,28 @@ export function EventNew() {
   // a second tap on Publier saved a second event.
   const [working, setWorking] = useState(false);
 
-  async function submit(draft: EventDraft, intent: "save" | "publish") {
+  async function submit(draft: EventDraft, intent: "save" | "publish", poster: PosterChange) {
     form.clear();
     setWorking(true);
 
     try {
       const created = await create.mutateAsync({ data: eventBodyFrom(draft) });
+
+      // The poster before the publish, so the band never sees the event
+      // without it. A poster that fails leaves a saved draft, so the organiser
+      // goes to it, like a refused publish, rather than staying on a form
+      // whose next save would make a second event.
+      if (
+        created.status === 201 &&
+        !(await saveEventPoster(created.data.id, created.data.title, poster, queryClient))
+      ) {
+        await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });
+        navigate(`/events/${created.data.id}/edit`, {
+          state: { refusal: { message: t("eventForm.posterFailed"), fields: [] } },
+        });
+        return;
+      }
+
       // Both halves of the planning: getEventIndexQueryKey() is `["/events"]`,
       // which prefix-matches the upcoming list and the `?past=1` one alike.
       await queryClient.invalidateQueries({ queryKey: getEventIndexQueryKey() });

@@ -12260,6 +12260,7 @@ export const getPhotoSlotIndexUrl = (params?: PhotoSlotIndexParams) => {
 /**
  * A slot with no photo is absent, and the page shows its placeholder.
  * No photo carries alt text: the page describes each by what it shows.
+ * An event's poster (`event-{id}`) is not listed: it comes with the event.
  * @summary Every slot that shows a photo, by name. Public
  */
 export const photoSlotIndex = async (

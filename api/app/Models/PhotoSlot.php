@@ -39,6 +39,22 @@ class PhotoSlot extends Model
         return "history-{$entryId}";
     }
 
+    /** The slot of an event's poster, which goes when the event does. */
+    public static function forEvent(int $eventId): string
+    {
+        return "event-{$eventId}";
+    }
+
+    /**
+     * Whether a slot is an event's poster. Those are read on the event, which
+     * decides who may see it, and never from the public list of slots, where a
+     * draft's poster would tell a stranger the draft exists.
+     */
+    public static function isEventPoster(string $slot): bool
+    {
+        return preg_match('/^event-\d+$/', $slot) === 1;
+    }
+
     /** @return BelongsTo<Image, $this> */
     public function image(): BelongsTo
     {

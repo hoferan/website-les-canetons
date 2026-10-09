@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import type { EventResource, StoreEventRequest } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import { t, type TranslatedError } from "../i18n";
+import { PhotoField } from "../images/PhotoField";
 import { bandZoneParts, composeInBandZone } from "./bandTime";
+import type { PosterChange } from "./saveEventPoster";
 import { TagPicker } from "./TagPicker";
 import { OUTLINED_CARD } from "../carnival/raised";
 
@@ -177,10 +179,15 @@ export function EventForm({
   busy: boolean;
   error: TranslatedError | null;
   problemFor: (field: string) => string | undefined;
-  onSubmit: (draft: EventDraft, intent: "save" | "publish") => void;
+  /**
+   * `poster` is null when the organiser left it alone. It has a write of its
+   * own, after the event's, because the event's slot is named by its id.
+   */
+  onSubmit: (draft: EventDraft, intent: "save" | "publish", poster: PosterChange) => void;
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState<EventDraft>(() => draftFromEvent(event));
+  const [poster, setPoster] = useState<PosterChange>(null);
 
   // WHICH BUTTON SUBMITTED, read from the click that came just before the
   // submit event. Enter in a field submits with the first button's click, so
@@ -221,7 +228,7 @@ export function EventForm({
         }
         const chosen = intent.current;
         intent.current = "save";
-        onSubmit(draft, chosen);
+        onSubmit(draft, chosen, poster);
       }}
     >
       <h2 className="font-display text-2xl">
@@ -330,6 +337,12 @@ export function EventForm({
         value={draft.notes}
         onChange={(value) => set("notes", value)}
         problem={problemFor("notes")}
+      />
+
+      <PhotoField
+        label={t("eventForm.poster")}
+        value={poster ? poster.photo : (event?.poster ?? null)}
+        onChange={(imageId, photo) => setPoster({ imageId, photo })}
       />
 
       {/* THE REGISTRATION WINDOW, and the closing date is the switch. There is

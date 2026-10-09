@@ -308,81 +308,14 @@
  *
  * OpenAPI spec version: 1.0.0
  */
-import type { AttendanceResource } from "./attendanceResource";
-import type { EventResourcePoster } from "./eventResourcePoster";
-import type { EventTagResource } from "./eventTagResource";
 
-export interface EventResource {
-  id: number;
-  title: string;
-  /** In the committee's tag order. Empty when the event has none. */
-  tags: EventTagResource[];
-  /**
-   * ISO 8601 in UTC. Convert to Europe/Zurich to show a member when the event starts. Null only on a draft that has no date yet.
-   * @nullable
-   */
-  startsAt: string | null;
-  /**
-   * ISO 8601 in UTC. After `startsAt` when both are set, and may fall on a later day. Null only on a draft that has no date yet.
-   * @nullable
-   */
-  endsAt: string | null;
-  /**
-   * Where it happens. Null only on a draft that has no location yet.
-   * @nullable
-   */
-  location: string | null;
-  /**
-   * The event's poster, or null when it has none. Placed through
-   * `PUT /photo-slots/event-{id}`, and not part of the event's ETag.
-   * @nullable
-   */
-  poster: EventResourcePoster;
-  /**
-   * When the event was published, in UTC. Null means it is still a
-   * draft: only people who can manage events see it, and it is not
-   * on anybody's planning yet.
-   * @nullable
-   */
-  publishedAt: string | null;
-  /**
-   * What to wear, or null when nothing was specified.
-   * @nullable
-   */
-  attire: string | null;
-  /** Whether the event may be shown to people outside the band. */
-  isPublic: boolean;
-  /**
-   * How many answerable members have replied, or null when the
-   * caller may not see answers.
-   * @nullable
-   */
-  answeredCount: number | null;
-  /**
-   * How many members are answerable at all — the denominator of the
-   * fraction. Null when the caller may not see answers.
-   * @nullable
-   */
-  answerableCount: number | null;
-  /**
-   * How many PEOPLE are booked — the sum of the quantities, because
-   * "3 x adulte, 1 x enfant" is four people and four is what fills
-   * the hall. Null when the caller may not see bookings.
-   * @nullable
-   */
-  guestCount: number | null;
-  /**
-   * Free text for members. Not shown to the public.
-   * @nullable
-   */
-  notes: string | null;
-  /** @nullable */
-  registrationOpensAt: string | null;
-  /** @nullable */
-  registrationClosesAt: string | null;
-  /** @nullable */
-  registrationMaxGuests: number | null;
-  /** Whether this event accepts public bookings at all. True exactly when `registrationClosesAt` is set. */
-  takesRegistrations: boolean;
-  myAttendance: AttendanceResource | null;
-}
+/**
+ * The event's poster, or null when it has none.
+ * @nullable
+ */
+export type PublicEventResourcePoster = {
+  url: string;
+  width: number;
+  height: number;
+  srcset: string;
+} | null;

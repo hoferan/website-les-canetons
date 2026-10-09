@@ -6,11 +6,13 @@ use App\Casts\UtcDateTime;
 use Carbon\CarbonImmutable;
 use Database\Factories\EventFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A rehearsal or gig on the planning. The committee enters it, every member
@@ -56,6 +58,9 @@ class Event extends Model
     protected $attributes = [
         'is_public' => false,
     ];
+
+    /** What a list eager-loads to render every event's poster. See poster(). */
+    public const POSTER = 'poster.image.sizes';
 
     protected $fillable = [
         'title',
@@ -115,7 +120,34 @@ class Event extends Model
             RegistrationChoice::query()
                 ->whereIn('registration_id', $event->registrations()->select('id'))
                 ->delete();
+
+            // The poster's slot goes too, or its image would stay in use by a
+            // slot no page shows any more and the library would refuse to
+            // delete it.
+            $event->poster()->delete();
         });
+    }
+
+    /**
+     * The poster (#228): the photo slot `event-{id}`, placed like any other
+     * slot through PUT /photo-slots/{slot}.
+     *
+     * Keyed on posterSlot() rather than a column, so a poster needs no
+     * migration, and eager loading still reads every event's poster in one
+     * query: Eloquent reads a relation's local key through getAttribute(),
+     * which answers for an accessor as it does for a column.
+     *
+     * @return HasOne<PhotoSlot, $this>
+     */
+    public function poster(): HasOne
+    {
+        return $this->hasOne(PhotoSlot::class, 'slot', 'poster_slot');
+    }
+
+    /** @return Attribute<string, never> */
+    protected function posterSlot(): Attribute
+    {
+        return Attribute::get(fn (): string => PhotoSlot::forEvent($this->id));
     }
 
     /**

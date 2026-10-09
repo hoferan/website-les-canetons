@@ -197,7 +197,8 @@ class EventTagAssignmentTest extends TestCase
 
         $this->actingAsMember($this->organiser)->getJson('/api/v1/events')->assertOk();
 
-        // The planning's own budget (EventCountsTest) plus the one tag load.
-        $this->assertLessThanOrEqual(5, $queries);
+        // The planning's own budget (EventCountsTest), which includes the one
+        // tag load.
+        $this->assertLessThanOrEqual(6, $queries);
     }
 }

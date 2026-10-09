@@ -764,6 +764,11 @@ export const fr = {
       "Un brouillon peut rester incomplet : seule la direction le voit, jusqu’à sa publication.",
     loadFailed: "Cet événement n’a pas pu être chargé.",
     loadFailedReload: "Cet événement n’a pas pu être chargé. Rechargez la page.",
+    poster: "Affiche",
+    // L’événement est enregistré et son affiche non : le formulaire reste
+    // ouvert sur l’événement enregistré, pour la choisir à nouveau.
+    posterFailed:
+      "L’événement est enregistré, mais pas son affiche. Choisissez-la à nouveau, puis enregistrez.",
 
     addTitle: "Ajouter un événement",
     editTitle: "Modifier {{title}}",
@@ -1312,6 +1317,8 @@ export const fr = {
       concert: "Photo en concert",
       godparents: "Parrain et marraine",
       history: "Histoire\u00a0: {{title}}",
+      // Also the poster's alternative text, wherever the event shows it.
+      event: "Affiche\u00a0: {{title}}",
     },
     slotSaveFailed: "La photo n’a pas pu être changée.",
     // Read out once the slot shows its new state.
