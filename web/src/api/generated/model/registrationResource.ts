@@ -315,7 +315,13 @@ export interface RegistrationResource {
   firstName: string;
   lastName: string;
   email: string;
+  /** The number as the guest typed it. This is what to show. */
   phone: string;
+  /**
+   * The same number in E.164, to dial, or null when it could not be read as one: show and dial `phone` then. Read as Swiss unless it starts with `+` or `00`.
+   * @nullable
+   */
+  phoneE164: string | null;
   /** @nullable */
   address: string | null;
   /**

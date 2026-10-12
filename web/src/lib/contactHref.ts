@@ -48,10 +48,10 @@
  * this so nobody adds one back.
  *
  * KNOWN LIMITATION: `+41 (0)79 123 45 67` keeps the trunk prefix and yields
- * `tel:+410791234567`. Dropping a `(0)` correctly is E.164 normalisation,
- * which is a separate issue. The result fails to connect rather than reaching
- * a stranger, so it falls on the safe side of the doctrine above, and a test
- * pins the behaviour so that issue can change it deliberately.
+ * `tel:+410791234567`, which fails to connect rather than reaching a
+ * stranger. Since #129 the API sends `phoneE164` with the trunk prefix
+ * dropped, and ContactLink dials that when there is one, so this is now only
+ * the fallback for a number the API could not read. A test pins it.
  */
 export function telHref(phone: string): string | null {
   // trim() removes NBSP too, so a value stored with one cannot hide the `+`.

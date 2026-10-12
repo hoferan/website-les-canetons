@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PhoneNumber;
 use Database\Factories\RegistrationFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $paid_at
+ * @property string|null $phone_e164
  * @property-read int $guest_count
  * @property-read int|null $total_cents
  */
@@ -45,6 +47,21 @@ class Registration extends Model
         'table_name',
         'paid_at',
     ];
+
+    /**
+     * The dial string follows the number as typed, on every write: the public
+     * form, the committee's correction, and anything that comes later. See
+     * App\Support\PhoneNumber for why it is a companion and never a
+     * replacement.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Registration $registration): void {
+            if ($registration->isDirty('phone') || $registration->phone_e164 === null) {
+                $registration->phone_e164 = PhoneNumber::e164((string) $registration->phone);
+            }
+        });
+    }
 
     /** @return array<string, string> */
     protected function casts(): array

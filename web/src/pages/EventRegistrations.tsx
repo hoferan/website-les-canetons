@@ -459,7 +459,7 @@ export function EventRegistrations() {
                     each link's tap target across the whole card. */}
                 <div data-testid="guest-contact" className="flex flex-col items-start gap-tight">
                   <ContactLink kind="email" value={booking.email} />
-                  <ContactLink kind="phone" value={booking.phone} />
+                  <ContactLink kind="phone" value={booking.phone} e164={booking.phoneE164} />
                   {booking.address ? (
                     <span className="text-ink-muted">{booking.address}</span>
                   ) : null}
