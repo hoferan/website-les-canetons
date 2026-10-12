@@ -449,6 +449,7 @@ export const fr = {
     events: "Événements",
     members: "Membres",
     inbox: "Boîte de réception",
+    eventTags: "Catégories",
     media: "Médias",
     registers: "Pupitres",
     roles: "Rôles",
@@ -1738,9 +1739,6 @@ export const fr = {
     heading: "Catégories",
     intro:
       "Les catégories que portent les événements du planning. Un événement peut en avoir plusieurs. Avec «\u00a0Confettis\u00a0», un membre qui répond «\u00a0Oui\u00a0» à un événement de la catégorie reçoit une pluie de confettis.",
-    // The link's accessible name. It shows only "Modifier", and a name has
-    // to contain the visible word for voice control to reach it (WCAG 2.5.3).
-    manageLink: "Modifier les catégories",
     count_one: "{{count}} événement",
     count_other: "{{count}} événements",
     editAria: "Modifier « {{label}} »",

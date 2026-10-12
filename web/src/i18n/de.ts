@@ -326,6 +326,7 @@ export const de: typeof fr = {
     events: "Anlässe",
     members: "Mitglieder",
     inbox: "Posteingang",
+    eventTags: "Kategorien",
     media: "Medien",
     registers: "Register",
     roles: "Rollen",
@@ -1216,7 +1217,6 @@ export const de: typeof fr = {
     heading: "Kategorien",
     intro:
       "Die Kategorien der Anlässe in der Planung. Ein Anlass kann mehrere haben. Mit «Konfetti» regnet es Konfetti, wenn ein Mitglied bei einem Anlass der Kategorie zusagt.",
-    manageLink: "Kategorien bearbeiten",
     count_one: "{{count}} Anlass",
     count_other: "{{count}} Anlässe",
     editAria: "«{{label}}» bearbeiten",
