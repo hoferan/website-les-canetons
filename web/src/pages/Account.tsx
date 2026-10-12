@@ -3,7 +3,7 @@ import { KeyRound } from "lucide-react";
 import type { AuthMe200 } from "../api/generated/model";
 import { ButtonLink } from "../components/ButtonLink";
 import { PageSection } from "../components/PageSection";
-import { roleName, t } from "../i18n";
+import { registerName, roleName, t } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 
@@ -55,12 +55,18 @@ export function Account() {
  * "Vice-présidente - secrétaire" wraps badly beside its label on a phone.
  *
  * Register and seat names are data the committee typed, so they are rendered
- * verbatim. Roles are translated by key, as everywhere else.
+ * as typed: a register in the page's language when it has a German name
+ * (#276), a seat verbatim. Roles are translated by key, as everywhere else.
  */
 function Identity({ user }: { user: AuthMe200 }) {
+  const register = user.sectionName;
   const rows = [
     { label: t("account.username"), value: user.username },
-    { label: t("account.section"), value: user.sectionName ?? t("account.sectionNone") },
+    {
+      label: t("account.section"),
+      value:
+        register === null ? t("account.sectionNone") : registerName(register, user.sectionNameDe),
+    },
     {
       label: t("account.committeeFunction"),
       value: user.committeeFunctionName ?? t("account.committeeFunctionNone"),

@@ -418,6 +418,13 @@
                                             ],
                                             "description": "The register they play in, or null if they do not play."
                                         },
+                                        "sectionNameDe": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ],
+                                            "description": "The register's German name, or null when nobody has typed one: show `sectionName` then."
+                                        },
                                         "committeeFunctionName": {
                                             "type": [
                                                 "string",
@@ -463,6 +470,7 @@
                                         "mustChangePassword",
                                         "permissions",
                                         "sectionName",
+                                        "sectionNameDe",
                                         "committeeFunctionName",
                                         "roles"
                                     ]
@@ -4555,7 +4563,7 @@
         "/sections": {
             "get": {
                 "operationId": "section.index",
-                "description": "Requires `members.manage`. Read-only reference data, for a client\nbuilding the roster form.\n\nReturns every register (\"pupitre\") with its name, in the order the\nband has configured. A member's register is what makes them a player,\nand therefore answerable for an event.",
+                "description": "Requires `members.manage`. The roster form reads it to offer a\nregister, and the register editor to list them.\n\nReturns every register (\"pupitre\") with its names, in the order the\nband has configured, and how many members play in and teach each one.\nA register groups and displays; it grants nothing.",
                 "summary": "List the registers",
                 "tags": [
                     "Members"
@@ -4647,6 +4655,450 @@
                     },
                     "503": {
                         "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "section.store",
+                "description": "Requires `members.manage`. The new register goes last on the band page\nand the roster form. Answers `201` with it.",
+                "summary": "Create a register",
+                "tags": [
+                    "Members"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreSectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The new register.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SectionResource"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            }
+        },
+        "/sections/order": {
+            "put": {
+                "operationId": "section.reorder",
+                "description": "Requires `members.manage`. Takes every register's id, first to last;\nthe band page and the roster form follow it. Refuses with\n`409 registers_changed` when the list does not name every register\nexactly once, which means somebody added or deleted one meanwhile:\nread the list again.\n\nNo `If-Match`: the body is the whole order, so there is no part of\nsomebody else's order it could keep or lose. Two people reordering at\nonce leave the order the second one chose, which is the one they saw.",
+                "summary": "Put the registers in a new order",
+                "tags": [
+                    "Members"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ReorderSectionsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Every register, in the new order.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "description": "This page of the collection, in the collection's own order.",
+                                            "items": {
+                                                "$ref": "#/components/schemas/SectionResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "description": "What you actually got.",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "How many rows the whole collection holds, not this page. Count a screen can display without first reading every row."
+                                                },
+                                                "limit": {
+                                                    "type": "integer",
+                                                    "description": "The page size that was APPLIED, which is the default when you asked for none and the cap when you asked for more."
+                                                },
+                                                "offset": {
+                                                    "type": "integer",
+                                                    "description": "Where this page starts in the collection."
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "limit",
+                                                "offset"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "registers_changed"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sections/{section}": {
+            "get": {
+                "operationId": "section.show",
+                "description": "Requires `members.manage`. Quote the `ETag` it returns in the\n`If-Match` header of a rename or a delete.",
+                "summary": "Read one register",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "required": true,
+                        "description": "The section ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`SectionResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SectionResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "section.update",
+                "description": "Requires `members.manage` and the `If-Match` from its read. Replaces\nboth names; a blank German name is stored as null.",
+                "summary": "Rename a register",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "required": true,
+                        "description": "The section ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreSectionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The register as it now stands.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SectionResource"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "ETag": {
+                                "description": "A strong entity tag for this thing as it now stands. Send it back as `If-Match` when you write.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/Problem400"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "section.destroy",
+                "description": "Requires `members.manage` and the `If-Match` from its read. Refuses\nwith `409 register_in_use` while anybody plays in or teaches it: move\nthem to another register first. Its photo on the band page goes with\nit.",
+                "summary": "Delete a register",
+                "tags": [
+                    "Members"
+                ],
+                "parameters": [
+                    {
+                        "name": "section",
+                        "in": "path",
+                        "required": true,
+                        "description": "The section ID",
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "If-Match",
+                        "in": "header",
+                        "required": true,
+                        "description": "The `ETag` of the thing as you last read it. Read it first and quote the header back verbatim, quotes included. Absent answers 428; naming a state this thing is no longer in answers 412.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Deleted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ok": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "required": [
+                                        "ok"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/Problem404"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Problem401"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Problem403"
+                    },
+                    "419": {
+                        "$ref": "#/components/responses/Problem419"
+                    },
+                    "412": {
+                        "$ref": "#/components/responses/Problem412"
+                    },
+                    "428": {
+                        "$ref": "#/components/responses/Problem428"
+                    },
+                    "503": {
+                        "$ref": "#/components/responses/Problem503"
+                    },
+                    "409": {
+                        "description": "Allowed, but it conflicts with the current state of things.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "title": {
+                                            "type": "string",
+                                            "description": "English message. Never displayed: the front end renders `code`."
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "description": "The HTTP status code, repeated in the body as RFC 9457 intends."
+                                        },
+                                        "instance": {
+                                            "type": "string",
+                                            "description": "The path that was requested. Never the query string."
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "description": "Stable machine token the front end maps to French.",
+                                            "enum": [
+                                                "register_in_use"
+                                            ]
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "description": "Always empty for this status; present so every problem has the same shape.",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        },
+                                        "requestId": {
+                                            "type": "string",
+                                            "description": "ULID identifying this request. Echoed as the X-Request-Id header, and in the logs."
+                                        },
+                                        "detail": {
+                                            "type": "string",
+                                            "description": "RFC 9457 \u00a73.1.1: what happened and what to do about it, in English, for a developer reading the response. Never rendered to an end user."
+                                        }
+                                    },
+                                    "required": [
+                                        "title",
+                                        "status",
+                                        "code",
+                                        "instance",
+                                        "errors",
+                                        "requestId",
+                                        "detail"
+                                    ]
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -7629,6 +8081,13 @@
                         ],
                         "description": "The register they play in, or null for a member who answers without one. For grouping only: holding `attendance.respond` is what puts somebody on this list."
                     },
+                    "sectionNameDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The register's German name, or null when nobody has typed one: show `sectionName` then."
+                    },
                     "attendance": {
                         "anyOf": [
                             {
@@ -7646,6 +8105,7 @@
                     "firstName",
                     "lastName",
                     "sectionName",
+                    "sectionNameDe",
                     "attendance"
                 ],
                 "title": "ChaseListEntryResource"
@@ -8484,7 +8944,14 @@
                     },
                     "name": {
                         "type": "string",
-                        "description": "The register's name, as the band typed it. Content, so never translated."
+                        "description": "The register's French name, as the band typed it."
+                    },
+                    "nameDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Its German name, or null when nobody has typed one: show `name` then (ADR 0026)."
                     },
                     "members": {
                         "type": "array",
@@ -8504,6 +8971,7 @@
                 "required": [
                     "id",
                     "name",
+                    "nameDe",
                     "members",
                     "instructors"
                 ],
@@ -8774,6 +9242,23 @@
                 ],
                 "title": "RenameRoleRequest"
             },
+            "ReorderSectionsRequest": {
+                "type": "object",
+                "description": "The registers in their new order, every one of them, first to last.\n\nOnly the shape is checked here. A list that does not name exactly the\nregisters that exist answers `409 registers_changed` instead, because it\nmeans somebody added or deleted a register while this one was being moved.",
+                "properties": {
+                    "sectionIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "minItems": 1
+                    }
+                },
+                "required": [
+                    "sectionIds"
+                ],
+                "title": "ReorderSectionsRequest"
+            },
             "ReplaceImageFileRequest": {
                 "type": "object",
                 "description": "New sizes for a photo already in the library, sent exactly as an upload\nsends them: `multipart/form-data`, one `files[]` part per size, one to\nthree of them.\n\nEvery check an upload makes is made here, by the same code, and refuses\nwith the same reasons: `image_not_jpeg`, `image_too_large`,\n`image_too_heavy`, `image_has_metadata`, `image_unexpected_data` or\n`image_trailing_data` against `files.N`, and `image_set_too_many`,\n`image_set_too_heavy`, `image_set_widths_repeated` or\n`image_set_aspect_mismatch` against `files`.",
@@ -8998,16 +9483,32 @@
                     },
                     "name": {
                         "type": "string",
-                        "description": "The register's name, as the band writes it."
+                        "description": "The register's French name, as the band writes it."
+                    },
+                    "nameDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Its German name, or null when nobody has typed one: show `name` then (ADR 0026)."
                     },
                     "sortOrder": {
                         "type": "integer",
                         "description": "Ascending display order."
+                    },
+                    "playerCount": {
+                        "type": "integer",
+                        "description": "How many members play in it."
+                    },
+                    "instructorCount": {
+                        "type": "integer",
+                        "description": "How many members teach it."
                     }
                 },
                 "required": [
                     "id",
                     "name",
+                    "nameDe",
                     "sortOrder"
                 ],
                 "title": "SectionResource"
@@ -9529,6 +10030,27 @@
                     "permissions"
                 ],
                 "title": "StoreRoleRequest"
+            },
+            "StoreSectionRequest": {
+                "type": "object",
+                "description": "A register's names, typed by the committee (ADR 0026), for a new register\nand for a rename.\n\nThe French name is required and unique, so two registers never read the\nsame on the roster form or the band page. A blank German name is stored as\nnull and the SPA falls back to the French one, as for a role.",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "maxLength": 60
+                    },
+                    "nameDe": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "maxLength": 60
+                    }
+                },
+                "required": [
+                    "name"
+                ],
+                "title": "StoreSectionRequest"
             },
             "TagColour": {
                 "type": "string",

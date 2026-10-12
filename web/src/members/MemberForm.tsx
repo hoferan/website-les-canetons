@@ -10,7 +10,7 @@ import type {
 } from "../api/generated/model";
 import { FormError, FormField, RequiredLegend, formIsValid } from "../components/FormField";
 import type { TranslatedError } from "../i18n";
-import { roleDescription, roleName, t } from "../i18n";
+import { registerName, roleDescription, roleName, t } from "../i18n";
 import { OUTLINED_CARD } from "../carnival/raised";
 
 export type MemberDraft = {
@@ -200,7 +200,7 @@ export function MemberForm({
           <option value="">{t("members.noSection")}</option>
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
-              {section.name}
+              {registerName(section.name, section.nameDe)}
             </option>
           ))}
         </select>
@@ -266,7 +266,7 @@ export function MemberForm({
           <option value="">{t("memberForm.notInstructor")}</option>
           {sections.map((section) => (
             <option key={section.id} value={section.id}>
-              {section.name}
+              {registerName(section.name, section.nameDe)}
             </option>
           ))}
         </select>

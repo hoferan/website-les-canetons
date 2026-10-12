@@ -196,10 +196,26 @@ Route::middleware(['auth:sanctum', 'no-store'])->group(function () {
     });
 
     Route::middleware('permission:members.manage')->group(function () {
-        // Read-only reference data the roster form needs. Gated on
-        // members.manage because /members is the only consumer that exists;
-        // a second consumer can widen it when there is one.
+        // The registers (#276). The roster form reads the list, and the same
+        // people keep it: whoever decides each member's register also decides
+        // which registers there are. A register grants nothing, so no write
+        // here can lock anybody out.
         Route::get('/sections', [SectionController::class, 'index']);
+        Route::post('/sections', [SectionController::class, 'store']);
+
+        // Before the parameterised routes, so `order` never binds as an id.
+        // No `etag:`: the body is the whole order, see the controller.
+        Route::put('/sections/order', [SectionController::class, 'reorder']);
+
+        Route::get('/sections/{section}', [SectionController::class, 'show'])
+            ->whereNumber('section')
+            ->middleware('etag:section');
+        Route::patch('/sections/{section}', [SectionController::class, 'update'])
+            ->whereNumber('section')
+            ->middleware('etag:section');
+        Route::delete('/sections/{section}', [SectionController::class, 'destroy'])
+            ->whereNumber('section')
+            ->middleware('etag:section');
 
         // The committee's seats. Gated with the other two rather than made
         // public alongside /committee: that page projects a member down to a

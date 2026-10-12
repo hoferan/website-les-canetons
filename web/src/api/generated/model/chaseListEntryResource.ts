@@ -320,5 +320,10 @@ export interface ChaseListEntryResource {
    * @nullable
    */
   sectionName: string | null;
+  /**
+   * The register's German name, or null when nobody has typed one: show `sectionName` then.
+   * @nullable
+   */
+  sectionNameDe: string | null;
   attendance: AttendanceResource | null;
 }

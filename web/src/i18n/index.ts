@@ -214,6 +214,15 @@ export function tagLabel(tag: { labelFr: string; labelDe: string | null }): stri
   return currentLocale() === "fr" ? tag.labelFr : (tag.labelDe ?? tag.labelFr);
 }
 
+/**
+ * A register's name on the current page (#276). Typed by the committee, so
+ * data rather than catalogue copy, with the same fallback as tagLabel: German
+ * when there is a German name, the French one otherwise.
+ */
+export function registerName(name: string, nameDe: string | null | undefined): string {
+  return currentLocale() === "fr" ? name : (nameDe ?? name);
+}
+
 /** The one-line explanation of what a role grants. Empty when there is none. */
 export function roleHint(key: string): string {
   const path = `roles.${key}.hint`;

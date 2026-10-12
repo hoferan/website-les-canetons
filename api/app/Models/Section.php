@@ -12,12 +12,23 @@ class Section extends Model
     /** @use HasFactory<SectionFactory> */
     use HasFactory;
 
-    protected $fillable = ['name', 'sort_order'];
+    protected $fillable = ['name', 'name_de', 'sort_order'];
 
     /** @return HasMany<Member, $this> */
     public function members(): HasMany
     {
         return $this->hasMany(Member::class);
+    }
+
+    /**
+     * Everybody who teaches this register, consenting or not. A delete
+     * counts them, because removing the register would take it from each.
+     *
+     * @return HasMany<Member, $this>
+     */
+    public function instructors(): HasMany
+    {
+        return $this->hasMany(Member::class, 'instructor_of_section_id');
     }
 
     /**

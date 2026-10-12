@@ -370,7 +370,10 @@ import type {
   RoleShow200,
   RoleStore201,
   RoleUpdate200,
+  SectionDestroy200,
   SectionIndex200,
+  SectionReorder200,
+  SectionResource,
 } from "./model";
 
 export const getAuthLoginResponseMock = (
@@ -393,6 +396,10 @@ export const getAuthMeResponseMock = (
     () => faker.string.alpha({ length: { min: 10, max: 20 } }),
   ),
   sectionName: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
+  sectionNameDe: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),
     null,
   ]),
@@ -958,6 +965,10 @@ export const getAttendanceIndexResponseMock = (
     firstName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     sectionName: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    sectionNameDe: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
     ]),
@@ -1545,11 +1556,75 @@ export const getSectionIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    nameDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
     sortOrder: faker.number.int(),
+    playerCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+    instructorCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
   })),
   meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
   ...overrideResponse,
 });
+
+export const getSectionStoreResponseMock = (
+  overrideResponse: Partial<Extract<SectionResource, object>> = {},
+): SectionResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  nameDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  sortOrder: faker.number.int(),
+  playerCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  instructorCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getSectionReorderResponseMock = (
+  overrideResponse: Partial<Extract<SectionReorder200, object>> = {},
+): SectionReorder200 => ({
+  data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
+    id: faker.number.int(),
+    name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    nameDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
+    sortOrder: faker.number.int(),
+    playerCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+    instructorCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  })),
+  meta: { total: faker.number.int(), limit: faker.number.int(), offset: faker.number.int() },
+  ...overrideResponse,
+});
+
+export const getSectionShowResponseMock = (
+  overrideResponse: Partial<Extract<SectionResource, object>> = {},
+): SectionResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  nameDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  sortOrder: faker.number.int(),
+  playerCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  instructorCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getSectionUpdateResponseMock = (
+  overrideResponse: Partial<Extract<SectionResource, object>> = {},
+): SectionResource => ({
+  id: faker.number.int(),
+  name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  nameDe: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
+  sortOrder: faker.number.int(),
+  playerCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  instructorCount: faker.helpers.arrayElement([faker.number.int(), undefined]),
+  ...overrideResponse,
+});
+
+export const getSectionDestroyResponseMock = (
+  overrideResponse: Partial<Extract<SectionDestroy200, object>> = {},
+): SectionDestroy200 => ({ ok: faker.datatype.boolean(), ...overrideResponse });
 
 export const getCommitteeFunctionIndexResponseMock = (
   overrideResponse: Partial<Extract<CommitteeFunctionIndex200, object>> = {},
@@ -1764,6 +1839,10 @@ export const getBandIndexResponseMock = (
   data: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(() => ({
     id: faker.number.int(),
     name: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    nameDe: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
     members: Array.from({ length: faker.number.int({ min: 1, max: 10 }) }, (_, i) => i + 1).map(
       () => ({
         id: faker.number.int(),
@@ -3213,6 +3292,126 @@ export const getSectionIndexMockHandler = (
   );
 };
 
+export const getSectionStoreMockHandler = (
+  overrideResponse?:
+    | SectionResource
+    | ((
+        info: Parameters<Parameters<typeof http.post>[1]>[0],
+      ) => Promise<SectionResource> | SectionResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.post(
+    "*/sections",
+    async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionStoreResponseMock(),
+        { status: 201 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionReorderMockHandler = (
+  overrideResponse?:
+    | SectionReorder200
+    | ((
+        info: Parameters<Parameters<typeof http.put>[1]>[0],
+      ) => Promise<SectionReorder200> | SectionReorder200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.put(
+    "*/sections/order",
+    async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionReorderResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionShowMockHandler = (
+  overrideResponse?:
+    | SectionResource
+    | ((
+        info: Parameters<Parameters<typeof http.get>[1]>[0],
+      ) => Promise<SectionResource> | SectionResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.get(
+    "*/sections/:section",
+    async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionShowResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionUpdateMockHandler = (
+  overrideResponse?:
+    | SectionResource
+    | ((
+        info: Parameters<Parameters<typeof http.patch>[1]>[0],
+      ) => Promise<SectionResource> | SectionResource),
+  options?: RequestHandlerOptions,
+) => {
+  return http.patch(
+    "*/sections/:section",
+    async (info: Parameters<Parameters<typeof http.patch>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionUpdateResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
+export const getSectionDestroyMockHandler = (
+  overrideResponse?:
+    | SectionDestroy200
+    | ((
+        info: Parameters<Parameters<typeof http.delete>[1]>[0],
+      ) => Promise<SectionDestroy200> | SectionDestroy200),
+  options?: RequestHandlerOptions,
+) => {
+  return http.delete(
+    "*/sections/:section",
+    async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+      return HttpResponse.json(
+        overrideResponse !== undefined
+          ? typeof overrideResponse === "function"
+            ? await overrideResponse(info)
+            : overrideResponse
+          : getSectionDestroyResponseMock(),
+        { status: 200 },
+      );
+    },
+    options,
+  );
+};
+
 export const getCommitteeFunctionIndexMockHandler = (
   overrideResponse?:
     | CommitteeFunctionIndex200
@@ -3953,6 +4152,11 @@ export const getLesCanetonsAPIMock = () => [
   getRoleDestroyMockHandler(),
   getRolePermissionReplaceMockHandler(),
   getSectionIndexMockHandler(),
+  getSectionStoreMockHandler(),
+  getSectionReorderMockHandler(),
+  getSectionShowMockHandler(),
+  getSectionUpdateMockHandler(),
+  getSectionDestroyMockHandler(),
   getCommitteeFunctionIndexMockHandler(),
   getMemberIndexMockHandler(),
   getMemberStoreMockHandler(),

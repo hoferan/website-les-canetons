@@ -323,6 +323,11 @@ export type AuthMe200 = {
    */
   sectionName: string | null;
   /**
+   * The register's German name, or null when nobody has typed one: show `sectionName` then.
+   * @nullable
+   */
+  sectionNameDe: string | null;
+  /**
    * Their seat on the committee, or null if they hold none.
    * @nullable
    */

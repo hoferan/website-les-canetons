@@ -70,6 +70,7 @@ test("GET /me reports whoever setMockUser logged in", async () => {
     lastName: "Direction",
     mustChangePassword: false,
     sectionName: null,
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: [
       { key: "direction", labelFr: null, labelDe: null },

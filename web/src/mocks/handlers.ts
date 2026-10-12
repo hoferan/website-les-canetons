@@ -30,9 +30,11 @@ import type {
   RoleResource,
   StoreRegistrationRequest,
   UpdateRegistrationRequest,
+  ReorderSectionsRequest,
   SectionResource,
   StoreHistoryEntryRequest,
   StoreEventTagRequest,
+  StoreSectionRequest,
 } from "../api/generated/model";
 
 /**
@@ -79,6 +81,7 @@ const USERS = {
     lastName: "Direction",
     mustChangePassword: false,
     sectionName: null,
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("direction", "member"),
     permissions: [
@@ -107,6 +110,7 @@ const USERS = {
     lastName: "Player",
     mustChangePassword: false,
     sectionName: "Cloches",
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
@@ -125,6 +129,7 @@ const USERS = {
     lastName: "Both",
     mustChangePassword: true,
     sectionName: "Trompettes",
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("direction", "member", "musician"),
     permissions: [
@@ -157,6 +162,7 @@ const USERS = {
     lastName: "Committee",
     mustChangePassword: false,
     sectionName: "Trombones",
+    sectionNameDe: null,
     committeeFunctionName: "Responsable intendance",
     roles: seeded("committee", "member", "musician"),
     permissions: [
@@ -178,6 +184,7 @@ const USERS = {
     lastName: "Nouveau",
     mustChangePassword: true,
     sectionName: "Cloches",
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
@@ -192,6 +199,7 @@ const USERS = {
     lastName: "Roster",
     mustChangePassword: false,
     sectionName: null,
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member"),
     permissions: ["members.manage", "history.manage", "events.view", "account.manage"],
@@ -205,6 +213,7 @@ const USERS = {
     lastName: "Sansconnexion",
     mustChangePassword: false,
     sectionName: "Batteurs",
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
@@ -220,6 +229,7 @@ const USERS = {
     lastName: "Registeronly",
     mustChangePassword: false,
     sectionName: "Cloches",
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member"),
     permissions: ["events.view", "account.manage"],
@@ -231,6 +241,7 @@ const USERS = {
     lastName: "Unplaced",
     mustChangePassword: false,
     sectionName: null,
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded("member", "musician"),
     permissions: ["events.view", "account.manage", "attendance.respond"],
@@ -246,6 +257,7 @@ const USERS = {
     lastName: "Sansrole",
     mustChangePassword: false,
     sectionName: null,
+    sectionNameDe: null,
     committeeFunctionName: null,
     roles: seeded(),
     permissions: [],
@@ -371,14 +383,53 @@ const unauthenticated = () => problem(401, "not_authenticated", "Not authenticat
  * component test showed a set of pupitres no server has, which is the one thing
  * a mocked screen is supposed to rule out.
  */
-const SECTIONS: SectionResource[] = [
-  { id: 1, name: "Batteurs", sortOrder: 1 },
-  { id: 2, name: "Grosses-caisses", sortOrder: 2 },
-  { id: 3, name: "Lyre", sortOrder: 3 },
-  { id: 4, name: "Cloches", sortOrder: 4 },
-  { id: 5, name: "Trompettes", sortOrder: 5 },
-  { id: 6, name: "Trombones", sortOrder: 6 },
-];
+function initialSections(): SectionResource[] {
+  return [
+    { id: 1, name: "Batteurs", nameDe: null, sortOrder: 1 },
+    { id: 2, name: "Grosses-caisses", nameDe: null, sortOrder: 2 },
+    { id: 3, name: "Lyre", nameDe: null, sortOrder: 3 },
+    { id: 4, name: "Cloches", nameDe: null, sortOrder: 4 },
+    { id: 5, name: "Trompettes", nameDe: null, sortOrder: 5 },
+    { id: 6, name: "Trombones", nameDe: null, sortOrder: 6 },
+  ];
+}
+
+/** Mutable since the register editor (#276); always kept in display order. */
+let sections: SectionResource[] = initialSections();
+
+/** A register as the list and the single read answer it: with who plays in and teaches it. */
+function sectionRead(section: SectionResource): SectionResource {
+  return {
+    ...section,
+    playerCount: members.filter((member) => member.sectionId === section.id).length,
+    instructorCount: members.filter((member) => member.instructorOfSectionId === section.id).length,
+  };
+}
+
+/** The tag, over the register alone, as EntityTag's is: the counts move with the roster. */
+function sectionTag(section: SectionResource): string {
+  return mockEntityTag({
+    id: section.id,
+    name: section.name,
+    nameDe: section.nameDe,
+    sortOrder: section.sortOrder,
+  });
+}
+
+function refuseSectionBody(body: StoreSectionRequest, self: number | null) {
+  const name = body.name?.trim() ?? "";
+  if (name === "") {
+    return problem(400, "validation_failed", "Invalid form submission", [
+      { field: "name", reason: "required" },
+    ]);
+  }
+  const taken = sections.some((section) => section.id !== self && section.name === name);
+  return taken
+    ? problem(400, "validation_failed", "Invalid form submission", [
+        { field: "name", reason: "already_taken" },
+      ])
+    : null;
+}
 
 /**
  * The committee's seats, mirroring the 2026_09_14_000001 migration exactly —
@@ -944,6 +995,15 @@ export function setMemberVisibility(id: number, visible: boolean): void {
 }
 
 /**
+ * Test seam: give one register a German name, as the register editor would.
+ * Every reader of the mocked registers then carries it, so a German page can
+ * be checked without driving the editor first.
+ */
+export function setSectionNameDe(id: number, nameDe: string | null): void {
+  sections = sections.map((section) => (section.id === id ? { ...section, nameDe } : section));
+}
+
+/**
  * Test seam: give one member a committee seat, or take it away.
  *
  * Null is the only way to say "no seat" now. It used to be three — null, '' and
@@ -989,12 +1049,13 @@ function mockE164(phone: string): string | null {
 }
 
 function resetRoster(): void {
+  sections = initialSections();
   members = initialMembers();
   nextMemberId = 6;
 }
 
 function sectionOf(sectionId: number | null): string | null {
-  return SECTIONS.find((section) => section.id === sectionId)?.name ?? null;
+  return sections.find((section) => section.id === sectionId)?.name ?? null;
 }
 
 /**
@@ -2562,9 +2623,10 @@ const overrides = [
 
   http.get("/api/v1/band", ({ request }) =>
     collection(
-      SECTIONS.map((section) => ({
+      sections.map((section) => ({
         id: section.id,
         name: section.name,
+        nameDe: section.nameDe,
         members: members
           .filter((member) => member.publicVisible && member.sectionId === section.id)
           .map(publicly),
@@ -2708,8 +2770,121 @@ const overrides = [
 
   http.get(
     "/api/v1/sections",
-    ({ request }) => refuseWithoutMembersManage() ?? collection(SECTIONS, request),
+    ({ request }) => refuseWithoutMembersManage() ?? collection(sections.map(sectionRead), request),
   ),
+
+  http.post("/api/v1/sections", async ({ request }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const body = (await request.json()) as StoreSectionRequest;
+    const invalid = refuseSectionBody(body, null);
+    if (invalid) {
+      return invalid;
+    }
+    const created: SectionResource = {
+      id: Math.max(0, ...sections.map((section) => section.id)) + 1,
+      name: body.name.trim(),
+      nameDe: body.nameDe?.trim() ? body.nameDe.trim() : null,
+      sortOrder: Math.max(0, ...sections.map((section) => section.sortOrder)) + 1,
+    };
+    sections = [...sections, created];
+    return HttpResponse.json(sectionRead(created), { status: 201 });
+  }),
+
+  // BEFORE /api/v1/sections/:id, so `order` is never read as an id.
+  http.put("/api/v1/sections/order", async ({ request }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const { sectionIds } = (await request.json()) as ReorderSectionsRequest;
+    const known = sections.map((section) => section.id);
+    const exact =
+      sectionIds.length === known.length &&
+      new Set(sectionIds).size === sectionIds.length &&
+      sectionIds.every((id) => known.includes(id));
+    if (!exact) {
+      return problem(
+        409,
+        "registers_changed",
+        "The list does not name every register exactly once. Read it again.",
+      );
+    }
+    sections = sectionIds.map((id, position) => ({
+      ...sections.find((section) => section.id === id)!,
+      sortOrder: position + 1,
+    }));
+    return collection(sections.map(sectionRead), request);
+  }),
+
+  http.get("/api/v1/sections/:id", ({ params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const found = sections.find((section) => section.id === Number(params.id));
+    return found
+      ? HttpResponse.json(sectionRead(found), { headers: { ETag: sectionTag(found) } })
+      : notFound();
+  }),
+
+  http.patch("/api/v1/sections/:id", async ({ request, params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const existing = sections.find((section) => section.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, sectionTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const body = (await request.json()) as StoreSectionRequest;
+    const invalid = refuseSectionBody(body, existing.id);
+    if (invalid) {
+      return invalid;
+    }
+    const updated: SectionResource = {
+      ...existing,
+      name: body.name.trim(),
+      nameDe: body.nameDe?.trim() ? body.nameDe.trim() : null,
+    };
+    sections = sections.map((section) => (section.id === updated.id ? updated : section));
+    // The roster carries a copy of the French name, as MemberResource does.
+    members = members.map((member) =>
+      member.sectionId === updated.id ? { ...member, sectionName: updated.name } : member,
+    );
+    return HttpResponse.json(sectionRead(updated), { headers: { ETag: sectionTag(updated) } });
+  }),
+
+  http.delete("/api/v1/sections/:id", ({ request, params }) => {
+    const refusal = refuseWithoutMembersManage();
+    if (refusal) {
+      return refusal;
+    }
+    const existing = sections.find((section) => section.id === Number(params.id));
+    if (!existing) {
+      return notFound();
+    }
+    const stale = refuseWithoutIfMatch(request, sectionTag(existing));
+    if (stale) {
+      return stale;
+    }
+    const read = sectionRead(existing);
+    if ((read.playerCount ?? 0) > 0 || (read.instructorCount ?? 0) > 0) {
+      return problem(
+        409,
+        "register_in_use",
+        "Somebody plays in or teaches this register. Move them to another one first.",
+      );
+    }
+    sections = sections.filter((section) => section.id !== existing.id);
+    return HttpResponse.json({ ok: true });
+  }),
 
   // Either permission reads the list, as on the real route: the roster form
   // assigns roles, the role editor shapes them.
@@ -3908,6 +4083,7 @@ const overrides = [
         firstName: member.firstName,
         lastName: member.lastName,
         sectionName: member.sectionName,
+        sectionNameDe: sections.find((section) => section.id === member.sectionId)?.nameDe ?? null,
         attendance: answers.get(answerKey(event.id, member.id)) ?? null,
       }));
 

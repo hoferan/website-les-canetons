@@ -20,7 +20,7 @@ import { PageSection } from "../components/PageSection";
 import { answerLine, nameOf } from "../events/chaseList";
 import { CorrectAnswerDialog } from "../events/CorrectAnswerDialog";
 import { formatEventWhen } from "../events/formatEventWhen";
-import { t, translateApiError } from "../i18n";
+import { registerName, t, translateApiError } from "../i18n";
 import { useSession } from "../session/SessionProvider";
 import { OUTLINED_CARD } from "../carnival/raised";
 
@@ -190,7 +190,10 @@ export function EventAttendance() {
                 <span>
                   {nameOf(entry)}
                   {entry.sectionName ? (
-                    <span className="text-ink-muted"> — {entry.sectionName}</span>
+                    <span className="text-ink-muted">
+                      {" "}
+                      — {registerName(entry.sectionName, entry.sectionNameDe)}
+                    </span>
                   ) : null}
                 </span>
 
@@ -270,7 +273,9 @@ export function EventAttendance() {
                     a word, not a fact. */}
                 {entry.sectionName ? (
                   <p className="text-ink-muted">
-                    {t("attendance.sectionLabel", { name: entry.sectionName })}
+                    {t("attendance.sectionLabel", {
+                      name: registerName(entry.sectionName, entry.sectionNameDe),
+                    })}
                   </p>
                 ) : null}
                 {entry.attendance?.recordedByDirection ? (

@@ -11,7 +11,7 @@ import { PageHero } from "../carnival/PageHero";
 import { RAISED_CARD } from "../carnival/raised";
 import { registerSlot } from "../images/photoSlots";
 import { SlotPhoto } from "../images/SlotPhoto";
-import { t } from "../i18n";
+import { registerName, t } from "../i18n";
 
 /**
  * The anchor a jump link points at.
@@ -43,9 +43,15 @@ function Register({ register }: { register: PublicSectionResource }) {
       className="scroll-mt-6"
     >
       <h2 id={`${anchorOf(register)}-heading`} className="heading-wave w-fit font-display text-2xl">
-        {register.name}
+        {registerName(register.name, register.nameDe)}
       </h2>
-      <SlotPhoto slot={registerSlot(register.id)} label={register.name} alt={register.name} />
+      {/* The library lists the slot under the French name, as the band
+          types it; what a visitor reads is the page's own. */}
+      <SlotPhoto
+        slot={registerSlot(register.id)}
+        label={register.name}
+        alt={registerName(register.name, register.nameDe)}
+      />
 
       <p className="mt-tight text-ink-muted">
         {register.members.length > 0 ? (
@@ -100,7 +106,7 @@ export function Band() {
         <RegisterIndex
           entries={registers.map((register) => ({
             id: anchorOf(register),
-            label: register.name,
+            label: registerName(register.name, register.nameDe),
           }))}
         />
 
