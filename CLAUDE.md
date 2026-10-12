@@ -437,7 +437,15 @@ This project ships with [Superpowers](https://github.com/obra/superpowers) skill
   displays and grants nothing. Every account holds the fixed baseline role
   `member` (`events.view`, `account.manage`), so only `/logout`, `/me` and the
   inbox need a session alone. The SPA's guards mirror the permissions for UX
-  only. See ADR 0014.
+  only, through `can()` from `useSession()`. See ADR 0014.
+
+  **Three guards fail the build if access is decided any other way.**
+  `AccessDecidedByPermissionTest` scans `api/app/` for a register or a role
+  key used as a gate. `PermissionMiddlewareTest` fails on any `auth:sanctum`
+  route without `permission:`, unless it is on that test's `SESSION_ONLY`
+  list with its reason. And an ESLint `no-restricted-syntax` rule refuses a
+  role-key comparison or a test of `user.sectionId`/`user.sectionName` in
+  `web/src/`, outside `i18n/` and `mocks/`.
 - **The contract is versioned: everything lives under `/api/v1/*`.** The prefix
   comes from `withRouting(apiPrefix: ApiVersion::PREFIX)` in
   `api/bootstrap/app.php`, and `App\Http\Middleware\ApiVersion` owns that
@@ -565,23 +573,27 @@ because the shared host has no shell to run a seeder with. A sixth account,
 on a fresh database (migrations run before the seeder, so nobody holds
 `members.manage` yet). Describe them by what they can **do** — roles are now
 editable data that group permissions, and there is no per-user role string to
-name instead:
+name instead.
 
-- `demo.direction` (Dominique Direction) — holds the `direction` role
-  (`events.manage`, `attendance.view_all`, `attendance.record_for_others`,
-  `members.manage`, `registrations.view`, `images.manage`). Holds no
-  `musician` and has no register, so never appears in an attendance list:
-  organises, does not play.
+Every one holds the baseline `member` role (`events.view`,
+`account.manage`). Every one with a register also holds `musician`
+(`attendance.respond`), and the seeder grants it explicitly: the register
+itself grants nothing.
+
+- `demo.direction` (Dominique Direction) — holds the `direction` role, which
+  grants every permission except the three account-level ones the `member`
+  and `musician` roles carry. Holds no `musician` and has no register, so
+  never appears in an attendance list: organises, does not play.
 - `demo.player` (Perrine Player) — plays in Cloches and holds `musician`, so
   answers for events, and nothing else: no manage/view permissions at all.
-- `demo.both` (Bastien Both) — plays in Trompettes **and** holds the
-  `direction` role, so answers for events for themselves *and* manages them.
-  This is the case the old either/or role matrix could not express; if
+- `demo.both` (Bastien Both) — plays in Trompettes and holds `musician`
+  **and** `direction`, so answers for events for themselves *and* manages
+  them. This is the case the old either/or role matrix could not express; if
   someone reintroduces an either/or, this member is what breaks.
 - `demo.committee` (Camille Committee) — plays in Trombones and holds the
-  `committee` role, whose single permission is `registrations.view`. The role
-  exists in reference data, so somebody has to hold it or its screen is never
-  looked at.
+  `committee` role, which grants `registrations.view` and `messages.view`:
+  the guest list and the inbox, read-only. The role exists in reference data,
+  so somebody has to hold it or its screens are never looked at.
 - `demo.young` (Nadia Sansconnexion) — plays in Batteurs. The case where a
   **parent uses the child's login**: the account exists and is used, just not by
   the member. People the band only *displays* — instructors, honorary members —
@@ -719,7 +731,9 @@ translated. The reasoning is in ADR 0014.
 | The register list | **nobody yet — by hand in the DB (DbGate on :8091).** #178 owns this |
 | Members: identity, register, roles, password | `members.manage` |
 | One's own password | any account holder |
-| Events, attendance | `events.manage` |
+| Events | `events.manage` |
+| One's own answer to an event | `attendance.respond` |
+| Somebody else's answer | `attendance.record_for_others` |
 | Photos: the library on `/media`, and every photo slot, changed on the page that shows it (a history entry's in its form) | `images.manage` |
 
 **Who names a thing decides whether it can be translated.** A developer-defined
