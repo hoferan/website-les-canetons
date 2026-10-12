@@ -9127,7 +9127,15 @@
                         "type": "string"
                     },
                     "phone": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "The number as the guest typed it. This is what to show."
+                    },
+                    "phoneE164": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The same number in E.164, to dial, or null when it could not be read as one: show and dial `phone` then. Read as Swiss unless it starts with `+` or `00`."
                     },
                     "address": {
                         "type": [
@@ -9202,6 +9210,7 @@
                     "lastName",
                     "email",
                     "phone",
+                    "phoneE164",
                     "address",
                     "tableName",
                     "choices",

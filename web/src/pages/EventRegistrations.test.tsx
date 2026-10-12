@@ -225,7 +225,8 @@ test("a correction lands on the list", async () => {
   // strictly stronger than the toHaveTextContent on the row it replaces.
   expect(
     within(cardFor("Aebischer Jeanne")).getByRole("link", { name: "079 999 99 99" }),
-  ).toHaveAttribute("href", "tel:0799999999");
+    // Dialled in E.164 since #129, read from the corrected number.
+  ).toHaveAttribute("href", "tel:+41799999999");
 });
 
 /**
@@ -582,7 +583,8 @@ test("a card's e-mail and phone are tappable and its address is not", async () =
   // Corriger and Annuler are buttons, so the only links on the card are these.
   expect(links).toHaveLength(2);
   expect(links[0]).toHaveAttribute("href", "mailto:jeanne.aebischer@example.ch");
-  expect(links[1]).toHaveAttribute("href", "tel:0791234567");
+  // The API's E.164 reading, not the typed text: see ContactLink (#129).
+  expect(links[1]).toHaveAttribute("href", "tel:+41791234567");
   // The "no geo:, no maps URL" decision, pinned: a max:255 free-text address
   // makes a confidently wrong pin.
   expect(within(card).queryByRole("link", { name: /Route des Alpes/ })).toBeNull();

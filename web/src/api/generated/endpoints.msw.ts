@@ -1011,6 +1011,10 @@ export const getRegistrationStoreResponseMock = (
   lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   email: faker.string.alpha({ length: { min: 10, max: 20 } }),
   phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  phoneE164: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
   address: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   tableName: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1040,6 +1044,10 @@ export const getRegistrationIndexResponseMock = (
     lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
     email: faker.string.alpha({ length: { min: 10, max: 20 } }),
     phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+    phoneE164: faker.helpers.arrayElement([
+      faker.string.alpha({ length: { min: 10, max: 20 } }),
+      null,
+    ]),
     address: faker.helpers.arrayElement([
       faker.string.alpha({ length: { min: 10, max: 20 } }),
       null,
@@ -1151,6 +1159,10 @@ export const getRegistrationShowResponseMock = (
   lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   email: faker.string.alpha({ length: { min: 10, max: 20 } }),
   phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  phoneE164: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
   address: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   tableName: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),
@@ -1179,6 +1191,10 @@ export const getRegistrationUpdateResponseMock = (
   lastName: faker.string.alpha({ length: { min: 10, max: 20 } }),
   email: faker.string.alpha({ length: { min: 10, max: 20 } }),
   phone: faker.string.alpha({ length: { min: 10, max: 20 } }),
+  phoneE164: faker.helpers.arrayElement([
+    faker.string.alpha({ length: { min: 10, max: 20 } }),
+    null,
+  ]),
   address: faker.helpers.arrayElement([faker.string.alpha({ length: { min: 10, max: 20 } }), null]),
   tableName: faker.helpers.arrayElement([
     faker.string.alpha({ length: { min: 10, max: 20 } }),

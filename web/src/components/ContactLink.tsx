@@ -55,14 +55,21 @@ const LINK =
  * requirement on a POINTER TARGET, and static text is not one. Its lack of an
  * underline is what tells a reader it is not tappable, which is 1.4.1 working
  * in the other direction.
+ *
+ * `e164` IS THE API'S READING OF A PHONE NUMBER (#129), and wins over
+ * telHref() when there is one: it has dropped a `(0)` trunk prefix and
+ * resolved the country, which a link built from free text cannot. The text
+ * shown is still the number as the guest typed it.
  */
 export function ContactLink({
   kind,
   value,
+  e164 = null,
   className,
 }: {
   kind: "email" | "phone";
   value: string;
+  e164?: string | null;
   className?: string;
 }) {
   // An empty optional field would otherwise leave an empty flex child and its
@@ -71,7 +78,8 @@ export function ContactLink({
     return null;
   }
 
-  const href = kind === "email" ? mailtoHref(value) : telHref(value);
+  const href =
+    kind === "email" ? mailtoHref(value) : e164 !== null ? `tel:${e164}` : telHref(value);
 
   if (href === null) {
     return <span className={className}>{value}</span>;
