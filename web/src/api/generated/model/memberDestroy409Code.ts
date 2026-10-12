@@ -317,4 +317,5 @@ export type MemberDestroy409Code = (typeof MemberDestroy409Code)[keyof typeof Me
 export const MemberDestroy409Code = {
   cannot_delete_self: "cannot_delete_self",
   cannot_remove_last_administrator: "cannot_remove_last_administrator",
+  cannot_remove_last_role_administrator: "cannot_remove_last_role_administrator",
 } as const;

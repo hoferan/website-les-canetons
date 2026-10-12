@@ -97,6 +97,20 @@ test("refuses /account and /account/password in place without account.manage", a
   expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
 });
 
+test("renders the role editor at /roles for somebody who may manage roles", async () => {
+  setMockUser("demo.direction");
+  await renderWithSession(<AppRoutes />, { route: "/roles" });
+  expect(await screen.findByRole("heading", { level: 1, name: "Rôles" })).toBeInTheDocument();
+});
+
+test("refuses /roles in place to somebody who administers members but not roles", async () => {
+  // demo.roster holds members.manage and nothing about roles: giving a role
+  // to somebody and deciding what it grants are separate permissions.
+  setMockUser("demo.roster");
+  await renderWithSession(<AppRoutes />, { route: "/roles" });
+  expect(await screen.findByRole("heading", { name: "Accès refusé" })).toBeInTheDocument();
+});
+
 test("sends an anonymous visitor from /account to the login page", async () => {
   await renderWithSession(<AppRoutes />, { route: "/account" });
   expect(await screen.findByRole("heading", { name: "Connexion" })).toBeInTheDocument();

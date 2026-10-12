@@ -285,15 +285,16 @@ class MemberController extends Controller
      * once. There is no deactivation flag and no undo: leaving the band is
      * this call. Answers `{"ok": true, "sessionsEnded": n}`.
      *
-     * Refuses with `409 cannot_remove_last_administrator` when the target is
-     * the only member left who could administer members, and
+     * Refuses with `409 cannot_remove_last_administrator` or
+     * `409 cannot_remove_last_role_administrator` when the target is the only
+     * member left who could administer members or roles, and
      * `409 cannot_delete_self` when the target is the caller. Both are `409`
      * rather than `403` because the caller does hold the permission; the
      * request conflicts with the state of the roster. When both apply, the
      * last-administrator refusal is the one returned.
      */
     #[Response(200, 'Removed. `sessionsEnded` counts the sessions revoked in the same transaction.')]
-    #[Emits('cannot_remove_last_administrator', 'cannot_delete_self')]
+    #[Emits('cannot_remove_last_administrator', 'cannot_remove_last_role_administrator', 'cannot_delete_self')]
     public function destroy(Request $request, Member $member): JsonResponse
     {
         // Existence is the state (ADR 0015): there is no `active` flag and no

@@ -151,6 +151,7 @@ test("the desktop menu names who is logged in, then the account, the committee's
     "Membres",
     "Boîte de réception2",
     "Médias",
+    "Rôles",
     "Déconnexion",
   ]);
   // Not back at the login form: the member's own account.
@@ -202,7 +203,7 @@ test("the phone layer puts the member's screens first and the account last", asy
     within(mine)
       .getAllByRole("link")
       .map((link) => link.getAttribute("href")),
-  ).toEqual(["/events", "/members", "/inbox", "/media"]);
+  ).toEqual(["/events", "/members", "/inbox", "/media", "/roles"]);
   const band = within(layer).getByRole("list", { name: "Le groupe" });
   expect(within(band).getByRole("link", { name: "Nous rejoindre" })).toBeInTheDocument();
 

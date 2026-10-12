@@ -6,7 +6,6 @@ use App\Models\Role;
 use App\Models\Section;
 use App\Support\Permission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -42,15 +41,17 @@ class SeedRegistersAndRolesTest extends TestCase
         ], $names);
     }
 
-    public function test_the_roles_carry_no_display_name(): void
+    public function test_the_seeded_roles_carry_no_typed_name(): void
     {
         // The API is English without exception. A seeded role's name is system
         // text — a developer chose it in a migration — so it is translatable by
         // a fixed identifier, and `key` is that identifier. The display name
-        // lives in web/src/i18n/fr.ts, not in the schema.
-        $this->assertFalse(
-            Schema::hasColumn('roles', 'label_fr'),
-            'roles must carry no language-specific display column',
+        // lives in web/src/i18n/fr.ts. `label_fr` and `label_de` hold only
+        // what the committee types in the role editor (ADR 0026).
+        $this->assertSame(
+            0,
+            Role::query()->whereNotNull('label_fr')->orWhereNotNull('label_de')->count(),
+            'a migration must not write a role name in French or German',
         );
     }
 

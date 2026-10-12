@@ -15,7 +15,7 @@ class Role extends Model
     /** @use HasFactory<RoleFactory> */
     use HasFactory;
 
-    protected $fillable = ['key'];
+    protected $fillable = ['key', 'label_fr', 'label_de'];
 
     /** @return array<string, string> */
     protected function casts(): array

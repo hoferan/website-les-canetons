@@ -310,6 +310,74 @@ class AccessIntegrityTest extends TestCase
         AccessIntegrity::assertMayDeleteRole($actor, $this->admins);
     }
 
+    // --------------------------------------------------- roles.manage (#194)
+
+    public function test_taking_roles_manage_from_the_only_role_granting_it_is_refused(): void
+    {
+        // Without a holder of roles.manage nobody can open the editor again,
+        // and this host has no shell to repair that from. The actor loses it
+        // too, so the self-demotion applies as well; the orphan code wins.
+        $roleAdmins = Role::factory()->granting(Permission::RolesManage)->create();
+        $actor = $this->member('actor', $this->admins);
+        $actor->roles()->attach($roleAdmins);
+
+        $this->assertRefusedWith('cannot_remove_last_role_administrator', fn () => AccessIntegrity::assertMayReplacePermissions($actor, $roleAdmins, []));
+    }
+
+    public function test_the_last_holder_of_roles_manage_cannot_be_deleted(): void
+    {
+        $actor = $this->member('actor', $this->admins);
+        $only = $this->member('only', Role::factory()->granting(Permission::RolesManage)->create());
+
+        $this->assertRefusedWith('cannot_remove_last_role_administrator', fn () => AccessIntegrity::assertMayDelete($actor, $only));
+    }
+
+    public function test_the_last_holder_of_roles_manage_cannot_lose_the_role(): void
+    {
+        $roleAdmins = Role::factory()->granting(Permission::RolesManage)->create();
+        $actor = $this->member('actor', $this->admins);
+        $only = $this->member('only', $roleAdmins);
+
+        $this->assertRefusedWith('cannot_remove_last_role_administrator', fn () => AccessIntegrity::assertMayReplaceRoles($actor, $only, $this->keeping()));
+    }
+
+    public function test_an_account_cannot_take_roles_manage_from_itself(): void
+    {
+        // Somebody else keeps it, so this is the self-demotion guard: the
+        // editor's own permission is the one that lets the actor undo the
+        // edit, which is what cannot_demote_self exists to protect.
+        $roleAdmins = Role::factory()->granting(Permission::RolesManage)->create();
+        $actor = $this->member('actor', $this->admins);
+        $actor->roles()->attach($roleAdmins);
+        $this->member('keeper', Role::factory()->granting(Permission::RolesManage)->create());
+
+        $this->assertRefusedWith('cannot_demote_self', fn () => AccessIntegrity::assertMayReplaceRoles($actor, $actor, $this->keeping($this->admins)));
+    }
+
+    public function test_members_manage_is_checked_before_roles_manage(): void
+    {
+        // A write that would orphan both is refused with the older code, so a
+        // client seeing one refusal sees the same one it always did.
+        $both = Role::factory()->granting(Permission::MembersManage, Permission::RolesManage)->create();
+        $actor = $this->member('actor', $both);
+
+        $this->assertRefusedWith('cannot_remove_last_administrator', fn () => AccessIntegrity::assertMayDeleteRole($actor, $both));
+    }
+
+    public function test_a_permission_nobody_held_does_not_block_a_write(): void
+    {
+        // Nobody in this database holds roles.manage. Refusing every write
+        // for an orphan the write did not cause would freeze member
+        // administration on any database in that state, with nothing the
+        // committee could do from the site to get out of it.
+        $this->expectNotToPerformAssertions();
+
+        $actor = $this->member('actor', $this->admins);
+        $target = $this->member('target', $this->plain);
+
+        AccessIntegrity::assertMayDelete($actor, $target);
+    }
+
     public function test_a_violation_renders_as_409_in_the_error_contract(): void
     {
         Route::middleware('api')->get(

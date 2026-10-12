@@ -27,6 +27,7 @@ import { Inbox } from "./pages/Inbox";
 import { Join } from "./pages/Join";
 import { Login } from "./pages/Login";
 import { Media } from "./pages/Media";
+import { Roles } from "./pages/Roles";
 import { MediaDetail } from "./pages/MediaDetail";
 import { Members } from "./pages/Members";
 import { NotFound } from "./pages/NotFound";
@@ -173,6 +174,13 @@ export function AppRoutes() {
           <Route element={<RequirePermission permission="messages.view" />}>
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/contact-messages" element={<ContactMessages />} />
+          </Route>
+
+          {/* The role editor (#194): what each role is called and grants.
+              roles.manage, not members.manage, which gives roles to people
+              on /members: shaping a role and holding one are separate jobs. */}
+          <Route element={<RequirePermission permission="roles.manage" />}>
+            <Route path="/roles" element={<Roles />} />
           </Route>
 
           {/* The media library (#105): uploading, browsing and deleting

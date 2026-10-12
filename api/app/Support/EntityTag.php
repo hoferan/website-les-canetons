@@ -10,6 +10,7 @@ use App\Http\Resources\ImageResource;
 use App\Http\Resources\MemberResource;
 use App\Http\Resources\RegistrationOptionResource;
 use App\Http\Resources\RegistrationResource;
+use App\Http\Resources\RoleResource;
 use App\Models\Event;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -86,6 +87,7 @@ final class EntityTag
         'history' => 'historyEntry',
         'image' => 'image',
         'event_tag' => 'eventTag',
+        'role' => 'role',
     ];
 
     /**
@@ -206,6 +208,11 @@ final class EntityTag
                 (new EventTagResource($model))->toArray(self::bare()),
                 ['eventCount' => true],
             ),
+            // WITH the holders, unlike a tag's count. A delete takes the role
+            // from everybody its confirmation named, so somebody given the
+            // role since the read must refuse it; a rename refused for the
+            // same reason is the cheaper mistake.
+            'role' => (new RoleResource($model->load('members')))->toArray(self::bare()),
 
             default => throw new InvalidArgumentException("No state is defined for the facet `{$facet}`."),
         };

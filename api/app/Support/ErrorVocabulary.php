@@ -181,15 +181,20 @@ final class ErrorVocabulary
         // fastest way to lock the band out of its own roster, and this host has
         // no shell to repair it with. The caller does not need to know that;
         // they need to know who to ask.
-        'cannot_demote_self' => [409, 'An account cannot remove its own members.manage permission. Ask '
-            .'another administrator.'],
+        'cannot_demote_self' => [409, 'An account cannot remove its own members.manage or roles.manage '
+            .'permission. Ask another administrator.'],
 
         'cannot_remove_last_administrator' => [409, 'This change would leave nobody able to administer '
             .'members. Grant members.manage to somebody else first.'],
 
+        // The same refusal for the role editor's own permission. Its own code,
+        // because "grant members.manage to somebody" would send the caller to
+        // fix the wrong thing.
+        'cannot_remove_last_role_administrator' => [409, 'This change would leave nobody able to manage '
+            .'roles. Grant roles.manage to somebody else first.'],
+
         // One code for removing, editing and deleting it, because the answer
-        // to all three is the same: leave it alone. The editor endpoints that
-        // will raise the other two do not exist yet (#194).
+        // to all three is the same: leave it alone.
         'baseline_role_is_fixed' => [409, 'The baseline role (`isBaseline` in GET /api/v1/roles) belongs to '
             .'every account and grants a fixed set of permissions. Keep it in every `roleIds`; it '
             .'cannot be edited or deleted.'],
