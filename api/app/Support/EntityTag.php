@@ -100,6 +100,12 @@ final class EntityTag
         return array_keys(self::FACETS);
     }
 
+    /** The route parameter a facet is read from. */
+    public static function parameter(string $facet): string
+    {
+        return self::FACETS[$facet];
+    }
+
     /**
      * The tag for one facet of whatever this request has bound, or null when
      * the thing is gone — a DELETE's own response, or a row another request
@@ -107,7 +113,7 @@ final class EntityTag
      */
     public static function of(string $facet, Request $request): ?string
     {
-        $bound = $request->route(self::FACETS[$facet]);
+        $bound = $request->route(self::parameter($facet));
 
         return $bound instanceof Model ? self::compute($facet, $bound) : null;
     }

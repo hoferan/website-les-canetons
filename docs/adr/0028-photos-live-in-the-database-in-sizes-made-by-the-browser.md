@@ -175,11 +175,12 @@ What this fixes:
   already holds is refused with `image_already_in_library`, and the photo the
   image already holds changes nothing. Placements name the id, so every page
   that shows the photo shows the new one.
-- Every write on a photo (rename, replace, delete) checks its `If-Match` a
-  second time once it holds the photo's row `FOR UPDATE`. The middleware checks
-  it before any lock is held, and a write that landed in between would
-  otherwise be undone, or deleted, by somebody who never saw it. Such a write
-  answers 412 instead.
+- Every write on a photo (rename, replace, delete) holds the photo's row
+  `FOR UPDATE` from its `If-Match` check to its commit, so a write that would
+  have landed in between waits, re-reads and answers 412 instead of being
+  undone, or deleted, by somebody who never saw it. The controller did this
+  itself until #231 moved it into `ConditionalWrite` for every conditioned
+  write.
 - Replacing is safe with a year of `immutable` caching because every size's
   path is the digest of its own bytes. New bytes always get a new path, and a
   path never comes to mean other bytes: not after a replacement, not after a

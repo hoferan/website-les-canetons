@@ -44,8 +44,9 @@ v1.
 Writes that replace or remove an existing thing require `If-Match`, through
 `etag:<facet>` and `ConditionalWrite`. A missing header answers 428 and a stale one
 412. The tag is a strong ETag over the rendered resource (`App\Support\EntityTag`), so
-a change to a member's roles changes the member's tag. Only a single-item read hands
-out a tag. Attendance is exempt, because it has one writer and one value, and a read
+a change to a member's roles changes the member's tag. The check and the write are
+one transaction with the row locked `FOR UPDATE` (#231), so two writes carrying the
+same tag cannot both pass. Only a single-item read hands out a tag. Attendance is exempt, because it has one writer and one value, and a read
 before every one-tap answer would cost more than it protects.
 
 Both public POSTs require an `Idempotency-Key` (`IdempotentWrite`). A retry with the
